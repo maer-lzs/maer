@@ -13,14 +13,10 @@ struct BookCoverView: View {
                     if url == nil {
                         placeholder
                     } else {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill)
-                            } else if phase.error != nil {
-                                placeholder
-                            } else {
-                                placeholder.overlay(ProgressView().scaleEffect(0.6))
-                            }
+                        CachedAsyncImage(url: url) { image in
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            placeholder.overlay(ProgressView().scaleEffect(0.6))
                         }
                     }
                 }

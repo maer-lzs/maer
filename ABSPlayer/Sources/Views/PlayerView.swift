@@ -88,15 +88,13 @@ struct PlayerView: View {
     // MARK: - Bausteine
 
     private var cover: some View {
-        AsyncImage(url: coverURL) { phase in
-            if let image = phase.image {
-                image.resizable().aspectRatio(contentMode: .fit)
-            } else {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.white.opacity(0.1))
-                    .aspectRatio(1, contentMode: .fit)
-                    .overlay(Image(systemName: "book.closed").font(.largeTitle))
-            }
+        CachedAsyncImage(url: coverURL) { image in
+            image.resizable().aspectRatio(contentMode: .fit)
+        } placeholder: {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.white.opacity(0.1))
+                .aspectRatio(1, contentMode: .fit)
+                .overlay(Image(systemName: "book.closed").font(.largeTitle))
         }
         .frame(maxWidth: 300)
         .clipShape(RoundedRectangle(cornerRadius: 12))

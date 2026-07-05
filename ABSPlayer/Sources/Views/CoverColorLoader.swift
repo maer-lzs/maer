@@ -12,10 +12,15 @@ final class CoverColorLoader: ObservableObject {
 
     func load(from url: URL?) async {
         guard let url else { return }
+        if let cached = ImageCache.shared.image(for: url), let color = Self.averageColor(of: cached) {
+            accent = Color(color)
+            return
+        }
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let image = UIImage(data: data),
                   let color = Self.averageColor(of: image) else { return }
+            ImageCache.shared.set(image, for: url)
             accent = Color(color)
         } catch {
             // Kein Cover / kein Netz: neutraler Standard bleibt bestehen.

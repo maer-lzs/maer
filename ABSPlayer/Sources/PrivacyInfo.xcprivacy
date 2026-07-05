@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Hörregal sammelt keine Nutzerdaten. Server-URL und API-Token werden
+	     ausschließlich lokal im Keychain gespeichert und nie an Dritte
+	     (auch nicht an den App-Entwickler) übertragen — nur an den vom
+	     Nutzer selbst konfigurierten, eigenen Audiobookshelf-Server. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- Required Reason APIs: UserDefaults wird genutzt, um sich die zuletzt
+	     gehörte Buch-ID für den Mini-Player über App-Neustarts hinweg zu
+	     merken — ausschließlich innerhalb der eigenen App, kein App Group,
+	     kein Zugriff auf Daten anderer Apps. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
