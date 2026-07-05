@@ -76,6 +76,23 @@ struct PlayerView: View {
         } message: { conflict in
             Text("Zuletzt gespeichert: \(format(conflict.serverTime)). Aktuell: \(format(conflict.localTime)). Ohne Bestätigung wird nichts überschrieben — bei Abbrechen springt die Wiedergabe zurück zum gespeicherten Stand.")
         }
+        .alert(
+            "Mehrere schnelle Sprünge erkannt",
+            isPresented: Binding(
+                get: { viewModel.suspiciousLockscreenJump != nil },
+                set: { if !$0 { viewModel.dismissLockscreenJump() } }
+            ),
+            presenting: viewModel.suspiciousLockscreenJump
+        ) { _ in
+            Button("Ja, das war ich") {
+                Task { await viewModel.confirmLockscreenJump() }
+            }
+            Button("Zurück zu \(format(viewModel.suspiciousLockscreenJump?.beforeTime ?? 0))", role: .cancel) {
+                viewModel.cancelLockscreenJump()
+            }
+        } message: { jump in
+            Text("Über den Sperrbildschirm kamen mehrere schnelle Sprünge hintereinander — das passiert leicht durch Tastenkontakt in der Tasche. Von \(format(jump.beforeTime)) auf \(format(jump.afterTime)). Wirklich so weit gesprungen?")
+        }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background || newPhase == .inactive {
                 Task { await viewModel.syncProgress(force: true) }

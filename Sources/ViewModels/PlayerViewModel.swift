@@ -16,6 +16,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
         var id: Double { localTime }
     }
 
+    /// Wird angezeigt, wenn mehrere schnelle Sprünge HINTEREINANDER über den
+    /// Sperrbildschirm/das Kontrollzentrum kamen — typisches Muster für
+    /// unbeabsichtigten Taschen-Kontakt, da iOS dort keine Handflächen-
+    /// Erkennung hat. Betrifft ausschließlich Lockscreen-Sprünge, niemals
+    /// Buttons innerhalb der App selbst.
+    struct SuspiciousLockscreenJump: Identifiable {
+        let beforeTime: Double
+        let afterTime: Double
+        var id: Double { afterTime }
+    }
+
     @Published var isPlaying = false
     /// Absolute Position im GESAMTEN Buch, in Sekunden — unabhängig davon, ob
     /// das Buch aus einer einzigen M4B-Datei oder mehreren Tracks besteht.
@@ -30,6 +41,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var sleepUntilChapterEnd = false
     @Published var errorMessage: String?
     @Published var pendingServerConflict: ServerConflict?
+    @Published var suspiciousLockscreenJump: SuspiciousLockscreenJump?
     /// True, während der Player nachpuffert (z. B. nach kurzem Funkloch) —
     /// die View zeigt dann einen "Lädt…"-Zustand statt eines starren Fehlers.
     @Published var isBuffering = false
@@ -71,6 +83,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Schwelle, ab der ein nicht vom Nutzer ausgelöster Rückschritt als
     /// verdächtig gilt.
     private let suspiciousDropThreshold: Double = 120
+
+    // MARK: - Taschen-Kontakt-Schutz für Lockscreen-Sprünge
+
+    /// Zeitpunkte der letzten Sprünge über den Sperrbildschirm/das
+    /// Kontrollzentrum — nur DIESER Pfad ist betroffen, nicht die Buttons in
+    /// der App selbst (siehe `skipFromLockscreen`).
+    private var recentLockscreenSkipTimestamps: [Date] = []
+    /// Stand, bevor die aktuell laufende Sprung-Serie begann — der
+    /// Rücksprungpunkt, falls sich die Serie als ungewollt herausstellt.
+    private var lockscreenSkipBaseline: Double?
+    /// Zeitfenster, in dem mehrere Sprünge als "eine Serie" gezählt werden.
+    private let lockscreenSkipWindow: TimeInterval = 4
+    /// Ab so vielen Sprüngen innerhalb des Zeitfensters gilt die Serie als
+    /// verdächtig (typisches Taschen-Kontakt-Muster, kein bewusstes
+    /// mehrfaches Antippen).
+    private let lockscreenSkipSuspicionCount = 5
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient
@@ -360,6 +388,35 @@ final class PlayerViewModel: NSObject, ObservableObject {
         Task { await seek(to: currentTime + seconds) }
     }
 
+    /// Wie `skip(by:)`, aber ausschließlich für Sprünge über den
+    /// Sperrbildschirm/das Kontrollzentrum gedacht — dort gibt es (anders als
+    /// bei Buttons in der App) keine Handflächen-Erkennung. Ein Skip-Befehl
+    /// aus der Hosentasche kann sich unbemerkt mehrfach hintereinander
+    /// auslösen. Erst ab mehreren schnellen Sprüngen in kurzer Zeit greift
+    /// die Erkennung — ein einzelner, bewusster Lockscreen-Sprung läuft
+    /// unverändert sofort durch, ganz ohne Rückfrage.
+    func skipFromLockscreen(by seconds: Double) {
+        let now = Date()
+        recentLockscreenSkipTimestamps.removeAll { now.timeIntervalSince($0) > lockscreenSkipWindow }
+        if recentLockscreenSkipTimestamps.isEmpty {
+            lockscreenSkipBaseline = currentTime
+        }
+        recentLockscreenSkipTimestamps.append(now)
+
+        if recentLockscreenSkipTimestamps.count > lockscreenSkipSuspicionCount {
+            // Schwelle überschritten: diesen weiteren Sprung nicht mehr
+            // automatisch ausführen, stattdessen einmal nachfragen, ob die
+            // ganze Serie wirklich gewollt war.
+            recentLockscreenSkipTimestamps.removeAll()
+            if suspiciousLockscreenJump == nil, let baseline = lockscreenSkipBaseline {
+                suspiciousLockscreenJump = SuspiciousLockscreenJump(beforeTime: baseline, afterTime: currentTime)
+            }
+            return
+        }
+
+        Task { await seek(to: currentTime + seconds) }
+    }
+
     func jumpToChapter(_ chapter: ABSChapter) {
         Task { await seek(to: chapter.start) }
     }
@@ -506,6 +563,26 @@ final class PlayerViewModel: NSObject, ObservableObject {
         pendingServerConflict = nil
     }
 
+    /// Nutzer hat im Dialog bestätigt: die Sprung-Serie war wirklich gewollt,
+    /// aktuellen (weiter vorne liegenden) Stand sofort synchronisieren.
+    func confirmLockscreenJump() async {
+        suspiciousLockscreenJump = nil
+        suppressConflictForNextSync = true
+        await syncProgress(force: true)
+    }
+
+    /// Nutzer hat abgebrochen: zurück zum Stand vor Beginn der Sprung-Serie
+    /// springen — vermutlich Taschen-Kontakt, nicht gewollt.
+    func cancelLockscreenJump() {
+        guard let jump = suspiciousLockscreenJump else { return }
+        suspiciousLockscreenJump = nil
+        Task { await seek(to: jump.beforeTime, userInitiated: false) }
+    }
+
+    func dismissLockscreenJump() {
+        suspiciousLockscreenJump = nil
+    }
+
     // MARK: - Sleep-Timer
 
     func startSleepTimer(minutes: Double) {
@@ -580,12 +657,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         commandCenter.skipForwardCommand.preferredIntervals = [30]
         commandCenter.skipForwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skip(by: 30) }
+            Task { @MainActor in self?.skipFromLockscreen(by: 30) }
             return .success
         }
         commandCenter.skipBackwardCommand.preferredIntervals = [30]
         commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skip(by: -30) }
+            Task { @MainActor in self?.skipFromLockscreen(by: -30) }
             return .success
         }
     }

@@ -13,6 +13,7 @@
 		CF925AC42FFABEF8001EB053 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFB481632FFAC6740023EF83 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFBF69FE2FFACB2A007815F7 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CFBF6EF92FFAF291007815F7 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFCCDF792FFABFC6004A0EB5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +78,11 @@
 			sourceTree = "<group>";
 		};
 		CFBF6A022FFACB2A007815F7 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CFBF6EFD2FFAF291007815F7 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -154,6 +160,10 @@
 				{
 					ProductGroup = CF925AC82FFABEF8001EB053 /* Products */;
 					ProjectRef = CF925AC42FFABEF8001EB053 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CFBF6EFD2FFAF291007815F7 /* Products */;
+					ProjectRef = CFBF6EF92FFAF291007815F7 /* Hörregal.xcodeproj */;
 				},
 				{
 					ProductGroup = CFBF6A022FFACB2A007815F7 /* Products */;
