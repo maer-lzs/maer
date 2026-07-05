@@ -22,6 +22,10 @@ struct BookCoverView: View {
                 }
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                // Fertig gehörte Bücher werden zusätzlich zum Häkchen optisch
+                // "abgehakt" — entsättigt und leicht abgedunkelt.
+                .saturation(progress?.isFinished == true ? 0 : 1)
+                .opacity(progress?.isFinished == true ? 0.55 : 1)
 
                 if progress?.isFinished == true {
                     Image(systemName: "checkmark.circle.fill")
