@@ -22,14 +22,18 @@ struct MiniPlayerBar: View {
     let onOpenPlayer: () -> Void
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @State private var measuredWidth: CGFloat = 0
 
-    /// Zeigt Skip-Buttons und Ausgabewahl nur, wenn genug Platz für Titeltext
-    /// UND Buttons gleichzeitig da ist: auf dem iPad immer, auf dem iPhone
-    /// nur im Querformat (verticalSizeClass wird dort .compact). Im iPhone-
-    /// Hochformat ist der Platz sonst zu knapp, um noch etwas vom Titel zu
-    /// lesen.
+    /// Schwellenwert, ab dem genug Platz für Titeltext UND alle Zusatz-
+    /// Buttons gleichzeitig da ist. Bewusst an der TATSÄCHLICH verfügbaren
+    /// Breite gemessen, nicht am Geräte-Typ — in einem schmalen Fenster
+    /// (z. B. Split View, Stage Manager, ein verkleinertes Mac-Fenster) gilt
+    /// ein iPad sonst weiterhin als "hat immer Platz", obwohl es das im
+    /// konkreten Fenster gerade nicht hat.
+    private let extendedControlsThreshold: CGFloat = 360
+
     private var showExtendedControls: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad || verticalSizeClass == .compact
+        measuredWidth == 0 || measuredWidth >= extendedControlsThreshold
     }
 
     private var shape: RoundedRectangle {
@@ -118,6 +122,15 @@ struct MiniPlayerBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .modifier(AdaptiveGlassBackground(shape: shape))
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { measuredWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, newWidth in
+                        measuredWidth = newWidth
+                    }
+            }
+        )
     }
 
     /// Cover mit dünnem, kreisförmigem Fortschrittsring — liegt am Rand UMS
