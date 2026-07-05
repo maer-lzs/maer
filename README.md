@@ -11,7 +11,7 @@ Hörregal started as a private replacement for a client that regularly lost play
 
 ## Screenshots
 
-| Bibliothek | Player (iPhone) | Player (iPad) |
+| Bibliothek | Detail Book (iPhone) | Player (iPad) |
 |---|---|---|
 | ![Bibliothek](screenshots/iphone_bib.png) | ![Detail](screenshots/iphone_detail.png) | ![Player iPad](screenshots/ipad_player.png) |
 

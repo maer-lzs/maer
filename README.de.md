@@ -19,7 +19,7 @@ und den Stand sauber synchronisieren, online wie offline.
 
 ## Screenshots
 
-| Bibliothek | Player (iPhone) | Player (iPad) |
+| Bibliothek | Detail Book (iPhone) | Player (iPad) |
 |---|---|---|
 | ![Bibliothek](screenshots/iphone_bib.png) | ![Detail](screenshots/iphone_detail.png) | ![Player iPad](screenshots/ipad_player.png) |
 
