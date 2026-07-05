@@ -129,11 +129,14 @@ struct BookDetailScreen: View {
                 // weich zu Schwarz und bleibt danach schwarz.
                 LinearGradient(
                     stops: [
-                        .init(color: colorLoader.topAccent, location: 0),
-                        .init(color: .black.opacity(0.7), location: 0.62)
+                        .init(color: colorLoader.topAccent, location: 0.00),
+                        .init(color: colorLoader.topAccent.opacity(0.85), location: 0.45),
+                        .init(color: .black.opacity(0.75), location: 0.85)
                     ],
+
                     startPoint: .top,
                     endPoint: .bottom
+
                 )
                 .ignoresSafeArea()
             }
