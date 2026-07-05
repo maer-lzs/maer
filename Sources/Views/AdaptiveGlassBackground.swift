@@ -18,13 +18,13 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular.tint(Color.white.opacity(0.05)), in: shape)
+            content.glassEffect(.clear.tint(Color.black.opacity(0.7)), in: shape)
         } else {
             content
                 .background {
                     shape
                         .fill(.ultraThinMaterial)
-                        .overlay(shape.fill(Color.white.opacity(0.08)))
+                        .overlay(shape.fill(Color.white.opacity(0.05)))
                 }
                 .overlay(shape.stroke(Color.white.opacity(0.2), lineWidth: 0.5))
         }
