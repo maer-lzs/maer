@@ -16,6 +16,12 @@ und den Stand sauber synchronisieren.
 > **Hinweis:** Dies ist ein privates Hobby-Projekt ohne Gewähr. Es ist nicht
 > mit dem Audiobookshelf-Projekt affiliiert.
 
+## Screenshots
+
+| Bibliothek | Player (iPhone) | Player (iPad) |
+|---|---|---|
+| ![Bibliothek](screenshots/library-iphone.png) | ![Player](screenshots/player-iphone.png) | ![Player iPad](screenshots/player-ipad.png) |
+
 ## Features
 
 - Login per API-Token (kompatibel mit altem und neuem Auth-System)
