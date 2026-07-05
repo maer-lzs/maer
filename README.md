@@ -1,239 +1,181 @@
 # Hörregal
 
-Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/).
-Fokus auf genau eine Sache: **verlässlicher Fortschritts-Sync** über mehrere
-Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird.
+A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/).
+The app focuses on one thing: **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0.
 
-> Der Name spielt auf das „Regal" in Audiobookshelf an — Hörregal ist dein
-> Hörbuch-Regal fürs iPhone und iPad. (Das Xcode-Projekt heißt intern
-> weiterhin `ABSPlayer`; „Hörregal" ist nur der Anzeigename.)
+> The name refers to the “shelf” in Audiobookshelf — Hörregal is your audiobook shelf for iPhone and iPad. The Xcode project is still called `ABSPlayer` internally; “Hörregal” is only the display name.
 
-Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel
-regelmäßig den Hörfortschritt verlor. Die App ist bewusst minimal gehalten:
-kein Multi-User, keine Podcasts, keine Server-Verwaltung — nur Hörbücher hören
-und den Stand sauber synchronisieren.
+Hörregal started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync.
 
-> **Hinweis:** Dies ist ein privates Hobby-Projekt ohne Gewähr. Es ist nicht
-> mit dem Audiobookshelf-Projekt affiliiert.
+> **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
 ## Screenshots
 
-| Bibliothek | Player (iPhone) | Player (iPad) |
+| Library | Player (iPhone) | Player (iPad) |
 |---|---|---|
-| ![Bibliothek](screenshots/library-iphone.png) | ![Player](screenshots/player-iphone.png) | ![Player iPad](screenshots/player-ipad.png) |
+| ![Library](screenshots/library-iphone.png) | ![Player](screenshots/player-iphone.png) | ![Player iPad](screenshots/player-ipad.png) |
 
 ## Features
 
-- Login per API-Token (kompatibel mit altem und neuem Auth-System)
-- Bibliothek als adaptives Cover-Grid (iPhone & iPad), mit fester Suchleiste,
-  Sortierung (Titel/Autor/zuletzt hinzugefügt) und Filter (alle/unfertig/fertig)
-- „Weiter hören"- und „Kürzlich hinzugefügt"-Sektionen
-- Fortschrittsbalken pro Buch, „Abgeschlossen"-Markierung
-- Buchdetailseite mit Beschreibung
-- Persistente Mini-Player-Leiste mit eigenem Fortschrittsbalken; stellt die
-  zuletzt gehörte Session auch nach einem kompletten App-Neustart automatisch
-  wieder her (pausiert, spielt nie von selbst los)
-- Player im Audible-Stil: großes Cover, aus dem Cover abgeleiteter Farbverlauf,
-  Kapitelmarken direkt auf dem Scrubber, Play/Pause/Scrub/±30s/Kapitel-Vor-
-  Zurück, Wiedergabegeschwindigkeit, Sleep-Timer (feste Minuten oder bis
-  Kapitelende), AirPlay, „Als gehört markieren", dezentes haptisches Feedback
-- Background Audio, Lockscreen- und Dynamic-Island-Anzeige inkl. Cover
-- **Offline-Download** pro Buch (manuell, mit WLAN-Warnung), lokale Datei wird
-  beim Abspielen automatisch bevorzugt — nützlich, wenn der eigene Server übers
-  Internet erreicht wird und die Latenz unterwegs sonst stört
-- **Sicherer Progress-Sync** (siehe unten) und Multi-Device-Abgleich
+- Login via API token, compatible with both the old and new Audiobookshelf authentication systems
+- Library as an adaptive cover grid for iPhone and iPad, with a fixed search bar, sorting by title/author/recently added, and filters for all/unfinished/finished books
+- “Continue Listening” and “Recently Added” sections
+- Progress bar per book and “Finished” indicator
+- Book detail page with description
+- Persistent mini-player bar with its own progress bar; automatically restores the last listening session after a full app restart, paused and never auto-playing
+- Audible-style player: large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub/±30s/previous-next chapter, playback speed, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened,” and subtle haptic feedback
+- Background audio, lock screen and Dynamic Island display including cover artwork
+- **Offline download** per book, manually triggered with a Wi-Fi warning; local files are automatically preferred during playback — useful when your self-hosted server is accessed over the internet and latency becomes noticeable while travelling
+- **Safe progress sync**; see below
+- Multi-device progress reconciliation
 
-## Die Sync-Kernregel
+## Core sync rule
 
-Das Herzstück der App. Ein bewusst vom Nutzer ausgelöster Sprung (Scrubber,
-Kapitel, ±30s, Lockscreen) gilt als gewollt und wird sofort synchronisiert —
-auch nach hinten. Ein Warn-Dialog erscheint nur, wenn der Fortschritt **ohne
-Nutzeraktion** um mehr als 120 Sekunden absackt (z. B. ein fehlerhafter
-Client-Reset). Bei „Abbrechen" springt die Wiedergabe zurück zum zuletzt
-gespeicherten Stand.
+This is the heart of the app. A user-triggered seek action — scrubber, chapter jump, ±30s, or lock screen control — is treated as intentional and synced immediately, even backwards. A warning dialog only appears if progress drops by more than 120 seconds **without user action**, for example due to a faulty client reset. If the user cancels, playback jumps back to the last stored position.
 
-Beim Geräte-Wechsel gleicht die App vor jedem Play kurz mit dem Server ab: Wer
-zuletzt auf einem anderen Gerät weitergehört hat, dessen Stand wird übernommen,
-statt ihn zu überschreiben. Nicht abgedeckt ist echtes *gleichzeitiges* Hören
-auf zwei Geräten — dann gewinnt schlicht, wer zuletzt schreibt.
+When switching devices, the app briefly checks the server before each playback start. If another device has the newer position, that server position is adopted instead of overwritten. True simultaneous listening on two devices is not covered; in that case, the last writer wins.
 
-## Bewusst nicht enthalten
+## Intentionally not included
 
-Multi-User, Podcasts, Metadaten-Bearbeitung, Server-/
-Bibliotheksverwaltung.
+Multi-user support, podcasts, metadata editing, and server/library administration.
 
-## Voraussetzungen
+## Requirements
 
-- Xcode 15+ (Swift 5.9+), Ziel iOS/iPadOS 17+
-- Ein laufender Audiobookshelf-Server und ein API-Token
-- Eine Apple-ID zum Signieren (kostenlos genügt; siehe Hinweis zur 7-Tage-
-  Signatur unten)
+- Xcode 15+ with Swift 5.9+, targeting iOS/iPadOS 17+
+- A running Audiobookshelf server and an API token
+- An Apple ID for signing; a free Apple ID is sufficient, see the note on 7-day signing below
 
-## Lizenz
+## License
 
-MIT — siehe [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-## 1. Warum kein Username/Passwort-Login?
+## 1. Why no username/password login?
 
-Audiobookshelf hat in neueren Versionen (ab v2.26.0) das Auth-System auf
-JWT mit Access-/Refresh-Token umgestellt. Das würde für eine „minimale" App
-unnötige Komplexität bedeuten (Cookie-Handling, Token-Refresh-Logik).
+Newer Audiobookshelf versions, starting with v2.26.0, switched the authentication system to JWT with access and refresh tokens. For a minimal app, that would add unnecessary complexity such as cookie handling and token refresh logic.
 
-So findest du deinen Token:
+How to find your token:
 
-- **Ältere Server-Versionen:** Weboberfläche → Einstellungen → Benutzer →
-  deinen Account anklicken → Token wird angezeigt.
-- **Neuere Server-Versionen:** Weboberfläche → Einstellungen → API-Keys →
-  neuen Key erzeugen.
+- **Older server versions:** Web interface → Settings → Users → select your account → the token is displayed.
+- **Newer server versions:** Web interface → Settings → API Keys → create a new key.
 
-Falls unsicher, welche Variante dein Server hat: einfach beides probieren,
-einer der beiden Wege existiert garantiert.
+If you are not sure which variant your server uses, try both. One of these paths will exist.
 
 ---
 
-## 2. Xcode-Projekt anlegen
+## 2. Create the Xcode project
 
-1. Xcode öffnen → **File → New → Project**
-2. **iOS → App** auswählen
-3. Einstellungen:
+1. Open Xcode → **File → New → Project**
+2. Select **iOS → App**
+3. Use these settings:
    - Product Name: `ABSPlayer`
    - Interface: **SwiftUI**
    - Language: **Swift**
-   - Storage: **None** (kein Core Data)
-   - Tests: Häkchen können raus, brauchst du hier nicht
-4. Projekt irgendwo lokal speichern
-5. Projekt-Datei anklicken → Target `ABSPlayer` → Tab **General** →
-   **Minimum Deployments** auf **iOS 17.0** setzen (der Code nutzt die
-   neuere `onChange`-API)
+   - Storage: **None**; no Core Data
+   - Tests: can be unchecked; they are not needed here
+4. Save the project locally
+5. Select the project file → Target `ABSPlayer` → **General** tab → set **Minimum Deployments** to **iOS 17.0** because the code uses the newer `onChange` API
 
-## 3. Dateien einfügen
+## 3. Add the files
 
-1. Im Xcode-Projektnavigator die automatisch generierten Dateien
-   `ContentView.swift` löschen (Move to Trash) — wird durch unsere Views ersetzt.
-   `ABSPlayerApp.swift` (die automatisch generierte) ebenfalls löschen.
-2. Den Ordner `Sources` aus diesem Download **komplett per Drag & Drop** in
-   den Xcode-Projektnavigator ziehen (auf den obersten Projekt-Eintrag).
-3. Im erscheinenden Dialog:
+1. In the Xcode project navigator, delete the automatically generated `ContentView.swift` file by choosing Move to Trash. Also delete the automatically generated `ABSPlayerApp.swift`.
+2. Drag the complete `Sources` folder from this download into the Xcode project navigator, onto the top-level project entry.
+3. In the dialog:
    - ✅ **Copy items if needed**
    - ✅ **Create groups**
-   - ✅ Target „ABSPlayer" ist angehakt
-4. Du solltest jetzt in Xcode die Gruppen `Models`, `Networking`,
-   `ViewModels`, `Views` sowie `ABSPlayerApp.swift` sehen.
+   - ✅ Target “ABSPlayer” is checked
+4. You should now see the groups `Models`, `Networking`, `ViewModels`, `Views`, and `ABSPlayerApp.swift` in Xcode.
 
-## 4. Background Audio aktivieren
+## 4. Enable background audio
 
-1. Projekt-Datei anklicken → Target `ABSPlayer` → Tab **Signing & Capabilities**
-2. **+ Capability** → **Background Modes** hinzufügen
-3. Häkchen bei **Audio, AirPlay, and Picture in Picture** setzen
+1. Select the project file → Target `ABSPlayer` → **Signing & Capabilities** tab
+2. Add **+ Capability** → **Background Modes**
+3. Check **Audio, AirPlay, and Picture in Picture**
 
-Ohne diesen Schritt pausiert die Wiedergabe, sobald der Bildschirm gesperrt
-wird oder die App in den Hintergrund geht.
+Without this step, playback will pause when the screen locks or the app goes into the background.
 
-## 5. Signing (mit kostenloser Apple-ID reicht)
+## 5. Signing with a free Apple ID
 
-1. Im selben Tab **Signing & Capabilities**:
-   - **Team:** deine Apple-ID auswählen (Xcode → Settings → Accounts, falls
-     noch nicht hinterlegt)
-   - **Bundle Identifier:** etwas Eindeutiges, z. B. `de.deinname.absplayer`
-2. In `KeychainStore.swift` die Konstante `service` auf denselben Bundle
-   Identifier anpassen (Zeile mit `com.example.absplayer`).
+1. In the same **Signing & Capabilities** tab:
+   - **Team:** select your Apple ID; add it in Xcode → Settings → Accounts if needed
+   - **Bundle Identifier:** use something unique, for example `de.yourname.absplayer`
+2. In `KeychainStore.swift`, set the `service` constant to the same bundle identifier; look for the line containing `com.example.absplayer`.
 
-**Wichtig bei kostenloser Apple-ID (kein Developer Program):** Die App läuft
-nur 7 Tage auf deinem Gerät, danach muss sie einmal über Xcode neu gebaut
-werden (Gerät anschließen, ▶ drücken). Für eine App, die nur du privat
-nutzt, ist das ein akzeptabler Kompromiss.
+**Important when using a free Apple ID without the Developer Program:** The app only runs on your device for 7 days. After that, you need to rebuild it once through Xcode by connecting the device and pressing ▶. For a purely private app, this is an acceptable compromise.
 
-## 5b. Anzeigenamen setzen (optional)
+## 5b. Set the display name; optional
 
-Der Name unter dem App-Icon lässt sich unabhängig vom internen Projektnamen
-setzen:
+The name shown below the app icon can be set independently from the internal project name:
 
-1. Projekt-Datei → Target `ABSPlayer` → Tab **General**
-2. Feld **Display Name** auf `Hörregal` setzen.
+1. Project file → Target `ABSPlayer` → **General** tab
+2. Set **Display Name** to `Hörregal`.
 
-Damit erscheint die App auf dem Homescreen als „Hörregal", während das Projekt
-in Xcode weiterhin `ABSPlayer` heißt (das intern umzubenennen ist fummelig und
-lohnt nicht).
+This makes the app appear as “Hörregal” on the home screen while the Xcode project remains named `ABSPlayer`. Renaming the internal project is fiddly and not worth it.
 
-## 6. Auf dein iPhone bauen
+## 6. Build to your iPhone
 
-1. iPhone per Kabel anschließen (oder WLAN-Debugging einrichten)
-2. Als Ziel-Gerät oben in Xcode dein iPhone auswählen (nicht Simulator —
-   Audio im Hintergrund testet sich auf echten Geräten deutlich zuverlässiger)
-3. ▶ drücken
-4. Auf dem iPhone ggf. einmalig **Einstellungen → Allgemein → VPN & Geräteverwaltung**
-   → deiner Apple-ID vertrauen
+1. Connect your iPhone via cable, or set up wireless debugging
+2. Select your iPhone as the target device at the top of Xcode, not the simulator — background audio is much more reliable to test on real devices
+3. Press ▶
+4. On the iPhone, if necessary, go to **Settings → General → VPN & Device Management** and trust your Apple ID once
 
-## 7. In der App einloggen
+## 7. Log in inside the app
 
-- Server: `dein-server.example.com` (das `https://` wird automatisch ergänzt)
-- API-Token: aus Schritt 1
+- Server: `your-server.example.com`; `https://` is added automatically
+- API token: from step 1
 
 ---
 
-## iPad-Unterstützung
+## iPad support
 
-Die App ist für iPhone und iPad ausgelegt. Damit sie auf dem iPad installiert
-werden kann, muss im Ziel iPad als unterstütztes Gerät aktiv sein:
+The app is designed for iPhone and iPad. To make sure it can be installed on iPad, iPad needs to be enabled as a supported device for the target:
 
-1. Projekt-Datei → Target **ABSPlayer** → Tab **General**
-2. Unter **Supported Destinations** sollte **iPad** gelistet sein (bei neuen
-   SwiftUI-Projekten standardmäßig aktiv). Falls nicht: **+** → iPad hinzufügen.
-3. Unter **Deployment Info** ggf. **iPhone Orientation** und **iPad
-   Orientation** prüfen — für einen Hörbuch-Player reichen Hoch- und Querformat.
+1. Project file → Target **ABSPlayer** → **General** tab
+2. Under **Supported Destinations**, **iPad** should be listed. This is enabled by default for new SwiftUI projects. If not, click **+** and add iPad.
+3. Under **Deployment Info**, check iPhone and iPad orientations. For an audiobook player, portrait and landscape are sufficient.
 
-Das Layout passt sich automatisch an: Die Bibliothek zeigt auf dem iPad ein
-mehrspaltiges Cover-Grid (mehr Spalten im Querformat), Player und Detailseite
-zentrieren ihren Inhalt in einer lesbaren Spalte statt über die volle Breite zu
-laufen.
+The layout adapts automatically: on iPad, the library shows a multi-column cover grid with more columns in landscape mode. The player and detail pages center their content in a readable column instead of stretching across the full width.
 
-
-
-```
+```text
 Sources/
-├── ABSPlayerApp.swift        Einstiegspunkt
-├── Models/                   Codable-Structs für die Audiobookshelf-API
+├── ABSPlayerApp.swift        Entry point
+├── Models/                   Codable structs for the Audiobookshelf API
 ├── Networking/
-│   ├── APIClient.swift       Alle HTTP-Calls
-│   └── KeychainStore.swift   Sicherer Speicher für Server-URL + Token
+│   ├── APIClient.swift       All HTTP calls
+│   └── KeychainStore.swift   Secure storage for server URL and token
 ├── ViewModels/
-│   ├── AuthViewModel.swift      Setup-Screen-Logik
-│   ├── LibraryViewModel.swift   Bücherliste + Fortschritt laden
-│   ├── PlayerCoordinator.swift  Hält die aktive Session über Navigation
-│   │                            hinweg am Leben (Basis für Mini-Player)
-│   └── PlayerViewModel.swift    AVPlayer, Sync-Kernregel, Kapitel, Sleep-Timer
+│   ├── AuthViewModel.swift      Setup screen logic
+│   ├── LibraryViewModel.swift   Loads book list and progress
+│   ├── PlayerCoordinator.swift  Keeps the active session alive across navigation
+│   │                            and provides the basis for the mini-player
+│   └── PlayerViewModel.swift    AVPlayer, core sync rule, chapters, sleep timer
 └── Views/
-    ├── SetupView.swift        Server + Token eingeben
-    ├── RootView.swift         Umschalten Setup ↔ Bibliothek
-    ├── LibraryView.swift      Bücherliste, Suche, Sektionen
-    ├── BookCoverView.swift    Cover mit Fortschrittsbalken (wiederverwendet)
-    ├── MiniPlayerBar.swift    Persistente Leiste am unteren Bildschirmrand
-    ├── PlayerScreen.swift     Voller Player, zeigt die Coordinator-Session
-    ├── PlayerView.swift       Player-UI (Audible-Stil)
-    ├── CoverColorLoader.swift Extrahiert Akzentfarbe aus dem Cover
-    └── ChapterListView.swift  Kapitelliste als Sheet
+    ├── SetupView.swift        Server and token input
+    ├── RootView.swift         Switches between setup and library
+    ├── LibraryView.swift      Book list, search, sections
+    ├── BookCoverView.swift    Cover with progress bar, reused across views
+    ├── MiniPlayerBar.swift    Persistent bottom mini-player bar
+    ├── PlayerScreen.swift     Full player, displays the coordinator session
+    ├── PlayerView.swift       Audible-style player UI
+    ├── CoverColorLoader.swift Extracts an accent color from the cover
+    └── ChapterListView.swift  Chapter list as a sheet
 ```
 
-**Architektur-Hinweis Mini-Player:** Der `PlayerCoordinator` lebt in
-`LibraryView` und überlebt Navigation — anders als früher wird die Wiedergabe
-beim Verlassen des Player-Screens nicht mehr gestoppt. Gestoppt wird nur
-explizit: beim Öffnen eines anderen Buchs oder über das X in der
-Mini-Player-Leiste.
+**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Unlike before, playback is no longer stopped when leaving the player screen. Playback is only stopped explicitly, either when opening another book or by pressing the X in the mini-player bar.
 
-Verwendete API-Endpunkte:
+API endpoints used:
 
-| Zweck | Endpoint |
+| Purpose | Endpoint |
 |---|---|
-| Bibliotheken | `GET /api/libraries` |
-| Bücherliste | `GET /api/libraries/{id}/items` |
-| Buchdetails + Kapitel + Fortschritt | `GET /api/items/{id}?expanded=1` |
-| Fortschritt schreiben | `PATCH /api/me/progress/{itemId}` |
-| Fortschritt für die ganze Bibliothek | `GET /api/me` |
+| Libraries | `GET /api/libraries` |
+| Book list | `GET /api/libraries/{id}/items` |
+| Book details, chapters and progress | `GET /api/items/{id}?expanded=1` |
+| Write progress | `PATCH /api/me/progress/{itemId}` |
+| Progress for the whole library | `GET /api/me` |
 | Cover | `GET /api/items/{id}/cover?token=...` |
-| Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
+| Audio stream | direct `contentUrl` from the track data, with `Authorization: Bearer` header |
 
-## Über dieses Projekt
-Hörregal ist mit Unterstützung von 
-Claude (Anthropic) entstanden.
+## About this project
+
+Hörregal was created with support from Claude by Anthropic.
