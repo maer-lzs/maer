@@ -6,7 +6,7 @@ Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird.
 
 > Der Name spielt auf das „Regal" in Audiobookshelf an — Hörregal ist dein
 > Hörbuch-Regal fürs iPhone und iPad. (Das Xcode-Projekt heißt intern
-> `ABSPlayer`.
+> weiterhin `ABSPlayer`; „Hörregal" ist nur der Anzeigename.)
 
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel
 regelmäßig den Hörfortschritt verlor. Die App ist bewusst minimal gehalten:
@@ -74,7 +74,9 @@ unnötige Komplexität bedeuten (Cookie-Handling, Token-Refresh-Logik).
 
 So findest du deinen Token:
 
--  Weboberfläche → Einstellungen → API-Keys →
+- **Ältere Server-Versionen:** Weboberfläche → Einstellungen → Benutzer →
+  deinen Account anklicken → Token wird angezeigt.
+- **Neuere Server-Versionen:** Weboberfläche → Einstellungen → API-Keys →
   neuen Key erzeugen.
 
 Falls unsicher, welche Variante dein Server hat: einfach beides probieren,
@@ -223,3 +225,9 @@ Verwendete API-Endpunkte:
 | Cover | `GET /api/items/{id}/cover?token=...` |
 | Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
 
+## Über dieses Projekt
+Hörregal ist mit Unterstützung von 
+Claude (Anthropic) entstanden — von der ersten Architektur bis zum letzten 
+Bugfix im Chat entwickelt. Ich habe Anforderungen, Design-Entscheidungen und 
+Tests beigesteuert; den Code hat größtenteils Claude geschrieben und ich 
+habe ihn schrittweise durch Xcode gebaut, getestet und debuggt.
