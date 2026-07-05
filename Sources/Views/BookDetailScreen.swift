@@ -21,6 +21,7 @@ struct BookDetailScreen: View {
                 BookCoverView(
                     url: coordinator.apiClient.coverURL(forItemId: entry.id),
                     progress: entry.progress,
+                    itemId: entry.id,
                     size: 200
                 )
                 .padding(.top)

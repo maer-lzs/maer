@@ -8,6 +8,7 @@ private struct PlayerRoute: Hashable {}
 struct LibraryView: View {
     @StateObject private var viewModel: LibraryViewModel
     @StateObject private var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @State private var searchText = ""
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
@@ -28,6 +29,10 @@ struct LibraryView: View {
             VStack(spacing: 0) {
                 // Suchleiste fest oben, immer sichtbar.
                 searchBar
+
+                if viewModel.isShowingOfflineCache {
+                    offlineBanner
+                }
 
                 Group {
                     if viewModel.isLoading && viewModel.entries.isEmpty {
@@ -91,9 +96,29 @@ struct LibraryView: View {
                 Task { await viewModel.refreshProgress() }
             }
         }
+        .onChange(of: networkMonitor.isConnected) { _, isConnected in
+            // Deckt den Fall ab, dass die App die ganze Zeit offen war,
+            // während die Verbindung wiederkam — ohne diesen Trigger würde
+            // der "Offline"-Hinweis fälschlich stehen bleiben, obwohl längst
+            // wieder Netz da ist.
+            if isConnected && viewModel.isShowingOfflineCache {
+                Task { await viewModel.loadLibrary() }
+            }
+        }
     }
 
     // MARK: - Suchleiste
+
+    private var offlineBanner: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "wifi.slash")
+            Text("Offline — zuletzt bekannter Stand")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal)
+        .padding(.bottom, 4)
+    }
 
     private var searchBar: some View {
         HStack(spacing: 8) {
@@ -183,6 +208,7 @@ struct LibraryView: View {
                                 BookCoverView(
                                     url: apiClient.coverURL(forItemId: entry.id),
                                     progress: entry.progress,
+                                    itemId: entry.id,
                                     size: 132
                                 )
                                 Text(entry.item.title)
@@ -198,6 +224,7 @@ struct LibraryView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .contextMenu { contextMenu(for: entry) }
                     }
                 }
                 .padding(.horizontal)
@@ -253,6 +280,7 @@ struct LibraryView: View {
                         BookCoverView(
                             url: apiClient.coverURL(forItemId: entry.id),
                             progress: entry.progress,
+                            itemId: entry.id,
                             size: 132
                         )
                         Text(entry.item.title)
@@ -274,9 +302,70 @@ struct LibraryView: View {
                     .frame(width: 132)
                 }
                 .buttonStyle(.plain)
+                .contextMenu { contextMenu(for: entry) }
             }
         }
         .padding(.horizontal)
+    }
+
+    // MARK: Kontextmenü (Haptic Touch)
+
+    @ViewBuilder
+    private func contextMenu(for entry: LibraryEntry) -> some View {
+        Button {
+            Task { await playerCoordinator.open(item: entry.item) }
+        } label: {
+            Label("Abspielen", systemImage: "play.fill")
+        }
+
+        if DownloadManager.shared.isDownloaded(itemId: entry.id) {
+            Button(role: .destructive) {
+                DownloadManager.shared.deleteDownload(itemId: entry.id)
+            } label: {
+                Label("Download löschen", systemImage: "trash")
+            }
+        } else if !DownloadManager.shared.isDownloading(itemId: entry.id) {
+            Button {
+                Task { await quickDownload(entry: entry) }
+            } label: {
+                Label("Für offline speichern", systemImage: "arrow.down.circle")
+            }
+        }
+
+        Button {
+            Task { await quickToggleFinished(entry: entry) }
+        } label: {
+            let isFinished = entry.progress?.isFinished ?? false
+            Label(
+                isFinished ? "Als ungehört markieren" : "Als gehört markieren",
+                systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
+            )
+        }
+    }
+
+    /// Lädt kurz die Track-Info nach (die Liste selbst hat nur die schlanken
+    /// Metadaten) und startet dann den Download — ohne WLAN-Rückfrage, das ist
+    /// hier bewusst die schnelle Variante fürs Kontextmenü.
+    private func quickDownload(entry: LibraryEntry) async {
+        guard let detail = try? await apiClient.fetchItemDetail(itemId: entry.id) else { return }
+        await DownloadManager.shared.download(item: detail, apiClient: apiClient)
+    }
+
+    /// Wie in BookDetailScreen: immer den vollständigen Datensatz
+    /// (currentTime + duration + isFinished) schicken, nie nur das Flag
+    /// allein — sonst geht der reale Fortschritt verloren (siehe Sync-Bugfix).
+    private func quickToggleFinished(entry: LibraryEntry) async {
+        guard let fresh = try? await apiClient.fetchItemDetail(itemId: entry.id) else { return }
+        let duration = fresh.media.duration ?? 0
+        let currentTime = fresh.userMediaProgress?.currentTime ?? 0
+        let newIsFinished = !(entry.progress?.isFinished ?? false)
+        try? await apiClient.updateProgress(
+            itemId: entry.id,
+            currentTime: newIsFinished ? duration : currentTime,
+            duration: duration,
+            isFinished: newIsFinished
+        )
+        await viewModel.refreshProgress()
     }
 
     private func statusText(_ p: BookProgress) -> String {

@@ -24,8 +24,10 @@ struct MediaProgressEntry: Decodable {
     let lastUpdate: Double?
 }
 
-/// Kompakte, view-freundliche Fortschrittsinfo für ein Buch.
-struct BookProgress: Equatable {
+/// Kompakte, view-freundliche Fortschrittsinfo für ein Buch. Codable, damit
+/// sie zusammen mit der Bücherliste für den Offline-Zugriff zwischengespeichert
+/// werden kann.
+struct BookProgress: Equatable, Codable {
     let fraction: Double      // 0...1
     let isFinished: Bool
     let lastUpdate: Double    // ms seit 1970, für Sortierung "zuletzt gehört"
@@ -51,7 +53,7 @@ struct LibraryItemsResponse: Decodable {
     let results: [LibraryItem]
 }
 
-struct LibraryItem: Decodable, Identifiable {
+struct LibraryItem: Codable, Identifiable {
     let id: String
     let media: LibraryItemMedia?
     let addedAt: Double?
@@ -67,20 +69,20 @@ struct LibraryItem: Decodable, Identifiable {
 
 // MARK: - Buchdetails (Expanded-Endpoint, für den Player)
 
-struct LibraryItemDetail: Decodable, Identifiable {
+struct LibraryItemDetail: Codable, Identifiable {
     let id: String
     let media: LibraryItemMedia
     let userMediaProgress: MediaProgress?
 }
 
-struct LibraryItemMedia: Decodable {
+struct LibraryItemMedia: Codable {
     let metadata: LibraryItemMetadata?
     let duration: Double?
     let chapters: [ABSChapter]?
     let tracks: [ABSAudioTrack]?
 }
 
-struct LibraryItemMetadata: Decodable {
+struct LibraryItemMetadata: Codable {
     let title: String?
     let authorName: String?
     let narratorName: String?
@@ -94,7 +96,7 @@ struct LibraryItemMetadata: Decodable {
 /// Server-Version mal einen String, mal eine Zahl. Dieser Wrapper nimmt
 /// beides entgegen, statt bei einem Typ-Mismatch den ganzen Decode
 /// scheitern zu lassen.
-struct LenientString: Decodable {
+struct LenientString: Codable {
     let value: String
 
     init(from decoder: Decoder) throws {
@@ -109,16 +111,21 @@ struct LenientString: Decodable {
             value = ""
         }
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+    }
 }
 
-struct ABSChapter: Decodable, Identifiable, Equatable {
+struct ABSChapter: Codable, Identifiable, Equatable {
     let id: Int
     let start: Double
     let end: Double
     let title: String
 }
 
-struct ABSAudioTrack: Decodable {
+struct ABSAudioTrack: Codable {
     let index: Int?
     let startOffset: Double?
     let duration: Double?
@@ -127,7 +134,7 @@ struct ABSAudioTrack: Decodable {
 
 // MARK: - Fortschritt
 
-struct MediaProgress: Decodable {
+struct MediaProgress: Codable {
     let currentTime: Double?
     let duration: Double?
     let progress: Double?

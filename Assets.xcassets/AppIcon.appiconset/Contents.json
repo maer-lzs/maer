@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "Hörregal-1024_light.png",
+      "filename" : "AppIcon-1024.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "Hörregal-1024_dark.png",
+      "filename" : "AppIcon-1024_Black.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

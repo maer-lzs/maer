@@ -1,9 +1,15 @@
 import Foundation
 import Combine
 
-/// Verwaltet lokal heruntergeladene Hörbücher. Speichert Dateien im
-/// App-Dokumentenordner unter "Downloads/{itemId}.{ext}" — der Dateiname
-/// selbst ist der Persistenz-Mechanismus, keine zusätzliche Datenbank nötig.
+/// Verwaltet lokal heruntergeladene Hörbücher. Speichert Audiodateien im
+/// App-Dokumentenordner unter "Downloads/{itemId}.{ext}" und die zugehörigen
+/// Buchdetails (Kapitel, Dauer …) separat unter "DownloadsMeta/{itemId}.json"
+/// — getrennte Ordner, damit die Datei-Suche für die Audiodatei nicht
+/// versehentlich die Metadaten-JSON trifft.
+///
+/// Die Metadaten-Datei ist der Schlüssel für echtes Offline-Hören: ohne sie
+/// müsste die App bei jedem Öffnen eines Buchs erst Kapitel/Dauer vom Server
+/// nachladen — selbst wenn die Audiodatei längst lokal vorliegt.
 ///
 /// Bewusst als geräteweiter Singleton wie `KeychainStore`: Downloads sind ein
 /// Geräte-Speicher-Konzept, keine Session-spezifische Abhängigkeit.
@@ -22,8 +28,16 @@ final class DownloadManager: ObservableObject {
     }
 
     private var downloadsDirectory: URL {
+        makeDirectory(named: "Downloads")
+    }
+
+    private var metadataDirectory: URL {
+        makeDirectory(named: "DownloadsMeta")
+    }
+
+    private func makeDirectory(named name: String) -> URL {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Downloads", isDirectory: true)
+            .appendingPathComponent(name, isDirectory: true)
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
@@ -53,6 +67,21 @@ final class DownloadManager: ObservableObject {
             at: downloadsDirectory, includingPropertiesForKeys: nil
         ) else { return nil }
         return files.first { $0.deletingPathExtension().lastPathComponent == itemId }
+    }
+
+    /// Zwischengespeicherte Buchdetails (Kapitel, Dauer, Metadaten) für den
+    /// Offline-Fall — wird geladen, wenn der Server nicht erreichbar ist,
+    /// das Buch aber lokal heruntergeladen wurde.
+    func loadCachedDetail(forItemId itemId: String) -> LibraryItemDetail? {
+        let url = metadataDirectory.appendingPathComponent("\(itemId).json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(LibraryItemDetail.self, from: data)
+    }
+
+    private func saveDetail(_ detail: LibraryItemDetail) {
+        let url = metadataDirectory.appendingPathComponent("\(detail.id).json")
+        guard let data = try? JSONEncoder().encode(detail) else { return }
+        try? data.write(to: url)
     }
 
     func download(item: LibraryItemDetail, apiClient: APIClient) async {
@@ -93,6 +122,11 @@ final class DownloadManager: ObservableObject {
             resourceValues.isExcludedFromBackup = true
             try? destinationVar.setResourceValues(resourceValues)
 
+            // Buchdetails (Kapitel, Dauer) fürs echte Offline-Öffnen
+            // mitspeichern — ohne das bräuchte selbst ein heruntergeladenes
+            // Buch beim Öffnen noch eine Serveranfrage.
+            saveDetail(item)
+
             downloadedItemIds.insert(itemId)
             downloadProgress[itemId] = nil
         } catch {
@@ -102,8 +136,11 @@ final class DownloadManager: ObservableObject {
     }
 
     func deleteDownload(itemId: String) {
-        guard let url = localFileURL(forItemId: itemId) else { return }
-        try? FileManager.default.removeItem(at: url)
+        if let url = localFileURL(forItemId: itemId) {
+            try? FileManager.default.removeItem(at: url)
+        }
+        let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")
+        try? FileManager.default.removeItem(at: metaURL)
         downloadedItemIds.remove(itemId)
     }
 }

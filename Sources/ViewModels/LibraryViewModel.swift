@@ -29,6 +29,10 @@ final class LibraryViewModel: ObservableObject {
     @Published var recentlyAdded: [LibraryEntry] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// True, wenn gerade die zwischengespeicherte Offline-Bibliothek gezeigt
+    /// wird, weil der Server nicht erreichbar war — für einen dezenten
+    /// Hinweis in der UI statt eines harten Fehlers.
+    @Published var isShowingOfflineCache = false
 
     @Published var sortOption: SortOption = .titel
     @Published var filterOption: FilterOption = .alle
@@ -36,6 +40,16 @@ final class LibraryViewModel: ObservableObject {
     private let apiClient: APIClient
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
+
+    /// Persistenter Zwischenspeicher der Bibliothek — der Grund, warum die
+    /// Bücherliste auch komplett offline (z. B. nach App-Neustart ohne Netz)
+    /// weiterhin angezeigt wird, statt leer zu sein.
+    private struct DiskCache: Codable {
+        let items: [LibraryItem]
+        let progress: [String: BookProgress]
+    }
+    private let diskCacheURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("library_cache.json")
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient
@@ -79,9 +93,20 @@ final class LibraryViewModel: ObservableObject {
             let progress = (try? await progressTask) ?? [:]
 
             libraryId = first.id
+            isShowingOfflineCache = false
             rebuild(items: items, progress: progress)
+            saveDiskCache(items: items, progress: progress)
+            Task { await prefetchAllCovers() }
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            // Kein Netz o. ä.: mit dem letzten bekannten Stand weitermachen,
+            // statt die Bibliothek leer/mit Fehler zu zeigen — sonst wären
+            // selbst heruntergeladene Bücher offline nicht mehr auffindbar.
+            if let cache = loadDiskCache() {
+                isShowingOfflineCache = true
+                rebuild(items: cache.items, progress: cache.progress)
+            } else {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
     }
 
@@ -90,8 +115,14 @@ final class LibraryViewModel: ObservableObject {
     /// Wird z. B. aufgerufen, wenn die App wieder in den Vordergrund kommt.
     func refreshProgress() async {
         guard !cachedItems.isEmpty else { return }
-        let progress = (try? await apiClient.fetchAllProgress()) ?? [:]
+        guard let progress = try? await apiClient.fetchAllProgress() else {
+            // Offline oder Fehler: alten Stand behalten, nicht mit leeren
+            // Daten überschreiben (sonst verschwinden alle Häkchen/Balken).
+            return
+        }
+        isShowingOfflineCache = false
         rebuild(items: cachedItems, progress: progress)
+        saveDiskCache(items: cachedItems, progress: progress)
     }
 
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
@@ -109,5 +140,27 @@ final class LibraryViewModel: ObservableObject {
             .sorted { ($0.item.addedAt ?? 0) > ($1.item.addedAt ?? 0) }
             .prefix(15)
             .map { $0 }
+    }
+
+    private func saveDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
+        let cache = DiskCache(items: items, progress: progress)
+        guard let data = try? JSONEncoder().encode(cache) else { return }
+        try? data.write(to: diskCacheURL)
+    }
+
+    private func loadDiskCache() -> DiskCache? {
+        guard let data = try? Data(contentsOf: diskCacheURL) else { return nil }
+        return try? JSONDecoder().decode(DiskCache.self, from: data)
+    }
+
+    /// Lädt alle Cover einmal im Hintergrund vor, nacheinander statt
+    /// gleichzeitig — schont den (oft übers Internet erreichten) eigenen
+    /// Server. Bereits gecachte Cover werden dabei übersprungen (siehe
+    /// `ImageCache.preload`), Wiederholungsaufrufe sind also günstig.
+    private func prefetchAllCovers() async {
+        for item in cachedItems {
+            guard let url = apiClient.coverURL(forItemId: item.id) else { continue }
+            await ImageCache.shared.preload(url)
+        }
     }
 }

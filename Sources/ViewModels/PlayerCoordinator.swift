@@ -53,8 +53,23 @@ final class PlayerCoordinator: ObservableObject {
                 await newViewModel.playWithServerCheck()
             }
         } catch {
-            loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            activeItem = nil
+            // Server nicht erreichbar (z. B. offline unterwegs) — falls das
+            // Buch heruntergeladen ist, mit den beim Download mitgespeicherten
+            // Buchdetails weitermachen, statt komplett zu scheitern. Ohne das
+            // bräuchte selbst ein längst heruntergeladenes Buch noch eine
+            // funktionierende Serververbindung nur zum Öffnen.
+            if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
+                let newViewModel = PlayerViewModel(apiClient: apiClient)
+                await newViewModel.load(item: cached)
+                viewModel = newViewModel
+                UserDefaults.standard.set(item.id, forKey: lastItemKey)
+                if autoplay {
+                    await newViewModel.playWithServerCheck()
+                }
+            } else {
+                loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                activeItem = nil
+            }
         }
     }
 
