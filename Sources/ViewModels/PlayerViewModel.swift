@@ -17,6 +17,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     @Published var isPlaying = false
+    /// Absolute Position im GESAMTEN Buch, in Sekunden — unabhängig davon, ob
+    /// das Buch aus einer einzigen M4B-Datei oder mehreren Tracks besteht.
     @Published var currentTime: Double = 0
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
@@ -35,14 +37,28 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// markieren"-Button, der sich dann in "Als ungehört markieren" ändert).
     @Published var isFinished = false
 
-    private var player: AVPlayer?
+    /// AVQueuePlayer statt AVPlayer, damit mehrteilige Bücher (mehrere
+    /// Audiodateien statt einer M4B) nahtlos nacheinander abgespielt werden
+    /// können. Alle bestehenden AVPlayer-Aufrufe (rate, pause, ...)
+    /// funktionieren unverändert, AVQueuePlayer ist eine Unterklasse.
+    private var player: AVQueuePlayer?
     private var timeObserverToken: Any?
+    private var trackAdvanceObserver: NSObjectProtocol?
     private var sleepTask: Task<Void, Never>?
     private var syncTask: Task<Void, Never>?
 
     private let apiClient: APIClient
     private var item: LibraryItemDetail?
     private var artworkImage: UIImage?
+
+    /// Alle Tracks des Buchs, sortiert. Bei einem normalen M4B-Buch genau
+    /// einer, bei mehrteiligen Büchern mehrere.
+    private var tracks: [ABSAudioTrack] = []
+    /// Index des Tracks, der gerade im Player aktiv ist.
+    private var currentTrackIndex: Int = 0
+    /// Lokale Dateien, falls das Buch heruntergeladen ist — ein Eintrag pro
+    /// Track, in derselben Reihenfolge wie `tracks`.
+    private var localTrackFiles: [URL]?
 
     /// Letzter erfolgreich an den Server geschriebener Wert.
     private var lastSyncedTime: Double = 0
@@ -76,38 +92,29 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func load(item: LibraryItemDetail) async {
         self.item = item
         chapters = item.media.chapters ?? []
-        duration = item.media.duration ?? (item.media.tracks?.first?.duration ?? 0)
+        let sortedTracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+        tracks = sortedTracks
+        duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
 
-        let asset: AVURLAsset
-        if let localURL = DownloadManager.shared.localFileURL(forItemId: item.id) {
-            // Lokal heruntergeladen: kein Netzwerk, kein Auth-Header nötig —
-            // genau der Fall, der bei hoher Serverlatenz (unterwegs) hilft.
-            asset = AVURLAsset(url: localURL)
-        } else {
-            guard let track = item.media.tracks?.first,
-                  let url = apiClient.streamURL(forContentPath: track.contentUrl) else {
-                errorMessage = "Kein abspielbarer Track gefunden. Hat das Buch mehrere Dateien statt einer M4B?"
-                return
-            }
-            var headers: [String: String] = [:]
-            if let token = apiClient.token, !token.isEmpty {
-                headers["Authorization"] = "Bearer \(token)"
-            }
-            asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        guard !sortedTracks.isEmpty else {
+            errorMessage = "Kein abspielbarer Track gefunden."
+            return
         }
-        let playerItem = AVPlayerItem(asset: asset)
-        let player = AVPlayer(playerItem: playerItem)
-        self.player = player
 
-        addTimeObserver()
-        setupRemoteCommandCenter()
+        localTrackFiles = DownloadManager.shared.localFileURLs(forItemId: item.id)
 
         // Kernregel beim Start: Serverstand gewinnt, nie bei 0 anfangen,
         // wenn der Server schon Fortschritt kennt.
         let serverProgress = item.userMediaProgress?.currentTime ?? 0
-        if serverProgress > 0 {
-            await seek(to: serverProgress, userInitiated: false)
+        let startIndex = trackIndex(for: serverProgress)
+        let offsetWithinTrack = max(0, serverProgress - trackAbsoluteStart(startIndex))
+
+        guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
+            errorMessage = "Hörbuch konnte nicht geladen werden."
+            return
         }
+
+        setupRemoteCommandCenter()
         lastSyncedTime = serverProgress
         currentTime = serverProgress
         isFinished = item.userMediaProgress?.isFinished ?? false
@@ -119,6 +126,108 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
         // enthält — keine eigene Live Activity nötig.
         loadArtwork(coverURL: apiClient.coverURL(forItemId: item.id))
+    }
+
+    // MARK: - Track-Verwaltung (Multi-Track)
+
+    /// Kumulative Startzeit (absolute Sekunden im Gesamtbuch) für einen
+    /// Track-Index. Nutzt `startOffset` vom Server, falls vorhanden, sonst
+    /// wird aus den Einzeldauern selbst aufsummiert.
+    private func trackAbsoluteStart(_ index: Int) -> Double {
+        guard index >= 0, index < tracks.count else { return duration }
+        if let offset = tracks[index].startOffset { return offset }
+        return tracks[..<index].reduce(0) { $0 + ($1.duration ?? 0) }
+    }
+
+    /// Findet den Track, in den eine absolute Buch-Zeit fällt.
+    private func trackIndex(for absoluteTime: Double) -> Int {
+        for index in tracks.indices {
+            let start = trackAbsoluteStart(index)
+            let end = start + (tracks[index].duration ?? 0)
+            if absoluteTime < end || index == tracks.count - 1 {
+                return index
+            }
+        }
+        return 0
+    }
+
+    private func resolveTrackURL(index: Int) -> URL? {
+        if let localFiles = localTrackFiles, index < localFiles.count {
+            return localFiles[index]
+        }
+        guard index < tracks.count else { return nil }
+        return apiClient.streamURL(forContentPath: tracks[index].contentUrl)
+    }
+
+    /// Baut die Wiedergabe-Queue neu auf, beginnend beim angegebenen Track,
+    /// und springt innerhalb des ersten Tracks an die angegebene Stelle.
+    /// Nötig, weil AVQueuePlayer nur innerhalb des aktuellen Items seeken
+    /// kann — für Sprünge über Track-Grenzen hinweg (Kapitel, Scrubber,
+    /// Geräte-Wechsel) muss die Queue neu aufgebaut werden.
+    @discardableResult
+    private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
+        guard startIndex >= 0, startIndex < tracks.count else { return false }
+
+        // Alten Player und seine Beobachter sauber abbauen.
+        if let token = timeObserverToken {
+            player?.removeTimeObserver(token)
+        }
+        timeObserverToken = nil
+        if let observer = trackAdvanceObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        trackAdvanceObserver = nil
+
+        let isLocal = localTrackFiles != nil
+        var items: [AVPlayerItem] = []
+        for index in startIndex..<tracks.count {
+            guard let url = resolveTrackURL(index: index) else { continue }
+            if isLocal {
+                items.append(AVPlayerItem(asset: AVURLAsset(url: url)))
+            } else {
+                var headers: [String: String] = [:]
+                if let token = apiClient.token, !token.isEmpty {
+                    headers["Authorization"] = "Bearer \(token)"
+                }
+                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+                items.append(AVPlayerItem(asset: asset))
+            }
+        }
+        guard !items.isEmpty else { return false }
+
+        let newPlayer = AVQueuePlayer(items: items)
+        let wasPlaying = isPlaying
+        player = newPlayer
+        currentTrackIndex = startIndex
+
+        addTimeObserver()
+        observeTrackAdvance()
+
+        if seekWithin > 0.5 {
+            newPlayer.seek(to: CMTime(seconds: seekWithin, preferredTimescale: 1000))
+        }
+        if wasPlaying {
+            newPlayer.rate = playbackRate
+        }
+        return true
+    }
+
+    /// Erkennt, wenn AVQueuePlayer automatisch zum nächsten Track
+    /// weiterspringt, und hält `currentTrackIndex` synchron — nötig, damit
+    /// die absolute Zeitrechnung (Track-Start + Position im Track) stimmt.
+    private func observeTrackAdvance() {
+        trackAdvanceObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if self.currentTrackIndex + 1 < self.tracks.count {
+                    self.currentTrackIndex += 1
+                }
+            }
+        }
     }
 
     private func loadArtwork(coverURL: URL?) {
@@ -225,9 +334,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   (Scrubber, Kapitel, Skip, Lockscreen). Solche Sprünge werden sofort
     ///   und ohne Rückfrage an den Server geschrieben — auch nach hinten.
     func seek(to time: Double, userInitiated: Bool = true) async {
-        guard let player else { return }
+        guard !tracks.isEmpty else { return }
         let clamped = max(0, min(time, max(duration, 0)))
-        await player.seek(to: CMTime(seconds: clamped, preferredTimescale: 1000))
+        let targetIndex = trackIndex(for: clamped)
+        let offsetWithinTrack = max(0, clamped - trackAbsoluteStart(targetIndex))
+
+        if targetIndex == currentTrackIndex, let player {
+            // Sprung bleibt innerhalb des aktuell geladenen Tracks.
+            await player.seek(to: CMTime(seconds: offsetWithinTrack, preferredTimescale: 1000))
+        } else {
+            // Sprung über eine Track-Grenze hinweg — Queue neu aufbauen.
+            buildQueue(startingAtTrackIndex: targetIndex, seekWithin: offsetWithinTrack)
+        }
+
         currentTime = clamped
         updateCurrentChapter()
         updateNowPlayingInfo()
@@ -287,7 +406,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let seconds = time.seconds
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.currentTime = seconds
+                // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
+                // innerhalb dieses Tracks.
+                self.currentTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
                 // Buffering-Status gleich mitprüfen — nutzt denselben sauberen
@@ -334,21 +455,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
 
+        let isFinishedNow = duration > 0 && currentTime >= duration - 1
         do {
             try await apiClient.updateProgress(
                 itemId: item.id,
                 currentTime: currentTime,
                 duration: duration,
-                isFinished: duration > 0 && currentTime >= duration - 1
+                isFinished: isFinishedNow
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
+            SyncQueue.shared.remove(itemId: item.id)
         } catch {
-            if Self.isOfflineError(error) {
+            if NetworkStatus.isOfflineError(error) {
                 // Erwartbar, kein echter Fehler: kein Netz gerade, z. B. auf
-                // Reisen. Der nächste automatische Versuch (spätestens in 30s,
-                // oder sofort bei Pause/Hintergrund) klappt einfach, sobald
-                // wieder Verbindung besteht — kein Grund zur Beunruhigung.
+                // Reisen. Den aktuellen Stand in die Offline-Queue legen,
+                // damit er auch einen App-Kill übersteht, statt verloren zu
+                // gehen — beim nächsten Start bzw. bei Wiederverbindung wird
+                // sie automatisch geleert (siehe SyncQueue).
+                SyncQueue.shared.enqueue(
+                    itemId: item.id,
+                    currentTime: currentTime,
+                    duration: duration,
+                    isFinished: isFinishedNow
+                )
                 errorMessage = nil
             } else {
                 // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
@@ -356,25 +486,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
             }
         }
-    }
-
-    /// Erkennt reine Netzwerk-Nichterreichbarkeit (kein Netz, Timeout, DNS
-    /// nicht auflösbar …) — im Unterschied zu echten Fehlern wie 401 oder
-    /// einem kaputten Server-Format, die weiterhin angezeigt werden sollen.
-    private static func isOfflineError(_ error: Error) -> Bool {
-        let nsError = error as NSError
-        guard nsError.domain == NSURLErrorDomain else { return false }
-        let offlineCodes: Set<Int> = [
-            NSURLErrorNotConnectedToInternet,
-            NSURLErrorNetworkConnectionLost,
-            NSURLErrorTimedOut,
-            NSURLErrorCannotConnectToHost,
-            NSURLErrorCannotFindHost,
-            NSURLErrorDNSLookupFailed,
-            NSURLErrorDataNotAllowed,
-            NSURLErrorInternationalRoamingOff
-        ]
-        return offlineCodes.contains(nsError.code)
     }
 
     /// Nutzer hat im Dialog bestätigt: den niedrigeren Stand wirklich schreiben.
@@ -521,6 +632,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             player?.removeTimeObserver(token)
         }
         timeObserverToken = nil
+        if let observer = trackAdvanceObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        trackAdvanceObserver = nil
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()

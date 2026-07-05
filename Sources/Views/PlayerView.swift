@@ -175,12 +175,6 @@ struct PlayerView: View {
 
     private var transportControls: some View {
         HStack(spacing: 28) {
-            Button { viewModel.previousChapter() } label: {
-                Image(systemName: "backward.end.fill").font(.title2)
-            }
-            .disabled(viewModel.chapters.isEmpty)
-            .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
-
             Button { viewModel.skip(by: -30) } label: {
                 Image(systemName: "gobackward.30").font(.title)
             }
@@ -191,12 +185,6 @@ struct PlayerView: View {
             Button { viewModel.skip(by: 30) } label: {
                 Image(systemName: "goforward.30").font(.title)
             }
-
-            Button { viewModel.nextChapter() } label: {
-                Image(systemName: "forward.end.fill").font(.title2)
-            }
-            .disabled(viewModel.chapters.isEmpty)
-            .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
         }
     }
 

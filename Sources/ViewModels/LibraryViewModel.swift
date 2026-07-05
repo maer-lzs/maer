@@ -12,7 +12,17 @@ enum SortOption: String, CaseIterable, Identifiable {
     case titel = "Titel"
     case autor = "Autor"
     case zuletztHinzugefuegt = "Zuletzt hinzugefügt"
+    case zuletztGehoert = "Zuletzt gehört"
     var id: String { rawValue }
+
+    /// Sinnvolle Standardrichtung je Sortierart — Titel/Autor alphabetisch
+    /// aufsteigend (A→Z), alles Zeitbasierte neuestes zuerst.
+    var defaultAscending: Bool {
+        switch self {
+        case .titel, .autor: return true
+        case .zuletztHinzugefuegt, .zuletztGehoert: return false
+        }
+    }
 }
 
 enum FilterOption: String, CaseIterable, Identifiable {
@@ -34,8 +44,30 @@ final class LibraryViewModel: ObservableObject {
     /// Hinweis in der UI statt eines harten Fehlers.
     @Published var isShowingOfflineCache = false
 
-    @Published var sortOption: SortOption = .titel
-    @Published var filterOption: FilterOption = .alle
+    /// Sortierung/Filter werden in UserDefaults gemerkt — bleiben also über
+    /// App-Neustarts hinweg erhalten. Wechselt der Nutzer die Sortierart,
+    /// springt die Richtung auf deren sinnvollen Standard (siehe
+    /// `SortOption.defaultAscending`); die Richtung selbst lässt sich danach
+    /// per Umschalter im Menü ändern und bleibt dann bis zur nächsten
+    /// Sortierart-Änderung bestehen.
+    @Published var sortOption: SortOption {
+        didSet {
+            UserDefaults.standard.set(sortOption.rawValue, forKey: Keys.sortOption)
+            sortAscending = sortOption.defaultAscending
+        }
+    }
+    @Published var filterOption: FilterOption {
+        didSet { UserDefaults.standard.set(filterOption.rawValue, forKey: Keys.filterOption) }
+    }
+    @Published var sortAscending: Bool {
+        didSet { UserDefaults.standard.set(sortAscending, forKey: Keys.sortAscending) }
+    }
+
+    private enum Keys {
+        static let sortOption = "librarySortOption"
+        static let filterOption = "libraryFilterOption"
+        static let sortAscending = "librarySortAscending"
+    }
 
     private let apiClient: APIClient
     private var cachedItems: [LibraryItem] = []
@@ -53,9 +85,35 @@ final class LibraryViewModel: ObservableObject {
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient
+
+        let defaults = UserDefaults.standard
+
+        // Wichtig: `resolvedSortOption` als lokale Variable, nicht über
+        // `self.sortOption` zurücklesen — Swift verbietet bei Klassen jeden
+        // Zugriff über self, bevor wirklich ALLE gespeicherten Properties
+        // (hier: auch das noch folgende sortAscending) einen Wert haben.
+        let resolvedSortOption: SortOption
+        if let raw = defaults.string(forKey: Keys.sortOption), let option = SortOption(rawValue: raw) {
+            resolvedSortOption = option
+        } else {
+            resolvedSortOption = .titel
+        }
+        sortOption = resolvedSortOption
+
+        if let raw = defaults.string(forKey: Keys.filterOption), let option = FilterOption(rawValue: raw) {
+            filterOption = option
+        } else {
+            filterOption = .alle
+        }
+        if defaults.object(forKey: Keys.sortAscending) != nil {
+            sortAscending = defaults.bool(forKey: Keys.sortAscending)
+        } else {
+            sortAscending = resolvedSortOption.defaultAscending
+        }
     }
 
-    /// Die "Alle Bücher"-Liste, nach aktueller Sortierung und Filter aufbereitet.
+    /// Die "Alle Bücher"-Liste, nach aktueller Sortierung, Richtung und Filter
+    /// aufbereitet.
     var sortedFilteredEntries: [LibraryEntry] {
         let filtered = entries.filter { entry in
             switch filterOption {
@@ -64,16 +122,34 @@ final class LibraryViewModel: ObservableObject {
             case .fertig: return entry.progress?.isFinished ?? false
             }
         }
+
+        // Jeder Fall liefert bewusst die AUFSTEIGENDE Reihenfolge — die
+        // Richtung wird danach einheitlich über `sortAscending` angewendet,
+        // statt in jedem Fall einzeln hin- und herzudenken.
+        let ascendingSorted: [LibraryEntry]
         switch sortOption {
         case .titel:
-            return filtered.sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
+            ascendingSorted = filtered.sorted {
+                $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
+            }
         case .autor:
-            return filtered.sorted {
+            ascendingSorted = filtered.sorted {
                 ($0.item.author ?? "").localizedCaseInsensitiveCompare($1.item.author ?? "") == .orderedAscending
             }
         case .zuletztHinzugefuegt:
-            return filtered.sorted { ($0.item.addedAt ?? 0) > ($1.item.addedAt ?? 0) }
+            ascendingSorted = filtered.sorted { ($0.item.addedAt ?? 0) < ($1.item.addedAt ?? 0) }
+        case .zuletztGehoert:
+            ascendingSorted = filtered.sorted { ($0.progress?.lastUpdate ?? 0) < ($1.progress?.lastUpdate ?? 0) }
         }
+        return sortAscending ? ascendingSorted : ascendingSorted.reversed()
+    }
+
+    /// Alle heruntergeladenen Bücher, alphabetisch — eigene Sektion für den
+    /// schnellen Überblick "was kann ich gerade offline hören".
+    var downloadedEntries: [LibraryEntry] {
+        entries
+            .filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
+            .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
     }
 
     func loadLibrary() async {
@@ -98,11 +174,17 @@ final class LibraryViewModel: ObservableObject {
             saveDiskCache(items: items, progress: progress)
             Task { await prefetchAllCovers() }
         } catch {
-            // Kein Netz o. ä.: mit dem letzten bekannten Stand weitermachen,
-            // statt die Bibliothek leer/mit Fehler zu zeigen — sonst wären
-            // selbst heruntergeladene Bücher offline nicht mehr auffindbar.
-            if let cache = loadDiskCache() {
+            // Nur bei echter Netzwerk-Nichterreichbarkeit als "offline"
+            // behandeln — ein anderer Fehler (z. B. Server-Hänger, kaputtes
+            // Format) soll nicht fälschlich den Offline-Hinweis zeigen, wenn
+            // tatsächlich Verbindung besteht.
+            if NetworkStatus.isOfflineError(error), let cache = loadDiskCache() {
                 isShowingOfflineCache = true
+                rebuild(items: cache.items, progress: cache.progress)
+            } else if let cache = loadDiskCache() {
+                // Anderer Fehler, aber ein Cache existiert: den letzten
+                // bekannten Stand stillschweigend weiter zeigen, ohne
+                // irreführenden Offline-Hinweis.
                 rebuild(items: cache.items, progress: cache.progress)
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription

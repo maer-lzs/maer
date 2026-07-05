@@ -32,4 +32,25 @@ enum NetworkStatus {
             monitor.start(queue: DispatchQueue.global(qos: .utility))
         }
     }
+
+    /// Erkennt reine Netzwerk-Nichterreichbarkeit (kein Netz, Timeout, DNS
+    /// nicht auflösbar …) — im Unterschied zu echten Fehlern wie 401 oder
+    /// einem kaputten Server-Format, die NICHT als "offline" missverstanden
+    /// werden sollen. Zentral an einer Stelle, damit Player und Bibliothek
+    /// exakt dieselbe Definition von "offline" verwenden.
+    static func isOfflineError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return false }
+        let offlineCodes: Set<Int> = [
+            NSURLErrorNotConnectedToInternet,
+            NSURLErrorNetworkConnectionLost,
+            NSURLErrorTimedOut,
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorCannotFindHost,
+            NSURLErrorDNSLookupFailed,
+            NSURLErrorDataNotAllowed,
+            NSURLErrorInternationalRoamingOff
+        ]
+        return offlineCodes.contains(nsError.code)
+    }
 }

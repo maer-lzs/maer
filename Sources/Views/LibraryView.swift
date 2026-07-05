@@ -9,10 +9,20 @@ struct LibraryView: View {
     @StateObject private var viewModel: LibraryViewModel
     @StateObject private var playerCoordinator: PlayerCoordinator
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloadManager = DownloadManager.shared
     @State private var searchText = ""
+    @State private var isSearchExpanded = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @Environment(\.scenePhase) private var scenePhase
+
+    /// Auf dem iPhone ist nicht genug Platz für Mini-Leiste UND aufgeklappte
+    /// Suche gleichzeitig — dort schließt die Suche die Mini-Leiste temporär
+    /// (die Wiedergabe läuft im Hintergrund normal weiter). Auf dem iPad ist
+    /// genug Platz, beide bleiben nebeneinander sichtbar.
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
 
     let apiClient: APIClient
     let onLogout: () -> Void
@@ -27,9 +37,6 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
-                // Suchleiste fest oben, immer sichtbar.
-                searchBar
-
                 if viewModel.isShowingOfflineCache {
                     offlineBanner
                 }
@@ -56,8 +63,12 @@ struct LibraryView: View {
             }
             .navigationTitle("Bibliothek")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    sortFilterMenu
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Abmelden", action: onLogout)
+                        .foregroundStyle(.white)
                 }
             }
             .navigationDestination(for: PlayerRoute.self) { _ in
@@ -67,18 +78,34 @@ struct LibraryView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            // Zentral über dem ganzen NavigationStack: der Mini-Player erscheint
-            // dadurch auf jeder Ebene (Bibliothek UND Buchdetail), ohne ihn
-            // mehrfach einbauen zu müssen. Da er strukturell AUSSERHALB des
-            // NavigationStack liegt, kann er nicht per eigenem NavigationLink
-            // navigieren — stattdessen hängt er sich per Callback in den
-            // Navigationspfad des Stacks ein (siehe navigationPath oben).
-            // Auf dem vollen Player selbst wird er ausgeblendet, sonst
+            // Mini-Leiste und Such-Button in EINER Zeile, damit der Such-
+            // Button nie nach oben verschoben wird, nur weil die Mini-Leiste
+            // erscheint/verschwindet — beide bleiben auf gleicher Höhe.
+            // Zentral über dem ganzen NavigationStack, damit beide auf jeder
+            // Ebene (Bibliothek UND Buchdetail) sichtbar bleiben. Da diese
+            // Zeile strukturell AUSSERHALB des NavigationStack liegt, kann
+            // die Mini-Leiste nicht per eigenem NavigationLink navigieren —
+            // stattdessen hängt sie sich per Callback in den Navigationspfad
+            // des Stacks ein (siehe navigationPath oben). Auf dem vollen
+            // Player selbst wird die ganze Zeile ausgeblendet, sonst
             // erscheinen Play/Pause & Co. doppelt.
             if !isShowingFullPlayer {
-                MiniPlayerBar(coordinator: playerCoordinator) {
-                    navigationPath.append(PlayerRoute())
+                HStack(spacing: 10) {
+                    // Auf dem iPhone verschwindet die Mini-Leiste, sobald die
+                    // Suche aufklappt — nicht genug Platz für beides. Auf dem
+                    // iPad bleibt sie bestehen (siehe isPhone).
+                    if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem,
+                       !(isPhone && isSearchExpanded) {
+                        MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
+                            navigationPath.append(PlayerRoute())
+                        }
+                    } else {
+                        Spacer(minLength: 0)
+                    }
+                    FloatingSearchButton(searchText: $searchText, isExpanded: $isSearchExpanded)
                 }
+                .padding(.horizontal, 10)
+                .padding(.bottom, 2)
             }
         }
         .task {
@@ -87,6 +114,10 @@ struct LibraryView: View {
             }
             // Zuletzt gehörtes Buch still in den Mini-Player holen.
             await playerCoordinator.restoreLastSession(from: viewModel.entries)
+            // Falls beim letzten Mal offline Fortschritt liegen geblieben ist
+            // (App wurde offline beendet, bevor der Sync durchging): jetzt
+            // nachreichen.
+            await SyncQueue.shared.flush(apiClient: apiClient)
         }
         .onChange(of: scenePhase) { _, newPhase in
             // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
@@ -104,6 +135,9 @@ struct LibraryView: View {
             if isConnected && viewModel.isShowingOfflineCache {
                 Task { await viewModel.loadLibrary() }
             }
+            if isConnected {
+                Task { await SyncQueue.shared.flush(apiClient: apiClient) }
+            }
         }
     }
 
@@ -120,30 +154,38 @@ struct LibraryView: View {
         .padding(.bottom, 4)
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("Titel oder Autor", text: $searchText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(8)
-        .background(Color(.secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+    // MARK: - Inhalt
+
+    @State private var libraryWidth: CGFloat = 0
+
+    /// Kleinste erlaubte Spaltenbreite — bei diesem Wert lag die
+    /// Spaltenbreite auch schon vor den ganzen Grid-Anpassungen, er ergibt
+    /// auf einem normalen iPhone-Hochformat 3 Spalten.
+    private let minColumnWidth: CGFloat = 108
+    private let gridSpacing: CGFloat = 16
+    private let gridHorizontalPadding: CGFloat = 16
+
+    /// Selbst berechnete Spaltenzahl statt `.adaptive` — das hat sich als
+    /// unzuverlässig erwiesen (mal keine Neuberechnung nach einer Rotation,
+    /// mal eine Spaltenbreite, die nicht zur tatsächlichen Cover-Größe
+    /// passte und dadurch überlappte). Mit einer einzigen verlässlichen
+    /// Breitenmessung als Quelle für sowohl Spaltenzahl als auch Zellgröße
+    /// gibt es keine Mehrdeutigkeit mehr.
+    private var columnCount: Int {
+        guard libraryWidth > 0 else { return 3 }
+        let available = libraryWidth - gridHorizontalPadding * 2
+        let count = Int((available + gridSpacing) / (minColumnWidth + gridSpacing))
+        return max(count, 1)
     }
 
-    // MARK: - Inhalt
+    /// Zellbreite, die exakt zur berechneten Spaltenzahl passt — Grid und
+    /// Cover-Größe nutzen immer denselben Wert, können also nie auseinanderlaufen.
+    private var gridCellWidth: CGFloat {
+        guard libraryWidth > 0 else { return 132 }
+        let available = libraryWidth - gridHorizontalPadding * 2
+        let totalSpacing = gridSpacing * CGFloat(columnCount - 1)
+        return (available - totalSpacing) / CGFloat(columnCount)
+    }
 
     private var content: some View {
         ScrollView {
@@ -154,13 +196,30 @@ struct LibraryView: View {
                     if !viewModel.continueListening.isEmpty {
                         horizontalSection(title: "Weiter hören", entries: viewModel.continueListening)
                     }
+                    if !viewModel.downloadedEntries.isEmpty {
+                        horizontalSection(title: "Heruntergeladen", entries: viewModel.downloadedEntries)
+                    }
                     if !viewModel.recentlyAdded.isEmpty {
                         horizontalSection(title: "Kürzlich hinzugefügt", entries: viewModel.recentlyAdded)
                     }
                     allBooksSection
                 }
             }
+            // Explizit auf volle Breite zwingen — ohne das bestimmt sich die
+            // Breite des Stacks nach seinem Inhalt statt nach der tatsächlich
+            // verfügbaren Bildschirmbreite, was zu einem zirkulären Bezug mit
+            // dem Grid darin führen konnte.
+            .frame(maxWidth: .infinity)
             .padding(.vertical)
+            .background(
+                GeometryReader { geo in
+                    Color.clear
+                        .onAppear { libraryWidth = geo.size.width }
+                        .onChange(of: geo.size.width) { _, newWidth in
+                            libraryWidth = newWidth
+                        }
+                }
+            )
         }
         .refreshable { await viewModel.loadLibrary() }
     }
@@ -236,13 +295,9 @@ struct LibraryView: View {
 
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Alle Bücher")
-                    .font(.title3).bold()
-                Spacer()
-                sortFilterMenu
-            }
-            .padding(.horizontal)
+            Text("Alle Bücher")
+                .font(.title3).bold()
+                .padding(.horizontal)
             bookGrid(viewModel.sortedFilteredEntries)
         }
     }
@@ -254,6 +309,14 @@ struct LibraryView: View {
                     Text(option.rawValue).tag(option)
                 }
             }
+            Button {
+                viewModel.sortAscending.toggle()
+            } label: {
+                Label(
+                    viewModel.sortAscending ? "Aufsteigend" : "Absteigend",
+                    systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
+                )
+            }
             Divider()
             Picker("Filter", selection: $viewModel.filterOption) {
                 ForEach(FilterOption.allCases) { option in
@@ -263,14 +326,19 @@ struct LibraryView: View {
         } label: {
             Image(systemName: "line.3.horizontal.decrease.circle")
                 .font(.title3)
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
         }
+        .modifier(AdaptiveGlassBackground(shape: Circle()))
     }
 
-    /// Adaptives Cover-Grid. Die Spaltenzahl richtet sich automatisch nach der
-    /// verfügbaren Breite: auf dem iPhone wenige, auf dem iPad (v. a. quer)
-    /// deutlich mehr Spalten — ganz ohne Geräteabfrage.
+    /// Cover-Grid mit selbst berechneter Spaltenzahl und -breite (siehe
+    /// `columnCount`/`gridCellWidth`) statt `.adaptive` — Grid und Cover-Größe
+    /// nutzen jetzt garantiert denselben Wert, können also nie mehr
+    /// auseinanderlaufen (weder zu schmal mit Überlappung, noch unnötig
+    /// wenige Spalten auf einem schmalen iPhone).
     private func bookGrid(_ entries: [LibraryEntry]) -> some View {
-        let columns = [GridItem(.adaptive(minimum: 108, maximum: 160), spacing: 16)]
+        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(entries) { entry in
                 NavigationLink {
@@ -281,7 +349,7 @@ struct LibraryView: View {
                             url: apiClient.coverURL(forItemId: entry.id),
                             progress: entry.progress,
                             itemId: entry.id,
-                            size: 132
+                            size: gridCellWidth
                         )
                         Text(entry.item.title)
                             .font(.caption)
@@ -299,7 +367,7 @@ struct LibraryView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .frame(width: 132)
+                    .frame(width: gridCellWidth, alignment: .leading)
                 }
                 .buttonStyle(.plain)
                 .contextMenu { contextMenu(for: entry) }

@@ -1,107 +1,174 @@
 import SwiftUI
 
 /// Persistente Leiste am unteren Bildschirmrand, solange eine Wiedergabe
-/// aktiv ist. Etwas größer als eine minimale Leiste, mit Cover, Titel,
-/// aktuellem Kapitel, dünnem Fortschrittsbalken und ±30s/Play-Pause.
+/// aktiv ist. Schwebt als abgerundete Kapsel mit Rand zu den Bildschirm-
+/// kanten — angelehnt an Apples aktuelles "Liquid Glass"-Design (iOS 26),
+/// mit einem Material-Rückfallnetz für ältere iOS-Versionen.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
+    /// Der aktive Player, direkt als beobachtetes Objekt statt nur über
+    /// `coordinator.viewModel` gelesen — sonst bemerkt SwiftUI Änderungen an
+    /// dessen eigenen @Published-Werten (isPlaying, currentTime, …) nicht
+    /// zuverlässig, weil `coordinator` selbst nur benachrichtigt, wenn
+    /// `viewModel` komplett neu GESETZT wird, nicht wenn sich Werte DARIN
+    /// ändern. Das war der Grund, warum Play/Pause nicht immer sofort
+    /// umgeschaltet hat.
+    @ObservedObject var viewModel: PlayerViewModel
+    let item: LibraryItem
     /// Öffnet den vollen Player. Kommt als Callback rein statt als eigener
     /// NavigationLink, weil diese Leiste (bewusst, damit sie auf jeder Ebene
     /// sichtbar bleibt) außerhalb des NavigationStack hängt und ein
     /// NavigationLink dort keinen Stack zum Navigieren finden würde.
     let onOpenPlayer: () -> Void
 
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+
+    /// Zeigt Skip-Buttons und Ausgabewahl nur, wenn genug Platz für Titeltext
+    /// UND Buttons gleichzeitig da ist: auf dem iPad immer, auf dem iPhone
+    /// nur im Querformat (verticalSizeClass wird dort .compact). Im iPhone-
+    /// Hochformat ist der Platz sonst zu knapp, um noch etwas vom Titel zu
+    /// lesen.
+    private var showExtendedControls: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad || verticalSizeClass == .compact
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+    }
+
     var body: some View {
-        if let viewModel = coordinator.viewModel, let item = coordinator.activeItem {
-            VStack(spacing: 0) {
-                Divider()
-
-                // Dünner Fortschrittsbalken ganz oben in der Leiste.
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.2))
-                        Rectangle()
-                            .fill(AppTheme.accent)
-                            .frame(width: geo.size.width * fraction(viewModel))
-                    }
-                }
-                .frame(height: 2)
-
+        HStack(alignment: .center, spacing: 12) {
+            // Der Klickbereich füllt bewusst den gesamten verfügbaren Platz
+            // bis zu den Transport-Buttons — auch bei einem sehr kurzen
+            // Buchtitel bleibt der Tippbereich groß, statt sich eng um den
+            // Text zu ziehen.
+            Button(action: onOpenPlayer) {
                 HStack(spacing: 12) {
-                    Button {
-                        coordinator.close()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                            .padding(6)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: onOpenPlayer) {
-                        HStack(spacing: 12) {
-                            BookCoverView(
-                                url: coordinator.apiClient.coverURL(forItemId: item.id),
-                                progress: nil,
-                                size: 48
-                            )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.title)
-                                    .font(.subheadline).bold()
-                                    .lineLimit(1)
-                                    .foregroundStyle(.primary)
-                                if let chapter = viewModel.currentChapter {
-                                    Text(chapter.title)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                } else {
-                                    Text(timeText(viewModel))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
+                    // Fortschritt als Ring ums Cover statt als Balken — im
+                    // Audible-Stil, passt sich der abgerundeten Kapselform
+                    // natürlicher an als eine gerade Linie. Bewusst kleiner
+                    // gehalten, damit mehr Platz für den Titeltext bleibt.
+                    coverWithProgressRing
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .font(.subheadline).bold()
+                            .lineLimit(1)
+                            .foregroundStyle(.primary)
+                        if let chapter = viewModel.currentChapter {
+                            Text("\(chapter.title) — \(remainingText)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        } else {
+                            Text(timeText)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Button {
-                        viewModel.skip(by: -30)
-                    } label: {
-                        Image(systemName: "gobackward.30").font(.title3)
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        viewModel.togglePlayPause()
-                    } label: {
-                        Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundStyle(AppTheme.accent)
-                    }
-                    .buttonStyle(.plain)
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .background(.bar)
+            .buttonStyle(.plain)
+
+            if showExtendedControls {
+                Button {
+                    viewModel.skip(by: -30)
+                } label: {
+                    Image(systemName: "gobackward.30")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 56)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    viewModel.skip(by: 30)
+                } label: {
+                    Image(systemName: "goforward.30")
+                        .font(.title2)
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 56)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Ausgabequelle wechseln — schlichtes weißes Icon direkt auf
+                // der Leiste, kein eigener Hintergrund.
+                AirPlayButton(tintColor: .white)
+                    .frame(width: 26, height: 26)
+                    .frame(width: 44, height: 56)
+            }
+
+            // Play/Pause: schlichtes weißes Icon, kein eigener Hintergrund —
+            // wieder dieselbe Größe wie die anderen Transport-Buttons.
+            Button {
+                viewModel.togglePlayPause()
+            } label: {
+                Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 56)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .modifier(AdaptiveGlassBackground(shape: shape))
     }
 
-    private func fraction(_ vm: PlayerViewModel) -> Double {
-        guard vm.duration > 0 else { return 0 }
-        return min(max(vm.currentTime / vm.duration, 0), 1)
+    /// Cover mit dünnem, kreisförmigem Fortschrittsring — liegt am Rand UMS
+    /// Cover herum (Ring etwas größer als das Cover), nicht als kleinerer
+    /// Kreis darüber.
+    private var coverWithProgressRing: some View {
+        let coverSize: CGFloat = 40
+        let ringSize: CGFloat = 48
+
+        return ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.35), lineWidth: 2.5)
+                .frame(width: ringSize, height: ringSize)
+            Circle()
+                .trim(from: 0, to: max(0.01, fraction))
+                .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .frame(width: ringSize, height: ringSize)
+                .rotationEffect(.degrees(-90))
+
+            CachedAsyncImage(url: coordinator.apiClient.coverURL(forItemId: item.id)) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Circle()
+                    .fill(Color.secondary.opacity(0.15))
+                    .overlay(Image(systemName: "book.closed").foregroundStyle(.secondary))
+            }
+            .frame(width: coverSize, height: coverSize)
+            .clipShape(Circle())
+        }
+        .frame(width: ringSize, height: ringSize)
     }
 
-    private func timeText(_ vm: PlayerViewModel) -> String {
+    private var fraction: Double {
+        guard viewModel.duration > 0 else { return 0 }
+        return min(max(viewModel.currentTime / viewModel.duration, 0), 1)
+    }
+
+    private var remainingText: String {
+        let remaining = max(viewModel.duration - viewModel.currentTime, 0)
+        let totalMinutes = Int(remaining) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        return hours > 0 ? "noch \(hours) Std. \(minutes) Min." : "noch \(minutes) Min."
+    }
+
+    private var timeText: String {
         func fmt(_ s: Double) -> String {
             guard s.isFinite, s >= 0 else { return "00:00" }
             let t = Int(s); let h = t / 3600; let m = (t % 3600) / 60; let sec = t % 60
             return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%02d:%02d", m, sec)
         }
-        return "\(fmt(vm.currentTime)) / \(fmt(vm.duration))"
+        return "\(fmt(viewModel.currentTime)) / \(fmt(viewModel.duration))"
     }
 }

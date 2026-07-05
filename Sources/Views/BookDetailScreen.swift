@@ -15,6 +15,10 @@ struct BookDetailScreen: View {
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
 
+    private var buttonShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
@@ -49,25 +53,7 @@ struct BookDetailScreen: View {
 
                 infoSection
 
-                Button {
-                    Task { await coordinator.open(item: entry.item) }
-                } label: {
-                    HStack {
-                        if isThisBookLoading {
-                            ProgressView()
-                                .tint(.white)
-                            Text("Wird gestartet…")
-                        } else {
-                            Image(systemName: "play.fill")
-                            Text(playButtonLabel)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(isThisBookLoading)
-                .padding(.horizontal)
+                playButton
 
                 downloadSection
 
@@ -112,6 +98,41 @@ struct BookDetailScreen: View {
             isLoading = true
             detail = try? await coordinator.apiClient.fetchItemDetail(itemId: entry.id)
             isLoading = false
+        }
+    }
+
+    // MARK: - Play/Pause
+
+    /// Ist DIESES Buch gerade die aktive Session, wird eine eigene, echt
+    /// beobachtende Unteransicht genutzt (siehe `ActivePlayButton`) — sonst
+    /// reagiert der Button nicht zuverlässig auf Play/Pause-Wechsel, aus
+    /// demselben Grund wie beim Mini-Player: `coordinator` selbst benachrichtigt
+    /// nur, wenn `viewModel` neu GESETZT wird, nicht wenn sich Werte DARIN
+    /// (wie `isPlaying`) ändern.
+    @ViewBuilder
+    private var playButton: some View {
+        if let vm = coordinator.viewModel, coordinator.activeItem?.id == entry.id {
+            ActivePlayButton(viewModel: vm, shape: buttonShape)
+        } else {
+            Button {
+                Task { await coordinator.open(item: entry.item) }
+            } label: {
+                HStack {
+                    if isThisBookLoading {
+                        ProgressView()
+                        Text("Wird gestartet…")
+                    } else {
+                        Image(systemName: "play.fill")
+                        Text(playButtonLabel)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .foregroundStyle(.primary)
+            }
+            .modifier(AdaptiveGlassBackground(shape: buttonShape))
+            .disabled(isThisBookLoading)
+            .padding(.horizontal)
         }
     }
 
@@ -184,7 +205,12 @@ struct BookDetailScreen: View {
                 isFinished ? "Als ungehört markieren" : "Als gehört markieren",
                 systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
             )
+            .font(.subheadline)
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
+        .modifier(AdaptiveGlassBackground(shape: Capsule()))
         .padding(.horizontal)
     }
 
@@ -254,7 +280,12 @@ struct BookDetailScreen: View {
                 Task { await startDownloadWithWiFiCheck() }
             } label: {
                 Label("Für offline speichern", systemImage: "arrow.down.circle")
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
             }
+            .modifier(AdaptiveGlassBackground(shape: Capsule()))
             .disabled(detail == nil)
             .padding(.horizontal)
         }
@@ -283,5 +314,30 @@ struct BookDetailScreen: View {
     /// anderes Buch geladen wird.
     private var isThisBookLoading: Bool {
         coordinator.isLoading && coordinator.activeItem?.id == entry.id
+    }
+}
+
+/// Play/Pause-Button für den Fall, dass DIESES Buch bereits die aktive
+/// Session ist. Eigene View, damit `viewModel` echt als @ObservedObject
+/// beobachtet wird — sonst reagiert der Button nicht zuverlässig auf
+/// Play/Pause-Wechsel (siehe Erklärung in `BookDetailScreen.playButton`).
+private struct ActivePlayButton<S: Shape>: View {
+    @ObservedObject var viewModel: PlayerViewModel
+    let shape: S
+
+    var body: some View {
+        Button {
+            viewModel.togglePlayPause()
+        } label: {
+            HStack {
+                Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                Text(viewModel.isPlaying ? "Pause" : "Fortsetzen")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .foregroundStyle(.primary)
+        }
+        .modifier(AdaptiveGlassBackground(shape: shape))
+        .padding(.horizontal)
     }
 }
