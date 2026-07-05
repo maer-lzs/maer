@@ -116,12 +116,6 @@ final class APIClient {
         _ = try await patch(path: "api/me/progress/\(itemId)", body: body)
     }
 
-    /// Markiert ein Buch serverseitig als abgeschlossen (Fortschritt 100 %).
-    func markAsFinished(itemId: String) async throws {
-        let body: [String: Any] = ["isFinished": true]
-        _ = try await patch(path: "api/me/progress/\(itemId)", body: body)
-    }
-
     // MARK: URLs für Cover und Streaming
 
     /// Cover-Bild-URL. AsyncImage kann keine Custom-Header setzen, deshalb hier

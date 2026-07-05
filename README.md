@@ -38,6 +38,9 @@ und den Stand sauber synchronisieren.
   Zurück, Wiedergabegeschwindigkeit, Sleep-Timer (feste Minuten oder bis
   Kapitelende), AirPlay, „Als gehört markieren", dezentes haptisches Feedback
 - Background Audio, Lockscreen- und Dynamic-Island-Anzeige inkl. Cover
+- **Offline-Download** pro Buch (manuell, mit WLAN-Warnung), lokale Datei wird
+  beim Abspielen automatisch bevorzugt — nützlich, wenn der eigene Server übers
+  Internet erreicht wird und die Latenz unterwegs sonst stört
 - **Sicherer Progress-Sync** (siehe unten) und Multi-Device-Abgleich
 
 ## Die Sync-Kernregel
@@ -56,7 +59,7 @@ auf zwei Geräten — dann gewinnt schlicht, wer zuletzt schreibt.
 
 ## Bewusst nicht enthalten
 
-Offline-Download, Multi-User, Podcasts, Metadaten-Bearbeitung, Server-/
+Multi-User, Podcasts, Metadaten-Bearbeitung, Server-/
 Bibliotheksverwaltung.
 
 ## Voraussetzungen

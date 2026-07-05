@@ -177,7 +177,7 @@ struct LibraryView: View {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(entries) { entry in
                         NavigationLink {
-                            BookDetailScreen(entry: entry, coordinator: playerCoordinator)
+                            BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 BookCoverView(
@@ -247,7 +247,7 @@ struct LibraryView: View {
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(entries) { entry in
                 NavigationLink {
-                    BookDetailScreen(entry: entry, coordinator: playerCoordinator)
+                    BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         BookCoverView(

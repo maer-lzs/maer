@@ -83,7 +83,32 @@ struct LibraryItemMedia: Decodable {
 struct LibraryItemMetadata: Decodable {
     let title: String?
     let authorName: String?
+    let narratorName: String?
+    let seriesName: String?
+    let genres: [String]?
+    let publishedYear: LenientString?
     let description: String?
+}
+
+/// Manche Audiobookshelf-Felder (z. B. publishedYear) liefern je nach
+/// Server-Version mal einen String, mal eine Zahl. Dieser Wrapper nimmt
+/// beides entgegen, statt bei einem Typ-Mismatch den ganzen Decode
+/// scheitern zu lassen.
+struct LenientString: Decodable {
+    let value: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let s = try? container.decode(String.self) {
+            value = s
+        } else if let i = try? container.decode(Int.self) {
+            value = String(i)
+        } else if let d = try? container.decode(Double.self) {
+            value = String(Int(d))
+        } else {
+            value = ""
+        }
+    }
 }
 
 struct ABSChapter: Decodable, Identifiable, Equatable {

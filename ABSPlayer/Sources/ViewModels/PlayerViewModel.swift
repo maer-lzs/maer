@@ -78,17 +78,23 @@ final class PlayerViewModel: NSObject, ObservableObject {
         chapters = item.media.chapters ?? []
         duration = item.media.duration ?? (item.media.tracks?.first?.duration ?? 0)
 
-        guard let track = item.media.tracks?.first,
-              let url = apiClient.streamURL(forContentPath: track.contentUrl) else {
-            errorMessage = "Kein abspielbarer Track gefunden. Hat das Buch mehrere Dateien statt einer M4B?"
-            return
+        let asset: AVURLAsset
+        if let localURL = DownloadManager.shared.localFileURL(forItemId: item.id) {
+            // Lokal heruntergeladen: kein Netzwerk, kein Auth-Header nötig —
+            // genau der Fall, der bei hoher Serverlatenz (unterwegs) hilft.
+            asset = AVURLAsset(url: localURL)
+        } else {
+            guard let track = item.media.tracks?.first,
+                  let url = apiClient.streamURL(forContentPath: track.contentUrl) else {
+                errorMessage = "Kein abspielbarer Track gefunden. Hat das Buch mehrere Dateien statt einer M4B?"
+                return
+            }
+            var headers: [String: String] = [:]
+            if let token = apiClient.token, !token.isEmpty {
+                headers["Authorization"] = "Bearer \(token)"
+            }
+            asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         }
-
-        var headers: [String: String] = [:]
-        if let token = apiClient.token, !token.isEmpty {
-            headers["Authorization"] = "Bearer \(token)"
-        }
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         let playerItem = AVPlayerItem(asset: asset)
         let player = AVPlayer(playerItem: playerItem)
         self.player = player
@@ -141,7 +147,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 )
                 isFinished = false
             } else {
-                try await apiClient.markAsFinished(itemId: item.id)
+                // Gehört markieren: Fortschritt explizit auf Buchende setzen,
+                // statt dem Server mit einem Teil-Update zu überlassen, was er
+                // mit currentTime macht.
+                try await apiClient.updateProgress(
+                    itemId: item.id,
+                    currentTime: duration,
+                    duration: duration,
+                    isFinished: true
+                )
                 isFinished = true
             }
         } catch {
