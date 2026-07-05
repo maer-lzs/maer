@@ -3,6 +3,12 @@ import SwiftUI
 /// Detailseite eines Buchs: Cover, Titel, Autor, Beschreibung und ein
 /// Play-Button, der die Wiedergabe im Coordinator startet und zum vollen
 /// Player navigiert. Wird beim Tippen auf ein Buch in der Bibliothek gezeigt.
+///
+/// Drei Layouts je nach verfügbarem Platz:
+/// - iPhone Hochformat: großes Cover über die volle Breite mit Fade-Out
+/// - iPhone Querformat und iPad: Cover links, Titel/Infos/Buttons rechts
+///   daneben (mehr Platz durch die Breite sinnvoll genutzt statt nur
+///   verkleinert)
 struct BookDetailScreen: View {
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
@@ -14,75 +20,183 @@ struct BookDetailScreen: View {
     @State private var showWiFiWarning = false
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
+    @StateObject private var colorLoader = CoverColorLoader()
+
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var buttonShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
     }
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                BookCoverView(
-                    url: coordinator.apiClient.coverURL(forItemId: entry.id),
-                    progress: entry.progress,
-                    itemId: entry.id,
-                    size: 200
-                )
-                .padding(.top)
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
 
-                VStack(spacing: 6) {
-                    Text(entry.item.title)
-                        .font(.title2).bold()
-                        .multilineTextAlignment(.center)
-                    if let author = entry.item.author {
-                        Text(author)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let p = entry.progress, p.isStarted {
-                        Text("\(p.percentInt) % gehört")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if isFinished {
-                        Text("Abgeschlossen")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(.horizontal)
+    /// Nebeneinander-Layout (Cover links, Rest rechts) auf dem iPad in jeder
+    /// Ausrichtung, und auf dem iPhone nur im Querformat (dort wird
+    /// `verticalSizeClass` zu `.compact`) — im iPhone-Hochformat bleibt die
+    /// große Hero-Cover-Ansicht.
+    private var useSideBySideLayout: Bool {
+        !isPhone || verticalSizeClass == .compact
+    }
 
-                infoSection
+    /// Bewusst UIScreen statt GeometryReader — das Cover soll immer exakt
+    /// die volle Gerätebreite nutzen (nicht irgendeine ScrollView-Breite),
+    /// und auf dem iPhone gibt es (anders als beim iPad-Split-View) keine
+    /// mehrdeutige Fenstergröße, die das verfälschen könnte.
+    private var heroCoverSize: CGFloat {
+        UIScreen.main.bounds.width
+    }
 
-                playButton
+    private var heroCover: some View {
+        coverImageContent
+            .frame(width: heroCoverSize, height: heroCoverSize)
+            .clipped()
+            .frame(maxWidth: .infinity)
+    }
 
-                downloadSection
+    private var coverImageContent: some View {
+        CachedAsyncImage(url: coordinator.apiClient.coverURL(forItemId: entry.id)) { image in
+            image.resizable().aspectRatio(contentMode: .fill)
+        } placeholder: {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.15))
+                .overlay(Image(systemName: "book.closed").font(.largeTitle).foregroundStyle(.secondary))
+        }
+    }
 
-                markAsFinishedButton
+    /// Titel/Autor/Fortschritt — zentriert und weiß für die Hero-Ansicht (die
+    /// liegt auf dem farbigen Verlaufs-Hintergrund, da reicht `.primary`
+    /// nicht, das wäre im hellen Systemmodus schwarz und unlesbar),
+    /// linksbündig mit normalen adaptiven Farben fürs Nebeneinander-Layout
+    /// (dort ist der Hintergrund der normale Systemhintergrund).
+    private func titleBlock(alignment: HorizontalAlignment) -> some View {
+        let isHero = alignment == .center
+        return VStack(alignment: alignment, spacing: 6) {
+            Text(entry.item.title)
+                .font(.title2).bold()
+                .multilineTextAlignment(isHero ? .center : .leading)
+                .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            if let author = entry.item.author {
+                Text(author)
+                    .font(.subheadline)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
+            }
+            if let p = entry.progress, p.isStarted {
+                Text("\(p.percentInt) % gehört")
+                    .font(.caption)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+            } else if isFinished {
+                Text("Abgeschlossen")
+                    .font(.caption)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+            }
+        }
+    }
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal)
-                }
-
-                if let description = detail?.media.metadata?.description, !description.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Beschreibung")
-                            .font(.headline)
-                        Text(description)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                } else if isLoading {
-                    ProgressView().padding()
+    /// Cover links, Titel/Infos/Buttons rechts daneben — für iPad und
+    /// iPhone-Querformat, wo die Breite mehr hergibt als nur ein größeres
+    /// oder kleineres Cover.
+    private var sideBySideHeader: some View {
+        HStack(alignment: .top, spacing: 20) {
+            BookCoverView(
+                url: coordinator.apiClient.coverURL(forItemId: entry.id),
+                progress: entry.progress,
+                itemId: entry.id,
+                size: 180
+            )
+            VStack(alignment: .leading, spacing: 14) {
+                titleBlock(alignment: .leading)
+                infoSection(withPadding: false)
+                playButton(withPadding: false)
+                HStack(spacing: 12) {
+                    downloadSection
+                    markAsFinishedButton
                 }
             }
-            .padding(.bottom, 40)
-            .frame(maxWidth: 600)
-            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal)
+        .padding(.top)
+    }
+
+    var body: some View {
+        ZStack {
+            if !useSideBySideLayout {
+                // Verlauf als HINTERGRUND für den ganzen oberen Bereich, wie
+                // beim großen Player — Cover und Titel liegen frei darüber.
+                // Kein Schwarz mehr ganz oben (startet direkt mit der
+                // Cover-Farbe), wird bis knapp unter die Buttons hin
+                // weich zu Schwarz und bleibt danach schwarz.
+                LinearGradient(
+                    stops: [
+                        .init(color: colorLoader.topAccent, location: 0),
+                        .init(color: .black.opacity(0.7), location: 0.62)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            }
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    if useSideBySideLayout {
+                        sideBySideHeader
+                            // Gleicht aus, dass die ScrollView jetzt die obere
+                            // Sicherheitszone ignoriert (nötig fürs Hero-Cover
+                            // unten) — hier soll der Inhalt aber ganz normal
+                            // unter Statusleiste/Navigationsleiste anfangen.
+                            .padding(.top, 54)
+                    } else {
+                        VStack(spacing: 8) {
+                            heroCover
+                            titleBlock(alignment: .center)
+                                .padding(.horizontal)
+                        }
+                        infoSection(withPadding: true)
+                        playButton(withPadding: true)
+                        HStack(spacing: 12) {
+                            downloadSection
+                            markAsFinishedButton
+                        }
+                        .padding(.horizontal)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal)
+                    }
+
+                    if let description = detail?.media.metadata?.description, !description.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Beschreibung")
+                                .font(.headline)
+                            Text(Self.plainText(fromHTML: description))
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal)
+                    } else if isLoading {
+                        ProgressView().padding()
+                    }
+                }
+                .padding(.bottom, 40)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity)
+            }
+            // Ohne das hier hat die ScrollView selbst eine blickdichte
+            // Standard-Füllung, die über dem Verlauf im Hintergrund liegt —
+            // der wäre dann komplett unsichtbar gewesen, nicht nur "hinter
+            // den Textblöcken", wie es sich angefühlt haben muss.
+            .scrollContentBackground(.hidden)
+            // Muss auf der ScrollView selbst sitzen, nicht auf dem Cover
+            // darin — ein verschachteltes Kind kann die Sicherheitszone
+            // nicht "durchbrechen", die ScrollView schneidet ihren Inhalt an
+            // ihren eigenen Grenzen ab, egal was ein Kind-Element möchte.
+            .ignoresSafeArea(edges: .top)
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
@@ -99,6 +213,9 @@ struct BookDetailScreen: View {
             detail = try? await coordinator.apiClient.fetchItemDetail(itemId: entry.id)
             isLoading = false
         }
+        .task(id: entry.id) {
+            await colorLoader.load(from: coordinator.apiClient.coverURL(forItemId: entry.id))
+        }
     }
 
     // MARK: - Play/Pause
@@ -110,36 +227,38 @@ struct BookDetailScreen: View {
     /// nur, wenn `viewModel` neu GESETZT wird, nicht wenn sich Werte DARIN
     /// (wie `isPlaying`) ändern.
     @ViewBuilder
-    private var playButton: some View {
-        if let vm = coordinator.viewModel, coordinator.activeItem?.id == entry.id {
-            ActivePlayButton(viewModel: vm, shape: buttonShape)
-        } else {
-            Button {
-                Task { await coordinator.open(item: entry.item) }
-            } label: {
-                HStack {
-                    if isThisBookLoading {
-                        ProgressView()
-                        Text("Wird gestartet…")
-                    } else {
-                        Image(systemName: "play.fill")
-                        Text(playButtonLabel)
+    private func playButton(withPadding: Bool) -> some View {
+        Group {
+            if let vm = coordinator.viewModel, coordinator.activeItem?.id == entry.id {
+                ActivePlayButton(viewModel: vm, shape: buttonShape)
+            } else {
+                Button {
+                    Task { await coordinator.open(item: entry.item) }
+                } label: {
+                    HStack {
+                        if isThisBookLoading {
+                            ProgressView()
+                            Text("Wird gestartet…")
+                        } else {
+                            Image(systemName: "play.fill")
+                            Text(playButtonLabel)
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.primary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .foregroundStyle(.primary)
+                .modifier(AdaptiveGlassBackground(shape: buttonShape))
+                .disabled(isThisBookLoading)
             }
-            .modifier(AdaptiveGlassBackground(shape: buttonShape))
-            .disabled(isThisBookLoading)
-            .padding(.horizontal)
         }
+        .padding(.horizontal, withPadding ? 16 : 0)
     }
 
     // MARK: - Zusatzinfos
 
     @ViewBuilder
-    private var infoSection: some View {
+    private func infoSection(withPadding: Bool) -> some View {
         let narrator = detail?.media.metadata?.narratorName
         let series = detail?.media.metadata?.seriesName
         let genres = detail?.media.metadata?.genres
@@ -150,36 +269,41 @@ struct BookDetailScreen: View {
             || (genres?.isEmpty == false)
             || (duration ?? 0) > 0
 
+        // `withPadding` verrät zugleich, ob das die Hero-Ansicht ist (liegt
+        // auf dem farbigen Verlaufs-Hintergrund, braucht also weißen Text)
+        // oder das Nebeneinander-Layout (normaler Systemhintergrund, normale
+        // adaptive Farben reichen).
         if hasAnyInfo {
             VStack(alignment: .leading, spacing: 6) {
                 if let series, !series.isEmpty {
-                    infoRow(label: "Serie", value: series)
+                    infoRow(label: "Serie", value: series, isHero: withPadding)
                 }
                 if let narrator, !narrator.isEmpty {
-                    infoRow(label: "Erzähler", value: narrator)
+                    infoRow(label: "Erzähler", value: narrator, isHero: withPadding)
                 }
                 if let genres, !genres.isEmpty {
-                    infoRow(label: "Genre", value: genres.joined(separator: ", "))
+                    infoRow(label: "Genre", value: genres.joined(separator: ", "), isHero: withPadding)
                 }
                 if let year, !year.isEmpty {
-                    infoRow(label: "Erschienen", value: year)
+                    infoRow(label: "Erschienen", value: year, isHero: withPadding)
                 }
                 if let duration, duration > 0 {
-                    infoRow(label: "Gesamtdauer", value: formattedDuration(duration))
+                    infoRow(label: "Gesamtdauer", value: formattedDuration(duration), isHero: withPadding)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, withPadding ? 16 : 0)
         }
     }
 
-    private func infoRow(label: String, value: String) -> some View {
+    private func infoRow(label: String, value: String, isHero: Bool) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
                 .frame(width: 90, alignment: .leading)
             Text(value)
                 .font(.subheadline)
+                .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             Spacer()
         }
     }
@@ -189,6 +313,26 @@ struct BookDetailScreen: View {
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
         return hours > 0 ? "\(hours) Std. \(minutes) Min." : "\(minutes) Min."
+    }
+
+    /// Server-Beschreibungen enthalten oft rohes HTML (`<p>`, `<br>`, …) statt
+    /// reinem Text. Wandelt Absatz-/Zeilenumbrüche in echte Umbrüche um,
+    /// entfernt alle übrigen Tags und dekodiert die gängigsten
+    /// HTML-Entitäten — bewusst eine einfache Bereinigung statt einer vollen
+    /// HTML-Darstellung, das reicht für Klartext-Beschreibungen.
+    private static func plainText(fromHTML html: String) -> String {
+        var text = html
+        text = text.replacingOccurrences(of: "</p>", with: "\n\n", options: .caseInsensitive)
+        text = text.replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: [.caseInsensitive, .regularExpression])
+        text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+        let entities: [String: String] = [
+            "&amp;": "&", "&nbsp;": " ", "&quot;": "\"",
+            "&#39;": "'", "&apos;": "'", "&lt;": "<", "&gt;": ">"
+        ]
+        for (entity, replacement) in entities {
+            text = text.replacingOccurrences(of: entity, with: replacement)
+        }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Als gehört markieren
@@ -207,11 +351,10 @@ struct BookDetailScreen: View {
             )
             .font(.subheadline)
             .foregroundStyle(.primary)
-            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
         }
         .modifier(AdaptiveGlassBackground(shape: Capsule()))
-        .padding(.horizontal)
     }
 
     private func toggleFinishedMark() async {
@@ -253,42 +396,42 @@ struct BookDetailScreen: View {
 
     @ViewBuilder
     private var downloadSection: some View {
-        if downloadManager.isDownloaded(itemId: entry.id) {
-            HStack {
-                Label("Für offline verfügbar", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.subheadline)
-                Spacer()
-                Button(role: .destructive) {
-                    downloadManager.deleteDownload(itemId: entry.id)
-                } label: {
-                    Image(systemName: "trash")
+        Group {
+            if downloadManager.isDownloaded(itemId: entry.id) {
+                HStack {
+                    Label("Offline verfügbar", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.subheadline)
+                    Spacer()
+                    Button(role: .destructive) {
+                        downloadManager.deleteDownload(itemId: entry.id)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
                 }
+            } else if let progress = downloadManager.downloadProgress[entry.id] {
+                HStack(spacing: 8) {
+                    ProgressView(value: progress)
+                    Text("\(Int((progress * 100).rounded())) %")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, alignment: .trailing)
+                }
+            } else {
+                Button {
+                    Task { await startDownloadWithWiFiCheck() }
+                } label: {
+                    Label("Offline speichern", systemImage: "arrow.down.circle")
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+                .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                .disabled(detail == nil)
             }
-            .padding(.horizontal)
-        } else if let progress = downloadManager.downloadProgress[entry.id] {
-            HStack(spacing: 8) {
-                ProgressView(value: progress)
-                Text("\(Int((progress * 100).rounded())) %")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, alignment: .trailing)
-            }
-            .padding(.horizontal)
-        } else {
-            Button {
-                Task { await startDownloadWithWiFiCheck() }
-            } label: {
-                Label("Für offline speichern", systemImage: "arrow.down.circle")
-                    .font(.subheadline)
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-            }
-            .modifier(AdaptiveGlassBackground(shape: Capsule()))
-            .disabled(detail == nil)
-            .padding(.horizontal)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func startDownloadWithWiFiCheck() async {
@@ -338,6 +481,5 @@ private struct ActivePlayButton<S: Shape>: View {
             .foregroundStyle(.primary)
         }
         .modifier(AdaptiveGlassBackground(shape: shape))
-        .padding(.horizontal)
     }
 }
