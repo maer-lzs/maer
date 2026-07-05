@@ -236,7 +236,4 @@ Verwendete API-Endpunkte:
 
 ## Über dieses Projekt
 Hörregal ist mit Unterstützung von 
-Claude (Anthropic) entstanden — von der ersten Architektur bis zum letzten 
-Bugfix im Chat entwickelt. Ich habe Anforderungen, Design-Entscheidungen und 
-Tests beigesteuert; den Code hat größtenteils Claude geschrieben und ich 
-habe ihn schrittweise durch Xcode gebaut, getestet und debuggt.
+Claude (Anthropic) entstanden.

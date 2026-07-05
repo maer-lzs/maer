@@ -124,13 +124,36 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func loadArtwork(coverURL: URL?) {
         guard let coverURL else { return }
         Task { [weak self] in
-            guard let (data, _) = try? await URLSession.shared.data(from: coverURL),
-                  let image = UIImage(data: data) else { return }
+            guard let image = await Self.loadImage(for: coverURL) else { return }
             await MainActor.run {
                 self?.artworkImage = image
                 self?.updateNowPlayingInfo()
             }
         }
+    }
+
+    /// Lädt das Cover für den Lockscreen/die Dynamic Island — nutzt denselben
+    /// geteilten Cache wie die Bibliothek und versucht bei Fehlschlag einmal
+    /// automatisch erneut.
+    private static func loadImage(for url: URL) async -> UIImage? {
+        if let cached = ImageCache.shared.image(for: url) {
+            return cached
+        }
+        if let image = await fetchImage(url) {
+            ImageCache.shared.set(image, for: url)
+            return image
+        }
+        try? await Task.sleep(nanoseconds: 800_000_000)
+        if let image = await fetchImage(url) {
+            ImageCache.shared.set(image, for: url)
+            return image
+        }
+        return nil
+    }
+
+    private static func fetchImage(_ url: URL) async -> UIImage? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        return UIImage(data: data)
     }
 
     /// Setzt das Buch serverseitig auf "abgeschlossen" bzw. hebt das wieder auf.
