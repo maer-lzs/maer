@@ -1,11 +1,11 @@
 # Hörregal
 
 A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/).
-The app focuses on one thing: **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0.
+The app focuses on one thing: **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0 — including while fully offline.
 
 > The name refers to the “shelf” in Audiobookshelf — Hörregal is your audiobook shelf for iPhone and iPad. The Xcode project is still called `ABSPlayer` internally; “Hörregal” is only the display name.
 
-Hörregal started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync.
+Hörregal started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync, online or off.
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
@@ -18,14 +18,22 @@ Hörregal started as a private replacement for a client that regularly lost play
 ## Features
 
 - Login via API token, compatible with both the old and new Audiobookshelf authentication systems
-- Library as an adaptive cover grid for iPhone and iPad, with a fixed search bar, sorting by title/author/recently added, and filters for all/unfinished/finished books
-- “Continue Listening” and “Recently Added” sections
-- Progress bar per book and “Finished” indicator
-- Book detail page with description
-- Persistent mini-player bar with its own progress bar; automatically restores the last listening session after a full app restart, paused and never auto-playing
-- Audible-style player: large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub/±30s/previous-next chapter, playback speed, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened,” and subtle haptic feedback
+- Library as an adaptive cover grid for iPhone and iPad, self-sizing to always fit the actual screen width without overlap, even across rotation
+- Floating search button (Music-app style) that expands into a search field instead of a fixed search bar
+- Sorting by title, author, recently added, or recently listened, with an ascending/descending toggle; sort and filter choices are remembered across app launches
+- Filters for all/unfinished/finished books
+- “Continue Listening”, “Recently Added”, and “Downloaded” sections
+- Haptic Touch context menu on covers for quick actions: play, download, mark as heard
+- Progress bar, “Finished” checkmark, and download-status badge directly on each cover; finished books are shown slightly desaturated
+- Book detail page with description, narrator, series, genres, publication year, and total duration; download and “Mark as heard” directly from the detail page, with a play/pause button that correctly reflects and controls an already-playing session
+- Persistent floating mini-player styled after Apple's Liquid Glass design (iOS 26, with a safe fallback material on older versions), with a circular progress ring around the cover; extra transport controls (skip forward/back, AirPlay) appear only on iPad or in landscape, keeping more room for the title on iPhone portrait; automatically restores the last listening session after a full app restart, paused and never auto-playing
+- Full player: large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub/±30s, playback speed, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened”, and subtle haptic feedback
 - Background audio, lock screen and Dynamic Island display including cover artwork
-- **Offline download** per book, manually triggered with a Wi-Fi warning; local files are automatically preferred during playback — useful when your self-hosted server is accessed over the internet and latency becomes noticeable while travelling
+- **Multi-track playback**: audiobooks split across several audio files (not converted to a single M4B) play back-to-back seamlessly, with correct chapter and progress handling across the whole book
+- **Offline download** per book, manually triggered with a Wi-Fi warning; downloads every track of a book, not just the first, and caches its chapters/metadata locally — a downloaded book opens and plays fully offline, without needing to reach the server just to show its chapter list
+- **Offline library**: the book list and its cover images are cached to disk, so the library (including everything already downloaded) stays browsable even after a full app restart with no connection at all
+- **Offline sync queue**: a progress update that fails to send while offline is queued on disk and automatically retried on the next app start or as soon as the connection returns — even a hard app kill while offline won't lose it
+- Automatic reconnect detection: the library and any queued sync updates refresh by themselves once the connection comes back, without needing to background/foreground the app
 - **Safe progress sync**; see below
 - Multi-device progress reconciliation
 
@@ -35,13 +43,16 @@ This is the heart of the app. A user-triggered seek action — scrubber, chapter
 
 When switching devices, the app briefly checks the server before each playback start. If another device has the newer position, that server position is adopted instead of overwritten. True simultaneous listening on two devices is not covered; in that case, the last writer wins.
 
+Every progress write always sends a complete record (current time, duration, and finished status together) rather than a partial update — a partial update leaves the server to guess what to do with the fields it wasn't given, which previously caused real progress loss when only the finished flag was toggled.
+
 ## Intentionally not included
 
 Multi-user support, podcasts, metadata editing, and server/library administration.
 
 ## Requirements
 
-- Xcode 15+ with Swift 5.9+, targeting iOS/iPadOS 17+
+- Xcode with an iOS 26 SDK available (needed to build at all, since the mini-player and search button use Apple's Liquid Glass API behind an availability check) with Swift 5.9+
+- Deployment target iOS/iPadOS 17+ — the app still runs on older iOS versions at runtime, falling back to a plain translucent material instead of Liquid Glass
 - A running Audiobookshelf server and an API token
 - An Apple ID for signing; a free Apple ID is sufficient, see the note on 7-day signing below
 
@@ -75,7 +86,7 @@ If you are not sure which variant your server uses, try both. One of these paths
    - Storage: **None**; no Core Data
    - Tests: can be unchecked; they are not needed here
 4. Save the project locally
-5. Select the project file → Target `ABSPlayer` → **General** tab → set **Minimum Deployments** to **iOS 17.0** because the code uses the newer `onChange` API
+5. Select the project file → Target `ABSPlayer` → **General** tab → set **Minimum Deployments** to **iOS 17.0**
 
 ## 3. Add the files
 
@@ -86,6 +97,8 @@ If you are not sure which variant your server uses, try both. One of these paths
    - ✅ **Create groups**
    - ✅ Target “ABSPlayer” is checked
 4. You should now see the groups `Models`, `Networking`, `ViewModels`, `Views`, and `ABSPlayerApp.swift` in Xcode.
+
+**If you're replacing files from a later update rather than doing a first-time setup:** don't drag new files on top of old ones with the same name still present — macOS will create a numbered duplicate (`File 2.swift`) instead of overwriting, and Xcode will then point at the wrong physical file. Either edit each changed file's content directly in Xcode, or delete the old group first (Move to Trash) and then drag the replacement in fresh.
 
 ## 4. Enable background audio
 
@@ -135,34 +148,47 @@ The app is designed for iPhone and iPad. To make sure it can be installed on iPa
 2. Under **Supported Destinations**, **iPad** should be listed. This is enabled by default for new SwiftUI projects. If not, click **+** and add iPad.
 3. Under **Deployment Info**, check iPhone and iPad orientations. For an audiobook player, portrait and landscape are sufficient.
 
-The layout adapts automatically: on iPad, the library shows a multi-column cover grid with more columns in landscape mode. The player and detail pages center their content in a readable column instead of stretching across the full width.
+The library grid adapts automatically to the available width — more columns on iPad, even more in landscape — and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
 
 ```text
 Sources/
-├── ABSPlayerApp.swift        Entry point
-├── Models/                   Codable structs for the Audiobookshelf API
+├── ABSPlayerApp.swift              Entry point
+├── Models/                         Codable structs for the Audiobookshelf API
 ├── Networking/
-│   ├── APIClient.swift       All HTTP calls
-│   └── KeychainStore.swift   Secure storage for server URL and token
+│   ├── APIClient.swift             All HTTP calls
+│   ├── KeychainStore.swift         Secure storage for server URL and token
+│   ├── DownloadManager.swift       Multi-track offline downloads and their cached metadata
+│   ├── FileDownloader.swift        Underlying URLSession download with progress reporting
+│   ├── ImageCache.swift            Two-tier (memory + disk) cover cache
+│   ├── NetworkMonitor.swift        Continuous connectivity observation (auto-reconnect)
+│   ├── NetworkStatus.swift         One-shot Wi-Fi check and shared offline-error detection
+│   └── SyncQueue.swift             Persistent queue for progress updates that failed offline
 ├── ViewModels/
-│   ├── AuthViewModel.swift      Setup screen logic
-│   ├── LibraryViewModel.swift   Loads book list and progress
-│   ├── PlayerCoordinator.swift  Keeps the active session alive across navigation
-│   │                            and provides the basis for the mini-player
-│   └── PlayerViewModel.swift    AVPlayer, core sync rule, chapters, sleep timer
+│   ├── AuthViewModel.swift         Setup screen logic
+│   ├── LibraryViewModel.swift      Loads book list and progress, sorting, offline disk cache
+│   ├── PlayerCoordinator.swift     Keeps the active session alive across navigation,
+│   │                               offline-aware, basis for the mini-player
+│   └── PlayerViewModel.swift       AVQueuePlayer, multi-track handling, core sync rule,
+│                                   chapters, sleep timer
 └── Views/
-    ├── SetupView.swift        Server and token input
-    ├── RootView.swift         Switches between setup and library
-    ├── LibraryView.swift      Book list, search, sections
-    ├── BookCoverView.swift    Cover with progress bar, reused across views
-    ├── MiniPlayerBar.swift    Persistent bottom mini-player bar
-    ├── PlayerScreen.swift     Full player, displays the coordinator session
-    ├── PlayerView.swift       Audible-style player UI
-    ├── CoverColorLoader.swift Extracts an accent color from the cover
-    └── ChapterListView.swift  Chapter list as a sheet
+    ├── SetupView.swift             Server and token input
+    ├── RootView.swift              Switches between setup and library
+    ├── LibraryView.swift           Book list, search, sort/filter, sections, adaptive grid
+    ├── BookDetailScreen.swift      Book detail page, download, mark as heard, play/pause
+    ├── BookCoverView.swift         Cover with progress bar and status badges, reused across views
+    ├── CachedAsyncImage.swift      AsyncImage replacement backed by ImageCache
+    ├── MiniPlayerBar.swift         Persistent floating glass mini-player
+    ├── FloatingSearchButton.swift  Expanding search button
+    ├── AdaptiveGlassBackground.swift  Shared Liquid Glass styling with material fallback
+    ├── AirPlayButton.swift         AirPlay route picker wrapper
+    ├── PlayerScreen.swift          Full player, displays the coordinator session
+    ├── PlayerView.swift            Audible-style player UI
+    ├── CoverColorLoader.swift      Extracts an accent color from the cover
+    ├── ChapterListView.swift       Chapter list as a sheet
+    └── Haptics.swift               Small haptic feedback helper
 ```
 
-**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Unlike before, playback is no longer stopped when leaving the player screen. Playback is only stopped explicitly, either when opening another book or by pressing the X in the mini-player bar.
+**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden (e.g. behind an expanded search field on iPhone) — it only stops when explicitly opening a different book.
 
 API endpoints used:
 

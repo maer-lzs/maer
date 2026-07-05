@@ -324,12 +324,14 @@ struct LibraryView: View {
                 }
             }
         } label: {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.title3)
+            // Bewusst OHNE eigenen Glas-Hintergrund: In Toolbars gibt iOS 26
+            // Buttons automatisch ihr eigenes Liquid-Glass-Aussehen — ein
+            // zusätzlicher eigener Hintergrund hier würde sich mit dem
+            // System-eigenen verschachteln (zwei Gläser ineinander statt
+            // einem, sichtbar als doppelter Kreis/Kapsel-Rahmen).
+            Image(systemName: "line.3.horizontal.decrease")
                 .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
         }
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
     }
 
     /// Cover-Grid mit selbst berechneter Spaltenzahl und -breite (siehe
