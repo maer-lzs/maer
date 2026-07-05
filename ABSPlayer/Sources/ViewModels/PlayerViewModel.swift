@@ -321,11 +321,37 @@ final class PlayerViewModel: NSObject, ObservableObject {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
         } catch {
-            // Bewusst still im UI-Flow: ein Netzwerkfehler beim Sync soll die
-            // Wiedergabe nicht unterbrechen. Wird trotzdem angezeigt, damit es
-            // nicht unbemerkt bleibt.
-            errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
+            if Self.isOfflineError(error) {
+                // Erwartbar, kein echter Fehler: kein Netz gerade, z. B. auf
+                // Reisen. Der nächste automatische Versuch (spätestens in 30s,
+                // oder sofort bei Pause/Hintergrund) klappt einfach, sobald
+                // wieder Verbindung besteht — kein Grund zur Beunruhigung.
+                errorMessage = nil
+            } else {
+                // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
+                // das soll nicht unbemerkt bleiben.
+                errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
+            }
         }
+    }
+
+    /// Erkennt reine Netzwerk-Nichterreichbarkeit (kein Netz, Timeout, DNS
+    /// nicht auflösbar …) — im Unterschied zu echten Fehlern wie 401 oder
+    /// einem kaputten Server-Format, die weiterhin angezeigt werden sollen.
+    private static func isOfflineError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return false }
+        let offlineCodes: Set<Int> = [
+            NSURLErrorNotConnectedToInternet,
+            NSURLErrorNetworkConnectionLost,
+            NSURLErrorTimedOut,
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorCannotFindHost,
+            NSURLErrorDNSLookupFailed,
+            NSURLErrorDataNotAllowed,
+            NSURLErrorInternationalRoamingOff
+        ]
+        return offlineCodes.contains(nsError.code)
     }
 
     /// Nutzer hat im Dialog bestätigt: den niedrigeren Stand wirklich schreiben.
