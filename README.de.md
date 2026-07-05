@@ -21,7 +21,7 @@ und den Stand sauber synchronisieren, online wie offline.
 
 | Bibliothek | Player (iPhone) | Player (iPad) |
 |---|---|---|
-| ![Bibliothek](screenshots/library-iphone.png) | ![Player](screenshots/player-iphone.png) | ![Player iPad](screenshots/player-ipad.png) |
+| ![Bibliothek](screenshots/iphone_bib.png) | ![Detail](screenshots/iphone_detail.png) | ![Player iPad](screenshots/ipad_player.png) |
 
 ## Features
 
