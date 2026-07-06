@@ -28,6 +28,7 @@ struct PlayerView: View {
                     cover
                     chapterHeader
                     scrubber
+                    syncStatusRow
                     transportControls
                     secondaryControls
                     tertiaryControls
@@ -45,6 +46,12 @@ struct PlayerView: View {
                 // eine lesbare Spalte zentrieren.
                 .frame(maxWidth: 500)
                 .frame(maxWidth: .infinity)
+            }
+
+            VStack {
+                ResumeMessageBanner(viewModel: viewModel)
+                    .padding(.top, 8)
+                Spacer()
             }
         }
         .foregroundStyle(.white)
@@ -188,6 +195,15 @@ struct PlayerView: View {
             .foregroundStyle(.white.opacity(0.8))
         }
         .padding(.horizontal)
+    }
+
+    private var syncStatusRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: viewModel.syncStatus.systemImage)
+            Text(viewModel.syncStatus.label)
+        }
+        .font(.caption2)
+        .foregroundStyle(.white.opacity(0.6))
     }
 
     private var transportControls: some View {

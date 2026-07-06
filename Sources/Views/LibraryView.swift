@@ -64,7 +64,12 @@ struct LibraryView: View {
             .navigationTitle("Bibliothek")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    sortFilterMenu
+                    HStack(spacing: 8) {
+                        if let vm = playerCoordinator.viewModel {
+                            ResumeMessageBanner(viewModel: vm)
+                        }
+                        sortFilterMenu
+                    }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Abmelden", action: onLogout)

@@ -21,6 +21,10 @@ final class SyncQueue {
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("pending_sync.json")
 
+    /// Toleranz (Sekunden), ab der ein Serverstand als "weiter fortgeschritten"
+    /// gilt — dieselbe Schwelle wie beim Geräte-Abgleich im PlayerViewModel.
+    private let reconcileThreshold: Double = 5
+
     private init() {}
 
     func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {
@@ -49,7 +53,33 @@ final class SyncQueue {
     func flush(apiClient: APIClient) async {
         let pending = loadAll()
         guard !pending.isEmpty else { return }
+
+        // Vor dem Schreiben einmal den aktuellen Serverstand aller Bücher holen,
+        // um veraltete Offline-Updates zu erkennen. Schlägt dieser Abruf fehl
+        // (z. B. weiterhin offline), wird NICHT blind geschrieben — die Queue
+        // bleibt unangetastet und der nächste Aufruf versucht es erneut.
+        let serverProgress: [String: BookProgress]
+        do {
+            serverProgress = try await apiClient.fetchAllProgress()
+        } catch {
+            return
+        }
+
         for (itemId, update) in pending {
+            // Servergewinn: Liegt dort inzwischen ein weiter fortgeschrittener
+            // Stand — etwa weil ein anderes Gerät weitergehört hat, während
+            // dieses offline war —, darf der veraltete Offline-Stand ihn nicht
+            // überschreiben. Der wartende Eintrag wird dann verworfen. Ein
+            // bewusstes "gehört"-Update (isFinished) bleibt davon ausgenommen,
+            // da es eine Statusentscheidung ist, kein zurückgebliebener Stand.
+            if !update.isFinished, update.duration > 0,
+               let server = serverProgress[itemId] {
+                let serverTime = server.fraction * update.duration
+                if serverTime > update.currentTime + reconcileThreshold {
+                    remove(itemId: itemId)
+                    continue
+                }
+            }
             do {
                 try await apiClient.updateProgress(
                     itemId: itemId,

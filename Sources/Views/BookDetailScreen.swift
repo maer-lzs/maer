@@ -133,10 +133,8 @@ struct BookDetailScreen: View {
                         .init(color: colorLoader.topAccent.opacity(0.85), location: 0.45),
                         .init(color: .black.opacity(0.75), location: 0.85)
                     ],
-
                     startPoint: .top,
                     endPoint: .bottom
-
                 )
                 .ignoresSafeArea()
             }
@@ -203,6 +201,13 @@ struct BookDetailScreen: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                if let vm = coordinator.viewModel {
+                    ResumeMessageBanner(viewModel: vm)
+                }
+            }
+        }
         .alert("Kein WLAN erkannt", isPresented: $showWiFiWarning) {
             Button("Trotzdem laden") {
                 Task { await reallyStartDownload() }

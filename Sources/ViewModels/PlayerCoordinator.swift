@@ -60,7 +60,7 @@ final class PlayerCoordinator: ObservableObject {
             // funktionierende Serververbindung nur zum Öffnen.
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
                 let newViewModel = PlayerViewModel(apiClient: apiClient)
-                await newViewModel.load(item: cached)
+                await newViewModel.load(item: cached, isOfflineFallback: true)
                 viewModel = newViewModel
                 UserDefaults.standard.set(item.id, forKey: lastItemKey)
                 if autoplay {

@@ -27,6 +27,39 @@ final class PlayerViewModel: NSObject, ObservableObject {
         var id: Double { afterTime }
     }
 
+    /// Sichtbarer Sync-Status im Player — macht auf einen Blick klar, ob der
+    /// aktuelle Fortschritt wirklich sicher gespeichert ist. Gerade weil diese
+    /// App sich zentral über verlässlichen Sync definiert, soll das nicht im
+    /// Verborgenen passieren.
+    enum SyncStatus: Equatable {
+        case synced
+        /// Offline — liegt in der SyncQueue, wird automatisch nachgereicht.
+        case queued
+        /// Echter Fehler (kein reines Offline-Problem).
+        case failed
+
+        var label: String {
+            switch self {
+            case .synced: return "Synchronisiert"
+            case .queued: return "Offline — wird nachgereicht"
+            case .failed: return "Sync fehlgeschlagen"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .synced: return "checkmark.icloud"
+            case .queued: return "icloud.and.arrow.up"
+            case .failed: return "exclamationmark.icloud"
+            }
+        }
+    }
+
+    @Published var syncStatus: SyncStatus = .synced
+    /// Kurzer Hinweis, woher der Fortschritt beim Öffnen kam (Server, Offline-
+    /// Cache) — blendet sich nach ein paar Sekunden von selbst wieder aus.
+    @Published var resumeSourceMessage: String?
+
     @Published var isPlaying = false
     /// Absolute Position im GESAMTEN Buch, in Sekunden — unabhängig davon, ob
     /// das Buch aus einer einzigen M4B-Datei oder mehreren Tracks besteht.
@@ -117,7 +150,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Laden
 
-    func load(item: LibraryItemDetail) async {
+    /// - Parameter isOfflineFallback: true, wenn dieses Buch über den
+    ///   Offline-Metadaten-Cache geöffnet wurde (Server nicht erreichbar),
+    ///   statt über eine frische Serverantwort — steuert nur die kurze
+    ///   "Fortgesetzt von …"-Anzeige, sonst identisches Verhalten.
+    func load(item: LibraryItemDetail, isOfflineFallback: Bool = false) async {
         self.item = item
         chapters = item.media.chapters ?? []
         let sortedTracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
@@ -149,11 +186,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateCurrentChapter()
         updateNowPlayingInfo()
         startSyncTimer()
+        syncStatus = .synced
+        showResumeSourceMessage(isOfflineFallback ? "Offline-Fortschritt übernommen" : "Fortgesetzt vom Server")
 
         // Cover fürs Lockscreen / die Dynamic Island laden. Das System zeigt
         // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
         // enthält — keine eigene Live Activity nötig.
         loadArtwork(coverURL: apiClient.coverURL(forItemId: item.id))
+    }
+
+    /// Zeigt eine kurze Meldung (z. B. "Fortgesetzt vom Server") und blendet
+    /// sie nach ein paar Sekunden von selbst wieder aus.
+    /// Zeigt eine kurze Meldung (z. B. "Fortgesetzt vom Server") und blendet
+    /// sie nach ein paar Sekunden von selbst wieder aus. Läuft überall dort,
+    /// wo gerade eine View auf `resumeSourceMessage` schaut — Bibliothek,
+    /// Detailseite oder voller Player, je nachdem, wo man sich befindet, wenn
+    /// die Wiedergabe (auch über die Mini-Leiste) startet.
+    private func showResumeSourceMessage(_ message: String) {
+        resumeSourceMessage = message
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            if self?.resumeSourceMessage == message {
+                self?.resumeSourceMessage = nil
+            }
+        }
     }
 
     // MARK: - Track-Verwaltung (Multi-Track)
@@ -306,6 +362,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     isFinished: false
                 )
                 isFinished = false
+                // Lokalen Sync-Stand an das gerade Geschriebene angleichen, damit
+                // der 30-Sekunden-Timer den aktuellen Stand nicht fälschlich als
+                // Rückschritt/Konflikt behandelt.
+                lastSyncedTime = currentTime
             } else {
                 // Gehört markieren: Fortschritt explizit auf Buchende setzen,
                 // statt dem Server mit einem Teil-Update zu überlassen, was er
@@ -317,6 +377,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     isFinished: true
                 )
                 isFinished = true
+                // Lokalen Zustand an den Server angleichen: ans Buchende springen
+                // und den Sync-Stand nachziehen. Sonst schriebe der periodische
+                // Sync gleich wieder den alten (niedrigeren) Stand mit
+                // isFinished=false und höbe die Markierung damit auf.
+                await seek(to: duration, userInitiated: false)
+                lastSyncedTime = duration
             }
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -523,6 +589,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
+            syncStatus = .synced
         } catch {
             if NetworkStatus.isOfflineError(error) {
                 // Erwartbar, kein echter Fehler: kein Netz gerade, z. B. auf
@@ -537,10 +604,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     isFinished: isFinishedNow
                 )
                 errorMessage = nil
+                syncStatus = .queued
             } else {
                 // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
                 // das soll nicht unbemerkt bleiben.
                 errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
+                syncStatus = .failed
             }
         }
     }
@@ -693,7 +762,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if serverTime > currentTime + 5 {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
+                showResumeSourceMessage("Fortgesetzt vom Server")
             }
+            syncStatus = .synced
         } catch {
             // Kein Netz o.ä.: einfach mit dem lokalen Stand weitermachen,
             // kein Abbruch der Wiedergabe wegen eines Abgleich-Fehlers.
