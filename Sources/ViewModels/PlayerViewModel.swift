@@ -35,6 +35,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         case synced
         /// Offline — liegt in der SyncQueue, wird automatisch nachgereicht.
         case queued
+        /// Verbindung verloren, aktueller Stand noch NICHT geschrieben — es
+        /// liegt aber (noch) nichts in der Queue (kein syncProgress-Fehlschlag).
+        case offline
         /// Echter Fehler (kein reines Offline-Problem).
         case failed
 
@@ -42,6 +45,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             switch self {
             case .synced: return "Synchronisiert"
             case .queued: return "Offline — wird nachgereicht"
+            case .offline: return "Offline"
             case .failed: return "Sync fehlgeschlagen"
             }
         }
@@ -50,6 +54,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             switch self {
             case .synced: return "checkmark.icloud"
             case .queued: return "icloud.and.arrow.up"
+            case .offline: return "icloud.slash"
             case .failed: return "exclamationmark.icloud"
             }
         }
@@ -636,6 +641,27 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
                 syncStatus = .failed
             }
+        }
+    }
+
+    /// Verbindung ging verloren, während gerade abgespielt wird: den sichtbaren
+    /// Sync-Status sofort auf "offline" setzen, statt bis zum nächsten
+    /// Sync-Tick (alle 30s) zu warten. Es wird bewusst NICHTS in die Queue
+    /// gelegt — das geschieht weiterhin nur, wenn ein echter
+    /// syncProgress-Versuch fehlschlägt.
+    func markConnectionLostWhilePlaying() {
+        guard isPlaying, syncStatus == .synced else { return }
+        syncStatus = .offline
+    }
+
+    /// Nach einem Flush der Offline-Queue aufrufen: Wurde der eigene Eintrag
+    /// erfolgreich nachgereicht, den sichtbaren Status von .queued auf .synced
+    /// nachziehen — sonst bliebe der "wird nachgereicht"-Hinweis bis zum
+    /// nächsten Sync-Tick stehen, obwohl längst synchronisiert.
+    func updateSyncStatusFromQueue() {
+        guard let item, syncStatus == .queued || syncStatus == .offline else { return }
+        if !SyncQueue.shared.hasPendingUpdate(itemId: item.id) {
+            syncStatus = .synced
         }
     }
 

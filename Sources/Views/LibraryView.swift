@@ -123,6 +123,7 @@ struct LibraryView: View {
             // (App wurde offline beendet, bevor der Sync durchging): jetzt
             // nachreichen.
             await SyncQueue.shared.flush(apiClient: apiClient)
+            playerCoordinator.viewModel?.updateSyncStatusFromQueue()
         }
         .onChange(of: scenePhase) { _, newPhase in
             // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
@@ -141,7 +142,15 @@ struct LibraryView: View {
                 Task { await viewModel.loadLibrary() }
             }
             if isConnected {
-                Task { await SyncQueue.shared.flush(apiClient: apiClient) }
+                Task {
+                    await SyncQueue.shared.flush(apiClient: apiClient)
+                    playerCoordinator.viewModel?.updateSyncStatusFromQueue()
+                }
+            } else {
+                // Verbindung weg, während evtl. gerade abgespielt wird: den
+                // Sync-Status sofort sichtbar auf "offline" setzen, ohne etwas
+                // in die Queue zu legen.
+                playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
     }
