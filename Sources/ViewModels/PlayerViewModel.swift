@@ -148,6 +148,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    deinit {
+        // Falls die Session nicht über stop() beendet wurde: den auf ein
+        // AVPlayerItem gebundenen Track-Wechsel-Beobachter entfernen, damit kein
+        // block-basierter Beobachter im NotificationCenter zurückbleibt.
+        if let trackAdvanceObserver {
+            NotificationCenter.default.removeObserver(trackAdvanceObserver)
+        }
+    }
+
     // MARK: - Laden
 
     /// - Parameter isOfflineFallback: true, wenn dieses Buch über den
@@ -300,9 +309,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// weiterspringt, und hält `currentTrackIndex` synchron — nötig, damit
     /// die absolute Zeitrechnung (Track-Start + Position im Track) stimmt.
     private func observeTrackAdvance() {
+        // Nur auf das AKTUELLE Item hören (nicht object: nil). Mit object: nil
+        // würde der Beobachter auf das Ende JEDES beliebigen AVPlayerItem
+        // reagieren — auch auf Items eines alten/anderen Players, der noch nicht
+        // abgebaut ist — und dadurch die Track-Zählung eines Mehrspur-Buchs
+        // verfälschen.
+        if let observer = trackAdvanceObserver {
+            NotificationCenter.default.removeObserver(observer)
+            trackAdvanceObserver = nil
+        }
+        guard let currentItem = player?.currentItem else { return }
         trackAdvanceObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
-            object: nil,
+            object: currentItem,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -310,6 +329,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if self.currentTrackIndex + 1 < self.tracks.count {
                     self.currentTrackIndex += 1
                 }
+                // Der AVQueuePlayer ist inzwischen auf den nächsten Track
+                // weitergerückt — den Beobachter auf dessen (jetzt aktuelles)
+                // Item umhängen, damit auch der nächste Track-Wechsel erkannt
+                // wird. Am Buchende ist currentItem nil, dann wird nichts mehr
+                // registriert.
+                self.observeTrackAdvance()
             }
         }
     }
