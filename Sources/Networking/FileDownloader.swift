@@ -54,9 +54,19 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        // didCompleteWithError ist die garantierte letzte Delegate-Meldung eines
+        // Tasks — bei Erfolg (error == nil, nach didFinishDownloadingTo), bei
+        // Fehler und bei Abbruch. Eine noch offene Continuation (echter Fehler
+        // ohne vorheriges didFinishDownloadingTo) wird hier aufgelöst.
         if let error {
             continuation?.resume(throwing: error)
             continuation = nil
         }
+        // Session invalidieren, damit URLSession ihre starke Referenz auf den
+        // Delegate (self) freigibt. Ohne das bliebe pro Download ein
+        // FileDownloader samt Session am Leben (Retain-Cycle Session ->
+        // Delegate -> Session), da die Session nie invalidiert wurde.
+        session.finishTasksAndInvalidate()
+        self.session = nil
     }
 }
