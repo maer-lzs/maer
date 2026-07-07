@@ -59,6 +59,14 @@ final class DownloadManager: ObservableObject {
         return dirs
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
             .map { $0.lastPathComponent }
+            .filter { itemId in
+                // Meta-Datei wird erst nach vollständigem Download geschrieben —
+                // Ordner ohne Meta ist ein Abbruch-Rest (z. B. Force-Quit): weg.
+                let meta = metadataDirectory.appendingPathComponent("\(itemId).json")
+                if FileManager.default.fileExists(atPath: meta.path) { return true }
+                try? FileManager.default.removeItem(at: itemDirectory(itemId))
+                return false
+            }
     }
 
     func isDownloaded(itemId: String) -> Bool {
@@ -129,13 +137,11 @@ final class DownloadManager: ObservableObject {
                 }
 
                 let baseProgress = completedFraction
-                let downloader = FileDownloader { fraction in
+                let tempURL = try await FileDownloader.shared.download(request: request) { fraction in
                     Task { @MainActor in
                         DownloadManager.shared.downloadProgress[itemId] = baseProgress + fraction * perTrackWeight
                     }
                 }
-
-                let tempURL = try await downloader.download(request: request)
                 let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
                 if FileManager.default.fileExists(atPath: destination.path) {
@@ -158,6 +164,12 @@ final class DownloadManager: ObservableObject {
             // Buch beim Öffnen noch eine Serveranfrage.
             saveDetail(item)
 
+            // Cover persistent sichern — überlebt iOS-Cache-Purges offline.
+            await ImageCache.shared.makePersistent(
+                itemId: itemId,
+                coverURL: apiClient.coverURL(forItemId: itemId)
+            )
+
             downloadedItemIds.insert(itemId)
             downloadProgress[itemId] = nil
         } catch {
@@ -172,6 +184,7 @@ final class DownloadManager: ObservableObject {
         try? FileManager.default.removeItem(at: itemDirectory(itemId))
         let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")
         try? FileManager.default.removeItem(at: metaURL)
+        ImageCache.shared.removePersistent(itemId: itemId)
         downloadedItemIds.remove(itemId)
     }
 }

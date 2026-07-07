@@ -73,11 +73,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         var label: String {
             switch self {
-            case .saved: return "Stand gespeichert"
+            case .saved: return "Fortschritt gesichert"
             case .serverAdopted: return "Serverstand übernommen"
             case .localUsed: return "Lokaler Stand verwendet"
-            case .queued: return "Wird nachgereicht"
-            case .offline: return "Offline"
+            case .queued: return "Offline — wird nachgereicht"
+            case .offline: return "Offline — Fortschritt wird lokal gemerkt"
             case .conflict: return "Konflikt erkannt"
             }
         }
@@ -107,6 +107,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
     @Published var playbackRate: Float = 1.0
+    /// Skip-Intervall in Sekunden (15/30/60), app-weit gemerkt.
+    @Published var skipInterval: Double =
+        UserDefaults.standard.object(forKey: "skipInterval") as? Double ?? 30
     @Published var sleepTimerRemaining: TimeInterval?
     /// True, wenn der Sleep-Timer im "bis Kapitelende"-Modus läuft (für die
     /// Anzeige im Menü).
@@ -231,6 +234,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         lastSyncedTime = serverProgress
         currentTime = serverProgress
         isFinished = item.userMediaProgress?.isFinished ?? false
+        // Gemerkte Wiedergabegeschwindigkeit dieses Buchs übernehmen.
+        playbackRate = UserDefaults.standard.object(forKey: "playbackRate.\(item.id)") as? Float ?? 1.0
         updateCurrentChapter()
         updateNowPlayingInfo()
         startSyncTimer()
@@ -250,7 +255,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func showSourceHint(_ hint: SourceHint) {
         sourceHint = hint
         Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
             if self?.sourceHint == hint {
                 self?.sourceHint = nil
             }
@@ -393,21 +398,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if let cached = ImageCache.shared.image(for: url) {
             return cached
         }
-        if let image = await fetchImage(url) {
-            ImageCache.shared.set(image, for: url)
+        if let (image, data) = await fetchImage(url) {
+            ImageCache.shared.set(image, data: data, for: url)
             return image
         }
         try? await Task.sleep(nanoseconds: 800_000_000)
-        if let image = await fetchImage(url) {
-            ImageCache.shared.set(image, for: url)
+        if let (image, data) = await fetchImage(url) {
+            ImageCache.shared.set(image, data: data, for: url)
             return image
         }
         return nil
     }
 
-    private static func fetchImage(_ url: URL) async -> UIImage? {
-        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-        return UIImage(data: data)
+    private static func fetchImage(_ url: URL) async -> (UIImage, Data)? {
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let image = UIImage(data: data) else { return nil }
+        return (image, data)
     }
 
     /// Setzt das Buch serverseitig auf "abgeschlossen" bzw. hebt das wieder auf.
@@ -579,6 +585,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func setPlaybackRate(_ rate: Float) {
         playbackRate = rate
         if isPlaying { player?.rate = rate }
+        // Pro Buch merken.
+        if let item {
+            UserDefaults.standard.set(rate, forKey: "playbackRate.\(item.id)")
+        }
+    }
+
+    func setSkipInterval(_ seconds: Double) {
+        skipInterval = seconds
+        UserDefaults.standard.set(seconds, forKey: "skipInterval")
+        // Lockscreen-Buttons sofort nachziehen.
+        MPRemoteCommandCenter.shared().skipForwardCommand.preferredIntervals = [NSNumber(value: seconds)]
+        MPRemoteCommandCenter.shared().skipBackwardCommand.preferredIntervals = [NSNumber(value: seconds)]
     }
 
     // MARK: - Zeit-Beobachtung
@@ -623,10 +641,35 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Schreibt den Fortschritt an den Server.
+    /// True, während ein Write zum Server unterwegs ist.
+    private var syncInFlight = false
+    /// Ein force-Sync kam an, während einer lief — danach einmal nachziehen.
+    private var syncFollowUpRequested = false
+
+    /// Schreibt den Fortschritt an den Server. Reentrancy-sicher: Es ist nie
+    /// mehr als ein Write gleichzeitig unterwegs — parallele Writes könnten
+    /// sich im Netz überholen und der ältere Stand würde gewinnen.
     /// - Parameter force: erzwingt einen Sync auch ohne die 5-Sekunden-Schwelle
     ///   (z. B. bei Pause oder wenn die App in den Hintergrund geht).
     func syncProgress(force: Bool) async {
+        if syncInFlight {
+            // Timer-Ticks verwerfen (der nächste kommt eh); bewusste Syncs
+            // (Pause/Seek) nach Abschluss einmal mit frischem Stand nachziehen.
+            if force { syncFollowUpRequested = true }
+            return
+        }
+        syncInFlight = true
+        defer { syncInFlight = false }
+
+        var runForce = force
+        repeat {
+            syncFollowUpRequested = false
+            await performSync(force: runForce)
+            runForce = true
+        } while syncFollowUpRequested
+    }
+
+    private func performSync(force: Bool) async {
         guard let item else { return }
         guard force || abs(currentTime - lastSyncedTime) >= 5 else { return }
 
@@ -635,6 +678,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if !suppressConflictForNextSync, currentTime < lastSyncedTime - suspiciousDropThreshold {
             if pendingServerConflict == nil {
                 pendingServerConflict = ServerConflict(serverTime: lastSyncedTime, localTime: currentTime)
+                showSourceHint(.conflict)
             }
             return
         }
@@ -650,6 +694,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
+            // Nur Übergänge melden (kein 30s-Spam): offline/queued → gesichert.
+            if syncStatus == .queued || syncStatus == .offline {
+                showSourceHint(.saved)
+            }
             syncStatus = .synced
         } catch {
             if NetworkStatus.isOfflineError(error) {
@@ -665,6 +713,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     isFinished: isFinishedNow
                 )
                 errorMessage = nil
+                if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
                 // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
@@ -683,6 +732,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func markConnectionLostWhilePlaying() {
         guard isPlaying, syncStatus == .synced else { return }
         syncStatus = .offline
+        showSourceHint(.offline)
     }
 
     /// Nach einem Flush der Offline-Queue aufrufen: Wurde der eigene Eintrag
@@ -692,6 +742,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func updateSyncStatusFromQueue() {
         guard let item, syncStatus == .queued || syncStatus == .offline else { return }
         if !SyncQueue.shared.hasPendingUpdate(itemId: item.id) {
+            if syncStatus == .queued { showSourceHint(.saved) }
             syncStatus = .synced
         }
     }
@@ -806,14 +857,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Task { @MainActor in self?.pause() }
             return .success
         }
-        commandCenter.skipForwardCommand.preferredIntervals = [30]
+        commandCenter.skipForwardCommand.preferredIntervals = [NSNumber(value: skipInterval)]
         commandCenter.skipForwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skipFromLockscreen(by: 30) }
+            Task { @MainActor in
+                guard let self else { return }
+                self.skipFromLockscreen(by: self.skipInterval)
+            }
             return .success
         }
-        commandCenter.skipBackwardCommand.preferredIntervals = [30]
+        commandCenter.skipBackwardCommand.preferredIntervals = [NSNumber(value: skipInterval)]
         commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skipFromLockscreen(by: -30) }
+            Task { @MainActor in
+                guard let self else { return }
+                self.skipFromLockscreen(by: -self.skipInterval)
+            }
             return .success
         }
     }

@@ -621,7 +621,7 @@ private struct FullPlayerOverlay: View {
                 releaseOffset = end
                 if shouldDismiss {
                     // Selbst hinausfahren, dann erst abbauen (kein Transition-Hänger).
-                    withAnimation(.easeOut(duration: 0.64)) {
+                    withAnimation(.easeOut(duration: 0.45)) {
                         releaseOffset = presentHeight
                     } completion: {
                         onDismiss()

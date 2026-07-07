@@ -1,28 +1,49 @@
 import Foundation
 
-/// Lädt eine Datei mit Fortschritts-Rückmeldung herunter. Eigener kleiner
-/// Delegate-Wrapper, weil die einfache async URLSession-API bei großen
-/// Dateien (Hörbücher: oft mehrere hundert MB) keinen Downloadfortschritt
-/// liefert.
+/// Lädt Dateien mit Fortschritts-Rückmeldung über EINE geteilte
+/// Background-URLSession: Downloads laufen weiter, wenn die App in den
+/// Hintergrund geht oder suspendiert wird (wichtig bei Hörbüchern mit
+/// mehreren hundert MB). Bei Force-Quit bricht der Download ab und wird beim
+/// nächsten Versuch neu gestartet (bewusst kein Relaunch-Handling).
 final class FileDownloader: NSObject, URLSessionDownloadDelegate {
-    private var continuation: CheckedContinuation<URL, Error>?
-    private let onProgress: (Double) -> Void
-    private var session: URLSession?
+    static let shared = FileDownloader()
 
-    init(onProgress: @escaping (Double) -> Void) {
-        self.onProgress = onProgress
+    private struct Handler {
+        let onProgress: (Double) -> Void
+        let continuation: CheckedContinuation<URL, Error>
     }
 
-    /// Lädt herunter und liefert eine temporäre URL zurück. Der Aufrufer ist
-    /// dafür verantwortlich, die Datei von dort an den Zielort zu verschieben
-    /// (das System löscht die temporäre Datei sonst automatisch wieder).
-    func download(request: URLRequest) async throws -> URL {
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        self.session = session
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            session.downloadTask(with: request).resume()
+    private var session: URLSession!
+    /// Task-Identifier → Handler. Zugriff über `lock`, da Delegate-Callbacks
+    /// und `download`-Aufrufer auf verschiedenen Threads laufen.
+    private var handlers: [Int: Handler] = [:]
+    private let lock = NSLock()
+
+    private override init() {
+        super.init()
+        let config = URLSessionConfiguration.background(
+            withIdentifier: "absplayer.track-downloads"
+        )
+        config.isDiscretionary = false
+        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+    }
+
+    /// Lädt herunter und liefert eine temporäre URL zurück; der Aufrufer
+    /// verschiebt die Datei an ihren Zielort.
+    func download(request: URLRequest, onProgress: @escaping (Double) -> Void) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.downloadTask(with: request)
+            lock.lock()
+            handlers[task.taskIdentifier] = Handler(onProgress: onProgress, continuation: continuation)
+            lock.unlock()
+            task.resume()
         }
+    }
+
+    private func takeHandler(_ id: Int) -> Handler? {
+        lock.lock()
+        defer { lock.unlock() }
+        return handlers.removeValue(forKey: id)
     }
 
     func urlSession(
@@ -33,7 +54,10 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         totalBytesExpectedToWrite: Int64
     ) {
         guard totalBytesExpectedToWrite > 0 else { return }
-        onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
+        lock.lock()
+        let handler = handlers[downloadTask.taskIdentifier]
+        lock.unlock()
+        handler?.onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
     }
 
     func urlSession(
@@ -41,32 +65,21 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        // Die Datei an `location` verschwindet, sobald diese Methode zurückkehrt
-        // — deshalb sofort synchron in eine eigene temporäre Datei verschieben.
+        // Datei verschwindet nach Rückkehr — sofort synchron wegverschieben.
+        guard let handler = takeHandler(downloadTask.taskIdentifier) else { return }
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         do {
             try FileManager.default.moveItem(at: location, to: tempURL)
-            continuation?.resume(returning: tempURL)
+            handler.continuation.resume(returning: tempURL)
         } catch {
-            continuation?.resume(throwing: error)
+            handler.continuation.resume(throwing: error)
         }
-        continuation = nil
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        // didCompleteWithError ist die garantierte letzte Delegate-Meldung eines
-        // Tasks — bei Erfolg (error == nil, nach didFinishDownloadingTo), bei
-        // Fehler und bei Abbruch. Eine noch offene Continuation (echter Fehler
-        // ohne vorheriges didFinishDownloadingTo) wird hier aufgelöst.
-        if let error {
-            continuation?.resume(throwing: error)
-            continuation = nil
-        }
-        // Session invalidieren, damit URLSession ihre starke Referenz auf den
-        // Delegate (self) freigibt. Ohne das bliebe pro Download ein
-        // FileDownloader samt Session am Leben (Retain-Cycle Session ->
-        // Delegate -> Session), da die Session nie invalidiert wurde.
-        session.finishTasksAndInvalidate()
-        self.session = nil
+        // Erfolgsfall wurde bereits in didFinishDownloadingTo aufgelöst
+        // (Handler dann schon entfernt) — hier nur echte Fehler/Abbrüche.
+        guard let error, let handler = takeHandler(task.taskIdentifier) else { return }
+        handler.continuation.resume(throwing: error)
     }
 }

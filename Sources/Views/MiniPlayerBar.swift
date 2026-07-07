@@ -78,9 +78,9 @@ struct MiniPlayerBar: View {
 
             if showExtendedControls {
                 Button {
-                    viewModel.skip(by: -30)
+                    viewModel.skip(by: -viewModel.skipInterval)
                 } label: {
-                    Image(systemName: "gobackward.30")
+                    Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 56)
@@ -89,9 +89,9 @@ struct MiniPlayerBar: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    viewModel.skip(by: 30)
+                    viewModel.skip(by: viewModel.skipInterval)
                 } label: {
-                    Image(systemName: "goforward.30")
+                    Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 56)

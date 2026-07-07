@@ -151,7 +151,6 @@ struct PlayerView: View {
     private var controlsColumn: some View {
         chapterHeader
         scrubber
-        syncStatusRow
         transportControls
         secondaryControls
         tertiaryControls
@@ -250,26 +249,18 @@ struct PlayerView: View {
         .padding(.horizontal)
     }
 
-    private var syncStatusRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: viewModel.syncStatus.systemImage)
-            Text(viewModel.syncStatus.label)
-        }
-        .font(.caption2)
-        .foregroundStyle(.white.opacity(0.6))
-    }
-
     private var transportControls: some View {
-        HStack(spacing: 28) {
-            Button { viewModel.skip(by: -30) } label: {
-                Image(systemName: "gobackward.30").font(.title)
+        let skip = Int(viewModel.skipInterval)
+        return HStack(spacing: 28) {
+            Button { viewModel.skip(by: -viewModel.skipInterval) } label: {
+                Image(systemName: "gobackward.\(skip)").font(.title)
             }
             Button { viewModel.togglePlayPause() } label: {
                 Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 68))
             }
-            Button { viewModel.skip(by: 30) } label: {
-                Image(systemName: "goforward.30").font(.title)
+            Button { viewModel.skip(by: viewModel.skipInterval) } label: {
+                Image(systemName: "goforward.\(skip)").font(.title)
             }
         }
     }
@@ -290,6 +281,14 @@ struct PlayerView: View {
                 Label("Kapitel", systemImage: "list.bullet")
             }
             .disabled(viewModel.chapters.isEmpty)
+
+            Menu {
+                ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
+                    Button("\(Int(seconds)) s") { viewModel.setSkipInterval(seconds) }
+                }
+            } label: {
+                Label("\(Int(viewModel.skipInterval)) s", systemImage: "goforward")
+            }
 
             Menu {
                 ForEach(sleepOptions, id: \.self) { minutes in

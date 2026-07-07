@@ -180,7 +180,9 @@ final class LibraryViewModel: ObservableObject {
             // tatsächlich Verbindung besteht.
             if NetworkStatus.isOfflineError(error), let cache = loadDiskCache() {
                 isShowingOfflineCache = true
-                rebuild(items: cache.items, progress: cache.progress)
+                // Offline nur, was wirklich abspielbar ist: heruntergeladene Bücher.
+                let downloaded = cache.items.filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
+                rebuild(items: downloaded, progress: cache.progress)
             } else if let cache = loadDiskCache() {
                 // Anderer Fehler, aber ein Cache existiert: den letzten
                 // bekannten Stand stillschweigend weiter zeigen, ohne

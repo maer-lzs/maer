@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Detailseite eines Buchs: Cover, Titel, Autor, Beschreibung und ein
 /// Play-Button, der die Wiedergabe im Coordinator startet und zum vollen
@@ -40,12 +41,13 @@ struct BookDetailScreen: View {
         !isPhone || verticalSizeClass == .compact
     }
 
-    /// Bewusst UIScreen statt GeometryReader — das Cover soll immer exakt
-    /// die volle Gerätebreite nutzen (nicht irgendeine ScrollView-Breite),
-    /// und auf dem iPhone gibt es (anders als beim iPad-Split-View) keine
-    /// mehrdeutige Fenstergröße, die das verfälschen könnte.
+    /// Bewusst Screen-Breite statt GeometryReader — das Cover soll immer exakt
+    /// die volle Gerätebreite nutzen (nicht irgendeine ScrollView-Breite).
+    /// Über die WindowScene statt UIScreen.main (deprecated iOS 26).
     private var heroCoverSize: CGFloat {
-        UIScreen.main.bounds.width
+        let screen = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.screen }.first
+        return screen?.bounds.width ?? 400
     }
 
     private var heroCover: some View {

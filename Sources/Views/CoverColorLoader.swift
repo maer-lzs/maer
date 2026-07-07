@@ -25,7 +25,7 @@ final class CoverColorLoader: ObservableObject {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
             guard let image = UIImage(data: data) else { return }
-            ImageCache.shared.set(image, for: url)
+            ImageCache.shared.set(image, data: data, for: url)
             apply(image)
         } catch {
             // Kein Cover / kein Netz: neutraler Standard bleibt bestehen.

@@ -40,7 +40,19 @@ struct BookCoverView: View {
                 }
             }
             .overlay(alignment: .bottomLeading) {
-                if let itemId, downloadManager.isDownloaded(itemId: itemId) {
+                if let itemId, let fraction = downloadManager.downloadProgress[itemId] {
+                    // Laufender Download: Mini-Fortschrittsring.
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.35), lineWidth: 2)
+                        Circle()
+                            .trim(from: 0, to: max(0.02, fraction))
+                            .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                    }
+                    .frame(width: size * 0.2, height: size * 0.2)
+                    .padding(3)
+                } else if let itemId, downloadManager.isDownloaded(itemId: itemId) {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: size * 0.2))
                         .foregroundStyle(.white, .secondary)

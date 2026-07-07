@@ -47,7 +47,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         }
         guard let (data, _) = try? await URLSession.shared.data(from: url),
               let image = UIImage(data: data) else { return nil }
-        ImageCache.shared.set(image, for: url)
+        ImageCache.shared.set(image, data: data, for: url)
         return image
     }
 }
