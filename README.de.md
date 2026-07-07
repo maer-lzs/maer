@@ -89,10 +89,13 @@ Nutzeraktion** um mehr als 120 Sekunden absackt (z. B. ein fehlerhafter
 Client-Reset). Bei „Abbrechen" springt die Wiedergabe zurück zum zuletzt
 gespeicherten Stand.
 
-Beim Geräte-Wechsel gleicht die App vor jedem Play kurz mit dem Server ab: Wer
-zuletzt auf einem anderen Gerät weitergehört hat, dessen Stand wird übernommen,
-statt ihn zu überschreiben. Nicht abgedeckt ist echtes *gleichzeitiges* Hören
-auf zwei Geräten — dann gewinnt schlicht, wer zuletzt schreibt.
+Beim Geräte-Wechsel gleicht die App vor jedem Play kurz mit dem Server ab.
+Es gewinnt der Eintrag mit dem neueren Zeitstempel: Hat ein anderes Gerät
+zuletzt geschrieben, wird dessen Stand übernommen — auch wenn er **weiter
+hinten** liegt (z. B. weil dort bewusst zurückgespult wurde). Bei älteren
+Servern ohne Zeitstempel wird nur ein weiter fortgeschrittener Serverstand
+übernommen. Nicht abgedeckt ist echtes *gleichzeitiges* Hören auf zwei
+Geräten — dann gewinnt schlicht, wer zuletzt schreibt.
 
 Jedes Fortschritts-Update schickt immer einen vollständigen Datensatz
 (aktuelle Zeit, Dauer und Abschluss-Status zusammen), nie ein Teil-Update —

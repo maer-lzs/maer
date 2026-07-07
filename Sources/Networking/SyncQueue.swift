@@ -57,7 +57,15 @@ final class SyncQueue {
     /// App-Start und bei Wiederverbindung aufgerufen (siehe LibraryView).
     /// Updates, die weiterhin fehlschlagen (z. B. immer noch offline),
     /// bleiben in der Queue und werden beim nächsten Aufruf erneut versucht.
+    /// True, während ein Flush läuft — App-Start und Reconnect können sonst
+    /// parallel flushen (doppelte/überholende Writes).
+    private var flushInFlight = false
+
     func flush(apiClient: APIClient) async {
+        guard !flushInFlight else { return }
+        flushInFlight = true
+        defer { flushInFlight = false }
+
         let pending = loadAll()
         guard !pending.isEmpty else { return }
 
@@ -112,6 +120,8 @@ final class SyncQueue {
 
     private func save(_ pending: [String: PendingUpdate]) {
         guard let data = try? JSONEncoder().encode(pending) else { return }
-        try? data.write(to: fileURL)
+        // Atomar: ein App-Kill mitten im Schreiben darf die Queue nicht
+        // korrumpieren (loadAll liefert sonst still [:] → alles verloren).
+        try? data.write(to: fileURL, options: .atomic)
     }
 }

@@ -139,4 +139,6 @@ struct MediaProgress: Codable {
     let duration: Double?
     let progress: Double?
     let isFinished: Bool?
+    /// ms seit 1970 — für den Geräte-Abgleich (neuerer Eintrag gewinnt).
+    let lastUpdate: Double?
 }

@@ -149,6 +149,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Letzter erfolgreich an den Server geschriebener Wert.
     private var lastSyncedTime: Double = 0
+    /// lastUpdate-Zeitstempel des zuletzt GESEHENEN Server-Eintrags (ms epoch).
+    /// Ein neuerer Eintrag stammt von einem anderen Gerät (oder unserem
+    /// eigenen Write) — Grundlage für den Geräte-Abgleich.
+    private var lastKnownServerUpdate: Double = 0
     /// Wird gesetzt, wenn der Nutzer BEWUSST gesprungen ist (Scrubber, Kapitel,
     /// ±30s, Lockscreen). Ein bewusster Sprung nach hinten ist legitim und löst
     /// keinen Warn-Dialog aus. Gefährlich ist nur ein Absacken OHNE Nutzeraktion
@@ -232,6 +236,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         setupRemoteCommandCenter()
         lastSyncedTime = serverProgress
+        lastKnownServerUpdate = item.userMediaProgress?.lastUpdate ?? 0
         currentTime = serverProgress
         isFinished = item.userMediaProgress?.isFinished ?? false
         // Gemerkte Wiedergabegeschwindigkeit dieses Buchs übernehmen.
@@ -694,8 +699,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
-            // Nur Übergänge melden (kein 30s-Spam): offline/queued → gesichert.
-            if syncStatus == .queued || syncStatus == .offline {
+            // Nur Übergänge melden (kein 30s-Spam): offline/queued/failed → gesichert.
+            if syncStatus != .synced {
                 showSourceHint(.saved)
             }
             syncStatus = .synced
@@ -717,7 +722,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 syncStatus = .queued
             } else {
                 // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
-                // das soll nicht unbemerkt bleiben.
+                // sichtbar machen, aber den Stand trotzdem queuen: sonst wäre
+                // er verloren, wenn die App vor dem nächsten Versuch beendet
+                // wird. Der Flush reconciled ohnehin gegen den Server.
+                SyncQueue.shared.enqueue(
+                    itemId: item.id,
+                    currentTime: currentTime,
+                    duration: duration,
+                    isFinished: isFinishedNow
+                )
                 errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
                 syncStatus = .failed
             }
@@ -740,9 +753,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// nachziehen — sonst bliebe der "wird nachgereicht"-Hinweis bis zum
     /// nächsten Sync-Tick stehen, obwohl längst synchronisiert.
     func updateSyncStatusFromQueue() {
-        guard let item, syncStatus == .queued || syncStatus == .offline else { return }
+        guard let item, syncStatus != .synced else { return }
         if !SyncQueue.shared.hasPendingUpdate(itemId: item.id) {
-            if syncStatus == .queued { showSourceHint(.saved) }
+            if syncStatus == .queued || syncStatus == .failed { showSourceHint(.saved) }
             syncStatus = .synced
         }
     }
@@ -898,11 +911,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
         do {
             let fresh = try await apiClient.fetchItemDetail(itemId: item.id)
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
-            if serverTime > currentTime + 5 {
+            let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
+            // Neuerer Server-Eintrag als der zuletzt gesehene + abweichende
+            // Position → anderes Gerät hat geschrieben. Übernehmen — auch
+            // RÜCKWÄRTS (bewusstes Zurückspulen dort ist gewollt). Nach
+            // eigenem Write ist serverTime ≈ currentTime → kein Sprung.
+            // Fallback ohne lastUpdate (alte Server): nur vorwärts wie bisher.
+            let isNewer = serverUpdate > lastKnownServerUpdate
+            let adopt = serverUpdate > 0
+                ? (isNewer && abs(serverTime - currentTime) > 5)
+                : serverTime > currentTime + 5
+            if adopt {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
                 showSourceHint(.serverAdopted)
             }
+            lastKnownServerUpdate = max(lastKnownServerUpdate, serverUpdate)
             syncStatus = .synced
         } catch {
             // Kein Netz o.ä.: einfach mit dem lokalen Stand weitermachen,
