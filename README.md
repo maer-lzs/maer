@@ -204,4 +204,4 @@ API endpoints used:
 
 ## About this project
 
-Hörregal was created with support from Claude by Anthropic.
+Hörregal was created with support from AI.

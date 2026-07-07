@@ -303,5 +303,4 @@ Verwendete API-Endpunkte:
 | Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
 
 ## Über dieses Projekt
-Hörregal ist mit Unterstützung von 
-Claude (Anthropic) entstanden.
+Hörregal ist mit Unterstützung von KI entwickelt.

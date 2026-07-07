@@ -60,10 +60,44 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// Kurzer, transienter Hinweis (Icon + Text), woher der aktuelle Stand
+    /// stammt bzw. wie er gesichert ist. Feste, geprüfte Beschriftungen statt
+    /// freiem Text — wird als globale Glas-Pille angezeigt.
+    enum SourceHint: Equatable {
+        case saved
+        case serverAdopted
+        case localUsed
+        case queued
+        case offline
+        case conflict
+
+        var label: String {
+            switch self {
+            case .saved: return "Stand gespeichert"
+            case .serverAdopted: return "Serverstand übernommen"
+            case .localUsed: return "Lokaler Stand verwendet"
+            case .queued: return "Wird nachgereicht"
+            case .offline: return "Offline"
+            case .conflict: return "Konflikt erkannt"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .saved: return "checkmark.icloud"
+            case .serverAdopted: return "arrow.down.circle"
+            case .localUsed: return "internaldrive"
+            case .queued: return "icloud.and.arrow.up"
+            case .offline: return "icloud.slash"
+            case .conflict: return "exclamationmark.triangle"
+            }
+        }
+    }
+
     @Published var syncStatus: SyncStatus = .synced
-    /// Kurzer Hinweis, woher der Fortschritt beim Öffnen kam (Server, Offline-
-    /// Cache) — blendet sich nach ein paar Sekunden von selbst wieder aus.
-    @Published var resumeSourceMessage: String?
+    /// Kurzer Hinweis, woher der Fortschritt beim Öffnen kam — blendet sich
+    /// nach ein paar Sekunden von selbst wieder aus.
+    @Published var sourceHint: SourceHint?
 
     @Published var isPlaying = false
     /// Absolute Position im GESAMTEN Buch, in Sekunden — unabhängig davon, ob
@@ -201,7 +235,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateNowPlayingInfo()
         startSyncTimer()
         syncStatus = .synced
-        showResumeSourceMessage(isOfflineFallback ? "Offline-Fortschritt übernommen" : "Fortgesetzt vom Server")
+        showSourceHint(isOfflineFallback ? .localUsed : .serverAdopted)
 
         // Cover fürs Lockscreen / die Dynamic Island laden. Das System zeigt
         // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
@@ -209,19 +243,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
         loadArtwork(coverURL: apiClient.coverURL(forItemId: item.id))
     }
 
-    /// Zeigt eine kurze Meldung (z. B. "Fortgesetzt vom Server") und blendet
-    /// sie nach ein paar Sekunden von selbst wieder aus.
-    /// Zeigt eine kurze Meldung (z. B. "Fortgesetzt vom Server") und blendet
-    /// sie nach ein paar Sekunden von selbst wieder aus. Läuft überall dort,
-    /// wo gerade eine View auf `resumeSourceMessage` schaut — Bibliothek,
-    /// Detailseite oder voller Player, je nachdem, wo man sich befindet, wenn
-    /// die Wiedergabe (auch über die Mini-Leiste) startet.
-    private func showResumeSourceMessage(_ message: String) {
-        resumeSourceMessage = message
+    /// Zeigt einen kurzen Hinweis (z. B. „Serverstand übernommen“) und blendet
+    /// ihn nach ein paar Sekunden von selbst wieder aus. Wird global über die
+    /// Overlay-Pille angezeigt — unabhängig davon, ob man gerade in der
+    /// Bibliothek, auf der Detailseite oder im vollen Player ist.
+    private func showSourceHint(_ hint: SourceHint) {
+        sourceHint = hint
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 6_000_000_000)
-            if self?.resumeSourceMessage == message {
-                self?.resumeSourceMessage = nil
+            if self?.sourceHint == hint {
+                self?.sourceHint = nil
             }
         }
     }
@@ -813,7 +844,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if serverTime > currentTime + 5 {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
-                showResumeSourceMessage("Fortgesetzt vom Server")
+                showSourceHint(.serverAdopted)
             }
             syncStatus = .synced
         } catch {

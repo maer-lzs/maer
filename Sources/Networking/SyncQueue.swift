@@ -46,6 +46,13 @@ final class SyncQueue {
         !loadAll().isEmpty
     }
 
+    /// True, wenn für dieses Buch noch ein Update in der Queue liegt — damit der
+    /// Player nach einem Flush prüfen kann, ob sein eigener Stand nachgereicht
+    /// wurde.
+    func hasPendingUpdate(itemId: String) -> Bool {
+        loadAll()[itemId] != nil
+    }
+
     /// Versucht, alle wartenden Updates an den Server zu schicken. Wird beim
     /// App-Start und bei Wiederverbindung aufgerufen (siehe LibraryView).
     /// Updates, die weiterhin fehlschlagen (z. B. immer noch offline),

@@ -3,55 +3,89 @@ import SwiftUI
 struct PlayerView: View {
     @ObservedObject var viewModel: PlayerViewModel
     let coverURL: URL?
+    /// Fortschritt der Nach-unten-Zieh-Geste (0…1) aus der Overlay-Präsentation.
+    /// Blendet beim Ziehen den opaken Hintergrund aus, damit die Bibliothek
+    /// dahinter durchscheint. 0 = Ruhezustand (immersiv, unverändert).
+    var dragProgress: CGFloat = 0
+    /// Eck-Radius des Overlay-Sheets (aus der Präsentation). Klippt den
+    /// vollflächigen Hintergrund passend zur runden Glasform, damit keine
+    /// eckigen Ecken über das Glas hinausragen. 0 = keine Rundung.
+    var cornerRadius: CGFloat = 0
+    /// Explizite Safe-Area-Insets (Overlay-Root ignoriert Safe Areas).
+    var topInset: CGFloat = 0
+    var bottomInset: CGFloat = 0
 
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var isScrubbing = false
     @State private var scrubValue: Double = 0
     @State private var showChapters = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
     private let sleepOptions: [Double] = [5, 15, 30, 45, 60]
 
     var body: some View {
+        GeometryReader { geo in
         ZStack {
-            // Cover-Farbe als Hintergrund-Gradient (Audible-Style).
-            LinearGradient(
-                colors: [colorLoader.accent, Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            // Cover-Farbe als Hintergrund (Audible-Style) — als GEFÜLLTE runde
+            // Form (nicht Gradient + clipShape). Grund: clipShape berechnete die
+            // Rundung gegen die safe-area-große Fläche und ignoresSafeArea
+            // streckte sie danach auf Vollbild — diese Streckung ist geometrie-
+            // abhängig, sodass der obere Bereich beim ersten Ziehframe (Offset)
+            // minimal „springen“ konnte. Als gefüllte Form wird die Rundung
+            // direkt gegen die Vollbild-Geometrie gerechnet: identische Deckung
+            // oben (Statusbar) bei Ruhe UND beim ersten Ziehframe, gleiche runde
+            // Ecken wie der glassEffect.
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [colorLoader.accent, Color.black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                // Ruhezustand ~0.9, beim Ziehen zügig ausblenden → Glass dominiert.
+                .opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))
 
+            // Querformat (iPhone UND iPad): Cover links neben den Controls.
+            // Höhen-Guard: beim ersten Layout-Pass kann geo 0 melden — sonst
+            // kippt der Zweig mitten in der Öffnungs-Animation (bleibt stecken).
+            // AnyLayout statt if/else: stabile Identität bei Orientierungswechsel.
+            let sideBySide = verticalSizeClass == .compact
+                || (geo.size.height > 0 && geo.size.width > geo.size.height)
+            let layout = sideBySide
+                ? AnyLayout(HStackLayout(alignment: .center, spacing: 32))
+                : AnyLayout(VStackLayout(spacing: 24))
             ScrollView {
-                VStack(spacing: 24) {
+                layout {
                     cover
-                    chapterHeader
-                    scrubber
-                    syncStatusRow
-                    transportControls
-                    secondaryControls
-                    tertiaryControls
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.9))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
+                    VStack(spacing: 20) { controlsColumn }
                 }
                 .padding()
                 .padding(.top, 8)
-                // Auf dem iPad nicht über die volle Breite ziehen, sondern
-                // eine lesbare Spalte zentrieren.
-                .frame(maxWidth: 500)
-                .frame(maxWidth: .infinity)
+                // Lesbare Spalte hochkant, breiter nebeneinander.
+                .frame(maxWidth: sideBySide ? 900 : 500)
+                // Nebeneinander: vertikal im Viewport zentrieren (iPad).
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: sideBySide ? max(0, geo.size.height - topInset - bottomInset) : 0
+                )
             }
-
-            VStack {
+            // Kein Bounce, wenn der Inhalt passt → kein Scroll-Snap beim Ziehstart.
+            .scrollBounceBehavior(.basedOnSize)
+            // Insets explizit (Root ignoriert Safe Areas) → Layout wie zuvor.
+            .padding(.top, topInset)
+            .padding(.bottom, bottomInset)
+        }
+        .overlay(alignment: .bottom) {
+            // Dieselbe globale Quell-/Sync-Hinweis-Pille wie über der
+            // Mini-Leiste — im vollen Player unten mit kleinem Abstand über den
+            // Steuerelementen. Nur sichtbar, wenn gesetzt (reserviert sonst
+            // keinen Platz); rein informativ (allowsHitTesting(false) in der View).
+            if viewModel.sourceHint != nil {
                 ResumeMessageBanner(viewModel: viewModel)
-                    .padding(.top, 8)
-                Spacer()
+                    .padding(.bottom, bottomInset + 16)
             }
         }
         .foregroundStyle(.white)
@@ -107,9 +141,28 @@ struct PlayerView: View {
                 Task { await viewModel.reconcileWithServer() }
             }
         }
+        } // GeometryReader
     }
 
     // MARK: - Bausteine
+
+    /// Alle Bedienelemente unterhalb/neben dem Cover (geteilt Hoch/Quer).
+    @ViewBuilder
+    private var controlsColumn: some View {
+        chapterHeader
+        scrubber
+        syncStatusRow
+        transportControls
+        secondaryControls
+        tertiaryControls
+        if let error = viewModel.errorMessage {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.9))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+    }
 
     private var cover: some View {
         CachedAsyncImage(url: coverURL) { image in

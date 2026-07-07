@@ -1,10 +1,5 @@
 import SwiftUI
 
-/// Reine Marker-Struktur für den Navigationspfad — steht nur dafür, "der
-/// große Player wird gepusht", trägt selbst keine Daten (die Session liegt
-/// im PlayerCoordinator, nicht im Navigationspfad).
-private struct PlayerRoute: Hashable {}
-
 struct LibraryView: View {
     @StateObject private var viewModel: LibraryViewModel
     @StateObject private var playerCoordinator: PlayerCoordinator
@@ -14,6 +9,8 @@ struct LibraryView: View {
     @State private var isSearchExpanded = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
+    /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
+    /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
 
     /// Auf dem iPhone ist nicht genug Platz für Mini-Leiste UND aufgeklappte
@@ -64,22 +61,12 @@ struct LibraryView: View {
             .navigationTitle("Bibliothek")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    HStack(spacing: 8) {
-                        if let vm = playerCoordinator.viewModel {
-                            ResumeMessageBanner(viewModel: vm)
-                        }
-                        sortFilterMenu
-                    }
+                    sortFilterMenu
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Abmelden", action: onLogout)
                         .foregroundStyle(.white)
                 }
-            }
-            .navigationDestination(for: PlayerRoute.self) { _ in
-                PlayerScreen(coordinator: playerCoordinator)
-                    .onAppear { isShowingFullPlayer = true }
-                    .onDisappear { isShowingFullPlayer = false }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -95,19 +82,29 @@ struct LibraryView: View {
             // Player selbst wird die ganze Zeile ausgeblendet, sonst
             // erscheinen Play/Pause & Co. doppelt.
             if !isShowingFullPlayer {
-                HStack(spacing: 10) {
-                    // Auf dem iPhone verschwindet die Mini-Leiste, sobald die
-                    // Suche aufklappt — nicht genug Platz für beides. Auf dem
-                    // iPad bleibt sie bestehen (siehe isPhone).
-                    if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem,
-                       !(isPhone && isSearchExpanded) {
-                        MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
-                            navigationPath.append(PlayerRoute())
-                        }
-                    } else {
-                        Spacer(minLength: 0)
+                VStack(spacing: 8) {
+                    // Quell-/Sync-Hinweis-Pille direkt ÜBER der Mini-Leiste, als
+                    // Teil der Bottom-Playback-Zone (nur sichtbar, wenn gesetzt —
+                    // reserviert sonst keinen Platz).
+                    if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
+                        ResumeMessageBanner(viewModel: vm)
                     }
-                    FloatingSearchButton(searchText: $searchText, isExpanded: $isSearchExpanded)
+                    HStack(spacing: 10) {
+                        // Auf dem iPhone verschwindet die Mini-Leiste, sobald die
+                        // Suche aufklappt — nicht genug Platz für beides. Auf dem
+                        // iPad bleibt sie bestehen (siehe isPhone).
+                        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem,
+                           !(isPhone && isSearchExpanded) {
+                            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                                    isShowingFullPlayer = true
+                                }
+                            }
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                        FloatingSearchButton(searchText: $searchText, isExpanded: $isSearchExpanded)
+                    }
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
@@ -151,6 +148,29 @@ struct LibraryView: View {
                 // Sync-Status sofort sichtbar auf "offline" setzen, ohne etwas
                 // in die Queue zu legen.
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
+            }
+        }
+        // Voller Player als Overlay ÜBER der Bibliothek (statt Push).
+        .overlay {
+            if isShowingFullPlayer {
+                // Insets hier lesen (normaler Safe-Area-Kontext) und explizit
+                // durchreichen — das Overlay selbst ignoriert Safe Areas am Root.
+                GeometryReader { proxy in
+                    FullPlayerOverlay(
+                        coordinator: playerCoordinator,
+                        topInset: proxy.safeAreaInsets.top,
+                        bottomInset: proxy.safeAreaInsets.bottom,
+                        presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+                    ) {
+                        // Sheet ist hier schon unten — nur Mini-Leiste weich einblenden.
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                            isShowingFullPlayer = false
+                        }
+                    }
+                }
+                // Kein .move-Transition: Ein-/Ausfahren läuft über den Offset im
+                // Overlay (unterbrechbar, kann nicht mehr hängen bleiben).
+                .transition(.identity)
             }
         }
     }
@@ -456,5 +476,161 @@ struct LibraryView: View {
         if p.isFinished { return "Abgeschlossen" }
         if p.isStarted { return "\(p.percentInt) % gehört" }
         return ""
+    }
+}
+
+/// Voller Player mit Drag-to-dismiss. Eigene View mit LOKALEM Drag-State:
+/// pro Ziehframe wird nur dieses Overlay neu ausgewertet, nicht die ganze
+/// Bibliothek — das war die Ursache des Rucklers beim Ziehstart.
+private struct FullPlayerOverlay: View {
+    @ObservedObject var coordinator: PlayerCoordinator
+    let topInset: CGFloat
+    let bottomInset: CGFloat
+    /// Volle Bildschirmhöhe — Start-/Zielwert fürs Ein-/Ausfahren.
+    let presentHeight: CGFloat
+    let onDismiss: () -> Void
+
+    /// Live-Translation (resettet instant); Übergabe an releaseOffset am Ende.
+    @GestureState private var dragOffset: CGFloat = 0
+    /// Trägt Einfahren, Loslass-Übergabe, Snap-back UND Ausfahren — eine
+    /// einzige, unterbrechbare Offset-Quelle statt View-Transitions.
+    @State private var releaseOffset: CGFloat
+    private let dismissThreshold: CGFloat = 180
+
+    init(
+        coordinator: PlayerCoordinator,
+        topInset: CGFloat,
+        bottomInset: CGFloat,
+        presentHeight: CGFloat,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.coordinator = coordinator
+        self.topInset = topInset
+        self.bottomInset = bottomInset
+        self.presentHeight = presentHeight
+        self.onDismiss = onDismiss
+        // Startet unten außerhalb des Bildschirms, fährt in onAppear hoch.
+        _releaseOffset = State(initialValue: presentHeight)
+    }
+
+    var body: some View {
+        let offset = max(0, dragOffset + releaseOffset)
+        let progress = min(1, offset / dismissThreshold)
+        // Basis-Reveal > 0: das Sheet IST schon im Ruhezustand dasselbe
+        // Glas-Sheet (kein Moduswechsel bei Frame 1); Zug verstärkt nur.
+        let visual = CGFloat(0.15 + 0.85 * pow(Double(progress), 1.6))
+        // Konstant: glassEffect-Parameter dürfen sich pro Frame NICHT ändern,
+        // sonst rendert das System den Effekt neu → Ruckler beim Ziehstart.
+        let corner: CGFloat = 28
+        ZStack(alignment: .top) {
+            // Bibliothek nur abdunkeln (kein Blur); fängt Taps ab.
+            Color.black
+                // Faktor blendet Dim beim Ein-/Ausfahren mit aus (Offset nahe
+                // Bildschirmhöhe → 0), sonst Dim-Blitz beim Mount/Unmount.
+                .opacity(Double(visual) * 0.45 * Double(1 - min(1, offset / presentHeight)))
+
+            // Das GANZE Glas-Sheet bewegt sich als eine Einheit mit dem Finger.
+            ZStack(alignment: .top) {
+                PlayerScreen(
+                    coordinator: coordinator,
+                    dragProgress: visual,
+                    cornerRadius: corner,
+                    topInset: topInset,
+                    bottomInset: bottomInset
+                )
+                sideDismissZones
+                grabHandle
+            }
+            .background { containerGlass(corner: corner) }
+            .offset(y: offset)
+        }
+        // Safe Area EINMAL am fixen Root ignorieren — nicht in Kindern des
+        // bewegten Containers, sonst kippt die Expansion beim ersten Offset-
+        // Frame um genau die Inset-Höhe (der „Sprung“).
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+                releaseOffset = 0
+            }
+        }
+    }
+
+    /// Statisches Glas: Tönung/Form konstant. Der dynamische Reveal läuft
+    /// ausschließlich über billige Opacity-Fades (Hintergrund + Dim).
+    @ViewBuilder
+    private func containerGlass(corner: CGFloat) -> some View {
+        let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
+        if #available(iOS 26.0, *) {
+            // Maximale, konstante Glas-Stärke; Reveal nur via Hintergrund-Fade.
+            Color.clear
+                .glassEffect(.clear.tint(Color.black.opacity(0.45)), in: shape)
+        } else {
+            // Fallback: Material + passende Tönung.
+            shape
+                .fill(.ultraThinMaterial)
+                .overlay(shape.fill(Color.black.opacity(0.45)))
+        }
+    }
+
+    private var grabHandle: some View {
+        Capsule()
+            .fill(Color.white.opacity(0.5))
+            .frame(width: 40, height: 5)
+            .padding(.top, topInset + 10)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .highPriorityGesture(dismissGesture)
+    }
+
+    /// Seitliche Swipe-Zonen; unten ausgespart (Scrubber/Controls).
+    /// Breite wächst mit dem Bildschirm: alles außerhalb der max. 500pt
+    /// breiten Inhaltsspalte (iPad/Landscape), mindestens 56pt.
+    private var sideDismissZones: some View {
+        GeometryReader { proxy in
+            let zoneWidth = max(56, (proxy.size.width - 520) / 2)
+            HStack {
+                dismissZone(width: zoneWidth)
+                Spacer()
+                dismissZone(width: zoneWidth)
+            }
+            .padding(.bottom, 220)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private func dismissZone(width: CGFloat) -> some View {
+        Color.clear
+            .frame(width: width)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .highPriorityGesture(dismissGesture)
+    }
+
+    /// Global gemessen (Offset-Container), minimumDistance 0.
+    private var dismissGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+            .updating($dragOffset) { value, state, _ in
+                state = max(0, value.translation.height)
+            }
+            .onEnded { value in
+                let end = max(0, value.translation.height)
+                let shouldDismiss = end > dismissThreshold
+                    || value.predictedEndTranslation.height > dismissThreshold * 2
+                // Offset nahtlos übernehmen (GestureState resettet instant).
+                releaseOffset = end
+                if shouldDismiss {
+                    // Selbst hinausfahren, dann erst abbauen (kein Transition-Hänger).
+                    withAnimation(.easeOut(duration: 0.64)) {
+                        releaseOffset = presentHeight
+                    } completion: {
+                        onDismiss()
+                    }
+                } else {
+                    withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) {
+                        releaseOffset = 0
+                    }
+                }
+            }
     }
 }

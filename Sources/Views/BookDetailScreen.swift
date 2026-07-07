@@ -201,13 +201,6 @@ struct BookDetailScreen: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                if let vm = coordinator.viewModel {
-                    ResumeMessageBanner(viewModel: vm)
-                }
-            }
-        }
         .alert("Kein WLAN erkannt", isPresented: $showWiFiWarning) {
             Button("Trotzdem laden") {
                 Task { await reallyStartDownload() }
