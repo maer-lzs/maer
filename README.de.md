@@ -52,29 +52,42 @@ und den Stand sauber synchronisieren, online wie offline.
   Querformat, damit auf dem iPhone im Hochformat mehr Platz für den Titel
   bleibt; stellt die zuletzt gehörte Session auch nach einem kompletten
   App-Neustart automatisch wieder her (pausiert, spielt nie von selbst los)
-- Player im Audible-Stil: großes Cover, aus dem Cover abgeleiteter
-  Farbverlauf, Kapitelmarken direkt auf dem Scrubber, Play/Pause/Scrub/±30s,
-  Wiedergabegeschwindigkeit, Sleep-Timer (feste Minuten oder bis
-  Kapitelende), AirPlay, „Als gehört markieren", dezentes haptisches Feedback
+- Voller Player als rundes Liquid-Glass-Sheet ÜBER der Bibliothek — nach
+  unten ziehen (Griff oder Seitenzonen) minimiert zurück zum Mini-Player,
+  die Bibliothek scheint beim Ziehen durchs Glas durch; großes Cover, aus
+  dem Cover abgeleiteter Farbverlauf, Kapitelmarken direkt auf dem Scrubber,
+  Play/Pause/Scrub, konfigurierbares Sprung-Intervall (15/30/60 s, gilt auch
+  für Lockscreen- und Mini-Player-Buttons), Wiedergabegeschwindigkeit pro
+  Buch gemerkt, Sleep-Timer (feste Minuten oder bis Kapitelende), AirPlay,
+  „Als gehört markieren", dezentes haptisches Feedback; im Querformat
+  (iPhone und iPad) wandert das Cover neben die Bedienelemente
+- Transiente Glas-Pille für Sync-/Quell-Ereignisse („Serverstand
+  übernommen", „Offline — wird nachgereicht", „Fortschritt gesichert",
+  „Konflikt erkannt") über dem Mini-Player bzw. im vollen Player, blendet
+  nach ein paar Sekunden von selbst aus
 - Background Audio, Lockscreen- und Dynamic-Island-Anzeige inkl. Cover
 - **Multi-Track-Wiedergabe**: Hörbücher, die aus mehreren Audiodateien
   bestehen (statt zu einer einzigen M4B zusammengefasst zu sein), spielen
   nahtlos nacheinander durch, mit korrekter Kapitel- und
   Fortschrittsberechnung über das ganze Buch hinweg
 - **Offline-Download** pro Buch (manuell, mit WLAN-Warnung); lädt alle
-  Tracks eines Buchs herunter, nicht nur den ersten, und speichert Kapitel/
-  Metadaten lokal mit — ein heruntergeladenes Buch öffnet und spielt
-  komplett offline, ohne dass für die Kapitelliste noch eine Serveranfrage
-  nötig wäre
-- **Offline-Bibliothek**: Bücherliste und Cover werden auf der Festplatte
-  zwischengespeichert, sodass die Bibliothek (inklusive allem bereits
-  Heruntergeladenen) auch nach einem kompletten App-Neustart ganz ohne
-  Verbindung durchstöberbar bleibt
-- **Offline-Sync-Warteschlange**: Ein Fortschritts-Update, das offline nicht
-  gesendet werden kann, wird auf der Festplatte zwischengespeichert und beim
-  nächsten App-Start bzw. sobald wieder Verbindung besteht automatisch
-  nachgereicht — selbst ein hartes Beenden der App mitten in einer
-  Offline-Phase verliert dadurch nichts mehr
+  Tracks eines Buchs herunter, nicht nur den ersten, läuft auch im
+  Hintergrund weiter, zeigt einen Live-Fortschrittsring auf dem
+  Cover-Abzeichen und speichert Kapitel/Metadaten lokal mit — ein
+  heruntergeladenes Buch öffnet und spielt komplett offline, ohne dass für
+  die Kapitelliste noch eine Serveranfrage nötig wäre
+- **Offline-Bibliothek**: Ist der Server nicht erreichbar, zeigt die
+  Bibliothek die heruntergeladenen (tatsächlich abspielbaren) Bücher aus dem
+  Festplatten-Cache; Cover heruntergeladener Bücher liegen persistent (von
+  iOS-Cache-Aufräumläufen unberührt), Cover werden in gerätepassender
+  Auflösung ohne Nachkomprimierung gespeichert
+- **Offline-Sync-Warteschlange**: Ein Fortschritts-Update, das nicht
+  gesendet werden kann — offline oder wegen eines Serverfehlers —, wird
+  atomar auf der Festplatte zwischengespeichert und beim nächsten App-Start
+  bzw. sobald wieder Verbindung besteht automatisch nachgereicht; vor dem
+  Nachreichen wird mit dem Server abgeglichen, damit ein veralteter
+  Warteschlangen-Stand nie einen neueren Stand eines anderen Geräts
+  überschreibt
 - Automatische Wiederverbindungs-Erkennung: Bibliothek und wartende
   Sync-Updates aktualisieren sich von selbst, sobald die Verbindung
   zurückkommt, ganz ohne die App in den Hintergrund schicken zu müssen
@@ -257,8 +270,8 @@ Sources/
 │   ├── APIClient.swift             Alle HTTP-Calls
 │   ├── KeychainStore.swift         Sicherer Speicher für Server-URL + Token
 │   ├── DownloadManager.swift       Mehrteilige Offline-Downloads + deren Metadaten-Cache
-│   ├── FileDownloader.swift        URLSession-Download mit Fortschrittsanzeige
-│   ├── ImageCache.swift            Zweistufiger Cover-Cache (Speicher + Festplatte)
+│   ├── FileDownloader.swift        Geteilte Background-URLSession mit Fortschrittsanzeige
+│   ├── ImageCache.swift            Cover-Cache: Speicher + purgebarer Cache + persistenter Ordner für Downloads
 │   ├── NetworkMonitor.swift        Fortlaufende Netzwerk-Beobachtung (Auto-Reconnect)
 │   └── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
 │   └── SyncQueue.swift             Persistente Warteschlange für offline gescheiterte Updates

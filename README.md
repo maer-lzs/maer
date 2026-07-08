@@ -27,12 +27,13 @@ Hörregal started as a private replacement for a client that regularly lost play
 - Progress bar, “Finished” checkmark, and download-status badge directly on each cover; finished books are shown slightly desaturated
 - Book detail page with description, narrator, series, genres, publication year, and total duration; download and “Mark as heard” directly from the detail page, with a play/pause button that correctly reflects and controls an already-playing session
 - Persistent floating mini-player styled after Apple's Liquid Glass design (iOS 26, with a safe fallback material on older versions), with a circular progress ring around the cover; extra transport controls (skip forward/back, AirPlay) appear only on iPad or in landscape, keeping more room for the title on iPhone portrait; automatically restores the last listening session after a full app restart, paused and never auto-playing
-- Full player: large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub/±30s, playback speed, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened”, and subtle haptic feedback
+- Full player as a rounded Liquid Glass sheet floating above the library — drag it down (grab handle or side zones) to dismiss back to the mini-player, with the library showing through the glass during the pull; large cover, cover-derived gradient background, chapter markers directly on the scrubber, play/pause/scrub, configurable skip interval (15/30/60 s, also applied to lock screen and mini-player buttons), playback speed remembered per book, sleep timer with fixed minutes or until chapter end, AirPlay, “Mark as listened”, and subtle haptic feedback; in landscape (iPhone and iPad) the cover moves next to the controls
+- Transient glass pill for sync/source events (“resumed from server”, “offline — queued”, “progress saved”, “conflict detected”) shown above the mini-player or in the full player, auto-hiding after a few seconds
 - Background audio, lock screen and Dynamic Island display including cover artwork
 - **Multi-track playback**: audiobooks split across several audio files (not converted to a single M4B) play back-to-back seamlessly, with correct chapter and progress handling across the whole book
-- **Offline download** per book, manually triggered with a Wi-Fi warning; downloads every track of a book, not just the first, and caches its chapters/metadata locally — a downloaded book opens and plays fully offline, without needing to reach the server just to show its chapter list
-- **Offline library**: the book list and its cover images are cached to disk, so the library (including everything already downloaded) stays browsable even after a full app restart with no connection at all
-- **Offline sync queue**: a progress update that fails to send while offline is queued on disk and automatically retried on the next app start or as soon as the connection returns — even a hard app kill while offline won't lose it
+- **Offline download** per book, manually triggered with a Wi-Fi warning; downloads every track of a book, not just the first, continues while the app is in the background, shows a live progress ring on the cover badge, and caches its chapters/metadata locally — a downloaded book opens and plays fully offline, without needing to reach the server just to show its chapter list
+- **Offline library**: when the server is unreachable, the library shows the downloaded (actually playable) books from the disk cache — covers of downloaded books are stored persistently, so they survive iOS cache purges; covers are cached at device-appropriate resolution without recompression
+- **Offline sync queue**: a progress update that fails to send — whether offline or due to a server error — is queued on disk (atomically) and automatically retried on the next app start or as soon as the connection returns; before flushing, the queue reconciles against the server so a stale queued position never overwrites a newer one from another device
 - Automatic reconnect detection: the library and any queued sync updates refresh by themselves once the connection comes back, without needing to background/foreground the app
 - **Safe progress sync**; see below
 - Multi-device progress reconciliation
@@ -158,8 +159,8 @@ Sources/
 │   ├── APIClient.swift             All HTTP calls
 │   ├── KeychainStore.swift         Secure storage for server URL and token
 │   ├── DownloadManager.swift       Multi-track offline downloads and their cached metadata
-│   ├── FileDownloader.swift        Underlying URLSession download with progress reporting
-│   ├── ImageCache.swift            Two-tier (memory + disk) cover cache
+│   ├── FileDownloader.swift        Shared background URLSession download with progress reporting
+│   ├── ImageCache.swift            Cover cache: memory + purgeable disk + persistent store for downloaded books
 │   ├── NetworkMonitor.swift        Continuous connectivity observation (auto-reconnect)
 │   ├── NetworkStatus.swift         One-shot Wi-Fi check and shared offline-error detection
 │   └── SyncQueue.swift             Persistent queue for progress updates that failed offline

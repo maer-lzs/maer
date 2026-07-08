@@ -143,6 +143,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private var tracks: [ABSAudioTrack] = []
     /// Index des Tracks, der gerade im Player aktiv ist.
     private var currentTrackIndex: Int = 0
+    /// AVPlayerItem → Track-Index. Quelle der Wahrheit für die absolute
+    /// Zeitrechnung: der Index wird pro Tick vom gerade spielenden Item
+    /// ABGELEITET statt per Notification gezählt — verpasste/verspätete
+    /// Track-Wechsel-Notifications können die Buchzeit so nicht mehr
+    /// verfälschen (falscher Rückschritt → falscher Konflikt-Dialog).
+    private var itemTrackIndex: [ObjectIdentifier: Int] = [:]
     /// Lokale Dateien, falls das Buch heruntergeladen ist — ein Eintrag pro
     /// Track, in derselben Reihenfolge wie `tracks`.
     private var localTrackFiles: [URL]?
@@ -319,18 +325,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         let isLocal = localTrackFiles != nil
         var items: [AVPlayerItem] = []
+        itemTrackIndex.removeAll()
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
+            let item: AVPlayerItem
             if isLocal {
-                items.append(AVPlayerItem(asset: AVURLAsset(url: url)))
+                item = AVPlayerItem(asset: AVURLAsset(url: url))
             } else {
                 var headers: [String: String] = [:]
                 if let token = apiClient.token, !token.isEmpty {
                     headers["Authorization"] = "Bearer \(token)"
                 }
                 let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
-                items.append(AVPlayerItem(asset: asset))
+                item = AVPlayerItem(asset: asset)
             }
+            itemTrackIndex[ObjectIdentifier(item)] = index
+            items.append(item)
         }
         guard !items.isEmpty else { return false }
 
@@ -340,7 +350,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTrackIndex = startIndex
 
         addTimeObserver()
-        observeTrackAdvance()
+        observeBookEnd(lastItem: items.last)
 
         if seekWithin > 0.5 {
             newPlayer.seek(to: CMTime(seconds: seekWithin, preferredTimescale: 1000))
@@ -351,36 +361,26 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return true
     }
 
-    /// Erkennt, wenn AVQueuePlayer automatisch zum nächsten Track
-    /// weiterspringt, und hält `currentTrackIndex` synchron — nötig, damit
-    /// die absolute Zeitrechnung (Track-Start + Position im Track) stimmt.
-    private func observeTrackAdvance() {
-        // Nur auf das AKTUELLE Item hören (nicht object: nil). Mit object: nil
-        // würde der Beobachter auf das Ende JEDES beliebigen AVPlayerItem
-        // reagieren — auch auf Items eines alten/anderen Players, der noch nicht
-        // abgebaut ist — und dadurch die Track-Zählung eines Mehrspur-Buchs
-        // verfälschen.
+    /// Erkennt das BUCH-Ende (letztes Item fertig): sofort als abgeschlossen
+    /// syncen statt auf den 30s-Timer zu warten. Track-Wechsel brauchen keinen
+    /// Beobachter mehr — der Index kommt pro Tick aus `itemTrackIndex`.
+    private func observeBookEnd(lastItem: AVPlayerItem?) {
         if let observer = trackAdvanceObserver {
             NotificationCenter.default.removeObserver(observer)
             trackAdvanceObserver = nil
         }
-        guard let currentItem = player?.currentItem else { return }
+        guard let lastItem else { return }
         trackAdvanceObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
-            object: currentItem,
+            object: lastItem,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if self.currentTrackIndex + 1 < self.tracks.count {
-                    self.currentTrackIndex += 1
-                }
-                // Der AVQueuePlayer ist inzwischen auf den nächsten Track
-                // weitergerückt — den Beobachter auf dessen (jetzt aktuelles)
-                // Item umhängen, damit auch der nächste Track-Wechsel erkannt
-                // wird. Am Buchende ist currentItem nil, dann wird nichts mehr
-                // registriert.
-                self.observeTrackAdvance()
+                self.currentTime = self.duration
+                self.isPlaying = false
+                self.updateNowPlayingInfo()
+                await self.syncProgress(force: true)
             }
         }
     }
@@ -613,6 +613,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let seconds = time.seconds
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                // Track-Index direkt vom gerade spielenden Item ableiten —
+                // immer korrekt, auch wenn der Player mehrfach weitersprang.
+                if let item = self.player?.currentItem,
+                   let idx = self.itemTrackIndex[ObjectIdentifier(item)] {
+                    self.currentTrackIndex = idx
+                }
                 // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
                 // innerhalb dieses Tracks.
                 self.currentTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
