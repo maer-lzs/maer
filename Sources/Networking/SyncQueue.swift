@@ -12,10 +12,13 @@ import Foundation
 final class SyncQueue {
     static let shared = SyncQueue()
 
-    private struct PendingUpdate: Codable {
+    struct PendingUpdate: Codable {
         let currentTime: Double
         let duration: Double
         let isFinished: Bool
+        /// ms epoch beim Einreihen — für „zuletzt gehört" in der Bibliothek.
+        /// Optional: Einträge aus älteren App-Versionen haben das Feld nicht.
+        var queuedAt: Double? = nil
     }
 
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -29,8 +32,19 @@ final class SyncQueue {
 
     func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {
         var pending = loadAll()
-        pending[itemId] = PendingUpdate(currentTime: currentTime, duration: duration, isFinished: isFinished)
+        pending[itemId] = PendingUpdate(
+            currentTime: currentTime,
+            duration: duration,
+            isFinished: isFinished,
+            queuedAt: Date().timeIntervalSince1970 * 1000
+        )
         save(pending)
+    }
+
+    /// Alle wartenden Updates — für die Bibliothek, damit sie den lokal
+    /// neuesten (noch nicht gesendeten) Stand anzeigen kann.
+    func allPending() -> [String: PendingUpdate] {
+        loadAll()
     }
 
     func remove(itemId: String) {
@@ -81,6 +95,9 @@ final class SyncQueue {
         }
 
         for (itemId, update) in pending {
+            // Eintrag kann inzwischen weg sein (aktiver Player hat erfolgreich
+            // gesynct und entfernt) — dann NICHT mehr den älteren Stand schreiben.
+            guard hasPendingUpdate(itemId: itemId) else { continue }
             // Servergewinn: Liegt dort inzwischen ein weiter fortgeschrittener
             // Stand — etwa weil ein anderes Gerät weitergehört hat, während
             // dieses offline war —, darf der veraltete Offline-Stand ihn nicht

@@ -459,16 +459,33 @@ struct LibraryView: View {
     /// (currentTime + duration + isFinished) schicken, nie nur das Flag
     /// allein — sonst geht der reale Fortschritt verloren (siehe Sync-Bugfix).
     private func quickToggleFinished(entry: LibraryEntry) async {
-        guard let fresh = try? await apiClient.fetchItemDetail(itemId: entry.id) else { return }
-        let duration = fresh.media.duration ?? 0
-        let currentTime = fresh.userMediaProgress?.currentTime ?? 0
         let newIsFinished = !(entry.progress?.isFinished ?? false)
-        try? await apiClient.updateProgress(
-            itemId: entry.id,
-            currentTime: newIsFinished ? duration : currentTime,
-            duration: duration,
-            isFinished: newIsFinished
-        )
+        let duration: Double
+        let currentTime: Double
+        if let fresh = try? await apiClient.fetchItemDetail(itemId: entry.id) {
+            duration = fresh.media.duration ?? 0
+            currentTime = fresh.userMediaProgress?.currentTime ?? 0
+        } else {
+            // Offline/Fehler: lokal bekannte Werte statt stillem Abbruch.
+            duration = entry.item.media?.duration ?? 0
+            currentTime = (entry.progress?.fraction ?? 0) * duration
+        }
+        do {
+            try await apiClient.updateProgress(
+                itemId: entry.id,
+                currentTime: newIsFinished ? duration : currentTime,
+                duration: duration,
+                isFinished: newIsFinished
+            )
+        } catch {
+            // Statusentscheidung nicht verlieren: queuen, Flush reicht nach.
+            SyncQueue.shared.enqueue(
+                itemId: entry.id,
+                currentTime: newIsFinished ? duration : currentTime,
+                duration: duration,
+                isFinished: newIsFinished
+            )
+        }
         await viewModel.refreshProgress()
     }
 

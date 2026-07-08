@@ -211,8 +211,35 @@ final class LibraryViewModel: ObservableObject {
 
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
         cachedItems = items
-        let combined = items.map { item in
-            LibraryEntry(item: item, progress: progress[item.id])
+        let queued = SyncQueue.shared.allPending()
+        let combined = items.map { item -> LibraryEntry in
+            var p = progress[item.id]
+            // Multi-File-Fallback: Kennt der Server keine fraction (duration
+            // dort 0/leer), aber eine Position, aus der LOKAL bekannten
+            // Buchdauer nachrechnen — sonst fehlen Balken/„Weiter hören".
+            if let existing = p, existing.fraction <= 0.001, !existing.isFinished,
+               let time = existing.currentTime, time > 0,
+               let duration = item.media?.duration, duration > 0 {
+                p = BookProgress(
+                    fraction: min(max(time / duration, 0), 1),
+                    isFinished: existing.isFinished,
+                    lastUpdate: existing.lastUpdate,
+                    currentTime: time
+                )
+            }
+            // Noch nicht gesendete (gequeuete) Updates ÜBER den Serverstand
+            // legen — sonst zeigt die Bibliothek bis zum Flush den alten Stand,
+            // was wie Fortschrittsverlust aussieht.
+            if let q = queued[item.id] {
+                let duration = q.duration > 0 ? q.duration : (item.media?.duration ?? 0)
+                p = BookProgress(
+                    fraction: duration > 0 ? min(max(q.currentTime / duration, 0), 1) : (p?.fraction ?? 0),
+                    isFinished: q.isFinished,
+                    lastUpdate: q.queuedAt ?? p?.lastUpdate ?? 0,
+                    currentTime: q.currentTime
+                )
+            }
+            return LibraryEntry(item: item, progress: p)
         }
         entries = combined
 

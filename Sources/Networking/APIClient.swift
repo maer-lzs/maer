@@ -86,7 +86,8 @@ final class APIClient {
             map[entry.libraryItemId] = BookProgress(
                 fraction: min(max(fraction, 0), 1),
                 isFinished: entry.isFinished ?? false,
-                lastUpdate: entry.lastUpdate ?? 0
+                lastUpdate: entry.lastUpdate ?? 0,
+                currentTime: entry.currentTime
             )
         }
         return map
@@ -106,13 +107,17 @@ final class APIClient {
     // MARK: Fortschritt
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
-        let progress = duration > 0 ? min(max(currentTime / duration, 0), 1) : 0
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "currentTime": currentTime,
-            "duration": duration,
-            "progress": progress,
             "isFinished": isFinished
         ]
+        // duration/progress nur mitschicken, wenn wir die Dauer wirklich
+        // kennen — ein explizites progress: 0 würde einen evtl. vorhandenen
+        // Server-Fortschritt überschreiben (Multi-File-Bücher ohne Duration).
+        if duration > 0 {
+            body["duration"] = duration
+            body["progress"] = min(max(currentTime / duration, 0), 1)
+        }
         _ = try await patch(path: "api/me/progress/\(itemId)", body: body)
     }
 

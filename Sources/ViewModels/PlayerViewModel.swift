@@ -155,6 +155,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Letzter erfolgreich an den Server geschriebener Wert.
     private var lastSyncedTime: Double = 0
+    /// UserDefaults-Key der sekündlichen Positions-Sicherung dieses Buchs.
+    /// Schließt das 30s-Verlustfenster bei Crash/Force-Quit: [Zeit, ms-Epoch].
+    private var localPositionKey: String? {
+        item.map { "localPosition.\($0.id)" }
+    }
+
     /// lastUpdate-Zeitstempel des zuletzt GESEHENEN Server-Eintrags (ms epoch).
     /// Ein neuerer Eintrag stammt von einem anderen Gerät (oder unserem
     /// eigenen Write) — Grundlage für den Geräte-Abgleich.
@@ -232,8 +238,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Kernregel beim Start: Serverstand gewinnt, nie bei 0 anfangen,
         // wenn der Server schon Fortschritt kennt.
         let serverProgress = item.userMediaProgress?.currentTime ?? 0
-        let startIndex = trackIndex(for: serverProgress)
-        let offsetWithinTrack = max(0, serverProgress - trackAbsoluteStart(startIndex))
+        let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
+        var startTime = serverProgress
+        var restoredFromLocal = false
+        // Crash-Sicherung: Ist die sekündliche lokale Sicherung JÜNGER als der
+        // Serverstand und weicht spürbar ab (App starb vor dem nächsten Sync),
+        // dort fortsetzen und gleich nachreichen.
+        if let saved = UserDefaults.standard.array(forKey: "localPosition.\(item.id)") as? [Double],
+           saved.count == 2, saved[1] > serverUpdateMs, abs(saved[0] - serverProgress) > 5 {
+            startTime = saved[0]
+            restoredFromLocal = true
+        }
+        let startIndex = trackIndex(for: startTime)
+        let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
             errorMessage = "Hörbuch konnte nicht geladen werden."
@@ -242,8 +259,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         setupRemoteCommandCenter()
         lastSyncedTime = serverProgress
-        lastKnownServerUpdate = item.userMediaProgress?.lastUpdate ?? 0
-        currentTime = serverProgress
+        lastKnownServerUpdate = serverUpdateMs
+        currentTime = startTime
         isFinished = item.userMediaProgress?.isFinished ?? false
         // Gemerkte Wiedergabegeschwindigkeit dieses Buchs übernehmen.
         playbackRate = UserDefaults.standard.object(forKey: "playbackRate.\(item.id)") as? Float ?? 1.0
@@ -251,7 +268,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateNowPlayingInfo()
         startSyncTimer()
         syncStatus = .synced
-        showSourceHint(isOfflineFallback ? .localUsed : .serverAdopted)
+        showSourceHint((isOfflineFallback || restoredFromLocal) ? .localUsed : .serverAdopted)
+        if restoredFromLocal {
+            // Wiederhergestellten Stand sofort nachreichen (offline → Queue).
+            // Kein Konflikt-Dialog: der Stand war vor dem Crash gewollt.
+            suppressConflictForNextSync = true
+            await syncProgress(force: true)
+        }
 
         // Cover fürs Lockscreen / die Dynamic Island laden. Das System zeigt
         // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
@@ -424,40 +447,52 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Setzt das Buch serverseitig auf "abgeschlossen" bzw. hebt das wieder auf.
     func toggleFinished() async {
         guard let item else { return }
+        // Denselben In-Flight-Guard respektieren wie syncProgress — sonst kann
+        // dieser Write einen laufenden Positions-Write im Netz überholen.
+        while syncInFlight {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        syncInFlight = true
+        defer { syncInFlight = false }
+
+        let target = !isFinished
+        // Gehört markieren setzt den Fortschritt explizit ans Buchende;
+        // Rückgängig behält den aktuellen Stand und kippt nur das Flag.
+        let writeTime = target ? duration : currentTime
         do {
-            if isFinished {
-                // Rückgängig: aktuellen Stand als nicht-fertig schreiben.
-                try await apiClient.updateProgress(
-                    itemId: item.id,
-                    currentTime: currentTime,
-                    duration: duration,
-                    isFinished: false
-                )
-                isFinished = false
-                // Lokalen Sync-Stand an das gerade Geschriebene angleichen, damit
-                // der 30-Sekunden-Timer den aktuellen Stand nicht fälschlich als
-                // Rückschritt/Konflikt behandelt.
-                lastSyncedTime = currentTime
-            } else {
-                // Gehört markieren: Fortschritt explizit auf Buchende setzen,
-                // statt dem Server mit einem Teil-Update zu überlassen, was er
-                // mit currentTime macht.
-                try await apiClient.updateProgress(
-                    itemId: item.id,
-                    currentTime: duration,
-                    duration: duration,
-                    isFinished: true
-                )
-                isFinished = true
-                // Lokalen Zustand an den Server angleichen: ans Buchende springen
-                // und den Sync-Stand nachziehen. Sonst schriebe der periodische
-                // Sync gleich wieder den alten (niedrigeren) Stand mit
-                // isFinished=false und höbe die Markierung damit auf.
-                await seek(to: duration, userInitiated: false)
-                lastSyncedTime = duration
-            }
+            try await apiClient.updateProgress(
+                itemId: item.id,
+                currentTime: writeTime,
+                duration: duration,
+                isFinished: target
+            )
+            SyncQueue.shared.remove(itemId: item.id)
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            // Nutzer-Statusentscheidung nicht verlieren: queuen, lokal
+            // trotzdem übernehmen — der Flush reicht sie nach.
+            SyncQueue.shared.enqueue(
+                itemId: item.id,
+                currentTime: writeTime,
+                duration: duration,
+                isFinished: target
+            )
+            if NetworkStatus.isOfflineError(error) {
+                if syncStatus != .queued { showSourceHint(.queued) }
+                syncStatus = .queued
+            } else {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                syncStatus = .failed
+            }
+        }
+        isFinished = target
+        if target {
+            // Lokalen Zustand angleichen: ans Buchende springen und Sync-Stand
+            // nachziehen — sonst schriebe der periodische Sync gleich wieder
+            // den alten Stand mit isFinished=false.
+            await seek(to: duration, userInitiated: false)
+            lastSyncedTime = duration
+        } else {
+            lastSyncedTime = currentTime
         }
     }
 
@@ -622,6 +657,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
                 // innerhalb dieses Tracks.
                 self.currentTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
+                // Crash-Sicherung: Position sekündlich lokal festhalten.
+                if self.isPlaying, let key = self.localPositionKey {
+                    UserDefaults.standard.set(
+                        [self.currentTime, Date().timeIntervalSince1970 * 1000],
+                        forKey: key
+                    )
+                }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
                 // Buffering-Status gleich mitprüfen — nutzt denselben sauberen
@@ -705,6 +747,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
+            // Server hat den Stand — lokale Crash-Sicherung ist damit erledigt.
+            if let key = localPositionKey {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
             // Nur Übergänge melden (kein 30s-Spam): offline/queued/failed → gesichert.
             if syncStatus != .synced {
                 showSourceHint(.saved)
@@ -931,6 +977,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
                 showSourceHint(.serverAdopted)
+            }
+            // Auch das Abschluss-Flag vom neueren Eintrag übernehmen — z. B.
+            // auf einem anderen Gerät als (un)gehört markiert.
+            if isNewer, let serverFinished = fresh.userMediaProgress?.isFinished,
+               serverFinished != isFinished {
+                isFinished = serverFinished
             }
             lastKnownServerUpdate = max(lastKnownServerUpdate, serverUpdate)
             syncStatus = .synced

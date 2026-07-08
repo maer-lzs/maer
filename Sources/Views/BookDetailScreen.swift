@@ -372,26 +372,40 @@ struct BookDetailScreen: View {
             let duration = fresh.media.duration ?? 0
             let currentTime = fresh.userMediaProgress?.currentTime ?? 0
 
-            if isFinished {
-                // Ungehört markieren: realen Fortschritt unverändert lassen,
-                // nur das Flag kippen.
+            let target = !isFinished
+            let writeTime = target ? duration : currentTime
+            do {
                 try await coordinator.apiClient.updateProgress(
-                    itemId: entry.id, currentTime: currentTime, duration: duration, isFinished: false
+                    itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
-                isFinishedOverride = false
-            } else {
-                // Gehört markieren: Fortschritt explizit auf Buchende setzen.
-                try await coordinator.apiClient.updateProgress(
-                    itemId: entry.id, currentTime: duration, duration: duration, isFinished: true
+            } catch {
+                // Statusentscheidung nicht verlieren: queuen, Flush reicht nach.
+                SyncQueue.shared.enqueue(
+                    itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
-                isFinishedOverride = true
             }
+            isFinishedOverride = target
             // Ohne das hier würde die Bibliotheksliste weiter den alten Stand
             // zeigen (Prozentzahl statt Häkchen), bis die App das nächste Mal
             // in den Vordergrund kommt.
             await libraryViewModel.refreshProgress()
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            if NetworkStatus.isOfflineError(error) {
+                // Schon der Frisch-Abruf scheiterte (offline): mit lokal
+                // bekannten Werten queuen statt die Entscheidung zu verlieren.
+                let target = !isFinished
+                let duration = entry.item.media?.duration ?? 0
+                let currentTime = (entry.progress?.fraction ?? 0) * duration
+                SyncQueue.shared.enqueue(
+                    itemId: entry.id,
+                    currentTime: target ? duration : currentTime,
+                    duration: duration,
+                    isFinished: target
+                )
+                isFinishedOverride = target
+            } else {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
         }
     }
 

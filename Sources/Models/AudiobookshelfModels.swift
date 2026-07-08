@@ -31,6 +31,10 @@ struct BookProgress: Equatable, Codable {
     let fraction: Double      // 0...1
     let isFinished: Bool
     let lastUpdate: Double    // ms seit 1970, für Sortierung "zuletzt gehört"
+    /// Absolute Position in Sekunden — Fallback, um fraction lokal aus der
+    /// Buchdauer nachzurechnen, wenn der Server sie nicht liefert (Multi-File-
+    /// Bücher mit fehlender Server-Duration). Optional: alte Disk-Caches.
+    var currentTime: Double? = nil
 
     var percentInt: Int { Int((fraction * 100).rounded()) }
     var isStarted: Bool { fraction > 0.001 && !isFinished }
