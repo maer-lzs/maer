@@ -104,13 +104,15 @@ final class SyncQueue {
             // überschreiben. Der wartende Eintrag wird dann verworfen. Ein
             // bewusstes "gehört"-Update (isFinished) bleibt davon ausgenommen,
             // da es eine Statusentscheidung ist, kein zurückgebliebener Stand.
-            if !update.isFinished, update.duration > 0,
-               let server = serverProgress[itemId] {
-                let serverTime = server.fraction * update.duration
-                if serverTime > update.currentTime + reconcileThreshold {
-                    remove(itemId: itemId)
-                    continue
-                }
+            if SyncRules.shouldDropQueuedUpdate(
+                queuedTime: update.currentTime,
+                queuedIsFinished: update.isFinished,
+                duration: update.duration,
+                serverFraction: serverProgress[itemId]?.fraction,
+                tolerance: reconcileThreshold
+            ) {
+                remove(itemId: itemId)
+                continue
             }
             do {
                 try await apiClient.updateProgress(

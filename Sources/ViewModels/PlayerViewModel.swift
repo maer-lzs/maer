@@ -245,7 +245,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Serverstand und weicht spürbar ab (App starb vor dem nächsten Sync),
         // dort fortsetzen und gleich nachreichen.
         if let saved = UserDefaults.standard.array(forKey: "localPosition.\(item.id)") as? [Double],
-           saved.count == 2, saved[1] > serverUpdateMs, abs(saved[0] - serverProgress) > 5 {
+           saved.count == 2,
+           SyncRules.shouldRestoreLocalPosition(
+               savedTime: saved[0], savedAtMs: saved[1],
+               serverTime: serverProgress, serverUpdateMs: serverUpdateMs
+           ) {
             startTime = saved[0]
             restoredFromLocal = true
         }
@@ -302,21 +306,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Track-Index. Nutzt `startOffset` vom Server, falls vorhanden, sonst
     /// wird aus den Einzeldauern selbst aufsummiert.
     private func trackAbsoluteStart(_ index: Int) -> Double {
-        guard index >= 0, index < tracks.count else { return duration }
-        if let offset = tracks[index].startOffset { return offset }
-        return tracks[..<index].reduce(0) { $0 + ($1.duration ?? 0) }
+        TrackMath.trackStart(index: index, tracks: tracks, bookDuration: duration)
     }
 
     /// Findet den Track, in den eine absolute Buch-Zeit fällt.
     private func trackIndex(for absoluteTime: Double) -> Int {
-        for index in tracks.indices {
-            let start = trackAbsoluteStart(index)
-            let end = start + (tracks[index].duration ?? 0)
-            if absoluteTime < end || index == tracks.count - 1 {
-                return index
-            }
-        }
-        return 0
+        TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
 
     private func resolveTrackURL(index: Int) -> URL? {
@@ -728,7 +723,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         // Kernregel: Ein Rückschritt, den der Nutzer NICHT selbst ausgelöst hat,
         // wird nie stillschweigend geschrieben.
-        if !suppressConflictForNextSync, currentTime < lastSyncedTime - suspiciousDropThreshold {
+        if !suppressConflictForNextSync,
+           SyncRules.isSuspiciousDrop(
+               currentTime: currentTime,
+               lastSyncedTime: lastSyncedTime,
+               threshold: suspiciousDropThreshold
+           ) {
             if pendingServerConflict == nil {
                 pendingServerConflict = ServerConflict(serverTime: lastSyncedTime, localTime: currentTime)
                 showSourceHint(.conflict)
@@ -970,9 +970,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // eigenem Write ist serverTime ≈ currentTime → kein Sprung.
             // Fallback ohne lastUpdate (alte Server): nur vorwärts wie bisher.
             let isNewer = serverUpdate > lastKnownServerUpdate
-            let adopt = serverUpdate > 0
-                ? (isNewer && abs(serverTime - currentTime) > 5)
-                : serverTime > currentTime + 5
+            let adopt = SyncRules.shouldAdoptServerState(
+                serverTime: serverTime,
+                serverUpdateMs: serverUpdate,
+                lastKnownServerUpdateMs: lastKnownServerUpdate,
+                currentTime: currentTime
+            )
             if adopt {
                 await seek(to: serverTime, userInitiated: false)
                 lastSyncedTime = serverTime
