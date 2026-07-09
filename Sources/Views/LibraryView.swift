@@ -111,6 +111,10 @@ struct LibraryView: View {
             }
         }
         .task {
+            // Cover-Wartung (TTL, Größenlimit, verwaiste persistente Cover).
+            ImageCache.shared.performMaintenance(
+                activeDownloadIds: DownloadManager.shared.downloadedItemIds
+            )
             if viewModel.entries.isEmpty {
                 await viewModel.loadLibrary()
             }
