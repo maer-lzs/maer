@@ -140,6 +140,54 @@ final class ImageCache {
         }
     }
 
+    /// Cache-Dateien älter als das werden gelöscht — dadurch wird ein
+    /// serverseitig GEÄNDERTES Cover spätestens nach dieser Zeit neu geladen
+    /// (der Cache-Key ist bewusst pfad-stabil und invalidiert sonst nie).
+    private let cacheTTL: TimeInterval = 30 * 24 * 3600
+    /// Obergrenze für den purgebaren Cover-Cache.
+    private let maxCacheBytes = 200 * 1024 * 1024
+
+    /// Wartungspass, einmal pro App-Start:
+    /// 1) Persistente Cover ohne zugehörigen Download zurück in den Cache.
+    /// 2) Cache-Dateien über TTL löschen (Cover-Aktualisierung).
+    /// 3) Cache auf maxCacheBytes deckeln, älteste zuerst.
+    func performMaintenance(activeDownloadIds: Set<String>) {
+        let fm = FileManager.default
+
+        if let files = try? fm.contentsOfDirectory(at: persistentDirectory, includingPropertiesForKeys: nil) {
+            for file in files {
+                let name = file.lastPathComponent
+                guard name.hasPrefix("_api_items_"), name.hasSuffix("_cover") else { continue }
+                let id = String(name.dropFirst("_api_items_".count).dropLast("_cover".count))
+                if !activeDownloadIds.contains(id) {
+                    removePersistent(itemId: id)
+                }
+            }
+        }
+
+        guard let files = try? fm.contentsOfDirectory(
+            at: diskDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
+        ) else { return }
+        var kept: [(url: URL, date: Date, size: Int)] = []
+        for file in files {
+            let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            let date = values?.contentModificationDate ?? .distantPast
+            if Date().timeIntervalSince(date) > cacheTTL {
+                try? fm.removeItem(at: file)
+            } else {
+                kept.append((file, date, values?.fileSize ?? 0))
+            }
+        }
+        var total = kept.reduce(0) { $0 + $1.size }
+        guard total > maxCacheBytes else { return }
+        for entry in kept.sorted(by: { $0.date < $1.date }) {
+            try? fm.removeItem(at: entry.url)
+            total -= entry.size
+            if total <= maxCacheBytes { break }
+        }
+    }
+
     /// Lädt ein Cover im Hintergrund vor, falls es noch nicht im Cache ist.
     func preload(_ url: URL) async {
         guard image(for: url) == nil else { return }
