@@ -206,6 +206,7 @@ final class DownloadManager: ObservableObject {
         if Array(b[0..<4]) == [0x4F, 0x67, 0x67, 0x53] { return "ogg" }
         if Array(b[0..<4]) == [0x52, 0x49, 0x46, 0x46] { return "wav" }
         if Array(b[0..<4]) == [0x46, 0x4F, 0x52, 0x4D] { return "aiff" }
+        if Array(b[0..<4]) == [0x63, 0x61, 0x66, 0x66] { return "caf" }
         if b[0] == 0x49, b[1] == 0x44, b[2] == 0x33, head.count >= 10 {
             // ID3v2: syncsafe tag size at bytes 6-9; frame header follows.
             let tagSize = (Int(b[6]) << 21) | (Int(b[7]) << 14) | (Int(b[8]) << 7) | Int(b[9])
