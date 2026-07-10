@@ -218,6 +218,12 @@ final class DownloadManager: ObservableObject {
 
         do {
             for (index, track) in tracks.enumerated() {
+                // Pause/cancel can be requested before the current task handle
+                // is known or exactly between two tracks — honor it here, not
+                // only via the in-flight task cancellation.
+                if controls[itemId]?.pendingCancel == true || controls[itemId]?.pendingPause == true {
+                    throw DownloadCancelledError(resumeData: nil)
+                }
                 guard let remoteURL = apiClient.streamURL(forContentPath: track.contentUrl) else { continue }
                 let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
                 let destination = dir.appendingPathComponent("\(index).\(ext)")

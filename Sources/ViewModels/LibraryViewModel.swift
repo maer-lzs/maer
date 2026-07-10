@@ -55,6 +55,16 @@ enum FilterOption: String, CaseIterable, Identifiable {
     }
 }
 
+/// Persistenter Zwischenspeicher der Bibliothek — der Grund, warum die
+/// Bücherliste auch komplett offline (z. B. nach App-Neustart ohne Netz)
+/// weiterhin angezeigt wird, statt leer zu sein. Top-level on purpose: nested
+/// in the @MainActor class it would inherit its isolation and the detached
+/// background encode could not use the Codable conformance.
+private nonisolated struct LibraryDiskCache: Codable {
+    let items: [LibraryItem]
+    let progress: [String: BookProgress]
+}
+
 @MainActor
 final class LibraryViewModel: ObservableObject {
     @Published var entries: [LibraryEntry] = []
@@ -96,13 +106,6 @@ final class LibraryViewModel: ObservableObject {
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
 
-    /// Persistenter Zwischenspeicher der Bibliothek — der Grund, warum die
-    /// Bücherliste auch komplett offline (z. B. nach App-Neustart ohne Netz)
-    /// weiterhin angezeigt wird, statt leer zu sein.
-    private struct DiskCache: Codable {
-        let items: [LibraryItem]
-        let progress: [String: BookProgress]
-    }
     private let diskCacheURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("library_cache.json")
 
@@ -310,7 +313,7 @@ final class LibraryViewModel: ObservableObject {
             libraryId = first.id
             isShowingOfflineCache = false
             rebuild(items: items, progress: progress)
-            saveDiskCache(items: items, progress: progress)
+            saveLibraryDiskCache(items: items, progress: progress)
             // Nur hier (vollständige Liste!): verwaiste pro-Buch-Keys entsorgen —
             // im Hintergrund, der Scan über alle Defaults-Keys ist nicht gratis.
             let validIds = Set(items.map(\.id))
@@ -358,7 +361,7 @@ final class LibraryViewModel: ObservableObject {
         }
         isShowingOfflineCache = false
         rebuild(items: items, progress: progress)
-        saveDiskCache(items: items, progress: progress)
+        saveLibraryDiskCache(items: items, progress: progress)
     }
 
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
@@ -405,10 +408,10 @@ final class LibraryViewModel: ObservableObject {
             .map { $0 }
     }
 
-    private func saveDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
+    private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
         // Encode + write off the main thread: with large libraries this is a
         // visible hitch right when the refresh spinner settles.
-        let cache = DiskCache(items: items, progress: progress)
+        let cache = LibraryDiskCache(items: items, progress: progress)
         let url = diskCacheURL
         Task.detached(priority: .utility) {
             guard let data = try? JSONEncoder().encode(cache) else { return }
@@ -416,9 +419,9 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    private func loadDiskCache() -> DiskCache? {
+    private func loadDiskCache() -> LibraryDiskCache? {
         guard let data = try? Data(contentsOf: diskCacheURL) else { return nil }
-        return try? JSONDecoder().decode(DiskCache.self, from: data)
+        return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
     }
 
     /// Lädt alle Cover einmal im Hintergrund vor, nacheinander statt

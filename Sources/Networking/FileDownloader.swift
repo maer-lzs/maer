@@ -44,8 +44,12 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             guard let self else { return }
             let active = Set(tasks.map { String($0.taskIdentifier) })
             self.lock.lock()
+            // Also keep entries for tasks started THIS session after the
+            // getAllTasks snapshot was taken — pruning them would make a
+            // perfectly good download fail on completion (missing destination).
+            let live = Set(self.handlers.keys.map(String.init))
             var map = UserDefaults.standard.dictionary(forKey: self.destinationsKey) as? [String: String] ?? [:]
-            map = map.filter { active.contains($0.key) }
+            map = map.filter { active.contains($0.key) || live.contains($0.key) }
             UserDefaults.standard.set(map, forKey: self.destinationsKey)
             self.lock.unlock()
         }
@@ -115,6 +119,13 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             handler?.continuation.resume(throwing: URLError(.unknown))
             return
         }
+        // Orphan tasks (no live handler, e.g. zombies from an earlier app
+        // session) must NEVER overwrite an existing file: the book may have
+        // completed via resume-by-skip since, and replacing a good track with
+        // this task's (possibly stale) payload corrupts playback silently.
+        if handler == nil, FileManager.default.fileExists(atPath: destination.path) {
+            return
+        }
         do {
             if FileManager.default.fileExists(atPath: destination.path) {
                 try FileManager.default.removeItem(at: destination)
@@ -124,8 +135,8 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         } catch {
             handler?.continuation.resume(throwing: error)
         }
-        // No handler (relaunch): the file still landed at its destination —
-        // a later download of the book will skip it (resume).
+        // No handler (relaunch) and no existing file: keep it — a later
+        // download of the book will skip it (resume).
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {

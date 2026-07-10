@@ -3,7 +3,9 @@ import Foundation
 /// Zentrale Stelle für alle UserDefaults-Keys — statt verstreuter String-
 /// Literale. Pro-Buch-Keys werden über `cleanupPerBookKeys` entsorgt, sobald
 /// das Buch nicht mehr in der (vollständigen) Bibliothek existiert.
-enum AppStorageKeys {
+// nonisolated: pure key helpers, must be callable from background tasks
+// (the project uses default MainActor isolation).
+nonisolated enum AppStorageKeys {
     static let skipInterval = "skipInterval"
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
