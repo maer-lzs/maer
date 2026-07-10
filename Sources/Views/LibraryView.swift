@@ -135,6 +135,10 @@ struct LibraryView: View {
             ImageCache.shared.performMaintenance(
                 activeDownloadIds: DownloadManager.shared.downloadedItemIds
             )
+            // Download-Wartung: falsche Datei-Endungen aller Bücher reparieren.
+            DownloadManager.shared.performMaintenance()
+            // Einmalig: unlesbare Alt-Dateien entfernen (Auto-Heilung ersetzt sie).
+            DownloadManager.shared.performDeepValidation()
             if viewModel.entries.isEmpty {
                 await viewModel.loadLibrary()
             }

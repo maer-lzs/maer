@@ -132,6 +132,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// funktionieren unverändert, AVQueuePlayer ist eine Unterklasse.
     var player: AVQueuePlayer?
     private var timeObserverToken: Any?
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
+    private var mediaResetObserver: NSObjectProtocol?
+    /// True if playback was running when an interruption (Siri, navigation
+    /// prompt, phone call) began — resume once it ends.
+    private var resumeAfterInterruption = false
     private var trackAdvanceObserver: NSObjectProtocol?
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
@@ -151,9 +157,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Track-Wechsel-Notifications können die Buchzeit so nicht mehr
     /// verfälschen (falscher Rückschritt → falscher Konflikt-Dialog).
     private var itemTrackIndex: [ObjectIdentifier: Int] = [:]
-    /// Lokale Dateien, falls das Buch heruntergeladen ist — ein Eintrag pro
-    /// Track, in derselben Reihenfolge wie `tracks`.
-    private var localTrackFiles: [URL]?
+    /// Local files of a downloaded book, keyed by track index — strict
+    /// mapping, immune to stray files in the folder.
+    private var localTrackFiles: [Int: URL] = [:]
 
     /// True, während ein Write zum Server unterwegs ist.
     var syncInFlight = false
@@ -209,6 +215,88 @@ final class PlayerViewModel: NSObject, ObservableObject {
         self.apiClient = apiClient
         super.init()
         configureAudioSession()
+        observeInterruptions()
+        observeRouteChanges()
+        observeMediaServicesReset()
+    }
+
+    /// Headphones/Bluetooth disconnected: pause instead of blasting the
+    /// speaker (Apple guideline for .oldDeviceUnavailable).
+    private func observeRouteChanges() {
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] note in
+            guard let reasonValue = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  AVAudioSession.RouteChangeReason(rawValue: reasonValue) == .oldDeviceUnavailable else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.isPlaying else { return }
+                self.pause()
+            }
+        }
+    }
+
+    /// The audio daemon restarted: all player objects are invalid — rebuild
+    /// the queue at the current position (paused), otherwise the app stays
+    /// silent until the book is reopened.
+    private func observeMediaServicesReset() {
+        mediaResetObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.item != nil else { return }
+                self.configureAudioSession()
+                self.isPlaying = false
+                let position = self.currentTime
+                let index = self.trackIndex(for: position)
+                self.buildQueue(
+                    startingAtTrackIndex: index,
+                    seekWithin: max(0, position - self.trackAbsoluteStart(index))
+                )
+                self.updateNowPlayingInfo()
+            }
+        }
+    }
+
+    /// Siri/navigation prompts/calls interrupt the audio session: the system
+    /// pauses playback but never restarts it — mirror the pause in our state
+    /// and resume when the interruption ends (if the system says we should).
+    private func observeInterruptions() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] note in
+            // Extract primitives here; Notification itself is not Sendable.
+            guard let info = note.userInfo,
+                  let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+            let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let shouldResume = AVAudioSession.InterruptionOptions(rawValue: optionsValue).contains(.shouldResume)
+            Task { @MainActor [weak self] in
+                self?.handleInterruption(began: type == .began, shouldResume: shouldResume)
+            }
+        }
+    }
+
+    private func handleInterruption(began: Bool, shouldResume: Bool) {
+        if began {
+            // Don't overwrite on nested interruptions (second .began while the
+            // first is still active would clear the flag → no resume).
+            if isPlaying { resumeAfterInterruption = true }
+            // The system already halted the player — mirror it in our state
+            // (also fixes the play/pause button showing the wrong icon).
+            isPlaying = false
+            updateNowPlayingInfo()
+        } else {
+            if resumeAfterInterruption, shouldResume {
+                play()
+            }
+            resumeAfterInterruption = false
+        }
     }
 
     private func configureAudioSession() {
@@ -227,11 +315,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     deinit {
-        // Falls die Session nicht über stop() beendet wurde: den auf ein
-        // AVPlayerItem gebundenen Track-Wechsel-Beobachter entfernen, damit kein
-        // block-basierter Beobachter im NotificationCenter zurückbleibt.
+        // If the session was not ended via stop(): remove block-based
+        // observers so nothing lingers in NotificationCenter.
         if let trackAdvanceObserver {
             NotificationCenter.default.removeObserver(trackAdvanceObserver)
+        }
+        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver] {
+            if let observer { NotificationCenter.default.removeObserver(observer) }
         }
     }
 
@@ -244,7 +334,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false) async {
         self.item = item
         chapters = item.media.chapters ?? []
-        let sortedTracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+        let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
+            // Stable: fall back to the original position when the server
+            // index is missing/equal — Swift's sort is not stability-guaranteed,
+            // and download naming vs. playback order MUST agree.
+            let li = l.element.index ?? l.offset
+            let ri = r.element.index ?? r.offset
+            return li == ri ? l.offset < r.offset : li < ri
+        }.map(\.element)
         tracks = sortedTracks
         duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
 
@@ -253,7 +350,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
 
-        localTrackFiles = DownloadManager.shared.localFileURLs(forItemId: item.id)
+        localTrackFiles = DownloadManager.shared.localTrackMap(forItemId: item.id)
+        // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
+        // exactly those in the background (valid ones are skipped).
+        if DownloadManager.shared.isDownloaded(itemId: item.id),
+           localTrackFiles.count < sortedTracks.count,
+           NetworkMonitor.shared.isConnected {
+            let apiClient = self.apiClient
+            Task { await DownloadManager.shared.download(item: item, apiClient: apiClient) }
+        }
 
         // Kernregel beim Start: Serverstand gewinnt, nie bei 0 anfangen,
         // wenn der Server schon Fortschritt kennt.
@@ -341,8 +446,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func resolveTrackURL(index: Int) -> URL? {
-        if let localFiles = localTrackFiles, index < localFiles.count {
-            return localFiles[index]
+        if let local = localTrackFiles[index] {
+            return local
         }
         guard index < tracks.count else { return nil }
         return apiClient.streamURL(forContentPath: tracks[index].contentUrl)
@@ -367,13 +472,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
         trackAdvanceObserver = nil
 
-        let isLocal = localTrackFiles != nil
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
+            // Decide per track: a partially downloaded book can mix local
+            // files and streaming (auth header only makes sense remotely).
             let item: AVPlayerItem
-            if isLocal {
+            if url.isFileURL {
                 item = AVPlayerItem(asset: AVURLAsset(url: url))
             } else {
                 var headers: [String: String] = [:]
@@ -598,15 +704,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let seconds = time.seconds
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                // Track-Index direkt vom gerade spielenden Item ableiten —
-                // immer korrekt, auch wenn der Player mehrfach weitersprang.
-                if let item = self.player?.currentItem,
-                   let idx = self.itemTrackIndex[ObjectIdentifier(item)] {
+                // Never derive book time from an item that is not ready to
+                // play (e.g. a failed/corrupt track): its position reads 0 and
+                // would yank currentTime back to the track start — that was
+                // the phantom "conflict detected" right after session restore.
+                guard let currentItem = self.player?.currentItem,
+                      currentItem.status == .readyToPlay else { return }
+                if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
                     self.currentTrackIndex = idx
                 }
                 // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
                 // innerhalb dieses Tracks.
-                self.currentTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
+                let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
+                self.currentTime = newTime
                 // Crash-Sicherung: Position lokal festhalten — auf alle 5s
                 // gedrosselt (UserDefaults-Writes sind nicht gratis). Das
                 // Verlustfenster bei Crash beträgt damit max. ~5s statt 30s.
@@ -660,6 +770,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         trackAdvanceObserver = nil
+        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver] {
+            if let observer { NotificationCenter.default.removeObserver(observer) }
+        }
+        interruptionObserver = nil
+        routeChangeObserver = nil
+        mediaResetObserver = nil
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()

@@ -516,6 +516,14 @@ struct BookDetailScreen: View {
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     Spacer()
+                    // Re-check the download: fetches exactly the tracks that
+                    // are missing or were stored corrupted (tiny error pages).
+                    Button {
+                        Task { await startDownloadWithWiFiCheck() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .foregroundStyle(.secondary)
+                    }
                     Button {
                         downloadManager.deleteDownload(itemId: entry.id)
                     } label: {

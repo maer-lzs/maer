@@ -119,6 +119,14 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
             handler?.continuation.resume(throwing: URLError(.unknown))
             return
         }
+        // A download task "succeeds" even for HTTP 4xx/5xx — the error page
+        // would be stored as an audio track and break playback silently
+        // (CoreMedia -12864). Validate the status before keeping anything.
+        if let http = downloadTask.response as? HTTPURLResponse,
+           !(200...299).contains(http.statusCode) {
+            handler?.continuation.resume(throwing: URLError(.badServerResponse))
+            return
+        }
         // Orphan tasks (no live handler, e.g. zombies from an earlier app
         // session) must NEVER overwrite an existing file: the book may have
         // completed via resume-by-skip since, and replacing a good track with

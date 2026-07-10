@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AVFoundation
 
 /// Verwaltet lokal heruntergeladene Hörbücher. Jedes Buch bekommt einen
 /// eigenen Unterordner "Downloads/{itemId}/0.{ext}", "1.{ext}", ... — auch
@@ -160,19 +161,142 @@ final class DownloadManager: ObservableObject {
     /// Alle lokal heruntergeladenen Audiodateien eines Buchs, sortiert nach
     /// Track-Reihenfolge (Dateiname = Track-Index). Wird vom Player bevorzugt
     /// genutzt, um Streaming (und damit Latenz/Datenvolumen) zu vermeiden.
-    func localFileURLs(forItemId itemId: String) -> [URL]? {
-        // Nur KOMPLETTE Downloads — liegengebliebene Teil-Ordner (Resume-Reste)
-        // würden sonst als lokale Quelle mit falscher Track-Zuordnung dienen.
-        guard downloadedItemIds.contains(itemId) else { return nil }
-        let dir = itemDirectory(itemId)
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: nil
-        ), !files.isEmpty else { return nil }
-        return files.sorted { lhs, rhs in
-            let li = Int(lhs.deletingPathExtension().lastPathComponent) ?? 0
-            let ri = Int(rhs.deletingPathExtension().lastPathComponent) ?? 0
-            return li < ri
+    /// Strict per-track lookup: filename base MUST be the track index.
+    /// Positional sorting silently mapped the wrong files to tracks as soon
+    /// as the folder contained anything unexpected (duplicate extensions
+    /// after a server rescan, hidden files) — track 0 became junk and
+    /// playback failed silently.
+    nonisolated private static func trackMap(in dir: URL) -> [Int: URL] {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
+            options: .skipsHiddenFiles
+        )) ?? []
+        var map: [Int: URL] = [:]
+        for file in files {
+            guard let index = Int(file.deletingPathExtension().lastPathComponent) else { continue }
+            // Corruption guard + extension repair: reject non-audio garbage,
+            // and rename files whose extension lies about the container.
+            guard let playable = Self.repairedAudioURL(file) else { continue }
+            let file = playable
+            // Duplicate variants (e.g. 3.mp3 + 3.m4b): keep the newest.
+            if let existing = map[index] {
+                let newDate = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+                let oldDate = (try? existing.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? .distantPast
+                if newDate > oldDate { map[index] = file }
+            } else {
+                map[index] = file
+            }
         }
+        return map
+    }
+
+    /// Magic-byte sniff: real container type of the file, nil if it is no
+    /// plausible audio at all (HTML/JSON error pages, any size).
+    /// An ID3 tag says NOTHING about the codec — it can prefix MP3 *or*
+    /// ADTS-AAC. Skip the tag and classify the first real frame header
+    /// (layer bits 00 = ADTS/AAC, otherwise MPEG audio = mp3).
+    nonisolated private static func sniffedAudioExtension(_ url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url),
+              let head = try? handle.read(upToCount: 12), head.count >= 4 else { return nil }
+        let b = [UInt8](head)
+        defer { try? handle.close() }
+        // MP4/M4A/M4B: "ftyp" at offset 4
+        if head.count >= 8, b[4] == 0x66, b[5] == 0x74, b[6] == 0x79, b[7] == 0x70 { return "m4b" }
+        if Array(b[0..<4]) == [0x66, 0x4C, 0x61, 0x43] { return "flac" }
+        if Array(b[0..<4]) == [0x4F, 0x67, 0x67, 0x53] { return "ogg" }
+        if Array(b[0..<4]) == [0x52, 0x49, 0x46, 0x46] { return "wav" }
+        if Array(b[0..<4]) == [0x46, 0x4F, 0x52, 0x4D] { return "aiff" }
+        if b[0] == 0x49, b[1] == 0x44, b[2] == 0x33, head.count >= 10 {
+            // ID3v2: syncsafe tag size at bytes 6-9; frame header follows.
+            let tagSize = (Int(b[6]) << 21) | (Int(b[7]) << 14) | (Int(b[8]) << 7) | Int(b[9])
+            try? handle.seek(toOffset: UInt64(10 + tagSize))
+            guard let frame = try? handle.read(upToCount: 2), frame.count == 2 else { return nil }
+            return classifyFrameSync([UInt8](frame))
+        }
+        return classifyFrameSync(b)
+    }
+
+    /// 0xFFEx/Fx sync word: layer bits 00 → ADTS (AAC), else MPEG audio.
+    nonisolated private static func classifyFrameSync(_ b: [UInt8]) -> String? {
+        guard b.count >= 2, b[0] == 0xFF, (b[1] & 0xE0) == 0xE0 else { return nil }
+        return (b[1] & 0x06) == 0 ? "aac" : "mp3"
+    }
+
+    /// The extension MUST match the real container: for local file URLs
+    /// AVFoundation trusts the extension — an MP3 stored as ".m4b" (ABS
+    /// content URLs often carry no extension, the download defaulted to m4b)
+    /// fails to parse (-12864) and plays silence. Renames if needed and
+    /// returns the playable URL; nil for non-audio garbage.
+    nonisolated private static func repairedAudioURL(_ url: URL) -> URL? {
+        guard let real = sniffedAudioExtension(url) else { return nil }
+        // mp4-family extensions are interchangeable for the parser.
+        let mp4Family = ["m4b", "m4a", "mp4"]
+        let current = url.pathExtension.lowercased()
+        if current == real || (mp4Family.contains(current) && real == "m4b") { return url }
+        let target = url.deletingPathExtension().appendingPathExtension(real)
+        if FileManager.default.fileExists(atPath: target.path) {
+            try? FileManager.default.removeItem(at: target)
+        }
+        do {
+            try FileManager.default.moveItem(at: url, to: target)
+            return target
+        } catch {
+            return url
+        }
+    }
+
+    nonisolated private static func repairFolder(_ dir: URL) {
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+        )) ?? []
+        for file in files {
+            _ = Self.repairedAudioURL(file)
+        }
+    }
+
+    /// ONE-TIME migration (flagged): repair the extensions of all existing
+    /// downloads from builds that named tracks by the URL default. New
+    /// downloads are repaired right at completion, so this never re-runs.
+    func performMaintenance() {
+        guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadExtensionRepairDone) else { return }
+        let dirs = downloadedItemIds.map { itemDirectory($0) }
+        Task.detached(priority: .utility) {
+            for dir in dirs {
+                Self.repairFolder(dir)
+            }
+            UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadExtensionRepairDone)
+        }
+    }
+
+    /// ONE-TIME deep validation (flagged): let AVFoundation itself verify
+    /// every local track — the definitive check for files that pass the
+    /// magic-byte sniff but still fail to parse (truncated legacy files,
+    /// the source of lingering -12864 preload errors and silently skipped
+    /// tracks). Unplayable files are deleted; the auto-heal re-downloads
+    /// them the next time the book is opened.
+    func performDeepValidation() {
+        guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadDeepValidationDone) else { return }
+        let dirs = downloadedItemIds.map { itemDirectory($0) }
+        Task.detached(priority: .utility) {
+            for dir in dirs {
+                let files = (try? FileManager.default.contentsOfDirectory(
+                    at: dir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+                )) ?? []
+                for file in files {
+                    let playable = (try? await AVURLAsset(url: file).load(.isPlayable)) ?? false
+                    if !playable {
+                        try? FileManager.default.removeItem(at: file)
+                    }
+                }
+            }
+            UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadDeepValidationDone)
+        }
+    }
+
+    /// Local audio files of a COMPLETE download, keyed by track index.
+    func localTrackMap(forItemId itemId: String) -> [Int: URL] {
+        guard downloadedItemIds.contains(itemId) else { return [:] }
+        return Self.trackMap(in: itemDirectory(itemId))
     }
 
     /// Zwischengespeicherte Buchdetails (Kapitel, Dauer, Tracks) für den
@@ -194,14 +318,27 @@ final class DownloadManager: ObservableObject {
     /// einer, bei mehrteiligen Büchern mehrere) — nacheinander, mit über alle
     /// Tracks gewichtetem Gesamtfortschritt.
     func download(item: LibraryItemDetail, apiClient: APIClient) async {
-        guard !isDownloaded(itemId: item.id), !isDownloading(itemId: item.id) else { return }
-        let tracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+        guard !isDownloading(itemId: item.id) else { return }
+        let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
+            // Stable: fall back to the original position when the server
+            // index is missing/equal — Swift's sort is not stability-guaranteed,
+            // and download naming vs. playback order MUST agree.
+            let li = l.element.index ?? l.offset
+            let ri = r.element.index ?? r.offset
+            return li == ri ? l.offset < r.offset : li < ri
+        }.map(\.element)
         guard !tracks.isEmpty else {
             phase[item.id] = .failed(String(localized: "No downloadable track found."))
             return
         }
 
         let itemId = item.id
+        // "Downloaded" alone is not enough: corrupted/undersized tracks are
+        // excluded from the map — a re-download run replaces exactly those.
+        if downloadedItemIds.contains(itemId),
+           Self.trackMap(in: itemDirectory(itemId)).count >= tracks.count {
+            return
+        }
         resumeAPIClient = apiClient
         // Carry mid-file resume data over from a pause (used once, for the
         // first track that is actually transferred).
@@ -215,6 +352,9 @@ final class DownloadManager: ObservableObject {
 
         let perTrackWeight = 1.0 / Double(tracks.count)
         var completedFraction: Double = 0
+        // Index-keyed presence check: a track counts as present no matter
+        // which extension an earlier attempt used.
+        let existingTracks = Self.trackMap(in: dir)
 
         do {
             for (index, track) in tracks.enumerated() {
@@ -229,7 +369,7 @@ final class DownloadManager: ObservableObject {
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
 
                 // Resume-by-skip: tracks from an earlier attempt are kept.
-                if FileManager.default.fileExists(atPath: destination.path) {
+                if existingTracks[index] != nil {
                     completedFraction += perTrackWeight
                     phase[itemId] = .downloading(completedFraction)
                     continue
@@ -276,6 +416,18 @@ final class DownloadManager: ObservableObject {
             // mitspeichern — ohne das bräuchte selbst ein heruntergeladenes
             // Buch beim Öffnen noch eine Serveranfrage.
             saveDetail(item)
+
+            // Fix extensions right away (ABS content URLs often carry no
+            // extension; the real container decides what AVFoundation can play).
+            Self.repairFolder(dir)
+
+            // Self-heal the folder: drop duplicate-extension leftovers and
+            // foreign files so the strict index mapping stays unambiguous.
+            let keep = Set(Self.trackMap(in: dir).values.map(\.lastPathComponent))
+            let all = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []
+            for file in all where !keep.contains(file.lastPathComponent) {
+                try? FileManager.default.removeItem(at: file)
+            }
 
             // Cover persistent sichern — überlebt iOS-Cache-Purges offline.
             await ImageCache.shared.makePersistent(

@@ -12,6 +12,8 @@ nonisolated enum AppStorageKeys {
     static let librarySortOption = "librarySortOption"
     static let libraryFilterOption = "libraryFilterOption"
     static let librarySortAscending = "librarySortAscending"
+    static let downloadExtensionRepairDone = "downloadExtensionRepairV2"
+    static let downloadDeepValidationDone = "downloadDeepValidationV1"
 
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
