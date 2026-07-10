@@ -21,6 +21,7 @@ struct BookDetailScreen: View {
     @State private var showWiFiWarning = false
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
+    @State private var descriptionExpanded = false
     @StateObject private var colorLoader = CoverColorLoader()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -84,7 +85,12 @@ struct BookDetailScreen: View {
                     .font(.subheadline)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
             }
-            if let p = entry.progress, p.isStarted {
+            if let p = entry.progress, p.isStarted, !isFinished {
+                // Fortschritt konsistent zur Bibliothek: Balken + Restzeit.
+                ProgressView(value: p.fraction)
+                    .tint(AppTheme.accent)
+                    .frame(maxWidth: 220)
+                    .padding(.top, 2)
                 Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? "\(p.percentInt) % gehört")
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
@@ -110,7 +116,7 @@ struct BookDetailScreen: View {
             VStack(alignment: .leading, spacing: 14) {
                 titleBlock(alignment: .leading)
                 infoSection(withPadding: false)
-                playButton(withPadding: false)
+                playArea(withPadding: false)
                 HStack(spacing: 12) {
                     downloadSection
                     markAsFinishedButton
@@ -157,12 +163,16 @@ struct BookDetailScreen: View {
                                 .padding(.horizontal)
                         }
                         infoSection(withPadding: true)
-                        playButton(withPadding: true)
+                        playArea(withPadding: true)
                         HStack(spacing: 12) {
                             downloadSection
                             markAsFinishedButton
                         }
                         .padding(.horizontal)
+                    }
+
+                    if let chapters = detail?.media.chapters, !chapters.isEmpty {
+                        chapterLink(chapters, isHero: !useSideBySideLayout)
                     }
 
                     if let errorMessage {
@@ -173,12 +183,24 @@ struct BookDetailScreen: View {
                     }
 
                     if let description = detail?.media.metadata?.description, !description.isEmpty {
+                        let text = Self.plainText(fromHTML: description)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Beschreibung")
                                 .font(.headline)
-                            Text(Self.plainText(fromHTML: description))
+                            Text(text)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
+                                .lineLimit(descriptionExpanded ? nil : 7)
+                            // Auf-/Zuklappen nur, wenn der Text das braucht.
+                            if text.count > 350 {
+                                Button(descriptionExpanded ? "Weniger anzeigen" : "Mehr anzeigen") {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        descriptionExpanded.toggle()
+                                    }
+                                }
+                                .font(.subheadline.bold())
+                                .tint(AppTheme.accent)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
@@ -222,6 +244,63 @@ struct BookDetailScreen: View {
     }
 
     // MARK: - Play/Pause
+
+    /// Play-Button + optionaler „Von Anfang starten"-Link darunter.
+    @ViewBuilder
+    private func playArea(withPadding: Bool) -> some View {
+        VStack(spacing: 8) {
+            playButton(withPadding: withPadding)
+            if entry.progress?.isStarted == true || isFinished {
+                Button("Von Anfang starten") {
+                    Task { await restartFromBeginning() }
+                }
+                .font(.footnote)
+                .foregroundStyle(withPadding ? AnyShapeStyle(.white.opacity(0.7)) : AnyShapeStyle(.secondary))
+            }
+        }
+    }
+
+    /// Bewusster Neustart: Sprung auf 0 gilt als Nutzeraktion und wird sofort
+    /// gesynct (kein Konflikt-Dialog).
+    private func restartFromBeginning() async {
+        if coordinator.activeItem?.id == entry.id, let vm = coordinator.viewModel {
+            await vm.seek(to: 0)
+            vm.play()
+        } else {
+            await coordinator.open(item: entry.item)
+            await coordinator.viewModel?.seek(to: 0)
+        }
+    }
+
+    // MARK: - Kapitel
+
+    private func chapterLink(_ chapters: [ABSChapter], isHero: Bool) -> some View {
+        NavigationLink {
+            DetailChapterList(
+                bookTitle: entry.item.title,
+                chapters: chapters,
+                coordinator: coordinator,
+                entry: entry
+            )
+        } label: {
+            HStack {
+                Label("Kapitel", systemImage: "list.bullet")
+                    .font(.subheadline)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                Spacer()
+                Text("\(chapters.count)")
+                    .font(.subheadline)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+            }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+        }
+        .modifier(AdaptiveGlassBackground(shape: buttonShape))
+        .padding(.horizontal)
+    }
 
     /// Ist DIESES Buch gerade die aktive Session, wird eine eigene, echt
     /// beobachtende Unteransicht genutzt (siehe `ActivePlayButton`) — sonst

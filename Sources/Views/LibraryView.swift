@@ -54,6 +54,21 @@ struct LibraryView: View {
                         }
                         .padding()
                         Spacer()
+                    } else if viewModel.entries.isEmpty {
+                        // Verbunden, aber der Server hat (noch) keine Bücher.
+                        Spacer()
+                        ContentUnavailableView {
+                            Label("Keine Hörbücher", systemImage: "books.vertical")
+                        } description: {
+                            Text(viewModel.isShowingOfflineCache
+                                ? "Offline — es sind keine Bücher heruntergeladen."
+                                : "Deine Bibliothek ist leer. Füge Hörbücher über die Audiobookshelf-Weboberfläche hinzu.")
+                        } actions: {
+                            Button("Aktualisieren") {
+                                Task { await viewModel.loadLibrary() }
+                            }
+                        }
+                        Spacer()
                     } else {
                         content
                     }

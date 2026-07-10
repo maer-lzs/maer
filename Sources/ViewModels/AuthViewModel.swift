@@ -23,9 +23,41 @@ final class AuthViewModel: ObservableObject {
         // Läuft der Token ab (401), automatisch zurück zum Setup-Screen.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
-            self.errorMessage = "Der Token wurde vom Server abgelehnt. Bitte neu verbinden."
+            self.errorMessage = "Sitzung abgelaufen — bitte mit einem neuen API-Token anmelden."
             self.logout()
         }
+    }
+
+    /// Übersetzt technische Verbindungsfehler in klare, handlungsleitende
+    /// Meldungen fürs Onboarding.
+    private static func friendlyMessage(for error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            switch nsError.code {
+            case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
+                return "Server-Adresse nicht gefunden. Bitte die Adresse prüfen (Tippfehler? richtige Domain?)."
+            case NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
+                return "Server nicht erreichbar. Läuft Audiobookshelf, und ist der Server aus diesem Netz erreichbar?"
+            case NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed:
+                return "Keine Internetverbindung. Bitte Netzwerk prüfen und erneut versuchen."
+            case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateUntrusted,
+                 NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateHasUnknownRoot:
+                return "Sichere Verbindung fehlgeschlagen (Zertifikatsproblem). Ist HTTPS auf dem Server korrekt eingerichtet?"
+            default:
+                break
+            }
+        }
+        if let apiError = error as? APIError {
+            switch apiError {
+            case .http(401, _):
+                return "Der Server hat den API-Token abgelehnt. Bitte Token prüfen bzw. einen neuen erzeugen."
+            case .decoding:
+                return "Unter dieser Adresse antwortet kein Audiobookshelf-Server. Bitte Adresse prüfen."
+            default:
+                break
+            }
+        }
+        return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
     /// Prüft Server-URL + Token, indem einmal die Bibliotheken abgerufen werden.
@@ -56,7 +88,7 @@ final class AuthViewModel: ObservableObject {
             apiToken = ""
             isLoggedIn = true
         } catch {
-            errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            errorMessage = Self.friendlyMessage(for: error)
         }
     }
 
