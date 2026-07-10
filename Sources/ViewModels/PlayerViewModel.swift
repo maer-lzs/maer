@@ -494,6 +494,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Wiedergabe
 
     func play() {
+        // Falls ein Sleep-Fade mittendrin unterbrochen wurde: volle Lautstärke.
+        player?.volume = 1
         player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
@@ -852,8 +854,27 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Sleep-Timer
 
+    /// Sekunden vor Timer-Ende, über die die Lautstärke sanft ausblendet —
+    /// kein harter Stopp mitten im Satz.
+    private let sleepFadeDuration: Double = 8
+
+    /// Blendet in den letzten Sekunden aus; beim Timer-Ende pausieren und die
+    /// Lautstärke fürs nächste Abspielen zurücksetzen.
+    private func applySleepFade(remaining: Double) {
+        guard remaining < sleepFadeDuration else { return }
+        player?.volume = Float(max(0, remaining / sleepFadeDuration))
+    }
+
+    private func finishSleepTimer() {
+        pause()
+        player?.volume = 1
+        sleepTimerRemaining = nil
+        sleepUntilChapterEnd = false
+    }
+
     func startSleepTimer(minutes: Double) {
         sleepTask?.cancel()
+        player?.volume = 1
         sleepUntilChapterEnd = false
         sleepTimerRemaining = minutes * 60
         sleepTask = Task { [weak self] in
@@ -863,9 +884,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard var remaining = self.sleepTimerRemaining else { break }
                 remaining -= 1
                 self.sleepTimerRemaining = remaining
+                self.applySleepFade(remaining: remaining)
                 if remaining <= 0 {
-                    self.pause()
-                    self.sleepTimerRemaining = nil
+                    self.finishSleepTimer()
                     break
                 }
             }
@@ -874,6 +895,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func cancelSleepTimer() {
         sleepTask?.cancel()
+        player?.volume = 1
         sleepTimerRemaining = nil
         sleepUntilChapterEnd = false
     }
@@ -887,6 +909,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
         sleepUntilChapterEnd = true
+        player?.volume = 1
         let end = chapter.end
         sleepTimerRemaining = max(end - currentTime, 0)
         sleepTask = Task { [weak self] in
@@ -895,10 +918,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if Task.isCancelled { break }
                 let remaining = max(end - self.currentTime, 0)
                 self.sleepTimerRemaining = remaining
+                self.applySleepFade(remaining: remaining)
                 if remaining <= 0 {
-                    self.pause()
-                    self.sleepTimerRemaining = nil
-                    self.sleepUntilChapterEnd = false
+                    self.finishSleepTimer()
                     break
                 }
             }
@@ -942,7 +964,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     private func updateNowPlayingInfo() {
         var info: [String: Any] = [:]
-        info[MPMediaItemPropertyTitle] = item?.media.metadata?.title ?? "Hörbuch"
+        let bookTitle = item?.media.metadata?.title ?? "Hörbuch"
+        // Kapitel als Titel, Buch als Album — so zeigt der Lockscreen beides.
+        if let chapter = currentChapter {
+            info[MPMediaItemPropertyTitle] = chapter.title
+            info[MPMediaItemPropertyAlbumTitle] = bookTitle
+        } else {
+            info[MPMediaItemPropertyTitle] = bookTitle
+        }
         info[MPMediaItemPropertyArtist] = item?.media.metadata?.authorName ?? ""
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime

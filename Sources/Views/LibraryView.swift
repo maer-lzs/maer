@@ -9,6 +9,7 @@ struct LibraryView: View {
     @State private var isSearchExpanded = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
+    @State private var showDeleteAllDownloads = false
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
@@ -154,6 +155,14 @@ struct LibraryView: View {
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
+        .alert("Alle Downloads löschen?", isPresented: $showDeleteAllDownloads) {
+            Button("Löschen", role: .destructive) {
+                DownloadManager.shared.deleteAllDownloads()
+            }
+            Button("Abbrechen", role: .cancel) {}
+        } message: {
+            Text("Alle heruntergeladenen Hörbücher werden vom Gerät entfernt. Der Hörfortschritt bleibt erhalten.")
+        }
         // Logout (manuell oder automatisch bei 401): Wiedergabe sauber beenden —
         // finaler Sync-Versuch landet bei totem Token in der Queue und wird nach
         // dem nächsten Login nachgereicht; Lockscreen-Anzeige wird geräumt.
@@ -241,7 +250,20 @@ struct LibraryView: View {
                         horizontalSection(title: "Weiter hören", entries: viewModel.continueListening)
                     }
                     if !viewModel.downloadedEntries.isEmpty {
-                        horizontalSection(title: "Heruntergeladen", entries: viewModel.downloadedEntries)
+                        horizontalSection(
+                            title: "Heruntergeladen",
+                            entries: viewModel.downloadedEntries,
+                            subtitle: ByteCountFormatter.string(
+                                fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file
+                            ),
+                            menu: {
+                                Button(role: .destructive) {
+                                    showDeleteAllDownloads = true
+                                } label: {
+                                    Label("Alle Downloads löschen", systemImage: "trash")
+                                }
+                            }
+                        )
                     }
                     if !viewModel.recentlyAdded.isEmpty {
                         horizontalSection(title: "Kürzlich hinzugefügt", entries: viewModel.recentlyAdded)
@@ -295,11 +317,31 @@ struct LibraryView: View {
 
     // MARK: Horizontale Sektion
 
-    private func horizontalSection(title: String, entries: [LibraryEntry]) -> some View {
+    private func horizontalSection(
+        title: String,
+        entries: [LibraryEntry],
+        subtitle: String? = nil,
+        @ViewBuilder menu: () -> some View = { EmptyView() }
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.title3).bold()
-                .padding(.horizontal)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(title)
+                    .font(.title3).bold()
+                if let subtitle {
+                    // Belegter Speicher; Kontext-Menü übers Ellipsis-Icon.
+                    Menu {
+                        menu()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(subtitle)
+                            Image(systemName: "ellipsis.circle")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {

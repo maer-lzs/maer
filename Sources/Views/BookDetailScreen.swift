@@ -419,6 +419,13 @@ struct BookDetailScreen: View {
                     Label("Offline verfügbar", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.subheadline)
+                    // Belegter Speicher dieses Buchs.
+                    Text(ByteCountFormatter.string(
+                        fromByteCount: downloadManager.downloadSize(forItemId: entry.id),
+                        countStyle: .file
+                    ))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     Spacer()
                     Button(role: .destructive) {
                         downloadManager.deleteDownload(itemId: entry.id)

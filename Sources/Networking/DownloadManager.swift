@@ -187,6 +187,28 @@ final class DownloadManager: ObservableObject {
         }
     }
 
+    /// Belegter Speicher eines Buchs in Bytes (0, wenn nichts liegt).
+    func downloadSize(forItemId itemId: String) -> Int64 {
+        let dir = itemDirectory(itemId)
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: [.fileSizeKey]
+        ) else { return 0 }
+        return files.reduce(0) { sum, url in
+            sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+    }
+
+    /// Gesamter Speicher aller kompletten Downloads.
+    var totalDownloadsSize: Int64 {
+        downloadedItemIds.reduce(0) { $0 + downloadSize(forItemId: $1) }
+    }
+
+    func deleteAllDownloads() {
+        for itemId in downloadedItemIds {
+            deleteDownload(itemId: itemId)
+        }
+    }
+
     func deleteDownload(itemId: String) {
         try? FileManager.default.removeItem(at: itemDirectory(itemId))
         let metaURL = metadataDirectory.appendingPathComponent("\(itemId).json")

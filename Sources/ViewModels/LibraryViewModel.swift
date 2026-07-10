@@ -11,15 +11,16 @@ struct LibraryEntry: Identifiable {
 enum SortOption: String, CaseIterable, Identifiable {
     case titel = "Titel"
     case autor = "Autor"
+    case serie = "Serie"
     case zuletztHinzugefuegt = "Zuletzt hinzugefügt"
     case zuletztGehoert = "Zuletzt gehört"
     var id: String { rawValue }
 
-    /// Sinnvolle Standardrichtung je Sortierart — Titel/Autor alphabetisch
-    /// aufsteigend (A→Z), alles Zeitbasierte neuestes zuerst.
+    /// Sinnvolle Standardrichtung je Sortierart — Titel/Autor/Serie
+    /// alphabetisch aufsteigend (A→Z), alles Zeitbasierte neuestes zuerst.
     var defaultAscending: Bool {
         switch self {
-        case .titel, .autor: return true
+        case .titel, .autor, .serie: return true
         case .zuletztHinzugefuegt, .zuletztGehoert: return false
         }
     }
@@ -135,6 +136,22 @@ final class LibraryViewModel: ObservableObject {
         case .autor:
             ascendingSorted = filtered.sorted {
                 ($0.item.author ?? "").localizedCaseInsensitiveCompare($1.item.author ?? "") == .orderedAscending
+            }
+        case .serie:
+            // Serienname enthält bei ABS die Bandnummer („… #2");
+            // localizedStandardCompare sortiert #2 vor #10. Bücher ohne Serie
+            // ans Ende, dort alphabetisch nach Titel.
+            ascendingSorted = filtered.sorted { a, b in
+                let sa = a.item.media?.metadata?.seriesName
+                let sb = b.item.media?.metadata?.seriesName
+                switch (sa, sb) {
+                case let (x?, y?):
+                    return x.localizedStandardCompare(y) == .orderedAscending
+                case (_?, nil): return true
+                case (nil, _?): return false
+                case (nil, nil):
+                    return a.item.title.localizedCaseInsensitiveCompare(b.item.title) == .orderedAscending
+                }
             }
         case .zuletztHinzugefuegt:
             ascendingSorted = filtered.sorted { ($0.item.addedAt ?? 0) < ($1.item.addedAt ?? 0) }
