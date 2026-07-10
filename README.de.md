@@ -264,8 +264,11 @@ erscheinen sie automatisch wieder.
 
 ```
 Sources/
-├── ABSPlayerApp.swift              Einstiegspunkt
-├── Models/                         Codable-Structs für die Audiobookshelf-API
+├── ABSPlayerApp.swift              Einstiegspunkt + AppDelegate für Background-Download-Events
+├── Models/
+│   ├── AudiobookshelfModels.swift  Codable-Structs für die Audiobookshelf-API
+│   ├── SyncRules.swift             Reine, getestete Sync-Entscheidungsregeln + Multi-Track-Zeitrechnung
+│   └── AppStorageKeys.swift        Zentrale UserDefaults-Keys inkl. Aufräumen der pro-Buch-Keys
 ├── Networking/
 │   ├── APIClient.swift             Alle HTTP-Calls
 │   ├── KeychainStore.swift         Sicherer Speicher für Server-URL + Token
@@ -273,19 +276,25 @@ Sources/
 │   ├── FileDownloader.swift        Geteilte Background-URLSession mit Fortschrittsanzeige
 │   ├── ImageCache.swift            Cover-Cache: Speicher + purgebarer Cache + persistenter Ordner für Downloads
 │   ├── NetworkMonitor.swift        Fortlaufende Netzwerk-Beobachtung (Auto-Reconnect)
-│   └── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
-│   └── SyncQueue.swift             Persistente Warteschlange für offline gescheiterte Updates
+│   ├── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
+│   └── SyncQueue.swift             Persistente Warteschlange für gescheiterte Updates
+│                                   (Storage/API hinter Protokollen, testbar)
 ├── ViewModels/
 │   ├── AuthViewModel.swift         Setup-Screen-Logik
-│   ├── LibraryViewModel.swift      Bücherliste + Fortschritt, Sortierung, Offline-Cache
+│   ├── LibraryViewModel.swift      Bücherliste + Fortschritt, Sortierung, Serien-Gruppierung,
+│   │                               Offline-Cache
 │   ├── PlayerCoordinator.swift     Hält die aktive Session über Navigation hinweg am
 │   │                               Leben, offline-fähig, Basis für Mini-Player
-│   └── PlayerViewModel.swift       AVQueuePlayer, Multi-Track, Sync-Kernregel, Kapitel,
-│                                   Sleep-Timer
+│   ├── PlayerViewModel.swift       AVQueuePlayer, Multi-Track-Queue, Seek/Skip, Kapitel
+│   ├── PlayerViewModel+Sync.swift  Sync-Politik: Timer, Reentrancy-Guard, Konflikte, Abgleich
+│   ├── PlayerViewModel+SleepTimer.swift   Sleep-Timer inkl. Lautstärke-Fade
+│   └── PlayerViewModel+NowPlaying.swift   Lockscreen-Befehle, NowPlaying-Info, Artwork
 └── Views/
     ├── SetupView.swift             Server + Token eingeben
     ├── RootView.swift              Umschalten Setup ↔ Bibliothek
     ├── LibraryView.swift           Bücherliste, Suche, Sortierung/Filter, adaptives Grid
+    ├── FullPlayerOverlay.swift     Ziehbares Liquid-Glass-Sheet mit dem vollen Player
+    ├── SeriesStackCell.swift       Serien-Stapel-Kachel (gefächerte Cover + Zähler-Badge)
     ├── BookDetailScreen.swift      Buchdetailseite, Download, Als-gehört, Play/Pause
     ├── BookCoverView.swift         Cover mit Fortschrittsbalken + Status-Abzeichen
     ├── CachedAsyncImage.swift      AsyncImage-Ersatz, nutzt ImageCache

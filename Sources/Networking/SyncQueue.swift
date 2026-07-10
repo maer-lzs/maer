@@ -16,6 +16,29 @@ protocol ProgressSyncAPI {
 
 extension APIClient: ProgressSyncAPI {}
 
+/// Datei-Storage (atomar) — Standard außerhalb von Tests. Bewusst Top-Level:
+/// als in SyncQueue verschachtelter Typ würde er dessen MainActor-Isolation
+/// erben und wäre als Default-Argument nicht konstruierbar.
+struct SyncQueueFileStorage: SyncQueueStorage {
+    private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("pending_sync.json")
+
+    func load() -> [String: SyncQueue.PendingUpdate] {
+        guard let data = try? Data(contentsOf: fileURL),
+              let dict = try? JSONDecoder().decode([String: SyncQueue.PendingUpdate].self, from: data) else {
+            return [:]
+        }
+        return dict
+    }
+
+    func save(_ pending: [String: SyncQueue.PendingUpdate]) {
+        guard let data = try? JSONEncoder().encode(pending) else { return }
+        // Atomar: ein App-Kill mitten im Schreiben darf die Queue nicht
+        // korrumpieren (load liefert sonst still [:] → alles verloren).
+        try? data.write(to: fileURL, options: .atomic)
+    }
+}
+
 /// Persistiert nicht gesendete Fortschritts-Updates auf der Festplatte, damit
 /// sie einen App-Kill während einer Offline-Phase überleben. Ohne das wäre
 /// ein Fortschritts-Update verloren, wenn die App offline geschlossen wird,
@@ -37,35 +60,21 @@ final class SyncQueue {
         var queuedAt: Double? = nil
     }
 
-    /// Datei-Storage (atomar) — Standard außerhalb von Tests.
-    struct FileStorage: SyncQueueStorage {
-        private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("pending_sync.json")
-
-        func load() -> [String: PendingUpdate] {
-            guard let data = try? Data(contentsOf: fileURL),
-                  let dict = try? JSONDecoder().decode([String: PendingUpdate].self, from: data) else {
-                return [:]
-            }
-            return dict
-        }
-
-        func save(_ pending: [String: PendingUpdate]) {
-            guard let data = try? JSONEncoder().encode(pending) else { return }
-            // Atomar: ein App-Kill mitten im Schreiben darf die Queue nicht
-            // korrumpieren (load liefert sonst still [:] → alles verloren).
-            try? data.write(to: fileURL, options: .atomic)
-        }
-    }
-
     private let storage: SyncQueueStorage
 
     /// Toleranz (Sekunden), ab der ein Serverstand als "weiter fortgeschritten"
     /// gilt — dieselbe Schwelle wie beim Geräte-Abgleich im PlayerViewModel.
     private let reconcileThreshold: Double = 5
 
-    init(storage: SyncQueueStorage = FileStorage()) {
+    /// Für Tests: eigenes Storage unterschieben.
+    init(storage: SyncQueueStorage) {
         self.storage = storage
+    }
+
+    /// Kein Default-Argument: das würde im (nonisolated) Aufrufer-Kontext
+    /// ausgewertet und kollidiert mit der MainActor-Isolation.
+    private init() {
+        self.storage = SyncQueueFileStorage()
     }
 
     func enqueue(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) {

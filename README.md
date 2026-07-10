@@ -153,8 +153,11 @@ The library grid adapts automatically to the available width — more columns on
 
 ```text
 Sources/
-├── ABSPlayerApp.swift              Entry point
-├── Models/                         Codable structs for the Audiobookshelf API
+├── ABSPlayerApp.swift              Entry point + AppDelegate for background download events
+├── Models/
+│   ├── AudiobookshelfModels.swift  Codable structs for the Audiobookshelf API
+│   ├── SyncRules.swift             Pure, unit-tested sync decision rules + multi-track time math
+│   └── AppStorageKeys.swift        Central UserDefaults keys incl. per-book key cleanup
 ├── Networking/
 │   ├── APIClient.swift             All HTTP calls
 │   ├── KeychainStore.swift         Secure storage for server URL and token
@@ -163,18 +166,24 @@ Sources/
 │   ├── ImageCache.swift            Cover cache: memory + purgeable disk + persistent store for downloaded books
 │   ├── NetworkMonitor.swift        Continuous connectivity observation (auto-reconnect)
 │   ├── NetworkStatus.swift         One-shot Wi-Fi check and shared offline-error detection
-│   └── SyncQueue.swift             Persistent queue for progress updates that failed offline
+│   └── SyncQueue.swift             Persistent queue for failed progress updates (storage/API
+│                                   behind protocols for testability)
 ├── ViewModels/
 │   ├── AuthViewModel.swift         Setup screen logic
-│   ├── LibraryViewModel.swift      Loads book list and progress, sorting, offline disk cache
+│   ├── LibraryViewModel.swift      Loads book list and progress, sorting, series grouping,
+│   │                               offline disk cache
 │   ├── PlayerCoordinator.swift     Keeps the active session alive across navigation,
 │   │                               offline-aware, basis for the mini-player
-│   └── PlayerViewModel.swift       AVQueuePlayer, multi-track handling, core sync rule,
-│                                   chapters, sleep timer
+│   ├── PlayerViewModel.swift       AVQueuePlayer, multi-track queue, seek/skip, chapters
+│   ├── PlayerViewModel+Sync.swift  Sync policy: timer, reentrancy guard, conflicts, reconcile
+│   ├── PlayerViewModel+SleepTimer.swift   Sleep timer incl. volume fade
+│   └── PlayerViewModel+NowPlaying.swift   Lock screen commands, NowPlaying info, artwork
 └── Views/
     ├── SetupView.swift             Server and token input
     ├── RootView.swift              Switches between setup and library
     ├── LibraryView.swift           Book list, search, sort/filter, sections, adaptive grid
+    ├── FullPlayerOverlay.swift     Draggable Liquid Glass sheet hosting the full player
+    ├── SeriesStackCell.swift       Series stack tile (fanned covers + count badge)
     ├── BookDetailScreen.swift      Book detail page, download, mark as heard, play/pause
     ├── BookCoverView.swift         Cover with progress bar and status badges, reused across views
     ├── CachedAsyncImage.swift      AsyncImage replacement backed by ImageCache
