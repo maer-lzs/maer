@@ -18,10 +18,34 @@ import Combine
 final class DownloadManager: ObservableObject {
     static let shared = DownloadManager()
 
+    /// Per-book download lifecycle for the UI.
+    enum DownloadPhase: Equatable {
+        case downloading(Double)
+        case paused(Double)
+        case failed(String)
+
+        var progress: Double? {
+            switch self {
+            case .downloading(let p), .paused(let p): return p
+            case .failed: return nil
+            }
+        }
+    }
+
+    /// Live control state of a running/paused download (in-memory only —
+    /// after a relaunch, partial folders are picked up via resume-by-skip).
+    private struct DownloadControl {
+        var detail: LibraryItemDetail
+        var currentTask: URLSessionDownloadTask?
+        var pendingPause = false
+        var pendingCancel = false
+        var resumeData: Data?
+    }
+
     @Published private(set) var downloadedItemIds: Set<String> = []
-    /// Fortschritt (0...1) pro Buch, über alle Tracks hinweg gewichtet.
-    @Published private(set) var downloadProgress: [String: Double] = [:]
-    @Published var errorMessage: String?
+    /// Phase per book: downloading (weighted progress), paused, or failed.
+    @Published private(set) var phase: [String: DownloadPhase] = [:]
+    private var controls: [String: DownloadControl] = [:]
     /// Gecacht statt berechnet — die View liest das bei jedem Render; ein
     /// Disk-Scan pro Fortschritts-Tick wäre teuer.
     @Published private(set) var totalDownloadsSize: Int64 = 0
@@ -81,8 +105,57 @@ final class DownloadManager: ObservableObject {
     }
 
     func isDownloading(itemId: String) -> Bool {
-        downloadProgress[itemId] != nil
+        if case .downloading = phase[itemId] { return true }
+        return false
     }
+
+    /// True if an incomplete download folder exists (aborted/failed earlier) —
+    /// a new download will only fetch the missing files.
+    func hasPartialDownload(itemId: String) -> Bool {
+        guard !downloadedItemIds.contains(itemId) else { return false }
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: itemDirectory(itemId), includingPropertiesForKeys: nil)) ?? []
+        return !files.isEmpty
+    }
+
+    /// Pause: cancel the current track transfer, keeping resume data.
+    func pauseDownload(itemId: String) {
+        guard case .downloading = phase[itemId], var control = controls[itemId] else { return }
+        control.pendingPause = true
+        controls[itemId] = control
+        control.currentTask?.cancel { _ in /* resume data arrives via delegate */ }
+    }
+
+    /// Resume a paused download (continues mid-file via resume data).
+    func resumeDownload(itemId: String) {
+        guard case .paused = phase[itemId],
+              let control = controls[itemId],
+              let apiClient = resumeAPIClient else { return }
+        // Clear the paused phase so the isDownloading guard lets us restart.
+        phase[itemId] = nil
+        Task { await download(item: control.detail, apiClient: apiClient) }
+    }
+
+    /// Abort: stop the transfer, keep completed tracks (a later download
+    /// fetches only the missing files), clear the visible state.
+    func cancelDownload(itemId: String) {
+        guard var control = controls[itemId] else {
+            phase[itemId] = nil
+            return
+        }
+        control.pendingCancel = true
+        controls[itemId] = control
+        if case .paused = phase[itemId] {
+            // Nothing in flight — clear state directly.
+            controls[itemId] = nil
+            phase[itemId] = nil
+        } else {
+            control.currentTask?.cancel()
+        }
+    }
+
+    /// Client used for resumes (set on each download start).
+    private weak var resumeAPIClient: APIClient?
 
     /// Alle lokal heruntergeladenen Audiodateien eines Buchs, sortiert nach
     /// Track-Reihenfolge (Dateiname = Track-Index). Wird vom Player bevorzugt
@@ -124,12 +197,17 @@ final class DownloadManager: ObservableObject {
         guard !isDownloaded(itemId: item.id), !isDownloading(itemId: item.id) else { return }
         let tracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
         guard !tracks.isEmpty else {
-            errorMessage = String(localized: "No downloadable track found.")
+            phase[item.id] = .failed(String(localized: "No downloadable track found."))
             return
         }
 
         let itemId = item.id
-        downloadProgress[itemId] = 0
+        resumeAPIClient = apiClient
+        // Carry mid-file resume data over from a pause (used once, for the
+        // first track that is actually transferred).
+        var carriedResumeData = controls[itemId]?.resumeData
+        controls[itemId] = DownloadControl(detail: item, resumeData: nil)
+        phase[itemId] = .downloading(0)
         let dir = itemDirectory(itemId)
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -144,11 +222,10 @@ final class DownloadManager: ObservableObject {
                 let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
 
-                // Resume: Track aus einem früheren (abgebrochenen) Versuch
-                // liegt schon da — überspringen statt neu laden.
+                // Resume-by-skip: tracks from an earlier attempt are kept.
                 if FileManager.default.fileExists(atPath: destination.path) {
                     completedFraction += perTrackWeight
-                    downloadProgress[itemId] = completedFraction
+                    phase[itemId] = .downloading(completedFraction)
                     continue
                 }
 
@@ -158,11 +235,26 @@ final class DownloadManager: ObservableObject {
                 }
 
                 let baseProgress = completedFraction
-                try await FileDownloader.shared.download(request: request, to: destination) { fraction in
-                    Task { @MainActor in
-                        DownloadManager.shared.downloadProgress[itemId] = baseProgress + fraction * perTrackWeight
+                let resumeData = carriedResumeData
+                carriedResumeData = nil
+                try await FileDownloader.shared.download(
+                    request: request,
+                    to: destination,
+                    resumeData: resumeData,
+                    onProgress: { fraction in
+                        Task { @MainActor in
+                            if case .downloading = DownloadManager.shared.phase[itemId] {
+                                DownloadManager.shared.phase[itemId] = .downloading(baseProgress + fraction * perTrackWeight)
+                            }
+                        }
+                    },
+                    onTask: { task in
+                        Task { @MainActor in
+                            DownloadManager.shared.controls[itemId]?.currentTask = task
+                        }
                     }
-                }
+                )
+                controls[itemId]?.currentTask = nil
 
                 // Von iCloud-/Geräte-Backups ausschließen — Hörbücher sind
                 // groß und gehören nicht ins iPhone-Backup.
@@ -186,13 +278,25 @@ final class DownloadManager: ObservableObject {
             )
 
             downloadedItemIds.insert(itemId)
-            downloadProgress[itemId] = nil
+            phase[itemId] = nil
+            controls[itemId] = nil
             recalculateTotalSize()
+        } catch let cancelled as DownloadCancelledError {
+            let progress = phase[itemId]?.progress ?? 0
+            if controls[itemId]?.pendingCancel == true {
+                // Abort: clear visible state, keep completed tracks on disk.
+                phase[itemId] = nil
+                controls[itemId] = nil
+            } else {
+                // Pause: remember resume data for a mid-file continuation.
+                controls[itemId]?.resumeData = cancelled.resumeData
+                controls[itemId]?.pendingPause = false
+                phase[itemId] = .paused(progress)
+            }
         } catch {
-            errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
-            downloadProgress[itemId] = nil
-            // Teilstände BEHALTEN: fertige Tracks werden beim nächsten Versuch
-            // übersprungen (Resume). Als "fertig" gilt das Buch erst mit Meta.
+            // Keep partial files: the next attempt fetches only missing tracks.
+            phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
+            controls[itemId]?.currentTask = nil
         }
     }
 

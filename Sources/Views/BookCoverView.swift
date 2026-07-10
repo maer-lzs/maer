@@ -39,20 +39,37 @@ struct BookCoverView: View {
                         .padding(4)
                 }
             }
-            .overlay(alignment: .bottomLeading) {
-                // Einheitliche Badge-Größe mit dem Fertig-Häkchen (0.14).
-                if let itemId, let fraction = downloadManager.downloadProgress[itemId] {
-                    // Laufender Download: Mini-Fortschrittsring.
+            // App-Store-style install animation: dimmed cover with a
+            // centered progress ring while downloading/paused.
+            .overlay {
+                if let itemId, let phase = downloadManager.phase[itemId],
+                   let fraction = phase.progress {
                     ZStack {
+                        Color.black.opacity(0.45)
                         Circle()
-                            .stroke(Color.white.opacity(0.35), lineWidth: 2)
+                            .stroke(Color.white.opacity(0.3), lineWidth: 3)
+                            .frame(width: size * 0.4, height: size * 0.4)
                         Circle()
-                            .trim(from: 0, to: max(0.02, fraction))
-                            .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                            .trim(from: 0, to: max(0.03, fraction))
+                            .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                             .rotationEffect(.degrees(-90))
+                            .frame(width: size * 0.4, height: size * 0.4)
+                        if case .paused = phase {
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: size * 0.14, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
                     }
-                    .frame(width: size * 0.14, height: size * 0.14)
-                    .padding(4)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .animation(.linear(duration: 0.3), value: fraction)
+                }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if let itemId, case .failed = downloadManager.phase[itemId] {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: size * 0.14))
+                        .foregroundStyle(.white, AppTheme.accent)
+                        .padding(4)
                 } else if let itemId, downloadManager.isDownloaded(itemId: itemId) {
                     Image(systemName: "arrow.down.circle.fill")
                         .font(.system(size: size * 0.14))

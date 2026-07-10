@@ -41,6 +41,7 @@ enum FilterOption: String, CaseIterable, Identifiable {
     case alle = "Alle"
     case unfertig = "Unfertig"
     case fertig = "Fertig"
+    case heruntergeladen = "Heruntergeladen"
     var id: String { rawValue }
 
     /// Anzeigename (lokalisiert) — rawValue bleibt stabiler Persistenz-Key.
@@ -49,6 +50,7 @@ enum FilterOption: String, CaseIterable, Identifiable {
         case .alle: return String(localized: "All")
         case .unfertig: return String(localized: "Unfinished")
         case .fertig: return String(localized: "Finished")
+        case .heruntergeladen: return String(localized: "Downloaded")
         }
     }
 }
@@ -136,13 +138,7 @@ final class LibraryViewModel: ObservableObject {
     /// Die "Alle Bücher"-Liste, nach aktueller Sortierung, Richtung und Filter
     /// aufbereitet.
     var sortedFilteredEntries: [LibraryEntry] {
-        let filtered = entries.filter { entry in
-            switch filterOption {
-            case .alle: return true
-            case .unfertig: return !(entry.progress?.isFinished ?? false)
-            case .fertig: return entry.progress?.isFinished ?? false
-            }
-        }
+        let filtered = entries.filter(matchesFilter)
 
         // Jeder Fall liefert bewusst die AUFSTEIGENDE Reihenfolge — die
         // Richtung wird danach einheitlich über `sortAscending` angewendet,
@@ -181,6 +177,15 @@ final class LibraryViewModel: ObservableObject {
         return sortAscending ? ascendingSorted : ascendingSorted.reversed()
     }
 
+    private func matchesFilter(_ entry: LibraryEntry) -> Bool {
+        switch filterOption {
+        case .alle: return true
+        case .unfertig: return !(entry.progress?.isFinished ?? false)
+        case .fertig: return entry.progress?.isFinished ?? false
+        case .heruntergeladen: return DownloadManager.shared.isDownloaded(itemId: entry.id)
+        }
+    }
+
     /// Ein Eintrag im „Alle Bücher"-Grid bei Serien-Sortierung: entweder ein
     /// einzelnes Buch oder ein Serien-Stapel.
     enum GridEntry: Identifiable {
@@ -194,15 +199,32 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    /// ABS-Seriennamen tragen die Bandnummer im Namen („Reihe #2") —
-    /// für die Gruppierung zählt nur der Reihen-Name davor.
-    private static func baseSeriesName(_ raw: String?) -> String? {
-        // Leere/Whitespace-Namen wie nil behandeln — sonst landen alle Bücher
-        // ohne echte Serie zusammen in einem Riesen-Stapel "".
-        guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
-        guard let range = raw.range(of: #" #[\d.]+$"#, options: .regularExpression) else { return raw }
-        let base = String(raw[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
-        return base.isEmpty ? nil : base
+    /// ABS series names carry the sequence in the name ("Series #2") —
+    /// only the series name before it matters for grouping. Handles the
+    /// known ABS quirks:
+    /// - multiple series are comma-joined ("A #2, B #7") → use the FIRST
+    /// - sequences can be ranges/dotted ("#1-3", "#2.5")
+    /// - empty/whitespace names count as "no series"
+    nonisolated static func baseSeriesName(_ raw: String?) -> String? {
+        guard var name = raw?.trimmingCharacters(in: .whitespaces), !name.isEmpty else { return nil }
+        // Multi-series: only segments that carry their own "#…" marker are
+        // treated as separate series — a plain comma inside ONE series name
+        // ("Krieg und Frieden, Band …") must not be split.
+        let parts = name.components(separatedBy: ", ")
+        if parts.count > 1, parts.dropFirst().allSatisfy({ $0.contains(" #") }) {
+            name = parts[0]
+        }
+        if let range = name.range(of: #" ?#[\d.\-–]+$"#, options: .regularExpression) {
+            name = String(name[..<range.lowerBound])
+        }
+        name = name.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? nil : name
+    }
+
+    /// Grouping key: case-/diacritic-insensitive so "Foundation" and
+    /// "foundation" end up in the same stack; display keeps the original.
+    nonisolated private static func seriesGroupKey(_ base: String) -> String {
+        base.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
     /// sortedFilteredEntries, bei dem Serien mit mehr als einem Buch zu einem
@@ -211,22 +233,44 @@ final class LibraryViewModel: ObservableObject {
     var seriesGroupedEntries: [GridEntry] {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
-        for entry in sortedFilteredEntries {
+        // Group from the UNFILTERED (but series-sorted) list so stacks always
+        // stay complete — a partially filtered stack reads like missing books.
+        // The filter afterwards only decides WHICH stacks/singles appear.
+        let sortedAll = entries.sorted { a, b in
+            let sa = a.item.media?.metadata?.seriesName
+            let sb = b.item.media?.metadata?.seriesName
+            switch (sa, sb) {
+            case let (x?, y?): return x.localizedStandardCompare(y) == .orderedAscending
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil):
+                return a.item.title.localizedCaseInsensitiveCompare(b.item.title) == .orderedAscending
+            }
+        }
+        for entry in (sortAscending ? sortedAll : sortedAll.reversed()) {
             guard let name = Self.baseSeriesName(entry.item.media?.metadata?.seriesName) else {
                 result.append(.single(entry))
                 continue
             }
-            if let idx = indexByName[name], case .series(_, let existing) = result[idx] {
-                result[idx] = .series(name: name, entries: existing + [entry])
+            let key = Self.seriesGroupKey(name)
+            if let idx = indexByName[key], case .series(let existingName, let existing) = result[idx] {
+                result[idx] = .series(name: existingName, entries: existing + [entry])
             } else {
-                indexByName[name] = result.count
+                indexByName[key] = result.count
                 result.append(.series(name: name, entries: [entry]))
             }
         }
-        // Ein-Buch-„Serien" als normales Buch zeigen.
-        return result.map { item in
-            if case .series(_, let entries) = item, entries.count == 1 {
-                return .single(entries[0])
+        // Single-book „series" render as a normal book; then apply the
+        // filter: singles must match, stacks stay if ANY book matches.
+        return result.compactMap { item in
+            if case .series(let name, let books) = item {
+                if books.count == 1 {
+                    return matchesFilter(books[0]) ? .single(books[0]) : nil
+                }
+                return books.contains(where: matchesFilter) ? .series(name: name, entries: books) : nil
+            }
+            if case .single(let entry) = item {
+                return matchesFilter(entry) ? item : nil
             }
             return item
         }
@@ -290,13 +334,20 @@ final class LibraryViewModel: ObservableObject {
     func refreshProgress() async {
         guard !cachedItems.isEmpty else { return }
         guard let progress = try? await apiClient.fetchAllProgress() else {
-            // Offline oder Fehler: alten Stand behalten, nicht mit leeren
-            // Daten überschreiben (sonst verschwinden alle Häkchen/Balken).
+            // Offline/error: keep the last known state instead of wiping it.
             return
         }
+        // Also refresh the item list itself (silently, no spinner): freshly
+        // added books and edited metadata (e.g. series) would otherwise only
+        // show up after a cold start — refreshProgress used to rebuild from
+        // the stale cached items.
+        var items = cachedItems
+        if let libraryId, let fresh = try? await apiClient.fetchLibraryItems(libraryId: libraryId) {
+            items = fresh
+        }
         isShowingOfflineCache = false
-        rebuild(items: cachedItems, progress: progress)
-        saveDiskCache(items: cachedItems, progress: progress)
+        rebuild(items: items, progress: progress)
+        saveDiskCache(items: items, progress: progress)
     }
 
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {

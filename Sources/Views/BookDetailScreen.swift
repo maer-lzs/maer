@@ -54,6 +54,20 @@ struct BookDetailScreen: View {
         coverImageContent
             .frame(width: heroCoverSize, height: heroCoverSize)
             .clipped()
+            // Progress bar sitting ON the cover's bottom edge, edge to edge.
+            .overlay(alignment: .bottom) {
+                if let p = entry.progress, p.isStarted, !isFinished {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(Color.black.opacity(0.35))
+                            Rectangle()
+                                .fill(AppTheme.accent)
+                                .frame(width: geo.size.width * p.fraction)
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
             .frame(maxWidth: .infinity)
     }
 
@@ -85,11 +99,6 @@ struct BookDetailScreen: View {
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
             }
             if let p = entry.progress, p.isStarted, !isFinished {
-                // Fortschritt konsistent zur Bibliothek: Balken + Restzeit.
-                ProgressView(value: p.fraction)
-                    .tint(AppTheme.accent)
-                    .frame(maxWidth: 220)
-                    .padding(.top, 2)
                 Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
@@ -491,11 +500,12 @@ struct BookDetailScreen: View {
     private var downloadSection: some View {
         Group {
             if downloadManager.isDownloaded(itemId: entry.id) {
-                HStack {
-                    Label("Available Offline", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                // Same visual language as the neighbouring buttons: glass
+                // capsule, primary/secondary text — no signal colors.
+                HStack(spacing: 8) {
+                    Label("Available Offline", systemImage: "checkmark.circle")
                         .font(.subheadline)
-                    // Belegter Speicher dieses Buchs.
+                        .foregroundStyle(.primary)
                     Text(ByteCountFormatter.string(
                         fromByteCount: downloadManager.downloadSize(forItemId: entry.id),
                         countStyle: .file
@@ -503,30 +513,90 @@ struct BookDetailScreen: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     Spacer()
-                    Button(role: .destructive) {
+                    Button {
                         downloadManager.deleteDownload(itemId: entry.id)
                     } label: {
                         Image(systemName: "trash")
+                            .foregroundStyle(.secondary)
                     }
                 }
-            } else if let progress = downloadManager.downloadProgress[entry.id] {
-                HStack(spacing: 8) {
-                    ProgressView(value: progress)
-                    // FormatStyle statt "%"-Literal: Prozentformat ist lokalspezifisch.
-                    Text(progress, format: .percent.precision(.fractionLength(0)))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 36, alignment: .trailing)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .modifier(AdaptiveGlassBackground(shape: Capsule()))
+            } else if let phase = downloadManager.phase[entry.id] {
+                switch phase {
+                case .downloading(let progress):
+                    HStack(spacing: 8) {
+                        ProgressView(value: progress)
+                            .tint(AppTheme.accent)
+                        Text(progress, format: .percent.precision(.fractionLength(0)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 36, alignment: .trailing)
+                        Button { downloadManager.pauseDownload(itemId: entry.id) } label: {
+                            Image(systemName: "pause.circle")
+                                .foregroundStyle(.primary)
+                        }
+                        Button { downloadManager.cancelDownload(itemId: entry.id) } label: {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                case .paused(let progress):
+                    HStack(spacing: 8) {
+                        ProgressView(value: progress)
+                            .tint(.secondary)
+                        Button { downloadManager.resumeDownload(itemId: entry.id) } label: {
+                            Label("Resume", systemImage: "play.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(AppTheme.accent)
+                        }
+                        Button { downloadManager.cancelDownload(itemId: entry.id) } label: {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 14)
+                    .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                case .failed(let message):
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(message, systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.accent)
+                            .lineLimit(2)
+                        Button {
+                            Task { await startDownloadWithWiFiCheck() }
+                        } label: {
+                            // Completed tracks are kept — only missing files load.
+                            Label("Load Missing Files", systemImage: "arrow.down.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                        }
+                        .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                    }
                 }
             } else {
                 Button {
                     Task { await startDownloadWithWiFiCheck() }
                 } label: {
-                    Label("Save Offline", systemImage: "arrow.down.circle")
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                    // A leftover partial folder means only missing files load.
+                    Label(
+                        downloadManager.hasPartialDownload(itemId: entry.id)
+                            ? String(localized: "Load Missing Files")
+                            : String(localized: "Save Offline"),
+                        systemImage: "arrow.down.circle"
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 .disabled(detail == nil)

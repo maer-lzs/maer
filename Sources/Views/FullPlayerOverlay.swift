@@ -61,6 +61,7 @@ struct FullPlayerOverlay: View {
                     bottomInset: bottomInset
                 )
                 sideDismissZones
+                topDismissZone
                 grabHandle
             }
             .background { containerGlass(corner: corner) }
@@ -119,6 +120,16 @@ struct FullPlayerOverlay: View {
             .padding(.bottom, 220)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+    }
+
+    /// Full-width strip across the top (cover area) — pull-down can start
+    /// anywhere up there, not just on the thin grab handle or the side rails.
+    private var topDismissZone: some View {
+        Color.clear
+            .frame(height: topInset + 130)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
+            .highPriorityGesture(dismissGesture)
     }
 
     private func dismissZone(width: CGFloat) -> some View {

@@ -201,8 +201,27 @@ struct PlayerView: View {
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
             }
+            if let chapter = viewModel.currentChapter {
+                // Chapter remaining + estimated finish time at current speed.
+                Text("\(chapterRemainingMinutes(chapter)) min left in chapter · ends \(estimatedFinishTime())")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.55))
+                    .monospacedDigit()
+            }
         }
         .padding(.horizontal)
+    }
+
+    private func chapterRemainingMinutes(_ chapter: ABSChapter) -> Int {
+        max(1, Int((max(0, chapter.end - viewModel.currentTime) / 60).rounded(.up)))
+    }
+
+    /// Wall-clock time the BOOK finishes if playback continues at the
+    /// current speed — the number night listeners actually care about.
+    private func estimatedFinishTime() -> String {
+        let rate = max(Double(viewModel.playbackRate), 0.1)
+        let remaining = max(viewModel.duration - viewModel.currentTime, 0) / rate
+        return Date().addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened)
     }
 
     private var scrubber: some View {
@@ -243,6 +262,7 @@ struct PlayerView: View {
                 Spacer()
                 Text("-" + format(max(viewModel.duration - viewModel.currentTime, 0)))
             }
+            .monospacedDigit()
             .font(.caption)
             .foregroundStyle(.white.opacity(0.8))
         }
@@ -282,13 +302,19 @@ struct PlayerView: View {
     private var secondaryControls: some View {
         HStack(spacing: 32) {
             Menu {
-                ForEach(availableRates, id: \.self) { rate in
-                    Button(rateLabel(rate) + "×") {
-                        viewModel.setPlaybackRate(Float(rate))
+                // Picker inside a Menu shows a checkmark on the active rate.
+                Picker("Speed", selection: Binding(
+                    get: { Double(viewModel.playbackRate) },
+                    set: { viewModel.setPlaybackRate(Float($0)) }
+                )) {
+                    ForEach(availableRates, id: \.self) { rate in
+                        Text(rateLabel(rate) + "×").tag(rate)
                     }
                 }
             } label: {
                 Label(rateLabel(Double(viewModel.playbackRate)) + "×", systemImage: "speedometer")
+                    // Non-default speed is visible at a glance.
+                    .foregroundStyle(viewModel.playbackRate != 1.0 ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
             }
 
             Button { showChapters = true } label: {
@@ -343,7 +369,7 @@ struct PlayerView: View {
     private var tertiaryControls: some View {
         HStack(spacing: 36) {
             // AirPlay-Auswahl.
-            AirPlayButton(tintColor: .white)
+            AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                 .frame(width: 44, height: 44)
 
             Button {

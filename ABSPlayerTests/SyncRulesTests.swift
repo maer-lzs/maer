@@ -151,4 +151,24 @@ struct TrackMathTests {
         #expect(TrackMath.trackIndex(for: 50, tracks: t, bookDuration: 100) == 1)
     }
 }
+/// Grouping of ABS series names (see LibraryViewModel.baseSeriesName).
+struct SeriesNameTests {
+    @Test(arguments: [
+        ("Foundation #2", "Foundation"),
+        ("Foundation #2.5", "Foundation"),
+        ("Foundation #1-3", "Foundation"),
+        ("Reihe A #2, Reihe B #7", "Reihe A"),          // multi-series → first
+        ("Krieg und Frieden, Teil 1", "Krieg und Frieden, Teil 1"), // comma inside ONE name
+        ("  Foundation #2  ", "Foundation"),
+    ])
+    func stripsSequenceAndPicksFirstSeries(raw: String, expected: String) {
+        #expect(LibraryViewModel.baseSeriesName(raw) == expected)
+    }
+
+    @Test func emptyAndNilCountAsNoSeries() {
+        #expect(LibraryViewModel.baseSeriesName(nil) == nil)
+        #expect(LibraryViewModel.baseSeriesName("   ") == nil)
+        #expect(LibraryViewModel.baseSeriesName(" #2") == nil)
+    }
+}
 #endif

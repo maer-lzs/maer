@@ -59,10 +59,19 @@ struct MiniPlayerBar: View {
                             .lineLimit(1)
                             .foregroundStyle(.primary)
                         if let chapter = viewModel.currentChapter {
-                            Text("\(chapter.title) — \(remainingText)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                            HStack(spacing: 4) {
+                                if let sleep = viewModel.sleepTimerRemaining {
+                                    // Active sleep timer, visible without opening the player.
+                                    Label(shortTimer(sleep), systemImage: "moon.zzz.fill")
+                                        .labelStyle(.titleAndIcon)
+                                        .foregroundStyle(AppTheme.accent)
+                                        .monospacedDigit()
+                                }
+                                Text("\(chapter.title) — \(remainingText)")
+                                    .lineLimit(1)
+                            }
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                         } else {
                             Text(timeText)
                                 .font(.caption2)
@@ -101,7 +110,7 @@ struct MiniPlayerBar: View {
 
                 // Ausgabequelle wechseln — schlichtes weißes Icon direkt auf
                 // der Leiste, kein eigener Hintergrund.
-                AirPlayButton(tintColor: .white)
+                AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 56)
             }
@@ -166,6 +175,11 @@ struct MiniPlayerBar: View {
     private var fraction: Double {
         guard viewModel.duration > 0 else { return 0 }
         return min(max(viewModel.currentTime / viewModel.duration, 0), 1)
+    }
+
+    private func shortTimer(_ remaining: TimeInterval) -> String {
+        let m = Int(remaining) / 60, s = Int(remaining) % 60
+        return String(format: "%d:%02d", m, s)
     }
 
     private var remainingText: String {
