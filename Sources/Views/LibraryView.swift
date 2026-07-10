@@ -125,7 +125,7 @@ struct LibraryView: View {
             // (App wurde offline beendet, bevor der Sync durchging): jetzt
             // nachreichen.
             await SyncQueue.shared.flush(apiClient: apiClient)
-            playerCoordinator.viewModel?.updateSyncStatusFromQueue()
+            await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
         }
         .onChange(of: scenePhase) { _, newPhase in
             // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
@@ -146,7 +146,7 @@ struct LibraryView: View {
             if isConnected {
                 Task {
                     await SyncQueue.shared.flush(apiClient: apiClient)
-                    playerCoordinator.viewModel?.updateSyncStatusFromQueue()
+                    await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
             } else {
                 // Verbindung weg, während evtl. gerade abgespielt wird: den
@@ -445,17 +445,18 @@ struct LibraryView: View {
             }
             .padding(.top, 10)
             .overlay(alignment: .topTrailing) {
-                // Stapel-Symbol + Anzahl direkt auf dem Cover.
-                HStack(spacing: 3) {
+                // Stapel-Symbol + Anzahl — gleiche Größenklasse (0.14) wie die
+                // Cover-Badges in BookCoverView.
+                HStack(spacing: 2) {
                     Image(systemName: "square.stack")
                     Text("\(entries.count)")
                 }
-                .font(.caption2).bold()
+                .font(.system(size: gridCellWidth * 0.1, weight: .bold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
                 .background(AppTheme.accent, in: Capsule())
-                .offset(x: 4, y: 2)
+                .padding(4)
             }
             Text(name)
                 .font(.caption)

@@ -22,9 +22,17 @@ final class DownloadManager: ObservableObject {
     /// Fortschritt (0...1) pro Buch, über alle Tracks hinweg gewichtet.
     @Published private(set) var downloadProgress: [String: Double] = [:]
     @Published var errorMessage: String?
+    /// Gecacht statt berechnet — die View liest das bei jedem Render; ein
+    /// Disk-Scan pro Fortschritts-Tick wäre teuer.
+    @Published private(set) var totalDownloadsSize: Int64 = 0
 
     private init() {
         downloadedItemIds = Set(scanExistingDownloads())
+        recalculateTotalSize()
+    }
+
+    private func recalculateTotalSize() {
+        totalDownloadsSize = downloadedItemIds.reduce(0) { $0 + downloadSize(forItemId: $1) }
     }
 
     private var downloadsDirectory: URL {
@@ -179,6 +187,7 @@ final class DownloadManager: ObservableObject {
 
             downloadedItemIds.insert(itemId)
             downloadProgress[itemId] = nil
+            recalculateTotalSize()
         } catch {
             errorMessage = "Download fehlgeschlagen: \(error.localizedDescription)"
             downloadProgress[itemId] = nil
@@ -198,11 +207,6 @@ final class DownloadManager: ObservableObject {
         }
     }
 
-    /// Gesamter Speicher aller kompletten Downloads.
-    var totalDownloadsSize: Int64 {
-        downloadedItemIds.reduce(0) { $0 + downloadSize(forItemId: $1) }
-    }
-
     func deleteAllDownloads() {
         for itemId in downloadedItemIds {
             deleteDownload(itemId: itemId)
@@ -215,5 +219,6 @@ final class DownloadManager: ObservableObject {
         try? FileManager.default.removeItem(at: metaURL)
         ImageCache.shared.removePersistent(itemId: itemId)
         downloadedItemIds.remove(itemId)
+        recalculateTotalSize()
     }
 }

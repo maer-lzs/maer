@@ -40,6 +40,7 @@ struct BookCoverView: View {
                 }
             }
             .overlay(alignment: .bottomLeading) {
+                // Einheitliche Badge-Größe mit dem Fertig-Häkchen (0.14).
                 if let itemId, let fraction = downloadManager.downloadProgress[itemId] {
                     // Laufender Download: Mini-Fortschrittsring.
                     ZStack {
@@ -50,13 +51,13 @@ struct BookCoverView: View {
                             .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                     }
-                    .frame(width: size * 0.2, height: size * 0.2)
-                    .padding(3)
+                    .frame(width: size * 0.14, height: size * 0.14)
+                    .padding(4)
                 } else if let itemId, downloadManager.isDownloaded(itemId: itemId) {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.system(size: size * 0.2))
+                        .font(.system(size: size * 0.14))
                         .foregroundStyle(.white, .secondary)
-                        .padding(3)
+                        .padding(4)
                 }
             }
 

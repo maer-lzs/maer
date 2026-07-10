@@ -161,6 +161,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         item.map { "localPosition.\($0.id)" }
     }
 
+    /// Letzter Schreibzeitpunkt der lokalen Positions-Sicherung (Throttle).
+    private var lastLocalSaveAt: TimeInterval = 0
+
     /// lastUpdate-Zeitstempel des zuletzt GESEHENEN Server-Eintrags (ms epoch).
     /// Ein neuerer Eintrag stammt von einem anderen Gerät (oder unserem
     /// eigenen Write) — Grundlage für den Geräte-Abgleich.
@@ -198,8 +201,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func configureAudioSession() {
+        // Nur Kategorie setzen — setActive(true) erst beim tatsächlichen
+        // Abspielen (play): sonst unterbricht schon das stille Wiederherstellen
+        // der letzten Session beim App-Start die Musik anderer Apps.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+    }
+
+    private func activateAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             errorMessage = "Audiosession konnte nicht aktiviert werden: \(error.localizedDescription)"
@@ -397,6 +406,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard let self else { return }
                 self.currentTime = self.duration
                 self.isPlaying = false
+                // Auch lokal als abgeschlossen markieren — der Sync schreibt es
+                // ohnehin; sonst zeigt die UI nach durchgehörtem Buch den
+                // falschen Zustand.
+                self.isFinished = true
                 self.updateNowPlayingInfo()
                 await self.syncProgress(force: true)
             }
@@ -494,6 +507,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Wiedergabe
 
     func play() {
+        activateAudioSession()
         // Falls ein Sleep-Fade mittendrin unterbrochen wurde: volle Lautstärke.
         player?.volume = 1
         player?.rate = playbackRate
@@ -654,12 +668,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
                 // innerhalb dieses Tracks.
                 self.currentTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
-                // Crash-Sicherung: Position sekündlich lokal festhalten.
-                if self.isPlaying, let key = self.localPositionKey {
-                    UserDefaults.standard.set(
-                        [self.currentTime, Date().timeIntervalSince1970 * 1000],
-                        forKey: key
-                    )
+                // Crash-Sicherung: Position lokal festhalten — auf alle 5s
+                // gedrosselt (UserDefaults-Writes sind nicht gratis). Das
+                // Verlustfenster bei Crash beträgt damit max. ~5s statt 30s.
+                let now = Date().timeIntervalSince1970
+                if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
+                    self.lastLocalSaveAt = now
+                    UserDefaults.standard.set([self.currentTime, now * 1000], forKey: key)
                 }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
@@ -806,11 +821,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// erfolgreich nachgereicht, den sichtbaren Status von .queued auf .synced
     /// nachziehen — sonst bliebe der "wird nachgereicht"-Hinweis bis zum
     /// nächsten Sync-Tick stehen, obwohl längst synchronisiert.
-    func updateSyncStatusFromQueue() {
+    func updateSyncStatusFromQueue() async {
         guard let item, syncStatus != .synced else { return }
         if !SyncQueue.shared.hasPendingUpdate(itemId: item.id) {
             if syncStatus == .queued || syncStatus == .failed { showSourceHint(.saved) }
             syncStatus = .synced
+            // Server-Zeitstempel des EIGENEN nachgereichten Writes übernehmen,
+            // ohne die Position zu adoptieren — sonst hält der nächste Abgleich
+            // unseren (älteren) Flush-Stand für ein fremdes Gerät und springt
+            // zurück.
+            if let fresh = try? await apiClient.fetchItemDetail(itemId: item.id),
+               let ms = fresh.userMediaProgress?.lastUpdate {
+                lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
+            }
         }
     }
 

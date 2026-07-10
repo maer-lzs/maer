@@ -63,8 +63,10 @@ final class ImageCache {
     }
 
     /// Bilder > maxPixelSize hochwertig (ImageIO) verkleinern; kleinere
-    /// Originale unangetastet lassen. Entlastet Disk, RAM und Scrolling.
-    private func downsampled(_ data: Data) -> (UIImage, Data)? {
+    /// Originale unangetastet lassen. nonisolated + statisch: läuft auf einem
+    /// Hintergrund-Thread, NICHT auf dem MainActor (ImageIO-Decodes großer
+    /// Cover würden sonst das UI ruckeln lassen).
+    private nonisolated static func downsampled(_ data: Data, maxPixelSize: CGFloat) -> (UIImage, Data)? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         let w = props?[kCGImagePropertyPixelWidth] as? CGFloat ?? 0
@@ -103,11 +105,24 @@ final class ImageCache {
     }
 
     /// Speichert auf Anzeigegröße reduziert (nicht pixelig, s. maxPixelSize).
+    /// Downsampling + Disk-Write laufen im Hintergrund; der Memory-Cache wird
+    /// danach mit der verkleinerten Fassung aktualisiert.
     func set(_ image: UIImage, data: Data, for url: URL) {
         let cacheKey = key(for: url)
-        let stored = downsampled(data) ?? (image, data)
-        memoryCache.setObject(stored.0, forKey: cacheKey as NSString, cost: cost(of: stored.0))
-        try? stored.1.write(to: diskDirectory.appendingPathComponent(cacheKey))
+        // Sofort verfügbar machen (Original, kostenbegrenzt durch NSCache).
+        memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        let target = diskDirectory.appendingPathComponent(cacheKey)
+        let maxSize = maxPixelSize
+        Task.detached(priority: .utility) {
+            guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
+            try? stored.1.write(to: target, options: .atomic)
+            await MainActor.run {
+                ImageCache.shared.memoryCache.setObject(
+                    stored.0, forKey: cacheKey as NSString,
+                    cost: ImageCache.shared.cost(of: stored.0)
+                )
+            }
+        }
     }
 
     /// Cover eines heruntergeladenen Buchs in den persistenten Ordner heben
@@ -122,9 +137,14 @@ final class ImageCache {
             return
         }
         guard let coverURL,
-              let (data, _) = try? await URLSession.shared.data(from: coverURL),
-              let stored = downsampled(data) else { return }
-        try? stored.1.write(to: target)
+              let (data, _) = try? await URLSession.shared.data(from: coverURL) else { return }
+        let maxSize = maxPixelSize
+        // Downsampling + Write im Hintergrund, Abschluss abwarten (Aufrufer
+        // verlässt sich darauf, dass das Cover danach persistent liegt).
+        await Task.detached(priority: .utility) {
+            guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
+            try? stored.1.write(to: target, options: .atomic)
+        }.value
     }
 
     /// Beim Löschen eines Downloads: persistentes Cover zurück in den
@@ -152,39 +172,53 @@ final class ImageCache {
     /// 2) Cache-Dateien über TTL löschen (Cover-Aktualisierung).
     /// 3) Cache auf maxCacheBytes deckeln, älteste zuerst.
     func performMaintenance(activeDownloadIds: Set<String>) {
-        let fm = FileManager.default
+        // Reine Dateisystem-Arbeit — komplett im Hintergrund, nicht auf dem
+        // MainActor (kann bei großen Bibliotheken hunderte Dateien anfassen).
+        let persistent = persistentDirectory
+        let cache = diskDirectory
+        let ttl = cacheTTL
+        let maxBytes = maxCacheBytes
+        Task.detached(priority: .utility) {
+            let fm = FileManager.default
 
-        if let files = try? fm.contentsOfDirectory(at: persistentDirectory, includingPropertiesForKeys: nil) {
-            for file in files {
-                let name = file.lastPathComponent
-                guard name.hasPrefix("_api_items_"), name.hasSuffix("_cover") else { continue }
-                let id = String(name.dropFirst("_api_items_".count).dropLast("_cover".count))
-                if !activeDownloadIds.contains(id) {
-                    removePersistent(itemId: id)
+            // 1) Persistente Cover ohne Download zurück in den Cache.
+            if let files = try? fm.contentsOfDirectory(at: persistent, includingPropertiesForKeys: nil) {
+                for file in files {
+                    let name = file.lastPathComponent
+                    guard name.hasPrefix("_api_items_"), name.hasSuffix("_cover") else { continue }
+                    let id = String(name.dropFirst("_api_items_".count).dropLast("_cover".count))
+                    guard !activeDownloadIds.contains(id) else { continue }
+                    let target = cache.appendingPathComponent(name)
+                    if !fm.fileExists(atPath: target.path) {
+                        try? fm.moveItem(at: file, to: target)
+                    } else {
+                        try? fm.removeItem(at: file)
+                    }
                 }
             }
-        }
 
-        guard let files = try? fm.contentsOfDirectory(
-            at: diskDirectory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
-        ) else { return }
-        var kept: [(url: URL, date: Date, size: Int)] = []
-        for file in files {
-            let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
-            let date = values?.contentModificationDate ?? .distantPast
-            if Date().timeIntervalSince(date) > cacheTTL {
-                try? fm.removeItem(at: file)
-            } else {
-                kept.append((file, date, values?.fileSize ?? 0))
+            // 2) TTL + 3) Größendeckel.
+            guard let files = try? fm.contentsOfDirectory(
+                at: cache,
+                includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
+            ) else { return }
+            var kept: [(url: URL, date: Date, size: Int)] = []
+            for file in files {
+                let values = try? file.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+                let date = values?.contentModificationDate ?? .distantPast
+                if Date().timeIntervalSince(date) > ttl {
+                    try? fm.removeItem(at: file)
+                } else {
+                    kept.append((file, date, values?.fileSize ?? 0))
+                }
             }
-        }
-        var total = kept.reduce(0) { $0 + $1.size }
-        guard total > maxCacheBytes else { return }
-        for entry in kept.sorted(by: { $0.date < $1.date }) {
-            try? fm.removeItem(at: entry.url)
-            total -= entry.size
-            if total <= maxCacheBytes { break }
+            var total = kept.reduce(0) { $0 + $1.size }
+            guard total > maxBytes else { return }
+            for entry in kept.sorted(by: { $0.date < $1.date }) {
+                try? fm.removeItem(at: entry.url)
+                total -= entry.size
+                if total <= maxBytes { break }
+            }
         }
     }
 
