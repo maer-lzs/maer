@@ -161,6 +161,57 @@ final class LibraryViewModel: ObservableObject {
         return sortAscending ? ascendingSorted : ascendingSorted.reversed()
     }
 
+    /// Ein Eintrag im „Alle Bücher"-Grid bei Serien-Sortierung: entweder ein
+    /// einzelnes Buch oder ein Serien-Stapel.
+    enum GridEntry: Identifiable {
+        case single(LibraryEntry)
+        case series(name: String, entries: [LibraryEntry])
+        var id: String {
+            switch self {
+            case .single(let e): return e.id
+            case .series(let name, _): return "series-\(name)"
+            }
+        }
+    }
+
+    /// ABS-Seriennamen tragen die Bandnummer im Namen („Reihe #2") —
+    /// für die Gruppierung zählt nur der Reihen-Name davor.
+    private static func baseSeriesName(_ raw: String?) -> String? {
+        // Leere/Whitespace-Namen wie nil behandeln — sonst landen alle Bücher
+        // ohne echte Serie zusammen in einem Riesen-Stapel "".
+        guard let raw = raw?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
+        guard let range = raw.range(of: #" #[\d.]+$"#, options: .regularExpression) else { return raw }
+        let base = String(raw[..<range.lowerBound]).trimmingCharacters(in: .whitespaces)
+        return base.isEmpty ? nil : base
+    }
+
+    /// sortedFilteredEntries, bei dem Serien mit mehr als einem Buch zu einem
+    /// Stapel zusammengefasst sind (Reihenfolge innerhalb: Bandnummer, da die
+    /// Liste bei Sortierung „Serie" bereits so sortiert ankommt).
+    var seriesGroupedEntries: [GridEntry] {
+        var result: [GridEntry] = []
+        var indexByName: [String: Int] = [:]
+        for entry in sortedFilteredEntries {
+            guard let name = Self.baseSeriesName(entry.item.media?.metadata?.seriesName) else {
+                result.append(.single(entry))
+                continue
+            }
+            if let idx = indexByName[name], case .series(_, let existing) = result[idx] {
+                result[idx] = .series(name: name, entries: existing + [entry])
+            } else {
+                indexByName[name] = result.count
+                result.append(.series(name: name, entries: [entry]))
+            }
+        }
+        // Ein-Buch-„Serien" als normales Buch zeigen.
+        return result.map { item in
+            if case .series(_, let entries) = item, entries.count == 1 {
+                return .single(entries[0])
+            }
+            return item
+        }
+    }
+
     /// Alle heruntergeladenen Bücher, alphabetisch — eigene Sektion für den
     /// schnellen Überblick "was kann ich gerade offline hören".
     var downloadedEntries: [LibraryEntry] {

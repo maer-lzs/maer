@@ -34,9 +34,9 @@ struct BookCoverView: View {
             .overlay(alignment: .topTrailing) {
                 if progress?.isFinished == true {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: size * 0.2))
+                        .font(.system(size: size * 0.14))
                         .foregroundStyle(.white, AppTheme.accent)
-                        .padding(3)
+                        .padding(4)
                 }
             }
             .overlay(alignment: .bottomLeading) {

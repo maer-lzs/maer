@@ -85,7 +85,7 @@ struct BookDetailScreen: View {
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
             }
             if let p = entry.progress, p.isStarted {
-                Text("\(p.percentInt) % gehört")
+                Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? "\(p.percentInt) % gehört")
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
             } else if isFinished {

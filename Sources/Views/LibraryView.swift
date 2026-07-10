@@ -362,7 +362,7 @@ struct LibraryView: View {
                                     .lineLimit(2)
                                     .frame(width: 132, alignment: .leading)
                                 if let p = entry.progress, p.isStarted {
-                                    Text("\(p.percentInt) %")
+                                    Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? "\(p.percentInt) %")
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -384,8 +384,98 @@ struct LibraryView: View {
             Text("Alle Bücher")
                 .font(.title3).bold()
                 .padding(.horizontal)
-            bookGrid(viewModel.sortedFilteredEntries)
+            if viewModel.sortOption == .serie {
+                seriesGrid
+            } else {
+                bookGrid(viewModel.sortedFilteredEntries)
+            }
         }
+    }
+
+    /// Grid bei Serien-Sortierung: Serien als Stapel, Einzelbücher normal.
+    private var seriesGrid: some View {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+            ForEach(viewModel.seriesGroupedEntries) { gridEntry in
+                switch gridEntry {
+                case .single(let entry):
+                    // Gleicher Top-Abstand wie der Fächer-Headroom der Stapel-
+                    // Kacheln — sonst sitzen Cover/Texte in gemischten Zeilen
+                    // auf unterschiedlichen Höhen.
+                    bookCell(entry).padding(.top, 10)
+                case .series(let name, let entries):
+                    NavigationLink {
+                        seriesDetail(name: name, entries: entries)
+                    } label: {
+                        seriesStackCell(name: name, entries: entries)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    /// Stapel-Kachel: oberstes Cover, dahinter die ECHTEN Cover der nächsten
+    /// Bände leicht versetzt/gedreht — klar als Stapel erkennbar; dazu ein
+    /// Zähler-Badge.
+    private func seriesStackCell(name: String, entries: [LibraryEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack {
+                // Bis zu zwei echte Folge-Cover hinter dem obersten.
+                ForEach(Array(entries.dropFirst().prefix(2).enumerated()), id: \.element.id) { index, entry in
+                    CachedAsyncImage(url: apiClient.coverURL(forItemId: entry.id)) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.3))
+                    }
+                    .frame(width: gridCellWidth - 14, height: gridCellWidth - 14)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .rotationEffect(.degrees(index == 0 ? 5 : -5))
+                    .offset(y: -6)
+                    .opacity(0.9)
+                }
+                BookCoverView(
+                    url: apiClient.coverURL(forItemId: entries[0].id),
+                    progress: nil,
+                    itemId: nil,
+                    size: gridCellWidth
+                )
+                .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
+            }
+            .padding(.top, 10)
+            .overlay(alignment: .topTrailing) {
+                // Stapel-Symbol + Anzahl direkt auf dem Cover.
+                HStack(spacing: 3) {
+                    Image(systemName: "square.stack")
+                    Text("\(entries.count)")
+                }
+                .font(.caption2).bold()
+                .foregroundStyle(.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(AppTheme.accent, in: Capsule())
+                .offset(x: 4, y: 2)
+            }
+            Text(name)
+                .font(.caption)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+            Text("\(entries.count) Bücher")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(width: gridCellWidth, alignment: .leading)
+    }
+
+    /// Detailansicht einer Serie: alle Bände in Reihenfolge.
+    private func seriesDetail(name: String, entries: [LibraryEntry]) -> some View {
+        ScrollView {
+            bookGrid(entries)
+                .padding(.top, 12)
+        }
+        .navigationTitle(name)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var sortFilterMenu: some View {
@@ -429,39 +519,43 @@ struct LibraryView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(entries) { entry in
-                NavigationLink {
-                    BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        BookCoverView(
-                            url: apiClient.coverURL(forItemId: entry.id),
-                            progress: entry.progress,
-                            itemId: entry.id,
-                            size: gridCellWidth
-                        )
-                        Text(entry.item.title)
-                            .font(.caption)
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-                        if let author = entry.item.author {
-                            Text(author)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
-                        if let p = entry.progress {
-                            Text(statusText(p))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .frame(width: gridCellWidth, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .contextMenu { contextMenu(for: entry) }
+                bookCell(entry)
             }
         }
         .padding(.horizontal)
+    }
+
+    private func bookCell(_ entry: LibraryEntry) -> some View {
+        NavigationLink {
+            BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                BookCoverView(
+                    url: apiClient.coverURL(forItemId: entry.id),
+                    progress: entry.progress,
+                    itemId: entry.id,
+                    size: gridCellWidth
+                )
+                Text(entry.item.title)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                if let author = entry.item.author {
+                    Text(author)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let p = entry.progress {
+                    Text(statusText(p, duration: entry.item.media?.duration))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: gridCellWidth, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .contextMenu { contextMenu(for: entry) }
     }
 
     // MARK: Kontextmenü (Haptic Touch)
@@ -541,9 +635,9 @@ struct LibraryView: View {
         await viewModel.refreshProgress()
     }
 
-    private func statusText(_ p: BookProgress) -> String {
+    private func statusText(_ p: BookProgress, duration: Double?) -> String {
         if p.isFinished { return "Abgeschlossen" }
-        if p.isStarted { return "\(p.percentInt) % gehört" }
+        if p.isStarted { return p.remainingText(bookDuration: duration) ?? "\(p.percentInt) % gehört" }
         return ""
     }
 }

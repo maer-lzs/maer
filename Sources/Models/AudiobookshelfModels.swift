@@ -38,6 +38,19 @@ struct BookProgress: Equatable, Codable {
 
     var percentInt: Int { Int((fraction * 100).rounded()) }
     var isStarted: Bool { fraction > 0.001 && !isFinished }
+
+    /// Restzeit-Text („noch 3 Std. 12 Min.") aus der Buchdauer — nil, wenn
+    /// keine Dauer bekannt ist (dann Prozent als Fallback zeigen).
+    func remainingText(bookDuration: Double?) -> String? {
+        guard let bookDuration, bookDuration > 0 else { return nil }
+        let listened = currentTime ?? fraction * bookDuration
+        let remaining = max(0, bookDuration - listened)
+        let totalMinutes = Int(remaining) / 60
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 { return "noch \(hours) Std. \(minutes) Min." }
+        return "noch \(minutes) Min."
+    }
 }
 
 // MARK: - Bibliotheken
