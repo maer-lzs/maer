@@ -31,6 +31,17 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         )
         config.isDiscretionary = false
         session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        // Verwaiste Ziel-Einträge früherer Läufe (App-Kill) entfernen —
+        // alles, was zu keinem noch laufenden Task gehört.
+        session.getAllTasks { [weak self] tasks in
+            guard let self else { return }
+            let active = Set(tasks.map { String($0.taskIdentifier) })
+            self.lock.lock()
+            var map = UserDefaults.standard.dictionary(forKey: self.destinationsKey) as? [String: String] ?? [:]
+            map = map.filter { active.contains($0.key) }
+            UserDefaults.standard.set(map, forKey: self.destinationsKey)
+            self.lock.unlock()
+        }
     }
 
     /// Lädt herunter und verschiebt das Ergebnis selbst an `destination`

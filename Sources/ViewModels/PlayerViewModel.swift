@@ -281,7 +281,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateNowPlayingInfo()
         startSyncTimer()
         syncStatus = .synced
-        showSourceHint((isOfflineFallback || restoredFromLocal) ? .localUsed : .serverAdopted)
+        // Hinweis nur, wenn wirklich ein Stand übernommen wurde — bei einem
+        // frischen Buch (Start bei 0) wäre „Serverstand übernommen" irreführend.
+        if isOfflineFallback || restoredFromLocal {
+            showSourceHint(.localUsed)
+        } else if serverProgress > 0 {
+            showSourceHint(.serverAdopted)
+        }
         if restoredFromLocal {
             // Wiederhergestellten Stand sofort nachreichen (offline → Queue).
             // Kein Konflikt-Dialog: der Stand war vor dem Crash gewollt.
@@ -522,7 +528,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// dem Abspielen auf den neueren Serverstand — statt vom alten lokalen
     /// Stand loszulaufen und den frischen Fortschritt zu überschreiben.
     func playWithServerCheck() async {
-        await reconcileWithServer()
+        // Abgleich max. 1,5s abwarten — bei zähem Netz (kein sofortiger
+        // Offline-Fehler) soll der Play-Button nicht bis zum URLSession-
+        // Timeout hängen. Läuft der Abgleich länger, startet die Wiedergabe
+        // sofort; ein späteres Adopt springt dann während des Abspielens.
+        let reconcile = Task { await self.reconcileWithServer() }
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await reconcile.value }
+            group.addTask { try? await Task.sleep(nanoseconds: 1_500_000_000) }
+            await group.next()
+            group.cancelAll()
+        }
         play()
     }
 
