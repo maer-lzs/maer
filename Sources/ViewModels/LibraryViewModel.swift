@@ -284,7 +284,14 @@ final class LibraryViewModel: ObservableObject {
             .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
     }
 
+    /// Guards against overlapping loads (pull-to-refresh + foreground
+    /// refresh + reconnect can fire together → double rebuilds, visible hitch).
+    private var loadInFlight = false
+
     func loadLibrary() async {
+        guard !loadInFlight else { return }
+        loadInFlight = true
+        defer { loadInFlight = false }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -304,8 +311,12 @@ final class LibraryViewModel: ObservableObject {
             isShowingOfflineCache = false
             rebuild(items: items, progress: progress)
             saveDiskCache(items: items, progress: progress)
-            // Nur hier (vollständige Liste!): verwaiste pro-Buch-Keys entsorgen.
-            AppStorageKeys.cleanupPerBookKeys(validItemIds: Set(items.map(\.id)))
+            // Nur hier (vollständige Liste!): verwaiste pro-Buch-Keys entsorgen —
+            // im Hintergrund, der Scan über alle Defaults-Keys ist nicht gratis.
+            let validIds = Set(items.map(\.id))
+            Task.detached(priority: .utility) {
+                AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+            }
             Task { await prefetchAllCovers() }
         } catch {
             // Nur bei echter Netzwerk-Nichterreichbarkeit als "offline"
@@ -332,7 +343,7 @@ final class LibraryViewModel: ObservableObject {
     /// ohne die ganze Bücherliste neu zu laden oder einen Spinner zu zeigen.
     /// Wird z. B. aufgerufen, wenn die App wieder in den Vordergrund kommt.
     func refreshProgress() async {
-        guard !cachedItems.isEmpty else { return }
+        guard !cachedItems.isEmpty, !loadInFlight else { return }
         guard let progress = try? await apiClient.fetchAllProgress() else {
             // Offline/error: keep the last known state instead of wiping it.
             return
@@ -395,9 +406,14 @@ final class LibraryViewModel: ObservableObject {
     }
 
     private func saveDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
+        // Encode + write off the main thread: with large libraries this is a
+        // visible hitch right when the refresh spinner settles.
         let cache = DiskCache(items: items, progress: progress)
-        guard let data = try? JSONEncoder().encode(cache) else { return }
-        try? data.write(to: diskCacheURL)
+        let url = diskCacheURL
+        Task.detached(priority: .utility) {
+            guard let data = try? JSONEncoder().encode(cache) else { return }
+            try? data.write(to: url, options: .atomic)
+        }
     }
 
     private func loadDiskCache() -> DiskCache? {

@@ -502,16 +502,19 @@ struct BookDetailScreen: View {
             if downloadManager.isDownloaded(itemId: entry.id) {
                 // Same visual language as the neighbouring buttons: glass
                 // capsule, primary/secondary text — no signal colors.
+                // Compact: checkmark + size says it all — the full label
+                // ("Available Offline") wraps badly in the half-width capsule
+                // and lives on as the accessibility label instead.
                 HStack(spacing: 8) {
-                    Label("Available Offline", systemImage: "checkmark.circle")
-                        .font(.subheadline)
+                    Image(systemName: "checkmark.circle")
                         .foregroundStyle(.primary)
                     Text(ByteCountFormatter.string(
                         fromByteCount: downloadManager.downloadSize(forItemId: entry.id),
                         countStyle: .file
                     ))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
                     Spacer()
                     Button {
                         downloadManager.deleteDownload(itemId: entry.id)
@@ -520,6 +523,8 @@ struct BookDetailScreen: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text("Available Offline"))
                 .padding(.vertical, 10)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
