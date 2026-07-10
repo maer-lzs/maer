@@ -372,6 +372,14 @@ struct BookDetailScreen: View {
                 if let duration, duration > 0 {
                     infoRow(label: "Gesamtdauer", value: formattedDuration(duration), isHero: withPadding)
                 }
+                if let last = entry.progress?.lastUpdate, last > 0 {
+                    infoRow(
+                        label: "Zuletzt gehört",
+                        value: Date(timeIntervalSince1970: last / 1000)
+                            .formatted(date: .abbreviated, time: .omitted),
+                        isHero: withPadding
+                    )
+                }
             }
             .padding(.horizontal, withPadding ? 16 : 0)
         }
@@ -560,6 +568,69 @@ struct BookDetailScreen: View {
     /// anderes Buch geladen wird.
     private var isThisBookLoading: Bool {
         coordinator.isLoading && coordinator.activeItem?.id == entry.id
+    }
+}
+
+/// Kapitelliste der Detailseite (lazy List — Bücher haben teils 400+ Kapitel).
+/// Tippen startet die Wiedergabe ab diesem Kapitel; beim aktiven Buch wird
+/// das laufende Kapitel markiert.
+private struct DetailChapterList: View {
+    let bookTitle: String
+    let chapters: [ABSChapter]
+    @ObservedObject var coordinator: PlayerCoordinator
+    let entry: LibraryEntry
+
+    private var isActiveBook: Bool { coordinator.activeItem?.id == entry.id }
+
+    var body: some View {
+        List(chapters) { chapter in
+            Button {
+                Task { await play(chapter) }
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(chapter.title)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        Text(formatted(chapter.start))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if isActiveBook, coordinator.viewModel?.currentChapter == chapter {
+                        Image(systemName: "speaker.wave.2.fill")
+                            .foregroundStyle(AppTheme.accent)
+                    } else {
+                        Text(durationText(chapter))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle(bookTitle)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func play(_ chapter: ABSChapter) async {
+        if isActiveBook, let vm = coordinator.viewModel {
+            vm.jumpToChapter(chapter)
+            vm.play()
+        } else {
+            await coordinator.open(item: entry.item)
+            await coordinator.viewModel?.seek(to: chapter.start)
+        }
+    }
+
+    private func formatted(_ seconds: Double) -> String {
+        let t = Int(seconds)
+        let h = t / 3600, m = (t % 3600) / 60, s = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
+    }
+
+    private func durationText(_ chapter: ABSChapter) -> String {
+        let minutes = max(1, Int((chapter.end - chapter.start) / 60))
+        return "\(minutes) Min."
     }
 }
 
