@@ -21,7 +21,6 @@ struct BookDetailScreen: View {
     @State private var showWiFiWarning = false
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
-    @State private var descriptionExpanded = false
     @StateObject private var colorLoader = CoverColorLoader()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -183,24 +182,12 @@ struct BookDetailScreen: View {
                     }
 
                     if let description = detail?.media.metadata?.description, !description.isEmpty {
-                        let text = Self.plainText(fromHTML: description)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description")
                                 .font(.headline)
-                            Text(text)
+                            Text(Self.plainText(fromHTML: description))
                                 .font(.body)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(descriptionExpanded ? nil : 7)
-                            // Auf-/Zuklappen nur, wenn der Text das braucht.
-                            if text.count > 350 {
-                                Button(descriptionExpanded ? String(localized: "Show Less") : String(localized: "Show More")) {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        descriptionExpanded.toggle()
-                                    }
-                                }
-                                .font(.subheadline.bold())
-                                .tint(AppTheme.accent)
-                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
@@ -208,7 +195,9 @@ struct BookDetailScreen: View {
                         ProgressView().padding()
                     }
                 }
-                .padding(.bottom, 40)
+                // Freiraum fürs Seitenende: Mini-Player + Such-Button überdecken sonst
+                // die letzten Zeilen (Safe-Area-Inset reicht hier nicht zuverlässig).
+                .padding(.bottom, 120)
                 .frame(maxWidth: 600)
                 .frame(maxWidth: .infinity)
             }
@@ -523,7 +512,8 @@ struct BookDetailScreen: View {
             } else if let progress = downloadManager.downloadProgress[entry.id] {
                 HStack(spacing: 8) {
                     ProgressView(value: progress)
-                    Text("\(Int((progress * 100).rounded())) %")
+                    // FormatStyle statt "%"-Literal: Prozentformat ist lokalspezifisch.
+                    Text(progress, format: .percent.precision(.fractionLength(0)))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(width: 36, alignment: .trailing)

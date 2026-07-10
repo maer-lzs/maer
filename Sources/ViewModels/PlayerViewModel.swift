@@ -114,6 +114,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// True, wenn der Sleep-Timer im "bis Kapitelende"-Modus läuft (für die
     /// Anzeige im Menü).
     @Published var sleepUntilChapterEnd = false
+    /// True while the sleep timer runs in "until end of track" mode.
+    @Published var sleepUntilTrackEnd = false
     @Published var errorMessage: String?
     @Published var pendingServerConflict: ServerConflict?
     @Published var suspiciousLockscreenJump: SuspiciousLockscreenJump?
@@ -624,6 +626,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    /// Absolute book time where the currently playing track ends —
+    /// nil if unknown. Used by the "sleep until end of track" mode.
+    func currentTrackEndTime() -> Double? {
+        guard currentTrackIndex < tracks.count,
+              let trackDuration = tracks[currentTrackIndex].duration else { return nil }
+        return trackAbsoluteStart(currentTrackIndex) + trackDuration
+    }
+
+    /// Only offer "until end of track" when it differs from the book end
+    /// (single-file books: track end == book end, the option adds nothing).
+    var canSleepUntilTrackEnd: Bool {
+        guard let end = currentTrackEndTime() else { return false }
+        return end < duration - 1
     }
 
     private func updateCurrentChapter() {

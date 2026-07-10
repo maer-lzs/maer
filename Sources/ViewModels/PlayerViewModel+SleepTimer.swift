@@ -21,12 +21,14 @@ extension PlayerViewModel {
         player?.volume = 1
         sleepTimerRemaining = nil
         sleepUntilChapterEnd = false
+        sleepUntilTrackEnd = false
     }
 
     func startSleepTimer(minutes: Double) {
         sleepTask?.cancel()
         player?.volume = 1
         sleepUntilChapterEnd = false
+        sleepUntilTrackEnd = false
         sleepTimerRemaining = minutes * 60
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
@@ -49,6 +51,41 @@ extension PlayerViewModel {
         player?.volume = 1
         sleepTimerRemaining = nil
         sleepUntilChapterEnd = false
+        sleepUntilTrackEnd = false
+    }
+
+    /// Extends the running timer by the given minutes. End-of-chapter/track
+    /// modes are converted into a fixed countdown (current remaining + extra).
+    func extendSleepTimer(byMinutes minutes: Double) {
+        guard let remaining = sleepTimerRemaining else { return }
+        startSleepTimer(minutes: (remaining + minutes * 60) / 60)
+    }
+
+    /// Sleep until the end of the CURRENT track (multi-file books) — same
+    /// mechanics as the chapter-end mode, different boundary.
+    func startSleepTimerUntilTrackEnd() {
+        sleepTask?.cancel()
+        guard let end = currentTrackEndTime() else {
+            sleepUntilTrackEnd = false
+            return
+        }
+        sleepUntilChapterEnd = false
+        sleepUntilTrackEnd = true
+        player?.volume = 1
+        sleepTimerRemaining = max(end - currentTime, 0)
+        sleepTask = Task { [weak self] in
+            while let self, !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { break }
+                let remaining = max(end - self.currentTime, 0)
+                self.sleepTimerRemaining = remaining
+                self.applySleepFade(remaining: remaining)
+                if remaining <= 0 {
+                    self.finishSleepTimer()
+                    break
+                }
+            }
+        }
     }
 
     /// Sleep-Timer bis zum Ende des aktuellen Kapitels. Statt fester Minuten
@@ -60,6 +97,7 @@ extension PlayerViewModel {
             return
         }
         sleepUntilChapterEnd = true
+        sleepUntilTrackEnd = false
         player?.volume = 1
         let end = chapter.end
         sleepTimerRemaining = max(end - currentTime, 0)

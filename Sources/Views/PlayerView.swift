@@ -251,7 +251,14 @@ struct PlayerView: View {
 
     private var transportControls: some View {
         let skip = Int(viewModel.skipInterval)
-        return HStack(spacing: 28) {
+        return HStack(spacing: 24) {
+            // Kapitel zurück (bzw. an den Kapitelanfang, siehe previousChapter).
+            Button { viewModel.previousChapter() } label: {
+                Image(systemName: "backward.end.fill").font(.title3)
+            }
+            .disabled(viewModel.chapters.isEmpty)
+            .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
+
             Button { viewModel.skip(by: -viewModel.skipInterval) } label: {
                 Image(systemName: "gobackward.\(skip)").font(.title)
             }
@@ -262,6 +269,13 @@ struct PlayerView: View {
             Button { viewModel.skip(by: viewModel.skipInterval) } label: {
                 Image(systemName: "goforward.\(skip)").font(.title)
             }
+
+            // Nächstes Kapitel.
+            Button { viewModel.nextChapter() } label: {
+                Image(systemName: "forward.end.fill").font(.title3)
+            }
+            .disabled(viewModel.chapters.isEmpty)
+            .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
         }
     }
 
@@ -301,14 +315,25 @@ struct PlayerView: View {
                         viewModel.startSleepTimerUntilChapterEnd()
                     }
                 }
+                if viewModel.canSleepUntilTrackEnd {
+                    Button("Until End of Track") {
+                        viewModel.startSleepTimerUntilTrackEnd()
+                    }
+                }
                 if viewModel.sleepTimerRemaining != nil {
                     Divider()
+                    Button("+15 min") {
+                        viewModel.extendSleepTimer(byMinutes: 15)
+                    }
                     Button("Stop Timer", role: .destructive) {
                         viewModel.cancelSleepTimer()
                     }
                 }
             } label: {
-                Label(sleepTimerLabel, systemImage: "moon.zzz")
+                // Active timer: filled icon + accent color + live countdown —
+                // the status is visible at a glance, not only inside the menu.
+                Label(sleepTimerLabel, systemImage: viewModel.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
+                    .foregroundStyle(viewModel.sleepTimerRemaining != nil ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
             }
         }
         .font(.footnote)
