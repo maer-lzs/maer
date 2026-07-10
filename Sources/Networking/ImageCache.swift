@@ -222,6 +222,23 @@ final class ImageCache {
         }
     }
 
+    /// Größe des purgebaren Cover-Caches in Bytes (für die Einstellungen).
+    func cacheSizeBytes() -> Int64 {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: diskDirectory, includingPropertiesForKeys: [.fileSizeKey]
+        ) else { return 0 }
+        return files.reduce(0) { sum, url in
+            sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+        }
+    }
+
+    /// Leert den purgebaren Cover-Cache (persistente Download-Cover bleiben).
+    func clearCache() {
+        memoryCache.removeAllObjects()
+        guard let files = try? FileManager.default.contentsOfDirectory(at: diskDirectory, includingPropertiesForKeys: nil) else { return }
+        for file in files { try? FileManager.default.removeItem(at: file) }
+    }
+
     /// Lädt ein Cover im Hintergrund vor, falls es noch nicht im Cache ist.
     func preload(_ url: URL) async {
         guard image(for: url) == nil else { return }

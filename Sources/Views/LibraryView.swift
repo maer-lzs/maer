@@ -65,8 +65,12 @@ struct LibraryView: View {
                     sortFilterMenu
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Abmelden", action: onLogout)
-                        .foregroundStyle(.white)
+                    NavigationLink {
+                        SettingsView(coordinator: playerCoordinator, onLogout: onLogout)
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(.white)
+                    }
                 }
             }
         }
@@ -295,11 +299,20 @@ struct LibraryView: View {
     }
 
     private var filteredEntries: [LibraryEntry] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return viewModel.entries }
+        // Diakritika-/case-insensitiv über Titel, Autor, Erzähler und Serie.
         return viewModel.entries.filter { entry in
-            entry.item.title.lowercased().contains(query)
-                || (entry.item.author?.lowercased().contains(query) ?? false)
+            let meta = entry.item.media?.metadata
+            let fields = [
+                entry.item.title,
+                meta?.authorName,
+                meta?.narratorName,
+                meta?.seriesName
+            ]
+            return fields.contains { field in
+                field?.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            }
         }
     }
 
