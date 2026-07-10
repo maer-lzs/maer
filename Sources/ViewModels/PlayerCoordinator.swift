@@ -17,7 +17,7 @@ final class PlayerCoordinator: ObservableObject {
 
     /// Merkt sich die zuletzt gehörte Item-ID über App-Neustarts hinweg, damit
     /// das Buch beim nächsten Start direkt im Mini-Player griffbereit ist.
-    private let lastItemKey = "lastPlayedItemId"
+    private let lastItemKey = AppStorageKeys.lastPlayedItemId
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient

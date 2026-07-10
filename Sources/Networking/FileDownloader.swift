@@ -22,7 +22,7 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
 
     /// taskIdentifier → Ziel-Pfad, persistiert — für Downloads, die ohne
     /// laufende App fertig werden (Relaunch nach System-Kill).
-    private let destinationsKey = "pendingDownloadDestinations"
+    private let destinationsKey = AppStorageKeys.pendingDownloadDestinations
 
     private override init() {
         super.init()

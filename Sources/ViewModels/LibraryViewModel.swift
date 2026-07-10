@@ -65,9 +65,9 @@ final class LibraryViewModel: ObservableObject {
     }
 
     private enum Keys {
-        static let sortOption = "librarySortOption"
-        static let filterOption = "libraryFilterOption"
-        static let sortAscending = "librarySortAscending"
+        static let sortOption = AppStorageKeys.librarySortOption
+        static let filterOption = AppStorageKeys.libraryFilterOption
+        static let sortAscending = AppStorageKeys.librarySortAscending
     }
 
     private let apiClient: APIClient
@@ -240,6 +240,8 @@ final class LibraryViewModel: ObservableObject {
             isShowingOfflineCache = false
             rebuild(items: items, progress: progress)
             saveDiskCache(items: items, progress: progress)
+            // Nur hier (vollständige Liste!): verwaiste pro-Buch-Keys entsorgen.
+            AppStorageKeys.cleanupPerBookKeys(validItemIds: Set(items.map(\.id)))
             Task { await prefetchAllCovers() }
         } catch {
             // Nur bei echter Netzwerk-Nichterreichbarkeit als "offline"

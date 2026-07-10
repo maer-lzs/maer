@@ -407,66 +407,18 @@ struct LibraryView: View {
                     NavigationLink {
                         seriesDetail(name: name, entries: entries)
                     } label: {
-                        seriesStackCell(name: name, entries: entries)
+                        SeriesStackCell(
+                            name: name,
+                            entries: entries,
+                            cellWidth: gridCellWidth,
+                            coverURL: { apiClient.coverURL(forItemId: $0) }
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
         .padding(.horizontal)
-    }
-
-    /// Stapel-Kachel: oberstes Cover, dahinter die ECHTEN Cover der nächsten
-    /// Bände leicht versetzt/gedreht — klar als Stapel erkennbar; dazu ein
-    /// Zähler-Badge.
-    private func seriesStackCell(name: String, entries: [LibraryEntry]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ZStack {
-                // Bis zu zwei echte Folge-Cover hinter dem obersten.
-                ForEach(Array(entries.dropFirst().prefix(2).enumerated()), id: \.element.id) { index, entry in
-                    CachedAsyncImage(url: apiClient.coverURL(forItemId: entry.id)) { image in
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.3))
-                    }
-                    .frame(width: gridCellWidth - 14, height: gridCellWidth - 14)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .rotationEffect(.degrees(index == 0 ? 5 : -5))
-                    .offset(y: -6)
-                    .opacity(0.9)
-                }
-                BookCoverView(
-                    url: apiClient.coverURL(forItemId: entries[0].id),
-                    progress: nil,
-                    itemId: nil,
-                    size: gridCellWidth
-                )
-                .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
-            }
-            .padding(.top, 10)
-            .overlay(alignment: .topTrailing) {
-                // Stapel-Symbol + Anzahl — gleiche Größenklasse (0.14) wie die
-                // Cover-Badges in BookCoverView.
-                HStack(spacing: 2) {
-                    Image(systemName: "square.stack")
-                    Text("\(entries.count)")
-                }
-                .font(.system(size: gridCellWidth * 0.1, weight: .bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(AppTheme.accent, in: Capsule())
-                .padding(4)
-            }
-            Text(name)
-                .font(.caption)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-            Text("\(entries.count) Bücher")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .frame(width: gridCellWidth, alignment: .leading)
     }
 
     /// Detailansicht einer Serie: alle Bände in Reihenfolge.
@@ -640,161 +592,5 @@ struct LibraryView: View {
         if p.isFinished { return "Abgeschlossen" }
         if p.isStarted { return p.remainingText(bookDuration: duration) ?? "\(p.percentInt) % gehört" }
         return ""
-    }
-}
-
-/// Voller Player mit Drag-to-dismiss. Eigene View mit LOKALEM Drag-State:
-/// pro Ziehframe wird nur dieses Overlay neu ausgewertet, nicht die ganze
-/// Bibliothek — das war die Ursache des Rucklers beim Ziehstart.
-private struct FullPlayerOverlay: View {
-    @ObservedObject var coordinator: PlayerCoordinator
-    let topInset: CGFloat
-    let bottomInset: CGFloat
-    /// Volle Bildschirmhöhe — Start-/Zielwert fürs Ein-/Ausfahren.
-    let presentHeight: CGFloat
-    let onDismiss: () -> Void
-
-    /// Live-Translation (resettet instant); Übergabe an releaseOffset am Ende.
-    @GestureState private var dragOffset: CGFloat = 0
-    /// Trägt Einfahren, Loslass-Übergabe, Snap-back UND Ausfahren — eine
-    /// einzige, unterbrechbare Offset-Quelle statt View-Transitions.
-    @State private var releaseOffset: CGFloat
-    private let dismissThreshold: CGFloat = 180
-
-    init(
-        coordinator: PlayerCoordinator,
-        topInset: CGFloat,
-        bottomInset: CGFloat,
-        presentHeight: CGFloat,
-        onDismiss: @escaping () -> Void
-    ) {
-        self.coordinator = coordinator
-        self.topInset = topInset
-        self.bottomInset = bottomInset
-        self.presentHeight = presentHeight
-        self.onDismiss = onDismiss
-        // Startet unten außerhalb des Bildschirms, fährt in onAppear hoch.
-        _releaseOffset = State(initialValue: presentHeight)
-    }
-
-    var body: some View {
-        let offset = max(0, dragOffset + releaseOffset)
-        let progress = min(1, offset / dismissThreshold)
-        // Basis-Reveal > 0: das Sheet IST schon im Ruhezustand dasselbe
-        // Glas-Sheet (kein Moduswechsel bei Frame 1); Zug verstärkt nur.
-        let visual = CGFloat(0.15 + 0.85 * pow(Double(progress), 1.6))
-        // Konstant: glassEffect-Parameter dürfen sich pro Frame NICHT ändern,
-        // sonst rendert das System den Effekt neu → Ruckler beim Ziehstart.
-        let corner: CGFloat = 28
-        ZStack(alignment: .top) {
-            // Bibliothek nur abdunkeln (kein Blur); fängt Taps ab.
-            Color.black
-                // Faktor blendet Dim beim Ein-/Ausfahren mit aus (Offset nahe
-                // Bildschirmhöhe → 0), sonst Dim-Blitz beim Mount/Unmount.
-                .opacity(Double(visual) * 0.45 * Double(1 - min(1, offset / presentHeight)))
-
-            // Das GANZE Glas-Sheet bewegt sich als eine Einheit mit dem Finger.
-            ZStack(alignment: .top) {
-                PlayerScreen(
-                    coordinator: coordinator,
-                    dragProgress: visual,
-                    cornerRadius: corner,
-                    topInset: topInset,
-                    bottomInset: bottomInset
-                )
-                sideDismissZones
-                grabHandle
-            }
-            .background { containerGlass(corner: corner) }
-            .offset(y: offset)
-        }
-        // Safe Area EINMAL am fixen Root ignorieren — nicht in Kindern des
-        // bewegten Containers, sonst kippt die Expansion beim ersten Offset-
-        // Frame um genau die Inset-Höhe (der „Sprung“).
-        .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                releaseOffset = 0
-            }
-        }
-    }
-
-    /// Statisches Glas: Tönung/Form konstant. Der dynamische Reveal läuft
-    /// ausschließlich über billige Opacity-Fades (Hintergrund + Dim).
-    @ViewBuilder
-    private func containerGlass(corner: CGFloat) -> some View {
-        let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
-        if #available(iOS 26.0, *) {
-            // Maximale, konstante Glas-Stärke; Reveal nur via Hintergrund-Fade.
-            Color.clear
-                .glassEffect(.clear.tint(Color.black.opacity(0.45)), in: shape)
-        } else {
-            // Fallback: Material + passende Tönung.
-            shape
-                .fill(.ultraThinMaterial)
-                .overlay(shape.fill(Color.black.opacity(0.45)))
-        }
-    }
-
-    private var grabHandle: some View {
-        Capsule()
-            .fill(Color.white.opacity(0.5))
-            .frame(width: 40, height: 5)
-            .padding(.top, topInset + 10)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .highPriorityGesture(dismissGesture)
-    }
-
-    /// Seitliche Swipe-Zonen; unten ausgespart (Scrubber/Controls).
-    /// Breite wächst mit dem Bildschirm: alles außerhalb der max. 500pt
-    /// breiten Inhaltsspalte (iPad/Landscape), mindestens 56pt.
-    private var sideDismissZones: some View {
-        GeometryReader { proxy in
-            let zoneWidth = max(56, (proxy.size.width - 520) / 2)
-            HStack {
-                dismissZone(width: zoneWidth)
-                Spacer()
-                dismissZone(width: zoneWidth)
-            }
-            .padding(.bottom, 220)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-    }
-
-    private func dismissZone(width: CGFloat) -> some View {
-        Color.clear
-            .frame(width: width)
-            .frame(maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .highPriorityGesture(dismissGesture)
-    }
-
-    /// Global gemessen (Offset-Container), minimumDistance 0.
-    private var dismissGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .global)
-            .updating($dragOffset) { value, state, _ in
-                state = max(0, value.translation.height)
-            }
-            .onEnded { value in
-                let end = max(0, value.translation.height)
-                let shouldDismiss = end > dismissThreshold
-                    || value.predictedEndTranslation.height > dismissThreshold * 2
-                // Offset nahtlos übernehmen (GestureState resettet instant).
-                releaseOffset = end
-                if shouldDismiss {
-                    // Selbst hinausfahren, dann erst abbauen (kein Transition-Hänger).
-                    withAnimation(.easeOut(duration: 0.45)) {
-                        releaseOffset = presentHeight
-                    } completion: {
-                        onDismiss()
-                    }
-                } else {
-                    withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) {
-                        releaseOffset = 0
-                    }
-                }
-            }
     }
 }
