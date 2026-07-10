@@ -61,11 +61,10 @@ final class DownloadManager: ObservableObject {
             .map { $0.lastPathComponent }
             .filter { itemId in
                 // Meta-Datei wird erst nach vollständigem Download geschrieben —
-                // Ordner ohne Meta ist ein Abbruch-Rest (z. B. Force-Quit): weg.
+                // Ordner ohne Meta ist ein Abbruch-Rest: nicht als "fertig"
+                // zählen, aber LIEGEN LASSEN (Resume überspringt fertige Tracks).
                 let meta = metadataDirectory.appendingPathComponent("\(itemId).json")
-                if FileManager.default.fileExists(atPath: meta.path) { return true }
-                try? FileManager.default.removeItem(at: itemDirectory(itemId))
-                return false
+                return FileManager.default.fileExists(atPath: meta.path)
             }
     }
 
@@ -81,6 +80,9 @@ final class DownloadManager: ObservableObject {
     /// Track-Reihenfolge (Dateiname = Track-Index). Wird vom Player bevorzugt
     /// genutzt, um Streaming (und damit Latenz/Datenvolumen) zu vermeiden.
     func localFileURLs(forItemId itemId: String) -> [URL]? {
+        // Nur KOMPLETTE Downloads — liegengebliebene Teil-Ordner (Resume-Reste)
+        // würden sonst als lokale Quelle mit falscher Track-Zuordnung dienen.
+        guard downloadedItemIds.contains(itemId) else { return nil }
         let dir = itemDirectory(itemId)
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: nil
@@ -131,23 +133,28 @@ final class DownloadManager: ObservableObject {
         do {
             for (index, track) in tracks.enumerated() {
                 guard let remoteURL = apiClient.streamURL(forContentPath: track.contentUrl) else { continue }
+                let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
+                let destination = dir.appendingPathComponent("\(index).\(ext)")
+
+                // Resume: Track aus einem früheren (abgebrochenen) Versuch
+                // liegt schon da — überspringen statt neu laden.
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    completedFraction += perTrackWeight
+                    downloadProgress[itemId] = completedFraction
+                    continue
+                }
+
                 var request = URLRequest(url: remoteURL)
                 if let token = apiClient.token, !token.isEmpty {
                     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
                 }
 
                 let baseProgress = completedFraction
-                let tempURL = try await FileDownloader.shared.download(request: request) { fraction in
+                try await FileDownloader.shared.download(request: request, to: destination) { fraction in
                     Task { @MainActor in
                         DownloadManager.shared.downloadProgress[itemId] = baseProgress + fraction * perTrackWeight
                     }
                 }
-                let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
-                let destination = dir.appendingPathComponent("\(index).\(ext)")
-                if FileManager.default.fileExists(atPath: destination.path) {
-                    try FileManager.default.removeItem(at: destination)
-                }
-                try FileManager.default.moveItem(at: tempURL, to: destination)
 
                 // Von iCloud-/Geräte-Backups ausschließen — Hörbücher sind
                 // groß und gehören nicht ins iPhone-Backup.
@@ -175,8 +182,8 @@ final class DownloadManager: ObservableObject {
         } catch {
             errorMessage = "Download fehlgeschlagen: \(error.localizedDescription)"
             downloadProgress[itemId] = nil
-            // Unvollständigen Download nicht als "fertig" stehen lassen.
-            try? FileManager.default.removeItem(at: dir)
+            // Teilstände BEHALTEN: fertige Tracks werden beim nächsten Versuch
+            // übersprungen (Resume). Als "fertig" gilt das Buch erst mit Meta.
         }
     }
 

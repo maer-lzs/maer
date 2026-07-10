@@ -154,6 +154,12 @@ struct LibraryView: View {
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
+        // Logout (manuell oder automatisch bei 401): Wiedergabe sauber beenden —
+        // finaler Sync-Versuch landet bei totem Token in der Queue und wird nach
+        // dem nächsten Login nachgereicht; Lockscreen-Anzeige wird geräumt.
+        .onDisappear {
+            playerCoordinator.viewModel?.stop()
+        }
         // Voller Player als Overlay ÜBER der Bibliothek (statt Push).
         .overlay {
             if isShowingFullPlayer {
