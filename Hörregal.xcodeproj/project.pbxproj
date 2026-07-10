@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CF1170F22FF99D9D00DA1AC5;
+			remoteInfo = ABSPlayer;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ABSPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF1177422FFA961A00DA1AC5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
@@ -15,6 +25,7 @@
 		CFBF69FE2FFACB2A007815F7 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFBF6EF92FFAF291007815F7 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFC8E6132FFED66100226154 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFCCDF792FFABFC6004A0EB5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFD427222FFC71D30047EE14 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CFE410FE2FFC40120005887D /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
@@ -25,6 +36,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"ABSPlayer-Info.plist",
+				ABSPlayerTests,
 			);
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
 		};
@@ -39,10 +51,22 @@
 			name = ABSPlayer;
 			sourceTree = "<group>";
 		};
+		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ABSPlayerTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		CF1170F02FF99D9D00DA1AC5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFC8E64730006E4A00226154 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -57,6 +81,8 @@
 			children = (
 				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
 				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
+				CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */,
+				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -135,6 +161,29 @@
 			productReference = CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CFC8E64930006E4A00226154 /* ABSPlayerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "ABSPlayerTests" */;
+			buildPhases = (
+				CFC8E64630006E4A00226154 /* Sources */,
+				CFC8E64730006E4A00226154 /* Frameworks */,
+				CFC8E64830006E4A00226154 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CFC8E64F30006E4B00226154 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+			);
+			name = ABSPlayerTests;
+			packageProductDependencies = (
+			);
+			productName = ABSPlayerTests;
+			productReference = CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -147,6 +196,10 @@
 				TargetAttributes = {
 					CF1170F22FF99D9D00DA1AC5 = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					CFC8E64930006E4A00226154 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = CF1170F22FF99D9D00DA1AC5;
 					};
 				};
 			};
@@ -207,12 +260,20 @@
 			projectRoot = "";
 			targets = (
 				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,
+				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CF1170F12FF99D9D00DA1AC5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CFC8E64830006E4A00226154 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -229,7 +290,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CFC8E64630006E4A00226154 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CFC8E64F30006E4B00226154 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
+			targetProxy = CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CF1170FC2FF99D9E00DA1AC5 /* Debug */ = {
@@ -425,6 +501,48 @@
 			};
 			name = Release;
 		};
+		CFC8E65130006E4B00226154 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ABSPlayer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ABSPlayer";
+			};
+			name = Debug;
+		};
+		CFC8E65230006E4B00226154 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ABSPlayer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ABSPlayer";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -442,6 +560,15 @@
 			buildConfigurations = (
 				CF1170FF2FF99D9E00DA1AC5 /* Debug */,
 				CF1171002FF99D9E00DA1AC5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CFC8E65030006E4B00226154 /* Build configuration list for PBXNativeTarget "ABSPlayerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFC8E65130006E4B00226154 /* Debug */,
+				CFC8E65230006E4B00226154 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
