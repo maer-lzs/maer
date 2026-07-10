@@ -110,7 +110,7 @@ extension PlayerViewModel {
                     duration: duration,
                     isFinished: isFinishedNow
                 )
-                errorMessage = "Sync fehlgeschlagen: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
+                errorMessage = String(localized: "Sync failed: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
                 syncStatus = .failed
             }
         }

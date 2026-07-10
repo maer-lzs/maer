@@ -22,10 +22,10 @@ struct ChapterListView: View {
                     }
                 }
             }
-            .navigationTitle("Kapitel")
+            .navigationTitle("Chapters")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Fertig") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }

@@ -23,7 +23,7 @@ final class AuthViewModel: ObservableObject {
         // Läuft der Token ab (401), automatisch zurück zum Setup-Screen.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
-            self.errorMessage = "Sitzung abgelaufen — bitte mit einem neuen API-Token anmelden."
+            self.errorMessage = String(localized: "Session expired — please sign in with a new API token.")
             self.logout()
         }
     }
@@ -35,14 +35,14 @@ final class AuthViewModel: ObservableObject {
         if nsError.domain == NSURLErrorDomain {
             switch nsError.code {
             case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
-                return "Server-Adresse nicht gefunden. Bitte die Adresse prüfen (Tippfehler? richtige Domain?)."
+                return String(localized: "Server address not found. Please check the address (typo? correct domain?).")
             case NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
-                return "Server nicht erreichbar. Läuft Audiobookshelf, und ist der Server aus diesem Netz erreichbar?"
+                return String(localized: "Server unreachable. Is Audiobookshelf running, and is the server reachable from this network?")
             case NSURLErrorNotConnectedToInternet, NSURLErrorDataNotAllowed:
-                return "Keine Internetverbindung. Bitte Netzwerk prüfen und erneut versuchen."
+                return String(localized: "No internet connection. Please check your network and try again.")
             case NSURLErrorSecureConnectionFailed, NSURLErrorServerCertificateUntrusted,
                  NSURLErrorServerCertificateHasBadDate, NSURLErrorServerCertificateHasUnknownRoot:
-                return "Sichere Verbindung fehlgeschlagen (Zertifikatsproblem). Ist HTTPS auf dem Server korrekt eingerichtet?"
+                return String(localized: "Secure connection failed (certificate problem). Is HTTPS set up correctly on the server?")
             default:
                 break
             }
@@ -50,9 +50,9 @@ final class AuthViewModel: ObservableObject {
         if let apiError = error as? APIError {
             switch apiError {
             case .http(401, _):
-                return "Der Server hat den API-Token abgelehnt. Bitte Token prüfen bzw. einen neuen erzeugen."
+                return String(localized: "The server rejected the API token. Please check the token or create a new one.")
             case .decoding:
-                return "Unter dieser Adresse antwortet kein Audiobookshelf-Server. Bitte Adresse prüfen."
+                return String(localized: "No Audiobookshelf server responds at this address. Please check the address.")
             default:
                 break
             }
@@ -66,12 +66,12 @@ final class AuthViewModel: ObservableObject {
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
-            errorMessage = "Bitte eine gültige Server-Adresse eingeben, z. B. https://audio.example.de"
+            errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
             return
         }
         let trimmedToken = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedToken.isEmpty else {
-            errorMessage = "Bitte einen API-Token eintragen."
+            errorMessage = String(localized: "Please enter an API token.")
             return
         }
 

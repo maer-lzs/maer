@@ -173,7 +173,7 @@ struct MiniPlayerBar: View {
         let totalMinutes = Int(remaining) / 60
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        return hours > 0 ? "noch \(hours) Std. \(minutes) Min." : "noch \(minutes) Min."
+        return hours > 0 ? String(localized: "\(hours) hr \(minutes) min left") : String(localized: "\(minutes) min left")
     }
 
     private var timeText: String {

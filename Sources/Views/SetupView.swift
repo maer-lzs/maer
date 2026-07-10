@@ -18,7 +18,7 @@ struct SetupView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("z. B. audio.example.com", text: $viewModel.serverURLString)
+                    TextField("e.g. audio.example.com", text: $viewModel.serverURLString)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
@@ -27,13 +27,13 @@ struct SetupView: View {
                 }
 
                 Section {
-                    SecureField("API-Token", text: $viewModel.apiToken)
+                    SecureField("API Token", text: $viewModel.apiToken)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("API-Token")
+                    Text("API Token")
                 } footer: {
-                    Text("Zu finden in der Audiobookshelf-Weboberfläche unter Einstellungen → Benutzer → eigenen Account öffnen (oder Einstellungen → API-Keys bei neueren Versionen).")
+                    Text("Found in the Audiobookshelf web interface under Settings → Users → open your account (or Settings → API Keys on newer versions).")
                 }
 
                 if let error = viewModel.errorMessage {
@@ -51,7 +51,7 @@ struct SetupView: View {
                             if viewModel.isLoading {
                                 ProgressView()
                             } else {
-                                Text("Verbinden")
+                                Text("Connect")
                             }
                             Spacer()
                         }
@@ -61,13 +61,13 @@ struct SetupView: View {
 
                 if DemoAccess.isAvailable {
                     Section {
-                        Button("Demo-Server verwenden") {
+                        Button("Use Demo Server") {
                             viewModel.serverURLString = DemoAccess.serverURL ?? ""
                             viewModel.apiToken = DemoAccess.apiToken ?? ""
                             Task { await viewModel.connect() }
                         }
                     } footer: {
-                        Text("Verbindet mit einem öffentlichen Demo-Server mit Beispiel-Hörbüchern.")
+                        Text("Connects to a public demo server with sample audiobooks.")
                     }
                 }
             }

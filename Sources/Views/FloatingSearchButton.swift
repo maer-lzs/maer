@@ -20,7 +20,7 @@ struct FloatingSearchButton: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
                     .padding(.leading, 16)
-                TextField("Titel oder Autor", text: $searchText)
+                TextField("Title, author, series", text: $searchText)
                     .focused($isFocused)
                     .font(.body)
                     .textInputAutocapitalization(.never)

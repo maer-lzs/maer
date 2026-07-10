@@ -14,10 +14,10 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Wiedergabe") {
-                Picker("Sprung-Intervall", selection: $skipInterval) {
+            Section("Playback") {
+                Picker("Skip Interval", selection: $skipInterval) {
                     ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
-                        Text("\(Int(seconds)) Sekunden").tag(seconds)
+                        Text("\(Int(seconds)) seconds").tag(seconds)
                     }
                 }
                 .onChange(of: skipInterval) { _, newValue in
@@ -30,51 +30,51 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Speicher") {
+            Section("Storage") {
                 LabeledContent("Downloads") {
                     Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
                 }
-                Button("Alle Downloads löschen", role: .destructive) {
+                Button("Delete All Downloads", role: .destructive) {
                     showDeleteAllDownloads = true
                 }
                 .disabled(downloadManager.downloadedItemIds.isEmpty)
 
-                LabeledContent("Cover-Cache") {
+                LabeledContent("Cover Cache") {
                     Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
                 }
-                Button("Cover-Cache leeren") {
+                Button("Clear Cover Cache") {
                     ImageCache.shared.clearCache()
                     coverCacheBytes = ImageCache.shared.cacheSizeBytes()
                 }
             }
 
             Section("Server") {
-                LabeledContent("Adresse") {
+                LabeledContent("Address") {
                     Text(coordinator.apiClient.baseURL.absoluteString)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                Button("Abmelden", role: .destructive) {
+                Button("Log Out", role: .destructive) {
                     showLogoutConfirm = true
                 }
             }
         }
-        .navigationTitle("Einstellungen")
+        .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task { coverCacheBytes = ImageCache.shared.cacheSizeBytes() }
-        .alert("Alle Downloads löschen?", isPresented: $showDeleteAllDownloads) {
-            Button("Löschen", role: .destructive) {
+        .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
+            Button("Delete", role: .destructive) {
                 DownloadManager.shared.deleteAllDownloads()
             }
-            Button("Abbrechen", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Alle heruntergeladenen Hörbücher werden vom Gerät entfernt. Der Hörfortschritt bleibt erhalten.")
+            Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
         }
-        .alert("Abmelden?", isPresented: $showLogoutConfirm) {
-            Button("Abmelden", role: .destructive) { onLogout() }
-            Button("Abbrechen", role: .cancel) {}
+        .alert("Log out?", isPresented: $showLogoutConfirm) {
+            Button("Log Out", role: .destructive) { onLogout() }
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Server-Adresse bleibt gespeichert; der Token wird entfernt.")
+            Text("The server address stays saved; the token is removed.")
         }
     }
 }

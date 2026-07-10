@@ -42,13 +42,13 @@ struct LibraryView: View {
                 Group {
                     if viewModel.isLoading && viewModel.entries.isEmpty {
                         Spacer()
-                        ProgressView("Bibliothek wird geladen…")
+                        ProgressView("Loading library…")
                         Spacer()
                     } else if let error = viewModel.errorMessage, viewModel.entries.isEmpty {
                         Spacer()
                         VStack(spacing: 12) {
                             Text(error).multilineTextAlignment(.center)
-                            Button("Erneut versuchen") {
+                            Button("Try Again") {
                                 Task { await viewModel.loadLibrary() }
                             }
                         }
@@ -58,13 +58,13 @@ struct LibraryView: View {
                         // Verbunden, aber der Server hat (noch) keine Bücher.
                         Spacer()
                         ContentUnavailableView {
-                            Label("Keine Hörbücher", systemImage: "books.vertical")
+                            Label("No Audiobooks", systemImage: "books.vertical")
                         } description: {
                             Text(viewModel.isShowingOfflineCache
-                                ? "Offline — es sind keine Bücher heruntergeladen."
-                                : "Deine Bibliothek ist leer. Füge Hörbücher über die Audiobookshelf-Weboberfläche hinzu.")
+                                ? String(localized: "Offline — no books are downloaded.")
+                                : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))
                         } actions: {
-                            Button("Aktualisieren") {
+                            Button("Refresh") {
                                 Task { await viewModel.loadLibrary() }
                             }
                         }
@@ -74,7 +74,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle("Bibliothek")
+            .navigationTitle("Library")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     sortFilterMenu
@@ -174,13 +174,13 @@ struct LibraryView: View {
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
-        .alert("Alle Downloads löschen?", isPresented: $showDeleteAllDownloads) {
-            Button("Löschen", role: .destructive) {
+        .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
+            Button("Delete", role: .destructive) {
                 DownloadManager.shared.deleteAllDownloads()
             }
-            Button("Abbrechen", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Alle heruntergeladenen Hörbücher werden vom Gerät entfernt. Der Hörfortschritt bleibt erhalten.")
+            Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
         }
         // Logout (manuell oder automatisch bei 401): Wiedergabe sauber beenden —
         // finaler Sync-Versuch landet bei totem Token in der Queue und wird nach
@@ -218,7 +218,7 @@ struct LibraryView: View {
     private var offlineBanner: some View {
         HStack(spacing: 6) {
             Image(systemName: "wifi.slash")
-            Text("Offline — zuletzt bekannter Stand")
+            Text("Offline — last known state")
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -266,11 +266,11 @@ struct LibraryView: View {
                     searchResultsSection
                 } else {
                     if !viewModel.continueListening.isEmpty {
-                        horizontalSection(title: "Weiter hören", entries: viewModel.continueListening)
+                        horizontalSection(title: String(localized: "Continue Listening"), entries: viewModel.continueListening)
                     }
                     if !viewModel.downloadedEntries.isEmpty {
                         horizontalSection(
-                            title: "Heruntergeladen",
+                            title: String(localized: "Downloaded"),
                             entries: viewModel.downloadedEntries,
                             subtitle: ByteCountFormatter.string(
                                 fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file
@@ -279,13 +279,13 @@ struct LibraryView: View {
                                 Button(role: .destructive) {
                                     showDeleteAllDownloads = true
                                 } label: {
-                                    Label("Alle Downloads löschen", systemImage: "trash")
+                                    Label("Delete All Downloads", systemImage: "trash")
                                 }
                             }
                         )
                     }
                     if !viewModel.recentlyAdded.isEmpty {
-                        horizontalSection(title: "Kürzlich hinzugefügt", entries: viewModel.recentlyAdded)
+                        horizontalSection(title: String(localized: "Recently Added"), entries: viewModel.recentlyAdded)
                     }
                     allBooksSection
                 }
@@ -334,7 +334,7 @@ struct LibraryView: View {
     private var searchResultsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             if filteredEntries.isEmpty {
-                Text("Keine Treffer.")
+                Text("No results.")
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             } else {
@@ -390,7 +390,7 @@ struct LibraryView: View {
                                     .lineLimit(2)
                                     .frame(width: 132, alignment: .leading)
                                 if let p = entry.progress, p.isStarted {
-                                    Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? "\(p.percentInt) %")
+                                    Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? p.fraction.formatted(.percent.precision(.fractionLength(0))))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
                                 }
@@ -409,7 +409,7 @@ struct LibraryView: View {
 
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Alle Bücher")
+            Text("All Books")
                 .font(.title3).bold()
                 .padding(.horizontal)
             if viewModel.sortOption == .serie {
@@ -461,23 +461,23 @@ struct LibraryView: View {
 
     private var sortFilterMenu: some View {
         Menu {
-            Picker("Sortieren", selection: $viewModel.sortOption) {
+            Picker("Sort By", selection: $viewModel.sortOption) {
                 ForEach(SortOption.allCases) { option in
-                    Text(option.rawValue).tag(option)
+                    Text(option.label).tag(option)
                 }
             }
             Button {
                 viewModel.sortAscending.toggle()
             } label: {
                 Label(
-                    viewModel.sortAscending ? "Aufsteigend" : "Absteigend",
+                    viewModel.sortAscending ? String(localized: "Ascending") : String(localized: "Descending"),
                     systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
                 )
             }
             Divider()
             Picker("Filter", selection: $viewModel.filterOption) {
                 ForEach(FilterOption.allCases) { option in
-                    Text(option.rawValue).tag(option)
+                    Text(option.label).tag(option)
                 }
             }
         } label: {
@@ -546,20 +546,20 @@ struct LibraryView: View {
         Button {
             Task { await playerCoordinator.open(item: entry.item) }
         } label: {
-            Label("Abspielen", systemImage: "play.fill")
+            Label("Play", systemImage: "play.fill")
         }
 
         if DownloadManager.shared.isDownloaded(itemId: entry.id) {
             Button(role: .destructive) {
                 DownloadManager.shared.deleteDownload(itemId: entry.id)
             } label: {
-                Label("Download löschen", systemImage: "trash")
+                Label("Delete Download", systemImage: "trash")
             }
         } else if !DownloadManager.shared.isDownloading(itemId: entry.id) {
             Button {
                 Task { await quickDownload(entry: entry) }
             } label: {
-                Label("Für offline speichern", systemImage: "arrow.down.circle")
+                Label("Save for Offline", systemImage: "arrow.down.circle")
             }
         }
 
@@ -568,7 +568,7 @@ struct LibraryView: View {
         } label: {
             let isFinished = entry.progress?.isFinished ?? false
             Label(
-                isFinished ? "Als ungehört markieren" : "Als gehört markieren",
+                isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
                 systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
             )
         }
@@ -617,8 +617,11 @@ struct LibraryView: View {
     }
 
     private func statusText(_ p: BookProgress, duration: Double?) -> String {
-        if p.isFinished { return "Abgeschlossen" }
-        if p.isStarted { return p.remainingText(bookDuration: duration) ?? "\(p.percentInt) % gehört" }
+        if p.isFinished { return String(localized: "Completed") }
+        if p.isStarted {
+            if let t = p.remainingText(bookDuration: duration) { return t }
+            return String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened")
+        }
         return ""
     }
 }

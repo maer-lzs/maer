@@ -16,6 +16,17 @@ enum SortOption: String, CaseIterable, Identifiable {
     case zuletztGehoert = "Zuletzt gehört"
     var id: String { rawValue }
 
+    /// Anzeigename (lokalisiert) — rawValue bleibt stabiler Persistenz-Key.
+    var label: String {
+        switch self {
+        case .titel: return String(localized: "Title")
+        case .autor: return String(localized: "Author")
+        case .serie: return String(localized: "Series")
+        case .zuletztHinzugefuegt: return String(localized: "Recently Added")
+        case .zuletztGehoert: return String(localized: "Recently Listened")
+        }
+    }
+
     /// Sinnvolle Standardrichtung je Sortierart — Titel/Autor/Serie
     /// alphabetisch aufsteigend (A→Z), alles Zeitbasierte neuestes zuerst.
     var defaultAscending: Bool {
@@ -31,6 +42,15 @@ enum FilterOption: String, CaseIterable, Identifiable {
     case unfertig = "Unfertig"
     case fertig = "Fertig"
     var id: String { rawValue }
+
+    /// Anzeigename (lokalisiert) — rawValue bleibt stabiler Persistenz-Key.
+    var label: String {
+        switch self {
+        case .alle: return String(localized: "All")
+        case .unfertig: return String(localized: "Unfinished")
+        case .fertig: return String(localized: "Finished")
+        }
+    }
 }
 
 @MainActor
@@ -227,7 +247,7 @@ final class LibraryViewModel: ObservableObject {
         do {
             let libraries = try await apiClient.fetchLibraries()
             guard let first = libraries.first else {
-                errorMessage = "Keine Bibliothek auf dem Server gefunden."
+                errorMessage = String(localized: "No library found on the server.")
                 return
             }
 

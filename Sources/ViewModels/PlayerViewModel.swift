@@ -43,10 +43,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         var label: String {
             switch self {
-            case .synced: return "Synchronisiert"
-            case .queued: return "Offline — wird nachgereicht"
-            case .offline: return "Offline"
-            case .failed: return "Sync fehlgeschlagen"
+            case .synced: return String(localized: "Synced")
+            case .queued: return String(localized: "Offline — queued for sync")
+            case .offline: return String(localized: "Offline")
+            case .failed: return String(localized: "Sync failed")
             }
         }
 
@@ -73,12 +73,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         var label: String {
             switch self {
-            case .saved: return "Fortschritt gesichert"
-            case .serverAdopted: return "Serverstand übernommen"
-            case .localUsed: return "Lokaler Stand verwendet"
-            case .queued: return "Offline — wird nachgereicht"
-            case .offline: return "Offline — Fortschritt wird lokal gemerkt"
-            case .conflict: return "Konflikt erkannt"
+            case .saved: return String(localized: "Progress saved")
+            case .serverAdopted: return String(localized: "Adopted server position")
+            case .localUsed: return String(localized: "Using local position")
+            case .queued: return String(localized: "Offline — queued for sync")
+            case .offline: return String(localized: "Offline — progress saved locally")
+            case .conflict: return String(localized: "Conflict detected")
             }
         }
 
@@ -220,7 +220,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         do {
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
-            errorMessage = "Audiosession konnte nicht aktiviert werden: \(error.localizedDescription)"
+            errorMessage = String(localized: "Audio session could not be activated: \(error.localizedDescription)")
         }
     }
 
@@ -247,7 +247,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
 
         guard !sortedTracks.isEmpty else {
-            errorMessage = "Kein abspielbarer Track gefunden."
+            errorMessage = String(localized: "No playable track found.")
             return
         }
 
@@ -275,7 +275,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
         guard buildQueue(startingAtTrackIndex: startIndex, seekWithin: offsetWithinTrack) else {
-            errorMessage = "Hörbuch konnte nicht geladen werden."
+            errorMessage = String(localized: "Audiobook could not be loaded.")
             return
         }
 

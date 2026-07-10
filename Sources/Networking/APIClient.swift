@@ -9,16 +9,16 @@ enum APIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Ungültige Server-Adresse."
+            return String(localized: "Invalid server address.")
         case .invalidResponse:
-            return "Ungültige Antwort vom Server."
+            return String(localized: "Invalid response from the server.")
         case .http(let code, let body):
             if code == 401 {
-                return "Server hat den Token abgelehnt (401). Bitte Token prüfen."
+                return String(localized: "The server rejected the token (401). Please check the token.")
             }
-            return "Serverfehler \(code): \(body.prefix(200))"
+            return String(localized: "Server error \(code): \(String(body.prefix(200)))")
         case .decoding(let detail):
-            return "Antwort vom Server hat ein unerwartetes Format: \(detail). Siehe README, Abschnitt Troubleshooting."
+            return String(localized: "Unexpected response format from the server: \(detail)")
         }
     }
 }

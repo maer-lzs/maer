@@ -26,7 +26,7 @@ struct PlayerScreen: View {
                     bottomInset: bottomInset
                 )
             } else if coordinator.isLoading {
-                ProgressView("Wird geladen…")
+                ProgressView("Loading…")
             } else if let error = coordinator.loadError {
                 VStack(spacing: 12) {
                     Text(error).multilineTextAlignment(.center)

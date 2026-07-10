@@ -48,8 +48,8 @@ struct BookProgress: Equatable, Codable {
         let totalMinutes = Int(remaining) / 60
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        if hours > 0 { return "noch \(hours) Std. \(minutes) Min." }
-        return "noch \(minutes) Min."
+        if hours > 0 { return String(localized: "\(hours) hr \(minutes) min left") }
+        return String(localized: "\(minutes) min left")
     }
 }
 
@@ -76,7 +76,7 @@ struct LibraryItem: Codable, Identifiable {
     let addedAt: Double?
 
     var title: String {
-        media?.metadata?.title ?? "Unbekannter Titel"
+        media?.metadata?.title ?? String(localized: "Unknown Title")
     }
 
     var author: String? {

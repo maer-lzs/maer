@@ -91,11 +91,11 @@ struct BookDetailScreen: View {
                     .tint(AppTheme.accent)
                     .frame(maxWidth: 220)
                     .padding(.top, 2)
-                Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? "\(p.percentInt) % gehört")
+                Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
             } else if isFinished {
-                Text("Abgeschlossen")
+                Text("Completed")
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
             }
@@ -185,7 +185,7 @@ struct BookDetailScreen: View {
                     if let description = detail?.media.metadata?.description, !description.isEmpty {
                         let text = Self.plainText(fromHTML: description)
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Beschreibung")
+                            Text("Description")
                                 .font(.headline)
                             Text(text)
                                 .font(.body)
@@ -193,7 +193,7 @@ struct BookDetailScreen: View {
                                 .lineLimit(descriptionExpanded ? nil : 7)
                             // Auf-/Zuklappen nur, wenn der Text das braucht.
                             if text.count > 350 {
-                                Button(descriptionExpanded ? "Weniger anzeigen" : "Mehr anzeigen") {
+                                Button(descriptionExpanded ? String(localized: "Show Less") : String(localized: "Show More")) {
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         descriptionExpanded.toggle()
                                     }
@@ -225,13 +225,13 @@ struct BookDetailScreen: View {
         }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Kein WLAN erkannt", isPresented: $showWiFiWarning) {
-            Button("Trotzdem laden") {
+        .alert("No Wi-Fi Detected", isPresented: $showWiFiWarning) {
+            Button("Download Anyway") {
                 Task { await reallyStartDownload() }
             }
-            Button("Abbrechen", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Du bist aktuell nicht im WLAN. Der Download könnte dein Mobilfunk-Datenvolumen verbrauchen.")
+            Text("You're not on Wi-Fi. This download may use cellular data.")
         }
         .task {
             isLoading = true
@@ -251,7 +251,7 @@ struct BookDetailScreen: View {
         VStack(spacing: 8) {
             playButton(withPadding: withPadding)
             if entry.progress?.isStarted == true || isFinished {
-                Button("Von Anfang starten") {
+                Button("Start from Beginning") {
                     Task { await restartFromBeginning() }
                 }
                 .font(.footnote)
@@ -284,7 +284,7 @@ struct BookDetailScreen: View {
             )
         } label: {
             HStack {
-                Label("Kapitel", systemImage: "list.bullet")
+                Label("Chapters", systemImage: "list.bullet")
                     .font(.subheadline)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 Spacer()
@@ -320,7 +320,7 @@ struct BookDetailScreen: View {
                     HStack {
                         if isThisBookLoading {
                             ProgressView()
-                            Text("Wird gestartet…")
+                            Text("Starting…")
                         } else {
                             Image(systemName: "play.fill")
                             Text(playButtonLabel)
@@ -358,23 +358,23 @@ struct BookDetailScreen: View {
         if hasAnyInfo {
             VStack(alignment: .leading, spacing: 6) {
                 if let series, !series.isEmpty {
-                    infoRow(label: "Serie", value: series, isHero: withPadding)
+                    infoRow(label: "Series", value: series, isHero: withPadding)
                 }
                 if let narrator, !narrator.isEmpty {
-                    infoRow(label: "Erzähler", value: narrator, isHero: withPadding)
+                    infoRow(label: "Narrator", value: narrator, isHero: withPadding)
                 }
                 if let genres, !genres.isEmpty {
                     infoRow(label: "Genre", value: genres.joined(separator: ", "), isHero: withPadding)
                 }
                 if let year, !year.isEmpty {
-                    infoRow(label: "Erschienen", value: year, isHero: withPadding)
+                    infoRow(label: "Released", value: year, isHero: withPadding)
                 }
                 if let duration, duration > 0 {
-                    infoRow(label: "Gesamtdauer", value: formattedDuration(duration), isHero: withPadding)
+                    infoRow(label: "Total Duration", value: formattedDuration(duration), isHero: withPadding)
                 }
                 if let last = entry.progress?.lastUpdate, last > 0 {
                     infoRow(
-                        label: "Zuletzt gehört",
+                        label: "Last Listened",
                         value: Date(timeIntervalSince1970: last / 1000)
                             .formatted(date: .abbreviated, time: .omitted),
                         isHero: withPadding
@@ -385,7 +385,7 @@ struct BookDetailScreen: View {
         }
     }
 
-    private func infoRow(label: String, value: String, isHero: Bool) -> some View {
+    private func infoRow(label: LocalizedStringKey, value: String, isHero: Bool) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text(label)
                 .font(.caption)
@@ -402,7 +402,7 @@ struct BookDetailScreen: View {
         let totalMinutes = Int(seconds / 60)
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60
-        return hours > 0 ? "\(hours) Std. \(minutes) Min." : "\(minutes) Min."
+        return hours > 0 ? String(localized: "\(hours) hr \(minutes) min") : String(localized: "\(minutes) min")
     }
 
     /// Server-Beschreibungen enthalten oft rohes HTML (`<p>`, `<br>`, …) statt
@@ -436,7 +436,7 @@ struct BookDetailScreen: View {
             Task { await toggleFinishedMark() }
         } label: {
             Label(
-                isFinished ? "Als ungehört markieren" : "Als gehört markieren",
+                isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
                 systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
             )
             .font(.subheadline)
@@ -503,7 +503,7 @@ struct BookDetailScreen: View {
         Group {
             if downloadManager.isDownloaded(itemId: entry.id) {
                 HStack {
-                    Label("Offline verfügbar", systemImage: "checkmark.circle.fill")
+                    Label("Available Offline", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.subheadline)
                     // Belegter Speicher dieses Buchs.
@@ -532,7 +532,7 @@ struct BookDetailScreen: View {
                 Button {
                     Task { await startDownloadWithWiFiCheck() }
                 } label: {
-                    Label("Offline speichern", systemImage: "arrow.down.circle")
+                    Label("Save Offline", systemImage: "arrow.down.circle")
                         .font(.subheadline)
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
@@ -559,8 +559,8 @@ struct BookDetailScreen: View {
     }
 
     private var playButtonLabel: String {
-        if let p = entry.progress, p.isStarted { return "Weiter hören" }
-        return "Abspielen"
+        if let p = entry.progress, p.isStarted { return String(localized: "Continue Listening") }
+        return String(localized: "Play")
     }
 
     /// True, während der Coordinator gerade genau dieses Buch lädt. So dreht
@@ -630,7 +630,7 @@ private struct DetailChapterList: View {
 
     private func durationText(_ chapter: ABSChapter) -> String {
         let minutes = max(1, Int((chapter.end - chapter.start) / 60))
-        return "\(minutes) Min."
+        return String(localized: "\(minutes) min")
     }
 }
 
@@ -648,7 +648,7 @@ private struct ActivePlayButton<S: Shape>: View {
         } label: {
             HStack {
                 Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                Text(viewModel.isPlaying ? "Pause" : "Fortsetzen")
+                Text(viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Resume"))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)

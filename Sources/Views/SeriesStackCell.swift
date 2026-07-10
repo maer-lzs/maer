@@ -50,7 +50,7 @@ struct SeriesStackCell: View {
                 .font(.caption)
                 .foregroundStyle(.primary)
                 .lineLimit(2)
-            Text("\(entries.count) Bücher")
+            Text("\(entries.count) books")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

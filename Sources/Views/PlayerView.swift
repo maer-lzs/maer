@@ -101,38 +101,38 @@ struct PlayerView: View {
             }
         }
         .alert(
-            "Fortschritt senken?",
+            "Lower progress?",
             isPresented: Binding(
                 get: { viewModel.pendingServerConflict != nil },
                 set: { if !$0 { viewModel.dismissLowerProgressConflict() } }
             ),
             presenting: viewModel.pendingServerConflict
         ) { _ in
-            Button("Überschreiben", role: .destructive) {
+            Button("Overwrite", role: .destructive) {
                 Task { await viewModel.confirmLowerProgress() }
             }
-            Button("Abbrechen", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 viewModel.cancelAndRestoreServerPosition()
             }
         } message: { conflict in
-            Text("Zuletzt gespeichert: \(format(conflict.serverTime)). Aktuell: \(format(conflict.localTime)). Ohne Bestätigung wird nichts überschrieben — bei Abbrechen springt die Wiedergabe zurück zum gespeicherten Stand.")
+            Text("Last saved: \(format(conflict.serverTime)). Current: \(format(conflict.localTime)). Nothing is overwritten without confirmation — Cancel jumps playback back to the saved position.")
         }
         .alert(
-            "Mehrere schnelle Sprünge erkannt",
+            "Multiple rapid skips detected",
             isPresented: Binding(
                 get: { viewModel.suspiciousLockscreenJump != nil },
                 set: { if !$0 { viewModel.dismissLockscreenJump() } }
             ),
             presenting: viewModel.suspiciousLockscreenJump
         ) { _ in
-            Button("Ja, das war ich") {
+            Button("Yes, that was me") {
                 Task { await viewModel.confirmLockscreenJump() }
             }
-            Button("Zurück zu \(format(viewModel.suspiciousLockscreenJump?.beforeTime ?? 0))", role: .cancel) {
+            Button("Back to \(format(viewModel.suspiciousLockscreenJump?.beforeTime ?? 0))", role: .cancel) {
                 viewModel.cancelLockscreenJump()
             }
         } message: { jump in
-            Text("Über den Sperrbildschirm kamen mehrere schnelle Sprünge hintereinander — das passiert leicht durch Tastenkontakt in der Tasche. Von \(format(jump.beforeTime)) auf \(format(jump.afterTime)). Wirklich so weit gesprungen?")
+            Text("Several rapid skips came in via the lock screen — this can easily happen from pocket contact. From \(format(jump.beforeTime)) to \(format(jump.afterTime)). Did you really skip that far?")
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background || newPhase == .inactive {
@@ -181,7 +181,7 @@ struct PlayerView: View {
                     Color.black.opacity(0.35)
                     VStack(spacing: 8) {
                         ProgressView().tint(.white)
-                        Text("Lädt…").font(.caption)
+                        Text("Loading…").font(.caption)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -278,7 +278,7 @@ struct PlayerView: View {
             }
 
             Button { showChapters = true } label: {
-                Label("Kapitel", systemImage: "list.bullet")
+                Label("Chapters", systemImage: "list.bullet")
             }
             .disabled(viewModel.chapters.isEmpty)
 
@@ -292,18 +292,18 @@ struct PlayerView: View {
 
             Menu {
                 ForEach(sleepOptions, id: \.self) { minutes in
-                    Button("\(Int(minutes)) Min") {
+                    Button("\(Int(minutes)) min") {
                         viewModel.startSleepTimer(minutes: minutes)
                     }
                 }
                 if !viewModel.chapters.isEmpty {
-                    Button("Bis Kapitelende") {
+                    Button("Until End of Chapter") {
                         viewModel.startSleepTimerUntilChapterEnd()
                     }
                 }
                 if viewModel.sleepTimerRemaining != nil {
                     Divider()
-                    Button("Timer beenden", role: .destructive) {
+                    Button("Stop Timer", role: .destructive) {
                         viewModel.cancelSleepTimer()
                     }
                 }
@@ -325,7 +325,7 @@ struct PlayerView: View {
                 Task { await viewModel.toggleFinished() }
             } label: {
                 Label(
-                    viewModel.isFinished ? "Als ungehört" : "Als gehört",
+                    viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
                     systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle"
                 )
             }
@@ -339,11 +339,11 @@ struct PlayerView: View {
     private var chapterCounterText: String {
         guard let current = viewModel.currentChapter,
               let idx = viewModel.chapters.firstIndex(of: current) else { return "" }
-        return "Kapitel \(idx + 1) von \(viewModel.chapters.count)"
+        return String(localized: "Chapter \(idx + 1) of \(viewModel.chapters.count)")
     }
 
     private var sleepTimerLabel: String {
-        guard let remaining = viewModel.sleepTimerRemaining else { return "Sleep" }
+        guard let remaining = viewModel.sleepTimerRemaining else { return String(localized: "Sleep") }
         let minutes = Int(remaining) / 60
         let seconds = Int(remaining) % 60
         return String(format: "%02d:%02d", minutes, seconds)

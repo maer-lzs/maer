@@ -124,7 +124,7 @@ final class DownloadManager: ObservableObject {
         guard !isDownloaded(itemId: item.id), !isDownloading(itemId: item.id) else { return }
         let tracks = (item.media.tracks ?? []).sorted { ($0.index ?? 0) < ($1.index ?? 0) }
         guard !tracks.isEmpty else {
-            errorMessage = "Kein herunterladbarer Track gefunden."
+            errorMessage = String(localized: "No downloadable track found.")
             return
         }
 
@@ -189,7 +189,7 @@ final class DownloadManager: ObservableObject {
             downloadProgress[itemId] = nil
             recalculateTotalSize()
         } catch {
-            errorMessage = "Download fehlgeschlagen: \(error.localizedDescription)"
+            errorMessage = String(localized: "Download failed: \(error.localizedDescription)")
             downloadProgress[itemId] = nil
             // Teilstände BEHALTEN: fertige Tracks werden beim nächsten Versuch
             // übersprungen (Resume). Als "fertig" gilt das Buch erst mit Meta.
