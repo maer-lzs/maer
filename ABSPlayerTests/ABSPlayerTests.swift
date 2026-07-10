@@ -1,3 +1,4 @@
+#if canImport(Testing)
 //
 //  ABSPlayerTests.swift
 //  ABSPlayerTests
@@ -16,3 +17,4 @@ struct ABSPlayerTests {
     }
 
 }
+#endif
