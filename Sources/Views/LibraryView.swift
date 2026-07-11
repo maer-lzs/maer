@@ -68,9 +68,6 @@ struct LibraryView: View {
                     Spacer()
                 }
             }
-            // Unten so viel freihalten, wie die schwebende Bottom-Zone hoch
-            // ist (gilt für den Wurzel-Inhalt beider Tabs).
-            .bottomBarClearance()
             .navigationTitle("Library")
             .toolbar {
                 // Our own adaptive glass instead of the system's toolbar
@@ -458,6 +455,10 @@ struct LibraryView: View {
             // dem Grid darin führen konnte.
             .frame(maxWidth: .infinity)
             .padding(.vertical)
+            // Freiraum als INNEN-Abstand: die ScrollView bleibt vollflächig,
+            // Inhalt scrollt weiter hinter dem Glas durch, ruht aber über der
+            // Bottom-Zone (kein schwarzer Bereich hinter dem Mini-Player).
+            .bottomBarClearance()
             .background(
                 GeometryReader { geo in
                     Color.clear

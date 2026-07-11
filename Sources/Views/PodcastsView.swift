@@ -36,6 +36,7 @@ struct PodcastsView: View {
                 }
             }
             .padding(.vertical)
+            .bottomBarClearance()
         }
         .refreshable { await subs.refreshAll() }
     }
