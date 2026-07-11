@@ -1,8 +1,8 @@
 # Live-Activity-Widget
 
-Das Widget-Extension-Target (`HoerregalWidgetsExtension`) ist **bereits im
+Das Widget-Extension-Target (`MaerWidgetsExtension`) ist **bereits im
 Xcode-Projekt enthalten** — beim Klonen ist nichts weiter einzurichten.
-`HoerregalLiveActivity.swift` gehört nur zum Widget-Target,
+`MaerLiveActivity.swift` gehört nur zum Widget-Target,
 `Sources/Models/PlaybackActivityAttributes.swift` gehört App UND Widget
 (gemeinsamer Vertrag).
 

@@ -6,7 +6,7 @@ import WidgetKit
 /// Target (siehe ANLEITUNG.md) — zusätzlich braucht das Target
 /// `Sources/Models/PlaybackActivityAttributes.swift` als Mitglied.
 @main
-struct HoerregalWidgetBundle: WidgetBundle {
+struct MaerWidgetBundle: WidgetBundle {
     var body: some Widget {
         ContinueListeningWidget()
         PlaybackLiveActivity()

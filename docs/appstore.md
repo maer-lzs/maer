@@ -8,7 +8,7 @@ Konto-/Portal-Arbeit.
 
 - [ ] **Apple Developer Program** (99 €/Jahr) — ohne geht kein App Store.
 - [ ] **Bundle-IDs registrieren** (developer.apple.com → Identifiers):
-      `de.lzs.ABSPlayer` (App) und `de.lzs.ABSPlayer.HoerregalWidgets`
+      `de.lzs.ABSPlayer` (App) und `de.lzs.ABSPlayer.MaerWidgets`
       (Widget), inkl. Capabilities: App Groups (`group.de.lzs.ABSPlayer`),
       falls abgefragt.
 - [ ] In Xcode vom Personal Team aufs bezahlte Team wechseln (beide Targets),

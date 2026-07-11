@@ -17,8 +17,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "CF68E64D3002599A00C97B74"
-               BuildableName = "HoerregalWidgetsExtension.appex"
-               BlueprintName = "HoerregalWidgetsExtension"
+               BuildableName = "MaerWidgetsExtension.appex"
+               BlueprintName = "MaerWidgetsExtension"
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -64,8 +64,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "CF68E64D3002599A00C97B74"
-            BuildableName = "HoerregalWidgetsExtension.appex"
-            BlueprintName = "HoerregalWidgetsExtension"
+            BuildableName = "MaerWidgetsExtension.appex"
+            BlueprintName = "MaerWidgetsExtension"
             ReferencedContainer = "container:Maer.xcodeproj">
          </BuildableReference>
       </RemoteRunnable>

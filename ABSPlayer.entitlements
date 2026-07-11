@@ -4,7 +4,7 @@
 <dict>
 	<!-- Geteilter Container fuer das Home-Screen-Widget (Snapshot + Cover).
 	     Forks: an eigene Bundle-Struktur anpassen (auch in WidgetShared.swift
-	     und HoerregalWidgets.entitlements). -->
+	     und MaerWidgets.entitlements). -->
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>group.de.lzs.ABSPlayer</string>

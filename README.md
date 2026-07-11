@@ -101,7 +101,7 @@ The repository ships the complete Xcode project — nothing needs to be assemble
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK).
 2. **Signing** (target `ABSPlayer` → Signing & Capabilities):
    - **Team:** your Apple ID — a free one is enough (see note below)
-   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`ABSPlayer` and `HoerregalWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
+   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`ABSPlayer` and `MaerWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
    - In `Sources/Networking/KeychainStore.swift`, set the `service` constant to the same bundle identifier.
 3. Connect your iPhone, select it as the run destination (background audio is far more reliable to test on a real device than in the simulator), press ▶.
 4. On the iPhone, trust your Apple ID once under **Settings → General → VPN & Device Management** if asked.

@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		CF68E6513002599A00C97B74 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6503002599A00C97B74 /* WidgetKit.framework */; };
 		CF68E6533002599A00C97B74 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6523002599A00C97B74 /* SwiftUI.framework */; };
-		CF68E6603002599B00C97B74 /* HoerregalWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -18,7 +18,7 @@
 			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = CF68E64D3002599A00C97B74;
-			remoteInfo = HoerregalWidgetsExtension;
+			remoteInfo = MaerWidgetsExtension;
 		};
 		CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -36,7 +36,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				CF68E6603002599B00C97B74 /* HoerregalWidgetsExtension.appex in Embed Foundation Extensions */,
+				CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -53,7 +53,7 @@
 		CF3C2C073002AC4D00A4BF8E /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 		CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF68E5FB300258A000C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
-		CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HoerregalWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MaerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
@@ -78,30 +78,30 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"ABSPlayer-Info.plist",
-				HoerregalWidgets/Assets.xcassets,
-				HoerregalWidgets/Info.plist,
+				MaerWidgets/Assets.xcassets,
+				MaerWidgets/Info.plist,
 				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/HoerregalLiveActivity.swift,
+				LiveActivityWidget/MaerLiveActivity.swift,
 			);
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
 		};
-		CF68E6643002599B00C97B74 /* Exceptions for "HoerregalWidgets" folder in "HoerregalWidgetsExtension" target */ = {
+		CF68E6643002599B00C97B74 /* Exceptions for "MaerWidgets" folder in "MaerWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
+			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 		};
-		CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "HoerregalWidgetsExtension" target */ = {
+		CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "MaerWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/HoerregalLiveActivity.swift,
+				LiveActivityWidget/MaerLiveActivity.swift,
 				Sources/Localizable.xcstrings,
 				Sources/Models/PlaybackActivityAttributes.swift,
 				Sources/Models/WidgetShared.swift,
 			);
-			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
+			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -110,17 +110,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				CF1177692FFA997500DA1AC5 /* Exceptions for "ABSPlayer" folder in "ABSPlayer" target */,
-				CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "HoerregalWidgetsExtension" target */,
+				CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "MaerWidgetsExtension" target */,
 			);
 			name = ABSPlayer;
 			sourceTree = "<group>";
 		};
-		CF68E6543002599A00C97B74 /* HoerregalWidgets */ = {
+		CF68E6543002599A00C97B74 /* MaerWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				CF68E6643002599B00C97B74 /* Exceptions for "HoerregalWidgets" folder in "HoerregalWidgetsExtension" target */,
+				CF68E6643002599B00C97B74 /* Exceptions for "MaerWidgets" folder in "MaerWidgetsExtension" target */,
 			);
-			path = HoerregalWidgets;
+			path = MaerWidgets;
 			sourceTree = "<group>";
 		};
 		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
@@ -164,8 +164,8 @@
 				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
 				CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */,
 				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
-				CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */,
-				CF68E6543002599A00C97B74 /* HoerregalWidgets */,
+				CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */,
+				CF68E6543002599A00C97B74 /* MaerWidgets */,
 				CF68E64F3002599A00C97B74 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -316,9 +316,9 @@
 			productReference = CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */ = {
+		CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "HoerregalWidgetsExtension" */;
+			buildConfigurationList = CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "MaerWidgetsExtension" */;
 			buildPhases = (
 				CF68E64A3002599A00C97B74 /* Sources */,
 				CF68E64B3002599A00C97B74 /* Frameworks */,
@@ -329,13 +329,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				CF68E6543002599A00C97B74 /* HoerregalWidgets */,
+				CF68E6543002599A00C97B74 /* MaerWidgets */,
 			);
-			name = HoerregalWidgetsExtension;
+			name = MaerWidgetsExtension;
 			packageProductDependencies = (
 			);
-			productName = HoerregalWidgetsExtension;
-			productReference = CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */;
+			productName = MaerWidgetsExtension;
+			productReference = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		CFC8E64930006E4A00226154 /* ABSPlayerTests */ = {
@@ -490,7 +490,7 @@
 			targets = (
 				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,
 				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
-				CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */,
+				CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -546,7 +546,7 @@
 /* Begin PBXTargetDependency section */
 		CF68E65F3002599B00C97B74 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
+			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 			targetProxy = CF68E65E3002599B00C97B74 /* PBXContainerItemProxy */;
 		};
 		CFC8E64F30006E4B00226154 /* PBXTargetDependency */ = {
@@ -757,12 +757,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = HoerregalWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MaerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
+				INFOPLIST_FILE = MaerWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -771,7 +771,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.HoerregalWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.MaerWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -788,12 +788,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
-				CODE_SIGN_ENTITLEMENTS = HoerregalWidgets.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MaerWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
+				INFOPLIST_FILE = MaerWidgets/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -802,7 +802,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.HoerregalWidgets;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.MaerWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -877,7 +877,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "HoerregalWidgetsExtension" */ = {
+		CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "MaerWidgetsExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CF68E6623002599B00C97B74 /* Debug */,

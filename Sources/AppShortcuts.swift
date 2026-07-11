@@ -100,7 +100,7 @@ struct PlayBookIntent: AppIntent {
     }
 }
 
-struct HoerregalShortcuts: AppShortcutsProvider {
+struct MaerShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: ContinueListeningIntent(),
