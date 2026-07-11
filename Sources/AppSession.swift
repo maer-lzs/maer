@@ -21,13 +21,18 @@ final class AppSession {
     /// Lokale Dateien als zweite Quelle (immer vorhanden, kein Login).
     var localProvider: LocalProvider { LocalProvider.shared }
 
-    /// Alle aktiven Quellen — für die aggregierte Bibliothek.
-    var allProviders: [any AudioProvider] { [provider, localProvider] }
+    /// Podcasts (RSS-Feeds) als Quelle vom Typ `.podcasts`.
+    var rssProvider: RSSProvider { RSSProvider.shared }
 
-    /// Routet ein Item auf seine Quelle: `local:`-IDs → lokale Dateien,
-    /// alles andere → Server. So weiß der Player/Coordinator, wen er fragt.
+    /// Alle aktiven Quellen.
+    var allProviders: [any AudioProvider] { [provider, localProvider, rssProvider] }
+
+    /// Routet ein Item auf seine Quelle anhand des ID-Präfix. Das ist die
+    /// EINZIGE Stelle, die ID-Namespaces kennen darf (der Router).
     func provider(for itemId: String) -> any AudioProvider {
-        itemId.hasPrefix("local:") ? localProvider : provider
+        if itemId.hasPrefix("local:") { return localProvider }
+        if itemId.hasPrefix("rss:") { return rssProvider }
+        return provider
     }
 
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)

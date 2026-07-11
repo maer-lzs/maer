@@ -131,7 +131,9 @@ Sources/
 │   │                               search, stream, download, sync) — the core sees only this
 │   ├── ABSProvider.swift           Audiobookshelf as the first provider
 │   ├── LocalProvider.swift         Imported local audio files (no server)
-│   └── LocalLibrary.swift          Local file index + AVAsset metadata extraction
+│   ├── LocalLibrary.swift          Local file index + AVAsset metadata extraction
+│   ├── RSSProvider.swift           Podcasts: RSS episodes mapped to library items
+│   └── PodcastSubscriptions.swift  Feed store + XMLParser-based RSS/Atom parser
 ├── CarPlay/
 │   └── CarPlaySceneDelegate.swift  CarPlay tabs (continue/downloaded/library) + Now Playing
 ├── Models/

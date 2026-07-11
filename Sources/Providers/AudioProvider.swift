@@ -63,4 +63,7 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
 extension AudioProvider {
     /// Standard: die meisten Quellen liefern Hörbücher.
     var mediaType: MediaType { .audiobooks }
+    /// Ob die Quelle aktuell Inhalte hat (steuert die Tab-Sichtbarkeit).
+    /// Standard: immer verfügbar; Podcasts z. B. erst mit einem Abo.
+    var isAvailable: Bool { true }
 }

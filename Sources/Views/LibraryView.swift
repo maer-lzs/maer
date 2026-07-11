@@ -8,6 +8,8 @@ struct LibraryView: View {
     @ObservedObject private var playerCoordinator: PlayerCoordinator
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var downloadManager = DownloadManager.shared
+    /// Abos beobachten, damit der Podcast-Tab sofort erscheint/verschwindet.
+    @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
     @State private var isShowingSearch = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
@@ -30,7 +32,7 @@ struct LibraryView: View {
     /// Verfügbare Inhaltstypen aus allen aktiven Quellen (dedupliziert,
     /// in fester Reihenfolge). Heute `[.audiobooks]`.
     private var availableMediaTypes: [MediaType] {
-        let present = Set(AppSession.shared.allProviders.map(\.mediaType))
+        let present = Set(AppSession.shared.allProviders.filter(\.isAvailable).map(\.mediaType))
         return MediaType.allCases.filter { present.contains($0) }
     }
 
@@ -56,6 +58,8 @@ struct LibraryView: View {
                 switch selectedMediaType {
                 case .audiobooks:
                     audiobooksContent
+                case .podcasts:
+                    PodcastsView(playerCoordinator: playerCoordinator)
                 default:
                     Spacer()
                 }

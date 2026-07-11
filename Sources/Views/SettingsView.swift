@@ -198,6 +198,11 @@ struct SettingsView: View {
             } label: {
                 Label("Local Files", systemImage: "folder")
             }
+            NavigationLink {
+                PodcastSourceView()
+            } label: {
+                Label("Podcasts", systemImage: "mic")
+            }
         }
     }
 
