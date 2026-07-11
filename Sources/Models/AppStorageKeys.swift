@@ -21,6 +21,16 @@ nonisolated enum AppStorageKeys {
     static let autoPlayNextInSeries = "autoPlayNextInSeries"
     /// Bookmark create/delete ops that have not reached the server yet.
     static let pendingBookmarkOps = "pendingBookmarkOps"
+    /// Optionaler PodcastIndex-Zugang für die Podcast-Suche (der iTunes-
+    /// Katalog braucht keinen Key). Geringe Sensibilität → UserDefaults.
+    static let podcastIndexKey = "podcastIndexKey"
+    static let podcastIndexSecret = "podcastIndexSecret"
+
+    static var podcastIndexConfigured: Bool {
+        let d = UserDefaults.standard
+        return !(d.string(forKey: podcastIndexKey) ?? "").isEmpty
+            && !(d.string(forKey: podcastIndexSecret) ?? "").isEmpty
+    }
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     static let librarySortOption = "librarySortOption"
