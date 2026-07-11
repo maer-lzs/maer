@@ -66,7 +66,7 @@ struct BookDetailScreen: View {
     }
 
     private var coverImageContent: some View {
-        CachedAsyncImage(url: coordinator.apiClient.coverURL(forItemId: entry.id)) { image in
+        CachedAsyncImage(url: coordinator.provider.coverURL(forItemId: entry.id)) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             Rectangle()
@@ -125,7 +125,7 @@ struct BookDetailScreen: View {
                             .blur(radius: 45)
                             .overlay(Color.black.opacity(systemColorScheme == .dark ? 0.3 : 0.1))
                         BookCoverView(
-                            url: coordinator.apiClient.coverURL(forItemId: entry.id),
+                            url: coordinator.provider.coverURL(forItemId: entry.id),
                             progress: entry.progress,
                             itemId: entry.id,
                             size: 320
@@ -282,11 +282,11 @@ struct BookDetailScreen: View {
         }
         .task {
             isLoading = true
-            detail = try? await coordinator.apiClient.fetchItemDetail(itemId: entry.id)
+            detail = try? await coordinator.provider.fetchItemDetail(itemId: entry.id)
             isLoading = false
         }
         .task(id: entry.id) {
-            await colorLoader.load(from: coordinator.apiClient.coverURL(forItemId: entry.id))
+            await colorLoader.load(from: coordinator.provider.coverURL(forItemId: entry.id))
         }
     }
 
@@ -502,14 +502,14 @@ struct BookDetailScreen: View {
             // zusammen schicken. Ein PATCH mit nur {"isFinished": ...} überlässt
             // dem Server, was er mit currentTime macht — genau das führte dazu,
             // dass nach gehört→ungehört der reale Fortschritt verloren ging.
-            let fresh = try await coordinator.apiClient.fetchItemDetail(itemId: entry.id)
+            let fresh = try await coordinator.provider.fetchItemDetail(itemId: entry.id)
             let duration = fresh.media.duration ?? 0
             let currentTime = fresh.userMediaProgress?.currentTime ?? 0
 
             let target = !isFinished
             let writeTime = target ? duration : currentTime
             do {
-                try await coordinator.apiClient.updateProgress(
+                try await coordinator.provider.updateProgress(
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
             } catch {
@@ -679,7 +679,7 @@ struct BookDetailScreen: View {
 
     private func reallyStartDownload() async {
         guard let detail else { return }
-        await downloadManager.download(item: detail, apiClient: coordinator.apiClient)
+        await downloadManager.download(item: detail, provider: coordinator.provider)
     }
 
     private var playButtonLabel: String {

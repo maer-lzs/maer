@@ -8,7 +8,7 @@ import SwiftUI
 /// ein Buch-Tap schließt die Overlay und pusht die Detailseite.
 struct SearchOverlay: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
-    let apiClient: APIClient
+    let provider: any AudioProvider
     let topInset: CGFloat
     let presentHeight: CGFloat
     /// Buch gewählt: Aufrufer schließt die Overlay und pusht die Detailseite.
@@ -53,14 +53,14 @@ struct SearchOverlay: View {
 
     init(
         libraryViewModel: LibraryViewModel,
-        apiClient: APIClient,
+        provider: any AudioProvider,
         topInset: CGFloat,
         presentHeight: CGFloat,
         onSelect: @escaping (LibraryEntry) -> Void,
         onDismiss: @escaping () -> Void
     ) {
         self.libraryViewModel = libraryViewModel
-        self.apiClient = apiClient
+        self.provider = provider
         self.topInset = topInset
         self.presentHeight = presentHeight
         self.onSelect = onSelect
@@ -335,7 +335,7 @@ struct SearchOverlay: View {
     private func thumbnail(for entry: LibraryEntry?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         Group {
-            if let entry, let url = apiClient.coverURL(forItemId: entry.id) {
+            if let entry, let url = provider.coverURL(forItemId: entry.id) {
                 CachedAsyncImage(url: url, useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {

@@ -8,7 +8,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if authViewModel.isLoggedIn {
-                LibraryView(apiClient: authViewModel.apiClient, onLogout: authViewModel.logout)
+                LibraryView(provider: authViewModel.apiClient, onLogout: authViewModel.logout)
             } else {
                 SetupView(viewModel: authViewModel)
             }

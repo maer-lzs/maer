@@ -102,15 +102,15 @@ final class LibraryViewModel: ObservableObject {
         static let sortAscending = AppStorageKeys.librarySortAscending
     }
 
-    private let apiClient: APIClient
+    private let provider: any AudioProvider
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
 
     private let diskCacheURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("library_cache.json")
 
-    init(apiClient: APIClient) {
-        self.apiClient = apiClient
+    init(provider: any AudioProvider) {
+        self.provider = provider
 
         let defaults = UserDefaults.standard
 
@@ -350,7 +350,7 @@ final class LibraryViewModel: ObservableObject {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            let libraries = try await apiClient.fetchLibraries()
+            let libraries = try await provider.fetchLibraries()
             // The library chosen in the settings wins; fall back to the first
             // one when nothing is chosen or the chosen one no longer exists.
             let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
@@ -359,8 +359,8 @@ final class LibraryViewModel: ObservableObject {
                 return
             }
 
-            async let itemsTask = apiClient.fetchLibraryItems(libraryId: library.id)
-            async let progressTask = apiClient.fetchAllProgress()
+            async let itemsTask = provider.fetchLibraryItems(libraryId: library.id)
+            async let progressTask = provider.fetchAllProgress()
             let items = try await itemsTask
             let progress = (try? await progressTask) ?? [:]
 
@@ -401,7 +401,7 @@ final class LibraryViewModel: ObservableObject {
     /// Wird z. B. aufgerufen, wenn die App wieder in den Vordergrund kommt.
     func refreshProgress() async {
         guard !cachedItems.isEmpty, !loadInFlight else { return }
-        guard let progress = try? await apiClient.fetchAllProgress() else {
+        guard let progress = try? await provider.fetchAllProgress() else {
             // Offline/error: keep the last known state instead of wiping it.
             return
         }
@@ -410,7 +410,7 @@ final class LibraryViewModel: ObservableObject {
         // show up after a cold start — refreshProgress used to rebuild from
         // the stale cached items.
         var items = cachedItems
-        if let libraryId, let fresh = try? await apiClient.fetchLibraryItems(libraryId: libraryId) {
+        if let libraryId, let fresh = try? await provider.fetchLibraryItems(libraryId: libraryId) {
             items = fresh
         }
         isShowingOfflineCache = false
@@ -484,7 +484,7 @@ final class LibraryViewModel: ObservableObject {
     /// `ImageCache.preload`), Wiederholungsaufrufe sind also günstig.
     private func prefetchAllCovers() async {
         for item in cachedItems {
-            guard let url = apiClient.coverURL(forItemId: item.id) else { continue }
+            guard let url = provider.coverURL(forItemId: item.id) else { continue }
             await ImageCache.shared.preload(url)
         }
     }

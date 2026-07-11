@@ -65,7 +65,7 @@ extension PlayerViewModel {
 
         let isFinishedNow = duration > 0 && currentTime >= duration - 1
         do {
-            try await apiClient.updateProgress(
+            try await provider.updateProgress(
                 itemId: item.id,
                 currentTime: currentTime,
                 duration: duration,
@@ -140,7 +140,7 @@ extension PlayerViewModel {
             // ohne die Position zu adoptieren — sonst hält der nächste Abgleich
             // unseren (älteren) Flush-Stand für ein fremdes Gerät und springt
             // zurück.
-            if let fresh = try? await apiClient.fetchItemDetail(itemId: item.id),
+            if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
                let ms = fresh.userMediaProgress?.lastUpdate {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
             }
@@ -202,7 +202,7 @@ extension PlayerViewModel {
         // Rückgängig behält den aktuellen Stand und kippt nur das Flag.
         let writeTime = target ? duration : currentTime
         do {
-            try await apiClient.updateProgress(
+            try await provider.updateProgress(
                 itemId: item.id,
                 currentTime: writeTime,
                 duration: duration,
@@ -247,7 +247,7 @@ extension PlayerViewModel {
     func reconcileWithServer() async {
         guard let item else { return }
         do {
-            let fresh = try await apiClient.fetchItemDetail(itemId: item.id)
+            let fresh = try await provider.fetchItemDetail(itemId: item.id)
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
             let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
             // Neuerer Server-Eintrag als der zuletzt gesehene + abweichende

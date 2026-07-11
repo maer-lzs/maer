@@ -140,10 +140,10 @@ final class DownloadManager: ObservableObject {
     func resumeDownload(itemId: String) {
         guard case .paused = phase[itemId],
               let control = controls[itemId],
-              let apiClient = resumeAPIClient else { return }
+              let provider = resumeProvider else { return }
         // Clear the paused phase so the isDownloading guard lets us restart.
         phase[itemId] = nil
-        Task { await download(item: control.detail, apiClient: apiClient) }
+        Task { await download(item: control.detail, provider: provider) }
     }
 
     /// Abort: stop the transfer, keep completed tracks (a later download
@@ -165,7 +165,7 @@ final class DownloadManager: ObservableObject {
     }
 
     /// Client used for resumes (set on each download start).
-    private weak var resumeAPIClient: APIClient?
+    private weak var resumeProvider: (any AudioProvider)?
 
     /// Alle lokal heruntergeladenen Audiodateien eines Buchs, sortiert nach
     /// Track-Reihenfolge (Dateiname = Track-Index). Wird vom Player bevorzugt
@@ -328,7 +328,7 @@ final class DownloadManager: ObservableObject {
     /// Lädt alle Tracks eines Buchs herunter (bei M4B-Büchern ist das nur
     /// einer, bei mehrteiligen Büchern mehrere) — nacheinander, mit über alle
     /// Tracks gewichtetem Gesamtfortschritt.
-    func download(item: LibraryItemDetail, apiClient: APIClient) async {
+    func download(item: LibraryItemDetail, provider: any AudioProvider) async {
         guard !isDownloading(itemId: item.id) else { return }
         let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
@@ -365,7 +365,7 @@ final class DownloadManager: ObservableObject {
             return
         }
 
-        resumeAPIClient = apiClient
+        resumeProvider = provider
         // Carry mid-file resume data over from a pause (used once, for the
         // first track that is actually transferred).
         var carriedResumeData = controls[itemId]?.resumeData
@@ -390,7 +390,7 @@ final class DownloadManager: ObservableObject {
                 if controls[itemId]?.pendingCancel == true || controls[itemId]?.pendingPause == true {
                     throw DownloadCancelledError(resumeData: nil)
                 }
-                guard let remoteURL = apiClient.streamURL(forContentPath: track.contentUrl) else { continue }
+                guard let remoteURL = provider.streamURL(forContentPath: track.contentUrl) else { continue }
                 let ext = remoteURL.pathExtension.isEmpty ? "m4b" : remoteURL.pathExtension
                 let destination = dir.appendingPathComponent("\(index).\(ext)")
 
@@ -402,8 +402,8 @@ final class DownloadManager: ObservableObject {
                 }
 
                 var request = URLRequest(url: remoteURL)
-                if let token = apiClient.token, !token.isEmpty {
-                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                for (field, value) in provider.streamAuthHeaders {
+                    request.setValue(value, forHTTPHeaderField: field)
                 }
 
                 let baseProgress = completedFraction
@@ -458,7 +458,7 @@ final class DownloadManager: ObservableObject {
             // Cover persistent sichern — überlebt iOS-Cache-Purges offline.
             await ImageCache.shared.makePersistent(
                 itemId: itemId,
-                coverURL: apiClient.coverURL(forItemId: itemId)
+                coverURL: provider.coverURL(forItemId: itemId)
             )
 
             downloadedItemIds.insert(itemId)

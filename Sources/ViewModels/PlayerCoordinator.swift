@@ -13,7 +13,7 @@ final class PlayerCoordinator: ObservableObject {
     @Published private(set) var isLoading = false
     @Published var loadError: String?
 
-    let apiClient: APIClient
+    let provider: any AudioProvider
 
     /// Set by the library screen (owner of the series data): returns the
     /// next unfinished book of the same series. Basis for the auto-play-
@@ -24,8 +24,8 @@ final class PlayerCoordinator: ObservableObject {
     /// das Buch beim nächsten Start direkt im Mini-Player griffbereit ist.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
 
-    init(apiClient: APIClient) {
-        self.apiClient = apiClient
+    init(provider: any AudioProvider) {
+        self.provider = provider
     }
 
     /// Öffnet ein Buch. Ist es bereits aktiv, passiert nichts außer ggf. dem
@@ -49,8 +49,8 @@ final class PlayerCoordinator: ObservableObject {
         defer { isLoading = false }
 
         do {
-            let detail = try await apiClient.fetchItemDetail(itemId: item.id)
-            let newViewModel = PlayerViewModel(apiClient: apiClient)
+            let detail = try await provider.fetchItemDetail(itemId: item.id)
+            let newViewModel = PlayerViewModel(provider: provider)
             await newViewModel.load(item: detail)
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
@@ -65,7 +65,7 @@ final class PlayerCoordinator: ObservableObject {
             // bräuchte selbst ein längst heruntergeladenes Buch noch eine
             // funktionierende Serververbindung nur zum Öffnen.
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
-                let newViewModel = PlayerViewModel(apiClient: apiClient)
+                let newViewModel = PlayerViewModel(provider: provider)
                 await newViewModel.load(item: cached, isOfflineFallback: true)
                 attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel

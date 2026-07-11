@@ -31,7 +31,7 @@ extension PlayerViewModel {
         // Widget locker).
         if Self.lastWidgetCoverItemId != item.id {
             Self.lastWidgetCoverItemId = item.id
-            let coverURL = apiClient.coverURL(forItemId: item.id)
+            let coverURL = provider.coverURL(forItemId: item.id)
             Task { @MainActor in
                 guard let coverURL,
                       let thumb = await ImageCache.shared.thumbnail(for: coverURL),

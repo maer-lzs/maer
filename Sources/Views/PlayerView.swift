@@ -383,10 +383,14 @@ struct PlayerView: View {
             AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                 .frame(width: 44, height: 44)
 
-            Button { showBookmarks = true } label: {
-                Label("Bookmarks", systemImage: "bookmark")
+            // Nur bei Quellen mit Lesezeichen-Capability (ABS kann es;
+            // künftige Quellen wie RSS evtl. nicht).
+            if viewModel.provider.capabilities.contains(.bookmarks) {
+                Button { showBookmarks = true } label: {
+                    Label("Bookmarks", systemImage: "bookmark")
+                }
+                .font(.footnote)
             }
-            .font(.footnote)
 
             Button {
                 Task { await viewModel.toggleFinished() }

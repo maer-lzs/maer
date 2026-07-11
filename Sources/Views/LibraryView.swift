@@ -24,11 +24,11 @@ struct LibraryView: View {
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
 
-    let apiClient: APIClient
+    let provider: any AudioProvider
     let onLogout: () -> Void
 
-    init(apiClient: APIClient, onLogout: @escaping () -> Void) {
-        self.apiClient = apiClient
+    init(provider: any AudioProvider, onLogout: @escaping () -> Void) {
+        self.provider = provider
         self.onLogout = onLogout
         _viewModel = ObservedObject(wrappedValue: AppSession.shared.libraryViewModel)
         _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
@@ -159,7 +159,7 @@ struct LibraryView: View {
                         miniPlayerSwapOffset = 0
                         return
                     }
-                    let coverURL = apiClient.coverURL(forItemId: item.id)
+                    let coverURL = provider.coverURL(forItemId: item.id)
                     // Real book SWITCH (not first appearance): dip the mini
                     // player below the screen, swap content + accent while it
                     // is hidden, then spring it back up — masks the async
@@ -216,8 +216,8 @@ struct LibraryView: View {
             // Falls beim letzten Mal offline Fortschritt liegen geblieben ist
             // (App wurde offline beendet, bevor der Sync durchging): jetzt
             // nachreichen.
-            await SyncQueue.shared.flush(apiClient: apiClient)
-            await BookmarkQueue.shared.flush(apiClient: apiClient)
+            await SyncQueue.shared.flush(apiClient: provider)
+            await BookmarkQueue.shared.flush(provider: provider)
             await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -256,8 +256,8 @@ struct LibraryView: View {
             }
             if isConnected {
                 Task {
-                    await SyncQueue.shared.flush(apiClient: apiClient)
-                    await BookmarkQueue.shared.flush(apiClient: apiClient)
+                    await SyncQueue.shared.flush(apiClient: provider)
+                    await BookmarkQueue.shared.flush(provider: provider)
                     await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
             } else {
@@ -288,7 +288,7 @@ struct LibraryView: View {
                 GeometryReader { proxy in
                     SearchOverlay(
                         libraryViewModel: viewModel,
-                        apiClient: apiClient,
+                        provider: provider,
                         topInset: proxy.safeAreaInsets.top,
                         presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
                         onSelect: { entry in
@@ -454,7 +454,7 @@ struct LibraryView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 BookCoverView(
-                                    url: apiClient.coverURL(forItemId: entry.id),
+                                    url: provider.coverURL(forItemId: entry.id),
                                     progress: entry.progress,
                                     itemId: entry.id,
                                     size: 132
@@ -525,7 +525,7 @@ struct LibraryView: View {
                             name: name,
                             entries: entries,
                             cellWidth: gridCellWidth,
-                            coverURL: { apiClient.coverURL(forItemId: $0) }
+                            coverURL: { provider.coverURL(forItemId: $0) }
                         )
                         .frame(maxHeight: .infinity, alignment: .top)
                     }

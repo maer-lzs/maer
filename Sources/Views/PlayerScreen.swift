@@ -19,7 +19,7 @@ struct PlayerScreen: View {
             if let viewModel = coordinator.viewModel, let item = coordinator.activeItem {
                 PlayerView(
                     viewModel: viewModel,
-                    coverURL: coordinator.apiClient.coverURL(forItemId: item.id),
+                    coverURL: coordinator.provider.coverURL(forItemId: item.id),
                     dragProgress: dragProgress,
                     cornerRadius: cornerRadius,
                     topInset: topInset,

@@ -102,9 +102,9 @@ struct BookmarksSheet: View {
         guard let itemId = viewModel.item?.id else { return }
         isLoading = true
         // Nachzügler zuerst versuchen, damit die Server-Liste sie enthält.
-        await BookmarkQueue.shared.flush(apiClient: viewModel.apiClient)
+        await BookmarkQueue.shared.flush(provider: viewModel.provider)
         do {
-            let fresh = try await viewModel.apiClient.fetchBookmarks(itemId: itemId)
+            let fresh = try await viewModel.provider.fetchBookmarks(itemId: itemId)
             BookmarkQueue.shared.cache(fresh, forItemId: itemId)
             isOfflineView = false
         } catch {
@@ -120,7 +120,7 @@ struct BookmarksSheet: View {
         let raw = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = raw.isEmpty ? formatted(pendingTime) : raw
         do {
-            try await viewModel.apiClient.createBookmark(itemId: itemId, time: pendingTime, title: title)
+            try await viewModel.provider.createBookmark(itemId: itemId, time: pendingTime, title: title)
             await reload()
         } catch {
             // Offline/server error: queue it and show it optimistically.
@@ -135,7 +135,7 @@ struct BookmarksSheet: View {
         let toDelete = offsets.map { bookmarks[$0] }
         for bookmark in toDelete {
             do {
-                try await viewModel.apiClient.deleteBookmark(itemId: itemId, time: bookmark.time)
+                try await viewModel.provider.deleteBookmark(itemId: itemId, time: bookmark.time)
             } catch {
                 BookmarkQueue.shared.enqueue(.delete(itemId: itemId, time: bookmark.time))
                 isOfflineView = true

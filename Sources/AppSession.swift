@@ -10,13 +10,17 @@ final class AppSession {
     static let shared = AppSession()
 
     /// Owns the APIClient (built from the keychain) — base URL and token are
-    /// updated IN PLACE on login, so the lazy objects below stay valid.
+    /// updated IN PLACE on login, so the objects below stay valid.
     let authViewModel = AuthViewModel()
 
+    /// Die aktive Audioquelle für den ganzen Core. Heute genau eine
+    /// (Audiobookshelf); eine Quellen-Registry kommt mit dem zweiten
+    /// Provider. `apiClient` bleibt für die ABS-spezifische Anmeldung.
+    var provider: any AudioProvider { authViewModel.apiClient }
     var apiClient: APIClient { authViewModel.apiClient }
 
-    private(set) lazy var libraryViewModel = LibraryViewModel(apiClient: apiClient)
-    private(set) lazy var playerCoordinator = PlayerCoordinator(apiClient: apiClient)
+    private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
+    private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 
     private init() {}
 }

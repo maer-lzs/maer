@@ -48,7 +48,7 @@ struct SettingsView: View {
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
-            if let libraries = try? await coordinator.apiClient.fetchLibraries() {
+            if let libraries = try? await coordinator.provider.fetchLibraries() {
                 availableLibraries = libraries
                 // Reflect the effective library when nothing was chosen yet.
                 if selectedLibraryId.isEmpty || !libraries.contains(where: { $0.id == selectedLibraryId }) {
@@ -169,7 +169,7 @@ struct SettingsView: View {
             Button {
                 isSyncing = true
                 Task {
-                    await SyncQueue.shared.flush(apiClient: coordinator.apiClient)
+                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
                     pendingSyncCount = SyncQueue.shared.allPending().count
                     isSyncing = false
                 }
@@ -203,7 +203,7 @@ struct SettingsView: View {
     private var serverSection: some View {
         Section("Server") {
             LabeledContent("Address") {
-                Text(coordinator.apiClient.baseURL.absoluteString)
+                Text(AppSession.shared.apiClient.baseURL.absoluteString)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }

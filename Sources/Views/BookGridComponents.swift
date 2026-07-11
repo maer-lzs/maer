@@ -87,19 +87,19 @@ struct BookContextMenuItems: View {
     /// Metadaten) und startet dann den Download — ohne WLAN-Rückfrage, das ist
     /// hier bewusst die schnelle Variante fürs Kontextmenü.
     private func quickDownload() async {
-        guard let detail = try? await playerCoordinator.apiClient.fetchItemDetail(itemId: entry.id) else { return }
-        await DownloadManager.shared.download(item: detail, apiClient: playerCoordinator.apiClient)
+        guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
+        await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
     }
 
     /// Wie in BookDetailScreen: immer den vollständigen Datensatz
     /// (currentTime + duration + isFinished) schicken, nie nur das Flag
     /// allein — sonst geht der reale Fortschritt verloren (siehe Sync-Bugfix).
     private func quickToggleFinished() async {
-        let apiClient = playerCoordinator.apiClient
+        let provider = playerCoordinator.provider
         let newIsFinished = !(entry.progress?.isFinished ?? false)
         let duration: Double
         let currentTime: Double
-        if let fresh = try? await apiClient.fetchItemDetail(itemId: entry.id) {
+        if let fresh = try? await provider.fetchItemDetail(itemId: entry.id) {
             duration = fresh.media.duration ?? 0
             currentTime = fresh.userMediaProgress?.currentTime ?? 0
         } else {
@@ -108,7 +108,7 @@ struct BookContextMenuItems: View {
             currentTime = (entry.progress?.fraction ?? 0) * duration
         }
         do {
-            try await apiClient.updateProgress(
+            try await provider.updateProgress(
                 itemId: entry.id,
                 currentTime: newIsFinished ? duration : currentTime,
                 duration: duration,
@@ -133,12 +133,12 @@ struct BookContextMenuItems: View {
 /// pressed one.
 struct BookContextPreview: View {
     let entry: LibraryEntry
-    let apiClient: APIClient
+    let provider: any AudioProvider
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             BookCoverView(
-                url: apiClient.coverURL(forItemId: entry.id),
+                url: provider.coverURL(forItemId: entry.id),
                 progress: entry.progress,
                 itemId: entry.id,
                 size: 240
@@ -180,7 +180,7 @@ struct BookCellContextMenu: ViewModifier {
                 libraryViewModel: libraryViewModel
             )
         } preview: {
-            BookContextPreview(entry: entry, apiClient: playerCoordinator.apiClient)
+            BookContextPreview(entry: entry, provider: playerCoordinator.provider)
         }
     }
 }
@@ -201,7 +201,7 @@ struct BookGridCell: View {
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 BookCoverView(
-                    url: playerCoordinator.apiClient.coverURL(forItemId: entry.id),
+                    url: playerCoordinator.provider.coverURL(forItemId: entry.id),
                     progress: entry.progress,
                     itemId: entry.id,
                     size: width

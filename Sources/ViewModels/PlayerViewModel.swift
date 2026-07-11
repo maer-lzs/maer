@@ -154,7 +154,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
 
-    let apiClient: APIClient
+    let provider: any AudioProvider
     var item: LibraryItemDetail?
     /// Called once when the book plays to its END (not on manual "mark
     /// finished") — the coordinator uses it for auto-play-next-in-series.
@@ -226,8 +226,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// mehrfaches Antippen).
     private let lockscreenSkipSuspicionCount = 5
 
-    init(apiClient: APIClient) {
-        self.apiClient = apiClient
+    init(provider: any AudioProvider) {
+        self.provider = provider
         super.init()
         configureAudioSession()
         observeInterruptions()
@@ -386,8 +386,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if DownloadManager.shared.isDownloaded(itemId: item.id),
            localTrackFiles.count < sortedTracks.count,
            NetworkMonitor.shared.isConnected {
-            let apiClient = self.apiClient
-            Task { await DownloadManager.shared.download(item: item, apiClient: apiClient) }
+            let provider = self.provider
+            Task { await DownloadManager.shared.download(item: item, provider: provider) }
         }
 
         // Kernregel beim Start: Serverstand gewinnt, nie bei 0 anfangen,
@@ -447,7 +447,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Cover fürs Lockscreen / die Dynamic Island laden. Das System zeigt
         // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
         // enthält — keine eigene Live Activity nötig.
-        loadArtwork(coverURL: apiClient.coverURL(forItemId: item.id))
+        loadArtwork(coverURL: provider.coverURL(forItemId: item.id))
     }
 
     /// Zeigt einen kurzen Hinweis (z. B. „Serverstand übernommen“) und blendet
@@ -483,7 +483,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return local
         }
         guard index < tracks.count else { return nil }
-        return apiClient.streamURL(forContentPath: tracks[index].contentUrl)
+        return provider.streamURL(forContentPath: tracks[index].contentUrl)
     }
 
     /// Baut die Wiedergabe-Queue neu auf, beginnend beim angegebenen Track,
@@ -515,11 +515,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if url.isFileURL {
                 item = AVPlayerItem(asset: AVURLAsset(url: url))
             } else {
-                var headers: [String: String] = [:]
-                if let token = apiClient.token, !token.isEmpty {
-                    headers["Authorization"] = "Bearer \(token)"
-                }
-                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": provider.streamAuthHeaders])
                 item = AVPlayerItem(asset: asset)
             }
             itemTrackIndex[ObjectIdentifier(item)] = index
@@ -848,8 +844,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             try? FileManager.default.removeItem(at: local)
             localTrackFiles[index] = nil
             if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
-                let apiClient = self.apiClient
-                Task { await DownloadManager.shared.download(item: item, apiClient: apiClient) }
+                let provider = self.provider
+                Task { await DownloadManager.shared.download(item: item, provider: provider) }
             }
         }
         let idx = trackIndex(for: currentTime)

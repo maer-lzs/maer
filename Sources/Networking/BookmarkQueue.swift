@@ -61,7 +61,7 @@ final class BookmarkQueue {
     /// Sendet wartende Ops in Original-Reihenfolge. Schlägt eine fehl, bleibt
     /// sie samt allen NACHFOLGENDEN Ops desselben Buchs liegen (Reihenfolge
     /// pro Buch bleibt gewahrt); Ops anderer Bücher werden weiter versucht.
-    func flush(apiClient: APIClient) async {
+    func flush(provider: any AudioProvider) async {
         guard !flushInFlight else { return }
         flushInFlight = true
         defer { flushInFlight = false }
@@ -79,9 +79,9 @@ final class BookmarkQueue {
             do {
                 switch op {
                 case .create(let itemId, let time, let title):
-                    try await apiClient.createBookmark(itemId: itemId, time: time, title: title)
+                    try await provider.createBookmark(itemId: itemId, time: time, title: title)
                 case .delete(let itemId, let time):
-                    try await apiClient.deleteBookmark(itemId: itemId, time: time)
+                    try await provider.deleteBookmark(itemId: itemId, time: time)
                 }
             } catch {
                 failedItemIds.insert(op.itemId)

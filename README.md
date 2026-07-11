@@ -126,6 +126,10 @@ Sources/
 ├── ABSPlayerApp.swift              Entry point + AppDelegate for background download events
 ├── AppSession.swift                Process-wide session (player/library shared with CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (continue listening, play a specific book)
+├── Providers/
+│   ├── AudioProvider.swift         Protocol every audio source implements (login, library,
+│   │                               search, stream, download, sync) — the core sees only this
+│   └── ABSProvider.swift           Audiobookshelf as the first provider
 ├── CarPlay/
 │   └── CarPlaySceneDelegate.swift  CarPlay tabs (continue/downloaded/library) + Now Playing
 ├── Models/
