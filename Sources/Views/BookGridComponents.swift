@@ -138,7 +138,7 @@ struct BookContextPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             BookCoverView(
-                url: provider.coverURL(forItemId: entry.id),
+                url: AppSession.shared.coverURL(forItemId: entry.id),
                 progress: entry.progress,
                 itemId: entry.id,
                 size: 240
@@ -201,7 +201,7 @@ struct BookGridCell: View {
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 BookCoverView(
-                    url: playerCoordinator.provider.coverURL(forItemId: entry.id),
+                    url: AppSession.shared.coverURL(forItemId: entry.id),
                     progress: entry.progress,
                     itemId: entry.id,
                     size: width

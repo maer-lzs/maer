@@ -153,7 +153,7 @@ struct LibraryView: View {
                         miniPlayerSwapOffset = 0
                         return
                     }
-                    let coverURL = provider.coverURL(forItemId: item.id)
+                    let coverURL = AppSession.shared.coverURL(forItemId: item.id)
                     // Real book SWITCH (not first appearance): dip the mini
                     // player below the screen, swap content + accent while it
                     // is hidden, then spring it back up — masks the async
@@ -486,7 +486,7 @@ struct LibraryView: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 6) {
                                 BookCoverView(
-                                    url: provider.coverURL(forItemId: entry.id),
+                                    url: AppSession.shared.coverURL(forItemId: entry.id),
                                     progress: entry.progress,
                                     itemId: entry.id,
                                     size: 132
@@ -557,7 +557,7 @@ struct LibraryView: View {
                             name: name,
                             entries: entries,
                             cellWidth: gridCellWidth,
-                            coverURL: { provider.coverURL(forItemId: $0) }
+                            coverURL: { AppSession.shared.coverURL(forItemId: $0) }
                         )
                         .frame(maxHeight: .infinity, alignment: .top)
                     }

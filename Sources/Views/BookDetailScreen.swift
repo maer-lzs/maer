@@ -66,7 +66,7 @@ struct BookDetailScreen: View {
     }
 
     private var coverImageContent: some View {
-        CachedAsyncImage(url: coordinator.provider.coverURL(forItemId: entry.id)) { image in
+        CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.id)) { image in
             image.resizable().aspectRatio(contentMode: .fill)
         } placeholder: {
             Rectangle()
@@ -125,7 +125,7 @@ struct BookDetailScreen: View {
                             .blur(radius: 45)
                             .overlay(Color.black.opacity(systemColorScheme == .dark ? 0.3 : 0.1))
                         BookCoverView(
-                            url: coordinator.provider.coverURL(forItemId: entry.id),
+                            url: AppSession.shared.coverURL(forItemId: entry.id),
                             progress: entry.progress,
                             itemId: entry.id,
                             size: 320
@@ -286,7 +286,7 @@ struct BookDetailScreen: View {
             isLoading = false
         }
         .task(id: entry.id) {
-            await colorLoader.load(from: coordinator.provider.coverURL(forItemId: entry.id))
+            await colorLoader.load(from: AppSession.shared.coverURL(forItemId: entry.id))
         }
     }
 

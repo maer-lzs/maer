@@ -449,7 +449,7 @@ struct SearchOverlay: View {
     private func thumbnail(for entry: LibraryEntry?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         Group {
-            if let entry, let url = provider.coverURL(forItemId: entry.id) {
+            if let entry, let url = AppSession.shared.coverURL(forItemId: entry.id) {
                 CachedAsyncImage(url: url, useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {

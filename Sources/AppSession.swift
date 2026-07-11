@@ -35,6 +35,13 @@ final class AppSession {
         return provider
     }
 
+    /// Cover-URL eines beliebigen Items über SEINE Quelle — Views dürfen nie
+    /// einen festen Provider annehmen (sonst falsches/kein Cover für lokale
+    /// Dateien und Podcast-Episoden).
+    func coverURL(forItemId itemId: String) -> URL? {
+        provider(for: itemId).coverURL(forItemId: itemId)
+    }
+
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 

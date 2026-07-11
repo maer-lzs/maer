@@ -61,7 +61,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let limited = entries.prefix(Int(CPListTemplate.maximumItemCount))
         var items: [CPListItem] = []
         for entry in limited {
-            let coverURL = AppSession.shared.provider.coverURL(forItemId: entry.id)
+            let coverURL = AppSession.shared.coverURL(forItemId: entry.id)
             var image: UIImage?
             if let coverURL {
                 image = await ImageCache.shared.thumbnail(for: coverURL)
