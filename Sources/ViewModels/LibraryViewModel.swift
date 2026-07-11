@@ -105,6 +105,11 @@ final class LibraryViewModel: ObservableObject {
     private let provider: any AudioProvider
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
+    /// Zuletzt über den lokalen Provider geladene Einträge — als Cache, damit
+    /// `rebuild` (synchron, viele Aufrufer) sie ohne erneuten async-Fetch
+    /// anhängen kann. Aktualisiert in loadLibrary/refresh (immer über den
+    /// Provider, nie direkt über LocalLibrary — sonst wird es messy).
+    private var localCache: [LibraryEntry] = []
 
     private let diskCacheURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("library_cache.json")
@@ -349,6 +354,9 @@ final class LibraryViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        // Lokale Quelle immer zuerst (in-memory, nie ein Fehler) — so sind
+        // lokale Titel auch dann da, wenn der Server offline ist.
+        await reloadLocalCache()
         do {
             let libraries = try await provider.fetchLibraries()
             // The library chosen in the settings wins; fall back to the first
@@ -421,6 +429,7 @@ final class LibraryViewModel: ObservableObject {
     /// Nach Import/Löschen lokaler Dateien die Liste neu mischen — ohne den
     /// Server erneut zu befragen (nutzt die bereits geladenen Server-Items).
     func refreshAfterLocalChange() async {
+        await reloadLocalCache()
         let progress = (try? await provider.fetchAllProgress()) ?? [:]
         rebuild(items: cachedItems, progress: progress)
     }
@@ -457,9 +466,10 @@ final class LibraryViewModel: ObservableObject {
             }
             return LibraryEntry(item: item, progress: p)
         }
-        // Lokale Dateien immer mit einmischen — unabhängig vom Server-Status
-        // (sie sind ja per Definition offline verfügbar).
-        entries = combined + localEntries()
+        // Lokale Dateien (über ihren Provider vorgeladen, siehe localCache)
+        // immer mit einmischen — unabhängig vom Server-Status, sie sind ja
+        // per Definition offline verfügbar.
+        entries = combined + localCache
 
         continueListening = combined
             .filter { ($0.progress?.isStarted ?? false) }
@@ -471,24 +481,14 @@ final class LibraryViewModel: ObservableObject {
             .map { $0 }
     }
 
-    /// Importierte lokale Dateien als Einträge; Fortschritt kommt rein
-    /// lokal aus `localPosition` (kein Server), Balken/„Weiter hören"
-    /// funktionieren damit genauso.
-    private func localEntries() -> [LibraryEntry] {
-        LocalLibrary.shared.libraryItems().map { item in
-            var progress: BookProgress?
-            if let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-               stored.count == 2, let duration = item.media?.duration, duration > 0 {
-                let time = stored[0]
-                progress = BookProgress(
-                    fraction: min(max(time / duration, 0), 1),
-                    isFinished: time >= duration - 1,
-                    lastUpdate: stored[1],
-                    currentTime: time
-                )
-            }
-            return LibraryEntry(item: item, progress: progress)
-        }
+    /// Lokale Quelle NUR über ihren Provider abfragen (Items + Fortschritt) —
+    /// der Core kennt weder LocalLibrary noch den `local:`-Präfix. Wird zu
+    /// Beginn jedes Ladevorgangs aufgerufen (in-memory, nie ein Fehler).
+    private func reloadLocalCache() async {
+        let localProvider = AppSession.shared.localProvider
+        let items = (try? await localProvider.fetchLibraryItems(libraryId: "local")) ?? []
+        let progress = (try? await localProvider.fetchAllProgress()) ?? [:]
+        localCache = items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
     }
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {

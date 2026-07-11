@@ -111,8 +111,9 @@ final class DownloadManager: ObservableObject {
     }
 
     func isDownloaded(itemId: String) -> Bool {
-        // Lokale Dateien sind per Definition offline verfügbar — kein Download.
-        if itemId.hasPrefix("local:") { return true }
+        // Quellen ohne Download-Capability (lokale Dateien) sind per
+        // Definition immer offline verfügbar — kein Download nötig.
+        if !AppSession.shared.provider(for: itemId).capabilities.contains(.downloadable) { return true }
         return downloadedItemIds.contains(itemId)
     }
 

@@ -382,9 +382,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         trackRetryAttempts.removeAll()
         observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
-        // exactly those in the background (valid ones are skipped). Local-file
-        // items are streamed from disk directly and never "download".
-        if !item.id.hasPrefix("local:"),
+        // exactly those in the background (valid ones are skipped). Only for
+        // downloadable sources — local files stream from disk, never download.
+        if provider.capabilities.contains(.downloadable),
            DownloadManager.shared.isDownloaded(itemId: item.id),
            localTrackFiles.count < sortedTracks.count,
            NetworkMonitor.shared.isConnected {

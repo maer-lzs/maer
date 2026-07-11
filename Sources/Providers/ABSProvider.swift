@@ -8,7 +8,7 @@ extension APIClient: AudioProvider {
     var providerId: String { "abs" }
 
     var capabilities: ProviderCapabilities {
-        [.progressSync, .bookmarks, .passwordLogin]
+        [.progressSync, .bookmarks, .passwordLogin, .downloadable]
     }
 
     var streamAuthHeaders: [String: String] {

@@ -40,8 +40,25 @@ final class LocalProvider: AudioProvider {
         library.fileURL(forContentPath: contentPath)
     }
 
-    // Kein Server-Fortschritt: leer / no-op (die App merkt Positionen lokal).
-    func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+    /// Fortschritt kommt rein lokal aus `localPosition` — der Provider ist
+    /// die EINZIGE Schnittstelle nach draußen, der Core liest nie selbst.
+    func fetchAllProgress() async throws -> [String: BookProgress] {
+        var map: [String: BookProgress] = [:]
+        for item in library.libraryItems() {
+            guard let duration = item.media?.duration, duration > 0,
+                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+                  stored.count == 2 else { continue }
+            let time = stored[0]
+            map[item.id] = BookProgress(
+                fraction: min(max(time / duration, 0), 1),
+                isFinished: time >= duration - 1,
+                lastUpdate: stored[1],
+                currentTime: time
+            )
+        }
+        return map
+    }
+
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
     // Keine Server-Lesezeichen (Capability fehlt — wird nie aufgerufen).

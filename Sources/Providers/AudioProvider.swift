@@ -14,6 +14,11 @@ struct ProviderCapabilities: OptionSet {
     static let remoteSearch = ProviderCapabilities(rawValue: 1 << 2)
     /// Anmeldung mit Benutzername/Passwort möglich.
     static let passwordLogin = ProviderCapabilities(rawValue: 1 << 3)
+    /// Inhalte müssen für Offline-Nutzung erst HERUNTERGELADEN werden
+    /// (Server). Quellen ohne dieses Flag (lokale Dateien) sind per
+    /// Definition immer offline verfügbar — der Core zeigt dort keine
+    /// Download-Steuerung.
+    static let downloadable = ProviderCapabilities(rawValue: 1 << 4)
 }
 
 /// Die eine Schnittstelle, über die der Mär-Core (Player, Downloads, Sync,
