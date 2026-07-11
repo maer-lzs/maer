@@ -25,6 +25,10 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
+    /// Gemessene Höhe der schwebenden Bottom-Zone (Mini-Player + Tabs) — als
+    /// Freiraum unten an alle Scroll-Inhalte gereicht, damit nichts verdeckt
+    /// wird. Die Zone liegt als Overlay (reserviert keinen Platz selbst).
+    @State private var bottomBarHeight: CGFloat = 0
     /// Aktiver Inhaltstyp-Tab. Heute nur Hörbücher; die untere Tab-Leiste
     /// erscheint erst, wenn eine zweite Quelle einen anderen Typ mitbringt.
     @State private var selectedMediaType: MediaType = .audiobooks
@@ -64,6 +68,9 @@ struct LibraryView: View {
                     Spacer()
                 }
             }
+            // Unten so viel freihalten, wie die schwebende Bottom-Zone hoch
+            // ist (gilt für den Wurzel-Inhalt beider Tabs).
+            .bottomBarClearance()
             .navigationTitle("Library")
             .toolbar {
                 // Our own adaptive glass instead of the system's toolbar
@@ -97,7 +104,10 @@ struct LibraryView: View {
                 }
             }
         }
-        .safeAreaInset(edge: .bottom) {
+        // Bottom-Zone als OVERLAY (reserviert keinen Platz) — den Freiraum
+        // liefern die Scroll-Inhalte selbst über `bottomBarClearance()`, was
+        // auch gepushte Screens (Detail, Podcast-Show) sauber abdeckt.
+        .overlay(alignment: .bottom) {
             // Mini-Leiste und Such-Button in EINER Zeile, damit der Such-
             // Button nie nach oben verschoben wird, nur weil die Mini-Leiste
             // erscheint/verschwindet — beide bleiben auf gleicher Höhe.
@@ -146,6 +156,14 @@ struct LibraryView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
+                // Höhe messen → als Freiraum an die Scroll-Inhalte reichen.
+                .background {
+                    GeometryReader { proxy in
+                        Color.clear
+                            .onAppear { bottomBarHeight = proxy.size.height }
+                            .onChange(of: proxy.size.height) { _, h in bottomBarHeight = h }
+                    }
+                }
                 .task(id: playerCoordinator.activeItem?.id) {
                     let previousId = lastBottomAccentItemId
                     lastBottomAccentItemId = playerCoordinator.activeItem?.id
@@ -185,6 +203,9 @@ struct LibraryView: View {
         // settings) inherit the same cover accent as the glass elements in
         // the bottom row. The detail page overrides it with its own loader.
         .environment(\.glassAccent, playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil)
+        // Freiraum-Höhe an ALLE Inhalte (auch gepushte Screens) reichen; auf
+        // dem vollen Player 0 (er deckt alles ab).
+        .environment(\.bottomBarInset, isShowingFullPlayer ? 0 : bottomBarHeight)
         .task {
             // Series data lives here — hand the coordinator a lookup for the
             // auto-play-next-in-series setting.

@@ -286,6 +286,7 @@ struct BrowseBooksScreen: View {
                 }
             }
             .padding(.horizontal)
+            .bottomBarClearance()
         }
         .background(
             GeometryReader { geo in

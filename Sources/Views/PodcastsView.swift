@@ -85,6 +85,7 @@ struct PodcastShowView: View {
                 }
             }
             .padding(.vertical)
+            .bottomBarClearance()
         }
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)

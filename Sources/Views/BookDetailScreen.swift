@@ -151,7 +151,8 @@ struct BookDetailScreen: View {
                     }
                     // Platz für Back-Button oben, Mini-Player unten.
                     .padding(.top, 60)
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 20)
+                    .bottomBarClearance()
                     .padding(.horizontal, 24)
                 }
                 .scrollContentBackground(.hidden)
@@ -252,7 +253,8 @@ struct BookDetailScreen: View {
                     }
                     // Freiraum fürs Seitenende: Mini-Player + Such-Button
                     // überdecken sonst die letzten Zeilen.
-                    .padding(.bottom, 120)
+                    .padding(.bottom, 20)
+                    .bottomBarClearance()
                     .frame(maxWidth: 600)
                     .frame(maxWidth: .infinity)
                 }
