@@ -47,6 +47,8 @@
 		CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ABSPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF1177422FFA961A00DA1AC5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF1FBF712FFABCFF00FE761C /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF3C2B293002A01400A4BF8E /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF3C2B2B3002A01400A4BF8E /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 		CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF68E5FB300258A000C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HoerregalWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -168,6 +170,16 @@
 			sourceTree = "<group>";
 		};
 		CF1FBF752FFABCFF00FE761C /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF3C2B2E3002A01400A4BF8E /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF3C2B303002A01400A4BF8E /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -418,6 +430,10 @@
 					ProjectRef = CFCCDF792FFABFC6004A0EB5 /* Hörregal.xcodeproj */;
 				},
 				{
+					ProductGroup = CF3C2B303002A01400A4BF8E /* Products */;
+					ProjectRef = CF3C2B293002A01400A4BF8E /* Hörregal.xcodeproj */;
+				},
+				{
 					ProductGroup = CF44CCD5300229F50013B1B5 /* Products */;
 					ProjectRef = CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */;
 				},
@@ -436,6 +452,10 @@
 				{
 					ProductGroup = CF68E77C30025C5300C97B74 /* Products */;
 					ProjectRef = CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CF3C2B2E3002A01400A4BF8E /* Products */;
+					ProjectRef = CF3C2B2B3002A01400A4BF8E /* Maer.xcodeproj */;
 				},
 				{
 					ProductGroup = CF68E8E63002981600C97B74 /* Products */;

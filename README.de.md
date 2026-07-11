@@ -19,9 +19,17 @@ und den Stand sauber synchronisieren, online wie offline.
 
 ## Screenshots
 
-| Bibliothek | Detail Book (iPhone) | Player (iPad) |
+| Bibliothek | Player | Buchseite |
 |---|---|---|
-| ![Bibliothek](screenshots/iphone_bib.png) | ![Detail](screenshots/iphone_detail.png) | ![Player iPad](screenshots/ipad_player.png) |
+| ![Bibliothek](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Buchseite](screenshots/iphone_detail.png) |
+
+| Bibliothek (iPad) | Buchseite (iPad) |
+|---|---|
+| ![Bibliothek auf dem iPad](screenshots/ipad_library.png) | ![Buchseite auf dem iPad](screenshots/ipad_detail.png) |
+
+| Bibliothek (quer) | Buchseite (quer) |
+|---|---|
+| ![Bibliothek im Querformat](screenshots/iphone_library_landscape.png) | ![Buchseite im Querformat](screenshots/iphone_detail_landscape.png) |
 
 ## Features
 

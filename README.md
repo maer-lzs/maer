@@ -11,9 +11,17 @@ Mär started as a private replacement for a client that regularly lost playback 
 
 ## Screenshots
 
-| Bibliothek | Detail Book (iPhone) | Player (iPad) |
+| Library | Player | Book page |
 |---|---|---|
-| ![Bibliothek](screenshots/iphone_bib.png) | ![Detail](screenshots/iphone_detail.png) | ![Player iPad](screenshots/ipad_player.png) |
+| ![Library](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Book page](screenshots/iphone_detail.png) |
+
+| Library (iPad) | Book page (iPad) |
+|---|---|
+| ![Library on iPad](screenshots/ipad_library.png) | ![Book page on iPad](screenshots/ipad_detail.png) |
+
+| Library (landscape) | Book page (landscape) |
+|---|---|
+| ![Library in landscape](screenshots/iphone_library_landscape.png) | ![Book page in landscape](screenshots/iphone_detail_landscape.png) |
 
 ## Features
 
