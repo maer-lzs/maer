@@ -427,6 +427,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             ?? (UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
         updateCurrentChapter()
         updateNowPlayingInfo()
+        updateWidgetSnapshot(force: true)
         startSyncTimer()
         syncStatus = .synced
         // Hinweis nur, wenn wirklich ein Stand übernommen wurde — bei einem
@@ -567,6 +568,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 self.isFinished = true
                 self.updateNowPlayingInfo()
                 self.endLiveActivity()
+                self.updateWidgetSnapshot(force: true)
                 await self.syncProgress(force: true)
                 if let finishedId = self.item?.id {
                     self.onBookFinished?(finishedId)
@@ -586,6 +588,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = true
         updateNowPlayingInfo()
         updateLiveActivity()
+        updateWidgetSnapshot(force: true)
         Haptics.tap()
     }
 
@@ -635,6 +638,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         pausedAt = Date()
         updateNowPlayingInfo()
         refreshLiveActivityIfActive()
+        updateWidgetSnapshot(force: true)
+        ListeningStatsStore.shared.flush()
         Haptics.tap()
         Task { await syncProgress(force: true) }
     }
@@ -777,6 +782,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
                     self.currentTrackIndex = idx
                 }
+                // Lokale Hörstatistik: 1 s pro Tick bei laufender Wiedergabe.
+                if self.isPlaying { ListeningStatsStore.shared.addSeconds(1) }
                 // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
                 // innerhalb dieses Tracks.
                 let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
@@ -788,6 +795,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
                     self.lastLocalSaveAt = now
                     UserDefaults.standard.set([self.currentTime, now * 1000], forKey: key)
+                    self.updateWidgetSnapshot()
                 }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
@@ -883,6 +891,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func stop() {
         endLiveActivity()
+        ListeningStatsStore.shared.flush()
         Task { await syncProgress(force: true) }
         player?.pause()
         if let token = timeObserverToken {

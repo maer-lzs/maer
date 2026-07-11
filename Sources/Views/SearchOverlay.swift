@@ -209,6 +209,8 @@ struct SearchOverlay: View {
                 } label: {
                     Text(s.label)
                         .font(.subheadline.weight(scope == s ? .semibold : .regular))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(scope == s ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.primary))
                         .padding(.horizontal, 16)
                         .frame(height: 44)

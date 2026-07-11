@@ -235,6 +235,13 @@ struct LibraryView: View {
                 updateQuickActions()
             }
         }
+        .onOpenURL { url in
+            // Home-Screen-Widget: maer://resume → Weiterhören-Pfad (wie
+            // Quick Action / Siri).
+            guard url.scheme == "maer" else { return }
+            ResumeRequest.pending = true
+            Task { await handlePendingResumeRequest() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .resumeLastBookRequested)) { _ in
             // Fires when the app was ALREADY running (no scene-phase change).
             Task { await handlePendingResumeRequest() }

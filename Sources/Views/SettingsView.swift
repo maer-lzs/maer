@@ -39,6 +39,7 @@ struct SettingsView: View {
             appearanceSection
             downloadsSection
             syncSection
+            statsSection
             serverSection
             aboutSection
         }
@@ -184,6 +185,16 @@ struct SettingsView: View {
             Text("Sync")
         } footer: {
             Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
+        }
+    }
+
+    private var statsSection: some View {
+        Section {
+            NavigationLink {
+                StatsView(libraryViewModel: libraryViewModel)
+            } label: {
+                Label("Statistics", systemImage: "chart.bar.fill")
+            }
         }
     }
 

@@ -8,6 +8,7 @@ import WidgetKit
 @main
 struct HoerregalWidgetBundle: WidgetBundle {
     var body: some Widget {
+        ContinueListeningWidget()
         PlaybackLiveActivity()
     }
 }

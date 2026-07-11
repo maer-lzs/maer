@@ -31,7 +31,7 @@ final class AuthViewModel: ObservableObject {
         // Läuft der Token ab (401), automatisch zurück zum Setup-Screen.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
-            self.errorMessage = String(localized: "Session expired — please sign in with a new API token.")
+            self.errorMessage = String(localized: "Session expired — please sign in again.")
             self.logout()
         }
     }

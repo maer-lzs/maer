@@ -57,6 +57,7 @@ struct MiniPlayerBar: View {
                         Text(item.title)
                             .font(.subheadline).bold()
                             .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundStyle(.primary)
                         if let chapter = viewModel.currentChapter {
                             HStack(spacing: 4) {

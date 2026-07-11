@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Geteilter Container fuer das Home-Screen-Widget (Snapshot + Cover).
+	     Forks: an eigene Bundle-Struktur anpassen (auch in WidgetShared.swift
+	     und HoerregalWidgets.entitlements). -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.de.lzs.ABSPlayer</string>
+	</array>
+</dict>
+</plist>

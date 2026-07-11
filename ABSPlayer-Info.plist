@@ -8,6 +8,18 @@
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<!-- Deep Link des Home-Screen-Widgets (maer://resume → Weiterhören). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>de.lzs.ABSPlayer</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>maer</string>
+			</array>
+		</dict>
+	</array>
 	<!-- CarPlay-Szene MUSS hier (nicht nur im Code) deklariert sein: bei
 	     SwiftUI-Lifecycle ersetzt SwiftUI den Delegate einer im Code gebauten
 	     Konfiguration durch seinen eigenen, der die CarPlay-Methoden nicht
