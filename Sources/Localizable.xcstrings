@@ -1121,6 +1121,16 @@
         }
       }
     },
+    "No episodes yet.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch keine Folgen."
+          }
+        }
+      }
+    },
     "No internet connection. Please check your network and try again.": {
       "localizations": {
         "de": {
@@ -1696,6 +1706,16 @@
         }
       }
     },
+    "Shows": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows"
+          }
+        }
+      }
+    },
     "Sign In": {
       "localizations": {
         "de": {
@@ -2062,6 +2082,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Unbekannter Titel"
+          }
+        }
+      }
+    },
+    "Unsubscribe": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abo beenden"
           }
         }
       }

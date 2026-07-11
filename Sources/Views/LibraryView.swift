@@ -68,7 +68,7 @@ struct LibraryView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Library")
+            .navigationTitle(selectedMediaType == .audiobooks ? Text("Library") : Text(selectedMediaType.label))
             .toolbar {
                 // Our own adaptive glass instead of the system's toolbar
                 // glass — the system one must be FULLY suppressed (shared
