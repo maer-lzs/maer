@@ -13,6 +13,13 @@ struct LibraryView: View {
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
+    /// Cover accent of the ACTIVE book — shared with every glass element in
+    /// the bottom bar (mini player, search button, pill) via environment.
+    @StateObject private var bottomColorLoader = CoverColorLoader()
+    /// Book-switch swap animation of the mini player (pushed below the
+    /// screen while the new accent loads, then springs back up).
+    @State private var miniPlayerSwapOffset: CGFloat = 0
+    @State private var lastBottomAccentItemId: String?
 
     /// Auf dem iPhone ist nicht genug Platz für Mini-Leiste UND aufgeklappte
     /// Suche gleichzeitig — dort schließt die Suche die Mini-Leiste temporär
@@ -76,15 +83,25 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    sortFilterMenu
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink {
-                        SettingsView(coordinator: playerCoordinator, onLogout: onLogout)
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .foregroundStyle(.white)
+                // On iOS 26 our own accent-tinted glass replaces the system's
+                // shared toolbar glass (hidden below) so both buttons match the
+                // mini player / search button wash. Nesting both would show as
+                // a doubled circle outline.
+                if #available(iOS 26.0, *) {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        sortFilterMenu
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        settingsLink
+                    }
+                    .sharedBackgroundVisibility(.hidden)
+                } else {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        sortFilterMenu
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        settingsLink
                     }
                 }
             }
@@ -120,6 +137,10 @@ struct LibraryView: View {
                                     isShowingFullPlayer = true
                                 }
                             }
+                            // Book-switch swap: pushed below the screen edge
+                            // while cover/title/accent change, springs back up
+                            // (driven by the .task(id:) below).
+                            .offset(y: miniPlayerSwapOffset)
                         } else {
                             Spacer(minLength: 0)
                         }
@@ -128,8 +149,45 @@ struct LibraryView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
+                .task(id: playerCoordinator.activeItem?.id) {
+                    let previousId = lastBottomAccentItemId
+                    lastBottomAccentItemId = playerCoordinator.activeItem?.id
+                    guard let item = playerCoordinator.activeItem else {
+                        miniPlayerSwapOffset = 0
+                        return
+                    }
+                    let coverURL = apiClient.coverURL(forItemId: item.id)
+                    // Real book SWITCH (not first appearance): dip the mini
+                    // player below the screen, swap content + accent while it
+                    // is hidden, then spring it back up — masks the async
+                    // accent load that used to pop the glass color hard.
+                    guard let previousId, previousId != item.id else {
+                        // First appearance (row insertion animates already):
+                        // no dip, but clear any offset a cancelled swap left.
+                        miniPlayerSwapOffset = 0
+                        await bottomColorLoader.load(from: coverURL)
+                        return
+                    }
+                    withAnimation(.easeIn(duration: 0.25)) {
+                        miniPlayerSwapOffset = 160
+                    }
+                    await bottomColorLoader.load(from: coverURL)
+                    // Hold below the edge for a beat even when the cover is
+                    // cached (accent load would be instant → visible twitch).
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    // Rapid double switch: a newer task owns the offset now —
+                    // springing up here would interrupt ITS dip mid-swap.
+                    guard !Task.isCancelled else { return }
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        miniPlayerSwapOffset = 0
+                    }
+                }
             }
         }
+        // Hoisted OUTSIDE the bottom row so the toolbar buttons (sort,
+        // settings) inherit the same cover accent as the glass elements in
+        // the bottom row. The detail page overrides it with its own loader.
+        .environment(\.glassAccent, playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil)
         .task {
             // Cover-Wartung (TTL, Größenlimit, verwaiste persistente Cover).
             ImageCache.shared.performMaintenance(
@@ -445,6 +503,7 @@ struct LibraryView: View {
                             cellWidth: gridCellWidth,
                             coverURL: { apiClient.coverURL(forItemId: $0) }
                         )
+                        .frame(maxHeight: .infinity, alignment: .top)
                     }
                     .buttonStyle(.plain)
                 }
@@ -485,14 +544,29 @@ struct LibraryView: View {
                 }
             }
         } label: {
-            // Bewusst OHNE eigenen Glas-Hintergrund: In Toolbars gibt iOS 26
-            // Buttons automatisch ihr eigenes Liquid-Glass-Aussehen — ein
-            // zusätzlicher eigener Hintergrund hier würde sich mit dem
-            // System-eigenen verschachteln (zwei Gläser ineinander statt
-            // einem, sichtbar als doppelter Kreis/Kapsel-Rahmen).
-            Image(systemName: "line.3.horizontal.decrease")
-                .foregroundStyle(.white)
+            toolbarGlassIcon("line.3.horizontal.decrease")
         }
+    }
+
+    private var settingsLink: some View {
+        NavigationLink {
+            SettingsView(coordinator: playerCoordinator, onLogout: onLogout)
+        } label: {
+            toolbarGlassIcon("gearshape")
+        }
+    }
+
+    /// Toolbar icon on our OWN adaptive glass circle so it matches the
+    /// bottom-row glass in both schemes (white-ish light / dark glass), but
+    /// deliberately NEUTRAL: navigation chrome stays black/white, only the
+    /// playback elements carry the cover accent.
+    /// The system's toolbar glass is hidden for these items (see .toolbar).
+    private func toolbarGlassIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .foregroundStyle(.primary)
+            .frame(width: 40, height: 40)
+            .modifier(AdaptiveGlassBackground(shape: Circle()))
+            .environment(\.glassAccent, nil)
     }
 
     /// Cover-Grid mit selbst berechneter Spaltenzahl und -breite (siehe
@@ -538,6 +612,10 @@ struct LibraryView: View {
                 }
             }
             .frame(width: gridCellWidth, alignment: .leading)
+            // Top-align within the grid row: LazyVGrid sizes each row to its
+            // tallest cell and CENTERS shorter ones — covers of cells with
+            // less text would sit visibly lower than their neighbours.
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(.plain)
         .contextMenu { contextMenu(for: entry) }

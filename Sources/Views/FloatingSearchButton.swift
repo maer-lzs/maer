@@ -51,7 +51,7 @@ struct FloatingSearchButton: View {
                 } label: {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(width: 56, height: 56)
                         .contentShape(Rectangle())
                 }

@@ -22,7 +22,7 @@ struct ResumeMessageBanner: View {
                     .font(.subheadline).bold()
                     .lineLimit(1)
                     .fixedSize()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .modifier(AdaptiveGlassBackground(shape: shape))

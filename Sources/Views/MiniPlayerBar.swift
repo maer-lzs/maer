@@ -91,7 +91,7 @@ struct MiniPlayerBar: View {
                 } label: {
                     Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(width: 44, height: 56)
                         .contentShape(Rectangle())
                 }
@@ -102,7 +102,7 @@ struct MiniPlayerBar: View {
                 } label: {
                     Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.primary)
                         .frame(width: 44, height: 56)
                         .contentShape(Rectangle())
                 }
@@ -110,7 +110,7 @@ struct MiniPlayerBar: View {
 
                 // Ausgabequelle wechseln — schlichtes weißes Icon direkt auf
                 // der Leiste, kein eigener Hintergrund.
-                AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
+                AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 56)
             }
@@ -122,7 +122,7 @@ struct MiniPlayerBar: View {
             } label: {
                 Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
                     .font(.title2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .frame(width: 44, height: 56)
                     .contentShape(Rectangle())
             }
@@ -151,7 +151,7 @@ struct MiniPlayerBar: View {
 
         return ZStack {
             Circle()
-                .stroke(Color.white.opacity(0.35), lineWidth: 2.5)
+                .stroke(Color.primary.opacity(0.3), lineWidth: 2.5)
                 .frame(width: ringSize, height: ringSize)
             Circle()
                 .trim(from: 0, to: max(0.01, fraction))

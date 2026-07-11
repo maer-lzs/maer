@@ -86,6 +86,8 @@ struct PlayerView: View {
             if viewModel.sourceHint != nil {
                 ResumeMessageBanner(viewModel: viewModel)
                     .padding(.bottom, bottomInset + 16)
+                    // The full player is always dark — keep the pill dark too.
+                    .environment(\.colorScheme, .dark)
             }
         }
         .foregroundStyle(.white)

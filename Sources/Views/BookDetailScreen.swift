@@ -24,6 +24,7 @@ struct BookDetailScreen: View {
     @StateObject private var colorLoader = CoverColorLoader()
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.colorScheme) private var systemColorScheme
 
     private var buttonShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -33,13 +34,6 @@ struct BookDetailScreen: View {
         UIDevice.current.userInterfaceIdiom == .phone
     }
 
-    /// Nebeneinander-Layout (Cover links, Rest rechts) auf dem iPad in jeder
-    /// Ausrichtung, und auf dem iPhone nur im Querformat (dort wird
-    /// `verticalSizeClass` zu `.compact`) — im iPhone-Hochformat bleibt die
-    /// große Hero-Cover-Ansicht.
-    private var useSideBySideLayout: Bool {
-        !isPhone || verticalSizeClass == .compact
-    }
 
     /// Bewusst Screen-Breite statt GeometryReader — das Cover soll immer exakt
     /// die volle Gerätebreite nutzen (nicht irgendeine ScrollView-Breite).
@@ -110,32 +104,100 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Cover links, Titel/Infos/Buttons rechts daneben — für iPad und
-    /// iPhone-Querformat, wo die Breite mehr hergibt als nur ein größeres
-    /// oder kleineres Cover.
-    private var sideBySideHeader: some View {
-        HStack(alignment: .top, spacing: 20) {
-            BookCoverView(
-                url: coordinator.apiClient.coverURL(forItemId: entry.id),
-                progress: entry.progress,
-                itemId: entry.id,
-                size: 180
-            )
-            VStack(alignment: .leading, spacing: 14) {
-                titleBlock(alignment: .leading)
-                infoSection(withPadding: false)
-                playArea(withPadding: false)
-                HStack(spacing: 12) {
-                    downloadSection
-                    markAsFinishedButton
+    /// Side-by-side layout (iPad / iPhone landscape): cover column pinned to
+    /// the screen edges on the left, scrollable info column on the right.
+    /// iPhone: full-height SHARP cover (screen height ≈ 390pt fits the cache
+    /// resolution). iPad: a full-height cover would need >2300px source —
+    /// instead a heavily BLURRED ambient panel (blur hides any resolution)
+    /// with the sharp cover floating on top.
+    private var sideBySideLayoutView: some View {
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                if isPhone {
+                    coverImageContent
+                        .frame(width: geo.size.height, height: geo.size.height)
+                        .clipped()
+                } else {
+                    ZStack {
+                        coverImageContent
+                            .frame(width: 420, height: geo.size.height)
+                            .clipped()
+                            .blur(radius: 45)
+                            .overlay(Color.black.opacity(systemColorScheme == .dark ? 0.3 : 0.1))
+                        BookCoverView(
+                            url: coordinator.apiClient.coverURL(forItemId: entry.id),
+                            progress: entry.progress,
+                            itemId: entry.id,
+                            size: 320
+                        )
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                    }
+                    .frame(width: 420, height: geo.size.height)
+                    .clipped()
                 }
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            titleBlock(alignment: .leading)
+                            infoSection(withPadding: false)
+                            playArea(withPadding: false)
+                            HStack(spacing: 12) {
+                                downloadSection
+                                markAsFinishedButton
+                            }
+                        }
+                        trailingSections(isHero: false)
+                    }
+                    // Platz für Back-Button oben, Mini-Player unten.
+                    .padding(.top, 60)
+                    .padding(.bottom, 120)
+                    .padding(.horizontal, 24)
+                }
+                .scrollContentBackground(.hidden)
             }
         }
-        .padding(.horizontal)
-        .padding(.top)
+        // Cover-Spalte bis an die Bildschirmkanten.
+        .ignoresSafeArea()
+    }
+
+    /// Kapitel-Link, Fehlertext und Beschreibung — geteilt zwischen Hoch- und
+    /// Querformat-Layout.
+    @ViewBuilder
+    private func trailingSections(isHero: Bool) -> some View {
+        if let chapters = detail?.media.chapters, !chapters.isEmpty {
+            chapterLink(chapters, isHero: isHero)
+        }
+
+        if let errorMessage {
+            Text(errorMessage)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .padding(.horizontal)
+        }
+
+        if let description = detail?.media.metadata?.description, !description.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Description")
+                    .font(.headline)
+                Text(Self.plainText(fromHTML: description))
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+        } else if isLoading {
+            ProgressView().padding()
+        }
     }
 
     var body: some View {
+        // Side-by-side only in LANDSCAPE (iPhone via compact height, iPad via
+        // geometry — its size classes don't change on rotation). Portrait
+        // always uses the single-column hero layout, on iPad too.
+        GeometryReader { geo in
+        let useSideBySideLayout = verticalSizeClass == .compact
+            || (geo.size.height > 0 && geo.size.width > geo.size.height)
         ZStack {
             if !useSideBySideLayout {
                 // Verlauf als HINTERGRUND für den ganzen oberen Bereich, wie
@@ -153,18 +215,26 @@ struct BookDetailScreen: View {
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
+            } else {
+                // Carry the cover color theme into the side-by-side layout —
+                // fading into the SYSTEM tone: black in dark mode, white in
+                // light mode (adaptive text stays readable on the pastel top).
+                LinearGradient(
+                    stops: [
+                        .init(color: colorLoader.topAccent.opacity(systemColorScheme == .dark ? 0.7 : 0.45), location: 0.0),
+                        .init(color: systemColorScheme == .dark ? .black : .white, location: 0.55)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
             }
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    if useSideBySideLayout {
-                        sideBySideHeader
-                            // Gleicht aus, dass die ScrollView jetzt die obere
-                            // Sicherheitszone ignoriert (nötig fürs Hero-Cover
-                            // unten) — hier soll der Inhalt aber ganz normal
-                            // unter Statusleiste/Navigationsleiste anfangen.
-                            .padding(.top, 54)
-                    } else {
+            if useSideBySideLayout {
+                sideBySideLayoutView
+            } else {
+                ScrollView {
+                    VStack(spacing: 20) {
                         VStack(spacing: 8) {
                             heroCover
                             titleBlock(alignment: .center)
@@ -177,50 +247,29 @@ struct BookDetailScreen: View {
                             markAsFinishedButton
                         }
                         .padding(.horizontal)
-                    }
 
-                    if let chapters = detail?.media.chapters, !chapters.isEmpty {
-                        chapterLink(chapters, isHero: !useSideBySideLayout)
+                        trailingSections(isHero: true)
                     }
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .padding(.horizontal)
-                    }
-
-                    if let description = detail?.media.metadata?.description, !description.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Description")
-                                .font(.headline)
-                            Text(Self.plainText(fromHTML: description))
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
-                    } else if isLoading {
-                        ProgressView().padding()
-                    }
+                    // Freiraum fürs Seitenende: Mini-Player + Such-Button
+                    // überdecken sonst die letzten Zeilen.
+                    .padding(.bottom, 120)
+                    .frame(maxWidth: 600)
+                    .frame(maxWidth: .infinity)
                 }
-                // Freiraum fürs Seitenende: Mini-Player + Such-Button überdecken sonst
-                // die letzten Zeilen (Safe-Area-Inset reicht hier nicht zuverlässig).
-                .padding(.bottom, 120)
-                .frame(maxWidth: 600)
-                .frame(maxWidth: .infinity)
+                // Ohne das hier hat die ScrollView selbst eine blickdichte
+                // Standard-Füllung, die über dem Verlauf im Hintergrund liegt.
+                .scrollContentBackground(.hidden)
+                // Muss auf der ScrollView selbst sitzen (Kind kann die
+                // Sicherheitszone nicht durchbrechen).
+                .ignoresSafeArea(edges: .top)
+                // Portrait/hero layout is ALWAYS dark (cover gradient):
+                // pin the scheme so .primary text and glass stay light-on-dark.
+                .environment(\.colorScheme, .dark)
             }
-            // Ohne das hier hat die ScrollView selbst eine blickdichte
-            // Standard-Füllung, die über dem Verlauf im Hintergrund liegt —
-            // der wäre dann komplett unsichtbar gewesen, nicht nur "hinter
-            // den Textblöcken", wie es sich angefühlt haben muss.
-            .scrollContentBackground(.hidden)
-            // Muss auf der ScrollView selbst sitzen, nicht auf dem Cover
-            // darin — ein verschachteltes Kind kann die Sicherheitszone
-            // nicht "durchbrechen", die ScrollView schneidet ihren Inhalt an
-            // ihren eigenen Grenzen ab, egal was ein Kind-Element möchte.
-            .ignoresSafeArea(edges: .top)
         }
+        // All glass buttons on this page share the book's cover accent.
+        .environment(\.glassAccent, colorLoader.accent)
+        } // GeometryReader
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .alert("No Wi-Fi Detected", isPresented: $showWiFiWarning) {
