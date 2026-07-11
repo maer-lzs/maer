@@ -283,6 +283,7 @@ struct LibraryView: View {
                     SearchOverlay(
                         libraryViewModel: viewModel,
                         provider: provider,
+                        mediaType: selectedMediaType,
                         topInset: proxy.safeAreaInsets.top,
                         presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
                         onSelect: { entry in

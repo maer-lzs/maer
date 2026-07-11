@@ -9,11 +9,21 @@ import SwiftUI
 struct SearchOverlay: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
     let provider: any AudioProvider
+    /// Kontext: Hörbücher = Bibliothekssuche, Podcasts = Verzeichnis-Suche
+    /// (Apple/PodcastIndex) zum Abonnieren. Die Lupe folgt dem aktiven Tab.
+    let mediaType: MediaType
     let topInset: CGFloat
     let presentHeight: CGFloat
     /// Buch gewählt: Aufrufer schließt die Overlay und pusht die Detailseite.
     let onSelect: (LibraryEntry) -> Void
     let onDismiss: () -> Void
+
+    @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
+    private enum PodcastSource: Hashable { case apple, podcastIndex }
+    @State private var podcastSource: PodcastSource = .apple
+    @State private var podcastResults: [PodcastSearchResult] = []
+    @State private var isSearchingPodcasts = false
+    @State private var subscribingFeeds: Set<String> = []
 
     enum Scope: CaseIterable {
         case all, author, genre, series
@@ -54,6 +64,7 @@ struct SearchOverlay: View {
     init(
         libraryViewModel: LibraryViewModel,
         provider: any AudioProvider,
+        mediaType: MediaType,
         topInset: CGFloat,
         presentHeight: CGFloat,
         onSelect: @escaping (LibraryEntry) -> Void,
@@ -61,6 +72,7 @@ struct SearchOverlay: View {
     ) {
         self.libraryViewModel = libraryViewModel
         self.provider = provider
+        self.mediaType = mediaType
         self.topInset = topInset
         self.presentHeight = presentHeight
         self.onSelect = onSelect
@@ -99,10 +111,22 @@ struct SearchOverlay: View {
     private var searchSheet: some View {
         VStack(spacing: 12) {
             header
-            if drilldown == nil {
-                scopeChips
+            if mediaType == .podcasts {
+                if AppStorageKeys.podcastIndexConfigured { podcastSourcePicker }
+                podcastResultsList
+            } else {
+                if drilldown == nil { scopeChips }
+                resultsList
             }
-            resultsList
+        }
+        // Podcast-Verzeichnis wird per Debounce gesucht (nur im Podcast-Modus).
+        .task(id: searchText) {
+            guard mediaType == .podcasts else { return }
+            let term = searchText.trimmingCharacters(in: .whitespaces)
+            guard term.count >= 2 else { podcastResults = []; return }
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard !Task.isCancelled else { return }
+            await runPodcastSearch(term)
         }
         .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -138,7 +162,7 @@ struct SearchOverlay: View {
                 .gesture(dismissDrag)
 
             HStack(spacing: 8) {
-                if let drilldown {
+                if mediaType != .podcasts, let drilldown {
                     Button {
                         withAnimation(.snappy(duration: 0.2)) { self.drilldown = nil }
                     } label: {
@@ -162,7 +186,7 @@ struct SearchOverlay: View {
                         // Eigener Prompt statt Systemfarbe: das Standard-
                         // Placeholder-Grau säuft auf dem durchscheinenden
                         // Glas ab.
-                        prompt: Text("Title, author, series")
+                        prompt: Text(mediaType == .podcasts ? "Search Podcasts" : "Title, author, series")
                             .foregroundStyle(Color.white.opacity(0.65))
                     )
                     .focused($searchFocused)
@@ -222,6 +246,96 @@ struct SearchOverlay: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)
+    }
+
+    // MARK: - Podcast-Verzeichnis
+
+    private var podcastSourcePicker: some View {
+        Picker("Search source", selection: $podcastSource) {
+            Text("Apple").tag(PodcastSource.apple)
+            Text("PodcastIndex").tag(PodcastSource.podcastIndex)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .onChange(of: podcastSource) { _, _ in
+            let term = searchText.trimmingCharacters(in: .whitespaces)
+            if term.count >= 2 { Task { await runPodcastSearch(term) } }
+        }
+    }
+
+    @ViewBuilder
+    private var podcastResultsList: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                if isSearchingPodcasts {
+                    HStack { ProgressView().tint(.white); Text("Searching…").foregroundStyle(.white.opacity(0.7)) }
+                        .padding(.top, 24).frame(maxWidth: .infinity)
+                } else if searchText.trimmingCharacters(in: .whitespaces).count < 2 {
+                    Text("Search for a podcast to subscribe.")
+                        .foregroundStyle(.white.opacity(0.6)).padding(.top, 32).frame(maxWidth: .infinity)
+                } else if podcastResults.isEmpty {
+                    emptyHint
+                } else {
+                    ForEach(podcastResults) { result in
+                        podcastRow(result)
+                        Divider().overlay(Color.white.opacity(0.1)).padding(.leading, 84)
+                    }
+                }
+            }
+            .padding(.bottom, 24)
+        }
+        .scrollDismissesKeyboard(.immediately)
+    }
+
+    private func podcastRow(_ result: PodcastSearchResult) -> some View {
+        HStack(spacing: 12) {
+            thumbnail(for: result.artworkURL.flatMap { URL(string: $0) })
+            VStack(alignment: .leading, spacing: 2) {
+                Text(result.title).font(.subheadline.weight(.medium)).lineLimit(1)
+                if let author = result.author {
+                    Text(author).font(.caption).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            podcastSubscribeButton(result)
+        }
+        .padding(.horizontal, 20)
+        .frame(minHeight: 64)
+    }
+
+    @ViewBuilder
+    private func podcastSubscribeButton(_ result: PodcastSearchResult) -> some View {
+        if podcastSubs.shows.contains(where: { $0.feedURL == result.feedURL }) {
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+        } else if subscribingFeeds.contains(result.feedURL) {
+            ProgressView().tint(.white)
+        } else {
+            Button("Subscribe") {
+                subscribingFeeds.insert(result.feedURL)
+                Task {
+                    _ = await podcastSubs.subscribe(urlString: result.feedURL)
+                    subscribingFeeds.remove(result.feedURL)
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(AppTheme.accent)
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func runPodcastSearch(_ term: String) async {
+        isSearchingPodcasts = true
+        let directory: PodcastDirectory
+        if podcastSource == .podcastIndex, AppStorageKeys.podcastIndexConfigured {
+            directory = PodcastIndexDirectory(
+                key: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexKey) ?? "",
+                secret: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexSecret) ?? ""
+            )
+        } else {
+            directory = ITunesDirectory()
+        }
+        podcastResults = (try? await directory.search(term)) ?? []
+        isSearchingPodcasts = false
     }
 
     // MARK: - Ergebnisse
@@ -344,6 +458,25 @@ struct SearchOverlay: View {
             } else {
                 shape.fill(Color.primary.opacity(0.08))
                     .overlay(Image(systemName: "book.closed").foregroundStyle(.tertiary))
+            }
+        }
+        .frame(width: 52, height: 52)
+        .clipShape(shape)
+    }
+
+    /// Cover-Thumbnail direkt aus einer URL (Podcast-Verzeichnis-Treffer).
+    private func thumbnail(for url: URL?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        return Group {
+            if let url {
+                CachedAsyncImage(url: url, useThumbnail: true) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    shape.fill(Color.primary.opacity(0.08))
+                }
+            } else {
+                shape.fill(Color.primary.opacity(0.08))
+                    .overlay(Image(systemName: "mic").foregroundStyle(.tertiary))
             }
         }
         .frame(width: 52, height: 52)
