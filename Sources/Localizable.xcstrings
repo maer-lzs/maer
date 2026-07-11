@@ -652,6 +652,36 @@
         }
       }
     },
+    "Import Audio Files": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audiodateien importieren"
+          }
+        }
+      }
+    },
+    "Imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importiert"
+          }
+        }
+      }
+    },
+    "Importing…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird importiert…"
+          }
+        }
+      }
+    },
     "Invalid response from the server.": {
       "localizations": {
         "de": {
@@ -768,6 +798,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lädt…"
+          }
+        }
+      }
+    },
+    "Local Files": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokale Dateien"
           }
         }
       }
@@ -1128,6 +1168,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ausstehende Updates"
+          }
+        }
+      }
+    },
+    "Pick one or more audio files. Multiple files selected together become a single multi-part audiobook.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle eine oder mehrere Audiodateien. Mehrere gemeinsam gewählte Dateien werden zu einem mehrteiligen Hörbuch."
           }
         }
       }
@@ -1508,6 +1558,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sortieren"
+          }
+        }
+      }
+    },
+    "Sources": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quellen"
           }
         }
       }

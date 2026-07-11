@@ -418,6 +418,13 @@ final class LibraryViewModel: ObservableObject {
         saveLibraryDiskCache(items: items, progress: progress)
     }
 
+    /// Nach Import/Löschen lokaler Dateien die Liste neu mischen — ohne den
+    /// Server erneut zu befragen (nutzt die bereits geladenen Server-Items).
+    func refreshAfterLocalChange() async {
+        let progress = (try? await provider.fetchAllProgress()) ?? [:]
+        rebuild(items: cachedItems, progress: progress)
+    }
+
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
         cachedItems = items
         let queued = SyncQueue.shared.allPending()
@@ -450,7 +457,9 @@ final class LibraryViewModel: ObservableObject {
             }
             return LibraryEntry(item: item, progress: p)
         }
-        entries = combined
+        // Lokale Dateien immer mit einmischen — unabhängig vom Server-Status
+        // (sie sind ja per Definition offline verfügbar).
+        entries = combined + localEntries()
 
         continueListening = combined
             .filter { ($0.progress?.isStarted ?? false) }
@@ -460,6 +469,26 @@ final class LibraryViewModel: ObservableObject {
             .sorted { ($0.item.addedAt ?? 0) > ($1.item.addedAt ?? 0) }
             .prefix(15)
             .map { $0 }
+    }
+
+    /// Importierte lokale Dateien als Einträge; Fortschritt kommt rein
+    /// lokal aus `localPosition` (kein Server), Balken/„Weiter hören"
+    /// funktionieren damit genauso.
+    private func localEntries() -> [LibraryEntry] {
+        LocalLibrary.shared.libraryItems().map { item in
+            var progress: BookProgress?
+            if let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+               stored.count == 2, let duration = item.media?.duration, duration > 0 {
+                let time = stored[0]
+                progress = BookProgress(
+                    fraction: min(max(time / duration, 0), 1),
+                    isFinished: time >= duration - 1,
+                    lastUpdate: stored[1],
+                    currentTime: time
+                )
+            }
+            return LibraryEntry(item: item, progress: progress)
+        }
     }
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {

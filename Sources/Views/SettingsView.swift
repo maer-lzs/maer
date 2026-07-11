@@ -37,6 +37,7 @@ struct SettingsView: View {
         Form {
             playbackSection
             appearanceSection
+            sourcesSection
             downloadsSection
             syncSection
             statsSection
@@ -185,6 +186,18 @@ struct SettingsView: View {
             Text("Sync")
         } footer: {
             Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
+        }
+    }
+
+    private var sourcesSection: some View {
+        Section("Sources") {
+            NavigationLink {
+                LocalFilesView(onImported: {
+                    Task { await libraryViewModel?.refreshAfterLocalChange() }
+                })
+            } label: {
+                Label("Local Files", systemImage: "folder")
+            }
         }
     }
 

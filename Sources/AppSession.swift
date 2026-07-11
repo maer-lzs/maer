@@ -13,11 +13,22 @@ final class AppSession {
     /// updated IN PLACE on login, so the objects below stay valid.
     let authViewModel = AuthViewModel()
 
-    /// Die aktive Audioquelle für den ganzen Core. Heute genau eine
-    /// (Audiobookshelf); eine Quellen-Registry kommt mit dem zweiten
-    /// Provider. `apiClient` bleibt für die ABS-spezifische Anmeldung.
+    /// Der Server-Provider (Audiobookshelf) — Basis für Login, Bibliotheks-
+    /// Auswahl, Settings. `apiClient` bleibt für die ABS-spezifische Anmeldung.
     var provider: any AudioProvider { authViewModel.apiClient }
     var apiClient: APIClient { authViewModel.apiClient }
+
+    /// Lokale Dateien als zweite Quelle (immer vorhanden, kein Login).
+    var localProvider: LocalProvider { LocalProvider.shared }
+
+    /// Alle aktiven Quellen — für die aggregierte Bibliothek.
+    var allProviders: [any AudioProvider] { [provider, localProvider] }
+
+    /// Routet ein Item auf seine Quelle: `local:`-IDs → lokale Dateien,
+    /// alles andere → Server. So weiß der Player/Coordinator, wen er fragt.
+    func provider(for itemId: String) -> any AudioProvider {
+        itemId.hasPrefix("local:") ? localProvider : provider
+    }
 
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)

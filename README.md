@@ -129,7 +129,9 @@ Sources/
 ├── Providers/
 │   ├── AudioProvider.swift         Protocol every audio source implements (login, library,
 │   │                               search, stream, download, sync) — the core sees only this
-│   └── ABSProvider.swift           Audiobookshelf as the first provider
+│   ├── ABSProvider.swift           Audiobookshelf as the first provider
+│   ├── LocalProvider.swift         Imported local audio files (no server)
+│   └── LocalLibrary.swift          Local file index + AVAsset metadata extraction
 ├── CarPlay/
 │   └── CarPlaySceneDelegate.swift  CarPlay tabs (continue/downloaded/library) + Now Playing
 ├── Models/

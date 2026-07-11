@@ -48,9 +48,13 @@ final class PlayerCoordinator: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
+        // Quelle des Items bestimmen (Server vs. lokale Dateien) — der
+        // injizierte `provider` ist die Standardquelle, lokale Items werden
+        // umgeleitet.
+        let itemProvider = AppSession.shared.provider(for: item.id)
         do {
-            let detail = try await provider.fetchItemDetail(itemId: item.id)
-            let newViewModel = PlayerViewModel(provider: provider)
+            let detail = try await itemProvider.fetchItemDetail(itemId: item.id)
+            let newViewModel = PlayerViewModel(provider: itemProvider)
             await newViewModel.load(item: detail)
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
@@ -65,7 +69,7 @@ final class PlayerCoordinator: ObservableObject {
             // bräuchte selbst ein längst heruntergeladenes Buch noch eine
             // funktionierende Serververbindung nur zum Öffnen.
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
-                let newViewModel = PlayerViewModel(provider: provider)
+                let newViewModel = PlayerViewModel(provider: itemProvider)
                 await newViewModel.load(item: cached, isOfflineFallback: true)
                 attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel
