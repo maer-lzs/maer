@@ -459,7 +459,11 @@ struct LibraryView: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .contextMenu { contextMenu(for: entry) }
+                        .contextMenu {
+                            contextMenu(for: entry)
+                        } preview: {
+                            contextPreview(for: entry)
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -618,10 +622,48 @@ struct LibraryView: View {
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .buttonStyle(.plain)
-        .contextMenu { contextMenu(for: entry) }
+        .contextMenu {
+            contextMenu(for: entry)
+        } preview: {
+            contextPreview(for: entry)
+        }
     }
 
     // MARK: Kontextmenü (Haptic Touch)
+
+    /// Lifted force-press preview on our adaptive glass instead of the plain
+    /// system platter, so it matches the rest of the chrome. Deliberately
+    /// NEUTRAL glass: the shared accent belongs to the PLAYING book, not the
+    /// pressed one.
+    private func contextPreview(for entry: LibraryEntry) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            BookCoverView(
+                url: apiClient.coverURL(forItemId: entry.id),
+                progress: entry.progress,
+                itemId: entry.id,
+                size: 240
+            )
+            Text(entry.item.title)
+                .font(.headline)
+                .lineLimit(2)
+            if let author = entry.item.author {
+                Text(author)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            if let p = entry.progress {
+                Text(statusText(p, duration: entry.item.media?.duration))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 240)
+        .padding(20)
+        .modifier(AdaptiveGlassBackground(shape: RoundedRectangle(cornerRadius: 28, style: .continuous)))
+        .environment(\.glassAccent, nil)
+        // Room for the glass shadow — the preview is snapshotted at its bounds.
+        .padding(12)
+    }
 
     @ViewBuilder
     private func contextMenu(for entry: LibraryEntry) -> some View {
@@ -637,11 +679,39 @@ struct LibraryView: View {
             } label: {
                 Label("Delete Download", systemImage: "trash")
             }
-        } else if !DownloadManager.shared.isDownloading(itemId: entry.id) {
-            Button {
-                Task { await quickDownload(entry: entry) }
-            } label: {
-                Label("Save for Offline", systemImage: "arrow.down.circle")
+        } else {
+            // Mirror the detail page's download controls: a running or
+            // paused download used to leave the menu without ANY download
+            // entry — pause/resume/cancel now work from the library too.
+            switch DownloadManager.shared.phase[entry.id] {
+            case .downloading:
+                Button {
+                    DownloadManager.shared.pauseDownload(itemId: entry.id)
+                } label: {
+                    Label("Pause", systemImage: "pause.circle")
+                }
+                Button(role: .destructive) {
+                    DownloadManager.shared.cancelDownload(itemId: entry.id)
+                } label: {
+                    Label("Cancel Download", systemImage: "xmark.circle")
+                }
+            case .paused:
+                Button {
+                    DownloadManager.shared.resumeDownload(itemId: entry.id)
+                } label: {
+                    Label("Resume", systemImage: "play.circle")
+                }
+                Button(role: .destructive) {
+                    DownloadManager.shared.cancelDownload(itemId: entry.id)
+                } label: {
+                    Label("Cancel Download", systemImage: "xmark.circle")
+                }
+            case .failed, nil:
+                Button {
+                    Task { await quickDownload(entry: entry) }
+                } label: {
+                    Label("Save for Offline", systemImage: "arrow.down.circle")
+                }
             }
         }
 

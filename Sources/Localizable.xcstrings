@@ -262,6 +262,16 @@
         }
       }
     },
+    "Cancel Download": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download abbrechen"
+          }
+        }
+      }
+    },
     "Chapter %lld of %lld": {
       "localizations": {
         "de": {
