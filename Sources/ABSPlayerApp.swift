@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CarPlay
 
 /// Zentrale Typen/Signale für "Weiterhören" von außen (Home-Screen Quick
 /// Action, Siri-Shortcut): beide setzen nur ein Pending-Flag + Notification;
@@ -8,6 +9,9 @@ enum ResumeRequest {
     static let quickActionType = "resumeLastBook"
     /// Set by quick action / Siri intent, consumed by the library screen.
     static var pending = false
+    /// Specific book requested via Siri ("Play <book>"); takes precedence
+    /// over the plain "continue last book" request.
+    static var pendingItemId: String?
 }
 
 extension Notification.Name {
@@ -30,6 +34,14 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         configurationForConnecting connectingSceneSession: UISceneSession,
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
+        // Two scene roles: the CarPlay template scene gets its own delegate,
+        // everything else stays the SwiftUI window scene (quick actions).
+        if connectingSceneSession.role == .carTemplateApplication {
+            let config = UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
+            config.sceneClass = CPTemplateApplicationScene.self
+            config.delegateClass = CarPlaySceneDelegate.self
+            return config
+        }
         let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         config.delegateClass = SceneDelegate.self
         return config

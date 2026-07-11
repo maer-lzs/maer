@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CF68E6513002599A00C97B74 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6503002599A00C97B74 /* WidgetKit.framework */; };
+		CF68E6533002599A00C97B74 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6523002599A00C97B74 /* SwiftUI.framework */; };
+		CF68E6603002599B00C97B74 /* HoerregalWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		CF68E65E3002599B00C97B74 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CF68E64D3002599A00C97B74;
+			remoteInfo = HoerregalWidgetsExtension;
+		};
 		CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
@@ -16,11 +29,30 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		CF68E6653002599B00C97B74 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CF68E6603002599B00C97B74 /* HoerregalWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ABSPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF1177422FFA961A00DA1AC5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF1FBF712FFABCFF00FE761C /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF68E5FB300258A000C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HoerregalWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF6C56313000732700814E06 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF6C56BD30012C5300814E06 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF925AC42FFABEF8001EB053 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
@@ -39,8 +71,26 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"ABSPlayer-Info.plist",
+				HoerregalWidgets/Assets.xcassets,
+				HoerregalWidgets/Info.plist,
+				LiveActivityWidget/HoerregalLiveActivity.swift,
 			);
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
+		};
+		CF68E6643002599B00C97B74 /* Exceptions for "HoerregalWidgets" folder in "HoerregalWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
+		};
+		CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "HoerregalWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LiveActivityWidget/HoerregalLiveActivity.swift,
+				Sources/Models/PlaybackActivityAttributes.swift,
+			);
+			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -49,8 +99,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				CF1177692FFA997500DA1AC5 /* Exceptions for "ABSPlayer" folder in "ABSPlayer" target */,
+				CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "HoerregalWidgetsExtension" target */,
 			);
 			name = ABSPlayer;
+			sourceTree = "<group>";
+		};
+		CF68E6543002599A00C97B74 /* HoerregalWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CF68E6643002599B00C97B74 /* Exceptions for "HoerregalWidgets" folder in "HoerregalWidgetsExtension" target */,
+			);
+			path = HoerregalWidgets;
 			sourceTree = "<group>";
 		};
 		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
@@ -65,6 +124,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CF68E64B3002599A00C97B74 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CF68E6533002599A00C97B74 /* SwiftUI.framework in Frameworks */,
+				CF68E6513002599A00C97B74 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +153,9 @@
 				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
 				CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */,
 				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
+				CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */,
+				CF68E6543002599A00C97B74 /* HoerregalWidgets */,
+				CF68E64F3002599A00C97B74 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -99,6 +170,25 @@
 			sourceTree = "<group>";
 		};
 		CF44CCD5300229F50013B1B5 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF68E5FF300258A000C97B74 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF68E64F3002599A00C97B74 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				CF68E6503002599A00C97B74 /* WidgetKit.framework */,
+				CF68E6523002599A00C97B74 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		CF68E77C30025C5300C97B74 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -163,10 +253,12 @@
 				CF1170EF2FF99D9D00DA1AC5 /* Sources */,
 				CF1170F02FF99D9D00DA1AC5 /* Frameworks */,
 				CF1170F12FF99D9D00DA1AC5 /* Resources */,
+				CF68E6653002599B00C97B74 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CF68E65F3002599B00C97B74 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
@@ -177,6 +269,28 @@
 			productName = ABSPlayer;
 			productReference = CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "HoerregalWidgetsExtension" */;
+			buildPhases = (
+				CF68E64A3002599A00C97B74 /* Sources */,
+				CF68E64B3002599A00C97B74 /* Frameworks */,
+				CF68E64C3002599A00C97B74 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CF68E6543002599A00C97B74 /* HoerregalWidgets */,
+			);
+			name = HoerregalWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = HoerregalWidgetsExtension;
+			productReference = CF68E64E3002599A00C97B74 /* HoerregalWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		CFC8E64930006E4A00226154 /* ABSPlayerTests */ = {
 			isa = PBXNativeTarget;
@@ -212,6 +326,9 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					CF1170F22FF99D9D00DA1AC5 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					CF68E64D3002599A00C97B74 = {
 						CreatedOnToolsVersion = 26.6;
 					};
 					CFC8E64930006E4A00226154 = {
@@ -255,6 +372,10 @@
 					ProjectRef = CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */;
 				},
 				{
+					ProductGroup = CF68E5FF300258A000C97B74 /* Products */;
+					ProjectRef = CF68E5FB300258A000C97B74 /* Hörregal.xcodeproj */;
+				},
+				{
 					ProductGroup = CF6C56C130012C5300814E06 /* Products */;
 					ProjectRef = CF6C56BD30012C5300814E06 /* Hörregal.xcodeproj */;
 				},
@@ -286,17 +407,29 @@
 					ProductGroup = CFC8E6172FFED66100226154 /* Products */;
 					ProjectRef = CFC8E6132FFED66100226154 /* Hörregal.xcodeproj */;
 				},
+				{
+					ProductGroup = CF68E77C30025C5300C97B74 /* Products */;
+					ProjectRef = CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */;
+				},
 			);
 			projectRoot = "";
 			targets = (
 				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,
 				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
+				CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CF1170F12FF99D9D00DA1AC5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CF68E64C3002599A00C97B74 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -320,6 +453,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CF68E64A3002599A00C97B74 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CFC8E64630006E4A00226154 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -330,6 +470,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		CF68E65F3002599B00C97B74 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CF68E64D3002599A00C97B74 /* HoerregalWidgetsExtension */;
+			targetProxy = CF68E65E3002599B00C97B74 /* PBXContainerItemProxy */;
+		};
 		CFC8E64F30006E4B00226154 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
@@ -469,10 +614,12 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				INFOPLIST_FILE = "ABSPlayer-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Hörregal";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -506,10 +653,12 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				INFOPLIST_FILE = "ABSPlayer-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Hörregal";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -524,6 +673,66 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		CF68E6623002599B00C97B74 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HoerregalWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.HoerregalWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CF68E6633002599B00C97B74 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = HoerregalWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.HoerregalWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -590,6 +799,15 @@
 			buildConfigurations = (
 				CF1170FF2FF99D9E00DA1AC5 /* Debug */,
 				CF1171002FF99D9E00DA1AC5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CF68E6613002599B00C97B74 /* Build configuration list for PBXNativeTarget "HoerregalWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF68E6623002599B00C97B74 /* Debug */,
+				CF68E6633002599B00C97B74 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

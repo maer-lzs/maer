@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CarPlay audio app. Only wired up for SIMULATOR builds (see
+	     CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]) — device builds need
+	     the entitlement GRANTED by Apple first (developer.apple.com/contact/carplay),
+	     otherwise signing/installation fails. Once granted: set
+	     CODE_SIGN_ENTITLEMENTS unconditionally to this file. -->
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
+</dict>
+</plist>

@@ -2,8 +2,10 @@ import SwiftUI
 import UIKit
 
 struct LibraryView: View {
-    @StateObject private var viewModel: LibraryViewModel
-    @StateObject private var playerCoordinator: PlayerCoordinator
+    // Prozessweite Instanzen (AppSession) statt eigener @StateObjects — die
+    // CarPlay-Szene teilt sich Player und Bibliothek mit der UI.
+    @ObservedObject private var viewModel: LibraryViewModel
+    @ObservedObject private var playerCoordinator: PlayerCoordinator
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var downloadManager = DownloadManager.shared
     @State private var searchText = ""
@@ -22,6 +24,8 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
+    @State private var showAuthorBrowse = false
+    @State private var showGenreBrowse = false
 
     /// Auf dem iPhone ist nicht genug Platz für Mini-Leiste UND aufgeklappte
     /// Suche gleichzeitig — dort schließt die Suche die Mini-Leiste temporär
@@ -37,8 +41,8 @@ struct LibraryView: View {
     init(apiClient: APIClient, onLogout: @escaping () -> Void) {
         self.apiClient = apiClient
         self.onLogout = onLogout
-        _viewModel = StateObject(wrappedValue: LibraryViewModel(apiClient: apiClient))
-        _playerCoordinator = StateObject(wrappedValue: PlayerCoordinator(apiClient: apiClient))
+        _viewModel = ObservedObject(wrappedValue: AppSession.shared.libraryViewModel)
+        _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
     }
 
     var body: some View {
@@ -107,6 +111,22 @@ struct LibraryView: View {
                         settingsLink
                     }
                 }
+            }
+            .navigationDestination(isPresented: $showAuthorBrowse) {
+                BrowseListView(
+                    title: "Authors",
+                    groups: viewModel.authorGroups,
+                    playerCoordinator: playerCoordinator,
+                    libraryViewModel: viewModel
+                )
+            }
+            .navigationDestination(isPresented: $showGenreBrowse) {
+                BrowseListView(
+                    title: "Genres",
+                    groups: viewModel.genreGroups,
+                    playerCoordinator: playerCoordinator,
+                    libraryViewModel: viewModel
+                )
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -217,6 +237,7 @@ struct LibraryView: View {
             // (App wurde offline beendet, bevor der Sync durchging): jetzt
             // nachreichen.
             await SyncQueue.shared.flush(apiClient: apiClient)
+            await BookmarkQueue.shared.flush(apiClient: apiClient)
             await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
         }
         .onChange(of: scenePhase) { _, newPhase in
@@ -249,6 +270,7 @@ struct LibraryView: View {
             if isConnected {
                 Task {
                     await SyncQueue.shared.flush(apiClient: apiClient)
+                    await BookmarkQueue.shared.flush(apiClient: apiClient)
                     await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
             } else {
@@ -479,13 +501,14 @@ struct LibraryView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
+                            .accessibilityElement(children: .combine)
                         }
                         .buttonStyle(.plain)
-                        .contextMenu {
-                            contextMenu(for: entry)
-                        } preview: {
-                            contextPreview(for: entry)
-                        }
+                        .modifier(BookCellContextMenu(
+                            entry: entry,
+                            playerCoordinator: playerCoordinator,
+                            libraryViewModel: viewModel
+                        ))
                     }
                 }
                 .padding(.horizontal)
@@ -518,7 +541,13 @@ struct LibraryView: View {
                     // Gleicher Top-Abstand wie der Fächer-Headroom der Stapel-
                     // Kacheln — sonst sitzen Cover/Texte in gemischten Zeilen
                     // auf unterschiedlichen Höhen.
-                    bookCell(entry).padding(.top, 10)
+                    BookGridCell(
+                        entry: entry,
+                        width: gridCellWidth,
+                        playerCoordinator: playerCoordinator,
+                        libraryViewModel: viewModel
+                    )
+                    .padding(.top, 10)
                 case .series(let name, let entries):
                     NavigationLink {
                         seriesDetail(name: name, entries: entries)
@@ -553,6 +582,15 @@ struct LibraryView: View {
     /// Executes a pending "continue listening" request (home-screen quick
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
+        // Siri "Play <book>": a specific book beats "continue last".
+        if let itemId = ResumeRequest.pendingItemId {
+            ResumeRequest.pendingItemId = nil
+            ResumeRequest.pending = false
+            if let entry = viewModel.entries.first(where: { $0.id == itemId }) {
+                await playerCoordinator.open(item: entry.item)
+            }
+            return
+        }
         guard ResumeRequest.pending else { return }
         ResumeRequest.pending = false
         // Already active (e.g. paused in the mini player): just play.
@@ -604,6 +642,17 @@ struct LibraryView: View {
                     Text(option.label).tag(option)
                 }
             }
+            Divider()
+            Button {
+                showAuthorBrowse = true
+            } label: {
+                Label("Browse by Author", systemImage: "person")
+            }
+            Button {
+                showGenreBrowse = true
+            } label: {
+                Label("Browse by Genre", systemImage: "tag")
+            }
         } label: {
             toolbarGlassIcon("line.3.horizontal.decrease")
         }
@@ -652,198 +701,17 @@ struct LibraryView: View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(entries) { entry in
-                bookCell(entry)
+                // Shared cell (BookGridComponents) — identical in the
+                // library and the author/genre browse grids.
+                BookGridCell(
+                    entry: entry,
+                    width: gridCellWidth,
+                    playerCoordinator: playerCoordinator,
+                    libraryViewModel: viewModel
+                )
             }
         }
         .padding(.horizontal)
     }
 
-    private func bookCell(_ entry: LibraryEntry) -> some View {
-        NavigationLink {
-            BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                BookCoverView(
-                    url: apiClient.coverURL(forItemId: entry.id),
-                    progress: entry.progress,
-                    itemId: entry.id,
-                    size: gridCellWidth
-                )
-                Text(entry.item.title)
-                    .font(.caption)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                if let author = entry.item.author {
-                    Text(author)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if let p = entry.progress {
-                    Text(statusText(p, duration: entry.item.media?.duration))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .frame(width: gridCellWidth, alignment: .leading)
-            // Top-align within the grid row: LazyVGrid sizes each row to its
-            // tallest cell and CENTERS shorter ones — covers of cells with
-            // less text would sit visibly lower than their neighbours.
-            .frame(maxHeight: .infinity, alignment: .top)
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            contextMenu(for: entry)
-        } preview: {
-            contextPreview(for: entry)
-        }
-    }
-
-    // MARK: Kontextmenü (Haptic Touch)
-
-    /// Lifted force-press preview on our adaptive glass instead of the plain
-    /// system platter, so it matches the rest of the chrome. Deliberately
-    /// NEUTRAL glass: the shared accent belongs to the PLAYING book, not the
-    /// pressed one.
-    private func contextPreview(for entry: LibraryEntry) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            BookCoverView(
-                url: apiClient.coverURL(forItemId: entry.id),
-                progress: entry.progress,
-                itemId: entry.id,
-                size: 240
-            )
-            Text(entry.item.title)
-                .font(.headline)
-                .lineLimit(2)
-            if let author = entry.item.author {
-                Text(author)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if let p = entry.progress {
-                Text(statusText(p, duration: entry.item.media?.duration))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(width: 240)
-        .padding(20)
-        .modifier(AdaptiveGlassBackground(shape: RoundedRectangle(cornerRadius: 28, style: .continuous)))
-        .environment(\.glassAccent, nil)
-        // Room for the glass shadow — the preview is snapshotted at its bounds.
-        .padding(12)
-    }
-
-    @ViewBuilder
-    private func contextMenu(for entry: LibraryEntry) -> some View {
-        Button {
-            Task { await playerCoordinator.open(item: entry.item) }
-        } label: {
-            Label("Play", systemImage: "play.fill")
-        }
-
-        if DownloadManager.shared.isDownloaded(itemId: entry.id) {
-            Button(role: .destructive) {
-                DownloadManager.shared.deleteDownload(itemId: entry.id)
-            } label: {
-                Label("Delete Download", systemImage: "trash")
-            }
-        } else {
-            // Mirror the detail page's download controls: a running or
-            // paused download used to leave the menu without ANY download
-            // entry — pause/resume/cancel now work from the library too.
-            switch DownloadManager.shared.phase[entry.id] {
-            case .downloading:
-                Button {
-                    DownloadManager.shared.pauseDownload(itemId: entry.id)
-                } label: {
-                    Label("Pause", systemImage: "pause.circle")
-                }
-                Button(role: .destructive) {
-                    DownloadManager.shared.cancelDownload(itemId: entry.id)
-                } label: {
-                    Label("Cancel Download", systemImage: "xmark.circle")
-                }
-            case .paused:
-                Button {
-                    DownloadManager.shared.resumeDownload(itemId: entry.id)
-                } label: {
-                    Label("Resume", systemImage: "play.circle")
-                }
-                Button(role: .destructive) {
-                    DownloadManager.shared.cancelDownload(itemId: entry.id)
-                } label: {
-                    Label("Cancel Download", systemImage: "xmark.circle")
-                }
-            case .failed, nil:
-                Button {
-                    Task { await quickDownload(entry: entry) }
-                } label: {
-                    Label("Save for Offline", systemImage: "arrow.down.circle")
-                }
-            }
-        }
-
-        Button {
-            Task { await quickToggleFinished(entry: entry) }
-        } label: {
-            let isFinished = entry.progress?.isFinished ?? false
-            Label(
-                isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
-                systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
-            )
-        }
-    }
-
-    /// Lädt kurz die Track-Info nach (die Liste selbst hat nur die schlanken
-    /// Metadaten) und startet dann den Download — ohne WLAN-Rückfrage, das ist
-    /// hier bewusst die schnelle Variante fürs Kontextmenü.
-    private func quickDownload(entry: LibraryEntry) async {
-        guard let detail = try? await apiClient.fetchItemDetail(itemId: entry.id) else { return }
-        await DownloadManager.shared.download(item: detail, apiClient: apiClient)
-    }
-
-    /// Wie in BookDetailScreen: immer den vollständigen Datensatz
-    /// (currentTime + duration + isFinished) schicken, nie nur das Flag
-    /// allein — sonst geht der reale Fortschritt verloren (siehe Sync-Bugfix).
-    private func quickToggleFinished(entry: LibraryEntry) async {
-        let newIsFinished = !(entry.progress?.isFinished ?? false)
-        let duration: Double
-        let currentTime: Double
-        if let fresh = try? await apiClient.fetchItemDetail(itemId: entry.id) {
-            duration = fresh.media.duration ?? 0
-            currentTime = fresh.userMediaProgress?.currentTime ?? 0
-        } else {
-            // Offline/Fehler: lokal bekannte Werte statt stillem Abbruch.
-            duration = entry.item.media?.duration ?? 0
-            currentTime = (entry.progress?.fraction ?? 0) * duration
-        }
-        do {
-            try await apiClient.updateProgress(
-                itemId: entry.id,
-                currentTime: newIsFinished ? duration : currentTime,
-                duration: duration,
-                isFinished: newIsFinished
-            )
-        } catch {
-            // Statusentscheidung nicht verlieren: queuen, Flush reicht nach.
-            SyncQueue.shared.enqueue(
-                itemId: entry.id,
-                currentTime: newIsFinished ? duration : currentTime,
-                duration: duration,
-                isFinished: newIsFinished
-            )
-        }
-        await viewModel.refreshProgress()
-    }
-
-    private func statusText(_ p: BookProgress, duration: Double?) -> String {
-        if p.isFinished { return String(localized: "Completed") }
-        if p.isStarted {
-            if let t = p.remainingText(bookDuration: duration) { return t }
-            return String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened")
-        }
-        return ""
-    }
 }

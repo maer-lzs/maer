@@ -279,6 +279,35 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
+    /// Bücher nach Autor gruppiert, alphabetisch — fürs Browsing.
+    var authorGroups: [(name: String, entries: [LibraryEntry])] {
+        var dict: [String: [LibraryEntry]] = [:]
+        for entry in entries {
+            let author = entry.item.author ?? String(localized: "Unknown Author")
+            dict[author, default: []].append(entry)
+        }
+        return dict
+            .map { (name: $0.key, entries: $0.value.sorted {
+                $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
+            }) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Bücher nach Genre gruppiert — ein Buch kann in mehreren Genres stehen.
+    var genreGroups: [(name: String, entries: [LibraryEntry])] {
+        var dict: [String: [LibraryEntry]] = [:]
+        for entry in entries {
+            for genre in entry.item.media?.metadata?.genres ?? [] where !genre.isEmpty {
+                dict[genre, default: []].append(entry)
+            }
+        }
+        return dict
+            .map { (name: $0.key, entries: $0.value.sorted {
+                $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
+            }) }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
     /// Next unfinished book of the same series, sorted by sequence — basis
     /// for the auto-play-next setting when a book ends. nil for standalone
     /// books, unknown items, or when the series is finished.

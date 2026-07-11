@@ -55,6 +55,25 @@ final class APIClient {
         self.token = token
     }
 
+    // MARK: Login
+
+    /// Tauscht Benutzername/Passwort gegen einen Token (POST /login, liegt
+    /// an der Wurzel, nicht unter /api). Bevorzugt den langlebigen Legacy-
+    /// Token; neuere JWT-Server liefern nur `accessToken` (läuft ab — die
+    /// bestehende 401-Behandlung führt dann zurück zum Setup).
+    func login(username: String, password: String) async throws -> String {
+        let data = try await send(
+            method: "POST",
+            path: "login",
+            body: ["username": username, "password": password]
+        )
+        let response = try decode(LoginResponse.self, from: data)
+        guard let token = response.user.token ?? response.user.accessToken, !token.isEmpty else {
+            throw APIError.decoding("Login-Antwort enthält keinen Token")
+        }
+        return token
+    }
+
     // MARK: Bibliotheken
 
     func fetchLibraries() async throws -> [ABSLibrary] {

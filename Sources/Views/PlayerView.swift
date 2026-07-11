@@ -20,7 +20,6 @@ struct PlayerView: View {
     @State private var scrubValue: Double = 0
     @State private var showChapters = false
     @State private var showBookmarks = false
-    @ObservedObject private var network = NetworkMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -285,17 +284,21 @@ struct PlayerView: View {
             }
             .disabled(viewModel.chapters.isEmpty)
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
+            .accessibilityLabel(Text("Previous chapter"))
 
             Button { viewModel.skip(by: -viewModel.skipInterval) } label: {
                 Image(systemName: "gobackward.\(skip)").font(.title)
             }
+            .accessibilityLabel(Text("Skip back \(skip) seconds"))
             Button { viewModel.togglePlayPause() } label: {
                 Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 68))
             }
+            .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
             Button { viewModel.skip(by: viewModel.skipInterval) } label: {
                 Image(systemName: "goforward.\(skip)").font(.title)
             }
+            .accessibilityLabel(Text("Skip forward \(skip) seconds"))
 
             // Nächstes Kapitel.
             Button { viewModel.nextChapter() } label: {
@@ -303,6 +306,7 @@ struct PlayerView: View {
             }
             .disabled(viewModel.chapters.isEmpty)
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
+            .accessibilityLabel(Text("Next chapter"))
         }
     }
 
@@ -383,10 +387,6 @@ struct PlayerView: View {
                 Label("Bookmarks", systemImage: "bookmark")
             }
             .font(.footnote)
-            // Bookmarks live on the server — offline they can neither be
-            // listed nor created.
-            .disabled(!network.isConnected)
-            .opacity(network.isConnected ? 1 : 0.4)
 
             Button {
                 Task { await viewModel.toggleFinished() }

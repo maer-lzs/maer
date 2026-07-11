@@ -8,6 +8,18 @@ struct ABSUser: Decodable {
 }
 
 /// Antwort von /api/me — enthält alle Fortschritts-Einträge des Nutzers.
+/// Antwort von POST /login. Ältere Server liefern den langlebigen `token`,
+/// neuere (JWT-Auth ab v2.26) einen `accessToken` — beide Felder optional,
+/// verwendet wird bevorzugt der langlebige.
+struct LoginResponse: Decodable {
+    let user: LoginUser
+}
+
+struct LoginUser: Decodable {
+    let token: String?
+    let accessToken: String?
+}
+
 struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
     let bookmarks: [ABSBookmark]?

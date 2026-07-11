@@ -3,7 +3,15 @@ import Combine
 
 @MainActor
 final class AuthViewModel: ObservableObject {
+    enum LoginMode: Hashable {
+        case password
+        case token
+    }
+
     @Published var serverURLString: String
+    @Published var loginMode: LoginMode = .password
+    @Published var username: String = ""
+    @Published var password: String = ""
     @Published var apiToken: String = ""
     @Published var isLoggedIn: Bool
     @Published var isLoading = false
@@ -60,32 +68,54 @@ final class AuthViewModel: ObservableObject {
         return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
-    /// Prüft Server-URL + Token, indem einmal die Bibliotheken abgerufen werden.
-    /// Bewusst kein separater Login-Call — der Token wird direkt in der
-    /// Audiobookshelf-Weboberfläche erzeugt (siehe README).
+    /// Verbindet per Benutzername/Passwort (POST /login → Token) ODER mit
+    /// einem direkt eingegebenen API-Token; anschließend wird die Verbindung
+    /// über einen Bibliotheks-Abruf verifiziert und der Token im Keychain
+    /// gesichert.
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {
             errorMessage = String(localized: "Please enter a valid server address, e.g. https://audio.example.com")
             return
         }
-        let trimmedToken = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedToken.isEmpty else {
-            errorMessage = String(localized: "Please enter an API token.")
-            return
-        }
 
         isLoading = true
         defer { isLoading = false }
-
         apiClient.updateBaseURL(url)
-        apiClient.updateToken(trimmedToken)
 
+        let token: String
+        switch loginMode {
+        case .password:
+            let user = username.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !user.isEmpty, !password.isEmpty else {
+                errorMessage = String(localized: "Please enter username and password.")
+                return
+            }
+            do {
+                token = try await apiClient.login(username: user, password: password)
+            } catch APIError.http(401, _) {
+                errorMessage = String(localized: "Login failed — please check username and password.")
+                return
+            } catch {
+                errorMessage = Self.friendlyMessage(for: error)
+                return
+            }
+        case .token:
+            let trimmedToken = apiToken.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmedToken.isEmpty else {
+                errorMessage = String(localized: "Please enter an API token.")
+                return
+            }
+            token = trimmedToken
+        }
+
+        apiClient.updateToken(token)
         do {
             _ = try await apiClient.fetchLibraries()
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
-            KeychainStore.save(trimmedToken, forKey: KeychainKey.apiToken)
+            KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""
+            password = ""
             isLoggedIn = true
         } catch {
             errorMessage = Self.friendlyMessage(for: error)

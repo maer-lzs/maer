@@ -25,7 +25,7 @@ und den Stand sauber synchronisieren, online wie offline.
 
 ## Features
 
-- Login per API-Token (kompatibel mit altem und neuem Auth-System)
+- Anmeldung per Benutzername/Passwort oder API-Token (kompatibel mit altem und neuem Auth-System)
 - Bibliothek als adaptives Cover-Grid (iPhone & iPad), das sich selbst so
   berechnet, dass es immer exakt zur verfügbaren Bildschirmbreite passt —
   ohne Überlappung, auch nach einer Bildschirm-Drehung
@@ -92,6 +92,36 @@ und den Stand sauber synchronisieren, online wie offline.
   Sync-Updates aktualisieren sich von selbst, sobald die Verbindung
   zurückkommt, ganz ohne die App in den Hintergrund schicken zu müssen
 - **Sicherer Progress-Sync** (siehe unten) und Multi-Device-Abgleich
+- **Lesezeichen** pro Buch (Position + Titel) über die Audiobookshelf-
+  Bookmark-API, direkt aus dem Player, mit Offline-Warteschlange — offline
+  angelegte/gelöschte Lesezeichen werden automatisch nachgereicht
+- Bibliothek **nach Autor oder Genre durchsuchen** (übers Sortier-/Filter-
+  Menü), im selben adaptiven Cover-Grid
+- Einstellungen: Sprung-Intervall, Standard-Geschwindigkeit für neue Bücher,
+  **Smart Rewind** (nach längerer Pause etwas früher wieder einsetzen),
+  **automatisch das nächste ungehörte Serienbuch starten**, Darstellung
+  (System/Hell/Dunkel), WLAN-Warnung abschaltbar, Speicherverwaltung,
+  Sync-Status mit „Jetzt synchronisieren", Bibliotheks-Auswahl bei mehreren
+  Libraries, App-Version
+- **Siri & Kurzbefehle**: „Weiterhören in Hörregal" und „Spiele *Buch* in
+  Hörregal" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
+  Home-Screen-Schnellaktion für das zuletzt gehörte Buch
+- **Live Activity / Dynamic Island** vorbereitet: Wiedergabestatus mit
+  Kapitel und selbstlaufendem Fortschritt auf dem Sperrbildschirm; das
+  Widget-Extension-Target muss einmalig angelegt werden, siehe
+  `LiveActivityWidget/ANLEITUNG.md`
+- Adaptives Hell-/Dunkel-Design: das Liquid-Glass-Chrome (Mini-Player,
+  Suche, Toolbar-Buttons) bekommt im hellen Modus einen pastelligen Hauch
+  der aktuellen Cover-Farbe; beim Buchwechsel taucht der Mini-Player kurz
+  ab und federt mit neuer Farbe zurück
+- Performance: Grid-Zellen dekodieren ein kleines abgeleitetes Thumbnail
+  statt des vollen Covers — flüssiges Scrollen und deutlich weniger
+  Speicher bei großen Bibliotheken; die Bücherliste kommt im minified-
+  Format vom Server
+- Härtung: Speicherplatz-Check vor Downloads, Magic-Byte-Container-
+  Erkennung mit automatischer Endungs-Reparatur (unit-getestet),
+  automatische Erholung bei mitten in der Wiedergabe kaputten Tracks statt
+  stiller Stille, VoiceOver-Labels auf allen Transport-Buttons
 
 ## Die Sync-Kernregel
 
@@ -129,7 +159,7 @@ Bibliotheksverwaltung.
 - Deployment-Ziel weiterhin iOS/iPadOS 17+ — die App läuft zur Laufzeit auch
   auf älteren iOS-Versionen, dort greift dann automatisch ein einfaches,
   durchscheinendes Material statt Liquid Glass
-- Ein laufender Audiobookshelf-Server und ein API-Token
+- Ein laufender Audiobookshelf-Server und deine Zugangsdaten oder ein API-Token
 - Eine Apple-ID zum Signieren (kostenlos genügt; siehe Hinweis zur 7-Tage-
   Signatur unten)
 
@@ -139,11 +169,16 @@ MIT — siehe [LICENSE](LICENSE).
 
 ---
 
-## 1. Warum kein Username/Passwort-Login?
+## 1. Anmelde-Optionen
 
-Audiobookshelf hat in neueren Versionen (ab v2.26.0) das Auth-System auf
-JWT mit Access-/Refresh-Token umgestellt. Das würde für eine „minimale" App
-unnötige Komplexität bedeuten (Cookie-Handling, Token-Refresh-Logik).
+Die App meldet sich entweder mit **Benutzername und Passwort** an (Standard —
+sie tauscht beides per `/login` gegen einen Token und speichert nur den Token
+im Schlüsselbund) oder direkt mit einem **API-Token**.
+
+Hinweis für Server mit dem neuen JWT-Auth-System (ab v2.26.0): Der
+Passwort-Login bekommt dort einen kurzlebigen Access-Token, die Sitzung kann
+also ablaufen und zurück zum Setup führen. Auf solchen Servern ist ein
+API-Key die dauerhaftere Wahl.
 
 So findest du deinen Token:
 
@@ -240,7 +275,7 @@ lohnt nicht).
 ## 7. In der App einloggen
 
 - Server: `dein-server.example.com` (das `https://` wird automatisch ergänzt)
-- API-Token: aus Schritt 1
+- Dann entweder Benutzername + Passwort, oder ein API-Token aus Schritt 1
 
 ---
 
@@ -265,9 +300,11 @@ erscheinen sie automatisch wieder.
 ```
 Sources/
 ├── ABSPlayerApp.swift              Einstiegspunkt + AppDelegate für Background-Download-Events
+├── AppShortcuts.swift              Siri App Intents (Weiterhören, bestimmtes Buch abspielen)
 ├── Models/
 │   ├── AudiobookshelfModels.swift  Codable-Structs für die Audiobookshelf-API
 │   ├── SyncRules.swift             Reine, getestete Sync-Entscheidungsregeln + Multi-Track-Zeitrechnung
+│   ├── PlaybackActivityAttributes.swift  Gemeinsamer Live-Activity-Vertrag (App + Widget-Extension)
 │   └── AppStorageKeys.swift        Zentrale UserDefaults-Keys inkl. Aufräumen der pro-Buch-Keys
 ├── Networking/
 │   ├── APIClient.swift             Alle HTTP-Calls
@@ -277,6 +314,7 @@ Sources/
 │   ├── ImageCache.swift            Cover-Cache: Speicher + purgebarer Cache + persistenter Ordner für Downloads
 │   ├── NetworkMonitor.swift        Fortlaufende Netzwerk-Beobachtung (Auto-Reconnect)
 │   ├── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
+│   ├── BookmarkQueue.swift         Offline-Warteschlange + Cache für Lesezeichen
 │   └── SyncQueue.swift             Persistente Warteschlange für gescheiterte Updates
 │                                   (Storage/API hinter Protokollen, testbar)
 ├── ViewModels/
@@ -288,15 +326,19 @@ Sources/
 │   ├── PlayerViewModel.swift       AVQueuePlayer, Multi-Track-Queue, Seek/Skip, Kapitel
 │   ├── PlayerViewModel+Sync.swift  Sync-Politik: Timer, Reentrancy-Guard, Konflikte, Abgleich
 │   ├── PlayerViewModel+SleepTimer.swift   Sleep-Timer inkl. Lautstärke-Fade
+│   ├── PlayerViewModel+LiveActivity.swift Live Activity starten/aktualisieren/beenden
 │   └── PlayerViewModel+NowPlaying.swift   Lockscreen-Befehle, NowPlaying-Info, Artwork
 └── Views/
-    ├── SetupView.swift             Server + Token eingeben
+    ├── SetupView.swift             Server + Passwort- oder Token-Anmeldung
+    ├── SettingsView.swift          Wiedergabe, Darstellung, Speicher, Sync, Server
     ├── RootView.swift              Umschalten Setup ↔ Bibliothek
     ├── LibraryView.swift           Bücherliste, Suche, Sortierung/Filter, adaptives Grid
     ├── FullPlayerOverlay.swift     Ziehbares Liquid-Glass-Sheet mit dem vollen Player
     ├── SeriesStackCell.swift       Serien-Stapel-Kachel (gefächerte Cover + Zähler-Badge)
     ├── BookDetailScreen.swift      Buchdetailseite, Download, Als-gehört, Play/Pause
     ├── BookCoverView.swift         Cover mit Fortschrittsbalken + Status-Abzeichen
+    ├── BookGridComponents.swift    Geteilte Grid-Zelle + Kontextmenü, Autoren-/Genre-Browsing
+    ├── BookmarksSheet.swift        Lesezeichen-Sheet im Player (anlegen/springen/löschen)
     ├── CachedAsyncImage.swift      AsyncImage-Ersatz, nutzt ImageCache
     ├── MiniPlayerBar.swift         Persistente, schwebende Glas-Mini-Player-Leiste
     ├── FloatingSearchButton.swift  Aufklappbarer Such-Button
@@ -320,10 +362,12 @@ Verwendete API-Endpunkte:
 | Zweck | Endpoint |
 |---|---|
 | Bibliotheken | `GET /api/libraries` |
-| Bücherliste | `GET /api/libraries/{id}/items` |
+| Bücherliste | `GET /api/libraries/{id}/items?minified=1` |
 | Buchdetails + Kapitel + Fortschritt | `GET /api/items/{id}?expanded=1` |
 | Fortschritt schreiben | `PATCH /api/me/progress/{itemId}` |
 | Fortschritt für die ganze Bibliothek | `GET /api/me` |
+| Passwort-Anmeldung | `POST /login` |
+| Lesezeichen | `GET /api/me`, `POST/DELETE /api/me/item/{id}/bookmark…` |
 | Cover | `GET /api/items/{id}/cover?token=...` |
 | Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
 

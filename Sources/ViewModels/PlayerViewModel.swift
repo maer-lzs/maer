@@ -3,6 +3,7 @@ import Combine
 import AVFoundation
 import MediaPlayer
 import UIKit
+import ActivityKit
 
 @MainActor
 final class PlayerViewModel: NSObject, ObservableObject {
@@ -112,6 +113,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var playbackRate: Float = 1.0
     /// When the current pause started — basis for Smart Rewind on resume.
     private var pausedAt: Date?
+    /// Laufende Live Activity (Lock Screen / Dynamic Island), s. Extension.
+    var liveActivity: Activity<PlaybackActivityAttributes>?
     /// Skip-Intervall in Sekunden (15/30/60), app-weit gemerkt.
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
@@ -550,6 +553,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // falschen Zustand.
                 self.isFinished = true
                 self.updateNowPlayingInfo()
+                self.endLiveActivity()
                 await self.syncProgress(force: true)
                 if let finishedId = self.item?.id {
                     self.onBookFinished?(finishedId)
@@ -568,6 +572,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
+        updateLiveActivity()
         Haptics.tap()
     }
 
@@ -616,6 +621,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = false
         pausedAt = Date()
         updateNowPlayingInfo()
+        updateLiveActivity()
         Haptics.tap()
         Task { await syncProgress(force: true) }
     }
@@ -648,6 +654,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = clamped
         updateCurrentChapter()
         updateNowPlayingInfo()
+        updateLiveActivity()
         if userInitiated {
             suppressConflictForNextSync = true
             await syncProgress(force: true)
@@ -848,12 +855,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func updateCurrentChapter() {
-        currentChapter = chapters.last(where: { currentTime >= $0.start })
+        let newChapter = chapters.last(where: { currentTime >= $0.start })
+        guard newChapter != currentChapter else { return }
+        currentChapter = newChapter
+        // Chapter transitions are the only periodic Live-Activity update —
+        // the widget extrapolates the progress in between.
+        updateLiveActivity()
     }
 
     // MARK: - Aufräumen
 
     func stop() {
+        endLiveActivity()
         Task { await syncProgress(force: true) }
         player?.pause()
         if let token = timeObserverToken {

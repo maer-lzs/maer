@@ -14,6 +14,13 @@ enum DemoAccess {
 struct SetupView: View {
     @ObservedObject var viewModel: AuthViewModel
 
+    private var hasCredentials: Bool {
+        switch viewModel.loginMode {
+        case .password: return !viewModel.username.isEmpty && !viewModel.password.isEmpty
+        case .token: return !viewModel.apiToken.isEmpty
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -27,13 +34,33 @@ struct SetupView: View {
                 }
 
                 Section {
-                    SecureField("API Token", text: $viewModel.apiToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    Picker("Sign-in method", selection: $viewModel.loginMode) {
+                        Text("Password").tag(AuthViewModel.LoginMode.password)
+                        Text("API Token").tag(AuthViewModel.LoginMode.token)
+                    }
+                    .pickerStyle(.segmented)
+
+                    switch viewModel.loginMode {
+                    case .password:
+                        TextField("Username", text: $viewModel.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .textContentType(.username)
+                        SecureField("Password", text: $viewModel.password)
+                            .textContentType(.password)
+                    case .token:
+                        SecureField("API Token", text: $viewModel.apiToken)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
                 } header: {
-                    Text("API Token")
+                    Text("Sign In")
                 } footer: {
-                    Text("Found in the Audiobookshelf web interface under Settings → Users → open your account (or Settings → API Keys on newer versions).")
+                    if viewModel.loginMode == .token {
+                        Text("Found in the Audiobookshelf web interface under Settings → Users → open your account (or Settings → API Keys on newer versions).")
+                    } else {
+                        Text("Your Audiobookshelf account credentials. On servers with the new token system, playback may sign out when the token expires — use an API key there instead.")
+                    }
                 }
 
                 if let error = viewModel.errorMessage {
@@ -56,13 +83,14 @@ struct SetupView: View {
                             Spacer()
                         }
                     }
-                    .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || viewModel.apiToken.isEmpty)
+                    .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || !hasCredentials)
                 }
 
                 if DemoAccess.isAvailable {
                     Section {
                         Button("Use Demo Server") {
                             viewModel.serverURLString = DemoAccess.serverURL ?? ""
+                            viewModel.loginMode = .token
                             viewModel.apiToken = DemoAccess.apiToken ?? ""
                             Task { await viewModel.connect() }
                         }

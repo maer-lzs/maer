@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var authViewModel = AuthViewModel()
+    /// Prozessweite Session (siehe AppSession): dieselben Instanzen werden
+    /// auch von der CarPlay-Szene verwendet.
+    @ObservedObject private var authViewModel = AppSession.shared.authViewModel
 
     var body: some View {
         Group {

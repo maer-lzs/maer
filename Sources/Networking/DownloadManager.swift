@@ -204,7 +204,8 @@ final class DownloadManager: ObservableObject {
     /// An ID3 tag says NOTHING about the codec — it can prefix MP3 *or*
     /// ADTS-AAC. Skip the tag and classify the first real frame header
     /// (layer bits 00 = ADTS/AAC, otherwise MPEG audio = mp3).
-    nonisolated private static func sniffedAudioExtension(_ url: URL) -> String? {
+    // internal (not private): unit-tested with synthetic byte patterns.
+    nonisolated static func sniffedAudioExtension(_ url: URL) -> String? {
         guard let handle = try? FileHandle(forReadingFrom: url),
               let head = try? handle.read(upToCount: 12), head.count >= 4 else { return nil }
         let b = [UInt8](head)
@@ -227,7 +228,7 @@ final class DownloadManager: ObservableObject {
     }
 
     /// 0xFFEx/Fx sync word: layer bits 00 → ADTS (AAC), else MPEG audio.
-    nonisolated private static func classifyFrameSync(_ b: [UInt8]) -> String? {
+    nonisolated static func classifyFrameSync(_ b: [UInt8]) -> String? {
         guard b.count >= 2, b[0] == 0xFF, (b[1] & 0xE0) == 0xE0 else { return nil }
         return (b[1] & 0x06) == 0 ? "aac" : "mp3"
     }
@@ -237,7 +238,7 @@ final class DownloadManager: ObservableObject {
     /// content URLs often carry no extension, the download defaulted to m4b)
     /// fails to parse (-12864) and plays silence. Renames if needed and
     /// returns the playable URL; nil for non-audio garbage.
-    nonisolated private static func repairedAudioURL(_ url: URL) -> URL? {
+    nonisolated static func repairedAudioURL(_ url: URL) -> URL? {
         guard let real = sniffedAudioExtension(url) else { return nil }
         // mp4-family extensions are interchangeable for the parser.
         let mp4Family = ["m4b", "m4a", "mp4"]

@@ -66,6 +66,15 @@ struct FullPlayerOverlay: View {
             }
             .background { containerGlass(corner: corner) }
             .offset(y: offset)
+            // VoiceOver: two-finger scrub (standard escape) closes the
+            // player — the drag gesture is unusable with VoiceOver active.
+            .accessibilityAction(.escape) {
+                withAnimation(.easeOut(duration: 0.45)) {
+                    releaseOffset = presentHeight
+                } completion: {
+                    onDismiss()
+                }
+            }
         }
         // Safe Area EINMAL am fixen Root ignorieren — nicht in Kindern des
         // bewegten Containers, sonst kippt die Expansion beim ersten Offset-
@@ -104,6 +113,8 @@ struct FullPlayerOverlay: View {
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .highPriorityGesture(dismissGesture)
+            .accessibilityLabel(Text("Close player"))
+            .accessibilityAddTraits(.isButton)
     }
 
     /// Seitliche Swipe-Zonen; unten ausgespart (Scrubber/Controls).

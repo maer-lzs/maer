@@ -96,6 +96,7 @@ struct MiniPlayerBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text("Skip back \(Int(viewModel.skipInterval)) seconds"))
 
                 Button {
                     viewModel.skip(by: viewModel.skipInterval)
@@ -107,6 +108,7 @@ struct MiniPlayerBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
 
                 // Ausgabequelle wechseln — schlichtes weißes Icon direkt auf
                 // der Leiste, kein eigener Hintergrund.
@@ -127,6 +129,7 @@ struct MiniPlayerBar: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

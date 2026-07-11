@@ -9,7 +9,9 @@ struct BookmarksSheet: View {
 
     @State private var bookmarks: [ABSBookmark] = []
     @State private var isLoading = true
-    @State private var errorText: String?
+    /// True when the list comes from the offline cache (+ pending ops)
+    /// instead of a fresh server response.
+    @State private var isOfflineView = false
     @State private var showTitleAlert = false
     @State private var newTitle = ""
     /// Captured when the alert opens — playback may continue meanwhile.
@@ -36,8 +38,6 @@ struct BookmarksSheet: View {
                 Section {
                     if isLoading {
                         ProgressView().frame(maxWidth: .infinity)
-                    } else if let errorText {
-                        Text(errorText).foregroundStyle(.secondary)
                     } else if bookmarks.isEmpty {
                         Text("No bookmarks yet.").foregroundStyle(.secondary)
                     } else {
@@ -60,6 +60,10 @@ struct BookmarksSheet: View {
                         .onDelete { offsets in
                             Task { await delete(at: offsets) }
                         }
+                    }
+                } footer: {
+                    if isOfflineView {
+                        Text("Offline — changes will be synced later.")
                     }
                 }
             }
@@ -97,36 +101,51 @@ struct BookmarksSheet: View {
     private func reload() async {
         guard let itemId = viewModel.item?.id else { return }
         isLoading = true
+        // Nachzügler zuerst versuchen, damit die Server-Liste sie enthält.
+        await BookmarkQueue.shared.flush(apiClient: viewModel.apiClient)
         do {
-            bookmarks = try await viewModel.apiClient.fetchBookmarks(itemId: itemId)
-            errorText = nil
+            let fresh = try await viewModel.apiClient.fetchBookmarks(itemId: itemId)
+            BookmarkQueue.shared.cache(fresh, forItemId: itemId)
+            isOfflineView = false
         } catch {
-            errorText = String(localized: "Bookmarks could not be loaded.")
+            isOfflineView = true
         }
+        // Effective view = last known server list + still-pending ops.
+        bookmarks = BookmarkQueue.shared.effectiveBookmarks(forItemId: itemId)
         isLoading = false
     }
 
     private func create() async {
         guard let itemId = viewModel.item?.id else { return }
-        let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = raw.isEmpty ? formatted(pendingTime) : raw
         do {
-            try await viewModel.apiClient.createBookmark(
-                itemId: itemId,
-                time: pendingTime,
-                title: title.isEmpty ? formatted(pendingTime) : title
-            )
+            try await viewModel.apiClient.createBookmark(itemId: itemId, time: pendingTime, title: title)
             await reload()
         } catch {
-            errorText = String(localized: "Bookmark could not be saved.")
+            // Offline/server error: queue it and show it optimistically.
+            BookmarkQueue.shared.enqueue(.create(itemId: itemId, time: pendingTime, title: title))
+            bookmarks = BookmarkQueue.shared.effectiveBookmarks(forItemId: itemId)
+            isOfflineView = true
         }
     }
 
     private func delete(at offsets: IndexSet) async {
         guard let itemId = viewModel.item?.id else { return }
-        for index in offsets {
-            let bookmark = bookmarks[index]
-            try? await viewModel.apiClient.deleteBookmark(itemId: itemId, time: bookmark.time)
+        let toDelete = offsets.map { bookmarks[$0] }
+        for bookmark in toDelete {
+            do {
+                try await viewModel.apiClient.deleteBookmark(itemId: itemId, time: bookmark.time)
+            } catch {
+                BookmarkQueue.shared.enqueue(.delete(itemId: itemId, time: bookmark.time))
+                isOfflineView = true
+            }
         }
-        await reload()
+        if isOfflineView {
+            // Effective view filters the queued deletes out of the cached list.
+            bookmarks = BookmarkQueue.shared.effectiveBookmarks(forItemId: itemId)
+        } else {
+            await reload()
+        }
     }
 }

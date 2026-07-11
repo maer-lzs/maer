@@ -19,6 +19,8 @@ nonisolated enum AppStorageKeys {
     static let selectedLibraryId = "selectedLibraryId"
     /// Start the next unfinished book of the series when one ends (default OFF).
     static let autoPlayNextInSeries = "autoPlayNextInSeries"
+    /// Bookmark create/delete ops that have not reached the server yet.
+    static let pendingBookmarkOps = "pendingBookmarkOps"
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     static let librarySortOption = "librarySortOption"
