@@ -162,7 +162,9 @@ struct MiniPlayerBar: View {
     /// Kreis darüber.
     private var coverWithProgressRing: some View {
         let coverSize: CGFloat = 34
-        let ringSize: CGFloat = 40
+        // Ring so groß wie Cover + Strichstärke: die Innenkante des Rings liegt
+        // damit direkt auf der Coverkante, ohne Spalt dazwischen.
+        let ringSize: CGFloat = 36
 
         return ZStack {
             Circle()

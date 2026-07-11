@@ -143,7 +143,18 @@ struct LibraryView: View {
                     // Mini-Player-Zeile.
                     HStack(spacing: 10) {
                         if availableMediaTypes.count > 1 {
-                            MediaTabBar(types: availableMediaTypes, selected: $selectedMediaType)
+                            MediaTabBar(types: availableMediaTypes, selected: Binding(
+                                get: { selectedMediaType },
+                                set: { newValue in
+                                    // Tab-Tipp führt immer zurück zur Wurzel der
+                                    // jeweiligen Bibliothek — auch aus einem
+                                    // gepushten Detail-Screen und auch beim
+                                    // erneuten Tippen des schon aktiven Tabs
+                                    // (Standard-iOS-Tabverhalten).
+                                    navigationPath = NavigationPath()
+                                    selectedMediaType = newValue
+                                }
+                            ))
                         }
                         Spacer(minLength: 0)
                         FloatingSearchButton {
