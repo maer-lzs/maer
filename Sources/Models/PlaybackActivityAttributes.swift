@@ -20,11 +20,9 @@ nonisolated struct PlaybackActivityAttributes: ActivityAttributes {
         /// (position-based by nature).
         var chapterEndDate: Date?
         /// Wall-clock end of a RUNNING sleep timer, nil without one.
+        /// EVERY timer freezes while paused (the app only counts during
+        /// playback) — the widget shows a live countdown only while playing.
         var sleepEndDate: Date?
-        /// true = „bis Kapitel-/Track-Ende" (positionsbasiert): bei Pause
-        /// muss der Countdown im Widget einfrieren, sonst driftet er. Der
-        /// Feste-Minuten-Modus (false) läuft per Wall-Clock auch bei Pause.
-        var sleepPositionBased: Bool
     }
 
     var bookTitle: String

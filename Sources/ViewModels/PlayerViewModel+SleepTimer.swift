@@ -36,6 +36,10 @@ extension PlayerViewModel {
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 if Task.isCancelled { break }
+                // Count only while actually LISTENING — pausing freezes the
+                // timer (its purpose is "stop after X minutes of listening",
+                // not wall-clock time).
+                guard self.isPlaying else { continue }
                 guard var remaining = self.sleepTimerRemaining else { break }
                 remaining -= 1
                 self.sleepTimerRemaining = remaining

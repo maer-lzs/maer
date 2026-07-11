@@ -36,8 +36,7 @@ extension PlayerViewModel {
             isPlaying: isPlaying,
             chapterName: currentChapter?.title,
             chapterEndDate: chapterEnd,
-            sleepEndDate: sleepEnd,
-            sleepPositionBased: sleepPositionBased
+            sleepEndDate: sleepEnd
         )
         let content = ActivityContent(state: state, staleDate: nil)
 

@@ -36,11 +36,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> UISceneConfiguration {
         // Two scene roles: the CarPlay template scene gets its own delegate,
         // everything else stays the SwiftUI window scene (quick actions).
+        // The car config is resolved BY NAME from Info.plist — assigning
+        // sceneClass/delegateClass here in code gets overridden by SwiftUI's
+        // own scene delegate, which crashes on CarPlay connect.
         if connectingSceneSession.role == .carTemplateApplication {
-            let config = UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
-            config.sceneClass = CPTemplateApplicationScene.self
-            config.delegateClass = CarPlaySceneDelegate.self
-            return config
+            return UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
         }
         let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         config.delegateClass = SceneDelegate.self

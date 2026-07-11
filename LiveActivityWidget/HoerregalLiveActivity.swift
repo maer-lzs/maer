@@ -19,9 +19,9 @@ struct HoerregalWidgetBundle: WidgetBundle {
 struct PlaybackLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlaybackActivityAttributes.self) { context in
+            // System-Standard-Hintergrund (adaptiv hell/dunkel) statt
+            // App-Look: Live Activities sollen sich iOS anpassen.
             LockScreenView(context: context)
-                .activityBackgroundTint(Color.black.opacity(0.6))
-                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -32,7 +32,7 @@ struct PlaybackLiveActivity: Widget {
                     CountdownText(state: context.state)
                         .font(.title3.bold())
                         .monospacedDigit()
-                        .foregroundStyle(.orange)
+                        .frame(maxWidth: 72, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -51,10 +51,12 @@ struct PlaybackLiveActivity: Widget {
             } compactLeading: {
                 StatusIcon(state: context.state)
             } compactTrailing: {
+                // Timer-Text ist gierig und würde sonst mittig schwimmen —
+                // fest nach rechts außen begrenzen.
                 CountdownText(state: context.state)
                     .font(.caption2)
                     .monospacedDigit()
-                    .foregroundStyle(.orange)
+                    .frame(maxWidth: 52, alignment: .trailing)
             } minimal: {
                 StatusIcon(state: context.state)
             }
@@ -77,7 +79,7 @@ private struct LockScreenView: View {
                 if let chapter = context.state.chapterName {
                     Text(chapter)
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
             }
@@ -85,11 +87,10 @@ private struct LockScreenView: View {
             CountdownText(state: context.state)
                 .font(.callout.bold())
                 .monospacedDigit()
-                .foregroundStyle(.orange)
+                .frame(maxWidth: 80, alignment: .trailing)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .foregroundStyle(.white)
     }
 }
 
@@ -101,34 +102,24 @@ private struct StatusIcon: View {
         Image(systemName: state.sleepEndDate != nil
             ? "moon.zzz.fill"
             : (state.isPlaying ? "play.fill" : "pause.fill"))
-            .foregroundStyle(.orange)
     }
 }
 
 /// Schlaf-Countdown gewinnt; sonst Kapitel-Countdown (kurz genug für die
-/// kompakte Pille). Läuft live, wo die zugrunde liegende Uhr wirklich läuft:
-/// - fester Schlaf-Timer: Wall-Clock, auch bei Pause
-/// - Kapitel / positionsbasierter Timer: nur während der Wiedergabe,
-///   bei Pause eingefroren (der Rest hängt an der Abspielposition)
+/// kompakte Pille). Live NUR während der Wiedergabe — bei Pause frieren
+/// beide ein (die App zählt den Schlaf-Timer nur beim Hören herunter).
 private struct CountdownText: View {
     let state: PlaybackActivityAttributes.ContentState
 
     var body: some View {
-        if let sleepEnd = state.sleepEndDate {
-            if state.sleepPositionBased && !state.isPlaying {
-                Text(frozen(until: sleepEnd))
-            } else {
-                Text(timerInterval: state.capturedAt...max(sleepEnd, state.capturedAt), countsDown: true)
-            }
-        } else if let chapterEnd = state.chapterEndDate {
+        if let end = state.sleepEndDate ?? state.chapterEndDate {
             if state.isPlaying {
-                Text(timerInterval: state.capturedAt...max(chapterEnd, state.capturedAt), countsDown: true)
+                Text(timerInterval: state.capturedAt...max(end, state.capturedAt), countsDown: true)
             } else {
-                Text(frozen(until: chapterEnd))
+                Text(frozen(until: end))
             }
         } else {
             Image(systemName: "headphones")
-                .foregroundStyle(.orange)
         }
     }
 
