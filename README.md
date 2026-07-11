@@ -19,7 +19,7 @@ Mär started as a private replacement for a client that regularly lost playback 
 
 - Sign in with username/password or an API token, compatible with both the old and new Audiobookshelf authentication systems
 - Library as an adaptive cover grid for iPhone and iPad, self-sizing to always fit the actual screen width without overlap, even across rotation
-- Floating search button (Music-app style) that expands into a search field instead of a fixed search bar
+- **Search overlay**: a floating glass search button opens a full glass sheet above the library (the library shimmers through, slightly dimmed) with an auto-focused field, real-time filtering per keystroke, and scope chips — All / Author / Genre / Series; results are rows with small cover thumbnails, group scopes drill down in place, and picking a book closes the overlay and pushes its detail page
 - Sorting by title, author, recently added, or recently listened, with an ascending/descending toggle; sort and filter choices are remembered across app launches
 - Filters for all/unfinished/finished books
 - “Continue Listening”, “Recently Added”, and “Downloaded” sections
@@ -38,10 +38,10 @@ Mär started as a private replacement for a client that regularly lost playback 
 - **Safe progress sync**; see below
 - Multi-device progress reconciliation
 - **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing — bookmarks created or deleted without a connection are sent automatically once it returns
-- Browse the library **by author or by genre** (via the sort/filter menu), reusing the same adaptive cover grid
 - Settings screen: skip interval, default playback speed for new books, **Smart Rewind** (resume a little earlier after longer pauses), **auto-play the next unfinished book of a series**, appearance override (system/light/dark), Wi-Fi download warning toggle, storage management, sync status with a “Sync Now” button, a library picker for servers with several libraries, and the app version
 - **Siri & Shortcuts**: “Continue listening in Mär” and “Play *book* in Mär” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
-- **Live Activity / Dynamic Island** prepared: playback state with chapter and self-advancing progress on the lock screen; requires adding the widget extension target once, see `LiveActivityWidget/ANLEITUNG.md`
+- **Live Activity / Dynamic Island** for the sleep timer: while a timer runs, a moon countdown shows on the lock screen and in the Dynamic Island (frozen while paused in end-of-chapter mode) — deliberately nothing more, since Apple's own Now Playing already covers playback on the lock screen; requires adding the widget extension target once, see `LiveActivityWidget/ANLEITUNG.md`
+- **CarPlay**: three tabs (Continue Listening / Downloaded / Library) with cover thumbnails and the system Now Playing screen, sharing the phone's playback session — works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
 - Adaptive light and dark design: the Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
 - Performance: grid cells decode a small derived thumbnail instead of the full cover — smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
 - Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, VoiceOver labels on all transport controls
@@ -164,7 +164,10 @@ The library grid adapts automatically to the available width — more columns on
 ```text
 Sources/
 ├── ABSPlayerApp.swift              Entry point + AppDelegate for background download events
+├── AppSession.swift                Process-wide session (player/library shared with CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (continue listening, play a specific book)
+├── CarPlay/
+│   └── CarPlaySceneDelegate.swift  CarPlay tabs (continue/downloaded/library) + Now Playing
 ├── Models/
 │   ├── AudiobookshelfModels.swift  Codable structs for the Audiobookshelf API
 │   ├── SyncRules.swift             Pure, unit-tested sync decision rules + multi-track time math
@@ -196,7 +199,8 @@ Sources/
     ├── SetupView.swift             Server + password or token sign-in
     ├── SettingsView.swift          Playback, appearance, storage, sync, server settings
     ├── RootView.swift              Switches between setup and library
-    ├── LibraryView.swift           Book list, search, sort/filter, sections, adaptive grid
+    ├── LibraryView.swift           Book list, sort/filter, sections, adaptive grid
+    ├── SearchOverlay.swift         Full glass search sheet (real-time, scopes, drill-down)
     ├── FullPlayerOverlay.swift     Draggable Liquid Glass sheet hosting the full player
     ├── SeriesStackCell.swift       Series stack tile (fanned covers + count badge)
     ├── BookDetailScreen.swift      Book detail page, download, mark as heard, play/pause
@@ -205,7 +209,7 @@ Sources/
     ├── BookmarksSheet.swift        Bookmark list/create/delete sheet in the player
     ├── CachedAsyncImage.swift      AsyncImage replacement backed by ImageCache
     ├── MiniPlayerBar.swift         Persistent floating glass mini-player
-    ├── FloatingSearchButton.swift  Expanding search button
+    ├── FloatingSearchButton.swift  Floating glass button that opens the search overlay
     ├── AdaptiveGlassBackground.swift  Shared Liquid Glass styling with material fallback
     ├── AirPlayButton.swift         AirPlay route picker wrapper
     ├── PlayerScreen.swift          Full player, displays the coordinator session
@@ -215,7 +219,7 @@ Sources/
     └── Haptics.swift               Small haptic feedback helper
 ```
 
-**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden (e.g. behind an expanded search field on iPhone) — it only stops when explicitly opening a different book.
+**Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden — it only stops when explicitly opening a different book.
 
 API endpoints used:
 

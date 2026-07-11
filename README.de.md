@@ -29,8 +29,12 @@ und den Stand sauber synchronisieren, online wie offline.
 - Bibliothek als adaptives Cover-Grid (iPhone & iPad), das sich selbst so
   berechnet, dass es immer exakt zur verfügbaren Bildschirmbreite passt —
   ohne Überlappung, auch nach einer Bildschirm-Drehung
-- Schwebender Such-Button (im Stil der Music-App), der sich bei Bedarf zu
-  einem Suchfeld aufklappt, statt einer fest sichtbaren Suchleiste
+- **Such-Overlay**: Der schwebende Glas-Such-Button öffnet ein vollflächiges
+  Glas-Sheet über der Bibliothek (sie scheint leicht abgedunkelt durch) mit
+  auto-fokussiertem Feld, Echtzeit-Filterung pro Tastendruck und
+  Bereichs-Chips — Alle / Autor / Genre / Serie; Ergebnisse als Zeilen mit
+  kleinen Cover-Thumbnails, Gruppen-Bereiche mit Drill-down direkt im
+  Overlay, ein Buch-Tap schließt die Suche und öffnet die Detailseite
 - Sortierung nach Titel, Autor, zuletzt hinzugefügt oder zuletzt gehört, mit
   auf-/absteigend umschaltbar; Sortierung und Filter werden über
   App-Neustarts hinweg gemerkt
@@ -95,8 +99,6 @@ und den Stand sauber synchronisieren, online wie offline.
 - **Lesezeichen** pro Buch (Position + Titel) über die Audiobookshelf-
   Bookmark-API, direkt aus dem Player, mit Offline-Warteschlange — offline
   angelegte/gelöschte Lesezeichen werden automatisch nachgereicht
-- Bibliothek **nach Autor oder Genre durchsuchen** (übers Sortier-/Filter-
-  Menü), im selben adaptiven Cover-Grid
 - Einstellungen: Sprung-Intervall, Standard-Geschwindigkeit für neue Bücher,
   **Smart Rewind** (nach längerer Pause etwas früher wieder einsetzen),
   **automatisch das nächste ungehörte Serienbuch starten**, Darstellung
@@ -106,10 +108,18 @@ und den Stand sauber synchronisieren, online wie offline.
 - **Siri & Kurzbefehle**: „Weiterhören in Mär" und „Spiele *Buch* in
   Mär" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
   Home-Screen-Schnellaktion für das zuletzt gehörte Buch
-- **Live Activity / Dynamic Island** vorbereitet: Wiedergabestatus mit
-  Kapitel und selbstlaufendem Fortschritt auf dem Sperrbildschirm; das
-  Widget-Extension-Target muss einmalig angelegt werden, siehe
+- **Live Activity / Dynamic Island** für den Schlaf-Timer: Läuft ein Timer,
+  zeigt ein Mond-Countdown auf Sperrbildschirm und in der Dynamic Island
+  (friert im „bis Kapitelende"-Modus bei Pause ein) — bewusst nicht mehr,
+  Apples eigenes „Now Playing" deckt die Wiedergabe auf dem Sperrbildschirm
+  bereits ab; Widget-Extension-Target einmalig anlegen, siehe
   `LiveActivityWidget/ANLEITUNG.md`
+- **CarPlay**: drei Tabs (Weiter hören / Heruntergeladen / Bibliothek) mit
+  Cover-Thumbnails und dem System-Now-Playing, teilt sich die Wiedergabe-
+  Session mit dem Telefon — funktioniert auch beim Kaltstart im Auto
+  (Offline-Cache als Rückfallebene); im Simulator sofort testbar, fürs
+  echte Auto braucht es Apples CarPlay-Audio-Entitlement
+  (developer.apple.com/contact/carplay)
 - Adaptives Hell-/Dunkel-Design: das Liquid-Glass-Chrome (Mini-Player,
   Suche, Toolbar-Buttons) bekommt im hellen Modus einen pastelligen Hauch
   der aktuellen Cover-Farbe; beim Buchwechsel taucht der Mini-Player kurz
@@ -300,7 +310,10 @@ erscheinen sie automatisch wieder.
 ```
 Sources/
 ├── ABSPlayerApp.swift              Einstiegspunkt + AppDelegate für Background-Download-Events
+├── AppSession.swift                Prozessweite Session (Player/Bibliothek, geteilt mit CarPlay)
 ├── AppShortcuts.swift              Siri App Intents (Weiterhören, bestimmtes Buch abspielen)
+├── CarPlay/
+│   └── CarPlaySceneDelegate.swift  CarPlay-Tabs (Weiter hören/Downloads/Bibliothek) + Now Playing
 ├── Models/
 │   ├── AudiobookshelfModels.swift  Codable-Structs für die Audiobookshelf-API
 │   ├── SyncRules.swift             Reine, getestete Sync-Entscheidungsregeln + Multi-Track-Zeitrechnung
@@ -332,7 +345,8 @@ Sources/
     ├── SetupView.swift             Server + Passwort- oder Token-Anmeldung
     ├── SettingsView.swift          Wiedergabe, Darstellung, Speicher, Sync, Server
     ├── RootView.swift              Umschalten Setup ↔ Bibliothek
-    ├── LibraryView.swift           Bücherliste, Suche, Sortierung/Filter, adaptives Grid
+    ├── LibraryView.swift           Bücherliste, Sortierung/Filter, Sektionen, adaptives Grid
+    ├── SearchOverlay.swift         Vollflächiges Glas-Such-Sheet (Echtzeit, Bereiche, Drill-down)
     ├── FullPlayerOverlay.swift     Ziehbares Liquid-Glass-Sheet mit dem vollen Player
     ├── SeriesStackCell.swift       Serien-Stapel-Kachel (gefächerte Cover + Zähler-Badge)
     ├── BookDetailScreen.swift      Buchdetailseite, Download, Als-gehört, Play/Pause
@@ -341,7 +355,7 @@ Sources/
     ├── BookmarksSheet.swift        Lesezeichen-Sheet im Player (anlegen/springen/löschen)
     ├── CachedAsyncImage.swift      AsyncImage-Ersatz, nutzt ImageCache
     ├── MiniPlayerBar.swift         Persistente, schwebende Glas-Mini-Player-Leiste
-    ├── FloatingSearchButton.swift  Aufklappbarer Such-Button
+    ├── FloatingSearchButton.swift  Schwebender Glas-Button, öffnet das Such-Overlay
     ├── AdaptiveGlassBackground.swift  Geteiltes Liquid-Glass-Styling mit Material-Rückfall
     ├── AirPlayButton.swift         AirPlay-Routenwahl
     ├── PlayerScreen.swift          Voller Player, zeigt die Coordinator-Session
@@ -352,10 +366,9 @@ Sources/
 ```
 
 **Architektur-Hinweis Mini-Player:** Der `PlayerCoordinator` lebt in
-`LibraryView` und überlebt Navigation. Die Wiedergabe wird weder beim
-Verlassen des Player-Screens gestoppt, noch wenn die Mini-Leiste vorübergehend
-ausgeblendet ist (z. B. hinter einem aufgeklappten Suchfeld auf dem iPhone) —
-gestoppt wird nur explizit beim Öffnen eines anderen Buchs.
+`LibraryView` und überlebt Navigation. Die Wiedergabe wird beim Verlassen
+des Player-Screens nicht gestoppt — nur explizit beim Öffnen eines anderen
+Buchs.
 
 Verwendete API-Endpunkte:
 
