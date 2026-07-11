@@ -102,8 +102,11 @@ final class PlayerCoordinator: ObservableObject {
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
-        guard let entry = entries.first(where: { $0.id == lastId }) else { return }
-        await open(item: entry.item, autoplay: false)
+        // Zuletzt Gehörtes kann aus JEDER Quelle stammen — Podcast-Episoden
+        // stehen NICHT in der Hörbuch-Liste, sondern nur beim RSS-Provider.
+        guard let item = entries.first(where: { $0.id == lastId })?.item
+            ?? AppSession.shared.libraryItem(forId: lastId) else { return }
+        await open(item: item, autoplay: false)
     }
 
     /// Beendet die Wiedergabe komplett (Mini-Leiste verschwindet).

@@ -42,6 +42,18 @@ final class AppSession {
         provider(for: itemId).coverURL(forItemId: itemId)
     }
 
+    /// Findet das `LibraryItem` zu einer ID quellenübergreifend — für
+    /// „Weiterhören"/Wiederherstellen, wenn das Item NICHT in der
+    /// Hörbuch-Liste steht (Podcast-Episoden liegen z. B. nur beim
+    /// RSS-Provider). Hörbücher/lokale Titel kommen aus der Bibliotheksliste
+    /// des Aufrufers und werden hier nicht extra gesucht.
+    func libraryItem(forId itemId: String) -> LibraryItem? {
+        if itemId.hasPrefix("rss:") {
+            return rssProvider.latestEpisodeItems().first { $0.id == itemId }
+        }
+        return nil
+    }
+
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 

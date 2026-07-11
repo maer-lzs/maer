@@ -609,8 +609,8 @@ struct LibraryView: View {
         if let itemId = ResumeRequest.pendingItemId {
             ResumeRequest.pendingItemId = nil
             ResumeRequest.pending = false
-            if let entry = viewModel.entries.first(where: { $0.id == itemId }) {
-                await playerCoordinator.open(item: entry.item)
+            if let item = item(forId: itemId) {
+                await playerCoordinator.open(item: item)
             }
             return
         }
@@ -622,15 +622,22 @@ struct LibraryView: View {
             return
         }
         guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
-              let entry = viewModel.entries.first(where: { $0.id == lastId }) else { return }
-        await playerCoordinator.open(item: entry.item)
+              let item = item(forId: lastId) else { return }
+        await playerCoordinator.open(item: item)
+    }
+
+    /// Item zu einer ID quellenübergreifend (Hörbuch-Liste ODER Podcast-
+    /// Provider) — für Weiterhören/Quick-Action/Siri.
+    private func item(forId id: String) -> LibraryItem? {
+        viewModel.entries.first(where: { $0.id == id })?.item
+            ?? AppSession.shared.libraryItem(forId: id)
     }
 
     /// Registers the dynamic home-screen quick action with the current
     /// book's title as subtitle (or removes it without a last book).
     private func updateQuickActions() {
         guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
-              let entry = viewModel.entries.first(where: { $0.id == lastId }) else {
+              let lastItem = item(forId: lastId) else {
             UIApplication.shared.shortcutItems = []
             return
         }
@@ -638,7 +645,7 @@ struct LibraryView: View {
             UIApplicationShortcutItem(
                 type: ResumeRequest.quickActionType,
                 localizedTitle: String(localized: "Continue Listening"),
-                localizedSubtitle: entry.item.title,
+                localizedSubtitle: lastItem.title,
                 icon: UIApplicationShortcutIcon(systemImageName: "play.fill")
             )
         ]
