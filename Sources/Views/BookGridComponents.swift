@@ -196,9 +196,11 @@ struct BookGridCell: View {
     let libraryViewModel: LibraryViewModel
 
     var body: some View {
-        NavigationLink {
-            BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: libraryViewModel)
-        } label: {
+        // Wertbasierte Navigation (statt closure-basiert), damit ein Reset des
+        // navigationPath — z. B. beim Tippen eines Medien-Tabs — das Detail
+        // sauber bis zur Bibliothekswurzel zurückpoppt. Ziel: das gemeinsame
+        // navigationDestination(for: String.self) in der LibraryView.
+        NavigationLink(value: entry.id) {
             VStack(alignment: .leading, spacing: 6) {
                 BookCoverView(
                     url: AppSession.shared.coverURL(forItemId: entry.id),

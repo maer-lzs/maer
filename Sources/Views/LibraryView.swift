@@ -516,9 +516,9 @@ struct LibraryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(entries) { entry in
-                        NavigationLink {
-                            BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
-                        } label: {
+                        // Wertbasiert, damit ein navigationPath-Reset (Medien-Tab)
+                        // auch aus dieser Reihe bis zur Wurzel zurückpoppt.
+                        NavigationLink(value: entry.id) {
                             VStack(alignment: .leading, spacing: 6) {
                                 BookCoverView(
                                     url: AppSession.shared.coverURL(forItemId: entry.id),
