@@ -5,6 +5,10 @@ import SwiftUI
 /// nicht"-Problem, das AsyncImage in scrollbaren Grids/Listen zeigt.
 struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let url: URL?
+    /// True for small cells (grid, rows, mini player): display a ~400 px
+    /// thumbnail derived from the cached cover instead of decoding the full
+    /// ~2000 px image per cell — far less RAM, smoother scrolling.
+    var useThumbnail: Bool = false
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
 
@@ -25,10 +29,16 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     private func load() async {
         guard let url else { return }
-        if let cached = ImageCache.shared.image(for: url) {
+        if useThumbnail, let thumb = await ImageCache.shared.thumbnail(for: url) {
+            uiImage = thumb
+            return
+        }
+        if !useThumbnail, let cached = ImageCache.shared.image(for: url) {
             uiImage = cached
             return
         }
+        // Thumbnail miss = cover not on disk yet: fall through to the
+        // network fetch (fills the disk cache; next display uses the thumb).
         if let image = await fetch(url, retryDelay: nil) {
             uiImage = image
             return

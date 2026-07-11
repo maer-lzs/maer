@@ -10,6 +10,18 @@ struct ABSUser: Decodable {
 /// Antwort von /api/me — enthält alle Fortschritts-Einträge des Nutzers.
 struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
+    let bookmarks: [ABSBookmark]?
+}
+
+/// Lesezeichen (serverseitig am User gespeichert). `time` sind ganze
+/// Sekunden und zugleich der Schlüssel zum Löschen.
+struct ABSBookmark: Codable, Identifiable, Equatable {
+    let libraryItemId: String
+    let title: String
+    let time: Double
+    let createdAt: Double?
+
+    var id: String { "\(libraryItemId)-\(time)" }
 }
 
 /// Ein Fortschritts-Eintrag aus /api/me. Wird lokal den Büchern zugeordnet,
@@ -147,6 +159,13 @@ struct ABSAudioTrack: Codable {
     let startOffset: Double?
     let duration: Double?
     let contentUrl: String
+    /// File metadata (size in bytes) — used for the free-space check
+    /// before a download starts.
+    let metadata: ABSFileMetadata?
+}
+
+struct ABSFileMetadata: Codable {
+    let size: Int64?
 }
 
 // MARK: - Fortschritt

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct LibraryView: View {
     @StateObject private var viewModel: LibraryViewModel
@@ -191,6 +192,11 @@ struct LibraryView: View {
         // the bottom row. The detail page overrides it with its own loader.
         .environment(\.glassAccent, playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil)
         .task {
+            // Series data lives here — hand the coordinator a lookup for the
+            // auto-play-next-in-series setting.
+            playerCoordinator.nextInSeriesProvider = { [weak viewModel] itemId in
+                viewModel?.nextInSeries(after: itemId)?.item
+            }
             // Cover-Wartung (TTL, Größenlimit, verwaiste persistente Cover).
             ImageCache.shared.performMaintenance(
                 activeDownloadIds: DownloadManager.shared.downloadedItemIds
@@ -204,6 +210,9 @@ struct LibraryView: View {
             }
             // Zuletzt gehörtes Buch still in den Mini-Player holen.
             await playerCoordinator.restoreLastSession(from: viewModel.entries)
+            // Cold start via quick action / Siri: the request arrived before
+            // the library was loaded — execute it now.
+            await handlePendingResumeRequest()
             // Falls beim letzten Mal offline Fortschritt liegen geblieben ist
             // (App wurde offline beendet, bevor der Sync durchging): jetzt
             // nachreichen.
@@ -215,8 +224,19 @@ struct LibraryView: View {
             // balken aktualisieren — z. B. wenn zwischenzeitlich auf einem
             // anderen Gerät weitergehört wurde.
             if newPhase == .active {
-                Task { await viewModel.refreshProgress() }
+                Task {
+                    await viewModel.refreshProgress()
+                    await handlePendingResumeRequest()
+                }
             }
+            // Home-Screen-Quick-Action fürs zuletzt gehörte Buch anbieten.
+            if newPhase == .background {
+                updateQuickActions()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .resumeLastBookRequested)) { _ in
+            // Fires when the app was ALREADY running (no scene-phase change).
+            Task { await handlePendingResumeRequest() }
         }
         .onChange(of: networkMonitor.isConnected) { _, isConnected in
             // Deckt den Fall ab, dass die App die ganze Zeit offen war,
@@ -528,6 +548,41 @@ struct LibraryView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    // MARK: Weiterhören von außen (Quick Action / Siri)
+
+    /// Executes a pending "continue listening" request (home-screen quick
+    /// action or Siri shortcut): open the last played book and play.
+    private func handlePendingResumeRequest() async {
+        guard ResumeRequest.pending else { return }
+        ResumeRequest.pending = false
+        // Already active (e.g. paused in the mini player): just play.
+        if let vm = playerCoordinator.viewModel {
+            await vm.playWithServerCheck()
+            return
+        }
+        guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
+              let entry = viewModel.entries.first(where: { $0.id == lastId }) else { return }
+        await playerCoordinator.open(item: entry.item)
+    }
+
+    /// Registers the dynamic home-screen quick action with the current
+    /// book's title as subtitle (or removes it without a last book).
+    private func updateQuickActions() {
+        guard let lastId = UserDefaults.standard.string(forKey: AppStorageKeys.lastPlayedItemId),
+              let entry = viewModel.entries.first(where: { $0.id == lastId }) else {
+            UIApplication.shared.shortcutItems = []
+            return
+        }
+        UIApplication.shared.shortcutItems = [
+            UIApplicationShortcutItem(
+                type: ResumeRequest.quickActionType,
+                localizedTitle: String(localized: "Continue Listening"),
+                localizedSubtitle: entry.item.title,
+                icon: UIApplicationShortcutIcon(systemImageName: "play.fill")
+            )
+        ]
+    }
+
     private var sortFilterMenu: some View {
         Menu {
             Picker("Sort By", selection: $viewModel.sortOption) {
@@ -559,7 +614,7 @@ struct LibraryView: View {
 
     private var settingsLink: some View {
         NavigationLink {
-            SettingsView(coordinator: playerCoordinator, onLogout: onLogout)
+            SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
         } label: {
             toolbarGlassIcon("gearshape")
         }

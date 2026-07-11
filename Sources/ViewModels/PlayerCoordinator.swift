@@ -15,6 +15,11 @@ final class PlayerCoordinator: ObservableObject {
 
     let apiClient: APIClient
 
+    /// Set by the library screen (owner of the series data): returns the
+    /// next unfinished book of the same series. Basis for the auto-play-
+    /// next setting when a book finishes.
+    var nextInSeriesProvider: ((String) -> LibraryItem?)?
+
     /// Merkt sich die zuletzt gehörte Item-ID über App-Neustarts hinweg, damit
     /// das Buch beim nächsten Start direkt im Mini-Player griffbereit ist.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
@@ -47,6 +52,7 @@ final class PlayerCoordinator: ObservableObject {
             let detail = try await apiClient.fetchItemDetail(itemId: item.id)
             let newViewModel = PlayerViewModel(apiClient: apiClient)
             await newViewModel.load(item: detail)
+            attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
             UserDefaults.standard.set(item.id, forKey: lastItemKey)
             if autoplay {
@@ -61,6 +67,7 @@ final class PlayerCoordinator: ObservableObject {
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
                 let newViewModel = PlayerViewModel(apiClient: apiClient)
                 await newViewModel.load(item: cached, isOfflineFallback: true)
+                attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel
                 UserDefaults.standard.set(item.id, forKey: lastItemKey)
                 if autoplay {
@@ -70,6 +77,17 @@ final class PlayerCoordinator: ObservableObject {
                 loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 activeItem = nil
             }
+        }
+    }
+
+    /// Auto-play next in series (settings toggle, default OFF): when a book
+    /// plays to its end, open the next unfinished book of the same series.
+    private func attachBookEndHandler(to viewModel: PlayerViewModel) {
+        viewModel.onBookFinished = { [weak self] finishedItemId in
+            guard let self,
+                  UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+                  let next = self.nextInSeriesProvider?(finishedItemId) else { return }
+            Task { await self.open(item: next) }
         }
     }
 

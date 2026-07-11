@@ -279,6 +279,28 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
+    /// Next unfinished book of the same series, sorted by sequence — basis
+    /// for the auto-play-next setting when a book ends. nil for standalone
+    /// books, unknown items, or when the series is finished.
+    func nextInSeries(after itemId: String) -> LibraryEntry? {
+        guard let current = entries.first(where: { $0.id == itemId }),
+              let base = Self.baseSeriesName(current.item.media?.metadata?.seriesName) else { return nil }
+        let key = Self.seriesGroupKey(base)
+        let books = entries
+            .filter { entry in
+                Self.baseSeriesName(entry.item.media?.metadata?.seriesName)
+                    .map(Self.seriesGroupKey) == key
+            }
+            // Full series name carries the "#…" sequence; localizedStandard
+            // compares numerically ("#2" < "#10").
+            .sorted {
+                ($0.item.media?.metadata?.seriesName ?? "")
+                    .localizedStandardCompare($1.item.media?.metadata?.seriesName ?? "") == .orderedAscending
+            }
+        guard let idx = books.firstIndex(where: { $0.id == itemId }) else { return nil }
+        return books.dropFirst(idx + 1).first { !($0.progress?.isFinished ?? false) }
+    }
+
     /// Alle heruntergeladenen Bücher, alphabetisch — eigene Sektion für den
     /// schnellen Überblick "was kann ich gerade offline hören".
     var downloadedEntries: [LibraryEntry] {
@@ -300,17 +322,20 @@ final class LibraryViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             let libraries = try await apiClient.fetchLibraries()
-            guard let first = libraries.first else {
+            // The library chosen in the settings wins; fall back to the first
+            // one when nothing is chosen or the chosen one no longer exists.
+            let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+            guard let library = libraries.first(where: { $0.id == storedId }) ?? libraries.first else {
                 errorMessage = String(localized: "No library found on the server.")
                 return
             }
 
-            async let itemsTask = apiClient.fetchLibraryItems(libraryId: first.id)
+            async let itemsTask = apiClient.fetchLibraryItems(libraryId: library.id)
             async let progressTask = apiClient.fetchAllProgress()
             let items = try await itemsTask
             let progress = (try? await progressTask) ?? [:]
 
-            libraryId = first.id
+            libraryId = library.id
             isShowingOfflineCache = false
             rebuild(items: items, progress: progress)
             saveLibraryDiskCache(items: items, progress: progress)

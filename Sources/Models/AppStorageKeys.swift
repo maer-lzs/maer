@@ -15,6 +15,10 @@ nonisolated enum AppStorageKeys {
     static let appearance = "appearanceOverride"
     /// Ask before downloading without Wi-Fi (default ON).
     static let warnCellularDownload = "warnCellularDownload"
+    /// Library chosen in the settings; empty/unknown → first library.
+    static let selectedLibraryId = "selectedLibraryId"
+    /// Start the next unfinished book of the series when one ends (default OFF).
+    static let autoPlayNextInSeries = "autoPlayNextInSeries"
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     static let librarySortOption = "librarySortOption"

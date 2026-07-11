@@ -63,8 +63,20 @@ final class APIClient {
     }
 
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
-        let data = try await get(path: "api/libraries/\(libraryId)/items")
-        return try decode(LibraryItemsResponse.self, from: data).results
+        // minified=1: much smaller payload (the list only needs the slim
+        // metadata; details/tracks are fetched per book anyway). Defensive
+        // fallback to the full payload in case a server version ships a
+        // minified shape our decoding chokes on.
+        do {
+            let data = try await get(
+                path: "api/libraries/\(libraryId)/items",
+                query: [URLQueryItem(name: "minified", value: "1")]
+            )
+            return try decode(LibraryItemsResponse.self, from: data).results
+        } catch APIError.decoding {
+            let data = try await get(path: "api/libraries/\(libraryId)/items")
+            return try decode(LibraryItemsResponse.self, from: data).results
+        }
     }
 
     /// Alle Fortschritts-Einträge des Nutzers auf einmal. Damit lässt sich die
@@ -91,6 +103,31 @@ final class APIClient {
             )
         }
         return map
+    }
+
+    // MARK: Lesezeichen
+
+    /// Bookmarks live on the user object — filtered here per book.
+    func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] {
+        let data = try await get(path: "api/me")
+        let me = try decode(MeResponse.self, from: data)
+        return (me.bookmarks ?? [])
+            .filter { $0.libraryItemId == itemId }
+            .sorted { $0.time < $1.time }
+    }
+
+    /// ABS stores bookmark times as whole seconds — they double as the key
+    /// for deletion.
+    func createBookmark(itemId: String, time: Double, title: String) async throws {
+        _ = try await send(
+            method: "POST",
+            path: "api/me/item/\(itemId)/bookmark",
+            body: ["time": Int(time), "title": title]
+        )
+    }
+
+    func deleteBookmark(itemId: String, time: Double) async throws {
+        _ = try await send(method: "DELETE", path: "api/me/item/\(itemId)/bookmark/\(Int(time))")
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -172,14 +209,20 @@ final class APIClient {
     }
 
     private func patch(path: String, body: [String: Any]) async throws -> Data {
+        try await send(method: "PATCH", path: path, body: body)
+    }
+
+    private func send(method: String, path: String, body: [String: Any]? = nil) async throws -> Data {
         let url = baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpMethod = method
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        }
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
         return data

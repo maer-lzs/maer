@@ -14,22 +14,32 @@ final class ImageCache {
     static let shared = ImageCache()
 
     private let memoryCache = NSCache<NSString, UIImage>()
+    /// Small tier derived from the full covers for grid/row cells: decoding
+    /// the full ~2000 px cover for a ~150 pt cell costs ~16 MB RAM per image
+    /// and stutters scrolling with large libraries. Memory-only — always
+    /// derivable from the disk tiers.
+    private let thumbCache = NSCache<NSString, UIImage>()
+    private let thumbPixelSize: CGFloat = 400
     private let diskDirectory: URL
     private let persistentDirectory: URL
 
-    /// Größte Darstellung: Hero-Cover der Detailseite = volle Gerätebreite in
-    /// Pixeln (iPhone ~1290, iPad Pro ~2064). Darüber unsichtbarer Overhead.
-    /// Kurze Kante: orientierungsstabil; Deckel 2200 als Sicherheitsgrenze.
+    /// Device-adaptive storage size (longest side): screen short side in
+    /// pixels × 1.6 headroom — plain 1× turned out visibly soft on modern
+    /// iPhones. Clamped to 1500 (older, low-res devices don't need more)
+    /// … 2200 (above the iPad-Pro hero width is invisible overhead).
+    /// Modern iPhones land at ~1900–2100, iPads at 2200.
     private let maxPixelSize: CGFloat
 
     private init() {
         let screen = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.screen }.first
         let shortSidePixels = screen.map { min($0.bounds.width, $0.bounds.height) * $0.scale } ?? 1500
-        maxPixelSize = min(2200, max(1500, shortSidePixels))
+        maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
         memoryCache.countLimit = 300
         // Byte-Deckel gegen Memory-Pressure durch große decodierte Cover.
         memoryCache.totalCostLimit = 150 * 1024 * 1024
+        thumbCache.countLimit = 600
+        thumbCache.totalCostLimit = 40 * 1024 * 1024
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         diskDirectory = caches.appendingPathComponent("CoverCache", isDirectory: true)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -87,6 +97,43 @@ final class ImageCache {
         let image = UIImage(cgImage: cg)
         guard let jpeg = image.jpegData(compressionQuality: 0.9) else { return (image, data) }
         return (image, jpeg)
+    }
+
+    /// Thumbnail (≤ thumbPixelSize) for grid/row cells, derived on demand
+    /// from the disk tiers. Returns nil when the cover is not on disk yet —
+    /// the caller then fetches the full image from the network as usual.
+    func thumbnail(for url: URL) async -> UIImage? {
+        let cacheKey = key(for: url)
+        if let cached = thumbCache.object(forKey: cacheKey as NSString) {
+            return cached
+        }
+        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(cacheKey) }
+        let maxSize = thumbPixelSize
+        // Disk read + decode off the MainActor — this runs per visible cell.
+        let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            for file in candidates {
+                if let data = try? Data(contentsOf: file) {
+                    return Self.decodedThumbnail(data, maxPixelSize: maxSize)
+                }
+            }
+            return nil
+        }.value
+        guard let thumb else { return nil }
+        thumbCache.setObject(thumb, forKey: cacheKey as NSString, cost: cost(of: thumb))
+        return thumb
+    }
+
+    /// Pure decode-to-size without the re-encode `downsampled` does — thumbs
+    /// never touch the disk.
+    private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     func image(for url: URL) -> UIImage? {
@@ -235,6 +282,7 @@ final class ImageCache {
     /// Leert den purgebaren Cover-Cache (persistente Download-Cover bleiben).
     func clearCache() {
         memoryCache.removeAllObjects()
+        thumbCache.removeAllObjects()
         guard let files = try? FileManager.default.contentsOfDirectory(at: diskDirectory, includingPropertiesForKeys: nil) else { return }
         for file in files { try? FileManager.default.removeItem(at: file) }
     }

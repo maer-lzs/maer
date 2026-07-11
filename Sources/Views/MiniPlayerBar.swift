@@ -159,7 +159,7 @@ struct MiniPlayerBar: View {
                 .frame(width: ringSize, height: ringSize)
                 .rotationEffect(.degrees(-90))
 
-            CachedAsyncImage(url: coordinator.apiClient.coverURL(forItemId: item.id)) { image in
+            CachedAsyncImage(url: coordinator.apiClient.coverURL(forItemId: item.id), useThumbnail: true) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 Circle()

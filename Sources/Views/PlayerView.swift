@@ -19,6 +19,8 @@ struct PlayerView: View {
     @State private var isScrubbing = false
     @State private var scrubValue: Double = 0
     @State private var showChapters = false
+    @State private var showBookmarks = false
+    @ObservedObject private var network = NetworkMonitor.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -93,6 +95,9 @@ struct PlayerView: View {
         .foregroundStyle(.white)
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
+        .sheet(isPresented: $showBookmarks) {
+            BookmarksSheet(viewModel: viewModel)
+        }
         .sheet(isPresented: $showChapters) {
             ChapterListView(
                 chapters: viewModel.chapters,
@@ -373,6 +378,15 @@ struct PlayerView: View {
             // AirPlay-Auswahl.
             AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                 .frame(width: 44, height: 44)
+
+            Button { showBookmarks = true } label: {
+                Label("Bookmarks", systemImage: "bookmark")
+            }
+            .font(.footnote)
+            // Bookmarks live on the server — offline they can neither be
+            // listed nor created.
+            .disabled(!network.isConnected)
+            .opacity(network.isConnected ? 1 : 0.4)
 
             Button {
                 Task { await viewModel.toggleFinished() }

@@ -64,6 +64,15 @@ final class DownloadManager: ObservableObject {
         makeDirectory(named: "Downloads")
     }
 
+    /// Free space iOS would grant for user-important data (more generous
+    /// than plain free space — includes purgeable caches).
+    private func freeDiskBytes() -> Int64? {
+        let values = try? downloadsDirectory.resourceValues(
+            forKeys: [.volumeAvailableCapacityForImportantUsageKey]
+        )
+        return values?.volumeAvailableCapacityForImportantUsage
+    }
+
     private var metadataDirectory: URL {
         makeDirectory(named: "DownloadsMeta")
     }
@@ -340,6 +349,21 @@ final class DownloadManager: ObservableObject {
            Self.trackMap(in: itemDirectory(itemId)).count >= tracks.count {
             return
         }
+        // Fail fast when the disk clearly cannot hold the remaining tracks —
+        // a mid-download abort would otherwise surface as a cryptic write
+        // error. Tracks without size metadata are skipped in the sum; 200 MB
+        // margin keeps the system from running into its own low-space state.
+        let alreadyPresent = Self.trackMap(in: itemDirectory(itemId))
+        let missingBytes = tracks.enumerated()
+            .filter { alreadyPresent[$0.offset] == nil }
+            .compactMap { $0.element.metadata?.size }
+            .reduce(Int64(0), +)
+        if missingBytes > 0, let free = freeDiskBytes(),
+           free < missingBytes + 200 * 1024 * 1024 {
+            phase[itemId] = .failed(String(localized: "Not enough free storage for this download."))
+            return
+        }
+
         resumeAPIClient = apiClient
         // Carry mid-file resume data over from a pause (used once, for the
         // first track that is actually transferred).

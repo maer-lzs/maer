@@ -1,9 +1,21 @@
 import SwiftUI
 import UIKit
 
-/// Nur für Background-Download-Events: iOS weckt die App, wenn Downloads der
-/// Background-Session fertig sind (auch nach System-Kill) — der Handler muss
-/// gespeichert und nach Verarbeitung aller Events aufgerufen werden.
+/// Zentrale Typen/Signale für "Weiterhören" von außen (Home-Screen Quick
+/// Action, Siri-Shortcut): beide setzen nur ein Pending-Flag + Notification;
+/// die Bibliothek (Besitzerin von Liste + Coordinator) führt aus.
+enum ResumeRequest {
+    static let quickActionType = "resumeLastBook"
+    /// Set by quick action / Siri intent, consumed by the library screen.
+    static var pending = false
+}
+
+extension Notification.Name {
+    static let resumeLastBookRequested = Notification.Name("resumeLastBookRequested")
+}
+
+/// Background-Download-Events + Szenen-Konfiguration (Quick Actions brauchen
+/// mit SwiftUI-Lifecycle einen eigenen Scene-Delegate).
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
@@ -11,6 +23,38 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         completionHandler: @escaping () -> Void
     ) {
         FileDownloader.shared.backgroundCompletionHandler = completionHandler
+    }
+
+    func application(
+        _ application: UIApplication,
+        configurationForConnecting connectingSceneSession: UISceneSession,
+        options: UIScene.ConnectionOptions
+    ) -> UISceneConfiguration {
+        let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        config.delegateClass = SceneDelegate.self
+        return config
+    }
+}
+
+final class SceneDelegate: NSObject, UIWindowSceneDelegate {
+    /// Cold start via quick action: the shortcut arrives in the connection
+    /// options, not via performActionFor.
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        if connectionOptions.shortcutItem?.type == ResumeRequest.quickActionType {
+            ResumeRequest.pending = true
+        }
+    }
+
+    func windowScene(
+        _ windowScene: UIWindowScene,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        if shortcutItem.type == ResumeRequest.quickActionType {
+            ResumeRequest.pending = true
+            NotificationCenter.default.post(name: .resumeLastBookRequested, object: nil)
+        }
+        completionHandler(true)
     }
 }
 

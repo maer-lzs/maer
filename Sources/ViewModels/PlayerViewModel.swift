@@ -70,6 +70,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         case queued
         case offline
         case conflict
+        case trackFailed
 
         var label: String {
             switch self {
@@ -79,6 +80,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .queued: return String(localized: "Offline — queued for sync")
             case .offline: return String(localized: "Offline — progress saved locally")
             case .conflict: return String(localized: "Conflict detected")
+            case .trackFailed: return String(localized: "Playback error — track unavailable")
             }
         }
 
@@ -90,6 +92,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .queued: return "icloud.and.arrow.up"
             case .offline: return "icloud.slash"
             case .conflict: return "exclamationmark.triangle"
+            case .trackFailed: return "exclamationmark.triangle"
             }
         }
     }
@@ -141,11 +144,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// prompt, phone call) began — resume once it ends.
     private var resumeAfterInterruption = false
     private var trackAdvanceObserver: NSObjectProtocol?
+    private var trackFailureObserver: NSObjectProtocol?
+    /// Track indices that already got their ONE automatic recovery attempt —
+    /// guards against a rebuild loop on a persistently broken track.
+    private var trackRetryAttempts: Set<Int> = []
     var sleepTask: Task<Void, Never>?
     var syncTask: Task<Void, Never>?
 
     let apiClient: APIClient
     var item: LibraryItemDetail?
+    /// Called once when the book plays to its END (not on manual "mark
+    /// finished") — the coordinator uses it for auto-play-next-in-series.
+    var onBookFinished: ((String) -> Void)?
     var artworkImage: UIImage?
 
     /// Alle Tracks des Buchs, sortiert. Bei einem normalen M4B-Buch genau
@@ -322,7 +332,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if let trackAdvanceObserver {
             NotificationCenter.default.removeObserver(trackAdvanceObserver)
         }
-        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver] {
+        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver, trackFailureObserver] {
             if let observer { NotificationCenter.default.removeObserver(observer) }
         }
     }
@@ -353,6 +363,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
 
         localTrackFiles = DownloadManager.shared.localTrackMap(forItemId: item.id)
+        trackRetryAttempts.removeAll()
+        observeTrackFailures()
         // Self-heal: a "downloaded" book with missing/corrupt tracks fetches
         // exactly those in the background (valid ones are skipped).
         if DownloadManager.shared.isDownloaded(itemId: item.id),
@@ -539,6 +551,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 self.isFinished = true
                 self.updateNowPlayingInfo()
                 await self.syncProgress(force: true)
+                if let finishedId = self.item?.id {
+                    self.onBookFinished?(finishedId)
+                }
             }
         }
     }
@@ -764,6 +779,59 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Failed-Track-Recovery
+
+    /// One global observer (object nil: queue items change on every rebuild):
+    /// a track that CANNOT play any further would otherwise be silent —
+    /// player stalls, no error surfaces anywhere.
+    private func observeTrackFailures() {
+        guard trackFailureObserver == nil else { return }
+        trackFailureObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let item = notification.object as? AVPlayerItem
+            Task { @MainActor [weak self] in
+                guard let self, let item else { return }
+                self.handleTrackFailure(item)
+            }
+        }
+    }
+
+    /// One automatic recovery per track: a broken LOCAL file is removed (the
+    /// rebuilt queue streams the track and the self-heal download replaces
+    /// the file); a stream failure gets one rebuild. A second failure stops
+    /// playback with a visible hint instead of silent stalling.
+    private func handleTrackFailure(_ playerItem: AVPlayerItem) {
+        guard let index = itemTrackIndex[ObjectIdentifier(playerItem)] else { return }
+        if trackRetryAttempts.contains(index) {
+            pause()
+            showSourceHint(.trackFailed)
+            return
+        }
+        trackRetryAttempts.insert(index)
+        if let local = localTrackFiles[index], NetworkMonitor.shared.isConnected {
+            // Only drop the file when streaming can take over; offline the
+            // retry re-reads the same file (it may fail transiently).
+            try? FileManager.default.removeItem(at: local)
+            localTrackFiles[index] = nil
+            if let item, DownloadManager.shared.isDownloaded(itemId: item.id) {
+                let apiClient = self.apiClient
+                Task { await DownloadManager.shared.download(item: item, apiClient: apiClient) }
+            }
+        }
+        let idx = trackIndex(for: currentTime)
+        let rebuilt = buildQueue(
+            startingAtTrackIndex: idx,
+            seekWithin: max(0, currentTime - trackAbsoluteStart(idx))
+        )
+        if !rebuilt {
+            isPlaying = false
+            showSourceHint(.trackFailed)
+        }
+    }
+
     /// Absolute book time where the currently playing track ends —
     /// nil if unknown. Used by the "sleep until end of track" mode.
     func currentTrackEndTime() -> Double? {
@@ -796,12 +864,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         trackAdvanceObserver = nil
-        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver] {
+        for observer in [interruptionObserver, routeChangeObserver, mediaResetObserver, trackFailureObserver] {
             if let observer { NotificationCenter.default.removeObserver(observer) }
         }
         interruptionObserver = nil
         routeChangeObserver = nil
         mediaResetObserver = nil
+        trackFailureObserver = nil
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()

@@ -4,6 +4,9 @@ import SwiftUI
 /// Sync, Server/Abmelden, App-Info.
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
+    /// For reloading after a library switch — the settings are pushed from
+    /// the library screen, which owns this view model.
+    var libraryViewModel: LibraryViewModel? = nil
     @ObservedObject private var downloadManager = DownloadManager.shared
     let onLogout: () -> Void
 
@@ -15,8 +18,12 @@ struct SettingsView: View {
         UserDefaults.standard.object(forKey: AppStorageKeys.smartRewind) as? Bool ?? true
     @State private var warnCellular: Bool =
         UserDefaults.standard.object(forKey: AppStorageKeys.warnCellularDownload) as? Bool ?? true
+    @State private var autoPlayNext: Bool =
+        UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
 
+    @State private var availableLibraries: [ABSLibrary] = []
+    @AppStorage(AppStorageKeys.selectedLibraryId) private var selectedLibraryId = ""
     @State private var coverCacheBytes: Int64 = 0
     @State private var pendingSyncCount = 0
     @State private var isSyncing = false
@@ -40,6 +47,13 @@ struct SettingsView: View {
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
+            if let libraries = try? await coordinator.apiClient.fetchLibraries() {
+                availableLibraries = libraries
+                // Reflect the effective library when nothing was chosen yet.
+                if selectedLibraryId.isEmpty || !libraries.contains(where: { $0.id == selectedLibraryId }) {
+                    selectedLibraryId = libraries.first?.id ?? ""
+                }
+            }
         }
         .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
             Button("Delete", role: .destructive) {
@@ -88,10 +102,15 @@ struct SettingsView: View {
                 .onChange(of: smartRewind) { _, newValue in
                     UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
                 }
+
+            Toggle("Auto-Play Next in Series", isOn: $autoPlayNext)
+                .onChange(of: autoPlayNext) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
+                }
         } header: {
             Text("Playback")
         } footer: {
-            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause.")
+            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
         }
     }
 
@@ -176,6 +195,18 @@ struct SettingsView: View {
                 Text(coordinator.apiClient.baseURL.absoluteString)
                     .lineLimit(1)
                     .truncationMode(.middle)
+            }
+            // Only shown when the server actually has several libraries —
+            // with a single one the picker would just be noise.
+            if availableLibraries.count > 1 {
+                Picker("Library", selection: $selectedLibraryId) {
+                    ForEach(availableLibraries) { library in
+                        Text(library.name).tag(library.id)
+                    }
+                }
+                .onChange(of: selectedLibraryId) { _, _ in
+                    Task { await libraryViewModel?.loadLibrary() }
+                }
             }
             Button("Log Out", role: .destructive) {
                 showLogoutConfirm = true

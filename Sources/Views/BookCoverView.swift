@@ -18,7 +18,9 @@ struct BookCoverView: View {
                 if url == nil {
                     placeholder
                 } else {
-                    CachedAsyncImage(url: url) { image in
+                    // Small cells get the cheap thumbnail tier; large
+                    // presentations (detail cover ≥ ~300 pt) the full image.
+                    CachedAsyncImage(url: url, useThumbnail: size <= 200) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
                     } placeholder: {
                         placeholder.overlay(ProgressView().scaleEffect(0.6))

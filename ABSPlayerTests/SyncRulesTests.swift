@@ -111,7 +111,7 @@ struct SyncRulesTests {
 struct TrackMathTests {
 
     private func track(index: Int, start: Double? = nil, duration: Double?) -> ABSAudioTrack {
-        ABSAudioTrack(index: index, startOffset: start, duration: duration, contentUrl: "t\(index)")
+        ABSAudioTrack(index: index, startOffset: start, duration: duration, contentUrl: "t\(index)", metadata: nil)
     }
 
     /// Drei Tracks à 100 s, Buchdauer 300.
