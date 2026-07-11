@@ -22,7 +22,14 @@ struct MiniPlayerBar: View {
     let onOpenPlayer: () -> Void
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var measuredWidth: CGFloat = 0
+
+    /// iPhone im Hochformat: dort ist der Platz knapp, deshalb entfallen die
+    /// Skip-Buttons zugunsten von mehr Titeltext — nur AirPlay + Play bleiben.
+    private var isCompactPortrait: Bool {
+        horizontalSizeClass == .compact && verticalSizeClass == .regular
+    }
 
     /// Schwellenwert, ab dem genug Platz für Titeltext UND alle Zusatz-
     /// Buttons gleichzeitig da ist. Bewusst an der TATSÄCHLICH verfügbaren
@@ -86,7 +93,9 @@ struct MiniPlayerBar: View {
             }
             .buttonStyle(.plain)
 
-            if showExtendedControls {
+            // Skip-Buttons nur, wenn genug Platz ist UND nicht im iPhone-
+            // Hochformat — dort soll mehr Titel sichtbar sein.
+            if showExtendedControls && !isCompactPortrait {
                 Button {
                     viewModel.skip(by: -viewModel.skipInterval)
                 } label: {
@@ -110,9 +119,11 @@ struct MiniPlayerBar: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
+            }
 
-                // Ausgabequelle wechseln — schlichtes weißes Icon direkt auf
-                // der Leiste, kein eigener Hintergrund.
+            // Ausgabequelle wechseln — bleibt auch im iPhone-Hochformat, nur
+            // ein schlichtes weißes Icon direkt auf der Leiste.
+            if showExtendedControls || isCompactPortrait {
                 AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 48)
