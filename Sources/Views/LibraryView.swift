@@ -23,6 +23,16 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
+    /// Aktiver Inhaltstyp-Tab. Heute nur Hörbücher; die untere Tab-Leiste
+    /// erscheint erst, wenn eine zweite Quelle einen anderen Typ mitbringt.
+    @State private var selectedMediaType: MediaType = .audiobooks
+
+    /// Verfügbare Inhaltstypen aus allen aktiven Quellen (dedupliziert,
+    /// in fester Reihenfolge). Heute `[.audiobooks]`.
+    private var availableMediaTypes: [MediaType] {
+        let present = Set(AppSession.shared.allProviders.map(\.mediaType))
+        return MediaType.allCases.filter { present.contains($0) }
+    }
 
     let provider: any AudioProvider
     let onLogout: () -> Void
@@ -41,39 +51,13 @@ struct LibraryView: View {
                     offlineBanner
                 }
 
-                Group {
-                    if viewModel.isLoading && viewModel.entries.isEmpty {
-                        Spacer()
-                        ProgressView("Loading library…")
-                        Spacer()
-                    } else if let error = viewModel.errorMessage, viewModel.entries.isEmpty {
-                        Spacer()
-                        VStack(spacing: 12) {
-                            Text(error).multilineTextAlignment(.center)
-                            Button("Try Again") {
-                                Task { await viewModel.loadLibrary() }
-                            }
-                        }
-                        .padding()
-                        Spacer()
-                    } else if viewModel.entries.isEmpty {
-                        // Verbunden, aber der Server hat (noch) keine Bücher.
-                        Spacer()
-                        ContentUnavailableView {
-                            Label("No Audiobooks", systemImage: "books.vertical")
-                        } description: {
-                            Text(viewModel.isShowingOfflineCache
-                                ? String(localized: "Offline — no books are downloaded.")
-                                : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))
-                        } actions: {
-                            Button("Refresh") {
-                                Task { await viewModel.loadLibrary() }
-                            }
-                        }
-                        Spacer()
-                    } else {
-                        content
-                    }
+                // Inhalt nach Tab. Heute nur Hörbücher; Podcasts/Musik kommen
+                // additiv als weitere Cases mit eigenen Views.
+                switch selectedMediaType {
+                case .audiobooks:
+                    audiobooksContent
+                default:
+                    Spacer()
                 }
             }
             .navigationTitle("Library")
@@ -148,6 +132,12 @@ struct LibraryView: View {
                                 isShowingSearch = true
                             }
                         }
+                    }
+                    // Inhaltstyp-Tabs UNTER dem Mini-Player — erst ab zwei
+                    // Typen (heute nur Hörbücher → unsichtbar). Der Nutzer
+                    // wechselt damit zwischen Hörbüchern/Podcasts/Musik.
+                    if availableMediaTypes.count > 1 {
+                        MediaTabBar(types: availableMediaTypes, selected: $selectedMediaType)
                     }
                 }
                 .padding(.horizontal, 10)
@@ -370,6 +360,43 @@ struct LibraryView: View {
         let available = libraryWidth - gridHorizontalPadding * 2
         let totalSpacing = gridSpacing * CGFloat(columnCount - 1)
         return (available - totalSpacing) / CGFloat(columnCount)
+    }
+
+    /// Hörbuch-Tab: Lade-/Fehler-/Leer-Zustände und die eigentliche Liste.
+    @ViewBuilder
+    private var audiobooksContent: some View {
+        if viewModel.isLoading && viewModel.entries.isEmpty {
+            Spacer()
+            ProgressView("Loading library…")
+            Spacer()
+        } else if let error = viewModel.errorMessage, viewModel.entries.isEmpty {
+            Spacer()
+            VStack(spacing: 12) {
+                Text(error).multilineTextAlignment(.center)
+                Button("Try Again") {
+                    Task { await viewModel.loadLibrary() }
+                }
+            }
+            .padding()
+            Spacer()
+        } else if viewModel.entries.isEmpty {
+            // Verbunden, aber der Server hat (noch) keine Bücher.
+            Spacer()
+            ContentUnavailableView {
+                Label("No Audiobooks", systemImage: "books.vertical")
+            } description: {
+                Text(viewModel.isShowingOfflineCache
+                    ? String(localized: "Offline — no books are downloaded.")
+                    : String(localized: "Your library is empty. Add audiobooks via the Audiobookshelf web interface."))
+            } actions: {
+                Button("Refresh") {
+                    Task { await viewModel.loadLibrary() }
+                }
+            }
+            Spacer()
+        } else {
+            content
+        }
     }
 
     private var content: some View {

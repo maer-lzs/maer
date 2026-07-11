@@ -33,6 +33,8 @@ struct ProviderCapabilities: OptionSet {
 protocol AudioProvider: AnyObject, ProgressSyncAPI {
     /// Kurzes, stabiles Kürzel ("abs", "local", …) — auch ID-Namespace.
     var providerId: String { get }
+    /// Inhaltstyp (Tab) dieser Quelle — Standard: Hörbücher.
+    var mediaType: MediaType { get }
     var capabilities: ProviderCapabilities { get }
 
     // MARK: Bibliothek
@@ -51,4 +53,9 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
     func createBookmark(itemId: String, time: Double, title: String) async throws
     func deleteBookmark(itemId: String, time: Double) async throws
+}
+
+extension AudioProvider {
+    /// Standard: die meisten Quellen liefern Hörbücher.
+    var mediaType: MediaType { .audiobooks }
 }
