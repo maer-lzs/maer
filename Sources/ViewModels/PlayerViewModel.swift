@@ -264,6 +264,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self, self.item != nil else { return }
                 self.configureAudioSession()
+                // Playback WAS stopped by the system: anchor Smart Rewind
+                // like any other pause.
+                if self.isPlaying { self.pausedAt = Date() }
                 self.isPlaying = false
                 let position = self.currentTime
                 let index = self.trackIndex(for: position)
@@ -272,6 +275,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     seekWithin: max(0, position - self.trackAbsoluteStart(index))
                 )
                 self.updateNowPlayingInfo()
+                self.refreshLiveActivityIfActive()
             }
         }
     }
@@ -301,11 +305,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
         if began {
             // Don't overwrite on nested interruptions (second .began while the
             // first is still active would clear the flag → no resume).
-            if isPlaying { resumeAfterInterruption = true }
-            // The system already halted the player — mirror it in our state
-            // (also fixes the play/pause button showing the wrong icon).
+            if isPlaying {
+                resumeAfterInterruption = true
+                // Same bookkeeping as pause(), minus player.pause() (the
+                // system already halted the audio): Smart-Rewind anchor, a
+                // prompt sync while we still have CPU, and a Live-Activity
+                // refresh so the island stops showing a ticking countdown.
+                pausedAt = Date()
+                Task { await syncProgress(force: true) }
+            }
+            // Mirror the halt in our state (also fixes the play/pause
+            // button showing the wrong icon).
             isPlaying = false
             updateNowPlayingInfo()
+            refreshLiveActivityIfActive()
         } else {
             if resumeAfterInterruption, shouldResume {
                 play()
@@ -621,7 +634,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = false
         pausedAt = Date()
         updateNowPlayingInfo()
-        updateLiveActivity()
+        refreshLiveActivityIfActive()
         Haptics.tap()
         Task { await syncProgress(force: true) }
     }
@@ -654,8 +667,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = clamped
         updateCurrentChapter()
         updateNowPlayingInfo()
-        updateLiveActivity()
+        refreshLiveActivityIfActive()
         if userInitiated {
+            // A DELIBERATE jump picks a new position — Smart Rewind must not
+            // pull away from it when playback resumes after a long pause.
+            pausedAt = nil
             suppressConflictForNextSync = true
             await syncProgress(force: true)
         }
@@ -858,9 +874,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let newChapter = chapters.last(where: { currentTime >= $0.start })
         guard newChapter != currentChapter else { return }
         currentChapter = newChapter
-        // Chapter transitions are the only periodic Live-Activity update —
-        // the widget extrapolates the progress in between.
-        updateLiveActivity()
+        // Keep the chapter name fresh IF a sleep-timer activity is showing;
+        // never starts one on its own.
+        refreshLiveActivityIfActive()
     }
 
     // MARK: - Aufräumen
