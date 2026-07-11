@@ -94,65 +94,23 @@ If you are not sure which variant your server uses, try both. One of these paths
 
 ---
 
-## 2. Create the Xcode project
+## 2. Build & install
 
-1. Open Xcode → **File → New → Project**
-2. Select **iOS → App**
-3. Use these settings:
-   - Product Name: `ABSPlayer`
-   - Interface: **SwiftUI**
-   - Language: **Swift**
-   - Storage: **None**; no Core Data
-   - Tests: can be unchecked; they are not needed here
-4. Save the project locally
-5. Select the project file → Target `ABSPlayer` → **General** tab → set **Minimum Deployments** to **iOS 17.0**
+The repository ships the complete Xcode project — nothing needs to be assembled:
 
-## 3. Add the files
+1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK).
+2. **Signing** (target `ABSPlayer` → Signing & Capabilities):
+   - **Team:** your Apple ID — a free one is enough (see note below)
+   - **Bundle Identifier:** change it to something unique, e.g. `de.yourname.maer`, on BOTH targets (`ABSPlayer` and `HoerregalWidgetsExtension` — the widget ID must stay a child of the app ID, e.g. `de.yourname.maer.widgets`)
+   - In `Sources/Networking/KeychainStore.swift`, set the `service` constant to the same bundle identifier.
+3. Connect your iPhone, select it as the run destination (background audio is far more reliable to test on a real device than in the simulator), press ▶.
+4. On the iPhone, trust your Apple ID once under **Settings → General → VPN & Device Management** if asked.
 
-1. In the Xcode project navigator, delete the automatically generated `ContentView.swift` file by choosing Move to Trash. Also delete the automatically generated `ABSPlayerApp.swift`.
-2. Drag the complete `Sources` folder from this download into the Xcode project navigator, onto the top-level project entry.
-3. In the dialog:
-   - ✅ **Copy items if needed**
-   - ✅ **Create groups**
-   - ✅ Target “ABSPlayer” is checked
-4. You should now see the groups `Models`, `Networking`, `ViewModels`, `Views`, and `ABSPlayerApp.swift` in Xcode.
+Background audio, the Live-Activity widget target, the CarPlay scene, and iPhone/iPad support are already configured in the project.
 
-**If you're replacing files from a later update rather than doing a first-time setup:** don't drag new files on top of old ones with the same name still present — macOS will create a numbered duplicate (`File 2.swift`) instead of overwriting, and Xcode will then point at the wrong physical file. Either edit each changed file's content directly in Xcode, or delete the old group first (Move to Trash) and then drag the replacement in fresh.
+**Free Apple ID without the Developer Program:** the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay in a real car** additionally needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account) — the CarPlay simulator (`I/O → External Displays → CarPlay`) works without it.
 
-## 4. Enable background audio
-
-1. Select the project file → Target `ABSPlayer` → **Signing & Capabilities** tab
-2. Add **+ Capability** → **Background Modes**
-3. Check **Audio, AirPlay, and Picture in Picture**
-
-Without this step, playback will pause when the screen locks or the app goes into the background.
-
-## 5. Signing with a free Apple ID
-
-1. In the same **Signing & Capabilities** tab:
-   - **Team:** select your Apple ID; add it in Xcode → Settings → Accounts if needed
-   - **Bundle Identifier:** use something unique, for example `de.yourname.absplayer`
-2. In `KeychainStore.swift`, set the `service` constant to the same bundle identifier; look for the line containing `com.example.absplayer`.
-
-**Important when using a free Apple ID without the Developer Program:** The app only runs on your device for 7 days. After that, you need to rebuild it once through Xcode by connecting the device and pressing ▶. For a purely private app, this is an acceptable compromise.
-
-## 5b. Set the display name; optional
-
-The name shown below the app icon can be set independently from the internal project name:
-
-1. Project file → Target `ABSPlayer` → **General** tab
-2. Set **Display Name** to `Mär`.
-
-This makes the app appear as “Mär” on the home screen while the Xcode project remains named `ABSPlayer`. Renaming the internal project is fiddly and not worth it.
-
-## 6. Build to your iPhone
-
-1. Connect your iPhone via cable, or set up wireless debugging
-2. Select your iPhone as the target device at the top of Xcode, not the simulator — background audio is much more reliable to test on real devices
-3. Press ▶
-4. On the iPhone, if necessary, go to **Settings → General → VPN & Device Management** and trust your Apple ID once
-
-## 7. Log in inside the app
+## 3. Log in inside the app
 
 - Server: `your-server.example.com`; `https://` is added automatically
 - Then either username + password, or an API token from step 1
@@ -161,13 +119,7 @@ This makes the app appear as “Mär” on the home screen while the Xcode proje
 
 ## iPad support
 
-The app is designed for iPhone and iPad. To make sure it can be installed on iPad, iPad needs to be enabled as a supported device for the target:
-
-1. Project file → Target **ABSPlayer** → **General** tab
-2. Under **Supported Destinations**, **iPad** should be listed. This is enabled by default for new SwiftUI projects. If not, click **+** and add iPad.
-3. Under **Deployment Info**, check iPhone and iPad orientations. For an audiobook player, portrait and landscape are sufficient.
-
-The library grid adapts automatically to the available width — more columns on iPad, even more in landscape — and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
+iPhone and iPad are both enabled in the project. The library grid adapts automatically to the available width — more columns on iPad, even more in landscape — and recalculates cleanly on every rotation. On iPhone portrait, the mini-player hides its secondary transport buttons (skip forward/back, AirPlay) to leave more room for the book title; they reappear automatically on iPad or in iPhone landscape.
 
 ```text
 Sources/

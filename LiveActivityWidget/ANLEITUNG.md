@@ -1,24 +1,14 @@
-# Live Activity einrichten (einmalig, ~2 Minuten in Xcode)
+# Live-Activity-Widget
 
-Die App-Seite ist fertig (Activity wird bei Wiedergabe gestartet/aktualisiert,
-`NSSupportsLiveActivities` ist gesetzt). Sichtbar wird sie erst mit einem
-Widget-Extension-Target:
+Das Widget-Extension-Target (`HoerregalWidgetsExtension`) ist **bereits im
+Xcode-Projekt enthalten** — beim Klonen ist nichts weiter einzurichten.
+`HoerregalLiveActivity.swift` gehört nur zum Widget-Target,
+`Sources/Models/PlaybackActivityAttributes.swift` gehört App UND Widget
+(gemeinsamer Vertrag).
 
-1. Xcode → **File → New → Target… → iOS → Widget Extension**
-   - Product Name: `HoerregalWidgets`
-   - ✅ **Include Live Activity**, ❌ Configuration App Intent (nicht nötig)
-   - Embed in: `ABSPlayer`
-   - Bei der Nachfrage „Activate scheme?" → egal (Cancel reicht)
-2. Die von Xcode generierten Dateien im neuen Ordner `HoerregalWidgets/`
-   **löschen** (nur `Info.plist` und ggf. Assets behalten) und stattdessen
-   `LiveActivityWidget/HoerregalLiveActivity.swift` dem neuen Target hinzufügen
-   (Datei markieren → File Inspector → Target Membership ✅ HoerregalWidgets).
-3. `Sources/Models/PlaybackActivityAttributes.swift` markieren → File
-   Inspector → Target Membership: zusätzlich ✅ `HoerregalWidgets`
-   (die Datei gehört App UND Extension).
-4. Deployment Target der Extension auf iOS 17 stellen (wie die App).
-5. Auf dem GERÄT testen: Buch abspielen → sperren → Live Activity auf dem
-   Lock Screen; auf iPhones mit Dynamic Island auch dort.
+Einziger Handgriff nach einem Fork: dem Widget-Target unter Signing eine
+eigene Bundle-ID als Kind der App-ID geben (z. B. `de.deinname.maer.widgets`).
 
-Hinweis: Läuft die App im Simulator, erscheinen Live Activities dort nur
-eingeschränkt — echtes Gerät verwenden.
+Die Live Activity erscheint NUR während eines laufenden Schlaf-Timers
+(Mond + Countdown) — die normale Wiedergabe zeigt Apples eigenes
+„Now Playing" auf dem Sperrbildschirm, das nicht gedoppelt wird.

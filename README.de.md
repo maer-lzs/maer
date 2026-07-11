@@ -210,87 +210,23 @@ einer der beiden Wege existiert garantiert.
 
 ---
 
-## 2. Xcode-Projekt anlegen
+## 2. Bauen & installieren
 
-1. Xcode öffnen → **File → New → Project**
-2. **iOS → App** auswählen
-3. Einstellungen:
-   - Product Name: `ABSPlayer`
-   - Interface: **SwiftUI**
-   - Language: **Swift**
-   - Storage: **None** (kein Core Data)
-   - Tests: Häkchen können raus, brauchst du hier nicht
-4. Projekt irgendwo lokal speichern
-5. Projekt-Datei anklicken → Target `ABSPlayer` → Tab **General** →
-   **Minimum Deployments** auf **iOS 17.0** setzen
+Das Repository enthält das komplette Xcode-Projekt — nichts muss zusammengebaut werden:
 
-## 3. Dateien einfügen
+1. Repo klonen und **`Maer.xcodeproj`** öffnen (Xcode mit iOS-26-SDK).
+2. **Signing** (Target `ABSPlayer` → Signing & Capabilities):
+   - **Team:** deine Apple-ID — kostenlos reicht (siehe Hinweis unten)
+   - **Bundle Identifier:** auf etwas Eigenes ändern, z. B. `de.deinname.maer`, und zwar auf BEIDEN Targets (`ABSPlayer` und `HoerregalWidgetsExtension` — die Widget-ID muss ein Kind der App-ID bleiben, z. B. `de.deinname.maer.widgets`)
+   - In `Sources/Networking/KeychainStore.swift` die Konstante `service` auf denselben Bundle Identifier setzen.
+3. iPhone anschließen, als Ziel wählen (Background-Audio testet sich auf echten Geräten deutlich verlässlicher als im Simulator), ▶ drücken.
+4. Auf dem iPhone ggf. einmalig unter **Einstellungen → Allgemein → VPN & Geräteverwaltung** der Apple-ID vertrauen.
 
-1. Im Xcode-Projektnavigator die automatisch generierten Dateien
-   `ContentView.swift` löschen (Move to Trash) — wird durch unsere Views ersetzt.
-   `ABSPlayerApp.swift` (die automatisch generierte) ebenfalls löschen.
-2. Den Ordner `Sources` aus diesem Download **komplett per Drag & Drop** in
-   den Xcode-Projektnavigator ziehen (auf den obersten Projekt-Eintrag).
-3. Im erscheinenden Dialog:
-   - ✅ **Copy items if needed**
-   - ✅ **Create groups**
-   - ✅ Target „ABSPlayer" ist angehakt
-4. Du solltest jetzt in Xcode die Gruppen `Models`, `Networking`,
-   `ViewModels`, `Views` sowie `ABSPlayerApp.swift` sehen.
+Background Audio, das Live-Activity-Widget-Target, die CarPlay-Szene und iPhone-/iPad-Unterstützung sind im Projekt bereits konfiguriert.
 
-**Wenn du bei einem späteren Update nur einzelne Dateien ersetzt, statt das
-Projekt neu aufzusetzen:** Zieh neue Dateien nicht über noch vorhandene
-gleichnamige alte — macOS legt dann eine nummerierte Kopie an
-(`Datei 2.swift`) statt zu überschreiben, und Xcode zeigt danach auf die
-falsche physische Datei. Entweder den Inhalt jeder geänderten Datei direkt in
-Xcode ersetzen, oder die alte Gruppe vorher löschen (Move to Trash) und die
-Ersatzdatei danach frisch reinziehen.
+**Kostenlose Apple-ID ohne Developer Program:** Die App läuft 7 Tage pro Installation, danach einmal über Xcode neu bauen. **CarPlay im echten Auto** braucht zusätzlich Apples CarPlay-Audio-Entitlement (developer.apple.com/contact/carplay, bezahlter Account) — der CarPlay-Simulator (`I/O → External Displays → CarPlay`) funktioniert ohne.
 
-## 4. Background Audio aktivieren
-
-1. Projekt-Datei anklicken → Target `ABSPlayer` → Tab **Signing & Capabilities**
-2. **+ Capability** → **Background Modes** hinzufügen
-3. Häkchen bei **Audio, AirPlay, and Picture in Picture** setzen
-
-Ohne diesen Schritt pausiert die Wiedergabe, sobald der Bildschirm gesperrt
-wird oder die App in den Hintergrund geht.
-
-## 5. Signing (mit kostenloser Apple-ID reicht)
-
-1. Im selben Tab **Signing & Capabilities**:
-   - **Team:** deine Apple-ID auswählen (Xcode → Settings → Accounts, falls
-     noch nicht hinterlegt)
-   - **Bundle Identifier:** etwas Eindeutiges, z. B. `de.deinname.absplayer`
-2. In `KeychainStore.swift` die Konstante `service` auf denselben Bundle
-   Identifier anpassen (Zeile mit `com.example.absplayer`).
-
-**Wichtig bei kostenloser Apple-ID (kein Developer Program):** Die App läuft
-nur 7 Tage auf deinem Gerät, danach muss sie einmal über Xcode neu gebaut
-werden (Gerät anschließen, ▶ drücken). Für eine App, die nur du privat
-nutzt, ist das ein akzeptabler Kompromiss.
-
-## 5b. Anzeigenamen setzen (optional)
-
-Der Name unter dem App-Icon lässt sich unabhängig vom internen Projektnamen
-setzen:
-
-1. Projekt-Datei → Target `ABSPlayer` → Tab **General**
-2. Feld **Display Name** auf `Mär` setzen.
-
-Damit erscheint die App auf dem Homescreen als „Mär", während das Projekt
-in Xcode weiterhin `ABSPlayer` heißt (das intern umzubenennen ist fummelig und
-lohnt nicht).
-
-## 6. Auf dein iPhone bauen
-
-1. iPhone per Kabel anschließen (oder WLAN-Debugging einrichten)
-2. Als Ziel-Gerät oben in Xcode dein iPhone auswählen (nicht Simulator —
-   Audio im Hintergrund testet sich auf echten Geräten deutlich zuverlässiger)
-3. ▶ drücken
-4. Auf dem iPhone ggf. einmalig **Einstellungen → Allgemein → VPN & Geräteverwaltung**
-   → deiner Apple-ID vertrauen
-
-## 7. In der App einloggen
+## 3. In der App einloggen
 
 - Server: `dein-server.example.com` (das `https://` wird automatisch ergänzt)
 - Dann entweder Benutzername + Passwort, oder ein API-Token aus Schritt 1
@@ -299,16 +235,7 @@ lohnt nicht).
 
 ## iPad-Unterstützung
 
-Die App ist für iPhone und iPad ausgelegt. Damit sie auf dem iPad installiert
-werden kann, muss im Ziel iPad als unterstütztes Gerät aktiv sein:
-
-1. Projekt-Datei → Target **ABSPlayer** → Tab **General**
-2. Unter **Supported Destinations** sollte **iPad** gelistet sein (bei neuen
-   SwiftUI-Projekten standardmäßig aktiv). Falls nicht: **+** → iPad hinzufügen.
-3. Unter **Deployment Info** ggf. **iPhone Orientation** und **iPad
-   Orientation** prüfen — für einen Hörbuch-Player reichen Hoch- und Querformat.
-
-Das Bibliotheks-Grid passt sich automatisch der verfügbaren Breite an — mehr
+iPhone und iPad sind im Projekt beide aktiviert. Das Bibliotheks-Grid passt sich automatisch der verfügbaren Breite an — mehr
 Spalten auf dem iPad, nochmal mehr im Querformat — und berechnet sich bei
 jeder Drehung sauber neu. Im iPhone-Hochformat blendet die Mini-Leiste ihre
 zusätzlichen Transport-Buttons (Vor-/Zurückspulen, AirPlay) aus, damit mehr
