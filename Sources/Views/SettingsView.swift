@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Zentrale Einstellungen: Wiedergabe, Speicher, Server/Abmelden.
+/// Zentrale Einstellungen: Wiedergabe, Darstellung, Downloads/Speicher,
+/// Sync, Server/Abmelden, App-Info.
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject private var downloadManager = DownloadManager.shared
@@ -8,60 +9,38 @@ struct SettingsView: View {
 
     @State private var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
+    @State private var defaultRate: Double =
+        Double(UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
+    @State private var smartRewind: Bool =
+        UserDefaults.standard.object(forKey: AppStorageKeys.smartRewind) as? Bool ?? true
+    @State private var warnCellular: Bool =
+        UserDefaults.standard.object(forKey: AppStorageKeys.warnCellularDownload) as? Bool ?? true
+    @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
+
     @State private var coverCacheBytes: Int64 = 0
+    @State private var pendingSyncCount = 0
+    @State private var isSyncing = false
     @State private var showDeleteAllDownloads = false
     @State private var showLogoutConfirm = false
 
+    /// Same speed steps as the full player's speed menu.
+    private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
+
     var body: some View {
         Form {
-            Section("Playback") {
-                Picker("Skip Interval", selection: $skipInterval) {
-                    ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
-                        Text("\(Int(seconds)) seconds").tag(seconds)
-                    }
-                }
-                .onChange(of: skipInterval) { _, newValue in
-                    if let vm = coordinator.viewModel {
-                        // Aktive Session: aktualisiert auch die Lockscreen-Buttons.
-                        vm.setSkipInterval(newValue)
-                    } else {
-                        UserDefaults.standard.set(newValue, forKey: AppStorageKeys.skipInterval)
-                    }
-                }
-            }
-
-            Section("Storage") {
-                LabeledContent("Downloads") {
-                    Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-                }
-                Button("Delete All Downloads", role: .destructive) {
-                    showDeleteAllDownloads = true
-                }
-                .disabled(downloadManager.downloadedItemIds.isEmpty)
-
-                LabeledContent("Cover Cache") {
-                    Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
-                }
-                Button("Clear Cover Cache") {
-                    ImageCache.shared.clearCache()
-                    coverCacheBytes = ImageCache.shared.cacheSizeBytes()
-                }
-            }
-
-            Section("Server") {
-                LabeledContent("Address") {
-                    Text(coordinator.apiClient.baseURL.absoluteString)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                Button("Log Out", role: .destructive) {
-                    showLogoutConfirm = true
-                }
-            }
+            playbackSection
+            appearanceSection
+            downloadsSection
+            syncSection
+            serverSection
+            aboutSection
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .task { coverCacheBytes = ImageCache.shared.cacheSizeBytes() }
+        .task {
+            coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+            pendingSyncCount = SyncQueue.shared.allPending().count
+        }
         .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
             Button("Delete", role: .destructive) {
                 DownloadManager.shared.deleteAllDownloads()
@@ -76,5 +55,149 @@ struct SettingsView: View {
         } message: {
             Text("The server address stays saved; the token is removed.")
         }
+    }
+
+    // MARK: - Wiedergabe
+
+    private var playbackSection: some View {
+        Section {
+            Picker("Skip Interval", selection: $skipInterval) {
+                ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
+                    Text("\(Int(seconds)) seconds").tag(seconds)
+                }
+            }
+            .onChange(of: skipInterval) { _, newValue in
+                if let vm = coordinator.viewModel {
+                    // Aktive Session: aktualisiert auch die Lockscreen-Buttons.
+                    vm.setSkipInterval(newValue)
+                } else {
+                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.skipInterval)
+                }
+            }
+
+            Picker("Default Speed", selection: $defaultRate) {
+                ForEach(availableRates, id: \.self) { rate in
+                    Text("\(rate.formatted(.number.precision(.fractionLength(0...2))))×").tag(rate)
+                }
+            }
+            .onChange(of: defaultRate) { _, newValue in
+                UserDefaults.standard.set(Float(newValue), forKey: AppStorageKeys.defaultPlaybackRate)
+            }
+
+            Toggle("Smart Rewind", isOn: $smartRewind)
+                .onChange(of: smartRewind) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
+                }
+        } header: {
+            Text("Playback")
+        } footer: {
+            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause.")
+        }
+    }
+
+    // MARK: - Darstellung
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker("Appearance", selection: $appearance) {
+                Text("System").tag("system")
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: - Downloads & Speicher
+
+    private var downloadsSection: some View {
+        Section {
+            Toggle("Warn When Not on Wi-Fi", isOn: $warnCellular)
+                .onChange(of: warnCellular) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
+                }
+
+            LabeledContent("Downloads") {
+                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+            }
+            Button("Delete All Downloads", role: .destructive) {
+                showDeleteAllDownloads = true
+            }
+            .disabled(downloadManager.downloadedItemIds.isEmpty)
+
+            LabeledContent("Cover Cache") {
+                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
+            }
+            Button("Clear Cover Cache") {
+                ImageCache.shared.clearCache()
+                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+            }
+        } header: {
+            Text("Storage")
+        } footer: {
+            Text("Deleting downloads never deletes listening progress.")
+        }
+    }
+
+    // MARK: - Sync
+
+    private var syncSection: some View {
+        Section {
+            LabeledContent("Pending Updates") {
+                Text("\(pendingSyncCount)")
+            }
+            Button {
+                isSyncing = true
+                Task {
+                    await SyncQueue.shared.flush(apiClient: coordinator.apiClient)
+                    pendingSyncCount = SyncQueue.shared.allPending().count
+                    isSyncing = false
+                }
+            } label: {
+                if isSyncing {
+                    ProgressView()
+                } else {
+                    Text("Sync Now")
+                }
+            }
+            .disabled(pendingSyncCount == 0 || isSyncing)
+        } header: {
+            Text("Sync")
+        } footer: {
+            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
+        }
+    }
+
+    // MARK: - Server
+
+    private var serverSection: some View {
+        Section("Server") {
+            LabeledContent("Address") {
+                Text(coordinator.apiClient.baseURL.absoluteString)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Button("Log Out", role: .destructive) {
+                showLogoutConfirm = true
+            }
+        }
+    }
+
+    // MARK: - App-Info
+
+    private var aboutSection: some View {
+        Section {
+            LabeledContent("Version") {
+                Text(Self.versionString)
+            }
+        } footer: {
+            Text("Hörregal is an unofficial client for Audiobookshelf.")
+        }
+    }
+
+    private static var versionString: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
+        return "\(version) (\(build))"
     }
 }

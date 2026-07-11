@@ -17,12 +17,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct ABSPlayerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 // Globale Akzentfarbe der App: Orange statt System-Blau.
                 .tint(AppTheme.accent)
+                .preferredColorScheme(preferredScheme)
+        }
+    }
+
+    /// Settings override for the appearance; nil = follow the system.
+    private var preferredScheme: ColorScheme? {
+        switch appearance {
+        case "light": .light
+        case "dark": .dark
+        default: nil
         }
     }
 }

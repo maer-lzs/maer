@@ -170,6 +170,16 @@
         }
       }
     },
+    "Appearance": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Darstellung"
+          }
+        }
+      }
+    },
     "Ascending": {
       "localizations": {
         "de": {
@@ -362,6 +372,26 @@
         }
       }
     },
+    "Dark": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dunkel"
+          }
+        }
+      }
+    },
+    "Default Speed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard-Geschwindigkeit"
+          }
+        }
+      }
+    },
     "Delete": {
       "localizations": {
         "de": {
@@ -398,6 +428,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Alle Downloads löschen?"
+          }
+        }
+      }
+    },
+    "Deleting downloads never deletes listening progress.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Löschen von Downloads bleibt der Hörfortschritt immer erhalten."
           }
         }
       }
@@ -512,6 +552,16 @@
         }
       }
     },
+    "Hörregal is an unofficial client for Audiobookshelf.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hörregal ist ein inoffizieller Client für Audiobookshelf."
+          }
+        }
+      }
+    },
     "Invalid response from the server.": {
       "localizations": {
         "de": {
@@ -558,6 +608,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bibliothek"
+          }
+        }
+      }
+    },
+    "Light": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hell"
           }
         }
       }
@@ -678,6 +738,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Erzähler"
+          }
+        }
+      }
+    },
+    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein."
           }
         }
       }
@@ -832,6 +902,16 @@
         }
       }
     },
+    "Pending Updates": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausstehende Updates"
+          }
+        }
+      }
+    },
     "Play": {
       "localizations": {
         "de": {
@@ -878,6 +958,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fortschritt gesichert"
+          }
+        }
+      }
+    },
+    "Progress updates that could not reach the server yet are sent automatically as soon as possible.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fortschritts-Updates, die den Server noch nicht erreicht haben, werden automatisch nachgereicht, sobald möglich."
           }
         }
       }
@@ -1062,6 +1152,16 @@
         }
       }
     },
+    "Smart Rewind": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart Rewind"
+          }
+        }
+      }
+    },
     "Sort By": {
       "localizations": {
         "de": {
@@ -1122,6 +1222,26 @@
         }
       }
     },
+    "Sync": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync"
+          }
+        }
+      }
+    },
+    "Sync Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt synchronisieren"
+          }
+        }
+      }
+    },
     "Sync failed": {
       "localizations": {
         "de": {
@@ -1148,6 +1268,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Synchronisiert"
+          }
+        }
+      }
+    },
+    "System": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         }
       }
@@ -1288,6 +1418,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Lokaler Stand verwendet"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "Warn When Not on Wi-Fi": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ohne WLAN warnen"
           }
         }
       }

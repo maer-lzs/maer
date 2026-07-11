@@ -107,6 +107,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
     @Published var playbackRate: Float = 1.0
+    /// When the current pause started — basis for Smart Rewind on resume.
+    private var pausedAt: Date?
     /// Skip-Intervall in Sekunden (15/30/60), app-weit gemerkt.
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
@@ -391,8 +393,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         lastKnownServerUpdate = serverUpdateMs
         currentTime = startTime
         isFinished = item.userMediaProgress?.isFinished ?? false
-        // Gemerkte Wiedergabegeschwindigkeit dieses Buchs übernehmen.
-        playbackRate = UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float ?? 1.0
+        // Remembered per-book speed; new books start at the default speed
+        // from the settings instead of a hard 1.0.
+        playbackRate = UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float
+            ?? (UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
         updateCurrentChapter()
         updateNowPlayingInfo()
         startSyncTimer()
@@ -543,12 +547,33 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func play() {
         activateAudioSession()
+        applySmartRewindIfNeeded()
         // Falls ein Sleep-Fade mittendrin unterbrochen wurde: volle Lautstärke.
         player?.volume = 1
         player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
         Haptics.tap()
+    }
+
+    /// Smart Rewind (settings toggle, default ON): resuming after a longer
+    /// pause jumps back a little so the listener regains context. Only for
+    /// pauses in THIS session — after a relaunch the position is loaded
+    /// fresh anyway. Not user-initiated: no immediate forced server write.
+    private func applySmartRewindIfNeeded() {
+        guard let pausedAt else { return }
+        self.pausedAt = nil
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.smartRewind) as? Bool ?? true else { return }
+        let gap = Date().timeIntervalSince(pausedAt)
+        let rewind: Double
+        switch gap {
+        case ..<120: return                 // short pause: resume in place
+        case ..<600: rewind = 10            // 2–10 min
+        case ..<3600: rewind = 20           // 10–60 min
+        default: rewind = 30                // an hour or more
+        }
+        guard currentTime > 0 else { return }
+        Task { await seek(to: max(0, currentTime - rewind), userInitiated: false) }
     }
 
     /// Startet die Wiedergabe, gleicht aber vorher kurz mit dem Server ab.
@@ -574,6 +599,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func pause() {
         player?.pause()
         isPlaying = false
+        pausedAt = Date()
         updateNowPlayingInfo()
         Haptics.tap()
         Task { await syncProgress(force: true) }

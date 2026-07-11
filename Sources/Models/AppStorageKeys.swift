@@ -7,6 +7,14 @@ import Foundation
 // (the project uses default MainActor isolation).
 nonisolated enum AppStorageKeys {
     static let skipInterval = "skipInterval"
+    /// Speed for books that have no per-book rate saved yet.
+    static let defaultPlaybackRate = "defaultPlaybackRate"
+    /// Resume slightly earlier after a longer pause (default ON).
+    static let smartRewind = "smartRewind"
+    /// "system" | "light" | "dark" — overrides the system appearance.
+    static let appearance = "appearanceOverride"
+    /// Ask before downloading without Wi-Fi (default ON).
+    static let warnCellularDownload = "warnCellularDownload"
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     static let librarySortOption = "librarySortOption"

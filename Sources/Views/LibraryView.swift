@@ -13,6 +13,7 @@ struct LibraryView: View {
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var systemColorScheme
     /// Cover accent of the ACTIVE book — shared with every glass element in
     /// the bottom bar (mini player, search button, pill) via environment.
     @StateObject private var bottomColorLoader = CoverColorLoader()
@@ -83,10 +84,11 @@ struct LibraryView: View {
             }
             .navigationTitle("Library")
             .toolbar {
-                // On iOS 26 our own accent-tinted glass replaces the system's
-                // shared toolbar glass (hidden below) so both buttons match the
-                // mini player / search button wash. Nesting both would show as
-                // a doubled circle outline.
+                // Our own adaptive glass instead of the system's toolbar
+                // glass — the system one must be FULLY suppressed (shared
+                // background hidden AND plain button style below), otherwise
+                // both glasses stack: a dark doubled circle with a tinted
+                // outline ring.
                 if #available(iOS 26.0, *) {
                     ToolbarItem(placement: .navigationBarLeading) {
                         sortFilterMenu
@@ -550,6 +552,9 @@ struct LibraryView: View {
         } label: {
             toolbarGlassIcon("line.3.horizontal.decrease")
         }
+        // Opt out of the toolbar's automatic glass button style — our
+        // AdaptiveGlassBackground is the ONLY glass on this button.
+        .buttonStyle(.plain)
     }
 
     private var settingsLink: some View {
@@ -558,19 +563,29 @@ struct LibraryView: View {
         } label: {
             toolbarGlassIcon("gearshape")
         }
+        .buttonStyle(.plain)
     }
 
-    /// Toolbar icon on our OWN adaptive glass circle so it matches the
-    /// bottom-row glass in both schemes (white-ish light / dark glass), but
-    /// deliberately NEUTRAL: navigation chrome stays black/white, only the
-    /// playback elements carry the cover accent.
-    /// The system's toolbar glass is hidden for these items (see .toolbar).
+    /// Toolbar icon on our OWN adaptive glass circle, treated EXACTLY like
+    /// every other glass element (mini player, search button): shared cover
+    /// accent in light mode, dark glass in dark mode.
+    ///
+    /// Toolbar content runs in its OWN environment that does not reliably
+    /// carry our values (color scheme reported dark in light mode → black
+    /// glass with white icon; `\.glassAccent` absent; menu labels tinted
+    /// with the app accent → orange symbol). Everything the glass and icon
+    /// need is therefore pinned/passed EXPLICITLY here.
     private func toolbarGlassIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .foregroundStyle(.primary)
             .frame(width: 40, height: 40)
-            .modifier(AdaptiveGlassBackground(shape: Circle()))
-            .environment(\.glassAccent, nil)
+            .modifier(AdaptiveGlassBackground(
+                shape: Circle(),
+                lightAccent: playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil
+            ))
+            .environment(\.colorScheme, systemColorScheme)
+            // Menu renders its label via tint (ignoring foregroundStyle).
+            .tint(.primary)
     }
 
     /// Cover-Grid mit selbst berechneter Spaltenzahl und -breite (siehe
