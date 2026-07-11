@@ -124,31 +124,33 @@ struct LibraryView: View {
                     if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
                         ResumeMessageBanner(viewModel: vm)
                     }
-                    HStack(spacing: 10) {
-                        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
-                            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                                    isShowingFullPlayer = true
-                                }
+                    // Mini-Leiste über die volle Breite — der Such-Button ist
+                    // jetzt eine Zeile tiefer (neben der Medien-Pille).
+                    if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
+                        MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                                isShowingFullPlayer = true
                             }
-                            // Book-switch swap: pushed below the screen edge
-                            // while cover/title/accent change, springs back up
-                            // (driven by the .task(id:) below).
-                            .offset(y: miniPlayerSwapOffset)
-                        } else {
-                            Spacer(minLength: 0)
                         }
+                        // Book-switch swap: pushed below the screen edge
+                        // while cover/title/accent change, springs back up
+                        // (driven by the .task(id:) below).
+                        .offset(y: miniPlayerSwapOffset)
+                    }
+                    // Untere Zeile: Inhaltstyp-Pille (erst ab zwei Typen) plus
+                    // der Such-Button rechts daneben. Die Lupe sitzt bewusst
+                    // hier unten neben der Medien-Pille, nicht mehr in der
+                    // Mini-Player-Zeile.
+                    HStack(spacing: 10) {
+                        if availableMediaTypes.count > 1 {
+                            MediaTabBar(types: availableMediaTypes, selected: $selectedMediaType)
+                        }
+                        Spacer(minLength: 0)
                         FloatingSearchButton {
                             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                                 isShowingSearch = true
                             }
                         }
-                    }
-                    // Inhaltstyp-Tabs UNTER dem Mini-Player — erst ab zwei
-                    // Typen (heute nur Hörbücher → unsichtbar). Der Nutzer
-                    // wechselt damit zwischen Hörbüchern/Podcasts/Musik.
-                    if availableMediaTypes.count > 1 {
-                        MediaTabBar(types: availableMediaTypes, selected: $selectedMediaType)
                     }
                 }
                 .padding(.horizontal, 10)

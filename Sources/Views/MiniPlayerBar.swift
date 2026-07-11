@@ -81,7 +81,7 @@ struct MiniPlayerBar: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -93,7 +93,7 @@ struct MiniPlayerBar: View {
                     Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
                         .foregroundStyle(.primary)
-                        .frame(width: 44, height: 56)
+                        .frame(width: 44, height: 48)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -105,7 +105,7 @@ struct MiniPlayerBar: View {
                     Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
                         .font(.title2)
                         .foregroundStyle(.primary)
-                        .frame(width: 44, height: 56)
+                        .frame(width: 44, height: 48)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -115,7 +115,7 @@ struct MiniPlayerBar: View {
                 // der Leiste, kein eigener Hintergrund.
                 AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
-                    .frame(width: 44, height: 56)
+                    .frame(width: 44, height: 48)
             }
 
             // Play/Pause: schlichtes weißes Icon, kein eigener Hintergrund —
@@ -126,14 +126,14 @@ struct MiniPlayerBar: View {
                 Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
                     .font(.title2)
                     .foregroundStyle(.primary)
-                    .frame(width: 44, height: 56)
+                    .frame(width: 44, height: 48)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .modifier(AdaptiveGlassBackground(shape: shape))
         .background(
             GeometryReader { geo in
@@ -150,16 +150,16 @@ struct MiniPlayerBar: View {
     /// Cover herum (Ring etwas größer als das Cover), nicht als kleinerer
     /// Kreis darüber.
     private var coverWithProgressRing: some View {
-        let coverSize: CGFloat = 40
-        let ringSize: CGFloat = 48
+        let coverSize: CGFloat = 34
+        let ringSize: CGFloat = 40
 
         return ZStack {
             Circle()
-                .stroke(Color.primary.opacity(0.3), lineWidth: 2.5)
+                .stroke(Color.primary.opacity(0.3), lineWidth: 2)
                 .frame(width: ringSize, height: ringSize)
             Circle()
                 .trim(from: 0, to: max(0.01, fraction))
-                .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                 .frame(width: ringSize, height: ringSize)
                 .rotationEffect(.degrees(-90))
 
