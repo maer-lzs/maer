@@ -240,38 +240,7 @@ struct BookGridCell: View {
     }
 }
 
-// MARK: - Autoren/Genre-Browsing
-
-/// Liste der Gruppen (Autoren bzw. Genres) mit Buchanzahl → Buch-Grid.
-struct BrowseListView: View {
-    let title: LocalizedStringKey
-    let groups: [(name: String, entries: [LibraryEntry])]
-    let playerCoordinator: PlayerCoordinator
-    let libraryViewModel: LibraryViewModel
-
-    var body: some View {
-        List(groups, id: \.name) { group in
-            NavigationLink {
-                BrowseBooksScreen(
-                    title: group.name,
-                    entries: group.entries,
-                    playerCoordinator: playerCoordinator,
-                    libraryViewModel: libraryViewModel
-                )
-            } label: {
-                HStack {
-                    Text(group.name)
-                    Spacer()
-                    Text("\(group.entries.count)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
+// MARK: - Browse-Grid
 
 /// Cover-Grid einer Gruppe — misst seine Breite selbst und nutzt dieselbe
 /// Spalten-Mathematik wie die Bibliothek (siehe LibraryView-Kommentar).

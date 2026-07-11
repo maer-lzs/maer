@@ -53,6 +53,9 @@
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF68E82B3002700000C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
+		CF68E8E33002981600C97B74 /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
+		CF68E9393002981B00C97B74 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF6C56313000732700814E06 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF6C56BD30012C5300814E06 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
 		CF925AC42FFABEF8001EB053 /* Hörregal.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = "Hörregal.xcodeproj"; sourceTree = "<group>"; };
@@ -189,6 +192,21 @@
 			sourceTree = "<group>";
 		};
 		CF68E77C30025C5300C97B74 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF68E82F3002700000C97B74 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF68E8E63002981600C97B74 /* Products */ = {
+			isa = PBXGroup;
+			name = Products;
+			sourceTree = "<group>";
+		};
+		CF68E93A3002981B00C97B74 /* Products */ = {
 			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
@@ -337,7 +355,7 @@
 					};
 				};
 			};
-			buildConfigurationList = CF1170EE2FF99D9D00DA1AC5 /* Build configuration list for PBXProject "Hörregal" */;
+			buildConfigurationList = CF1170EE2FF99D9D00DA1AC5 /* Build configuration list for PBXProject "Maer" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -356,10 +374,6 @@
 					ProjectRef = CFD427222FFC71D30047EE14 /* Hörregal.xcodeproj */;
 				},
 				{
-					ProductGroup = CFCCDF7D2FFABFC6004A0EB5 /* Products */;
-					ProjectRef = CFCCDF792FFABFC6004A0EB5 /* Hörregal.xcodeproj */;
-				},
-				{
 					ProductGroup = CFB481672FFAC6740023EF83 /* Products */;
 					ProjectRef = CFB481632FFAC6740023EF83 /* Hörregal.xcodeproj */;
 				},
@@ -368,16 +382,8 @@
 					ProjectRef = CFE410FE2FFC40120005887D /* Hörregal.xcodeproj */;
 				},
 				{
-					ProductGroup = CF44CCD5300229F50013B1B5 /* Products */;
-					ProjectRef = CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */;
-				},
-				{
 					ProductGroup = CF68E5FF300258A000C97B74 /* Products */;
 					ProjectRef = CF68E5FB300258A000C97B74 /* Hörregal.xcodeproj */;
-				},
-				{
-					ProductGroup = CF6C56C130012C5300814E06 /* Products */;
-					ProjectRef = CF6C56BD30012C5300814E06 /* Hörregal.xcodeproj */;
 				},
 				{
 					ProductGroup = CFBF6A022FFACB2A007815F7 /* Products */;
@@ -404,12 +410,36 @@
 					ProjectRef = CFBF6EF92FFAF291007815F7 /* Hörregal.xcodeproj */;
 				},
 				{
+					ProductGroup = CF68E93A3002981B00C97B74 /* Products */;
+					ProjectRef = CF68E9393002981B00C97B74 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CFCCDF7D2FFABFC6004A0EB5 /* Products */;
+					ProjectRef = CFCCDF792FFABFC6004A0EB5 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CF44CCD5300229F50013B1B5 /* Products */;
+					ProjectRef = CF44CCD1300229F50013B1B5 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CF6C56C130012C5300814E06 /* Products */;
+					ProjectRef = CF6C56BD30012C5300814E06 /* Hörregal.xcodeproj */;
+				},
+				{
 					ProductGroup = CFC8E6172FFED66100226154 /* Products */;
 					ProjectRef = CFC8E6132FFED66100226154 /* Hörregal.xcodeproj */;
 				},
 				{
+					ProductGroup = CF68E82F3002700000C97B74 /* Products */;
+					ProjectRef = CF68E82B3002700000C97B74 /* Hörregal.xcodeproj */;
+				},
+				{
 					ProductGroup = CF68E77C30025C5300C97B74 /* Products */;
 					ProjectRef = CF68E77830025C5300C97B74 /* Hörregal.xcodeproj */;
+				},
+				{
+					ProductGroup = CF68E8E63002981600C97B74 /* Products */;
+					ProjectRef = CF68E8E33002981600C97B74 /* Maer.xcodeproj */;
 				},
 			);
 			projectRoot = "";
@@ -608,19 +638,19 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				INFOPLIST_FILE = "ABSPlayer-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Hörregal";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -647,19 +677,19 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = "ABSPlayer-CarPlay.entitlements";
 				INFOPLIST_FILE = "ABSPlayer-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = "Hörregal";
+				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.books";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -690,7 +720,7 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = HoerregalWidgets;
+				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -720,7 +750,7 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HoerregalWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = HoerregalWidgets;
+				INFOPLIST_KEY_CFBundleDisplayName = "Mär";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -785,7 +815,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		CF1170EE2FF99D9D00DA1AC5 /* Build configuration list for PBXProject "Hörregal" */ = {
+		CF1170EE2FF99D9D00DA1AC5 /* Build configuration list for PBXProject "Maer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				CF1170FC2FF99D9E00DA1AC5 /* Debug */,

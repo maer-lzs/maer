@@ -1,13 +1,13 @@
-# Hörregal
+# Mär
 
 Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/).
 Fokus auf genau eine Sache: **verlässlicher Fortschritts-Sync** über mehrere
 Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird —
 auch komplett offline.
 
-> Der Name spielt auf das „Regal" in Audiobookshelf an — Hörregal ist dein
-> Hörbuch-Regal fürs iPhone und iPad. (Das Xcode-Projekt heißt intern
-> weiterhin `ABSPlayer`; „Hörregal" ist nur der Anzeigename.)
+> „Mär" ist ein altes Wort für Erzählung oder Geschichte — passend für einen
+> Hörbuch-Player. (Das Xcode-Projekt heißt intern weiterhin `ABSPlayer`;
+> „Mär" ist nur der Anzeigename.)
 
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel
 regelmäßig den Hörfortschritt verlor. Die App ist bewusst minimal gehalten:
@@ -103,8 +103,8 @@ und den Stand sauber synchronisieren, online wie offline.
   (System/Hell/Dunkel), WLAN-Warnung abschaltbar, Speicherverwaltung,
   Sync-Status mit „Jetzt synchronisieren", Bibliotheks-Auswahl bei mehreren
   Libraries, App-Version
-- **Siri & Kurzbefehle**: „Weiterhören in Hörregal" und „Spiele *Buch* in
-  Hörregal" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
+- **Siri & Kurzbefehle**: „Weiterhören in Mär" und „Spiele *Buch* in
+  Mär" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
   Home-Screen-Schnellaktion für das zuletzt gehörte Buch
 - **Live Activity / Dynamic Island** vorbereitet: Wiedergabestatus mit
   Kapitel und selbstlaufendem Fortschritt auf dem Sperrbildschirm; das
@@ -257,9 +257,9 @@ Der Name unter dem App-Icon lässt sich unabhängig vom internen Projektnamen
 setzen:
 
 1. Projekt-Datei → Target `ABSPlayer` → Tab **General**
-2. Feld **Display Name** auf `Hörregal` setzen.
+2. Feld **Display Name** auf `Mär` setzen.
 
-Damit erscheint die App auf dem Homescreen als „Hörregal", während das Projekt
+Damit erscheint die App auf dem Homescreen als „Mär", während das Projekt
 in Xcode weiterhin `ABSPlayer` heißt (das intern umzubenennen ist fummelig und
 lohnt nicht).
 
@@ -372,4 +372,4 @@ Verwendete API-Endpunkte:
 | Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
 
 ## Über dieses Projekt
-Hörregal ist mit Unterstützung von KI entwickelt.
+Mär ist mit Unterstützung von KI entwickelt.

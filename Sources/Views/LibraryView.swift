@@ -8,8 +8,7 @@ struct LibraryView: View {
     @ObservedObject private var playerCoordinator: PlayerCoordinator
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var downloadManager = DownloadManager.shared
-    @State private var searchText = ""
-    @State private var isSearchExpanded = false
+    @State private var isShowingSearch = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
@@ -24,16 +23,6 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
-    @State private var showAuthorBrowse = false
-    @State private var showGenreBrowse = false
-
-    /// Auf dem iPhone ist nicht genug Platz für Mini-Leiste UND aufgeklappte
-    /// Suche gleichzeitig — dort schließt die Suche die Mini-Leiste temporär
-    /// (die Wiedergabe läuft im Hintergrund normal weiter). Auf dem iPad ist
-    /// genug Platz, beide bleiben nebeneinander sichtbar.
-    private var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
-    }
 
     let apiClient: APIClient
     let onLogout: () -> Void
@@ -112,21 +101,12 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationDestination(isPresented: $showAuthorBrowse) {
-                BrowseListView(
-                    title: "Authors",
-                    groups: viewModel.authorGroups,
-                    playerCoordinator: playerCoordinator,
-                    libraryViewModel: viewModel
-                )
-            }
-            .navigationDestination(isPresented: $showGenreBrowse) {
-                BrowseListView(
-                    title: "Genres",
-                    groups: viewModel.genreGroups,
-                    playerCoordinator: playerCoordinator,
-                    libraryViewModel: viewModel
-                )
+            // Programmatic push aus dem Such-Overlay (Buch-Tap): die Overlay
+            // fährt runter und legt die Item-ID auf den Pfad.
+            .navigationDestination(for: String.self) { itemId in
+                if let entry = viewModel.entries.first(where: { $0.id == itemId }) {
+                    BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -150,11 +130,7 @@ struct LibraryView: View {
                         ResumeMessageBanner(viewModel: vm)
                     }
                     HStack(spacing: 10) {
-                        // Auf dem iPhone verschwindet die Mini-Leiste, sobald die
-                        // Suche aufklappt — nicht genug Platz für beides. Auf dem
-                        // iPad bleibt sie bestehen (siehe isPhone).
-                        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem,
-                           !(isPhone && isSearchExpanded) {
+                        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
                             MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                                     isShowingFullPlayer = true
@@ -167,7 +143,11 @@ struct LibraryView: View {
                         } else {
                             Spacer(minLength: 0)
                         }
-                        FloatingSearchButton(searchText: $searchText, isExpanded: $isSearchExpanded)
+                        FloatingSearchButton {
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+                                isShowingSearch = true
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal, 10)
@@ -294,6 +274,26 @@ struct LibraryView: View {
         .onDisappear {
             playerCoordinator.viewModel?.stop()
         }
+        // Such-Overlay als Glas-Sheet über der Bibliothek — UNTER dem vollen
+        // Player (dieses .overlay steht früher in der Kette).
+        .overlay {
+            if isShowingSearch {
+                GeometryReader { proxy in
+                    SearchOverlay(
+                        libraryViewModel: viewModel,
+                        apiClient: apiClient,
+                        topInset: proxy.safeAreaInsets.top,
+                        presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
+                        onSelect: { entry in
+                            isShowingSearch = false
+                            navigationPath.append(entry.id)
+                        },
+                        onDismiss: { isShowingSearch = false }
+                    )
+                }
+                .transition(.identity)
+            }
+        }
         // Voller Player als Overlay ÜBER der Bibliothek (statt Push).
         .overlay {
             if isShowingFullPlayer {
@@ -368,10 +368,7 @@ struct LibraryView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
-                if isSearching {
-                    searchResultsSection
-                } else {
-                    if !viewModel.continueListening.isEmpty {
+                if !viewModel.continueListening.isEmpty {
                         horizontalSection(title: String(localized: "Continue Listening"), entries: viewModel.continueListening)
                     }
                     if !viewModel.downloadedEntries.isEmpty {
@@ -393,8 +390,7 @@ struct LibraryView: View {
                     if !viewModel.recentlyAdded.isEmpty {
                         horizontalSection(title: String(localized: "Recently Added"), entries: viewModel.recentlyAdded)
                     }
-                    allBooksSection
-                }
+                allBooksSection
             }
             // Explizit auf volle Breite zwingen — ohne das bestimmt sich die
             // Breite des Stacks nach seinem Inhalt statt nach der tatsächlich
@@ -413,40 +409,6 @@ struct LibraryView: View {
             )
         }
         .refreshable { await viewModel.loadLibrary() }
-    }
-
-    private var isSearching: Bool {
-        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private var filteredEntries: [LibraryEntry] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return viewModel.entries }
-        // Diakritika-/case-insensitiv über Titel, Autor, Erzähler und Serie.
-        return viewModel.entries.filter { entry in
-            let meta = entry.item.media?.metadata
-            let fields = [
-                entry.item.title,
-                meta?.authorName,
-                meta?.narratorName,
-                meta?.seriesName
-            ]
-            return fields.contains { field in
-                field?.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-            }
-        }
-    }
-
-    private var searchResultsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if filteredEntries.isEmpty {
-                Text("No results.")
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-            } else {
-                bookGrid(filteredEntries)
-            }
-        }
     }
 
     // MARK: Horizontale Sektion
@@ -642,23 +604,16 @@ struct LibraryView: View {
                     Text(option.label).tag(option)
                 }
             }
-            Divider()
-            Button {
-                showAuthorBrowse = true
-            } label: {
-                Label("Browse by Author", systemImage: "person")
-            }
-            Button {
-                showGenreBrowse = true
-            } label: {
-                Label("Browse by Genre", systemImage: "tag")
-            }
         } label: {
             toolbarGlassIcon("line.3.horizontal.decrease")
         }
         // Opt out of the toolbar's automatic glass button style — our
         // AdaptiveGlassBackground is the ONLY glass on this button.
         .buttonStyle(.plain)
+        // The menu style tints its label ABOVE the label's own styling —
+        // without this the icon renders in the app accent (orange) instead
+        // of behaving like the other toolbar buttons.
+        .tint(.primary)
     }
 
     private var settingsLink: some View {

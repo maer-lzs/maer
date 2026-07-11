@@ -135,12 +135,17 @@ struct FullPlayerOverlay: View {
 
     /// Full-width strip across the top (cover area) — pull-down can start
     /// anywhere up there, not just on the thin grab handle or the side rails.
+    /// ORDER MATTERS: contentShape + gesture must attach to the SMALL strip
+    /// BEFORE expanding the frame — applied after `.frame(maxHeight:
+    /// .infinity)` the hit shape covers the whole screen and the
+    /// minimumDistance-0 drag swallows every tap (player appears dead).
     private var topDismissZone: some View {
         Color.clear
-            .frame(height: topInset + 130)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .contentShape(Rectangle())
+            .frame(height: topInset + 130)
+            .frame(maxWidth: .infinity)
             .highPriorityGesture(dismissGesture)
+            .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func dismissZone(width: CGFloat) -> some View {

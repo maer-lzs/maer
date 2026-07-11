@@ -222,7 +222,7 @@ struct SettingsView: View {
                 Text(Self.versionString)
             }
         } footer: {
-            Text("Hörregal is an unofficial client for Audiobookshelf.")
+            Text("Mär is an unofficial client for Audiobookshelf.")
         }
     }
 

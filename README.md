@@ -1,11 +1,11 @@
-# Hörregal
+# Mär
 
 A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/).
 The app focuses on one thing: **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0 — including while fully offline.
 
-> The name refers to the “shelf” in Audiobookshelf — Hörregal is your audiobook shelf for iPhone and iPad. The Xcode project is still called `ABSPlayer` internally; “Hörregal” is only the display name.
+> „Mär“ is an old German word for a tale or story — fitting for an audiobook player. The Xcode project is still called `ABSPlayer` internally; “Mär” is only the display name.
 
-Hörregal started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync, online or off.
+Mär started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync, online or off.
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
@@ -40,7 +40,7 @@ Hörregal started as a private replacement for a client that regularly lost play
 - **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing — bookmarks created or deleted without a connection are sent automatically once it returns
 - Browse the library **by author or by genre** (via the sort/filter menu), reusing the same adaptive cover grid
 - Settings screen: skip interval, default playback speed for new books, **Smart Rewind** (resume a little earlier after longer pauses), **auto-play the next unfinished book of a series**, appearance override (system/light/dark), Wi-Fi download warning toggle, storage management, sync status with a “Sync Now” button, a library picker for servers with several libraries, and the app version
-- **Siri & Shortcuts**: “Continue listening in Hörregal” and “Play *book* in Hörregal” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
+- **Siri & Shortcuts**: “Continue listening in Mär” and “Play *book* in Mär” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
 - **Live Activity / Dynamic Island** prepared: playback state with chapter and self-advancing progress on the lock screen; requires adding the widget extension target once, see `LiveActivityWidget/ANLEITUNG.md`
 - Adaptive light and dark design: the Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
 - Performance: grid cells decode a small derived thumbnail instead of the full cover — smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
@@ -133,9 +133,9 @@ Without this step, playback will pause when the screen locks or the app goes int
 The name shown below the app icon can be set independently from the internal project name:
 
 1. Project file → Target `ABSPlayer` → **General** tab
-2. Set **Display Name** to `Hörregal`.
+2. Set **Display Name** to `Mär`.
 
-This makes the app appear as “Hörregal” on the home screen while the Xcode project remains named `ABSPlayer`. Renaming the internal project is fiddly and not worth it.
+This makes the app appear as “Mär” on the home screen while the Xcode project remains named `ABSPlayer`. Renaming the internal project is fiddly and not worth it.
 
 ## 6. Build to your iPhone
 
@@ -233,4 +233,4 @@ API endpoints used:
 
 ## About this project
 
-Hörregal was created with support from AI.
+Mär was created with support from AI.

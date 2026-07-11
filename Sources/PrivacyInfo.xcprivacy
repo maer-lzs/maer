@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Hörregal sammelt keine Nutzerdaten. Server-URL und API-Token werden
+	<!-- Mär sammelt keine Nutzerdaten. Server-URL und API-Token werden
 	     ausschließlich lokal im Keychain gespeichert und nie an Dritte
 	     (auch nicht an den App-Entwickler) übertragen — nur an den vom
 	     Nutzer selbst konfigurierten, eigenen Audiobookshelf-Server. -->
