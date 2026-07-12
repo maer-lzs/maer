@@ -76,6 +76,10 @@ enum PodcastSubscriptionSync {
                 report.pushed += 1
             }
         }
+
+        // Lokale Hör-History auf die passenden Server-Folgen heben (nur wo lokal
+        // jünger; greift für Folgen, die am Server existieren).
+        await abs.pushLocalHistoryToServer()
         return report
     }
 

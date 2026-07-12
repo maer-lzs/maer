@@ -1268,16 +1268,29 @@ func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
 @MainActor
 func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     let duration = item.media?.duration ?? 0
-    let localArr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
-    let localTs = (localArr?.count == 2) ? localArr![1] : -1
+    // Gleichwertige IDs beider Quellen (self + Brücke über die Feed-guid), damit
+    // die importierte rss:-History auch auf der ABS-Kopie sichtbar ist.
+    let ids = ABSPodcastProvider.shared.equivalentIds(item.id)
 
-    if item.id.hasPrefix("abspod:") {
-        let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? -1
-        if absTs > localTs {
-            return ABSPodcastProvider.shared.state(forEpisodeId: item.id, duration: duration)
+    // Jüngster lokaler Stand über alle Brücken-IDs.
+    var bestGuid: String?
+    var bestTs = -1.0
+    for id in ids {
+        if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double],
+           arr.count == 2, arr[1] > bestTs {
+            bestTs = arr[1]; bestGuid = id
         }
     }
-    return PodcastProgressStore.shared.state(guid: item.id, duration: duration)
+
+    // Server-Stand der abspod:-Kopie einbeziehen (jüngerer Zeitstempel gewinnt).
+    if let absId = ids.first(where: { $0.hasPrefix("abspod:") }) {
+        let absTs = ABSPodcastProvider.shared.episodeProgress[absId]?.lastUpdate ?? -1
+        if absTs > bestTs {
+            return ABSPodcastProvider.shared.state(forEpisodeId: absId, duration: duration)
+        }
+    }
+    guard let bestGuid else { return .unplayed }
+    return PodcastProgressStore.shared.state(guid: bestGuid, duration: duration)
 }
 
 /// „Als gehört/ungehört": immer lokal setzen (→ iCloud propagiert es) und bei
@@ -1285,8 +1298,13 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
     PodcastProgressStore.shared.setPlayed(item, played)
-    if item.id.hasPrefix("abspod:") {
-        Task { await ABSPodcastProvider.shared.setPlayed(item, played) }
+    // Auch am Server spiegeln: die abspod:-Kopie ist self (abspod-Item) oder die
+    // über die Feed-guid gebrückte Server-Folge (rss-Item).
+    let absId = item.id.hasPrefix("abspod:")
+        ? item.id
+        : ABSPodcastProvider.shared.bridgedABSId(forRSS: item.id)
+    if let absId, let absItem = AppSession.shared.libraryItem(forId: absId) {
+        Task { await ABSPodcastProvider.shared.setPlayed(absItem, played) }
     }
     PodcastCloudSync.shared.reconcile()
 }

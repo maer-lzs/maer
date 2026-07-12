@@ -195,6 +195,15 @@ struct ABSPodcastEpisode: Codable, Identifiable {
     let audioTrack: ABSAudioTrack?
     /// Kapitel der Folge, sofern der Server sie mitliefert (sonst nil).
     var chapters: [ABSChapter]? = nil
+    /// Original-Feed-`guid`/Enclosure — Brückenschlüssel zu den `rss:`-IDs, damit
+    /// dieselbe Folge über beide Quellen (RSS + ABS) eine gemeinsame History hat.
+    var guid: String? = nil
+    var enclosure: ABSEnclosure? = nil
+}
+
+/// Enclosure einer Feed-Folge (nur die URL interessiert uns als Fallback-Key).
+struct ABSEnclosure: Codable {
+    let url: String?
 }
 
 /// Manche Audiobookshelf-Felder (z. B. publishedYear) liefern je nach

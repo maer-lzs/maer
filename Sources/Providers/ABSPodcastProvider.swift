@@ -39,6 +39,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Server-Fortschritt je Episode (Key = `abspod:<item>:<episode>`) — Basis
     /// für die Gehört-Anzeige der ABS-Folgen (lokal gibt es dafür nichts).
     @Published private(set) var episodeProgress: [String: BookProgress] = [:]
+
+    /// Brücke über die Original-Feed-`guid`: `abspod:`-Episoden-ID ↔ `rss:`-ID
+    /// derselben Folge. So teilen sich RSS- und ABS-Kopie einer Folge eine
+    /// gemeinsame Hör-History (Anzeige-Brücke + Server-Push).
+    private var absToRSS: [String: String] = [:]
+    private var rssToABS: [String: String] = [:]
     /// Zählt Änderungen (Shows/Fortschritt) — als `.task`-id in der UI, damit
     /// „Als Nächstes"/„Geladen" nach ABS-Laden bzw. „gehört" neu rechnen.
     @Published private(set) var changeToken = 0
@@ -154,6 +160,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         // suspendiert am Netz-await), Reihenfolge egal → am Ende sortieren.
         let client = self.client
         var loaded: [PodcastShow] = []
+        var newAbsToRSS: [String: String] = [:]
+        var newRSSToABS: [String: String] = [:]
         var i = 0
         while i < itemIds.count {
             let batch = itemIds[i..<min(i + 5, itemIds.count)]
@@ -166,15 +174,68 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 for await detail in group { if let detail { out.append(detail) } }
                 return out
             }
-            loaded.append(contentsOf: details.map { podcastShow(from: $0) })
+            for detail in details {
+                loaded.append(podcastShow(from: detail))
+                // Brücke Feed-guid → beide IDs aufbauen (für gemeinsame History).
+                let feedURL = detail.media.metadata?.feedUrl ?? ""
+                guard !feedURL.isEmpty else { continue }
+                let feedKey = PodcastSubscriptions.feedKey(feedURL)
+                for ep in detail.media.episodes ?? [] {
+                    guard let orig = ep.guid ?? ep.enclosure?.url, !orig.isEmpty else { continue }
+                    let rssId = "rss:\(feedKey):\(orig)"
+                    let absId = "abspod:\(detail.id):\(ep.id)"
+                    newAbsToRSS[absId] = rssId
+                    newRSSToABS[rssId] = absId
+                }
+            }
         }
 
         // Nur übernehmen, wenn wirklich etwas geladen wurde — sonst (alle Detail-
         // Fetches scheiterten) den bisherigen Stand behalten.
         if !loaded.isEmpty || shows.isEmpty {
             shows = loaded
+            absToRSS = newAbsToRSS
+            rssToABS = newRSSToABS
             changeToken += 1
         }
+    }
+
+    /// Gleichwertige IDs derselben Folge über beide Quellen (self + Brücke).
+    func equivalentIds(_ id: String) -> [String] {
+        if id.hasPrefix("abspod:"), let rss = absToRSS[id] { return [id, rss] }
+        if id.hasPrefix("rss:"), let abs = rssToABS[id] { return [id, abs] }
+        return [id]
+    }
+
+    /// Zur `rss:`-Folge die passende `abspod:`-Server-Folge (falls am Server).
+    func bridgedABSId(forRSS id: String) -> String? { rssToABS[id] }
+
+    /// Lokale (RSS-)Hör-History auf die passenden Server-Folgen pushen — nur wo
+    /// der lokale Stand jünger ist als der Server. Idempotent. Nach dem Push den
+    /// Server-Fortschritt neu ziehen. Greift nur für Folgen, die am Server
+    /// existieren (heruntergeladen); ältere bleiben über lokal+iCloud erhalten.
+    func pushLocalHistoryToServer() async {
+        var didPush = false
+        for (absId, rssId) in absToRSS {
+            guard let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(rssId)) as? [Double],
+                  arr.count == 2 else { continue }
+            let localTime = arr[0], localTs = arr[1]
+            let serverTs = episodeProgress[absId]?.lastUpdate ?? -1
+            guard localTs > serverTs else { continue }
+
+            let (showId, episodeId) = Self.split(absId)
+            guard let episodeId,
+                  let ep = shows.first(where: { $0.id == "abspod:\(showId)" })?
+                      .episodes.first(where: { $0.guid == absId }) else { continue }
+            let duration = ep.duration
+            let isFinished = duration > 0 && localTime >= duration - 1
+            try? await client.updateEpisodeProgress(
+                libraryItemId: showId, episodeId: episodeId,
+                currentTime: localTime, duration: duration, isFinished: isFinished
+            )
+            didPush = true
+        }
+        if didPush { await refreshProgress() }
     }
 
     /// Nur den Server-Fortschritt neu ziehen (nach Wiedergabe/„als gehört").
