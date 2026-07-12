@@ -33,7 +33,25 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
 final class PodcastSubscriptions: ObservableObject {
     static let shared = PodcastSubscriptions()
 
-    @Published private(set) var shows: [PodcastShow] = []
+    @Published private(set) var shows: [PodcastShow] = [] {
+        didSet { rebuildCaches() }
+    }
+
+    /// guid → (Show-Index, Episoden-Index) für O(1)-Lookup statt linearer Suche
+    /// über alle Folgen (die pro Cover-Zelle lief und nach dem Import bremste).
+    private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
+    /// Gecachte, sortierte Gesamtliste (invalidiert bei `shows`-Änderung).
+    private var cachedAllEpisodes: [(show: PodcastShow, episode: PodcastEpisode)]?
+
+    private func rebuildCaches() {
+        cachedAllEpisodes = nil
+        var index: [String: (Int, Int)] = [:]
+        index.reserveCapacity(shows.reduce(0) { $0 + $1.episodes.count })
+        for (s, show) in shows.enumerated() {
+            for (e, ep) in show.episodes.enumerated() { index[ep.guid] = (s, e) }
+        }
+        episodeIndex = index
+    }
 
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("podcast_subscriptions.json")
@@ -256,17 +274,21 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Abfragen für den Provider
 
-    /// Alle Episoden aller Shows, neueste zuerst.
+    /// Alle Episoden aller Shows, neueste zuerst (gecacht — pro Render sonst
+    /// mehrfach neu sortiert).
     func allEpisodes() -> [(show: PodcastShow, episode: PodcastEpisode)] {
-        shows.flatMap { show in show.episodes.map { (show, $0) } }
+        if let cached = cachedAllEpisodes { return cached }
+        let all = shows.flatMap { show in show.episodes.map { (show: show, episode: $0) } }
             .sorted { $0.episode.pubDate > $1.episode.pubDate }
+        cachedAllEpisodes = all
+        return all
     }
 
+    /// O(1)-Lookup über den guid-Index.
     func episode(guid: String) -> (show: PodcastShow, episode: PodcastEpisode)? {
-        for show in shows {
-            if let ep = show.episodes.first(where: { $0.guid == guid }) { return (show, ep) }
-        }
-        return nil
+        guard let (s, e) = episodeIndex[guid],
+              s < shows.count, e < shows[s].episodes.count else { return nil }
+        return (shows[s], shows[s].episodes[e])
     }
 
     // MARK: - Persistenz

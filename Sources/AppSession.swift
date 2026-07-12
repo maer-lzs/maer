@@ -49,7 +49,7 @@ final class AppSession {
     /// des Aufrufers und werden hier nicht extra gesucht.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         if itemId.hasPrefix("rss:") {
-            return rssProvider.latestEpisodeItems().first { $0.id == itemId }
+            return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) über den guid-Index
         }
         return nil
     }

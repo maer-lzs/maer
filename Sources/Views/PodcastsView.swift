@@ -54,21 +54,19 @@ struct PodcastsView: View {
 
     @ViewBuilder
     private var showsShelf: some View {
-        let shows = rss.showsWithEpisodes()
+        // Direkt über die abonnierten Shows (Kachel = nur Cover + Titel); die
+        // Folgenliste baut erst die Show-Seite (lazy).
+        let shows = subs.shows
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Shows").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 12) {
-                        ForEach(shows, id: \.show.id) { entry in
+                        ForEach(shows) { show in
                             NavigationLink {
-                                PodcastShowView(
-                                    show: entry.show,
-                                    items: entry.items,
-                                    playerCoordinator: playerCoordinator
-                                )
+                                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
                             } label: {
-                                ShowTile(show: entry.show)
+                                ShowTile(show: show)
                             }
                             .buttonStyle(.plain)
                         }
@@ -290,11 +288,7 @@ struct PodcastEpisodeDetailView: View {
     private var showLink: some View {
         if let show {
             NavigationLink {
-                PodcastShowView(
-                    show: show,
-                    items: AppSession.shared.rssProvider.showItems(for: show),
-                    playerCoordinator: playerCoordinator
-                )
+                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
             } label: {
                 HStack(spacing: 8) {
                     podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: 24, corner: 5)
@@ -368,7 +362,6 @@ private struct ShowTile: View {
 /// Folgenliste einer Show mit Kopf (Artwork, Titel, Autor, Beschreibung).
 struct PodcastShowView: View {
     let show: PodcastShow
-    let items: [LibraryItem]
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @Environment(\.dismiss) private var dismiss
@@ -377,16 +370,16 @@ struct PodcastShowView: View {
     /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
     @AppStorage private var newestFirst: Bool
 
-    init(show: PodcastShow, items: [LibraryItem], playerCoordinator: PlayerCoordinator) {
+    init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
         self.show = show
-        self.items = items
         _playerCoordinator = ObservedObject(wrappedValue: playerCoordinator)
         _newestFirst = AppStorage(wrappedValue: true, "podcastSort.\(show.id)")
     }
 
-    /// Folgen nach `addedAt` (pubDate) je nach Umschalter sortiert.
+    /// Folgen dieser Show als LibraryItems, nach Umschalter sortiert — lazy im
+    /// Body (nur wenn die Seite wirklich angezeigt wird).
     private var sortedItems: [LibraryItem] {
-        items.sorted { a, b in
+        AppSession.shared.rssProvider.showItems(for: show).sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }
@@ -605,8 +598,14 @@ final class PodcastProgressStore: ObservableObject {
     nonisolated let objectWillChange = ObservableObjectPublisher()
 
     func state(for item: LibraryItem) -> EpisodePlayState {
-        guard let duration = item.media?.duration, duration > 0,
-              let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+        state(guid: item.id, duration: item.media?.duration ?? 0)
+    }
+
+    /// Zustand direkt aus guid + Dauer — ohne ein `LibraryItem` zu bauen
+    /// (die Podcast-Sektionen rechnen so über tausende Folgen ohne Overhead).
+    func state(guid: String, duration: Double) -> EpisodePlayState {
+        guard duration > 0,
+              let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
               stored.count == 2 else { return .unplayed }
         let time = stored[0]
         if time >= duration - 1 { return .played }

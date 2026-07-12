@@ -74,63 +74,57 @@ final class RSSProvider: AudioProvider {
 
     // MARK: - Für die Podcast-Ansicht (synchron)
 
-    /// Neueste Folgen aller Abos als LibraryItems (Wiedergabe + Cover).
-    func latestEpisodeItems() -> [LibraryItem] {
-        subs.allEpisodes().map { libraryItem(show: $0.show, episode: $0.episode) }
-    }
-
-    /// Abonnierte Shows mit ihren Folgen (neueste zuerst) als LibraryItems.
-    func showsWithEpisodes() -> [(show: PodcastShow, items: [LibraryItem])] {
-        subs.shows.map { show in
-            let items = show.episodes
-                .sorted { $0.pubDate > $1.pubDate }
-                .map { libraryItem(show: show, episode: $0) }
-            return (show, items)
-        }
-    }
-
     /// „Als Nächstes": pro Show genau die eine Folge, mit der es weitergeht —
     /// eine laufende Folge (fortsetzen), sonst die früheste ungehörte NACH der
     /// zuletzt gehörten, sonst (nichts gehört) die älteste ungehörte. Shows, in
     /// denen alles gehört ist, entfallen. Sortiert: jüngste Folge zuerst.
     func nextUpItems() -> [LibraryItem] {
         let store = PodcastProgressStore.shared
-        var picks: [(item: LibraryItem, date: Double)] = []
+        var picks: [(show: PodcastShow, episode: PodcastEpisode)] = []
 
         for show in subs.shows {
             // Chronologisch aufsteigend (alt → neu) für die „weiter"-Logik.
+            // Auf Rohdaten rechnen — LibraryItem nur für die eine Auswahl bauen.
             let episodes = show.episodes.sorted { $0.pubDate < $1.pubDate }
-            let items = episodes.map { (ep: $0, item: libraryItem(show: show, episode: $0)) }
-
-            func state(_ i: (ep: PodcastEpisode, item: LibraryItem)) -> EpisodePlayState {
-                store.state(for: i.item)
+            func state(_ ep: PodcastEpisode) -> EpisodePlayState {
+                store.state(guid: ep.guid, duration: ep.duration)
             }
 
             // 1) Läuft gerade eine Folge? → fortsetzen (die zuletzt begonnene).
-            if let running = items.last(where: {
+            if let running = episodes.last(where: {
                 if case .inProgress = state($0) { return true } else { return false }
             }) {
-                picks.append((running.item, running.ep.pubDate))
+                picks.append((show, running))
                 continue
             }
 
             // 2) Nächste ungehörte nach der zuletzt gehörten, sonst älteste.
-            let lastPlayed = items.lastIndex { state($0) == .played }
-            let searchRange = lastPlayed.map { items.index(after: $0)..<items.endIndex } ?? items.indices
-            if let next = items[searchRange].first(where: { state($0) == .unplayed }) {
-                picks.append((next.item, next.ep.pubDate))
+            let lastPlayed = episodes.lastIndex { state($0) == .played }
+            let searchRange = lastPlayed.map { episodes.index(after: $0)..<episodes.endIndex } ?? episodes.indices
+            if let next = episodes[searchRange].first(where: { state($0) == .unplayed }) {
+                picks.append((show, next))
             }
         }
 
-        return picks.sorted { $0.date > $1.date }.map { $0.item }
+        return picks
+            .sorted { $0.episode.pubDate > $1.episode.pubDate }
+            .map { libraryItem(show: $0.show, episode: $0.episode) }
     }
 
-    /// Heruntergeladene Folgen (neueste zuerst).
+    /// Heruntergeladene Folgen (neueste zuerst) — nur Treffer werden gebaut.
     func downloadedEpisodeItems() -> [LibraryItem] {
         let ids = DownloadManager.shared.downloadedItemIds
+        guard !ids.isEmpty else { return [] }
         return subs.allEpisodes()
+            .filter { ids.contains($0.episode.guid) }
             .map { libraryItem(show: $0.show, episode: $0.episode) }
-            .filter { ids.contains($0.id) }
+    }
+
+    /// Einzelne Episode als LibraryItem über den guid-Index (O(1)) — für
+    /// „Weiterhören"/Wiederherstellen, statt alle Folgen zu bauen.
+    func libraryItem(forEpisodeId id: String) -> LibraryItem? {
+        guard let found = subs.episode(guid: id) else { return nil }
+        return libraryItem(show: found.show, episode: found.episode)
     }
 
     /// Show zu einer Episode (für Show-Badge und Show-Verlinkung).
@@ -146,17 +140,20 @@ final class RSSProvider: AudioProvider {
             .map { libraryItem(show: show, episode: $0) }
     }
 
-    /// Abgeschlossene Folgen, zuletzt gehörte zuerst, gedeckelt.
+    /// Abgeschlossene Folgen, zuletzt gehörte zuerst, gedeckelt — Zustand direkt
+    /// aus `localPosition`, LibraryItem nur für die (max. `limit`) Treffer.
     func playedEpisodeItems(limit: Int = 20) -> [LibraryItem] {
-        var played: [(item: LibraryItem, updatedAt: Double)] = []
+        var played: [(show: PodcastShow, episode: PodcastEpisode, updatedAt: Double)] = []
         for (show, episode) in subs.allEpisodes() {
-            let item = libraryItem(show: show, episode: episode)
-            guard let duration = item.media?.duration, duration > 0,
-                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-                  stored.count == 2, stored[0] >= duration - 1 else { continue }
-            played.append((item, stored[1]))
+            guard episode.duration > 0,
+                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(episode.guid)) as? [Double],
+                  stored.count == 2, stored[0] >= episode.duration - 1 else { continue }
+            played.append((show, episode, stored[1]))
         }
-        return played.sorted { $0.updatedAt > $1.updatedAt }.prefix(limit).map { $0.item }
+        return played
+            .sorted { $0.updatedAt > $1.updatedAt }
+            .prefix(limit)
+            .map { libraryItem(show: $0.show, episode: $0.episode) }
     }
 
     // MARK: - Mapping Episode → LibraryItem
