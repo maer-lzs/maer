@@ -322,7 +322,7 @@ final class APIClient {
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.maer.data(for: request)
         try validate(response, data: data)
         return data
     }
@@ -342,7 +342,7 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.maer.data(for: request)
         try validate(response, data: data)
         return data
     }
@@ -358,7 +358,7 @@ final class APIClient {
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: json)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.maer.data(for: request)
         try validate(response, data: data)
         return data
     }

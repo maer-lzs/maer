@@ -40,7 +40,7 @@ struct ITunesDirectory: PodcastDirectory {
             URLQueryItem(name: "limit", value: "25")
         ]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.shared.data(from: url)
+        let (data, _) = try await URLSession.maer.data(from: url)
         let response = try JSONDecoder().decode(Response.self, from: data)
         return response.results.compactMap { item in
             guard let feed = item.feedUrl else { return nil }
@@ -83,7 +83,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/search/byterm")!
         components.queryItems = [URLQueryItem(name: "q", value: term)]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.shared.data(for: signedRequest(url: url))
+        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
         let response = try JSONDecoder().decode(Response.self, from: data)
         return response.feeds.compactMap { feed in
             guard let feedURL = feed.url else { return nil }
@@ -120,7 +120,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
             URLQueryItem(name: "max", value: String(max))
         ]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.shared.data(for: signedRequest(url: url))
+        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
         let response = try JSONDecoder().decode(EpisodesResponse.self, from: data)
         return response.items.map {
             PodcastIndexEpisode(

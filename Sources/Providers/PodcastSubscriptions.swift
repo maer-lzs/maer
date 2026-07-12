@@ -354,7 +354,7 @@ final class PodcastSubscriptions: ObservableObject {
     // MARK: - Laden + Parsen
 
     private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
-        guard let (data, _) = try? await URLSession.shared.data(from: feedURL) else { return nil }
+        guard let (data, _) = try? await URLSession.maer.data(from: feedURL) else { return nil }
         let parser = RSSFeedParser(feedURL: feedURL.absoluteString)
         return parser.parse(data)
     }
