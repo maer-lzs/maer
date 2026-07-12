@@ -121,23 +121,41 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     // MARK: - Verwaltung (Abo anlegen / entfernen)
 
-    /// Podcast am Server abonnieren (Feed → anlegen → neu laden). `false` bei
-    /// fehlenden Rechten/Bibliothek oder Fehler.
-    func subscribeOnServer(feedURL: String, autoDownload: Bool = true) async -> Bool {
-        guard let library = (try? await client.fetchPodcastLibraries())?.first,
-              let metadata = try? await client.fetchPodcastFeed(rssFeed: feedURL),
-              let folder = (try? await client.fetchLibraryFolders(libraryId: library.id))?.first,
-              let folderPath = folder.fullPath else { return false }
-        let title = Self.sanitizePathComponent(metadata.title ?? "Podcast")
-        let path = (folderPath as NSString).appendingPathComponent(title)
+    /// Podcast am Server abonnieren (Feed → anlegen → neu laden). Gibt `nil`
+    /// bei Erfolg zurück, sonst eine Fehlermeldung mit dem gescheiterten Schritt
+    /// (damit sich blindes Raten am ungetesteten Endpoint erübrigt).
+    func subscribeOnServer(feedURL: String, autoDownload: Bool = true) async -> String? {
         do {
-            try await client.createPodcast(libraryId: library.id, folderId: folder.id,
-                                           path: path, metadata: metadata, autoDownload: autoDownload)
+            guard let library = try await client.fetchPodcastLibraries().first else {
+                return "Keine Podcast-Bibliothek auf dem Server."
+            }
+            let metadata: PodcastFeedMetadata
+            do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
+            catch { return "Feed (podcasts/feed): \(Self.msg(error))" }
+
+            let folders: [ABSFolder]
+            do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
+            catch { return "Ordner (libraries/id): \(Self.msg(error))" }
+            guard let folder = folders.first, let folderPath = folder.fullPath else {
+                return "Kein Ordner in der Podcast-Bibliothek."
+            }
+
+            let title = Self.sanitizePathComponent(metadata.title ?? "Podcast")
+            let path = (folderPath as NSString).appendingPathComponent(title)
+            do {
+                try await client.createPodcast(libraryId: library.id, folderId: folder.id,
+                                               path: path, metadata: metadata, autoDownload: autoDownload)
+            } catch { return "Anlegen (POST podcasts): \(Self.msg(error))" }
+
             await refresh()
-            return true
+            return nil
         } catch {
-            return false
+            return "Bibliotheken: \(Self.msg(error))"
         }
+    }
+
+    private static func msg(_ error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
     /// Show am Server LÖSCHEN (entfernt server-seitig alles inkl. Historie —

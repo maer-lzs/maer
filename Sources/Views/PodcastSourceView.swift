@@ -12,6 +12,7 @@ struct PodcastSourceView: View {
     /// Neue Abos auf dem ABS-Server anlegen (synchronisiert) statt lokal — nur
     /// relevant, wenn der Server eine Podcast-Bibliothek hat.
     @State private var subscribeToServer = true
+    @State private var subscribeError: String?
 
     private enum Source: Hashable { case apple, podcastIndex }
     @State private var source: Source = .apple
@@ -73,6 +74,14 @@ struct PodcastSourceView: View {
             Button("OK", role: .cancel) { importMessage = nil }
         } message: {
             if let importMessage { Text(importMessage) }
+        }
+        .alert("Subscribe failed", isPresented: Binding(
+            get: { subscribeError != nil },
+            set: { if !$0 { subscribeError = nil } }
+        )) {
+            Button("OK", role: .cancel) { subscribeError = nil }
+        } message: {
+            if let subscribeError { Text(subscribeError) }
         }
         // Debounce: nach Tippen kurz warten, dann suchen.
         .task(id: searchText) {
@@ -172,7 +181,11 @@ struct PodcastSourceView: View {
     /// Abo anlegen — am Server (synchronisiert), wenn möglich/gewählt, sonst lokal.
     private func performSubscribe(feedURL: String) async -> Bool {
         if subscribeToServer, absPodcast.hasPodcasts {
-            return await absPodcast.subscribeOnServer(feedURL: feedURL)
+            if let error = await absPodcast.subscribeOnServer(feedURL: feedURL) {
+                subscribeError = error
+                return false
+            }
+            return true
         }
         return await subs.subscribe(urlString: feedURL)
     }
