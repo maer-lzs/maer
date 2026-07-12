@@ -64,7 +64,7 @@ struct MiniPlayerBar: View {
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)
-                            .font(.subheadline).bold()
+                            .font(.subheadline).fontWeight(.heavy)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .foregroundStyle(.primary)
