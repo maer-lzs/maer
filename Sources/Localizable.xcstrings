@@ -2960,6 +2960,136 @@
           }
         }
       }
+    },
+    "Server URL": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server-URL"
+          }
+        }
+      }
+    },
+    "Works with oPodSync, Nextcloud GPodder and gpodder.net. Example: https://sync.example.com": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funktioniert mit oPodSync, Nextcloud GPodder und gpodder.net. Beispiel: https://sync.example.com"
+          }
+        }
+      }
+    },
+    "Sync podcasts via gpodder": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Podcasts über gpodder synchronisieren"
+          }
+        }
+      }
+    },
+    "Device": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerät"
+          }
+        }
+      }
+    },
+    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abos (und Hör-History) synchronisieren mit diesem Server, gleichwertig neben iCloud und Audiobookshelf."
+          }
+        }
+      }
+    },
+    "Test connection": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung testen"
+          }
+        }
+      }
+    },
+    "Connected.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden."
+          }
+        }
+      }
+    },
+    "Sync now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt synchronisieren"
+          }
+        }
+      }
+    },
+    "Working…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arbeitet…"
+          }
+        }
+      }
+    },
+    "Please fill in server, username and password.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitte Server, Benutzername und Passwort ausfüllen."
+          }
+        }
+      }
+    },
+    "%lld added from server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vom Server hinzugefügt"
+          }
+        }
+      }
+    },
+    "%lld pushed to server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld zum Server geschoben"
+          }
+        }
+      }
+    },
+    "Already in sync.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereits synchron."
+          }
+        }
+      }
     }
   },
   "version": "1.1"

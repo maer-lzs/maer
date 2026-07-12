@@ -60,6 +60,49 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexConfigured: Bool {
         !podcastIndexKeyValue.isEmpty && !podcastIndexSecretValue.isEmpty
     }
+    // MARK: - gpodder / oPodSync (offener Podcast-Sync neben iCloud/ABS)
+
+    static let gpodderServerURL = "gpodderServerURL"
+    static let gpodderUsername = "gpodderUsername"
+    static let gpodderEnabled = "gpodderEnabled"
+    /// Fortlaufende „since"-Marken der gpodder-API (Server liefert Int-Zeitstempel).
+    static let gpodderEpisodeSince = "gpodderEpisodeSince"
+    /// Zeitpunkt (s), bis zu dem wir Episoden-Aktionen bereits gepusht haben.
+    static let gpodderLastEpisodePush = "gpodderLastEpisodePush"
+
+    static var gpodderServerURLValue: String {
+        get { UserDefaults.standard.string(forKey: gpodderServerURL) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: gpodderServerURL) }
+    }
+    static var gpodderUsernameValue: String {
+        get { UserDefaults.standard.string(forKey: gpodderUsername) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: gpodderUsername) }
+    }
+    static var gpodderEnabledValue: Bool {
+        get { UserDefaults.standard.bool(forKey: gpodderEnabled) }
+        set { UserDefaults.standard.set(newValue, forKey: gpodderEnabled) }
+    }
+    /// Passwort → Keychain (Credential, nie Klartext-UserDefaults).
+    static var gpodderPasswordValue: String {
+        KeychainStore.load(forKey: KeychainKey.gpodderPassword) ?? ""
+    }
+    static func setGpodderPassword(_ value: String) {
+        if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.gpodderPassword) }
+        else { KeychainStore.save(value, forKey: KeychainKey.gpodderPassword) }
+    }
+
+    /// Stabile Geräte-ID für die gpodder-Sync (einmalig erzeugt, dann fest).
+    static var gpodderDeviceIdValue: String {
+        if let id = UserDefaults.standard.string(forKey: "gpodderDeviceId"), !id.isEmpty { return id }
+        let id = "maer-" + UUID().uuidString.prefix(8).lowercased()
+        UserDefaults.standard.set(id, forKey: "gpodderDeviceId")
+        return id
+    }
+
+    static var gpodderConfigured: Bool {
+        !gpodderServerURLValue.isEmpty && !gpodderUsernameValue.isEmpty && !gpodderPasswordValue.isEmpty
+    }
+
     /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {

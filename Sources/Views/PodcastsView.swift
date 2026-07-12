@@ -75,6 +75,7 @@ struct PodcastsView: View {
         }
         .task {
             await absPodcast.refresh()                       // ABS-Podcasts laden
+            await GPodderSync.shared.autoReconcileIfNeeded()       // gpodder-Abos abgleichen
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // lokale Abos spiegeln
         }
         .task(id: recomputeToken) {

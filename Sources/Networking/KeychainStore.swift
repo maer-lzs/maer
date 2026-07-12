@@ -49,4 +49,5 @@ enum KeychainKey {
     static let serverURL = "serverURL"
     static let apiToken = "apiToken"
     static let podcastIndexSecret = "podcastIndexSecret"
+    static let gpodderPassword = "gpodderPassword"
 }

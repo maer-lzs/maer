@@ -60,6 +60,11 @@ struct PodcastSourceView: View {
             importSection
             if absPodcast.hasPodcasts { serverSyncSection }
             NavigationLink {
+                GPodderSettingsView()
+            } label: {
+                Label("gpodder Sync", systemImage: "arrow.triangle.2.circlepath")
+            }
+            NavigationLink {
                 PodcastIndexKeyView()
             } label: {
                 Label("PodcastIndex Access", systemImage: "key")
