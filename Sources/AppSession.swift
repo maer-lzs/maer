@@ -24,13 +24,17 @@ final class AppSession {
     /// Podcasts (RSS-Feeds) als Quelle vom Typ `.podcasts`.
     var rssProvider: RSSProvider { RSSProvider.shared }
 
+    /// Audiobookshelf-Podcasts (server-synchronisiert) als zweite Podcast-Quelle.
+    var absPodcastProvider: ABSPodcastProvider { ABSPodcastProvider.shared }
+
     /// Alle aktiven Quellen.
-    var allProviders: [any AudioProvider] { [provider, localProvider, rssProvider] }
+    var allProviders: [any AudioProvider] { [provider, localProvider, rssProvider, absPodcastProvider] }
 
     /// Routet ein Item auf seine Quelle anhand des ID-Präfix. Das ist die
     /// EINZIGE Stelle, die ID-Namespaces kennen darf (der Router).
     func provider(for itemId: String) -> any AudioProvider {
         if itemId.hasPrefix("local:") { return localProvider }
+        if itemId.hasPrefix("abspod:") { return absPodcastProvider }
         if itemId.hasPrefix("rss:") { return rssProvider }
         return provider
     }
@@ -50,6 +54,9 @@ final class AppSession {
     func libraryItem(forId itemId: String) -> LibraryItem? {
         if itemId.hasPrefix("rss:") {
             return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) über den guid-Index
+        }
+        if itemId.hasPrefix("abspod:") {
+            return absPodcastProvider.libraryItem(forEpisodeId: itemId)
         }
         return nil
     }
