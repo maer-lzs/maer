@@ -13,7 +13,6 @@ struct PodcastsView: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    private var rss: RSSProvider { AppSession.shared.rssProvider }
 
     /// Shows aller Podcast-Quellen (RSS + ABS), dedupliziert über die
     /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
@@ -35,7 +34,7 @@ struct PodcastsView: View {
 
     /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
     private var recomputeToken: String {
-        "\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)"
+        "\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)"
     }
 
     var body: some View {
@@ -54,9 +53,43 @@ struct PodcastsView: View {
         }
         .task { await absPodcast.refresh() }   // ABS-Podcasts beim Öffnen laden
         .task(id: recomputeToken) {
-            nextUp = rss.nextUpItems()
-            downloaded = rss.downloadedEpisodeItems()
+            nextUp = computeNextUp()
+            downloaded = computeDownloaded()
         }
+    }
+
+    /// „Als Nächstes" quellen-übergreifend: pro Show die laufende bzw. nächste
+    /// ungehörte Folge (chronologisch weiter), sonst die älteste ungehörte.
+    private func computeNextUp() -> [LibraryItem] {
+        var picks: [(item: LibraryItem, date: Double)] = []
+        for show in allShows {
+            let items = show.episodes
+                .sorted { $0.pubDate < $1.pubDate }
+                .map { podcastLibraryItem(show: show, episode: $0) }
+            func st(_ i: LibraryItem) -> EpisodePlayState { podcastPlayState(for: i) }
+
+            if let running = items.last(where: {
+                if case .inProgress = st($0) { return true } else { return false }
+            }) {
+                picks.append((running, running.addedAt ?? 0)); continue
+            }
+            let lastPlayed = items.lastIndex { st($0) == .played }
+            let range = lastPlayed.map { items.index(after: $0)..<items.endIndex } ?? items.indices
+            if let next = items[range].first(where: { st($0) == .unplayed }) {
+                picks.append((next, next.addedAt ?? 0))
+            }
+        }
+        return picks.sorted { $0.date > $1.date }.map { $0.item }
+    }
+
+    /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
+    private func computeDownloaded() -> [LibraryItem] {
+        let ids = downloads.downloadedItemIds
+        guard !ids.isEmpty else { return [] }
+        return allShows
+            .flatMap { show in show.episodes.map { podcastLibraryItem(show: show, episode: $0) } }
+            .filter { ids.contains($0.id) }
+            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
     }
 
     // MARK: - Als Nächstes (große Karten, eine pro Show)
@@ -650,6 +683,26 @@ final class PodcastProgressStore: ObservableObject {
     /// Nach externem Schreiben von `localPosition` (z. B. Apple-Import) alle
     /// beobachtenden Zeilen neu bewerten lassen.
     func reload() { changeToken += 1; objectWillChange.send() }
+}
+
+/// PodcastShow + Episode → LibraryItem (quellen-agnostisch). Der Namespace im
+/// `guid`/`id` (`rss:`/`abspod:`) routet Wiedergabe/Cover/Fortschritt auf die
+/// richtige Quelle.
+func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
+    LibraryItem(
+        id: episode.guid,
+        media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(
+                title: episode.title, authorName: show.title, narratorName: nil,
+                seriesName: show.title, genres: nil, publishedYear: nil,
+                description: episode.description
+            ),
+            duration: episode.duration, chapters: nil,
+            tracks: [ABSAudioTrack(index: 0, startOffset: nil, duration: episode.duration,
+                                   contentUrl: episode.audioURL, metadata: nil)]
+        ),
+        addedAt: episode.pubDate
+    )
 }
 
 // MARK: - Quellen-bewusster Gehört-Zustand

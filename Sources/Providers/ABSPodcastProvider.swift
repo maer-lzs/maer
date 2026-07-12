@@ -23,6 +23,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Server-Fortschritt je Episode (Key = `abspod:<item>:<episode>`) — Basis
     /// für die Gehört-Anzeige der ABS-Folgen (lokal gibt es dafür nichts).
     @Published private(set) var episodeProgress: [String: BookProgress] = [:]
+    /// Zählt Änderungen (Shows/Fortschritt) — als `.task`-id in der UI, damit
+    /// „Als Nächstes"/„Geladen" nach ABS-Laden bzw. „gehört" neu rechnen.
+    @Published private(set) var changeToken = 0
 
     // MARK: - AudioProvider
 
@@ -107,11 +110,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
         shows = loaded
+        changeToken += 1
     }
 
     /// Nur den Server-Fortschritt neu ziehen (nach Wiedergabe/„als gehört").
     func refreshProgress() async {
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
+        changeToken += 1
     }
 
     /// Episode am Server als (un)gehört markieren und Fortschritt nachziehen.

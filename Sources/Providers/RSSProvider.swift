@@ -74,52 +74,6 @@ final class RSSProvider: AudioProvider {
 
     // MARK: - Für die Podcast-Ansicht (synchron)
 
-    /// „Als Nächstes": pro Show genau die eine Folge, mit der es weitergeht —
-    /// eine laufende Folge (fortsetzen), sonst die früheste ungehörte NACH der
-    /// zuletzt gehörten, sonst (nichts gehört) die älteste ungehörte. Shows, in
-    /// denen alles gehört ist, entfallen. Sortiert: jüngste Folge zuerst.
-    func nextUpItems() -> [LibraryItem] {
-        let store = PodcastProgressStore.shared
-        var picks: [(show: PodcastShow, episode: PodcastEpisode)] = []
-
-        for show in subs.shows {
-            // Chronologisch aufsteigend (alt → neu) für die „weiter"-Logik.
-            // Auf Rohdaten rechnen — LibraryItem nur für die eine Auswahl bauen.
-            let episodes = show.episodes.sorted { $0.pubDate < $1.pubDate }
-            func state(_ ep: PodcastEpisode) -> EpisodePlayState {
-                store.state(guid: ep.guid, duration: ep.duration)
-            }
-
-            // 1) Läuft gerade eine Folge? → fortsetzen (die zuletzt begonnene).
-            if let running = episodes.last(where: {
-                if case .inProgress = state($0) { return true } else { return false }
-            }) {
-                picks.append((show, running))
-                continue
-            }
-
-            // 2) Nächste ungehörte nach der zuletzt gehörten, sonst älteste.
-            let lastPlayed = episodes.lastIndex { state($0) == .played }
-            let searchRange = lastPlayed.map { episodes.index(after: $0)..<episodes.endIndex } ?? episodes.indices
-            if let next = episodes[searchRange].first(where: { state($0) == .unplayed }) {
-                picks.append((show, next))
-            }
-        }
-
-        return picks
-            .sorted { $0.episode.pubDate > $1.episode.pubDate }
-            .map { libraryItem(show: $0.show, episode: $0.episode) }
-    }
-
-    /// Heruntergeladene Folgen (neueste zuerst) — nur Treffer werden gebaut.
-    func downloadedEpisodeItems() -> [LibraryItem] {
-        let ids = DownloadManager.shared.downloadedItemIds
-        guard !ids.isEmpty else { return [] }
-        return subs.allEpisodes()
-            .filter { ids.contains($0.episode.guid) }
-            .map { libraryItem(show: $0.show, episode: $0.episode) }
-    }
-
     /// Einzelne Episode als LibraryItem über den guid-Index (O(1)) — für
     /// „Weiterhören"/Wiederherstellen, statt alle Folgen zu bauen.
     func libraryItem(forEpisodeId id: String) -> LibraryItem? {
