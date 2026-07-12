@@ -30,8 +30,10 @@ struct PodcastsView: View {
     // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
     // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
     // sofort, die Sektionen kommen einen Frame später.
-    @State private var nextUp: [LibraryItem] = []
+    @State private var continueItems: [LibraryItem] = []   // in-progress (große Karten)
+    @State private var inboxItems: [LibraryItem] = []       // neueste ungehörte/laufende
     @State private var downloaded: [LibraryItem] = []
+    @State private var inboxFilter: PodcastEpisodeFilter = .new
 
     /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
     private var recomputeToken: String {
@@ -41,8 +43,9 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
+                continueSection
                 queueSection
-                nextUpSection
+                inboxSection
                 showsShelf
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
             }
@@ -55,38 +58,47 @@ struct PodcastsView: View {
         }
         .task { await absPodcast.refresh() }   // ABS-Podcasts beim Öffnen laden
         .task(id: recomputeToken) {
-            nextUp = computeNextUp()
+            continueItems = computeContinue()
+            inboxItems = computeInbox()
             downloaded = computeDownloaded()
             // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
-            for item in nextUp {
+            for item in continueItems {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
             }
         }
     }
 
-    /// „Als Nächstes" quellen-übergreifend: pro Show die laufende bzw. nächste
-    /// ungehörte Folge (chronologisch weiter), sonst die älteste ungehörte.
-    private func computeNextUp() -> [LibraryItem] {
+    /// „Fortsetzen" quellen-übergreifend: alle angespielten (in-progress) Folgen,
+    /// neueste zuerst, gedeckelt — die großen Karten oben.
+    private func computeContinue() -> [LibraryItem] {
         var picks: [(item: LibraryItem, date: Double)] = []
         for show in allShows {
-            let items = show.episodes
-                .sorted { $0.pubDate < $1.pubDate }
-                .map { podcastLibraryItem(show: show, episode: $0) }
-            func st(_ i: LibraryItem) -> EpisodePlayState { podcastPlayState(for: i) }
-
-            if let running = items.last(where: {
-                if case .inProgress = st($0) { return true } else { return false }
-            }) {
-                picks.append((running, running.addedAt ?? 0)); continue
-            }
-            let lastPlayed = items.lastIndex { st($0) == .played }
-            let range = lastPlayed.map { items.index(after: $0)..<items.endIndex } ?? items.indices
-            if let next = items[range].first(where: { st($0) == .unplayed }) {
-                picks.append((next, next.addedAt ?? 0))
+            for ep in show.episodes {
+                let item = podcastLibraryItem(show: show, episode: ep)
+                if case .inProgress = podcastPlayState(for: item) {
+                    picks.append((item, item.addedAt ?? 0))
+                }
             }
         }
-        // Nur die 10 aktuellsten in „Als Nächstes" — nicht jede Show.
         return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
+    }
+
+    /// „Neue Folgen" (Inbox): neueste noch nicht abgeschlossene Folgen über alle
+    /// Abos, dedupliziert, gedeckelt. Der Filter (Neu/Läuft/Geladen) wird
+    /// view-seitig auf diese Basis angewandt.
+    private func computeInbox() -> [LibraryItem] {
+        var picks: [(item: LibraryItem, date: Double)] = []
+        for show in allShows {
+            for ep in show.episodes {
+                let item = podcastLibraryItem(show: show, episode: ep)
+                if podcastPlayState(for: item) == .played { continue }
+                picks.append((item, item.addedAt ?? 0))
+            }
+        }
+        var seen = Set<String>()
+        return picks.sorted { $0.date > $1.date }
+            .filter { seen.insert($0.item.id).inserted }
+            .prefix(25).map { $0.item }
     }
 
     /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
@@ -109,7 +121,7 @@ struct PodcastsView: View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Queue").font(.title3).bold()
+                    Text("Up Next").font(.title3).bold()
                     Spacer()
                     NavigationLink {
                         PodcastQueueView(playerCoordinator: playerCoordinator)
@@ -128,16 +140,16 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Als Nächstes (große Karten, eine pro Show)
+    // MARK: - Fortsetzen (große Karten, angespielte Folgen)
 
     @ViewBuilder
-    private var nextUpSection: some View {
-        if !nextUp.isEmpty {
+    private var continueSection: some View {
+        if !continueItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Up Next").font(.title2).bold().padding(.horizontal)
+                Text("Continue").font(.title2).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(nextUp) { item in
+                        ForEach(continueItems) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
                     }
@@ -149,7 +161,52 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Sendungen (kompakte Cover-Reihe)
+    // MARK: - Neue Folgen (Inbox mit Filter)
+
+    /// Basis-Inbox nach ausgewähltem Filter.
+    private var filteredInbox: [LibraryItem] {
+        switch inboxFilter {
+        case .new:
+            return inboxItems.filter { podcastPlayState(for: $0) == .unplayed }
+        case .inProgress:
+            return inboxItems.filter {
+                if case .inProgress = podcastPlayState(for: $0) { return true } else { return false }
+            }
+        case .downloaded:
+            return downloaded
+        }
+    }
+
+    @ViewBuilder
+    private var inboxSection: some View {
+        if !inboxItems.isEmpty || !downloaded.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("New Episodes").font(.title3).bold().padding(.horizontal)
+                Picker("Filter", selection: $inboxFilter) {
+                    ForEach(PodcastEpisodeFilter.allCases) { f in
+                        Text(f.label).tag(f)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                let items = filteredInbox
+                if items.isEmpty {
+                    Text("Nothing here.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .padding(.horizontal).padding(.vertical, 8)
+                } else {
+                    LazyVStack(spacing: 0) {
+                        ForEach(items) { item in
+                            PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                            Divider().padding(.leading, 88)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Sendungen (kompakte Cover-Reihe + „Alle" → Grid)
 
     @ViewBuilder
     private var showsShelf: some View {
@@ -158,7 +215,16 @@ struct PodcastsView: View {
         let shows = allShows
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Shows").font(.title3).bold().padding(.horizontal)
+                HStack {
+                    Text("Shows").font(.title3).bold()
+                    Spacer()
+                    NavigationLink {
+                        PodcastShowsGridView(shows: shows, playerCoordinator: playerCoordinator)
+                    } label: {
+                        Text("See All")
+                    }
+                }
+                .padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(shows) { show in
@@ -187,6 +253,45 @@ struct PodcastsView: View {
                 }
             }
         }
+    }
+}
+
+/// Filter für die „Neue Folgen"-Inbox.
+enum PodcastEpisodeFilter: String, CaseIterable, Identifiable {
+    case new, inProgress, downloaded
+    var id: String { rawValue }
+    var label: LocalizedStringKey {
+        switch self {
+        case .new: return "New"
+        case .inProgress: return "In Progress"
+        case .downloaded: return "Downloaded"
+        }
+    }
+}
+
+/// Vollständiges Sendungs-Grid (erreichbar über „See All" in der Shows-Reihe).
+struct PodcastShowsGridView: View {
+    let shows: [PodcastShow]
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    private let columns = [GridItem(.adaptive(minimum: 110), spacing: 16)]
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                ForEach(shows) { show in
+                    NavigationLink {
+                        PodcastShowView(show: show, playerCoordinator: playerCoordinator)
+                    } label: {
+                        ShowTile(show: show)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding()
+            .bottomBarClearance()
+        }
+        .navigationTitle("Shows")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
