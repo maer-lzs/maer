@@ -74,9 +74,17 @@ extension PlayerViewModel {
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
-            // Server hat den Stand — lokale Crash-Sicherung ist damit erledigt.
             if let key = localPositionKey {
-                UserDefaults.standard.removeObject(forKey: key)
+                if provider.capabilities.contains(.progressSync) {
+                    // Server hat den Stand — lokale Crash-Sicherung erledigt.
+                    UserDefaults.standard.removeObject(forKey: key)
+                } else {
+                    // Provider ohne Server-Sync (RSS/lokal): `localPosition` IST
+                    // die maßgebliche Ablage — hier den Stand SCHREIBEN, nicht
+                    // löschen. Sonst wischt jeder Sync (Pause/30s/Track-Ende)
+                    // den Podcast-Fortschritt und „gehört" greift nie.
+                    UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
+                }
             }
             // Nur Übergänge melden (kein 30s-Spam): offline/queued/failed → gesichert.
             if syncStatus != .synced {
@@ -227,6 +235,15 @@ extension PlayerViewModel {
             }
         }
         isFinished = target
+        // Provider ohne Server-Sync (RSS/lokal): Gehört-Status lebt in
+        // `localPosition` — hier direkt setzen bzw. entfernen.
+        if !provider.capabilities.contains(.progressSync), let key = localPositionKey {
+            if target {
+                UserDefaults.standard.set([duration, Date().timeIntervalSince1970 * 1000], forKey: key)
+            } else {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
         if target {
             // Lokalen Zustand angleichen: ans Buchende springen und Sync-Stand
             // nachziehen — sonst schriebe der periodische Sync gleich wieder
