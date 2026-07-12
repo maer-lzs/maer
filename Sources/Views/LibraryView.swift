@@ -247,12 +247,15 @@ struct LibraryView: View {
             // Prüfen, ob der ABS-Server Podcast-Bibliotheken hat → Podcast-Tab
             // erscheint auch ohne lokale RSS-Abos (1 Request, kein Voll-Laden).
             await AppSession.shared.absPodcastProvider.refreshAvailability()
+            // Podcast-Fortschritt über iCloud abgleichen (geräteübergreifend).
+            PodcastCloudSync.shared.start()
         }
         .onChange(of: scenePhase) { _, newPhase in
             // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
             // balken aktualisieren — z. B. wenn zwischenzeitlich auf einem
             // anderen Gerät weitergehört wurde.
             if newPhase == .active {
+                PodcastCloudSync.shared.reconcile()   // iCloud-Podcast-Stand ziehen
                 Task {
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
@@ -260,6 +263,7 @@ struct LibraryView: View {
             }
             // Home-Screen-Quick-Action fürs zuletzt gehörte Buch anbieten.
             if newPhase == .background {
+                PodcastCloudSync.shared.reconcile()   // lokalen Stand nach iCloud pushen
                 updateQuickActions()
             }
         }

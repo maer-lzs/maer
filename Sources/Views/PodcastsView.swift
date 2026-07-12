@@ -825,24 +825,34 @@ func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryIt
 
 // MARK: - Quellen-bewusster Gehört-Zustand
 
-/// Gehört-Zustand quellen-bewusst: ABS-Folgen (`abspod:`) aus dem
-/// Server-Fortschritt, RSS-Folgen (`rss:`) aus `localPosition`.
+/// Gehört-Zustand vereinheitlicht (Reconciliation): `localPosition` spiegelt
+/// bereits lokal+iCloud (nach `PodcastCloudSync.reconcile`); für `abspod:`
+/// zusätzlich den ABS-Server-Stand einbeziehen — der jüngere Zeitstempel
+/// gewinnt.
 @MainActor
 func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
+    let duration = item.media?.duration ?? 0
+    let localArr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
+    let localTs = (localArr?.count == 2) ? localArr![1] : -1
+
     if item.id.hasPrefix("abspod:") {
-        return ABSPodcastProvider.shared.state(forEpisodeId: item.id, duration: item.media?.duration ?? 0)
+        let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? -1
+        if absTs > localTs {
+            return ABSPodcastProvider.shared.state(forEpisodeId: item.id, duration: duration)
+        }
     }
-    return PodcastProgressStore.shared.state(for: item)
+    return PodcastProgressStore.shared.state(guid: item.id, duration: duration)
 }
 
-/// „Als gehört/ungehört" quellen-bewusst: ABS → Server, RSS → lokal.
+/// „Als gehört/ungehört": immer lokal setzen (→ iCloud propagiert es) und bei
+/// ABS zusätzlich am Server; danach sofort nach iCloud pushen.
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
+    PodcastProgressStore.shared.setPlayed(item, played)
     if item.id.hasPrefix("abspod:") {
         Task { await ABSPodcastProvider.shared.setPlayed(item, played) }
-    } else {
-        PodcastProgressStore.shared.setPlayed(item, played)
     }
+    PodcastCloudSync.shared.reconcile()
 }
 
 // MARK: - Gemeinsame Helfer

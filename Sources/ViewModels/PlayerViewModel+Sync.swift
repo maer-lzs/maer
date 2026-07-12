@@ -75,14 +75,14 @@ extension PlayerViewModel {
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
             if let key = localPositionKey {
-                if provider.capabilities.contains(.progressSync) {
-                    // Server hat den Stand — lokale Crash-Sicherung erledigt.
+                // Podcasts (rss:/abspod:) halten `localPosition` als iCloud-
+                // Sync-Basis — auch ABS-Podcasts, damit iCloud sie geräte-
+                // übergreifend abgleicht. Nur bei Büchern (Server = Ablage) wird
+                // die lokale Crash-Sicherung nach erfolgreichem Sync entfernt.
+                let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
+                if provider.capabilities.contains(.progressSync) && !isPodcast {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
-                    // Provider ohne Server-Sync (RSS/lokal): `localPosition` IST
-                    // die maßgebliche Ablage — hier den Stand SCHREIBEN, nicht
-                    // löschen. Sonst wischt jeder Sync (Pause/30s/Track-Ende)
-                    // den Podcast-Fortschritt und „gehört" greift nie.
                     UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
                 }
             }
