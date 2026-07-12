@@ -1,11 +1,12 @@
 import SwiftUI
 import Combine
 
-/// Eine Show-Gruppe in „Neue Folgen": die neuesten ungehörten Folgen einer
-/// Show, gedeckelt — damit ein Vielsender nicht die ganze Inbox flutet.
-struct InboxGroup: Identifiable {
+/// Eine Kachel in „Zuletzt aktualisiert" (Apple-Podcasts-Stil): Show + Zeitpunkt
+/// der letzten Aktualisierung + Anzahl neuer Folgen seit der zuletzt gehörten.
+struct RecentShowInfo: Identifiable {
     let show: PodcastShow
-    let items: [LibraryItem]
+    let lastUpdated: Double   // ms epoch der neuesten Folge
+    let newCount: Int
     var id: String { show.id }
 }
 
@@ -15,8 +16,6 @@ struct InboxGroup: Identifiable {
 /// Episoden sind normale `LibraryItem`s und laufen über den Coordinator.
 struct PodcastsView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// Scroll-Offset an die Bibliothek melden (für die einklappbare Bottom-Zone).
-    var onScroll: ((CGFloat) -> Void)? = nil
     @ObservedObject private var subs = PodcastSubscriptions.shared
     // Sektionen hängen an Fortschritt (gehört/läuft) und Downloads — beide
     // beobachten, damit sich „Als Nächstes"/„Geladen"/„Gehört" live neu bauen.
@@ -43,7 +42,7 @@ struct PodcastsView: View {
     // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
     // sofort, die Sektionen kommen einen Frame später.
     @State private var nextUp: [LibraryItem] = []           // „Continue" (große Karten)
-    @State private var inboxGroups: [InboxGroup] = []       // „Neue Folgen", nach Show gruppiert
+    @State private var recentShows: [RecentShowInfo] = []   // „Zuletzt aktualisiert" (Show-Grid)
     @State private var downloaded: [LibraryItem] = []
     @State private var showAddPodcasts = false
 
@@ -60,7 +59,7 @@ struct PodcastsView: View {
                 queueSection
                 premiumSection
                 showsShelf
-                inboxSection
+                recentlyUpdatedSection
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
             }
             .padding(.top, 8)
@@ -82,10 +81,7 @@ struct PodcastsView: View {
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
         }
-        // Scroll-Offset an die Bibliothek melden (einklappbare Bottom-Zone).
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
-            onScroll?(y)
-        }
+        .reportsBottomBarScroll()   // einklappbare Bottom-Zone
         .refreshable {
             await subs.refreshAll()
             await absPodcast.refresh()
@@ -98,7 +94,7 @@ struct PodcastsView: View {
         }
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
-            inboxGroups = computeInboxGroups()
+            recentShows = computeRecentShows()
             downloaded = computeDownloaded()
             // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
             for item in nextUp {
@@ -134,25 +130,33 @@ struct PodcastsView: View {
         return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
     }
 
-    /// „Neue Folgen", nach Show gruppiert: je Show die neuesten ungehörten
-    /// Folgen, PRO SHOW gedeckelt (Default 3, „Nur neueste" = 1, „Aus" = weg) —
-    /// so flutet kein Vielsender die Inbox. Gruppen nach Aktualität sortiert.
-    private func computeInboxGroups() -> [InboxGroup] {
-        var groups: [(group: InboxGroup, date: Double)] = []
+    /// „Zuletzt aktualisiert": alle Shows nach Zeitpunkt der neuesten Folge
+    /// sortiert, mit der Anzahl neuer (ungehörter) Folgen seit der zuletzt
+    /// gehörten. Keine endlosen Folgenlisten mehr — ein Show-Grid.
+    private func computeRecentShows() -> [RecentShowInfo] {
+        var infos: [RecentShowInfo] = []
         for show in allShows {
-            let mode = AppStorageKeys.podcastInboxModeValue(show.id)
-            if mode == "off" { continue }
-            let cap = (mode == "latest") ? 1 : 3
-            let unplayed = show.episodes
-                .map { podcastLibraryItem(show: show, episode: $0) }
-                .filter { podcastPlayState(for: $0) == .unplayed }
-                .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
-                .prefix(cap)
-            guard !unplayed.isEmpty else { continue }
-            groups.append((InboxGroup(show: show, items: Array(unplayed)),
-                           unplayed.first?.addedAt ?? 0))
+            if AppStorageKeys.podcastInboxModeValue(show.id) == "off" { continue }
+            guard let newest = show.episodes.map(\.pubDate).max(), newest > 0 else { continue }
+            infos.append(RecentShowInfo(show: show, lastUpdated: newest,
+                                        newCount: newEpisodeCount(show)))
         }
-        return groups.sorted { $0.date > $1.date }.map { $0.group }
+        return infos.sorted { $0.lastUpdated > $1.lastUpdated }
+    }
+
+    /// Neue Folgen seit der zuletzt gehörten: Anzahl ungehörter Folgen, die
+    /// NEUER sind als die jüngste bereits gehörte. Ohne jede gehörte Folge
+    /// zählen alle ungehörten.
+    private func newEpisodeCount(_ show: PodcastShow) -> Int {
+        let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
+        let lastPlayed = items
+            .filter { podcastPlayState(for: $0) == .played }
+            .map { $0.addedAt ?? 0 }
+            .max()
+        if let lastPlayed {
+            return items.filter { ($0.addedAt ?? 0) > lastPlayed && podcastPlayState(for: $0) == .unplayed }.count
+        }
+        return items.filter { podcastPlayState(for: $0) == .unplayed }.count
     }
 
     /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
@@ -272,41 +276,61 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Neue Folgen (nach Show gruppiert)
+    // MARK: - Zuletzt aktualisiert (Show-Grid, 2 Spalten)
 
     @ViewBuilder
-    private var inboxSection: some View {
-        if !inboxGroups.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("New Episodes").font(.title3).bold().padding(.horizontal)
-                ForEach(inboxGroups) { group in
-                    VStack(alignment: .leading, spacing: 0) {
+    private var recentlyUpdatedSection: some View {
+        if !recentShows.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Recently Updated").font(.title3).bold().padding(.horizontal)
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)],
+                    alignment: .leading, spacing: 18
+                ) {
+                    ForEach(recentShows) { info in
                         NavigationLink {
-                            PodcastShowView(show: group.show, playerCoordinator: playerCoordinator)
+                            PodcastShowView(show: info.show, playerCoordinator: playerCoordinator)
                         } label: {
-                            HStack(spacing: 8) {
-                                podcastArtwork(url: group.show.artworkURL.flatMap { URL(string: $0) },
-                                               size: 22, corner: 5)
-                                Text(group.show.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .lineLimit(1)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
-                            }
-                            .foregroundStyle(.primary)
-                            .padding(.horizontal)
-                            .padding(.bottom, 4)
+                            recentTile(info)
                         }
                         .buttonStyle(.plain)
-                        LazyVStack(spacing: 0) {
-                            ForEach(group.items) { item in
-                                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                                Divider().padding(.leading, 88)
-                            }
-                        }
                     }
                 }
+                .padding(.horizontal)
             }
+        }
+    }
+
+    private func recentTile(_ info: RecentShowInfo) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle().fill(.quaternary)
+                        .overlay(Image(systemName: "mic").foregroundStyle(.secondary))
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                if info.newCount > 0 {
+                    Text("\(info.newCount)")
+                        .font(.caption2.bold()).foregroundStyle(.white)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Capsule().fill(.red))
+                        .padding(7)
+                }
+            }
+            Text(info.show.title)
+                .font(.subheadline.bold())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Text(Date(timeIntervalSince1970: info.lastUpdated / 1000)
+                    .formatted(.relative(presentation: .named)))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 

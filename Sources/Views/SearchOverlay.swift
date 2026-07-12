@@ -610,10 +610,10 @@ struct SearchOverlay: View {
     @ViewBuilder
     private var containerGlass: some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
-        let tint = Color.black.opacity(0.75)
+        let tint = Color.black.opacity(0.6)
         if #available(iOS 26.0, *) {
             Color.clear
-                .glassEffect(.clear.tint(tint), in: shape)
+                .glassEffect(.regular.tint(tint), in: shape)
         } else {
             shape
                 .fill(.ultraThinMaterial)

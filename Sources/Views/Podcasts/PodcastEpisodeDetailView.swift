@@ -151,6 +151,7 @@ struct PodcastEpisodeDetailView: View {
                 .padding(.top, 56)
                 .bottomBarClearance()
             }
+            .reportsBottomBarScroll()
         }
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)

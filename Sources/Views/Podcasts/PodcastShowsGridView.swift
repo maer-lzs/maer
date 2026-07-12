@@ -22,6 +22,7 @@ struct PodcastShowsGridView: View {
             .padding()
             .bottomBarClearance()
         }
+        .reportsBottomBarScroll()
         .navigationTitle("Shows")
         .navigationBarTitleDisplayMode(.inline)
     }

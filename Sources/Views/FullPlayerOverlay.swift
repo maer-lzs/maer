@@ -95,7 +95,7 @@ struct FullPlayerOverlay: View {
         if #available(iOS 26.0, *) {
             // Maximale, konstante Glas-Stärke; Reveal nur via Hintergrund-Fade.
             Color.clear
-                .glassEffect(.clear.tint(Color.black.opacity(0.45)), in: shape)
+                .glassEffect(.regular.tint(Color.black.opacity(0.45)), in: shape)
         } else {
             // Fallback: Material + passende Tönung.
             shape

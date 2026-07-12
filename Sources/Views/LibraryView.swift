@@ -17,11 +17,8 @@ struct LibraryView: View {
     /// Scroll-gesteuertes Zusammenklappen der Bottom-Zone (Apple-Music-artig):
     /// beim Scrollen in der Bibliothek wird sie zu einer kompakten Zeile.
     @Namespace private var barNS
-    @State private var libScrollY: CGFloat = 0
-    /// Home-Tap klappt die Leiste wieder auf; nächster Scroll aktiviert das
-    /// Einklappen erneut.
-    @State private var barForceExpanded = false
-    private var barCollapsed: Bool { libScrollY > 60 && !barForceExpanded }
+    @ObservedObject private var bottomBar = BottomBarState.shared
+    private var barCollapsed: Bool { bottomBar.collapsed }
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
@@ -75,7 +72,7 @@ struct LibraryView: View {
                 case .audiobooks:
                     audiobooksContent
                 case .podcasts:
-                    PodcastsView(playerCoordinator: playerCoordinator, onScroll: handleContentScroll)
+                    PodcastsView(playerCoordinator: playerCoordinator)
                 default:
                     Spacer()
                 }
@@ -340,14 +337,6 @@ struct LibraryView: View {
 
     // MARK: - Bottom-Zone (scroll-gesteuert einklappbar)
 
-    /// Scroll aus JEDEM Tab (Hörbücher + Podcasts) steuert das Einklappen —
-    /// die Leiste verhält sich überall gleich.
-    private func handleContentScroll(_ y: CGFloat) {
-        libScrollY = y
-        // Nach dem Home-Aufklappen reaktiviert der nächste Scroll das Einklappen.
-        if barForceExpanded { barForceExpanded = false }
-    }
-
     /// Aufgeklappt: Banner · Mini-Player (voll) · [Medien-Pille | Lupe].
     /// Kompakt: eine Zeile [Home-Button · Mini-Player mittig, kleiner · Lupe].
     /// Player und Lupe gleiten per matchedGeometry; die Medien-Pille morpht in
@@ -400,7 +389,7 @@ struct LibraryView: View {
         if availableMediaTypes.count > 1 {
             MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
                 navigationPath = NavigationPath()
-                libScrollY = 0   // Tab-Wechsel klappt die Leiste auf
+                bottomBar.reset()   // Tab-Wechsel klappt die Leiste auf
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
             }
             .matchedGeometryEffect(id: "media", in: barNS)
@@ -412,7 +401,7 @@ struct LibraryView: View {
     private var homeButton: some View {
         Button {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
-                barForceExpanded = true
+                bottomBar.expand()
             }
         } label: {
             Image(systemName: "house.fill")
@@ -564,10 +553,7 @@ struct LibraryView: View {
             )
         }
         .refreshable { await viewModel.loadLibrary() }
-        // Scroll-Position → Bottom-Zone ein-/ausklappen.
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
-            handleContentScroll(y)
-        }
+        .reportsBottomBarScroll()   // Scroll → Bottom-Zone ein-/ausklappen
     }
 
     // MARK: „Fortsetzen" (große Karten, wie im Podcast-Tab)

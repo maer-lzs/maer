@@ -37,7 +37,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     private var isDark: Bool { forceDark || colorScheme == .dark }
 
     private var lightTint: Color {
-        guard let accent = lightAccent ?? environmentAccent else { return Color.white.opacity(0.55) }
+        guard let accent = lightAccent ?? environmentAccent else { return Color.white.opacity(0.3) }
         return Self.lightGlassTint(from: accent)
     }
 
@@ -48,18 +48,18 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         UIColor(accent).getRed(&r, green: &g, blue: &b, alpha: &a)
         let luminance = 0.299 * r + 0.587 * g + 0.114 * b
         if luminance > 0.72 {
-            return Color(white: 0.82).opacity(0.75)
+            return Color(white: 0.82).opacity(0.48)
         }
         // 35% accent over white → pastel, dark text stays readable.
         func mix(_ v: CGFloat) -> CGFloat { v * 0.35 + 0.65 }
-        return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.8)
+        return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.5)
     }
 
     func body(content: Content) -> some View {
         Group {
             if #available(iOS 26.0, *) {
                 content.glassEffect(
-                    .clear.tint(isDark ? Color.black.opacity(0.7) : lightTint),
+                    .regular.tint(isDark ? Color.black.opacity(0.3) : lightTint),
                     in: shape
                 )
             } else {

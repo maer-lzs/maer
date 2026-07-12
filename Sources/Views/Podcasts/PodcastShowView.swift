@@ -65,6 +65,7 @@ struct PodcastShowView: View {
         }
         .listStyle(.plain)
         .bottomBarClearance()
+        .reportsBottomBarScroll()
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

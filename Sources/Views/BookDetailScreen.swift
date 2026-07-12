@@ -156,6 +156,7 @@ struct BookDetailScreen: View {
                     .padding(.horizontal, 24)
                 }
                 .scrollContentBackground(.hidden)
+                .reportsBottomBarScroll()
             }
         }
         // Cover-Spalte bis an die Bildschirmkanten.
@@ -261,6 +262,7 @@ struct BookDetailScreen: View {
                 // Ohne das hier hat die ScrollView selbst eine blickdichte
                 // Standard-Füllung, die über dem Verlauf im Hintergrund liegt.
                 .scrollContentBackground(.hidden)
+                .reportsBottomBarScroll()
                 // Muss auf der ScrollView selbst sitzen (Kind kann die
                 // Sicherheitszone nicht durchbrechen).
                 .ignoresSafeArea(edges: .top)

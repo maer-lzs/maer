@@ -22,6 +22,7 @@ struct PodcastQueueView: View {
         }
         .listStyle(.plain)
         .bottomBarClearance()
+        .reportsBottomBarScroll()
         .navigationTitle("Up Next")
         .toolbar {
             if !queue.isEmpty {
