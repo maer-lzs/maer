@@ -1,16 +1,16 @@
 import Foundation
 import SQLite3
 
-/// Import von Podcast-Abos (und, aus Apple Podcasts, auch Fortschritt/Gehört)
-/// aus externen Quellen. Zwei Wege:
+/// Import of podcast subscriptions (and, from Apple Podcasts, also
+/// progress/played) from external sources. Two paths:
 ///
-/// 1. **OPML** — der offene Standard, den (fast) jede Podcast-App exportiert.
-///    Enthält nur die Feed-URLs, keinen Fortschritt.
-/// 2. **Apple Podcasts** — Apple bietet keinen Export und keine API. Der einzige
-///    Weg an Abos + Fortschritt + Gehört ist die private Core-Data-Datenbank
-///    `MTLibrary.sqlite` vom Mac (~/Library/Group Containers/…/Documents). Wird
-///    hier read-only + defensiv gegen Schema-Änderungen gelesen; bricht eine
-///    Apple-Version das Schema, liefert der Import eben nur, was er findet.
+/// 1. **OPML** — the open standard that (almost) every podcast app exports.
+///    Holds only the feed URLs, no progress.
+/// 2. **Apple Podcasts** — Apple offers no export and no API. The only way to
+///    subscriptions + progress + played is the private Core Data database
+///    `MTLibrary.sqlite` from the Mac (~/Library/Group Containers/…/Documents).
+///    Read here read-only + defensively against schema changes; if an Apple
+///    version breaks the schema, the import just returns what it finds.
 enum PodcastImport {
 
     // MARK: - OPML
@@ -23,8 +23,8 @@ enum PodcastImport {
 
     // MARK: - Apple Podcasts (MTLibrary.sqlite)
 
-    /// Ein Fortschritts-Datensatz aus Apple Podcasts, zugeordnet über die
-    /// Enclosure-URL (die auch in unserem RSS-Feed steht).
+    /// A progress record from Apple Podcasts, matched via the enclosure URL
+    /// (which is also in our RSS feed).
     nonisolated struct AppleProgress: Sendable {
         let enclosureURL: String
         let playhead: Double   // Sekunden
@@ -37,15 +37,15 @@ enum PodcastImport {
         let progress: [AppleProgress]
     }
 
-    /// Liest die Apple-Podcasts-Datenbank read-only aus. `nil` bei Öffnen-Fehler.
-    /// Fehlende Spalten/Tabellen führen NICHT zum Abbruch — es wird nur weniger
-    /// zurückgegeben (personal/best-effort, siehe Typ-Doku).
+    /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing
+    /// columns/tables do NOT abort — just less is returned (personal/best-effort,
+    /// see the type doc).
     nonisolated static func readAppleLibrary(at url: URL) -> AppleLibrary? {
         var db: OpaquePointer?
-        // `immutable=1`: die kopierte Datei ändert sich nicht → SQLite liest
-        // ohne Sperren/WAL-Seitendateien (die beim Kopieren meist fehlen) und
-        // schreibt nie in die fremde Datei. URI aus dem file:// absoluteString,
-        // damit Sonderzeichen im Pfad korrekt kodiert sind.
+        // `immutable=1`: the copied file does not change → SQLite reads without
+        // locks/WAL side files (usually missing after copying) and never writes
+        // to the foreign file. URI from the file:// absoluteString so special
+        // characters in the path are encoded correctly.
         let uri = url.absoluteString + "?immutable=1"
         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_URI
         guard sqlite3_open_v2(uri, &db, flags, nil) == SQLITE_OK, let db else {
@@ -57,8 +57,8 @@ enum PodcastImport {
         let podcastCols = columns(db, table: "ZMTPODCAST")
         let episodeCols = columns(db, table: "ZMTEPISODE")
 
-        // Feeds: alle Shows mit Feed-URL (Abo-Flag nicht überall gesetzt →
-        // wir nehmen jede Show, die eine Feed-URL hat).
+        // Feeds: all shows with a feed URL (the subscription flag is not always
+        // set → we take every show that has a feed URL).
         var feedURLs: [String] = []
         if podcastCols.contains("ZFEEDURL") {
             for row in query(db, "SELECT ZFEEDURL FROM ZMTPODCAST WHERE ZFEEDURL IS NOT NULL") {
@@ -66,7 +66,7 @@ enum PodcastImport {
             }
         }
 
-        // Fortschritt/Gehört je Episode über die Enclosure-URL.
+        // Progress/played per episode via the enclosure URL.
         var progress: [AppleProgress] = []
         if let urlCol = firstPresent(["ZENCLOSUREURL", "ZASSETURL", "ZWEBPAGEURL"], in: episodeCols) {
             let playheadCol = firstPresent(["ZPLAYHEAD", "ZLASTPLAYHEADPOSITION", "ZPROGRESS"], in: episodeCols)
@@ -86,8 +86,8 @@ enum PodcastImport {
                 if playheadCol != nil { idx += 1 }
                 let duration = durationCol != nil ? Double(row[idx] ?? "") ?? 0 : 0
                 if durationCol != nil { idx += 1 }
-                // Apple: ZPLAYSTATE == 2 bedeutet „gehört"; sonst 1/0. Bei einem
-                // reinen Bool-Feld (ZISPLAYED/ZPLAYED) zählt jeder Wert > 0.
+                // Apple: ZPLAYSTATE == 2 means "played"; otherwise 1/0. For a
+                // plain bool field (ZISPLAYED/ZPLAYED) any value > 0 counts.
                 var isPlayed = false
                 if playedCol != nil {
                     let raw = Double(row[idx] ?? "") ?? 0
@@ -104,13 +104,13 @@ enum PodcastImport {
         return AppleLibrary(feedURLs: feedURLs, progress: progress)
     }
 
-    // MARK: - SQLite-Helfer (defensiv, ohne Fremd-Abhängigkeit)
+    // MARK: - SQLite helpers (defensive, no third-party dependency)
 
-    /// Spaltennamen einer Tabelle (leer, wenn Tabelle fehlt).
+    /// Column names of a table (empty if the table is missing).
     private nonisolated static func columns(_ db: OpaquePointer, table: String) -> Set<String> {
         var cols: Set<String> = []
         for row in query(db, "PRAGMA table_info(\(table))") {
-            if let name = row[1] { cols.insert(name) }  // name = zweite Spalte
+            if let name = row[1] { cols.insert(name) }  // name = second column
         }
         return cols
     }
@@ -119,7 +119,7 @@ enum PodcastImport {
         candidates.first { cols.contains($0) }
     }
 
-    /// Führt ein SELECT aus und gibt jede Zeile als String-Array (nil = NULL).
+    /// Runs a SELECT and returns each row as a string array (nil = NULL).
     private nonisolated static func query(_ db: OpaquePointer, _ sql: String) -> [[String?]] {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }

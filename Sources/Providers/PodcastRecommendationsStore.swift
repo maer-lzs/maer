@@ -1,11 +1,11 @@
 import Foundation
 import Combine
 
-/// Empfehlungen für den Podcast-Home-Tab, an deine echte Nutzung gekoppelt:
-/// gewichtet nach **Hörzeit** (Proxy: gespeicherte Positionen je Show), plus
-/// **gleicher Autor/Verlag** (deine meistgehörten Autoren → deren andere Shows)
-/// und **thematisch ähnlich** (spezifische Kategorien + Sprache; breite
-/// Kategorien runtergewichtet). Bereits Abonnierte ausgeschlossen; gecacht.
+/// Recommendations for the podcast home tab, tied to your real usage: weighted
+/// by **listening time** (proxy: stored positions per show), plus **same
+/// author/publisher** (your most-listened authors → their other shows) and
+/// **thematically similar** (specific categories + language; broad categories
+/// downweighted). Already-subscribed excluded; cached.
 @MainActor
 final class PodcastRecommendationsStore: ObservableObject {
     static let shared = PodcastRecommendationsStore()
@@ -21,7 +21,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         "government", "religion & spirituality", "kids & family"
     ]
 
-    /// Nur laden, wenn leer oder älter als 6 h. Best effort (Fehler → still).
+    /// Only load if empty or older than 6 h. Best effort (error → silent).
     func refreshIfNeeded() async {
         guard !isLoading else { return }
         if !results.isEmpty, let at = loadedAt, Date().timeIntervalSince(at) < 6 * 3600 { return }
@@ -42,7 +42,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         var pool: [PodcastSearchResult] = []
         var authorHits = Set<String>()   // normalisierte Feed-URLs aus Autor-Expansion
 
-        // 1. Gleicher Autor/Verlag: deren andere Shows über die Suche holen.
+        // 1. Same author/publisher: fetch their other shows via search.
         for author in topAuthors.prefix(3) {
             guard let found = try? await directory.search(author) else { continue }
             for r in found where authorMatches(r, author) {
@@ -51,8 +51,8 @@ final class PodcastRecommendationsStore: ObservableObject {
             }
         }
 
-        // 2. Thematisch ähnlich: Trending nach spezifischen Kategorien + Sprache
-        //    (bzw. iTunes-Top-Charts ohne Key).
+        // 2. Thematically similar: trending by specific categories + language
+        //    (or iTunes top charts without a key).
         if let pi = directory as? PodcastIndexDirectory {
             if let trend = try? await pi.trending(lang: lang, categories: Array(topCats.prefix(4))) {
                 pool += trend
@@ -78,8 +78,8 @@ final class PodcastRecommendationsStore: ObservableObject {
         PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows
     }
 
-    /// Hörzeit je Show (Proxy: Summe der gespeicherten `localPosition`-Sekunden
-    /// aller Folgen dieser Show). Retroaktiv, ohne neues Tracking.
+    /// Listening time per show (proxy: sum of the stored `localPosition` seconds
+    /// of all this show's episodes). Retroactive, without new tracking.
     private func listeningByShow() -> [String: Double] {
         var out: [String: Double] = [:]
         for (key, value) in UserDefaults.standard.dictionaryRepresentation() {
@@ -92,8 +92,8 @@ final class PodcastRecommendationsStore: ObservableObject {
         return out
     }
 
-    /// Autoren nach Hörzeit (meistgehörte zuerst). Shows ohne Hörzeit zählen mit
-    /// minimalem Gewicht, damit auch neue Abos etwas beitragen.
+    /// Authors by listening time (most-listened first). Shows without listening
+    /// time count with minimal weight so new subscriptions contribute too.
     private func weightedAuthors(_ listening: [String: Double]) -> [String] {
         var weight: [String: Double] = [:]
         for show in mineShows {
@@ -103,7 +103,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         return weight.sorted { $0.value > $1.value }.map { $0.key }
     }
 
-    /// Kategorien nach Hörzeit gewichtet; breite Kategorien nur zu 30 %.
+    /// Categories weighted by listening time; broad categories only at 30 %.
     private func weightedCategories(_ listening: [String: Double]) -> [String] {
         var weight: [String: Double] = [:]
         for show in mineShows {
@@ -133,9 +133,9 @@ final class PodcastRecommendationsStore: ObservableObject {
         return r.title.lowercased().contains(a)
     }
 
-    /// Autor-Treffer + Kategorie-Nähe als Basis-Rang, dann per Round-Robin über
-    /// die Autoren durchmischen (max. 3 je Autor) — so dominiert kein Verlag
-    /// (z. B. „Die Zeit") die ersten Plätze.
+    /// Author hits + category proximity as the base rank, then mix by
+    /// round-robin across the authors (max 3 per author) — so no publisher
+    /// (e.g. "Die Zeit") dominates the top spots.
     private func rank(_ list: [PodcastSearchResult],
                      authorHits: Set<String>,
                      categoryWeights: [String]) -> [PodcastSearchResult] {
@@ -145,7 +145,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             (r.categories ?? []).reduce(0) { $0 + (catScore[$1] ?? 0) }
         }
 
-        // 1. Basis-Reihenfolge (Autor-Treffer zuerst, dann Kategorie-Nähe).
+        // 1. Base order (author hits first, then category proximity).
         let ordered = list.enumerated()
             .map { (idx, r) in (r: r, author: authorHits.contains(PodcastSubscriptions.normalizeFeedURL(r.feedURL)), score: score(r), idx: idx) }
             .sorted {
@@ -155,7 +155,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             }
             .map { $0.r }
 
-        // 2. Nach Autor gruppieren (Reihenfolge = Priorität), pro Autor deckeln.
+        // 2. Group by author (order = priority), cap per author.
         var groups: [String: [PodcastSearchResult]] = [:]
         var authorOrder: [String] = []
         for r in ordered {

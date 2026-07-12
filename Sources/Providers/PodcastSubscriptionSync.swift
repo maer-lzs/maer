@@ -1,12 +1,12 @@
 import Foundation
 
-/// Gleicht lokale RSS-Abos mit dem Audiobookshelf-Server ab. ABS ist die
-/// kanonische, geräteübergreifend synchronisierende Quelle: jeder lokal
-/// abonnierte Feed, der noch nicht am Server liegt, wird dort angelegt; ein
-/// archivierter Server-Eintrag wird reaktiviert statt neu erzeugt. Nichts wird
-/// gelöscht (Abbestellen = Archivieren, Server-Historie bleibt). Über die
-/// Feed-URL-Dedup in `allShows` zeigt die App danach jeden Feed nur einmal
-/// (ABS bevorzugt) — RSS bleibt als Offline-/Fallback-Quelle im Hintergrund.
+/// Reconciles local RSS subscriptions with the Audiobookshelf server. ABS is
+/// the canonical, cross-device syncing source: every locally subscribed feed
+/// not yet on the server is created there; an archived server entry is
+/// reactivated instead of recreated. Nothing is deleted (unsubscribe = archive,
+/// server history stays). Via the feed-URL dedup in `allShows` the app then
+/// shows each feed only once (ABS preferred) — RSS stays as an offline/fallback
+/// source in the background.
 @MainActor
 enum PodcastSubscriptionSync {
     struct Report: Equatable {
@@ -20,16 +20,16 @@ enum PodcastSubscriptionSync {
         }
     }
 
-    /// Läuft der Auto-Abgleich schon/lief er in dieser Session? Verhindert, dass
-    /// jeder Tab-Wechsel erneut den Server abfragt.
+    /// Is the auto-reconcile running/did it run this session? Prevents every tab
+    /// switch from querying the server again.
     private static var didAutoReconcile = false
     private static var isRunning = false
 
-    /// Lokale RSS-Abos auf den Server spiegeln. Idempotent — mehrfaches Aufrufen
-    /// legt nichts doppelt an. Läuft nie zwei Durchläufe gleichzeitig.
-    /// - Parameter refreshExistingCovers: auch bei schon synchronen Shows das
-    ///   hochauflösende Feed-Cover erneut auf den Server pushen (nur manuell —
-    ///   der Auto-Abgleich lässt bestehende Cover in Ruhe).
+    /// Mirror local RSS subscriptions to the server. Idempotent — repeated calls
+    /// create nothing twice. Never runs two passes at once.
+    /// - Parameter refreshExistingCovers: also re-push the high-resolution feed
+    ///   cover for already-synced shows (manual only — the auto-reconcile leaves
+    ///   existing covers alone).
     @discardableResult
     static func reconcile(refreshExistingCovers: Bool = false) async -> Report {
         var report = Report()
@@ -67,8 +67,8 @@ enum PodcastSubscriptionSync {
                 }
                 continue
             }
-            // Unser hochauflösendes Feed-Cover (itunes:image) mit auf den Server
-            // pushen — ABS zieht beim Anlegen sonst oft das kleinere RSS-<image>.
+            // Push our high-resolution feed cover (itunes:image) to the server
+            // too — ABS otherwise often pulls the smaller RSS <image> on create.
             if let error = await abs.subscribeOnServer(feedURL: show.feedURL,
                                                        coverURL: show.artworkURL) {
                 report.failed.append("\(show.title): \(error)")
@@ -77,14 +77,14 @@ enum PodcastSubscriptionSync {
             }
         }
 
-        // Lokale Hör-History auf die passenden Server-Folgen heben (nur wo lokal
-        // jünger; greift für Folgen, die am Server existieren).
+        // Lift local listening history onto the matching server episodes (only
+        // where local is newer; applies to episodes that exist on the server).
         await abs.pushLocalHistoryToServer()
         return report
     }
 
-    /// Einmal pro App-Session automatisch abgleichen, sobald ein ABS-Podcast-
-    /// Server erreichbar ist und es überhaupt lokale Abos zu spiegeln gibt.
+    /// Reconcile automatically once per app session, as soon as an ABS podcast
+    /// server is reachable and there are local subscriptions to mirror at all.
     static func autoReconcileIfNeeded() async {
         guard !didAutoReconcile,
               ABSPodcastProvider.shared.hasPodcasts,

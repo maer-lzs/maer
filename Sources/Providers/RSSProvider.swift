@@ -1,10 +1,9 @@
 import Foundation
 
-/// Podcast-Quelle über RSS/Atom-Feeds. Episoden werden als `LibraryItem`
-/// abgebildet (ein Track = die Enclosure-URL), sodass Player, Downloads,
-/// Sleep-Timer, Widget und CarPlay sie unverändert nutzen. Muster identisch
-/// zu `LocalProvider`: der Core kennt weder den Feed-Store noch `rss:`-IDs
-/// (außer dem Router in AppSession).
+/// Podcast source via RSS/Atom feeds. Episodes are mapped to `LibraryItem` (one
+/// track = the enclosure URL) so player, downloads, sleep timer, widget and
+/// CarPlay use them unchanged. Same pattern as `LocalProvider`: the core knows
+/// neither the feed store nor `rss:` ids (except the router in AppSession).
 @MainActor
 final class RSSProvider: AudioProvider {
     static let shared = RSSProvider()
@@ -16,8 +15,8 @@ final class RSSProvider: AudioProvider {
     var mediaType: MediaType { .podcasts }
     /// Podcast-Tab erst zeigen, wenn mindestens ein Feed abonniert ist.
     var isAvailable: Bool { subs.hasSubscriptions }
-    /// Episoden lassen sich für offline herunterladen; kein Server-Sync,
-    /// keine Server-Lesezeichen.
+    /// Episodes can be downloaded for offline; no server sync, no server
+    /// bookmarks.
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
     /// Private/Premium-Feeds: Basic-Auth je Feed (aus dem `feedKey` der Item-ID).
@@ -39,7 +38,7 @@ final class RSSProvider: AudioProvider {
         }
         let item = libraryItem(show: found.show, episode: found.episode)
         var media = item.media ?? emptyMedia
-        // Podcasting-2.0-Kapitel lazy nachladen (nur beim Öffnen der Folge).
+        // Lazily load Podcasting 2.0 chapters (only when opening the episode).
         if let raw = found.episode.chaptersURL, let url = URL(string: raw),
            let chapters = await Self.loadChapters(url: url, duration: found.episode.duration) {
             media = LibraryItemMedia(metadata: media.metadata, duration: media.duration,
@@ -53,8 +52,8 @@ final class RSSProvider: AudioProvider {
     private struct PC20ChapterList: Decodable { let chapters: [PC20Chapter] }
     private struct PC20Chapter: Decodable { let startTime: Double; let title: String? }
 
-    /// Kapitel-JSON laden und in `[ABSChapter]` mappen (end = nächster Start,
-    /// beim letzten die Episodendauer). Fehler → nil (Folge spielt ohne Kapitel).
+    /// Load chapter JSON and map it to `[ABSChapter]` (end = next start, episode
+    /// duration for the last). Error → nil (episode plays without chapters).
     static func loadChapters(url: URL, duration: Double) async -> [ABSChapter]? {
         guard let (data, _) = try? await URLSession.maer.data(from: url),
               let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data),
@@ -75,7 +74,7 @@ final class RSSProvider: AudioProvider {
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
-        // Bei Podcasts ist der contentPath bereits die vollständige Audio-URL.
+        // For podcasts the contentPath is already the full audio URL.
         URL(string: contentPath)
     }
 
@@ -103,22 +102,22 @@ final class RSSProvider: AudioProvider {
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
     func deleteBookmark(itemId: String, time: Double) async throws {}
 
-    // MARK: - Für die Podcast-Ansicht (synchron)
+    // MARK: - For the podcast view (synchronous)
 
-    /// Einzelne Episode als LibraryItem über den guid-Index (O(1)) — für
-    /// „Weiterhören"/Wiederherstellen, statt alle Folgen zu bauen.
+    /// Single episode as a LibraryItem via the guid index (O(1)) — for
+    /// resume/restore, instead of building all episodes.
     func libraryItem(forEpisodeId id: String) -> LibraryItem? {
         guard let found = subs.episode(guid: id) else { return nil }
         return libraryItem(show: found.show, episode: found.episode)
     }
 
-    /// Show zu einer Episode (für Show-Badge und Show-Verlinkung).
+    /// Show for an episode (for the show badge and show linking).
     func show(forEpisodeId id: String) -> PodcastShow? {
         subs.episode(guid: id)?.show
     }
 
-    /// Alle Folgen einer Show als LibraryItems (neueste zuerst) — für die
-    /// Verlinkung Folgenseite → Show-Seite.
+    /// All of a show's episodes as LibraryItems (newest first) — for linking
+    /// episode page → show page.
     func showItems(for show: PodcastShow) -> [LibraryItem] {
         show.episodes
             .sorted { $0.pubDate > $1.pubDate }
