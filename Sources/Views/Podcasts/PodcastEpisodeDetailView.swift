@@ -25,6 +25,77 @@ struct PodcastEpisodeDetailView: View {
     private var isInProgress: Bool {
         if case .inProgress = state { return true } else { return false }
     }
+    /// Reiche Folgen-Metadaten (Staffel/Typ/Personen/Transkript) aus dem Feed.
+    private var podcastEpisode: PodcastEpisode? {
+        show?.episodes.first { $0.guid == item.id }
+    }
+
+    // MARK: - Reiche Metadaten
+
+    @ViewBuilder
+    private func badges(_ ep: PodcastEpisode) -> some View {
+        let parts: [String] = [seasonEpisodeText(ep), typeText(ep), ep.explicit == true ? "E" : nil]
+            .compactMap { $0 }
+        if !parts.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(parts, id: \.self) { p in
+                    Text(p)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(.white.opacity(0.18), in: Capsule())
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+    }
+
+    private func seasonEpisodeText(_ ep: PodcastEpisode) -> String? {
+        var parts: [String] = []
+        if let s = ep.season { parts.append("S\(s)") }
+        if let n = ep.episodeNumber { parts.append("E\(n)") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func typeText(_ ep: PodcastEpisode) -> String? {
+        switch ep.episodeType {
+        case "trailer": return String(localized: "Trailer")
+        case "bonus": return String(localized: "Bonus")
+        default: return nil
+        }
+    }
+
+    @ViewBuilder
+    private var metadataSection: some View {
+        if let ep = podcastEpisode,
+           (ep.persons?.isEmpty == false) || ep.transcriptURL != nil || ep.link != nil {
+            VStack(alignment: .leading, spacing: 10) {
+                if let persons = ep.persons, !persons.isEmpty {
+                    Text("People").font(.headline).foregroundStyle(.white)
+                    ForEach(persons, id: \.self) { p in
+                        HStack(spacing: 6) {
+                            Text(p.name).foregroundStyle(.white)
+                            if let role = p.role, !role.isEmpty {
+                                Text(role).font(.caption).foregroundStyle(.white.opacity(0.7))
+                            }
+                        }
+                        .font(.subheadline)
+                    }
+                }
+                HStack(spacing: 18) {
+                    if let t = ep.transcriptURL, let url = URL(string: t) {
+                        Link(destination: url) { Label("Transcript", systemImage: "doc.text") }
+                    }
+                    if let l = ep.link, let url = URL(string: l) {
+                        Link(destination: url) { Label("Website", systemImage: "safari") }
+                    }
+                }
+                .font(.subheadline)
+                .tint(.white)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 4)
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -53,6 +124,7 @@ struct PodcastEpisodeDetailView: View {
                         Text(metaText)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.8))
+                        if let ep = podcastEpisode { badges(ep) }
                     }
 
                     HStack(spacing: 14) {
@@ -61,6 +133,7 @@ struct PodcastEpisodeDetailView: View {
                         markPlayedButton
                     }
 
+                    metadataSection
                     chaptersSection
 
                     if let description = item.media?.metadata?.description, !description.isEmpty {

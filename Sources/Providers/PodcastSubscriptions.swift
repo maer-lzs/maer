@@ -1,8 +1,23 @@
 import Foundation
 import Combine
 
+/// Person aus dem Feed (`<podcast:person>` / `itunes:owner`) — Host/Gast.
+nonisolated struct PodcastPerson: Codable, Hashable {
+    var name: String
+    var role: String?
+    var img: String?
+    var href: String?
+}
+
+/// Unterstützungs-Link der Show (`<podcast:funding>`).
+nonisolated struct PodcastFunding: Codable, Hashable {
+    var url: String
+    var label: String?
+}
+
 /// Eine abonnierte Show mit ihren Episoden (persistiert, damit die letzten
-/// Folgen offline sichtbar bleiben).
+/// Folgen offline sichtbar bleiben). Neue Metadaten-Felder sind optional
+/// (`= nil`), damit bestehende gespeicherte Feeds unverändert dekodieren.
 nonisolated struct PodcastShow: Codable, Identifiable {
     var id: String                 // stabile Feed-ID (aus der URL abgeleitet)
     var title: String
@@ -11,6 +26,14 @@ nonisolated struct PodcastShow: Codable, Identifiable {
     var description: String?
     var feedURL: String
     var episodes: [PodcastEpisode]
+    // Reiche Metadaten (RSS/Podcasting 2.0)
+    var categories: [String]? = nil
+    var link: String? = nil        // Website
+    var language: String? = nil
+    var explicit: Bool? = nil
+    var funding: [PodcastFunding]? = nil
+    var owner: String? = nil
+    var showType: String? = nil    // episodic | serial
 }
 
 nonisolated struct PodcastEpisode: Codable, Identifiable {
@@ -24,6 +47,14 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     /// Podcasting-2.0-Kapitel (`<podcast:chapters url=… type=json+chapters>`).
     /// Erst beim Öffnen der Folge geladen (RSSProvider.fetchItemDetail).
     var chaptersURL: String?
+    // Reiche Metadaten (optional → rückwärtskompatibel)
+    var season: Int? = nil
+    var episodeNumber: Int? = nil
+    var episodeType: String? = nil // full | trailer | bonus
+    var explicit: Bool? = nil
+    var link: String? = nil
+    var transcriptURL: String? = nil
+    var persons: [PodcastPerson]? = nil
 
     var id: String { guid }
 }
@@ -399,6 +430,15 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var showAuthor: String?
     private var showImage: String?
     private var showDescription: String?
+    // Show-Metadaten (Podcasting 2.0 / iTunes)
+    private var showCategories: [String] = []
+    private var showLink: String?
+    private var showLanguage: String?
+    private var showExplicit: Bool?
+    private var showFunding: [PodcastFunding] = []
+    private var showOwner: String?
+    private var showType: String?
+    private var pendingFundingURL: String?
 
     private var episodes: [PodcastEpisode] = []
     private var inItem = false
@@ -406,6 +446,9 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     // Aktuelles Item
     private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = "", iChapters = ""
+    private var iSeason: Int?, iEpisodeNum: Int?, iEpisodeType = "", iExplicit: Bool?, iLink = "", iTranscript = ""
+    private var iPersons: [PodcastPerson] = []
+    private var pendingPersonAttrs: [String: String]?
 
     func parse(_ data: Data) -> PodcastShow? {
         let parser = XMLParser(data: data)
@@ -418,7 +461,14 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
             artworkURL: showImage,
             description: showDescription,
             feedURL: feedURL,
-            episodes: episodes
+            episodes: episodes,
+            categories: showCategories.isEmpty ? nil : showCategories,
+            link: showLink,
+            language: showLanguage,
+            explicit: showExplicit,
+            funding: showFunding.isEmpty ? nil : showFunding,
+            owner: showOwner,
+            showType: showType
         )
     }
 
@@ -428,11 +478,25 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "item" || el == "entry" {
             inItem = true
             iTitle = ""; iGuid = ""; iAudio = ""; iDuration = ""; iDesc = ""; iImage = ""; iPubDate = ""; iChapters = ""
+            iSeason = nil; iEpisodeNum = nil; iEpisodeType = ""; iExplicit = nil; iLink = ""; iTranscript = ""
+            iPersons = []
         }
         // Podcasting-2.0-Kapitel: JSON-URL im Item (nur JSON-Typ nutzen).
         if el == "podcast:chapters", let url = attrs["url"],
            (attrs["type"]?.contains("json") ?? true) {
             iChapters = url
+        }
+        // Transkript (erste URL genügt).
+        if el == "podcast:transcript", inItem, iTranscript.isEmpty, let url = attrs["url"] {
+            iTranscript = url
+        }
+        // Person (Name folgt als Textinhalt) — Attribute jetzt merken.
+        if el == "podcast:person" { pendingPersonAttrs = attrs }
+        // Funding (Label folgt als Text) — URL merken.
+        if el == "podcast:funding" { pendingFundingURL = attrs["url"] }
+        // Kategorien (auch verschachtelt: Eltern + Kind feuern beide).
+        if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
+            showCategories.append(cat)
         }
         // Enclosure (RSS) bzw. Media/Link mit Audio-Typ
         if el == "enclosure", let url = attrs["url"], (attrs["type"]?.hasPrefix("audio") ?? true) {
@@ -452,6 +516,16 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?, qualifiedName qName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Person schließt (Name = Textinhalt) — in Item wie Kanal möglich.
+        if el == "podcast:person", let a = pendingPersonAttrs, !value.isEmpty {
+            let person = PodcastPerson(name: value, role: a["role"], img: a["img"], href: a["href"])
+            if inItem { iPersons.append(person) }
+            pendingPersonAttrs = nil
+        }
+        if el == "podcast:funding", !inItem, let url = pendingFundingURL {
+            showFunding.append(PodcastFunding(url: url, label: value.isEmpty ? nil : value))
+            pendingFundingURL = nil
+        }
         if inItem {
             switch el {
             case "title": iTitle = value
@@ -459,6 +533,11 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
             case "itunes:duration": iDuration = value
             case "description", "itunes:summary", "content:encoded": if iDesc.isEmpty { iDesc = value }
             case "pubDate", "published": iPubDate = value
+            case "itunes:season": iSeason = Int(value)
+            case "itunes:episode": iEpisodeNum = Int(value)
+            case "itunes:episodeType": iEpisodeType = value.lowercased()
+            case "itunes:explicit": iExplicit = Self.parseExplicit(value)
+            case "link": if iLink.isEmpty { iLink = value }
             case "item", "entry":
                 inItem = false
                 if !iAudio.isEmpty {
@@ -470,7 +549,14 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
                         duration: Self.parseDuration(iDuration),
                         description: iDesc.isEmpty ? nil : iDesc,
                         imageURL: iImage.isEmpty ? nil : iImage,
-                        chaptersURL: iChapters.isEmpty ? nil : iChapters
+                        chaptersURL: iChapters.isEmpty ? nil : iChapters,
+                        season: iSeason,
+                        episodeNumber: iEpisodeNum,
+                        episodeType: iEpisodeType.isEmpty ? nil : iEpisodeType,
+                        explicit: iExplicit,
+                        link: iLink.isEmpty ? nil : iLink,
+                        transcriptURL: iTranscript.isEmpty ? nil : iTranscript,
+                        persons: iPersons.isEmpty ? nil : iPersons
                     ))
                 }
             default: break
@@ -480,6 +566,11 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
             case "title": if showTitle.isEmpty { showTitle = value }
             case "itunes:author": showAuthor = value
             case "description", "itunes:summary": if showDescription == nil { showDescription = value }
+            case "link": if showLink == nil, !value.isEmpty { showLink = value }
+            case "language": if showLanguage == nil { showLanguage = value }
+            case "itunes:explicit": if showExplicit == nil { showExplicit = Self.parseExplicit(value) }
+            case "itunes:type": showType = value.lowercased()
+            case "itunes:name": if showOwner == nil, !value.isEmpty { showOwner = value }
             default: break
             }
         }
@@ -498,6 +589,15 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         if let d = rfc822.date(from: s) { return d.timeIntervalSince1970 * 1000 }
         if let d = ISO8601DateFormatter().date(from: s) { return d.timeIntervalSince1970 * 1000 }
         return 0
+    }
+
+    /// `itunes:explicit`: true/yes/explicit → true, false/no/clean → false, sonst nil.
+    private static func parseExplicit(_ s: String) -> Bool? {
+        switch s.lowercased() {
+        case "true", "yes", "explicit": return true
+        case "false", "no", "clean": return false
+        default: return nil
+        }
     }
 
     // "HH:MM:SS", "MM:SS" oder reine Sekunden → Sekunden.

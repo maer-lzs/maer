@@ -85,6 +85,50 @@ struct PodcastShowView: View {
         }
     }
 
+    /// Reiche Show-Metadaten (Kategorien, Folgenzahl, Sprache, Website/Funding).
+    @ViewBuilder
+    private var showMetaSection: some View {
+        let s = liveShow
+        VStack(spacing: 8) {
+            if let cats = s.categories, !cats.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(cats, id: \.self) { c in
+                            Text(c)
+                                .font(.caption)
+                                .padding(.horizontal, 10).padding(.vertical, 4)
+                                .background(.quaternary, in: Capsule())
+                        }
+                    }
+                }
+            }
+            HStack(spacing: 12) {
+                Text("\(s.episodes.count) episodes").font(.caption).foregroundStyle(.secondary)
+                if let lang = s.language, !lang.isEmpty {
+                    Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
+                }
+                if s.explicit == true {
+                    Text("E").font(.caption2.weight(.bold))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                }
+            }
+            if s.link != nil || s.funding?.isEmpty == false {
+                HStack(spacing: 18) {
+                    if let l = s.link, let url = URL(string: l) {
+                        Link(destination: url) { Label("Website", systemImage: "safari") }
+                    }
+                    if let f = s.funding?.first, let url = URL(string: f.url) {
+                        Link(destination: url) {
+                            Label(f.label ?? String(localized: "Support"), systemImage: "heart")
+                        }
+                    }
+                }
+                .font(.caption)
+            }
+        }
+    }
+
     private var header: some View {
         VStack(spacing: 12) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: 150, corner: 16)
@@ -103,6 +147,7 @@ struct PodcastShowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onTapGesture { withAnimation { descriptionExpanded.toggle() } }
             }
+            showMetaSection
             manageButton
                 .font(.subheadline)
                 .padding(.top, 4)
