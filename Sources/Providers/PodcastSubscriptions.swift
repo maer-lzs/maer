@@ -9,15 +9,15 @@ nonisolated struct PodcastPerson: Codable, Hashable {
     var href: String?
 }
 
-/// Unterstützungs-Link der Show (`<podcast:funding>`).
+/// Support link of the show (`<podcast:funding>`).
 nonisolated struct PodcastFunding: Codable, Hashable {
     var url: String
     var label: String?
 }
 
-/// Eine abonnierte Show mit ihren Episoden (persistiert, damit die letzten
-/// Folgen offline sichtbar bleiben). Neue Metadaten-Felder sind optional
-/// (`= nil`), damit bestehende gespeicherte Feeds unverändert dekodieren.
+/// A subscribed show with its episodes (persisted so the latest episodes stay
+/// visible offline). New metadata fields are optional (`= nil`) so existing
+/// saved feeds decode unchanged.
 nonisolated struct PodcastShow: Codable, Identifiable {
     var id: String                 // stabile Feed-ID (aus der URL abgeleitet)
     var title: String
@@ -45,9 +45,9 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var description: String?
     var imageURL: String?
     /// Podcasting-2.0-Kapitel (`<podcast:chapters url=… type=json+chapters>`).
-    /// Erst beim Öffnen der Folge geladen (RSSProvider.fetchItemDetail).
+    /// Loaded only when opening the episode (RSSProvider.fetchItemDetail).
     var chaptersURL: String?
-    // Reiche Metadaten (optional → rückwärtskompatibel)
+    // Rich metadata (optional → backward-compatible)
     var season: Int? = nil
     var episodeNumber: Int? = nil
     var episodeType: String? = nil // full | trailer | bonus
@@ -59,10 +59,10 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var id: String { guid }
 }
 
-/// Verwaltung der Podcast-Abos: Feeds hinzufügen/entfernen, aktualisieren
-/// (RSS/Atom per XMLParser, ohne Fremd-Abhängigkeit), persistenter Cache.
-/// Reines Quellen-Backend hinter dem `RSSProvider` — der Core spricht nur
-/// mit dem Provider, nie direkt hiermit (nur die Verwaltungs-UI tut das).
+/// Management of podcast subscriptions: add/remove feeds, refresh (RSS/Atom via
+/// XMLParser, no third-party dependency), persistent cache. Pure source backend
+/// behind the `RSSProvider` — the core talks only to the provider, never
+/// directly here (only the management UI does).
 @MainActor
 final class PodcastSubscriptions: ObservableObject {
     static let shared = PodcastSubscriptions()
@@ -71,10 +71,10 @@ final class PodcastSubscriptions: ObservableObject {
         didSet { rebuildCaches() }
     }
 
-    /// guid → (Show-Index, Episoden-Index) für O(1)-Lookup statt linearer Suche
-    /// über alle Folgen (die pro Cover-Zelle lief und nach dem Import bremste).
+    /// guid → (show index, episode index) for O(1) lookup instead of a linear
+    /// search over all episodes (which ran per cover cell and dragged after import).
     private var episodeIndex: [String: (show: Int, episode: Int)] = [:]
-    /// Gecachte, sortierte Gesamtliste (invalidiert bei `shows`-Änderung).
+    /// Cached, sorted full list (invalidated on a `shows` change).
     private var cachedAllEpisodes: [(show: PodcastShow, episode: PodcastEpisode)]?
 
     private func rebuildCaches() {
@@ -101,10 +101,9 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Stabile ids + Dedup (Migration)
 
-    /// Deterministischer Schlüssel eines Feeds (FNV‑1a hex über die
-    /// normalisierte URL). Ersetzt das früher genutzte `String.hashValue`, das
-    /// pro App-Start neu geseedet war und so Duplikate + Fortschrittsverlust
-    /// verursacht hat.
+    /// Deterministic key of a feed (FNV-1a hex over the normalised URL).
+    /// Replaces the previously used `String.hashValue`, which was re-seeded on
+    /// each app start and thus caused duplicates + progress loss.
     nonisolated static func feedKey(_ feedURL: String) -> String {
         stableHash(normalizeFeedURL(feedURL))
     }
@@ -127,11 +126,10 @@ final class PodcastSubscriptions: ObservableObject {
         return s
     }
 
-    /// Persistierte Shows auf stabile ids/guids bringen und Doppel-Shows
-    /// (gleiche normalisierte Feed-URL) zusammenführen. Idempotent — spätere
-    /// Starts ändern nichts mehr. Beim Umschlüsseln der guids wandert der
-    /// zugehörige `localPosition`-Fortschritt mit (alt→neu), damit der gerade
-    /// importierte Apple-Fortschritt erhalten bleibt.
+    /// Bring persisted shows to stable ids/guids and merge duplicate shows (same
+    /// normalised feed URL). Idempotent — later starts change nothing. When
+    /// re-keying the guids the associated `localPosition` progress moves along
+    /// (old→new) so the just-imported Apple progress is preserved.
     private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
         var byKey: [String: PodcastShow] = [:]
         var order: [String] = []
@@ -164,7 +162,7 @@ final class PodcastSubscriptions: ObservableObject {
 
         let result = order.compactMap { byKey[$0] }
         if changed {
-            // Direkt zurückschreiben, damit die Bereinigung persistent ist.
+            // Write back immediately so the cleanup is persistent.
             if let data = try? JSONEncoder().encode(result) {
                 try? data.write(to: fileURL, options: .atomic)
             }
@@ -172,8 +170,8 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Aus `rss:<hash>:<original>` den ursprünglichen guid herauslösen
-    /// (der selbst Doppelpunkte enthalten kann → maxSplits 2).
+    /// Extract the original guid from `rss:<hash>:<original>` (which may itself
+    /// contain colons → maxSplits 2).
     private nonisolated static func originalGuid(_ guid: String) -> String {
         let parts = guid.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         if parts.count == 3, parts[0] == "rss" { return String(parts[2]) }
@@ -203,8 +201,8 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Abos
 
-    /// Feed abonnieren (lädt + parst sofort). Bereits vorhandene Feeds werden
-    /// nur aktualisiert.
+    /// Subscribe to a feed (loads + parses immediately). Already-present feeds
+    /// are only refreshed.
     func subscribe(urlString: String) async -> Bool {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
@@ -223,10 +221,9 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
-    /// Volle Historie einer Show über PodcastIndex nachladen (wenn Key
-    /// hinterlegt) und in die persistierten Folgen mergen. Gleiche
-    /// `rss:<feedKey>:<guid>`-IDs wie der Feed → Dedup + gemeinsamer
-    /// Fortschritts-Key. Rückgabe: Zahl NEU hinzugekommener Folgen.
+    /// Load a show's full history via PodcastIndex (if a key is set) and merge
+    /// it into the persisted episodes. Same `rss:<feedKey>:<guid>` ids as the
+    /// feed → dedup + shared progress key. Returns: number of NEW episodes added.
     func loadFullHistory(showId: String) async -> Int {
         guard AppStorageKeys.podcastIndexConfigured,
               let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
@@ -261,11 +258,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Import (OPML / Apple Podcasts)
 
-    /// Ergebnis eines Imports fürs UI-Feedback.
+    /// Result of an import for UI feedback.
     struct ImportResult {
-        var subscribed = 0        // neu/aktualisiert abonniert
-        var failed = 0            // Feed nicht ladbar
-        var progressApplied = 0   // Episoden mit übernommenem Fortschritt/Gehört
+        var subscribed = 0        // newly/refreshed subscribed
+        var failed = 0            // feed not loadable
+        var progressApplied = 0   // episodes with applied progress/played
     }
 
     /// OPML-Datei importieren: jeden `xmlUrl`-Feed abonnieren (kein Fortschritt).
@@ -277,11 +274,11 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Apple-Podcasts-`MTLibrary.sqlite` importieren: Abos + Fortschritt + Gehört.
-    /// `nil`, wenn die Datei nicht als SQLite geöffnet werden kann.
+    /// Import Apple Podcasts `MTLibrary.sqlite`: subscriptions + progress + played.
+    /// `nil` if the file cannot be opened as SQLite.
     func importAppleLibrary(at url: URL) async -> ImportResult? {
-        // SQLite-Read vom MainActor weg (kann bei großer DB dauern); der
-        // Security-Scope-Zugriff der aufrufenden View gilt prozessweit.
+        // Move the SQLite read off the MainActor (can take a while for a large
+        // DB); the calling view's security-scoped access applies process-wide.
         guard let library = await Task.detached(priority: .userInitiated, operation: {
             PodcastImport.readAppleLibrary(at: url)
         }).value else { return nil }
@@ -307,8 +304,8 @@ final class PodcastSubscriptions: ObservableObject {
             for e in updated[s].episodes.indices {
                 let episode = updated[s].episodes[e]
                 guard let match = byURL[Self.normalizeEnclosure(episode.audioURL)] else { continue }
-                // Fehlt die Dauer im Feed (kein `itunes:duration`), die von Apple
-                // übernehmen — sonst kann „gehört" (time ≥ duration−1) nie greifen.
+                // If the feed lacks the duration (no `itunes:duration`), take
+                // Apple's — otherwise "played" (time ≥ duration−1) can never apply.
                 if episode.duration <= 0, match.duration > 0 {
                     updated[s].episodes[e].duration = match.duration
                 }
@@ -355,8 +352,8 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
-    /// Auf die neuesten N Folgen kürzen (0 = unbegrenzt) und Downloads der
-    /// entfernten Folgen entsorgen. Direkt aus den Pro-Show-Einstellungen.
+    /// Trim to the latest N episodes (0 = unlimited) and discard downloads of
+    /// the removed episodes. Directly from the per-show settings.
     func trimEpisodes(showId: String, keepLatest n: Int) async {
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return }
         if applyLimit(&shows[idx], keepLatest: n) { save() }
@@ -372,10 +369,10 @@ final class PodcastSubscriptions: ObservableObject {
         return true
     }
 
-    // MARK: - Abfragen für den Provider
+    // MARK: - Queries for the provider
 
-    /// Alle Episoden aller Shows, neueste zuerst (gecacht — pro Render sonst
-    /// mehrfach neu sortiert).
+    /// All episodes of all shows, newest first (cached — otherwise re-sorted
+    /// several times per render).
     func allEpisodes() -> [(show: PodcastShow, episode: PodcastEpisode)] {
         if let cached = cachedAllEpisodes { return cached }
         let all = shows.flatMap { show in show.episodes.map { (show: show, episode: $0) } }
@@ -384,7 +381,7 @@ final class PodcastSubscriptions: ObservableObject {
         return all
     }
 
-    /// O(1)-Lookup über den guid-Index.
+    /// O(1) lookup via the guid index.
     func episode(guid: String) -> (show: PodcastShow, episode: PodcastEpisode)? {
         guard let (s, e) = episodeIndex[guid],
               s < shows.count, e < shows[s].episodes.count else { return nil }
@@ -418,13 +415,13 @@ final class PodcastSubscriptions: ObservableObject {
     }
 }
 
-/// Minimaler RSS/Atom-Parser auf Basis von `XMLParser`. Deckt die iTunes-
-/// Podcast-Felder ab; unbekannte Tags werden ignoriert, kaputte Items
-/// übersprungen. Internal (nicht private) — mit Unit-Tests abgedeckt.
+/// Minimal RSS/Atom parser based on `XMLParser`. Covers the iTunes podcast
+/// fields; unknown tags are ignored, broken items skipped. Internal (not
+/// private) — covered by unit tests.
 final class RSSFeedParser: NSObject, XMLParserDelegate {
     private let feedURL: String
-    /// Stabiler, deterministischer Feed-Schlüssel (NICHT `String.hashValue`,
-    /// das pro App-Start neu geseedet ist) — Basis für Show-id und guids.
+    /// Stable, deterministic feed key (NOT `String.hashValue`, which is
+    /// re-seeded per app start) — basis for show id and guids.
     private let feedKey: String
     init(feedURL: String) {
         self.feedURL = feedURL
@@ -491,7 +488,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
            (attrs["type"]?.contains("json") ?? true) {
             iChapters = url
         }
-        // Transkript (erste URL genügt).
+        // Transcript (the first URL is enough).
         if el == "podcast:transcript", inItem, iTranscript.isEmpty, let url = attrs["url"] {
             iTranscript = url
         }
@@ -521,7 +518,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?, qualifiedName qName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Person schließt (Name = Textinhalt) — in Item wie Kanal möglich.
+        // Closing a person (name = text content) — possible in item and channel.
         if el == "podcast:person", let a = pendingPersonAttrs, !value.isEmpty {
             let person = PodcastPerson(name: value, role: a["role"], img: a["img"], href: a["href"])
             if inItem { iPersons.append(person) }
