@@ -56,6 +56,7 @@ struct PodcastsView: View {
                 nextUpSection
                 recommendationsSection
                 queueSection
+                premiumSection
                 showsShelf
                 inboxSection
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
@@ -298,6 +299,49 @@ struct PodcastsView: View {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // MARK: - Premium (private/bezahlte Feeds)
+
+    /// Premium, wenn Basic-Auth-Zugangsdaten hinterlegt sind ODER die Feed-URL
+    /// nach privatem/bezahltem Zugang aussieht (Token im Query bzw. bekannter
+    /// Premium-Host).
+    private func isPremium(_ show: PodcastShow) -> Bool {
+        if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(show.feedURL)) {
+            return true
+        }
+        let url = show.feedURL.lowercased()
+        let hosts = ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access"]
+        if hosts.contains(where: { url.contains($0) }) { return true }
+        if let items = URLComponents(string: show.feedURL)?.queryItems,
+           items.contains(where: { ["auth", "token", "key", "secret"].contains($0.name.lowercased()) }) {
+            return true
+        }
+        return false
+    }
+
+    @ViewBuilder
+    private var premiumSection: some View {
+        let shows = allShows.filter { isPremium($0) }
+        if !shows.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Premium", systemImage: "lock.fill")
+                    .font(.title3).bold().padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(shows) { show in
+                            NavigationLink {
+                                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
+                            } label: {
+                                ShowTile(show: show)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
             }
         }
