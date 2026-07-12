@@ -12,7 +12,20 @@ struct PodcastsView: View {
     // beobachten, damit sich „Als Nächstes"/„Geladen"/„Gehört" live neu bauen.
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     private var rss: RSSProvider { AppSession.shared.rssProvider }
+
+    /// Shows aller Podcast-Quellen (RSS + ABS), dedupliziert über die
+    /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
+    /// bevorzugt.
+    private var allShows: [PodcastShow] {
+        let abs = absPodcast.shows
+        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        let rssOnly = subs.shows.filter {
+            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
+        }
+        return abs + rssOnly
+    }
 
     // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
     // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
@@ -35,7 +48,11 @@ struct PodcastsView: View {
             .padding(.top, 8)
             .bottomBarClearance()
         }
-        .refreshable { await subs.refreshAll() }
+        .refreshable {
+            await subs.refreshAll()
+            await absPodcast.refresh()
+        }
+        .task { await absPodcast.refresh() }   // ABS-Podcasts beim Öffnen laden
         .task(id: recomputeToken) {
             nextUp = rss.nextUpItems()
             downloaded = rss.downloadedEpisodeItems()
@@ -67,9 +84,9 @@ struct PodcastsView: View {
 
     @ViewBuilder
     private var showsShelf: some View {
-        // Direkt über die abonnierten Shows (Kachel = nur Cover + Titel); die
+        // Alle Podcast-Quellen (RSS + ABS); Kachel = nur Cover + Titel, die
         // Folgenliste baut erst die Show-Seite (lazy).
-        let shows = subs.shows
+        let shows = allShows
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Shows").font(.title3).bold().padding(.horizontal)

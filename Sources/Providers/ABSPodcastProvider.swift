@@ -77,6 +77,13 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     // MARK: - Laden für die UI
 
+    /// Nur prüfen, ob Podcast-Bibliotheken existieren (1 Request) — steuert die
+    /// Tab-Sichtbarkeit, ohne alle Shows zu laden. Fehler/kein Login → false.
+    func refreshAvailability() async {
+        let libs = try? await client.fetchPodcastLibraries()
+        hasPodcasts = (libs?.isEmpty == false)
+    }
+
     /// Shows + Folgen aller Podcast-Bibliotheken laden. Best effort: einzelne
     /// fehlgeschlagene Shows werden übersprungen, der Rest bleibt nutzbar.
     func refresh() async {

@@ -244,6 +244,9 @@ struct LibraryView: View {
             await SyncQueue.shared.flush(apiClient: provider)
             await BookmarkQueue.shared.flush(provider: provider)
             await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
+            // Prüfen, ob der ABS-Server Podcast-Bibliotheken hat → Podcast-Tab
+            // erscheint auch ohne lokale RSS-Abos (1 Request, kein Voll-Laden).
+            await AppSession.shared.absPodcastProvider.refreshAvailability()
         }
         .onChange(of: scenePhase) { _, newPhase in
             // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
