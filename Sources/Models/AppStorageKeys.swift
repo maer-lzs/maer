@@ -76,6 +76,20 @@ nonisolated enum AppStorageKeys {
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
 
+    /// Pro-Show-Wiedergabetempo (greift als Start-Rate für Folgen dieser Show,
+    /// solange keine folgen-eigene Rate gemerkt ist).
+    static func podcastShowRate(_ showId: String) -> String { "podcastShowRate.\(showId)" }
+
+    /// Show-ID aus einer Podcast-Folgen-ID ableiten (`rss:<key>:<guid>` →
+    /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed-Key/Item-ID
+    /// enthalten kein `:`, daher sind die ersten beiden Segmente die Show-ID.
+    static func podcastShowId(forEpisodeId id: String) -> String? {
+        guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return nil }
+        let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count >= 2 else { return nil }
+        return parts.prefix(2).joined(separator: ":")
+    }
+
     /// Entfernt pro-Buch-Einträge zu Büchern, die es nicht mehr gibt.
     /// Nur mit einer VOLLSTÄNDIGEN Bibliotheksliste aufrufen (nie mit der
     /// gefilterten Offline-Liste — sonst fliegen gültige Keys raus).

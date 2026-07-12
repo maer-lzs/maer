@@ -65,6 +65,8 @@ struct PodcastsView: View {
             for item in continueItems {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
             }
+            // Neue Folgen aktivierter Shows im Hintergrund lokal laden.
+            await PodcastAutoDownload.run(shows: allShows)
         }
     }
 
@@ -292,6 +294,61 @@ struct PodcastShowsGridView: View {
         }
         .navigationTitle("Shows")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Pro-Show-Einstellungen: Tempo (greift als Start-Rate), Auto-Download neuer
+/// Folgen und Sortierung. Erreichbar über das Schieberegler-Symbol der Show.
+struct PodcastShowSettingsSheet: View {
+    let showId: String
+    @Binding var newestFirst: Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var rate: Float?          // nil = Standard-Tempo
+    @State private var autoDownload = false
+    private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Playback Speed") {
+                    Picker("Speed", selection: $rate) {
+                        Text("Default").tag(Float?.none)
+                        ForEach(rates, id: \.self) { r in
+                            Text(String(format: "%g×", r)).tag(Float?.some(r))
+                        }
+                    }
+                }
+                Section {
+                    Toggle("Auto-download new episodes", isOn: $autoDownload)
+                } footer: {
+                    Text("Newly published episodes are downloaded to this device automatically.")
+                }
+                Section("Sort") {
+                    Picker("Order", selection: $newestFirst) {
+                        Label("Newest First", systemImage: "arrow.down").tag(true)
+                        Label("Oldest First", systemImage: "arrow.up").tag(false)
+                    }
+                    .pickerStyle(.inline)
+                }
+            }
+            .navigationTitle("Podcast Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+            }
+            .onAppear {
+                rate = UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate(showId)) as? Float
+                autoDownload = PodcastAutoDownload.isEnabled(showId)
+            }
+            .onChange(of: rate) { _, new in
+                let key = AppStorageKeys.podcastShowRate(showId)
+                if let new { UserDefaults.standard.set(new, forKey: key) }
+                else { UserDefaults.standard.removeObject(forKey: key) }
+            }
+            .onChange(of: autoDownload) { _, on in
+                PodcastAutoDownload.setEnabled(showId, on)
+            }
+        }
     }
 }
 
@@ -612,6 +669,7 @@ struct PodcastShowView: View {
     @State private var downloadError: String?
     @State private var loadingHistory = false
     @State private var historyResult: String?
+    @State private var showSettings = false
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
 
     /// Aktuelle Show aus dem Store (nicht der beim Öffnen übergebene Snapshot) —
@@ -658,15 +716,11 @@ struct PodcastShowView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Picker("Sort", selection: $newestFirst) {
-                        Label("Newest First", systemImage: "arrow.down").tag(true)
-                        Label("Oldest First", systemImage: "arrow.up").tag(false)
-                    }
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down")
-                }
+                Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
             }
+        }
+        .sheet(isPresented: $showSettings) {
+            PodcastShowSettingsSheet(showId: show.id, newestFirst: $newestFirst)
         }
         .alert("Download failed", isPresented: Binding(
             get: { downloadError != nil },
@@ -1062,6 +1116,45 @@ func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryIt
         ),
         addedAt: episode.pubDate
     )
+}
+
+/// Pro-Show-Auto-Download: lädt für aktivierte Shows die neuesten, seit dem
+/// Einschalten erschienenen Folgen lokal (quellenübergreifend RSS + ABS). Nur
+/// Folgen NACH dem Aktivierungszeitpunkt werden gezogen, damit vom Nutzer
+/// gelöschte Altfolgen nicht endlos neu geladen werden.
+@MainActor
+enum PodcastAutoDownload {
+    static func flagKey(_ showId: String) -> String { "podcastAutoDownload.\(showId)" }
+    private static func sinceKey(_ showId: String) -> String { "podcastAutoDownloadSince.\(showId)" }
+
+    static func isEnabled(_ showId: String) -> Bool {
+        UserDefaults.standard.bool(forKey: flagKey(showId))
+    }
+
+    static func setEnabled(_ showId: String, _ on: Bool) {
+        UserDefaults.standard.set(on, forKey: flagKey(showId))
+        // Beim Einschalten den Stichtag setzen → ab jetzt neue Folgen.
+        if on { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId)) }
+    }
+
+    /// Für alle aktivierten Shows die neuen (seit Stichtag), noch nicht lokal
+    /// vorhandenen Folgen ziehen. `perShow` deckelt pro Durchlauf.
+    static func run(shows: [PodcastShow], perShow: Int = 3) async {
+        let dm = DownloadManager.shared
+        for show in shows where isEnabled(show.id) {
+            let since = UserDefaults.standard.double(forKey: sinceKey(show.id))
+            let candidates = show.episodes
+                .filter { $0.pubDate >= since }
+                .sorted { $0.pubDate > $1.pubDate }
+                .prefix(perShow)
+                .map { podcastLibraryItem(show: show, episode: $0) }
+            for item in candidates where !dm.isDownloaded(itemId: item.id) {
+                let provider = AppSession.shared.provider(for: item.id)
+                guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { continue }
+                await dm.download(item: detail, provider: provider)
+            }
+        }
+    }
 }
 
 /// Feed-only-Folge einer ABS-Show → abspielbares `rss:`-Item: streamt vom

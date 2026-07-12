@@ -423,9 +423,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         lastKnownServerUpdate = serverUpdateMs
         currentTime = startTime
         isFinished = item.userMediaProgress?.isFinished ?? false
-        // Remembered per-book speed; new books start at the default speed
-        // from the settings instead of a hard 1.0.
-        playbackRate = UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float
+        // Remembered per-book speed; then a per-show podcast rate (if set);
+        // otherwise the default speed from the settings instead of a hard 1.0.
+        let showRate: Float? = AppStorageKeys.podcastShowId(forEpisodeId: item.id).flatMap {
+            UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate($0)) as? Float
+        }
+        playbackRate = (UserDefaults.standard.object(forKey: AppStorageKeys.playbackRate(item.id)) as? Float)
+            ?? showRate
             ?? (UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
         updateCurrentChapter()
         updateNowPlayingInfo()
