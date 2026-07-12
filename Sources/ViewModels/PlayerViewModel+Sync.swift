@@ -84,10 +84,11 @@ extension PlayerViewModel {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
                     UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
-                    // gpodder: RSS-Folgen-Position gleich mit hochschieben
-                    // (periodisch + bei Pause/Stop/Seek). No-op ohne Konfig.
-                    if item.id.hasPrefix("rss:") {
-                        GPodderSync.shared.notePlayback(rssItemId: item.id,
+                    // gpodder: Podcast-Position gleich mit hochschieben
+                    // (periodisch + bei Pause/Stop/Seek). No-op ohne Konfig;
+                    // abspod: wird über die Feed-guid-Brücke abgebildet.
+                    if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+                        GPodderSync.shared.notePlayback(itemId: item.id,
                                                         position: currentTime, duration: duration)
                     }
                 }

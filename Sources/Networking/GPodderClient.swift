@@ -51,7 +51,8 @@ final class GPodderClient {
 
     /// Login per Basic-Auth → Session-Cookie. Wirft bei falschen Zugangsdaten.
     func login() async throws {
-        _ = try await send(request("api/2/auth/\(enc(config.username))/login.json", method: "POST"))
+        _ = try await send(request("api/2/auth/\(enc(config.username))/login.json", method: "POST"),
+                           allowAuthRetry: false)
     }
 
     /// Volle aktuelle Abo-Liste dieses Geräts (URLs).
@@ -116,11 +117,17 @@ final class GPodderClient {
     }
 
     @discardableResult
-    private func send(_ req: URLRequest) async throws -> Data {
+    private func send(_ req: URLRequest, allowAuthRetry: Bool = true) async throws -> Data {
         let (data, resp): (Data, URLResponse)
         do { (data, resp) = try await session.data(for: req) }
         catch { throw GPodderError.network }
         guard let http = resp as? HTTPURLResponse else { throw GPodderError.network }
+        // 401 mit reinem Basic-Auth: manche Server (z. B. gpodder.net) wollen erst
+        // einen Login → Session-Cookie. Einmal einloggen und wiederholen.
+        if http.statusCode == 401, allowAuthRetry {
+            try await login()
+            return try await send(req, allowAuthRetry: false)
+        }
         guard (200..<300).contains(http.statusCode) else { throw GPodderError.status(http.statusCode) }
         return data
     }

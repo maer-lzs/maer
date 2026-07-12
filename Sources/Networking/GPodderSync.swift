@@ -129,13 +129,23 @@ final class GPodderSync {
 
     // MARK: - Echtzeit-Push (einzelne Folge beim Hören/Pausieren)
 
-    /// Vom Player aufgerufen, sobald eine `rss:`-Folge Fortschritt schreibt
+    /// Vom Player aufgerufen, sobald eine Podcast-Folge Fortschritt schreibt
     /// (periodisch + bei Pause/Stop/Seek). Schiebt eine einzelne Play-Aktion an
-    /// den Server — best effort, blockiert die Wiedergabe nicht.
-    func notePlayback(rssItemId: String, position: Double, duration: Double) {
-        guard AppStorageKeys.gpodderEnabledValue, config != nil,
-              rssItemId.hasPrefix("rss:") else { return }
-        Task { await pushSingle(rssItemId: rssItemId, position: position, duration: duration) }
+    /// den Server — best effort, blockiert die Wiedergabe nicht. `abspod:`-Folgen
+    /// werden über die Feed-`guid`-Brücke auf ihre `rss:`-Entsprechung abgebildet
+    /// (nur möglich, wenn derselbe Feed auch als RSS/gpodder abonniert ist).
+    func notePlayback(itemId: String, position: Double, duration: Double) {
+        guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
+        let rssId: String?
+        if itemId.hasPrefix("rss:") {
+            rssId = itemId
+        } else if itemId.hasPrefix("abspod:") {
+            rssId = ABSPodcastProvider.shared.equivalentIds(itemId).first { $0.hasPrefix("rss:") }
+        } else {
+            rssId = nil
+        }
+        guard let rssId else { return }
+        Task { await pushSingle(rssItemId: rssId, position: position, duration: duration) }
     }
 
     private func pushSingle(rssItemId: String, position: Double, duration: Double) async {
