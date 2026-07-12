@@ -9,5 +9,10 @@
 	<array>
 		<string>group.de.lzs.ABSPlayer</string>
 	</array>
+	<!-- iCloud Key-Value-Storage fuer den geraeteuebergreifenden Podcast-
+	     Fortschritt (PodcastCloudSync). Bei automatischem Signing aktiviert
+	     Xcode die iCloud-Capability der App-ID daraufhin selbst. -->
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
 </dict>
 </plist>

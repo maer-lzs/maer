@@ -56,6 +56,16 @@
         }
       }
     },
+    "%lld episodes added" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Folgen ergänzt"
+          }
+        }
+      }
+    },
     "%lld episodes with progress" : {
       "localizations" : {
         "de" : {
@@ -394,6 +404,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nächstes Buch der Serie automatisch"
+          }
+        }
+      }
+    },
+    "Auto-save to server on play" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Abspielen am Server sichern"
           }
         }
       }
@@ -1049,6 +1069,16 @@
         }
       }
     },
+    "Load full history" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganze Historie laden"
+          }
+        }
+      }
+    },
     "Load Missing Files" : {
       "localizations" : {
         "de" : {
@@ -1065,36 +1095,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ältere Folgen laden"
-          }
-        }
-      }
-    },
-    "Load full history" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ganze Historie laden"
-          }
-        }
-      }
-    },
-    "%lld episodes added" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Folgen ergänzt"
-          }
-        }
-      }
-    },
-    "No additional episodes found." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine zusätzlichen Folgen gefunden."
           }
         }
       }
@@ -1300,11 +1300,22 @@
       }
     },
     "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät."
+          }
+        }
+      }
+    },
+    "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät. Auto-Sichern legt eine gestreamte Feed-Folge nach ~30 s am Server ab, damit ihr Fortschritt auch dort synct."
           }
         }
       }
@@ -1325,6 +1336,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nächstes Kapitel"
+          }
+        }
+      }
+    },
+    "No additional episodes found." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine zusätzlichen Folgen gefunden."
           }
         }
       }
@@ -2214,26 +2235,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf Server abonnieren"
-          }
-        }
-      }
-    },
-    "Auto-save to server on play" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beim Abspielen am Server sichern"
-          }
-        }
-      }
-    },
-    "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät. Auto-Sichern legt eine gestreamte Feed-Folge nach ~30 s am Server ab, damit ihr Fortschritt auch dort synct."
           }
         }
       }
