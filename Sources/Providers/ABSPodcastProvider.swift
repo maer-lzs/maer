@@ -133,9 +133,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
             catch { return "Feed (podcasts/feed): \(Self.msg(error))" }
 
-            let folders: [ABSFolder]
-            do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
-            catch { return "Ordner (libraries/id): \(Self.msg(error))" }
+            // Ordner kommen meist schon mit dem Listen-Endpoint; sonst Detail.
+            var folders = library.folders ?? []
+            if folders.isEmpty {
+                do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
+                catch { return "Ordner (libraries/id): \(Self.msg(error))" }
+            }
             guard let folder = folders.first, let folderPath = folder.fullPath else {
                 return "Kein Ordner in der Podcast-Bibliothek."
             }

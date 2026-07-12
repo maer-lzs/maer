@@ -1185,6 +1185,16 @@
         }
       }
     },
+    "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät."
+          }
+        }
+      }
+    },
     "Newest First" : {
       "localizations" : {
         "de" : {
@@ -2071,22 +2081,15 @@
         }
       }
     },
+    "Subscribe failed" : {
+
+    },
     "Subscribe on server" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf Server abonnieren"
-          }
-        }
-      }
-    },
-    "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät."
           }
         }
       }

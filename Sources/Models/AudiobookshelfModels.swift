@@ -91,6 +91,9 @@ struct ABSLibrary: Decodable, Identifiable {
     /// "book" | "podcast" — unterscheidet Hörbuch- von Podcast-Bibliotheken.
     /// Default nil → bestehende Memberwise-Init-Aufrufe (RSS/Local) bleiben gültig.
     var mediaType: String? = nil
+    /// Ordner der Bibliothek (der Listen-Endpoint liefert sie meist mit) —
+    /// Zielpfad für ein neu angelegtes Podcast-Abo.
+    var folders: [ABSFolder]? = nil
 
     var isPodcast: Bool { mediaType == "podcast" }
 }
@@ -103,10 +106,8 @@ struct ABSFolder: Decodable, Identifiable {
     let fullPath: String?
 }
 
-struct LibraryDetailResponse: Decodable {
-    let library: LibraryWithFolders
-}
-
+/// `GET /api/libraries/{id}` liefert das Library-Objekt DIREKT (folders auf
+/// oberster Ebene) — NICHT in `{ library: … }` verpackt.
 struct LibraryWithFolders: Decodable {
     let folders: [ABSFolder]?
 }

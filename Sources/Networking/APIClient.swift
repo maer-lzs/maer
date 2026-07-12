@@ -229,10 +229,11 @@ final class APIClient {
         return try decode(PodcastFeedResponse.self, from: data).podcast.metadata
     }
 
-    /// Ordner einer Bibliothek (Zielpfad für ein neues Abo).
+    /// Ordner einer Bibliothek (Zielpfad für ein neues Abo). Der Detail-Endpoint
+    /// liefert das Library-Objekt direkt (folders auf oberster Ebene).
     func fetchLibraryFolders(libraryId: String) async throws -> [ABSFolder] {
         let data = try await get(path: "api/libraries/\(libraryId)")
-        return (try decode(LibraryDetailResponse.self, from: data).library.folders) ?? []
+        return (try decode(LibraryWithFolders.self, from: data).folders) ?? []
     }
 
     /// Podcast server-seitig anlegen (POST /api/podcasts). Braucht Upload-Rechte.
