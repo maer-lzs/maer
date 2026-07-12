@@ -1,52 +1,50 @@
 import Foundation
 
-/// Was eine Audioquelle KANN — die UI blendet Feature-Flächen aus, statt
-/// gegen Wände zu laufen (z. B. hat RSS keinen serverseitigen Fortschritt).
+/// What an audio source CAN do — the UI hides feature areas instead of running
+/// into walls (e.g. RSS has no server-side progress).
 struct ProviderCapabilities: OptionSet {
     let rawValue: Int
 
-    /// Hörposition liegt serverseitig und wird abgeglichen (SyncQueue,
-    /// Konflikt-Erkennung, Geräte-Wechsel).
+    /// Listening position lives server-side and is reconciled (SyncQueue,
+    /// conflict detection, device switch).
     static let progressSync = ProviderCapabilities(rawValue: 1 << 0)
-    /// Serverseitige Lesezeichen (Position + Titel).
+    /// Server-side bookmarks (position + title).
     static let bookmarks = ProviderCapabilities(rawValue: 1 << 1)
-    /// Quelle kann selbst suchen (sonst nur lokale Filterung).
+    /// Source can search itself (otherwise only local filtering).
     static let remoteSearch = ProviderCapabilities(rawValue: 1 << 2)
-    /// Anmeldung mit Benutzername/Passwort möglich.
+    /// Username/password login possible.
     static let passwordLogin = ProviderCapabilities(rawValue: 1 << 3)
-    /// Inhalte müssen für Offline-Nutzung erst HERUNTERGELADEN werden
-    /// (Server). Quellen ohne dieses Flag (lokale Dateien) sind per
-    /// Definition immer offline verfügbar — der Core zeigt dort keine
-    /// Download-Steuerung.
+    /// Content must be DOWNLOADED first for offline use (server). Sources
+    /// without this flag (local files) are always offline available by
+    /// definition — the core shows no download controls there.
     static let downloadable = ProviderCapabilities(rawValue: 1 << 4)
 }
 
-/// Vorgefertigte „Continue"/„Recently Added"-Reihen einer Quelle — damit die
-/// oberen Bibliotheks-Reihen sofort vollständig stehen, während die Gesamtliste
-/// noch progressiv nachlädt.
+/// Prebuilt "Continue"/"Recently Added" rows of a source — so the top library
+/// rows are complete immediately while the full list still loads progressively.
 struct LibrarySeed {
     var continueListening: [LibraryItem] = []
     var recentlyAdded: [LibraryItem] = []
 }
 
-/// Die eine Schnittstelle, über die der Mär-Core (Player, Downloads, Sync,
-/// Suche, CarPlay, Widgets) Audioquellen sieht. Provider liefern NUR Daten —
-/// alles andere (Offline, Sleep, Kapitel-Logik, Queue, Statistik) gehört
-/// dem Core; der Player weiß nicht, woher ein Titel stammt.
+/// The single interface through which the Mär core (player, downloads, sync,
+/// search, CarPlay, widgets) sees audio sources. Providers deliver ONLY data —
+/// everything else (offline, sleep, chapter logic, queue, stats) belongs to the
+/// core; the player does not know where a track comes from.
 ///
-/// ID-Konvention: Der Audiobookshelf-HAUPTPROVIDER verwendet rohe Item-IDs
-/// (Bestandsdaten: Download-Ordner, UserDefaults-Keys, Cover-Cache hängen
-/// daran). Jeder KÜNFTIGE Provider prefixt seine IDs mit "<providerId>:" —
-/// z. B. `local:…`, `rss:…` — damit sich Quellen nie in die Quere kommen.
+/// ID convention: the Audiobookshelf MAIN PROVIDER uses raw item ids (existing
+/// data: download folders, UserDefaults keys, cover cache hang off them). Every
+/// FUTURE provider prefixes its ids with "<providerId>:" — e.g. `local:…`,
+/// `rss:…` — so sources never collide.
 ///
-/// `ProgressSyncAPI` (fetchAllProgress/updateProgress) ist Teil des
-/// Vertrags; Provider ohne `.progressSync`-Capability liefern leere Daten
-/// bzw. werfen nicht — der Core fragt vorher die Capability ab.
+/// `ProgressSyncAPI` (fetchAllProgress/updateProgress) is part of the contract;
+/// providers without the `.progressSync` capability return empty data or don't
+/// throw — the core queries the capability first.
 @MainActor
 protocol AudioProvider: AnyObject, ProgressSyncAPI {
-    /// Kurzes, stabiles Kürzel ("abs", "local", …) — auch ID-Namespace.
+    /// Short, stable slug ("abs", "local", …) — also the id namespace.
     var providerId: String { get }
-    /// Inhaltstyp (Tab) dieser Quelle — Standard: Hörbücher.
+    /// Content type (tab) of this source — default: audiobooks.
     var mediaType: MediaType { get }
     var capabilities: ProviderCapabilities { get }
 
@@ -67,39 +65,39 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
     // MARK: Medien
     func coverURL(forItemId itemId: String) -> URL?
     func streamURL(forContentPath contentPath: String) -> URL?
-    /// HTTP-Header für Streaming/Downloads (heute: Bearer-Token); leer,
-    /// wenn die Quelle keine Auth braucht (lokale Dateien).
+    /// HTTP headers for streaming/downloads (today: bearer token); empty when
+    /// the source needs no auth (local files).
     var streamAuthHeaders: [String: String] { get }
 
-    /// Item-spezifische Streaming/Download-Header. Standard = `streamAuthHeaders`;
-    /// RSS überschreibt für private/Premium-Feeds (Basic-Auth je Feed).
+    /// Item-specific streaming/download headers. Default = `streamAuthHeaders`;
+    /// RSS overrides for private/premium feeds (per-feed Basic auth).
     func streamAuthHeaders(forItemId itemId: String) -> [String: String]
 
-    // MARK: Lesezeichen (nur mit `.bookmarks`-Capability aufrufen)
+    // MARK: Bookmarks (only call with the `.bookmarks` capability)
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
     func createBookmark(itemId: String, time: Double, title: String) async throws
     func deleteBookmark(itemId: String, time: Double) async throws
 }
 
 extension AudioProvider {
-    /// Standard: item-unabhängig die Quellen-Header.
+    /// Default: item-independent source headers.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String] { streamAuthHeaders }
 
-    /// Standard: kein echtes Server-Paging — die ganze (kleine) Liste als eine
-    /// Seite. ABS überschreibt das mit echtem `limit`/`page`.
+    /// Default: no real server paging — the whole (small) list as one page.
+    /// ABS overrides this with real `limit`/`page`.
     func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
         -> (items: [LibraryItem], total: Int) {
         let all = try await fetchLibraryItems(libraryId: libraryId)
         return (all, all.count)
     }
 
-    /// Standard: keine vorgefertigten Reihen — der Aufrufer leitet sie aus der
-    /// Vollliste ab. ABS überschreibt das mit der `personalized`-Ansicht.
+    /// Default: no prebuilt rows — the caller derives them from the full list.
+    /// ABS overrides this with the `personalized` view.
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed { LibrarySeed() }
 
-    /// Standard: die meisten Quellen liefern Hörbücher.
+    /// Default: most sources deliver audiobooks.
     var mediaType: MediaType { .audiobooks }
-    /// Ob die Quelle aktuell Inhalte hat (steuert die Tab-Sichtbarkeit).
-    /// Standard: immer verfügbar; Podcasts z. B. erst mit einem Abo.
+    /// Whether the source currently has content (drives tab visibility).
+    /// Default: always available; podcasts e.g. only with a subscription.
     var isAvailable: Bool { true }
 }

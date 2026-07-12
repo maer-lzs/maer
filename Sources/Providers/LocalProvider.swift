@@ -1,9 +1,9 @@
 import Foundation
 
-/// Zweiter AudioProvider: importierte lokale Dateien (kein Server). Beweist
-/// die Provider-Abstraktion mit einer Quelle, die weder Login, Netz noch
-/// serverseitigen Fortschritt kennt — Fortschritt läuft rein lokal über den
-/// bestehenden `localPosition`-Mechanismus.
+/// Second AudioProvider: imported local files (no server). Proves the provider
+/// abstraction with a source that knows neither login, network nor server-side
+/// progress — progress runs purely locally via the existing `localPosition`
+/// mechanism.
 @MainActor
 final class LocalProvider: AudioProvider {
     static let shared = LocalProvider()
@@ -40,8 +40,8 @@ final class LocalProvider: AudioProvider {
         library.fileURL(forContentPath: contentPath)
     }
 
-    /// Fortschritt kommt rein lokal aus `localPosition` — der Provider ist
-    /// die EINZIGE Schnittstelle nach draußen, der Core liest nie selbst.
+    /// Progress comes purely locally from `localPosition` — the provider is the
+    /// ONLY interface to the outside, the core never reads it itself.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         var map: [String: BookProgress] = [:]
         for item in library.libraryItems() {

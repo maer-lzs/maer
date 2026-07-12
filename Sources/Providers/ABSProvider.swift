@@ -1,9 +1,9 @@
 import Foundation
 
-/// Audiobookshelf als erster AudioProvider. Die Konformität ist bewusst
-/// fast leer: das Protokoll wurde entlang der bestehenden APIClient-
-/// Oberfläche geschnitten. Ein eigener Wrapper-Typ kommt erst, wenn ein
-/// zweiter Provider echte Konflikte aufzeigt.
+/// Audiobookshelf as the first AudioProvider. The conformance is deliberately
+/// almost empty: the protocol was cut along the existing APIClient surface. A
+/// dedicated wrapper type only comes once a second provider surfaces real
+/// conflicts.
 extension APIClient: AudioProvider {
     var providerId: String { "abs" }
 

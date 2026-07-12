@@ -3,12 +3,12 @@ import Combine
 import AVFoundation
 import UIKit
 
-/// Persistenter Index der importierten lokalen Audiodateien. Jede Datei (oder
-/// ein importierter Ordner mit mehreren Dateien = ein mehrteiliges Hörbuch)
-/// wird zu einem `LibraryItem` mit `local:`-ID. Dateien liegen im
-/// App-Container unter `LocalAudio/<uuid>/`; Metadaten (Titel, Autor, Dauer,
-/// Kapitel, Cover) werden beim Import per AVAsset extrahiert und im Index
-/// gespeichert, damit die Bibliothek offline ohne erneutes Parsen lädt.
+/// Persistent index of the imported local audio files. Each file (or an
+/// imported folder with several files = one multi-file audiobook) becomes a
+/// `LibraryItem` with a `local:` id. Files live in the app container under
+/// `LocalAudio/<uuid>/`; metadata (title, author, duration, chapters, cover) is
+/// extracted via AVAsset on import and stored in the index so the library loads
+/// offline without re-parsing.
 @MainActor
 final class LocalLibrary: ObservableObject {
     static let shared = LocalLibrary()
@@ -44,7 +44,7 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Provider-Daten
 
-    /// Alle Einträge als `LibraryItem` (für die Bibliotheksliste).
+    /// All entries as `LibraryItem` (for the library list).
     func libraryItems() -> [LibraryItem] {
         entries.map { entry in
             LibraryItem(
@@ -108,9 +108,9 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Import
 
-    /// Kopiert ausgewählte Audiodateien in den Container und legt EINEN
-    /// Eintrag an (mehrere Dateien = ein mehrteiliges Hörbuch, alphabetisch
-    /// sortiert). Metadaten kommen aus der ersten Datei.
+    /// Copies selected audio files into the container and creates ONE entry
+    /// (several files = one multi-file audiobook, alphabetically sorted).
+    /// Metadata comes from the first file.
     func importFiles(_ urls: [URL]) async {
         let audioURLs = urls.filter { Self.isAudioFile($0) }.sorted { $0.lastPathComponent < $1.lastPathComponent }
         guard !audioURLs.isEmpty else { return }
@@ -158,7 +158,7 @@ final class LocalLibrary: ObservableObject {
         try? FileManager.default.removeItem(at: itemDir(entry))
         entries.removeAll { $0.id == id }
         save()
-        // Pro-Buch-Keys (Position, Rate) mit aufräumen.
+        // Clean up per-book keys (position, rate) too.
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(id))
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.playbackRate(id))
     }

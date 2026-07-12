@@ -3,11 +3,10 @@ import Combine
 import SwiftUI   // Array.move(fromOffsets:toOffset:) for the reorder API
 import WidgetKit
 
-/// Nutzer-verwaltete „Als Nächstes"-Warteschlange für Podcast-Folgen
-/// (quellenübergreifend, IDs `rss:`/`abspod:`). Persistiert lokal. Die aktuell
-/// laufende Folge steht NICHT in der Queue — sie wird beim Abspielen entfernt;
-/// „Als Nächstes" ist also das, was NACH der laufenden kommt (wie in gängigen
-/// Podcast-Apps).
+/// User-managed "Up Next" queue for podcast episodes (cross-source, ids
+/// `rss:`/`abspod:`). Persisted locally. The currently playing episode is NOT
+/// in the queue — it is removed on play; "Up Next" is therefore what comes
+/// AFTER the current one (like common podcast apps).
 @MainActor
 final class PodcastQueue: ObservableObject {
     static let shared = PodcastQueue()
@@ -28,7 +27,7 @@ final class PodcastQueue: ObservableObject {
     var isEmpty: Bool { ids.isEmpty }
     func contains(_ id: String) -> Bool { ids.contains(id) }
 
-    /// Ganz nach vorne (als Nächstes spielen).
+    /// To the very front (play next).
     func playNext(_ id: String) {
         ids.removeAll { $0 == id }
         ids.insert(id, at: 0)
@@ -65,8 +64,8 @@ final class PodcastQueue: ObservableObject {
         writeWidgetSnapshot()
     }
 
-    /// Queue-Vorschau (Titel + Show der ersten Einträge) für das „Als Nächstes"-
-    /// Widget in den App-Group-Container schreiben und das Widget aktualisieren.
+    /// Write a queue preview (title + show of the first entries) for the "Up
+    /// Next" widget into the App Group container and refresh the widget.
     private func writeWidgetSnapshot() {
         let items = ids.prefix(6).compactMap { id -> PodcastQueueSnapshot.Item? in
             guard let item = AppSession.shared.libraryItem(forId: id) else { return nil }

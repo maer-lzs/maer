@@ -1,14 +1,14 @@
 import Foundation
 import CryptoKit
 
-/// Ein Podcast-Suchtreffer aus einem Verzeichnis — enthält die Feed-URL, mit
-/// der `PodcastSubscriptions.subscribe(urlString:)` direkt abonnieren kann.
+/// A podcast search result from a directory — holds the feed URL that
+/// `PodcastSubscriptions.subscribe(urlString:)` can subscribe to directly.
 struct PodcastSearchResult: Identifiable {
     var title: String
     var author: String?
     var artworkURL: String?
     var feedURL: String
-    /// Kategorien des Feeds (nur PodcastIndex) — für das Empfehlungs-Ranking.
+    /// Categories of the feed (PodcastIndex only) — for the recommendation ranking.
     var categories: [String]? = nil
 
     var id: String { feedURL }
@@ -21,7 +21,7 @@ protocol PodcastDirectory {
 
 // MARK: - iTunes / Apple (kein Key)
 
-/// Apples Podcast-Suche — schlüssellos, liefert die Feed-URL direkt.
+/// Apple's podcast search — keyless, returns the feed URL directly.
 struct ITunesDirectory: PodcastDirectory {
     private struct Response: Decodable {
         struct Item: Decodable {
@@ -46,8 +46,8 @@ struct ITunesDirectory: PodcastDirectory {
         return Self.map(try JSONDecoder().decode(Response.self, from: data))
     }
 
-    /// Top-Charts (Fallback für „Entdecken", wenn kein PodcastIndex-Key gesetzt
-    /// ist): iTunes-Toplist → Feed-URLs per Batch-Lookup nachziehen.
+    /// Top charts (fallback for "Discover" when no PodcastIndex key is set):
+    /// iTunes top list → resolve feed URLs via batch lookup.
     func topPodcasts(limit: Int = 40) async throws -> [PodcastSearchResult] {
         let region = (Locale.current.region?.identifier ?? "US").lowercased()
         guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)/json") else { return [] }
@@ -137,8 +137,8 @@ struct PodcastIndexDirectory: PodcastDirectory {
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
-    /// Trending-Podcasts (für „Entdecken"/Empfehlungen). `lang` filtert nach
-    /// Sprache, `categories` auf deine Interessen (PodcastIndex `cat`).
+    /// Trending podcasts (for "Discover"/recommendations). `lang` filters by
+    /// language, `categories` by your interests (PodcastIndex `cat`).
     func trending(max: Int = 40, lang: String? = nil, categories: [String] = []) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/podcasts/trending")!
         var q = [URLQueryItem(name: "max", value: String(max))]
@@ -167,8 +167,8 @@ struct PodcastIndexDirectory: PodcastDirectory {
         let items: [Item]
     }
 
-    /// Folgen eines Feeds über PodcastIndex — oft VOLLSTÄNDIGER als der Live-Feed
-    /// (der Index speichert Historie). Bis zu `max` Folgen in einem Call.
+    /// Episodes of a feed via PodcastIndex — often MORE COMPLETE than the live
+    /// feed (the index keeps history). Up to `max` episodes in one call.
     func episodes(feedURL: String, max: Int = 1000) async throws -> [PodcastIndexEpisode] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/episodes/byfeedurl")!
         components.queryItems = [
