@@ -33,6 +33,9 @@ struct PodcastSourceView: View {
     @State private var importMessage: String?
     @State private var isImporting = false
 
+    @State private var isSyncing = false
+    @State private var syncMessage: String?
+
     var body: some View {
         List {
             if absPodcast.hasPodcasts {
@@ -55,6 +58,7 @@ struct PodcastSourceView: View {
             archivedSection
             addByURLSection
             importSection
+            if absPodcast.hasPodcasts { serverSyncSection }
             NavigationLink {
                 PodcastIndexKeyView()
             } label: {
@@ -287,6 +291,44 @@ struct PodcastSourceView: View {
         } footer: {
             Text("OPML brings in subscriptions from other podcast apps. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state.")
         }
+    }
+
+    /// Lokale RSS-Abos auf den Server spiegeln (ABS kanonisch) — für einen
+    /// bereinigten, geräteübergreifenden Stand. Idempotent.
+    private var serverSyncSection: some View {
+        Section {
+            Button {
+                isSyncing = true
+                Task {
+                    let r = await PodcastSubscriptionSync.reconcile()
+                    syncMessage = syncSummary(r)
+                    isSyncing = false
+                }
+            } label: {
+                Label("Sync subscriptions to server", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(isSyncing)
+            if isSyncing {
+                HStack { ProgressView(); Text("Syncing…").foregroundStyle(.secondary) }
+            }
+            if let syncMessage {
+                Text(syncMessage).font(.footnote).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("Server Sync")
+        } footer: {
+            Text("Mirrors your local subscriptions to Audiobookshelf so they sync across devices. Nothing is deleted; archived shows are reactivated. Runs automatically too.")
+        }
+    }
+
+    private func syncSummary(_ r: PodcastSubscriptionSync.Report) -> String {
+        var lines: [String] = []
+        if r.pushed > 0 { lines.append(String(localized: "\(r.pushed) subscriptions mirrored to server")) }
+        if r.reactivated > 0 { lines.append(String(localized: "\(r.reactivated) reactivated")) }
+        if r.alreadySynced > 0 { lines.append(String(localized: "\(r.alreadySynced) already synced")) }
+        if !r.failed.isEmpty { lines.append(String(localized: "\(r.failed.count) failed")) }
+        if lines.isEmpty { lines.append(String(localized: "Nothing to sync.")) }
+        return lines.joined(separator: "\n")
     }
 
     /// Ausgewählte Datei einlesen und importieren (OPML oder Apple-SQLite).

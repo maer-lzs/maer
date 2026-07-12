@@ -34,6 +34,7 @@ struct PodcastsView: View {
     @State private var inboxItems: [LibraryItem] = []       // neueste ungehörte/laufende
     @State private var downloaded: [LibraryItem] = []
     @State private var inboxFilter: PodcastEpisodeFilter = .new
+    @State private var showAddPodcasts = false
 
     /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
     private var recomputeToken: String {
@@ -52,11 +53,30 @@ struct PodcastsView: View {
             .padding(.top, 8)
             .bottomBarClearance()
         }
+        // Kein Abo → statt blank ein Leer-Zustand mit Weg zum Hinzufügen/Import.
+        .overlay {
+            if allShows.isEmpty && downloaded.isEmpty && queue.isEmpty {
+                ContentUnavailableView {
+                    Label("No podcasts yet", systemImage: "dot.radiowaves.left.and.right")
+                } description: {
+                    Text("Subscribe to a show or import your subscriptions from Apple Podcasts.")
+                } actions: {
+                    Button("Add Podcasts") { showAddPodcasts = true }
+                        .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+        .sheet(isPresented: $showAddPodcasts) {
+            NavigationStack { PodcastSourceView() }
+        }
         .refreshable {
             await subs.refreshAll()
             await absPodcast.refresh()
         }
-        .task { await absPodcast.refresh() }   // ABS-Podcasts beim Öffnen laden
+        .task {
+            await absPodcast.refresh()                       // ABS-Podcasts laden
+            await PodcastSubscriptionSync.autoReconcileIfNeeded()  // lokale Abos spiegeln
+        }
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
             inboxItems = computeInbox()
