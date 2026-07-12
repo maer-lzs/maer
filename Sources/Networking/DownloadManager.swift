@@ -2,19 +2,18 @@ import Foundation
 import Combine
 import AVFoundation
 
-/// Verwaltet lokal heruntergeladene Hörbücher. Jedes Buch bekommt einen
-/// eigenen Unterordner "Downloads/{itemId}/0.{ext}", "1.{ext}", ... — auch
-/// mehrteilige Bücher (mehrere Audiodateien statt einer M4B) werden komplett
-/// heruntergeladen, nicht nur die erste Datei. Die zugehörigen Buchdetails
-/// (Kapitel, Dauer, Track-Reihenfolge) liegen separat unter
-/// "DownloadsMeta/{itemId}.json".
+/// Manages locally downloaded audiobooks. Each book gets its own subfolder
+/// "Downloads/{itemId}/0.{ext}", "1.{ext}", … — multi-file books (several audio
+/// files instead of one M4B) are downloaded completely, not just the first
+/// file. The associated book details (chapters, duration, track order) live
+/// separately under "DownloadsMeta/{itemId}.json".
 ///
-/// Die Metadaten-Datei ist der Schlüssel für echtes Offline-Hören: ohne sie
-/// müsste die App bei jedem Öffnen eines Buchs erst Kapitel/Dauer vom Server
-/// nachladen — selbst wenn die Audiodateien längst lokal vorliegen.
+/// The metadata file is the key to real offline listening: without it the app
+/// would have to fetch chapters/duration from the server on every book open —
+/// even when the audio files are already present locally.
 ///
-/// Bewusst als geräteweiter Singleton wie `KeychainStore`: Downloads sind ein
-/// Geräte-Speicher-Konzept, keine Session-spezifische Abhängigkeit.
+/// Deliberately a device-wide singleton like `KeychainStore`: downloads are a
+/// device-storage concept, not a session-specific dependency.
 @MainActor
 final class DownloadManager: ObservableObject {
     static let shared = DownloadManager()
@@ -47,8 +46,8 @@ final class DownloadManager: ObservableObject {
     /// Phase per book: downloading (weighted progress), paused, or failed.
     @Published private(set) var phase: [String: DownloadPhase] = [:]
     private var controls: [String: DownloadControl] = [:]
-    /// Gecacht statt berechnet — die View liest das bei jedem Render; ein
-    /// Disk-Scan pro Fortschritts-Tick wäre teuer.
+    /// Cached instead of computed — the view reads it on every render; a disk
+    /// scan per progress tick would be expensive.
     @Published private(set) var totalDownloadsSize: Int64 = 0
 
     private init() {
@@ -90,10 +89,9 @@ final class DownloadManager: ObservableObject {
         return dir
     }
 
-    /// Jedes Buch liegt in einem eigenen Unterordner (benannt nach der
-    /// Item-ID) — Buch-IDs von Audiobookshelf können selbst Unterstriche
-    /// enthalten, ein Unterordner pro Buch vermeidet jede Mehrdeutigkeit
-    /// beim Zuordnen von Dateien zu Büchern.
+    /// Each book lives in its own subfolder (named after the item id) —
+    /// Audiobookshelf book ids can contain underscores themselves, so one
+    /// subfolder per book avoids any ambiguity when mapping files to books.
     private func scanExistingDownloads() -> [String] {
         guard let dirs = try? FileManager.default.contentsOfDirectory(
             at: downloadsDirectory, includingPropertiesForKeys: [.isDirectoryKey]
@@ -102,17 +100,17 @@ final class DownloadManager: ObservableObject {
             .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
             .map { $0.lastPathComponent }
             .filter { itemId in
-                // Meta-Datei wird erst nach vollständigem Download geschrieben —
-                // Ordner ohne Meta ist ein Abbruch-Rest: nicht als "fertig"
-                // zählen, aber LIEGEN LASSEN (Resume überspringt fertige Tracks).
+                // The meta file is only written after a complete download —
+                // a folder without meta is an aborted remnant: don't count it as
+                // "done", but LEAVE IT (resume skips finished tracks).
                 let meta = metadataDirectory.appendingPathComponent("\(itemId).json")
                 return FileManager.default.fileExists(atPath: meta.path)
             }
     }
 
     func isDownloaded(itemId: String) -> Bool {
-        // Quellen ohne Download-Capability (lokale Dateien) sind per
-        // Definition immer offline verfügbar — kein Download nötig.
+        // Sources without download capability (local files) are always offline
+        // available by definition — no download needed.
         if !AppSession.shared.provider(for: itemId).capabilities.contains(.downloadable) { return true }
         return downloadedItemIds.contains(itemId)
     }
@@ -313,9 +311,8 @@ final class DownloadManager: ObservableObject {
         return Self.trackMap(in: itemDirectory(itemId))
     }
 
-    /// Zwischengespeicherte Buchdetails (Kapitel, Dauer, Tracks) für den
-    /// Offline-Fall — wird geladen, wenn der Server nicht erreichbar ist,
-    /// das Buch aber lokal heruntergeladen wurde.
+    /// Cached book details (chapters, duration, tracks) for the offline case —
+    /// loaded when the server is unreachable but the book was downloaded locally.
     func loadCachedDetail(forItemId itemId: String) -> LibraryItemDetail? {
         let url = metadataDirectory.appendingPathComponent("\(itemId).json")
         guard let data = try? Data(contentsOf: url) else { return nil }
@@ -328,9 +325,8 @@ final class DownloadManager: ObservableObject {
         try? data.write(to: url)
     }
 
-    /// Lädt alle Tracks eines Buchs herunter (bei M4B-Büchern ist das nur
-    /// einer, bei mehrteiligen Büchern mehrere) — nacheinander, mit über alle
-    /// Tracks gewichtetem Gesamtfortschritt.
+    /// Downloads all tracks of a book (one for M4B books, several for multi-file
+    /// books) — sequentially, with overall progress weighted across all tracks.
     func download(item: LibraryItemDetail, provider: any AudioProvider) async {
         guard !isDownloading(itemId: item.id) else { return }
         let tracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
@@ -431,8 +427,8 @@ final class DownloadManager: ObservableObject {
                 )
                 controls[itemId]?.currentTask = nil
 
-                // Von iCloud-/Geräte-Backups ausschließen — Hörbücher sind
-                // groß und gehören nicht ins iPhone-Backup.
+                // Exclude from iCloud/device backups — audiobooks are large and
+                // don't belong in the iPhone backup.
                 var destinationVar = destination
                 var resourceValues = URLResourceValues()
                 resourceValues.isExcludedFromBackup = true
@@ -441,9 +437,9 @@ final class DownloadManager: ObservableObject {
                 completedFraction += perTrackWeight
             }
 
-            // Buchdetails (Kapitel, Dauer, Tracks) fürs echte Offline-Öffnen
-            // mitspeichern — ohne das bräuchte selbst ein heruntergeladenes
-            // Buch beim Öffnen noch eine Serveranfrage.
+            // Save book details (chapters, duration, tracks) for real offline
+            // opening — without it even a downloaded book would still need a
+            // server request on open.
             saveDetail(item)
 
             // Fix extensions right away (ABS content URLs often carry no
@@ -458,7 +454,7 @@ final class DownloadManager: ObservableObject {
                 try? FileManager.default.removeItem(at: file)
             }
 
-            // Cover persistent sichern — überlebt iOS-Cache-Purges offline.
+            // Persist the cover — survives iOS cache purges offline.
             await ImageCache.shared.makePersistent(
                 itemId: itemId,
                 coverURL: provider.coverURL(forItemId: itemId)

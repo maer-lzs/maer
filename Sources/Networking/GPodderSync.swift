@@ -1,9 +1,9 @@
 import Foundation
 
-/// Gleicht Podcast-Abos (und später die Hör-History) mit einem gpodder-kompatiblen
-/// Server (oPodSync, Nextcloud GPodder, gpodder.net) ab — gleichwertig neben
-/// iCloud und ABS. Feeds/Wiedergabe/Downloads laufen unverändert über den
-/// `RSSProvider`; dieser Dienst synchronisiert nur die Abo-Liste + `localPosition`.
+/// Reconciles podcast subscriptions (and later the listening history) with a
+/// gpodder-compatible server (oPodSync, Nextcloud GPodder, gpodder.net) — on par
+/// with iCloud and ABS. Feeds/playback/downloads still go through the
+/// `RSSProvider`; this service only syncs the subscription list + `localPosition`.
 @MainActor
 final class GPodderSync {
     static let shared = GPodderSync()
@@ -20,7 +20,7 @@ final class GPodderSync {
     private var isRunning = false
     private static var didAutoReconcile = false
 
-    /// Config aus den gespeicherten Zugangsdaten bauen (nil, wenn unvollständig).
+    /// Build the config from the stored credentials (nil if incomplete).
     private var config: GPodderConfig? {
         guard AppStorageKeys.gpodderConfigured,
               let url = URL(string: AppStorageKeys.gpodderServerURLValue.trimmingCharacters(in: .whitespaces)),
@@ -33,7 +33,7 @@ final class GPodderSync {
         )
     }
 
-    /// Nur Zugangsdaten prüfen (Login). Gibt `nil` bei Erfolg, sonst Fehlertext.
+    /// Check credentials only (login). Returns `nil` on success, else an error text.
     func testConnection() async -> String? {
         guard let config else { return String(localized: "Please fill in server, username and password.") }
         do { try await GPodderClient(config: config).login(); return nil }
@@ -71,10 +71,10 @@ final class GPodderSync {
 
     // MARK: - Abo-Sync (Union-Merge, nicht-destruktiv)
 
-    /// 3-Wege-Merge Server ↔ lokal ↔ zuletzt synchronisierter Stand: neue Feuds
-    /// beidseitig ergänzen UND Abbestellungen propagieren. Der zuletzt
-    /// synchronisierte Stand (normalisierte URLs) unterscheidet „neu abonniert"
-    /// von „abbestellt". Erster Lauf (leerer Vorstand) = nicht-destruktive Union.
+    /// 3-way merge server ↔ local ↔ last-synced state: add new feeds on both
+    /// sides AND propagate unsubscribes. The last-synced state (normalised URLs)
+    /// distinguishes "newly subscribed" from "unsubscribed". First run (empty
+    /// prior state) = non-destructive union.
     private func syncSubscriptions(_ client: GPodderClient) async throws -> Report {
         var report = Report()
         let subs = PodcastSubscriptions.shared
@@ -119,21 +119,21 @@ final class GPodderSync {
             }
         }
 
-        // Konvergierter Stand = in beiden vorhanden + beidseitige Neuzugänge.
-        // Nur ERFOLGREICH lokal abonnierte zählen → fehlgeschlagene werden beim
-        // nächsten Lauf erneut versucht (statt dauerhaft als „synchron" zu gelten).
+        // Converged state = present in both + additions on either side. Only
+        // SUCCESSFULLY locally subscribed feeds count → failed ones are retried
+        // on the next run (instead of being treated as "synced" forever).
         let converged = local.intersection(server).union(addToServer).union(addedLocallyNorms)
         defaults.set(Array(converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
         return report
     }
 
-    // MARK: - Echtzeit-Push (einzelne Folge beim Hören/Pausieren)
+    // MARK: - Real-time push (single episode on play/pause)
 
-    /// Vom Player aufgerufen, sobald eine Podcast-Folge Fortschritt schreibt
-    /// (periodisch + bei Pause/Stop/Seek). Schiebt eine einzelne Play-Aktion an
-    /// den Server — best effort, blockiert die Wiedergabe nicht. `abspod:`-Folgen
-    /// werden über die Feed-`guid`-Brücke auf ihre `rss:`-Entsprechung abgebildet
-    /// (nur möglich, wenn derselbe Feed auch als RSS/gpodder abonniert ist).
+    /// Called by the player whenever a podcast episode writes progress
+    /// (periodically + on pause/stop/seek). Pushes a single play action to the
+    /// server — best effort, does not block playback. `abspod:` episodes are
+    /// mapped to their `rss:` counterpart via the feed `guid` bridge (only
+    /// possible when the same feed is also subscribed as RSS/gpodder).
     func notePlayback(itemId: String, position: Double, duration: Double) {
         guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
         let rssId: String?
@@ -167,14 +167,14 @@ final class GPodderSync {
 
     // MARK: - History-Sync (Episoden-Aktionen ↔ localPosition)
 
-    /// Server-Play-Aktionen in `localPosition` übernehmen (jüngerer Zeitstempel
-    /// gewinnt) und umgekehrt seit dem letzten Push geänderte Positionen als
-    /// Play-Aktionen hochladen. Match läuft über die (normalisierte) Enclosure-URL.
+    /// Adopt server play actions into `localPosition` (newer timestamp wins) and
+    /// conversely upload positions changed since the last push as play actions.
+    /// Matching runs via the (normalised) enclosure URL.
     private func syncEpisodeActions(_ client: GPodderClient) async throws -> (pulled: Int, pushed: Int) {
         let defaults = UserDefaults.standard
         let subs = PodcastSubscriptions.shared
 
-        // Enclosure-URL → (rss-ID, Feed-URL, Dauer) über alle abonnierten Folgen.
+        // Enclosure URL → (rss id, feed URL, duration) across all subscribed episodes.
         var byEnclosure: [String: (id: String, feed: String, duration: Double)] = [:]
         for (show, ep) in subs.allEpisodes() {
             byEnclosure[PodcastSubscriptions.normalizeEnclosure(ep.audioURL)] =
@@ -202,7 +202,7 @@ final class GPodderSync {
             PodcastCloudSync.shared.reconcile()
         }
 
-        // --- Push: lokal → Server (nur seit dem letzten Push geändert) ---
+        // --- Push: local → server (only changed since the last push) ---
         let lastPush = defaults.double(forKey: AppStorageKeys.gpodderLastEpisodePush)
         var out: [[String: Any]] = []
         for (show, ep) in subs.allEpisodes() {
