@@ -28,6 +28,8 @@ struct PodcastSourceView: View {
 
     @State private var showAddByURL = false
     @State private var feedURL = ""
+    @State private var feedUser = ""
+    @State private var feedPassword = ""
     @State private var urlError: String?
 
     @State private var showOPMLImporter = false
@@ -273,14 +275,25 @@ struct PodcastSourceView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
+                TextField("Username (optional)", text: $feedUser)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password (optional)", text: $feedPassword)
                 Button("Add Feed") {
                     let url = feedURL.trimmingCharacters(in: .whitespaces)
                     guard !url.isEmpty else { return }
                     urlError = nil
+                    // Zugangsdaten VOR dem Abruf hinterlegen (private/Premium-Feeds).
+                    PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(url),
+                                        user: feedUser.trimmingCharacters(in: .whitespaces),
+                                        password: feedPassword)
                     Task {
                         let ok = await performSubscribe(feedURL: url)
-                        if ok { feedURL = ""; showAddByURL = false }
-                        else { urlError = String(localized: "Could not load this feed. Check the URL.") }
+                        if ok {
+                            feedURL = ""; feedUser = ""; feedPassword = ""; showAddByURL = false
+                        } else {
+                            urlError = String(localized: "Could not load this feed. Check the URL or login.")
+                        }
                     }
                 }
                 .disabled(feedURL.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -290,6 +303,8 @@ struct PodcastSourceView: View {
             } label: {
                 Label("Add by URL", systemImage: "link")
             }
+        } footer: {
+            Text("For private or premium feeds that need a login, add the username and password.")
         }
     }
 

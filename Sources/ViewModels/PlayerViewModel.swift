@@ -521,7 +521,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if url.isFileURL {
                 item = AVPlayerItem(asset: AVURLAsset(url: url))
             } else {
-                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": provider.streamAuthHeaders])
+                let headers = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
+                let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
                 item = AVPlayerItem(asset: asset)
             }
             itemTrackIndex[ObjectIdentifier(item)] = index

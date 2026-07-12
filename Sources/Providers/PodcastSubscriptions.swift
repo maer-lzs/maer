@@ -407,7 +407,12 @@ final class PodcastSubscriptions: ObservableObject {
     // MARK: - Laden + Parsen
 
     private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
-        guard let (data, _) = try? await URLSession.maer.data(from: feedURL) else { return nil }
+        // Private/Premium-Feeds: Basic-Auth-Header mitschicken, wenn hinterlegt.
+        var request = URLRequest(url: feedURL)
+        for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
+            request.setValue(value, forHTTPHeaderField: field)
+        }
+        guard let (data, _) = try? await URLSession.maer.data(for: request) else { return nil }
         let parser = RSSFeedParser(feedURL: feedURL.absoluteString)
         return parser.parse(data)
     }

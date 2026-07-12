@@ -54,6 +54,10 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
     /// wenn die Quelle keine Auth braucht (lokale Dateien).
     var streamAuthHeaders: [String: String] { get }
 
+    /// Item-spezifische Streaming/Download-Header. Standard = `streamAuthHeaders`;
+    /// RSS überschreibt für private/Premium-Feeds (Basic-Auth je Feed).
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String]
+
     // MARK: Lesezeichen (nur mit `.bookmarks`-Capability aufrufen)
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark]
     func createBookmark(itemId: String, time: Double, title: String) async throws
@@ -61,6 +65,9 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
 }
 
 extension AudioProvider {
+    /// Standard: item-unabhängig die Quellen-Header.
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String] { streamAuthHeaders }
+
     /// Standard: die meisten Quellen liefern Hörbücher.
     var mediaType: MediaType { .audiobooks }
     /// Ob die Quelle aktuell Inhalte hat (steuert die Tab-Sichtbarkeit).

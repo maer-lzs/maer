@@ -20,6 +20,10 @@ final class RSSProvider: AudioProvider {
     /// keine Server-Lesezeichen.
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
+    /// Private/Premium-Feeds: Basic-Auth je Feed (aus dem `feedKey` der Item-ID).
+    func streamAuthHeaders(forItemId itemId: String) -> [String: String] {
+        PodcastFeedAuth.authHeader(forItemId: itemId)
+    }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         [ABSLibrary(id: "podcasts", name: String(localized: "Podcasts"))]

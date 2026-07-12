@@ -405,7 +405,7 @@ final class DownloadManager: ObservableObject {
                 }
 
                 var request = URLRequest(url: remoteURL)
-                for (field, value) in provider.streamAuthHeaders {
+                for (field, value) in provider.streamAuthHeaders(forItemId: itemId) {
                     request.setValue(value, forHTTPHeaderField: field)
                 }
 

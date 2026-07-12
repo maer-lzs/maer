@@ -3358,6 +3358,46 @@
           }
         }
       }
+    },
+    "Username (optional)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benutzername (optional)"
+          }
+        }
+      }
+    },
+    "Password (optional)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passwort (optional)"
+          }
+        }
+      }
+    },
+    "For private or premium feeds that need a login, add the username and password.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für private oder Premium-Feeds mit Login Benutzername und Passwort ergänzen."
+          }
+        }
+      }
+    },
+    "Could not load this feed. Check the URL or login.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feed konnte nicht geladen werden. URL oder Login prüfen."
+          }
+        }
+      }
     }
   },
   "version": "1.1"
