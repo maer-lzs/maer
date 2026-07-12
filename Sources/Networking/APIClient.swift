@@ -260,6 +260,23 @@ final class APIClient {
         _ = try await send(method: "DELETE", path: "api/items/\(itemId)")
     }
 
+    /// Alle Folgen eines Feeds (roh, damit sie 1:1 an `download-episodes`
+    /// zurückgegeben werden können — der Server erwartet sein Feed-Format).
+    func fetchFeedEpisodes(rssFeed: String) async throws -> [[String: Any]] {
+        let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let podcast = obj["podcast"] as? [String: Any],
+              let episodes = podcast["episodes"] as? [[String: Any]] else { return [] }
+        return episodes
+    }
+
+    /// Ausgewählte Feed-Folgen server-seitig herunterladen lassen.
+    func downloadEpisodes(libraryItemId: String, episodes: [[String: Any]]) async throws {
+        _ = try await sendJSON(method: "POST",
+                               path: "api/podcasts/\(libraryItemId)/download-episodes",
+                               json: episodes)
+    }
+
     // MARK: URLs für Cover und Streaming
 
     /// Cover-Bild-URL. AsyncImage kann keine Custom-Header setzen, deshalb hier
@@ -325,6 +342,22 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validate(response, data: data)
+        return data
+    }
+
+    /// Wie `send`, aber mit beliebigem JSON-Body (Dict ODER Array) — für
+    /// Endpoints wie `download-episodes`, die eine JSON-Liste erwarten.
+    private func sendJSON(method: String, path: String, json: Any) async throws -> Data {
+        let url = baseURL.appendingPathComponent(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        if let token, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: json)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validate(response, data: data)
         return data

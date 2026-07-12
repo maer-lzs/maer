@@ -420,6 +420,12 @@ struct PodcastShowView: View {
 
     @State private var descriptionExpanded = false
     @State private var showDeleteConfirm = false
+    // „Ältere Folgen nachladen" (nur ABS-Shows): Feed-Folgen, die noch nicht am
+    // Server liegen.
+    @State private var available: [FeedEpisode] = []
+    @State private var availableLoaded = false
+    @State private var loadingAvailable = false
+    @State private var downloading: Set<String> = []
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
     /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
     @AppStorage private var newestFirst: Bool
@@ -450,6 +456,7 @@ struct PodcastShowView: View {
                         Divider().padding(.leading, 88)
                     }
                 }
+                if isServerShow { availableSection }
             }
             .padding(.top, 8)
             .bottomBarClearance()
@@ -531,6 +538,68 @@ struct PodcastShowView: View {
             } label: {
                 Label("Unsubscribe", systemImage: "minus.circle")
             }
+        }
+    }
+
+    /// Feed-Folgen, die noch nicht am Server liegen — server-seitig nachladbar
+    /// (für „von Anfang an hören"). Wird erst auf Knopfdruck geladen.
+    @ViewBuilder
+    private var availableSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Divider().padding(.horizontal)
+            if !availableLoaded {
+                Button {
+                    Task {
+                        loadingAvailable = true
+                        available = await absPodcast.availableEpisodes(for: show)
+                        availableLoaded = true
+                        loadingAvailable = false
+                    }
+                } label: {
+                    Label(loadingAvailable ? String(localized: "Loading…") : String(localized: "Load older episodes"),
+                          systemImage: "tray.and.arrow.down")
+                }
+                .disabled(loadingAvailable)
+                .padding(.horizontal)
+            } else if available.isEmpty {
+                Text("All feed episodes are on the server.")
+                    .font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
+            } else {
+                Text("Available episodes").font(.title3).bold().padding(.horizontal)
+                LazyVStack(spacing: 0) {
+                    ForEach(available) { ep in
+                        HStack(spacing: 12) {
+                            Text(ep.title).font(.subheadline).lineLimit(2)
+                            Spacer(minLength: 8)
+                            if downloading.contains(ep.id) {
+                                ProgressView()
+                            } else {
+                                Button {
+                                    downloadAvailable(ep)
+                                } label: {
+                                    Image(systemName: "arrow.down.circle").font(.title3)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal).padding(.vertical, 10)
+                        Divider().padding(.leading)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Server anweisen, die Folge zu laden; danach neu einlesen (der Download
+    /// läuft server-seitig asynchron, daher kurz warten).
+    private func downloadAvailable(_ ep: FeedEpisode) {
+        downloading.insert(ep.id)
+        Task {
+            _ = await absPodcast.downloadEpisode(showId: show.id, episode: ep)
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await absPodcast.refresh()
+            available.removeAll { $0.id == ep.id }
+            downloading.remove(ep.id)
         }
     }
 }

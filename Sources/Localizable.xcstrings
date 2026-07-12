@@ -2164,6 +2164,36 @@
         }
       }
     },
+    "Available episodes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verfügbare Folgen"
+          }
+        }
+      }
+    },
+    "Load older episodes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ältere Folgen laden"
+          }
+        }
+      }
+    },
+    "All feed episodes are on the server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Feed-Folgen liegen am Server."
+          }
+        }
+      }
+    },
     "Reactivate" : {
       "localizations" : {
         "de" : {

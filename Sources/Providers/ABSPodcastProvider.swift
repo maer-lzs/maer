@@ -1,6 +1,16 @@
 import Foundation
 import Combine
 
+/// Eine Feed-Folge (roh vom Server geparst), die noch nicht in der Library
+/// liegt und server-seitig nachgeladen werden kann. `raw` wird 1:1 an
+/// `download-episodes` zurückgegeben (der Server erwartet sein Feed-Format).
+struct FeedEpisode: Identifiable {
+    let id: String
+    let title: String
+    let publishedAt: Double
+    let raw: [String: Any]
+}
+
 /// Audiobookshelf-Podcasts als eigene Quelle vom Typ `.podcasts`. Anders als
 /// der Haupt-ABS-Provider (Hörbücher, rohe IDs) namespaced dieser Provider
 /// seine IDs mit `abspod:<libraryItemId>:<episodeId>` — eine Episode ist die
@@ -178,6 +188,35 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     private static func msg(_ error: Error) -> String {
         (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+    }
+
+    /// Feed-Folgen einer ABS-Show, die noch NICHT am Server liegen (nachladbar).
+    /// Abgleich über den Titel (die Library-Episoden tragen die Feed-Titel).
+    func availableEpisodes(for show: PodcastShow) async -> [FeedEpisode] {
+        guard !show.feedURL.isEmpty,
+              let raw = try? await client.fetchFeedEpisodes(rssFeed: show.feedURL) else { return [] }
+        let existing = Set(show.episodes.map { $0.title })
+        return raw.compactMap { dict -> FeedEpisode? in
+            let title = (dict["title"] as? String) ?? ""
+            guard !title.isEmpty, !existing.contains(title) else { return nil }
+            let id = (dict["guid"] as? String)
+                ?? ((dict["enclosure"] as? [String: Any])?["url"] as? String)
+                ?? title
+            let publishedAt = (dict["publishedAt"] as? Double)
+                ?? (dict["publishedAt"] as? Int).map(Double.init) ?? 0
+            return FeedEpisode(id: id, title: title, publishedAt: publishedAt, raw: dict)
+        }
+        .sorted { $0.publishedAt < $1.publishedAt }   // älteste zuerst („von Anfang an")
+    }
+
+    /// Ausgewählte Feed-Folge server-seitig herunterladen lassen. `nil` = ok.
+    func downloadEpisode(showId: String, episode: FeedEpisode) async -> String? {
+        do {
+            try await client.downloadEpisodes(libraryItemId: Self.split(showId).show, episodes: [episode.raw])
+            return nil
+        } catch {
+            return Self.msg(error)
+        }
     }
 
     /// Show am Server LÖSCHEN (entfernt server-seitig alles inkl. Historie —
