@@ -63,8 +63,6 @@ struct PodcastSourceView: View {
             if !results.isEmpty || isSearching {
                 resultsSection
             }
-            subscriptionsSection
-            archivedSection
             addByURLSection
             importSection
             if absPodcastsEnabled && absPodcast.hasPodcasts { serverSyncSection }
@@ -78,6 +76,9 @@ struct PodcastSourceView: View {
             } label: {
                 Label("PodcastIndex Access", systemImage: "key")
             }
+            // Abo-Liste bewusst ganz unten (nach Suche/Hinzufügen/Verwaltung).
+            subscriptionsSection
+            archivedSection
         }
         .navigationTitle("Podcasts")
         .navigationBarTitleDisplayMode(.inline)
