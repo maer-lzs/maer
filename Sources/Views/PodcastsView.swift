@@ -14,31 +14,47 @@ struct PodcastsView: View {
     @ObservedObject private var downloads = DownloadManager.shared
     private var rss: RSSProvider { AppSession.shared.rssProvider }
 
+    // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
+    // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
+    // sofort, die Sektionen kommen einen Frame später.
+    @State private var nextUp: [LibraryItem] = []
+    @State private var downloaded: [LibraryItem] = []
+    @State private var played: [LibraryItem] = []
+
+    /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
+    private var recomputeToken: String {
+        "\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)"
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
                 nextUpSection
                 showsShelf
-                downloadedSection
-                playedSection
+                if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
+                if !played.isEmpty { episodeListSection(title: "Played", episodes: played) }
             }
             .padding(.top, 8)
             .bottomBarClearance()
         }
         .refreshable { await subs.refreshAll() }
+        .task(id: recomputeToken) {
+            nextUp = rss.nextUpItems()
+            downloaded = rss.downloadedEpisodeItems()
+            played = rss.playedEpisodeItems()
+        }
     }
 
     // MARK: - Als Nächstes (große Karten, eine pro Show)
 
     @ViewBuilder
     private var nextUpSection: some View {
-        let episodes = rss.nextUpItems()
-        if !episodes.isEmpty {
+        if !nextUp.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Up Next").font(.title2).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 14) {
-                        ForEach(episodes) { item in
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(nextUp) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
                     }
@@ -61,7 +77,7 @@ struct PodcastsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Shows").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
+                    LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(shows) { show in
                             NavigationLink {
                                 PodcastShowView(show: show, playerCoordinator: playerCoordinator)
@@ -74,26 +90,6 @@ struct PodcastsView: View {
                     .padding(.horizontal)
                 }
             }
-        }
-    }
-
-    // MARK: - Geladen
-
-    @ViewBuilder
-    private var downloadedSection: some View {
-        let episodes = rss.downloadedEpisodeItems()
-        if !episodes.isEmpty {
-            episodeListSection(title: "Downloaded", episodes: episodes)
-        }
-    }
-
-    // MARK: - Gehört
-
-    @ViewBuilder
-    private var playedSection: some View {
-        let episodes = rss.playedEpisodeItems()
-        if !episodes.isEmpty {
-            episodeListSection(title: "Played", episodes: episodes)
         }
     }
 
@@ -596,6 +592,9 @@ final class PodcastProgressStore: ObservableObject {
     // `MainActor` scheitert die synthetisierte ObservableObject-Conformance
     // aus einer @Published-Property. Wir senden die Änderung selbst.
     nonisolated let objectWillChange = ObservableObjectPublisher()
+    /// Zählt Fortschritts-Änderungen — als `.task`-id, um die Podcast-Sektionen
+    /// gezielt neu zu berechnen (statt bei jedem Body-Eval).
+    private(set) var changeToken = 0
 
     func state(for item: LibraryItem) -> EpisodePlayState {
         state(guid: item.id, duration: item.media?.duration ?? 0)
@@ -621,12 +620,13 @@ final class PodcastProgressStore: ObservableObject {
         } else {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        changeToken += 1
         objectWillChange.send()
     }
 
     /// Nach externem Schreiben von `localPosition` (z. B. Apple-Import) alle
     /// beobachtenden Zeilen neu bewerten lassen.
-    func reload() { objectWillChange.send() }
+    func reload() { changeToken += 1; objectWillChange.send() }
 }
 
 // MARK: - Gemeinsame Helfer
