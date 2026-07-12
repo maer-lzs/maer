@@ -7,6 +7,11 @@ import UniformTypeIdentifiers
 /// analog `LocalFilesView` — der Podcast-Tab konsumiert nur.
 struct PodcastSourceView: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+
+    /// Neue Abos auf dem ABS-Server anlegen (synchronisiert) statt lokal — nur
+    /// relevant, wenn der Server eine Podcast-Bibliothek hat.
+    @State private var subscribeToServer = true
 
     private enum Source: Hashable { case apple, podcastIndex }
     @State private var source: Source = .apple
@@ -27,6 +32,15 @@ struct PodcastSourceView: View {
 
     var body: some View {
         List {
+            if absPodcast.hasPodcasts {
+                Section {
+                    Toggle(isOn: $subscribeToServer) {
+                        Label("Subscribe on server", systemImage: "cloud")
+                    }
+                } footer: {
+                    Text("New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device.")
+                }
+            }
             searchSection
             if !results.isEmpty || isSearching {
                 resultsSection
@@ -132,7 +146,7 @@ struct PodcastSourceView: View {
 
     @ViewBuilder
     private func subscribeButton(for result: PodcastSearchResult) -> some View {
-        if subs.shows.contains(where: { $0.feedURL == result.feedURL }) {
+        if isSubscribed(result.feedURL) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
         } else if subscribingFeeds.contains(result.feedURL) {
             ProgressView()
@@ -140,12 +154,27 @@ struct PodcastSourceView: View {
             Button("Subscribe") {
                 subscribingFeeds.insert(result.feedURL)
                 Task {
-                    _ = await subs.subscribe(urlString: result.feedURL)
+                    _ = await performSubscribe(feedURL: result.feedURL)
                     subscribingFeeds.remove(result.feedURL)
                 }
             }
             .buttonStyle(.borderless)
         }
+    }
+
+    /// Bereits abonniert (lokal ODER am Server) — normalisierte Feed-URL.
+    private func isSubscribed(_ feedURL: String) -> Bool {
+        let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        return subs.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+            || absPodcast.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+    }
+
+    /// Abo anlegen — am Server (synchronisiert), wenn möglich/gewählt, sonst lokal.
+    private func performSubscribe(feedURL: String) async -> Bool {
+        if subscribeToServer, absPodcast.hasPodcasts {
+            return await absPodcast.subscribeOnServer(feedURL: feedURL)
+        }
+        return await subs.subscribe(urlString: feedURL)
     }
 
     // MARK: - Abos / URL
@@ -181,7 +210,7 @@ struct PodcastSourceView: View {
                     guard !url.isEmpty else { return }
                     urlError = nil
                     Task {
-                        let ok = await subs.subscribe(urlString: url)
+                        let ok = await performSubscribe(feedURL: url)
                         if ok { feedURL = ""; showAddByURL = false }
                         else { urlError = String(localized: "Could not load this feed. Check the URL.") }
                     }

@@ -95,6 +95,39 @@ struct ABSLibrary: Decodable, Identifiable {
     var isPodcast: Bool { mediaType == "podcast" }
 }
 
+// MARK: - Podcast-Verwaltung (Ordner, Feed-Metadaten)
+
+/// Ordner einer Bibliothek — Zielpfad für ein neu angelegtes Podcast-Abo.
+struct ABSFolder: Decodable, Identifiable {
+    let id: String
+    let fullPath: String?
+}
+
+struct LibraryDetailResponse: Decodable {
+    let library: LibraryWithFolders
+}
+
+struct LibraryWithFolders: Decodable {
+    let folders: [ABSFolder]?
+}
+
+/// Antwort von POST /api/podcasts/feed — server-seitig geparster Feed.
+struct PodcastFeedResponse: Decodable {
+    let podcast: PodcastFeedData
+}
+
+struct PodcastFeedData: Decodable {
+    let metadata: PodcastFeedMetadata
+}
+
+struct PodcastFeedMetadata: Decodable {
+    let title: String?
+    let author: String?
+    let description: String?
+    let imageUrl: String?
+    let feedUrl: String?
+}
+
 // MARK: - Bücherliste (List-Endpoint)
 
 struct LibraryItemsResponse: Decodable {

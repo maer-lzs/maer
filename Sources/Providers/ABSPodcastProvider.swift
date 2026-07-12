@@ -119,6 +119,47 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         changeToken += 1
     }
 
+    // MARK: - Verwaltung (Abo anlegen / entfernen)
+
+    /// Podcast am Server abonnieren (Feed → anlegen → neu laden). `false` bei
+    /// fehlenden Rechten/Bibliothek oder Fehler.
+    func subscribeOnServer(feedURL: String, autoDownload: Bool = true) async -> Bool {
+        guard let library = (try? await client.fetchPodcastLibraries())?.first,
+              let metadata = try? await client.fetchPodcastFeed(rssFeed: feedURL),
+              let folder = (try? await client.fetchLibraryFolders(libraryId: library.id))?.first,
+              let folderPath = folder.fullPath else { return false }
+        let title = Self.sanitizePathComponent(metadata.title ?? "Podcast")
+        let path = (folderPath as NSString).appendingPathComponent(title)
+        do {
+            try await client.createPodcast(libraryId: library.id, folderId: folder.id,
+                                           path: path, metadata: metadata, autoDownload: autoDownload)
+            await refresh()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Show am Server LÖSCHEN (entfernt server-seitig alles inkl. Historie —
+    /// nur für die ausdrückliche „Endgültig löschen"-Aktion, nicht fürs Archiv).
+    func deleteShowOnServer(showId: String) async -> Bool {
+        do {
+            try await client.deleteLibraryItem(itemId: Self.split(showId).show)
+            await refresh()
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    /// Ungültige Pfad-Zeichen für den Server-Ordnernamen ersetzen.
+    private static func sanitizePathComponent(_ s: String) -> String {
+        let invalid = CharacterSet(charactersIn: "/\\:*?\"<>|")
+        let cleaned = s.components(separatedBy: invalid).joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? "Podcast" : cleaned
+    }
+
     /// Episode am Server als (un)gehört markieren und Fortschritt nachziehen.
     func setPlayed(_ item: LibraryItem, _ played: Bool) async {
         let (showId, episodeId) = Self.split(item.id)

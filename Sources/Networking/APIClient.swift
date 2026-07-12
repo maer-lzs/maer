@@ -221,6 +221,44 @@ final class APIClient {
         _ = try await patch(path: "api/me/progress/\(libraryItemId)/\(episodeId)", body: body)
     }
 
+    // MARK: Podcast-Verwaltung (Abo anlegen/entfernen)
+
+    /// Feed server-seitig parsen (Metadaten für ein neues Abo).
+    func fetchPodcastFeed(rssFeed: String) async throws -> PodcastFeedMetadata {
+        let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
+        return try decode(PodcastFeedResponse.self, from: data).podcast.metadata
+    }
+
+    /// Ordner einer Bibliothek (Zielpfad für ein neues Abo).
+    func fetchLibraryFolders(libraryId: String) async throws -> [ABSFolder] {
+        let data = try await get(path: "api/libraries/\(libraryId)")
+        return (try decode(LibraryDetailResponse.self, from: data).library.folders) ?? []
+    }
+
+    /// Podcast server-seitig anlegen (POST /api/podcasts). Braucht Upload-Rechte.
+    func createPodcast(libraryId: String, folderId: String, path: String,
+                       metadata: PodcastFeedMetadata, autoDownload: Bool) async throws {
+        let meta: [String: Any] = [
+            "title": metadata.title ?? "",
+            "author": metadata.author ?? "",
+            "description": metadata.description ?? "",
+            "feedUrl": metadata.feedUrl ?? "",
+            "imageUrl": metadata.imageUrl ?? ""
+        ]
+        let body: [String: Any] = [
+            "path": path,
+            "folderId": folderId,
+            "libraryId": libraryId,
+            "media": ["metadata": meta, "autoDownloadEpisodes": autoDownload]
+        ]
+        _ = try await send(method: "POST", path: "api/podcasts", body: body)
+    }
+
+    /// Library-Item (Podcast-Show) server-seitig löschen. Braucht Delete-Rechte.
+    func deleteLibraryItem(itemId: String) async throws {
+        _ = try await send(method: "DELETE", path: "api/items/\(itemId)")
+    }
+
     // MARK: URLs für Cover und Streaming
 
     /// Cover-Bild-URL. AsyncImage kann keine Custom-Header setzen, deshalb hier
