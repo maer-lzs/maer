@@ -23,33 +23,31 @@ final class CoverColorLoader: ObservableObject {
 
     func load(from url: URL?) async {
         guard let url else { return }
+        await Self.prewarm(url: url)   // stellt sicher, dass die Farbe im Cache ist
         if let cached = Self.colorCache[url] {
             accent = cached.accent
             topAccent = cached.top
             bottomAccent = cached.bottom
-            return
         }
+    }
+
+    /// Farben für eine Cover-URL vorab berechnen und cachen — z. B. schon beim
+    /// Laden der Liste, damit beim Scrollen der Karten NICHTS mehr passiert.
+    /// No-op, wenn bereits im Cache.
+    static func prewarm(url: URL?) async {
+        guard let url, colorCache[url] == nil else { return }
         let image: UIImage
         if let cached = ImageCache.shared.image(for: url) {
             image = cached
         } else {
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                guard let img = UIImage(data: data) else { return }
-                ImageCache.shared.set(img, data: data, for: url)
-                image = img
-            } catch {
-                // Kein Cover / kein Netz: neutraler Standard bleibt bestehen.
-                return
-            }
+            guard let (data, _) = try? await URLSession.shared.data(from: url),
+                  let img = UIImage(data: data) else { return }
+            ImageCache.shared.set(img, data: data, for: url)
+            image = img
         }
-        // Farbberechnung (CGContext-Draw) NICHT auf dem MainActor — sonst
-        // ruckelt das Scrollen, wenn mehrere Karten gleichzeitig erscheinen.
-        if let colors = await Self.colors(from: image) {
-            accent = colors.accent
-            topAccent = colors.top
-            bottomAccent = colors.bottom
-            Self.colorCache[url] = colors
+        // Farbberechnung (CGContext-Draw) läuft off-main (nonisolated async).
+        if let colors = await colors(from: image) {
+            colorCache[url] = colors
         }
     }
 

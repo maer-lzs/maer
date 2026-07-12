@@ -55,6 +55,10 @@ struct PodcastsView: View {
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
             downloaded = computeDownloaded()
+            // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
+            for item in nextUp {
+                await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
+            }
         }
     }
 
@@ -79,7 +83,8 @@ struct PodcastsView: View {
                 picks.append((next, next.addedAt ?? 0))
             }
         }
-        return picks.sorted { $0.date > $1.date }.map { $0.item }
+        // Nur die 10 aktuellsten in „Als Nächstes" — nicht jede Show.
+        return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
     }
 
     /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
