@@ -64,43 +64,35 @@ enum PodcastRefreshService {
     private static func notifyNewEpisodes(_ shows: [PodcastShow]) async {
         let defaults = UserDefaults.standard
         var lastSeen = (defaults.dictionary(forKey: lastSeenKey) as? [String: Double]) ?? [:]
-        let notify = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
-        var newItems: [(show: String, title: String)] = []
+        let globalOn = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
+        // Je Show gebündelt: eine Meldung pro Show statt einer pro Folge.
+        var perShow: [(show: String, count: Int, firstTitle: String)] = []
 
         for show in shows {
             let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
             let newest = show.episodes.map(\.pubDate).max() ?? 0
-            if notify, let seen = lastSeen[key] {
-                for ep in show.episodes where ep.pubDate > seen {
-                    newItems.append((show.title, ep.title))
+            // Nur benachrichtigen, wenn global UND für diese Show aktiviert.
+            if globalOn, AppStorageKeys.podcastNotifyEnabled(show.id), let seen = lastSeen[key] {
+                let news = show.episodes.filter { $0.pubDate > seen }.sorted { $0.pubDate > $1.pubDate }
+                if !news.isEmpty {
+                    perShow.append((show.title, news.count, news.first?.title ?? ""))
                 }
             }
             lastSeen[key] = max(lastSeen[key] ?? 0, newest)
         }
         defaults.set(lastSeen, forKey: lastSeenKey)
 
-        guard notify, !newItems.isEmpty else { return }
-        await postNotifications(newItems)
+        guard !perShow.isEmpty else { return }
+        await postNotifications(perShow)
     }
 
-    private static func postNotifications(_ items: [(show: String, title: String)]) async {
+    private static func postNotifications(_ items: [(show: String, count: Int, firstTitle: String)]) async {
         let center = UNUserNotificationCenter.current()
         guard await center.notificationSettings().authorizationStatus == .authorized else { return }
-
-        if items.count <= 3 {
-            for it in items {
-                let content = UNMutableNotificationContent()
-                content.title = it.show
-                content.body = it.title
-                content.sound = .default
-                try? await center.add(UNNotificationRequest(
-                    identifier: UUID().uuidString, content: content, trigger: nil))
-            }
-        } else {
-            // Viele auf einmal → eine Sammelmeldung statt Benachrichtigungs-Flut.
+        for it in items {
             let content = UNMutableNotificationContent()
-            content.title = String(localized: "New Episodes")
-            content.body = String(localized: "\(items.count) new podcast episodes")
+            content.title = it.show
+            content.body = it.count == 1 ? it.firstTitle : String(localized: "\(it.count) new episodes")
             content.sound = .default
             try? await center.add(UNNotificationRequest(
                 identifier: UUID().uuidString, content: content, trigger: nil))

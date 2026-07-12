@@ -141,6 +141,25 @@ nonisolated enum AppStorageKeys {
     /// solange keine folgen-eigene Rate gemerkt ist).
     static func podcastShowRate(_ showId: String) -> String { "podcastShowRate.\(showId)" }
 
+    // MARK: - Pro-Show-Verhalten (Inbox / Benachrichtigung / Trimmen)
+
+    /// „Neue Folgen"-Modus je Show: "all" | "latest" | "off" (Default all).
+    static func podcastInboxMode(_ showId: String) -> String { "podcastInboxMode.\(showId)" }
+    static func podcastInboxModeValue(_ showId: String) -> String {
+        UserDefaults.standard.string(forKey: podcastInboxMode(showId)) ?? "all"
+    }
+    /// Über neue Folgen dieser Show benachrichtigen (Default an; greift nur, wenn
+    /// die globale Benachrichtigung aktiv ist).
+    static func podcastNotify(_ showId: String) -> String { "podcastNotify.\(showId)" }
+    static func podcastNotifyEnabled(_ showId: String) -> Bool {
+        UserDefaults.standard.object(forKey: podcastNotify(showId)) as? Bool ?? true
+    }
+    /// Nur die neuesten N Folgen dieser Show behalten (0 = unbegrenzt).
+    static func podcastEpisodeLimit(_ showId: String) -> String { "podcastEpisodeLimit.\(showId)" }
+    static func podcastEpisodeLimitValue(_ showId: String) -> Int {
+        UserDefaults.standard.integer(forKey: podcastEpisodeLimit(showId))
+    }
+
     /// Show-ID aus einer Podcast-Folgen-ID ableiten (`rss:<key>:<guid>` →
     /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed-Key/Item-ID
     /// enthalten kein `:`, daher sind die ersten beiden Segmente die Show-ID.

@@ -1,19 +1,6 @@
 import SwiftUI
 import Combine
 
-/// Filter für die „Neue Folgen"-Inbox.
-enum PodcastEpisodeFilter: String, CaseIterable, Identifiable {
-    case new, inProgress, downloaded
-    var id: String { rawValue }
-    var label: LocalizedStringKey {
-        switch self {
-        case .new: return "New"
-        case .inProgress: return "In Progress"
-        case .downloaded: return "Downloaded"
-        }
-    }
-}
-
 /// PodcastShow + Episode → LibraryItem (quellen-agnostisch). Der Namespace im
 /// `guid`/`id` (`rss:`/`abspod:`) routet Wiedergabe/Cover/Fortschritt auf die
 /// richtige Quelle.

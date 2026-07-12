@@ -317,9 +317,28 @@ final class PodcastSubscriptions: ObservableObject {
             if let url = URL(string: show.feedURL), let fresh = await Self.fetchAndParse(feedURL: url) {
                 updated[index] = fresh
             }
+            // Pro-Show-Limit anwenden (News-Shows schlank halten).
+            applyLimit(&updated[index], keepLatest: AppStorageKeys.podcastEpisodeLimitValue(updated[index].id))
         }
         shows = updated
         save()
+    }
+
+    /// Auf die neuesten N Folgen kürzen (0 = unbegrenzt) und Downloads der
+    /// entfernten Folgen entsorgen. Direkt aus den Pro-Show-Einstellungen.
+    func trimEpisodes(showId: String, keepLatest n: Int) async {
+        guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return }
+        if applyLimit(&shows[idx], keepLatest: n) { save() }
+    }
+
+    @discardableResult
+    private func applyLimit(_ show: inout PodcastShow, keepLatest n: Int) -> Bool {
+        guard n > 0 else { return false }
+        let sorted = show.episodes.sorted { $0.pubDate > $1.pubDate }
+        guard sorted.count > n else { return false }
+        for ep in sorted.dropFirst(n) { DownloadManager.shared.deleteDownload(itemId: ep.guid) }
+        show.episodes = Array(sorted.prefix(n))
+        return true
     }
 
     // MARK: - Abfragen für den Provider

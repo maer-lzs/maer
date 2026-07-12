@@ -9,7 +9,11 @@ struct PodcastShowSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var rate: Float?          // nil = Standard-Tempo
     @State private var autoDownload = false
+    @State private var inboxMode = "all"     // all | latest | off
+    @State private var notify = true
+    @State private var episodeLimit = 0      // 0 = unbegrenzt
     private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
+    private let limits: [Int] = [0, 5, 10, 25, 50, 100]
 
     var body: some View {
         NavigationStack {
@@ -23,9 +27,28 @@ struct PodcastShowSettingsSheet: View {
                     }
                 }
                 Section {
-                    Toggle("Auto-download new episodes", isOn: $autoDownload)
+                    Picker("Show in New Episodes", selection: $inboxMode) {
+                        Text("All").tag("all")
+                        Text("Latest only").tag("latest")
+                        Text("Off").tag("off")
+                    }
+                    Toggle("Notify about new episodes", isOn: $notify)
+                } header: {
+                    Text("New Episodes")
                 } footer: {
-                    Text("Newly published episodes are downloaded to this device automatically.")
+                    Text("For high-frequency shows, set this to Latest only or Off so they don't flood New Episodes, and turn off notifications.")
+                }
+                Section {
+                    Toggle("Auto-download new episodes", isOn: $autoDownload)
+                    Picker("Keep only latest", selection: $episodeLimit) {
+                        ForEach(limits, id: \.self) { n in
+                            Text(n == 0 ? String(localized: "All") : "\(n)").tag(n)
+                        }
+                    }
+                } header: {
+                    Text("Episodes")
+                } footer: {
+                    Text("Keeping only the latest N removes older episodes (and their downloads) from this show — handy for news podcasts.")
                 }
                 Section("Sort") {
                     Picker("Order", selection: $newestFirst) {
@@ -43,6 +66,9 @@ struct PodcastShowSettingsSheet: View {
             .onAppear {
                 rate = UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate(showId)) as? Float
                 autoDownload = PodcastAutoDownload.isEnabled(showId)
+                inboxMode = AppStorageKeys.podcastInboxModeValue(showId)
+                notify = AppStorageKeys.podcastNotifyEnabled(showId)
+                episodeLimit = AppStorageKeys.podcastEpisodeLimitValue(showId)
             }
             .onChange(of: rate) { _, new in
                 let key = AppStorageKeys.podcastShowRate(showId)
@@ -51,6 +77,17 @@ struct PodcastShowSettingsSheet: View {
             }
             .onChange(of: autoDownload) { _, on in
                 PodcastAutoDownload.setEnabled(showId, on)
+            }
+            .onChange(of: inboxMode) { _, m in
+                UserDefaults.standard.set(m, forKey: AppStorageKeys.podcastInboxMode(showId))
+            }
+            .onChange(of: notify) { _, on in
+                UserDefaults.standard.set(on, forKey: AppStorageKeys.podcastNotify(showId))
+            }
+            .onChange(of: episodeLimit) { _, n in
+                UserDefaults.standard.set(n, forKey: AppStorageKeys.podcastEpisodeLimit(showId))
+                // Sofort anwenden, damit die Show-Seite gleich schlanker wird.
+                Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: n) }
             }
         }
     }

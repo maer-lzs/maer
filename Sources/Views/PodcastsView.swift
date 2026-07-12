@@ -1,6 +1,14 @@
 import SwiftUI
 import Combine
 
+/// Eine Show-Gruppe in „Neue Folgen": die neuesten ungehörten Folgen einer
+/// Show, gedeckelt — damit ein Vielsender nicht die ganze Inbox flutet.
+struct InboxGroup: Identifiable {
+    let show: PodcastShow
+    let items: [LibraryItem]
+    var id: String { show.id }
+}
+
 /// Podcast-Tab im Stil von Apple Podcasts: oben eine Reihe großer
 /// „Als Nächstes"-Karten (neueste Folgen als Blickfang), darunter eine
 /// kompakte Show-Reihe zum Blättern und die vollständige Folgen-Liste.
@@ -30,10 +38,9 @@ struct PodcastsView: View {
     // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
     // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
     // sofort, die Sektionen kommen einen Frame später.
-    @State private var nextUp: [LibraryItem] = []           // „Als Nächstes" (große Karten)
-    @State private var inboxItems: [LibraryItem] = []       // neueste ungehörte/laufende
+    @State private var nextUp: [LibraryItem] = []           // „Continue" (große Karten)
+    @State private var inboxGroups: [InboxGroup] = []       // „Neue Folgen", nach Show gruppiert
     @State private var downloaded: [LibraryItem] = []
-    @State private var inboxFilter: PodcastEpisodeFilter = .new
     @State private var showAddPodcasts = false
 
     /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
@@ -46,8 +53,8 @@ struct PodcastsView: View {
             LazyVStack(alignment: .leading, spacing: 28) {
                 nextUpSection
                 queueSection
-                inboxSection
                 showsShelf
+                inboxSection
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
             }
             .padding(.top, 8)
@@ -80,7 +87,7 @@ struct PodcastsView: View {
         }
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
-            inboxItems = computeInbox()
+            inboxGroups = computeInboxGroups()
             downloaded = computeDownloaded()
             // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
             for item in nextUp {
@@ -116,22 +123,25 @@ struct PodcastsView: View {
         return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
     }
 
-    /// „Neue Folgen" (Inbox): neueste noch nicht abgeschlossene Folgen über alle
-    /// Abos, dedupliziert, gedeckelt. Der Filter (Neu/Läuft/Geladen) wird
-    /// view-seitig auf diese Basis angewandt.
-    private func computeInbox() -> [LibraryItem] {
-        var picks: [(item: LibraryItem, date: Double)] = []
+    /// „Neue Folgen", nach Show gruppiert: je Show die neuesten ungehörten
+    /// Folgen, PRO SHOW gedeckelt (Default 3, „Nur neueste" = 1, „Aus" = weg) —
+    /// so flutet kein Vielsender die Inbox. Gruppen nach Aktualität sortiert.
+    private func computeInboxGroups() -> [InboxGroup] {
+        var groups: [(group: InboxGroup, date: Double)] = []
         for show in allShows {
-            for ep in show.episodes {
-                let item = podcastLibraryItem(show: show, episode: ep)
-                if podcastPlayState(for: item) == .played { continue }
-                picks.append((item, item.addedAt ?? 0))
-            }
+            let mode = AppStorageKeys.podcastInboxModeValue(show.id)
+            if mode == "off" { continue }
+            let cap = (mode == "latest") ? 1 : 3
+            let unplayed = show.episodes
+                .map { podcastLibraryItem(show: show, episode: $0) }
+                .filter { podcastPlayState(for: $0) == .unplayed }
+                .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+                .prefix(cap)
+            guard !unplayed.isEmpty else { continue }
+            groups.append((InboxGroup(show: show, items: Array(unplayed)),
+                           unplayed.first?.addedAt ?? 0))
         }
-        var seen = Set<String>()
-        return picks.sorted { $0.date > $1.date }
-            .filter { seen.insert($0.item.id).inserted }
-            .prefix(25).map { $0.item }
+        return groups.sorted { $0.date > $1.date }.map { $0.group }
     }
 
     /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
@@ -194,44 +204,37 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Neue Folgen (Inbox mit Filter)
-
-    /// Basis-Inbox nach ausgewähltem Filter.
-    private var filteredInbox: [LibraryItem] {
-        switch inboxFilter {
-        case .new:
-            return inboxItems.filter { podcastPlayState(for: $0) == .unplayed }
-        case .inProgress:
-            return inboxItems.filter {
-                if case .inProgress = podcastPlayState(for: $0) { return true } else { return false }
-            }
-        case .downloaded:
-            return downloaded
-        }
-    }
+    // MARK: - Neue Folgen (nach Show gruppiert)
 
     @ViewBuilder
     private var inboxSection: some View {
-        if !inboxItems.isEmpty || !downloaded.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+        if !inboxGroups.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
                 Text("New Episodes").font(.title3).bold().padding(.horizontal)
-                Picker("Filter", selection: $inboxFilter) {
-                    ForEach(PodcastEpisodeFilter.allCases) { f in
-                        Text(f.label).tag(f)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                let items = filteredInbox
-                if items.isEmpty {
-                    Text("Nothing here.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                        .padding(.horizontal).padding(.vertical, 8)
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(items) { item in
-                            PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                            Divider().padding(.leading, 88)
+                ForEach(inboxGroups) { group in
+                    VStack(alignment: .leading, spacing: 0) {
+                        NavigationLink {
+                            PodcastShowView(show: group.show, playerCoordinator: playerCoordinator)
+                        } label: {
+                            HStack(spacing: 8) {
+                                podcastArtwork(url: group.show.artworkURL.flatMap { URL(string: $0) },
+                                               size: 22, corner: 5)
+                                Text(group.show.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.secondary)
+                            }
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal)
+                            .padding(.bottom, 4)
+                        }
+                        .buttonStyle(.plain)
+                        LazyVStack(spacing: 0) {
+                            ForEach(group.items) { item in
+                                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                                Divider().padding(.leading, 88)
+                            }
                         }
                     }
                 }

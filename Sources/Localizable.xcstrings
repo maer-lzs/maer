@@ -3228,6 +3228,96 @@
           }
         }
       }
+    },
+    "Show in New Episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Neue Folgen zeigen"
+          }
+        }
+      }
+    },
+    "Latest only": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur neueste"
+          }
+        }
+      }
+    },
+    "Off": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aus"
+          }
+        }
+      }
+    },
+    "Notify about new episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über neue Folgen benachrichtigen"
+          }
+        }
+      }
+    },
+    "For high-frequency shows, set this to Latest only or Off so they don't flood New Episodes, and turn off notifications.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Vielsendern auf Nur neueste oder Aus stellen, damit sie Neue Folgen nicht fluten, und Benachrichtigungen abschalten."
+          }
+        }
+      }
+    },
+    "Episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Folgen"
+          }
+        }
+      }
+    },
+    "Keep only latest": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur neueste behalten"
+          }
+        }
+      }
+    },
+    "Keeping only the latest N removes older episodes (and their downloads) from this show — handy for news podcasts.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur die neuesten N zu behalten entfernt ältere Folgen (und ihre Downloads) aus dieser Show — praktisch für News-Podcasts."
+          }
+        }
+      }
+    },
+    "%lld new episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neue Folgen"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
