@@ -168,9 +168,9 @@ final class DownloadManager: ObservableObject {
     /// Client used for resumes (set on each download start).
     private weak var resumeProvider: (any AudioProvider)?
 
-    /// Alle lokal heruntergeladenen Audiodateien eines Buchs, sortiert nach
-    /// Track-Reihenfolge (Dateiname = Track-Index). Wird vom Player bevorzugt
-    /// genutzt, um Streaming (und damit Latenz/Datenvolumen) zu vermeiden.
+    /// All locally downloaded audio files of a book, sorted by track order
+    /// (filename = track index). Preferred by the player to avoid streaming (and
+    /// thus latency/data volume).
     /// Strict per-track lookup: filename base MUST be the track index.
     /// Positional sorting silently mapped the wrong files to tracks as soon
     /// as the folder contained anything unexpected (duplicate extensions
@@ -483,7 +483,7 @@ final class DownloadManager: ObservableObject {
         }
     }
 
-    /// Belegter Speicher eines Buchs in Bytes (0, wenn nichts liegt).
+    /// Used storage of a book in bytes (0 if nothing is stored).
     func downloadSize(forItemId itemId: String) -> Int64 {
         let dir = itemDirectory(itemId)
         guard let files = try? FileManager.default.contentsOfDirectory(

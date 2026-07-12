@@ -88,7 +88,7 @@ final class APIClient {
         return token
     }
 
-    // MARK: Bibliotheken
+    // MARK: Libraries
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         let data = try await get(path: "api/libraries")
@@ -213,7 +213,7 @@ final class APIClient {
         return try decode(LibraryItemDetail.self, from: data)
     }
 
-    // MARK: Fortschritt
+    // MARK: Progress
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         var body: [String: Any] = [
@@ -230,15 +230,15 @@ final class APIClient {
         _ = try await patch(path: "api/me/progress/\(itemId)", body: body)
     }
 
-    // MARK: Podcast (Episoden-Ebene)
+    // MARK: Podcast (episode level)
 
-    /// Podcast-Bibliotheken (mediaType == "podcast").
+    /// Podcast libraries (mediaType == "podcast").
     func fetchPodcastLibraries() async throws -> [ABSLibrary] {
         try await fetchLibraries().filter(\.isPodcast)
     }
 
-    /// Episoden-Fortschritt aller Podcasts, gekeyt auf
-    /// `abspod:<libraryItemId>:<episodeId>` (passt zum Provider-Namespace).
+    /// Episode progress of all podcasts, keyed on
+    /// `abspod:<libraryItemId>:<episodeId>` (matches the provider namespace).
     func fetchPodcastEpisodeProgress() async throws -> [String: BookProgress] {
         let data = try await get(path: "api/me")
         let me = try decode(MeResponse.self, from: data)
@@ -263,7 +263,7 @@ final class APIClient {
         return map
     }
 
-    /// Episoden-Fortschritt schreiben (PATCH auf den Episoden-Endpoint).
+    /// Write episode progress (PATCH to the episode endpoint).
     func updateEpisodeProgress(libraryItemId: String, episodeId: String,
                                currentTime: Double, duration: Double, isFinished: Bool) async throws {
         var body: [String: Any] = ["currentTime": currentTime, "isFinished": isFinished]

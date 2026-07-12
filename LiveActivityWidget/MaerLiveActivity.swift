@@ -21,8 +21,8 @@ struct MaerWidgetBundle: WidgetBundle {
 struct PlaybackLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlaybackActivityAttributes.self) { context in
-            // System-Standard-Hintergrund (adaptiv hell/dunkel) statt
-            // App-Look: Live Activities sollen sich iOS anpassen.
+            // System default background (adaptive light/dark) instead of the app
+            // look: Live Activities should adapt to iOS.
             LockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
@@ -96,7 +96,7 @@ private struct LockScreenView: View {
     }
 }
 
-/// Mond bei laufendem Schlaf-Timer, sonst Play/Pause-Glyph.
+/// Moon while a sleep timer runs, otherwise the play/pause glyph.
 private struct StatusIcon: View {
     let state: PlaybackActivityAttributes.ContentState
 

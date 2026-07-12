@@ -63,8 +63,8 @@ struct BookProgress: Equatable, Codable {
     var percentInt: Int { Int((fraction * 100).rounded()) }
     var isStarted: Bool { fraction > 0.001 && !isFinished }
 
-    /// Restzeit-Text („noch 3 Std. 12 Min.") aus der Buchdauer — nil, wenn
-    /// keine Dauer bekannt ist (dann Prozent als Fallback zeigen).
+    /// Remaining-time text ("3 h 12 min left") from the book duration — nil when
+    /// no duration is known (then show percent as fallback).
     func remainingText(bookDuration: Double?) -> String? {
         guard let bookDuration, bookDuration > 0 else { return nil }
         let listened = currentTime ?? fraction * bookDuration
@@ -77,7 +77,7 @@ struct BookProgress: Equatable, Codable {
     }
 }
 
-// MARK: - Bibliotheken
+// MARK: - Libraries
 
 struct LibrariesResponse: Decodable {
     let libraries: [ABSLibrary]
@@ -215,10 +215,9 @@ struct ABSEnclosure: Codable {
     let url: String?
 }
 
-/// Manche Audiobookshelf-Felder (z. B. publishedYear) liefern je nach
-/// Server-Version mal einen String, mal eine Zahl. Dieser Wrapper nimmt
-/// beides entgegen, statt bei einem Typ-Mismatch den ganzen Decode
-/// scheitern zu lassen.
+/// Some Audiobookshelf fields (e.g. publishedYear) return a string on some
+/// server versions and a number on others. This wrapper accepts both instead of
+/// failing the whole decode on a type mismatch.
 struct LenientString: Codable {
     let value: String
 
@@ -262,7 +261,7 @@ struct ABSFileMetadata: Codable {
     let size: Int64?
 }
 
-// MARK: - Fortschritt
+// MARK: - Progress
 
 struct MediaProgress: Codable {
     let currentTime: Double?
