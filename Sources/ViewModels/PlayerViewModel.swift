@@ -8,36 +8,34 @@ import ActivityKit
 @MainActor
 final class PlayerViewModel: NSObject, ObservableObject {
 
-    /// Wird angezeigt, wenn die App einen spürbar NIEDRIGEREN Fortschritt an den
-    /// Server schreiben würde, als zuletzt gespeichert war. Das ist die zentrale
-    /// Schutzmaßnahme gegen genau das Plappa-Problem (Reset auf 0).
+    /// Shown when the app would write a noticeably LOWER progress to the server
+    /// than was last saved. This is the central safeguard against exactly the
+    /// reset-to-0 problem.
     struct ServerConflict: Identifiable {
         let serverTime: Double
         let localTime: Double
         var id: Double { localTime }
     }
 
-    /// Wird angezeigt, wenn mehrere schnelle Sprünge HINTEREINANDER über den
-    /// Sperrbildschirm/das Kontrollzentrum kamen — typisches Muster für
-    /// unbeabsichtigten Taschen-Kontakt, da iOS dort keine Handflächen-
-    /// Erkennung hat. Betrifft ausschließlich Lockscreen-Sprünge, niemals
-    /// Buttons innerhalb der App selbst.
+    /// Shown when several fast jumps came IN A ROW via the lock screen/control
+    /// center — a typical pattern for accidental pocket contact, since iOS has no
+    /// palm detection there. Affects lock-screen jumps only, never buttons within
+    /// the app itself.
     struct SuspiciousLockscreenJump: Identifiable {
         let beforeTime: Double
         let afterTime: Double
         var id: Double { afterTime }
     }
 
-    /// Sichtbarer Sync-Status im Player — macht auf einen Blick klar, ob der
-    /// aktuelle Fortschritt wirklich sicher gespeichert ist. Gerade weil diese
-    /// App sich zentral über verlässlichen Sync definiert, soll das nicht im
-    /// Verborgenen passieren.
+    /// Visible sync status in the player — makes it clear at a glance whether the
+    /// current progress is really safely saved. Precisely because this app is
+    /// defined by reliable sync, this should not happen out of sight.
     enum SyncStatus: Equatable {
         case synced
-        /// Offline — liegt in der SyncQueue, wird automatisch nachgereicht.
+        /// Offline — sits in the SyncQueue, sent automatically later.
         case queued
-        /// Verbindung verloren, aktueller Stand noch NICHT geschrieben — es
-        /// liegt aber (noch) nichts in der Queue (kein syncProgress-Fehlschlag).
+        /// Connection lost, current state NOT written yet — but nothing is (yet)
+        /// in the queue (no syncProgress failure).
         case offline
         /// Echter Fehler (kein reines Offline-Problem).
         case failed
@@ -61,9 +59,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// Kurzer, transienter Hinweis (Icon + Text), woher der aktuelle Stand
-    /// stammt bzw. wie er gesichert ist. Feste, geprüfte Beschriftungen statt
-    /// freiem Text — wird als globale Glas-Pille angezeigt.
+    /// Short, transient hint (icon + text) about where the current state comes
+    /// from or how it is saved. Fixed, checked labels instead of free text —
+    /// shown as a global glass pill.
     enum SourceHint: Equatable {
         case saved
         case serverAdopted
@@ -99,13 +97,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     @Published var syncStatus: SyncStatus = .synced
-    /// Kurzer Hinweis, woher der Fortschritt beim Öffnen kam — blendet sich
-    /// nach ein paar Sekunden von selbst wieder aus.
+    /// Short hint about where the progress came from on open — fades out by
+    /// itself after a few seconds.
     @Published var sourceHint: SourceHint?
 
     @Published var isPlaying = false
-    /// Absolute Position im GESAMTEN Buch, in Sekunden — unabhängig davon, ob
-    /// das Buch aus einer einzigen M4B-Datei oder mehreren Tracks besteht.
+    /// Absolute position in the WHOLE book, in seconds — regardless of whether
+    /// the book consists of a single M4B file or several tracks.
     @Published var currentTime: Double = 0
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
@@ -113,31 +111,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var playbackRate: Float = 1.0
     /// When the current pause started — basis for Smart Rewind on resume.
     private var pausedAt: Date?
-    /// Laufende Live Activity (Lock Screen / Dynamic Island), s. Extension.
+    /// Running Live Activity (lock screen / Dynamic Island), see extension.
     var liveActivity: Activity<PlaybackActivityAttributes>?
-    /// Skip-Intervall in Sekunden (15/30/60), app-weit gemerkt.
+    /// Skip interval in seconds (15/30/60), remembered app-wide.
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
     @Published var sleepTimerRemaining: TimeInterval?
-    /// True, wenn der Sleep-Timer im "bis Kapitelende"-Modus läuft (für die
-    /// Anzeige im Menü).
+    /// True while the sleep timer runs in "until end of chapter" mode (for the
+    /// menu display).
     @Published var sleepUntilChapterEnd = false
     /// True while the sleep timer runs in "until end of track" mode.
     @Published var sleepUntilTrackEnd = false
     @Published var errorMessage: String?
     @Published var pendingServerConflict: ServerConflict?
     @Published var suspiciousLockscreenJump: SuspiciousLockscreenJump?
-    /// True, während der Player nachpuffert (z. B. nach kurzem Funkloch) —
-    /// die View zeigt dann einen "Lädt…"-Zustand statt eines starren Fehlers.
+    /// True while the player is rebuffering (e.g. after a brief signal drop) —
+    /// the view then shows a "Loading…" state instead of a rigid error.
     @Published var isBuffering = false
-    /// Spiegelt, ob das Buch als abgeschlossen gilt (für den "Als gehört
-    /// markieren"-Button, der sich dann in "Als ungehört markieren" ändert).
+    /// Mirrors whether the book counts as finished (for the "mark as played"
+    /// button, which then changes to "mark as unplayed").
     @Published var isFinished = false
 
-    /// AVQueuePlayer statt AVPlayer, damit mehrteilige Bücher (mehrere
-    /// Audiodateien statt einer M4B) nahtlos nacheinander abgespielt werden
-    /// können. Alle bestehenden AVPlayer-Aufrufe (rate, pause, ...)
-    /// funktionieren unverändert, AVQueuePlayer ist eine Unterklasse.
+    /// AVQueuePlayer instead of AVPlayer so multi-file books (several audio files
+    /// instead of one M4B) play back-to-back seamlessly. All existing AVPlayer
+    /// calls (rate, pause, …) work unchanged, AVQueuePlayer is a subclass.
     var player: AVQueuePlayer?
     private var timeObserverToken: Any?
     private var interruptionObserver: NSObjectProtocol?
@@ -161,69 +158,67 @@ final class PlayerViewModel: NSObject, ObservableObject {
     var onBookFinished: ((String) -> Void)?
     var artworkImage: UIImage?
 
-    /// Alle Tracks des Buchs, sortiert. Bei einem normalen M4B-Buch genau
-    /// einer, bei mehrteiligen Büchern mehrere.
+    /// All tracks of the book, sorted. Exactly one for a normal M4B book,
+    /// several for multi-file books.
     private var tracks: [ABSAudioTrack] = []
-    /// Index des Tracks, der gerade im Player aktiv ist.
+    /// Index of the track currently active in the player.
     private var currentTrackIndex: Int = 0
-    /// AVPlayerItem → Track-Index. Quelle der Wahrheit für die absolute
-    /// Zeitrechnung: der Index wird pro Tick vom gerade spielenden Item
-    /// ABGELEITET statt per Notification gezählt — verpasste/verspätete
-    /// Track-Wechsel-Notifications können die Buchzeit so nicht mehr
-    /// verfälschen (falscher Rückschritt → falscher Konflikt-Dialog).
+    /// AVPlayerItem → track index. Source of truth for the absolute time math:
+    /// the index is DERIVED per tick from the currently playing item instead of
+    /// counted via notification — missed/late track-change notifications can no
+    /// longer distort the book time (false backward jump → false conflict dialog).
     private var itemTrackIndex: [ObjectIdentifier: Int] = [:]
     /// Local files of a downloaded book, keyed by track index — strict
     /// mapping, immune to stray files in the folder.
     private var localTrackFiles: [Int: URL] = [:]
 
-    /// True, während ein Write zum Server unterwegs ist.
+    /// True while a write to the server is in flight.
     var syncInFlight = false
-    /// Ein force-Sync kam an, während einer lief — danach einmal nachziehen.
+    /// A force sync arrived while one was running — re-run once afterwards.
     var syncFollowUpRequested = false
 
-    /// Sekunden vor Timer-Ende, über die die Lautstärke sanft ausblendet —
-    /// kein harter Stopp mitten im Satz.
+    /// Seconds before the timer end over which the volume fades gently — no hard
+    /// stop mid-sentence.
     let sleepFadeDuration: Double = 8
 
-    /// Letzter erfolgreich an den Server geschriebener Wert.
+    /// Last value successfully written to the server.
     var lastSyncedTime: Double = 0
-    /// UserDefaults-Key der sekündlichen Positions-Sicherung dieses Buchs.
-    /// Schließt das 30s-Verlustfenster bei Crash/Force-Quit: [Zeit, ms-Epoch].
+    /// UserDefaults key of this book's per-second position backup. Closes the
+    /// 30s loss window on crash/force-quit: [time, ms-epoch].
     var localPositionKey: String? {
         item.map { AppStorageKeys.localPosition($0.id) }
     }
 
-    /// Letzter Schreibzeitpunkt der lokalen Positions-Sicherung (Throttle).
+    /// Last write time of the local position backup (throttle).
     private var lastLocalSaveAt: TimeInterval = 0
 
-    /// lastUpdate-Zeitstempel des zuletzt GESEHENEN Server-Eintrags (ms epoch).
-    /// Ein neuerer Eintrag stammt von einem anderen Gerät (oder unserem
-    /// eigenen Write) — Grundlage für den Geräte-Abgleich.
+    /// lastUpdate timestamp of the last SEEN server entry (ms epoch). A newer
+    /// entry comes from another device (or our own write) — basis for the device
+    /// reconcile.
     var lastKnownServerUpdate: Double = 0
-    /// Wird gesetzt, wenn der Nutzer BEWUSST gesprungen ist (Scrubber, Kapitel,
-    /// ±30s, Lockscreen). Ein bewusster Sprung nach hinten ist legitim und löst
-    /// keinen Warn-Dialog aus. Gefährlich ist nur ein Absacken OHNE Nutzeraktion
-    /// (z. B. Player-Reset auf 0) — genau das Plappa-Szenario.
+    /// Set when the user jumped DELIBERATELY (scrubber, chapter, ±30s, lock
+    /// screen). A deliberate backward jump is legitimate and triggers no warning
+    /// dialog. Only a drop WITHOUT user action is dangerous (e.g. player reset to
+    /// 0) — exactly the reset scenario.
     var suppressConflictForNextSync = false
 
-    /// Schwelle, ab der ein nicht vom Nutzer ausgelöster Rückschritt als
-    /// verdächtig gilt.
+    /// Threshold above which a non-user-initiated backward jump counts as
+    /// suspicious.
     let suspiciousDropThreshold: Double = 120
 
-    // MARK: - Taschen-Kontakt-Schutz für Lockscreen-Sprünge
+    // MARK: - Pocket-contact protection for lock-screen jumps
 
-    /// Zeitpunkte der letzten Sprünge über den Sperrbildschirm/das
-    /// Kontrollzentrum — nur DIESER Pfad ist betroffen, nicht die Buttons in
-    /// der App selbst (siehe `skipFromLockscreen`).
+    /// Timestamps of the recent jumps via the lock screen/control center — only
+    /// THIS path is affected, not the buttons in the app itself (see
+    /// `skipFromLockscreen`).
     private var recentLockscreenSkipTimestamps: [Date] = []
-    /// Stand, bevor die aktuell laufende Sprung-Serie begann — der
-    /// Rücksprungpunkt, falls sich die Serie als ungewollt herausstellt.
+    /// State before the currently running jump series began — the return point
+    /// if the series turns out to be unwanted.
     private var lockscreenSkipBaseline: Double?
-    /// Zeitfenster, in dem mehrere Sprünge als "eine Serie" gezählt werden.
+    /// Time window within which several jumps count as "one series".
     private let lockscreenSkipWindow: TimeInterval = 4
-    /// Ab so vielen Sprüngen innerhalb des Zeitfensters gilt die Serie als
-    /// verdächtig (typisches Taschen-Kontakt-Muster, kein bewusstes
-    /// mehrfaches Antippen).
+    /// From this many jumps within the window the series counts as suspicious
+    /// (typical pocket-contact pattern, not deliberate multiple tapping).
     private let lockscreenSkipSuspicionCount = 5
 
     init(provider: any AudioProvider) {
@@ -328,9 +323,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func configureAudioSession() {
-        // Nur Kategorie setzen — setActive(true) erst beim tatsächlichen
-        // Abspielen (play): sonst unterbricht schon das stille Wiederherstellen
-        // der letzten Session beim App-Start die Musik anderer Apps.
+        // Only set the category — setActive(true) only on actual playback (play):
+        // otherwise the silent restore of the last session at app start would
+        // already interrupt other apps' music.
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
     }
 
@@ -355,10 +350,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Laden
 
-    /// - Parameter isOfflineFallback: true, wenn dieses Buch über den
-    ///   Offline-Metadaten-Cache geöffnet wurde (Server nicht erreichbar),
-    ///   statt über eine frische Serverantwort — steuert nur die kurze
-    ///   "Fortgesetzt von …"-Anzeige, sonst identisches Verhalten.
+    /// - Parameter isOfflineFallback: true when this book was opened via the
+    ///   offline metadata cache (server unreachable) instead of a fresh server
+    ///   response — only controls the brief "Resumed from …" hint, otherwise
+    ///   identical behaviour.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false) async {
         self.item = item
         chapters = item.media.chapters ?? []
@@ -398,9 +393,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
         var restoredFromLocal = false
-        // Crash-Sicherung: Ist die sekündliche lokale Sicherung JÜNGER als der
-        // Serverstand und weicht spürbar ab (App starb vor dem nächsten Sync),
-        // dort fortsetzen und gleich nachreichen.
+        // Crash safety: if the per-second local backup is NEWER than the server
+        // state and differs noticeably (the app died before the next sync),
+        // continue there and flush it right away.
         if let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
            saved.count == 2,
            SyncRules.shouldRestoreLocalPosition(
@@ -436,30 +431,30 @@ final class PlayerViewModel: NSObject, ObservableObject {
         updateWidgetSnapshot(force: true)
         startSyncTimer()
         syncStatus = .synced
-        // Hinweis nur, wenn wirklich ein Stand übernommen wurde — bei einem
-        // frischen Buch (Start bei 0) wäre „Serverstand übernommen" irreführend.
+        // Hint only when a state was actually adopted — for a fresh book (start
+        // at 0) "adopted server position" would be misleading.
         if isOfflineFallback || restoredFromLocal {
             showSourceHint(.localUsed)
         } else if serverProgress > 0 {
             showSourceHint(.serverAdopted)
         }
         if restoredFromLocal {
-            // Wiederhergestellten Stand sofort nachreichen (offline → Queue).
-            // Kein Konflikt-Dialog: der Stand war vor dem Crash gewollt.
+            // Flush the restored state immediately (offline → queue). No conflict
+            // dialog: the state was intended before the crash.
             suppressConflictForNextSync = true
             await syncProgress(force: true)
         }
 
-        // Cover fürs Lockscreen / die Dynamic Island laden. Das System zeigt
-        // beide automatisch an, sobald MPNowPlayingInfoCenter ein Artwork
-        // enthält — keine eigene Live Activity nötig.
+        // Load the cover for lock screen / Dynamic Island. The system shows both
+        // automatically once MPNowPlayingInfoCenter has an artwork — no own Live
+        // Activity needed.
         loadArtwork(coverURL: provider.coverURL(forItemId: item.id))
     }
 
-    /// Zeigt einen kurzen Hinweis (z. B. „Serverstand übernommen“) und blendet
-    /// ihn nach ein paar Sekunden von selbst wieder aus. Wird global über die
-    /// Overlay-Pille angezeigt — unabhängig davon, ob man gerade in der
-    /// Bibliothek, auf der Detailseite oder im vollen Player ist.
+    /// Shows a brief hint (e.g. "adopted server position") and fades it out by
+    /// itself after a few seconds. Shown globally via the overlay pill —
+    /// regardless of whether you are currently in the
+    /// library, on the detail page or in the full player.
     func showSourceHint(_ hint: SourceHint) {
         sourceHint = hint
         Task { [weak self] in
@@ -472,14 +467,14 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     // MARK: - Track-Verwaltung (Multi-Track)
 
-    /// Kumulative Startzeit (absolute Sekunden im Gesamtbuch) für einen
-    /// Track-Index. Nutzt `startOffset` vom Server, falls vorhanden, sonst
-    /// wird aus den Einzeldauern selbst aufsummiert.
+    /// Cumulative start time (absolute seconds in the whole book) for a track
+    /// index. Uses `startOffset` from the server if present, otherwise sums the
+    /// individual durations itself.
     private func trackAbsoluteStart(_ index: Int) -> Double {
         TrackMath.trackStart(index: index, tracks: tracks, bookDuration: duration)
     }
 
-    /// Findet den Track, in den eine absolute Buch-Zeit fällt.
+    /// Finds the track that an absolute book time falls into.
     private func trackIndex(for absoluteTime: Double) -> Int {
         TrackMath.trackIndex(for: absoluteTime, tracks: tracks, bookDuration: duration)
     }
@@ -492,16 +487,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return provider.streamURL(forContentPath: tracks[index].contentUrl)
     }
 
-    /// Baut die Wiedergabe-Queue neu auf, beginnend beim angegebenen Track,
-    /// und springt innerhalb des ersten Tracks an die angegebene Stelle.
-    /// Nötig, weil AVQueuePlayer nur innerhalb des aktuellen Items seeken
-    /// kann — für Sprünge über Track-Grenzen hinweg (Kapitel, Scrubber,
-    /// Geräte-Wechsel) muss die Queue neu aufgebaut werden.
+    /// Rebuilds the playback queue starting at the given track and seeks to the
+    /// given position within the first track. Needed because AVQueuePlayer can
+    /// only seek within the current item — for jumps across track boundaries
+    /// (chapter, scrubber, device switch) the queue must be rebuilt.
     @discardableResult
     private func buildQueue(startingAtTrackIndex startIndex: Int, seekWithin: Double) -> Bool {
         guard startIndex >= 0, startIndex < tracks.count else { return false }
 
-        // Alten Player und seine Beobachter sauber abbauen.
+        // Cleanly tear down the old player and its observers.
         if let token = timeObserverToken {
             player?.removeTimeObserver(token)
         }
@@ -565,9 +559,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 guard let self else { return }
                 self.currentTime = self.duration
                 self.isPlaying = false
-                // Auch lokal als abgeschlossen markieren — der Sync schreibt es
-                // ohnehin; sonst zeigt die UI nach durchgehörtem Buch den
-                // falschen Zustand.
+                // Also mark finished locally — the sync writes it anyway;
+                // otherwise the UI shows the wrong state after a fully played book.
                 self.isFinished = true
                 self.updateNowPlayingInfo()
                 self.endLiveActivity()
@@ -580,12 +573,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Wiedergabe
+    // MARK: - Playback
 
     func play() {
         activateAudioSession()
         applySmartRewindIfNeeded()
-        // Falls ein Sleep-Fade mittendrin unterbrochen wurde: volle Lautstärke.
+        // In case a sleep fade was interrupted mid-way: full volume.
         player?.volume = 1
         player?.rate = playbackRate
         isPlaying = true
@@ -616,15 +609,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     /// Startet die Wiedergabe, gleicht aber vorher kurz mit dem Server ab.
-    /// Deckt den Geräte-Wechsel ab: Wenn du auf dem iPhone pausierst und
-    /// Sekunden später auf dem iPad weiterhören willst, springt das iPad vor
-    /// dem Abspielen auf den neueren Serverstand — statt vom alten lokalen
-    /// Stand loszulaufen und den frischen Fortschritt zu überschreiben.
+    /// Covers the device switch: if you pause on the iPhone and want to continue
+    /// on the iPad seconds later, the iPad jumps to the newer server state before
+    /// playing — instead of starting from the old local state and overwriting the
+    /// fresh progress.
     func playWithServerCheck() async {
-        // Abgleich max. 1,5s abwarten — bei zähem Netz (kein sofortiger
-        // Offline-Fehler) soll der Play-Button nicht bis zum URLSession-
-        // Timeout hängen. Läuft der Abgleich länger, startet die Wiedergabe
-        // sofort; ein späteres Adopt springt dann während des Abspielens.
+        // Wait for the reconcile at most 1.5s — on a slow network (no immediate
+        // offline error) the play button must not hang until the URLSession
+        // timeout. If the reconcile takes longer, playback starts immediately; a
+        // later adopt then jumps during playback.
         let reconcile = Task { await self.reconcileWithServer() }
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await reconcile.value }
@@ -655,9 +648,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    /// - Parameter userInitiated: true bei allen bewussten Nutzeraktionen
-    ///   (Scrubber, Kapitel, Skip, Lockscreen). Solche Sprünge werden sofort
-    ///   und ohne Rückfrage an den Server geschrieben — auch nach hinten.
+    /// - Parameter userInitiated: true for all deliberate user actions
+    ///   (scrubber, chapter, skip, lock screen). Such jumps are written to the
+    ///   server immediately and without confirmation — also backwards.
     func seek(to time: Double, userInitiated: Bool = true) async {
         guard !tracks.isEmpty else { return }
         let clamped = max(0, min(time, max(duration, 0)))
@@ -665,10 +658,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let offsetWithinTrack = max(0, clamped - trackAbsoluteStart(targetIndex))
 
         if targetIndex == currentTrackIndex, let player {
-            // Sprung bleibt innerhalb des aktuell geladenen Tracks.
+            // Jump stays within the currently loaded track.
             await player.seek(to: CMTime(seconds: offsetWithinTrack, preferredTimescale: 1000))
         } else {
-            // Sprung über eine Track-Grenze hinweg — Queue neu aufbauen.
+            // Jump across a track boundary — rebuild the queue.
             buildQueue(startingAtTrackIndex: targetIndex, seekWithin: offsetWithinTrack)
         }
 
@@ -689,13 +682,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         Task { await seek(to: currentTime + seconds) }
     }
 
-    /// Wie `skip(by:)`, aber ausschließlich für Sprünge über den
-    /// Sperrbildschirm/das Kontrollzentrum gedacht — dort gibt es (anders als
-    /// bei Buttons in der App) keine Handflächen-Erkennung. Ein Skip-Befehl
-    /// aus der Hosentasche kann sich unbemerkt mehrfach hintereinander
-    /// auslösen. Erst ab mehreren schnellen Sprüngen in kurzer Zeit greift
-    /// die Erkennung — ein einzelner, bewusster Lockscreen-Sprung läuft
-    /// unverändert sofort durch, ganz ohne Rückfrage.
+    /// Like `skip(by:)`, but intended only for jumps via the lock screen/control
+    /// center — there is (unlike buttons in the app) no palm detection there. A
+    /// skip command from your pocket can trigger unnoticed several times in a
+    /// row. Only from several fast jumps in a short time does the detection kick
+    /// in — a single deliberate lock-screen jump still goes through immediately,
+    /// without any confirmation.
     func skipFromLockscreen(by seconds: Double) {
         let now = Date()
         recentLockscreenSkipTimestamps.removeAll { now.timeIntervalSince($0) > lockscreenSkipWindow }
@@ -705,9 +697,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         recentLockscreenSkipTimestamps.append(now)
 
         if recentLockscreenSkipTimestamps.count > lockscreenSkipSuspicionCount {
-            // Schwelle überschritten: diesen weiteren Sprung nicht mehr
-            // automatisch ausführen, stattdessen einmal nachfragen, ob die
-            // ganze Serie wirklich gewollt war.
+            // Threshold exceeded: don't run this further jump automatically,
+            // instead ask once whether the whole series was really intended.
             recentLockscreenSkipTimestamps.removeAll()
             if suspiciousLockscreenJump == nil, let baseline = lockscreenSkipBaseline {
                 suspiciousLockscreenJump = SuspiciousLockscreenJump(beforeTime: baseline, afterTime: currentTime)
@@ -722,9 +713,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         Task { await seek(to: chapter.start) }
     }
 
-    /// Springt zum vorherigen Kapitel. Bei mehr als 3 Sekunden im aktuellen
-    /// Kapitel wird erst an dessen Anfang gesprungen (wie in Musik-/Podcast-
-    /// Apps üblich), erst ein weiterer Druck geht ein Kapitel zurück.
+    /// Jumps to the previous chapter. After more than 3 seconds into the current
+    /// chapter it first jumps to its start (as common in music/podcast apps);
+    /// only a further press goes back one chapter.
     func previousChapter() {
         guard !chapters.isEmpty else { return }
         guard let idx = currentChapterIndex else { return }
@@ -785,15 +776,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
                     self.currentTrackIndex = idx
                 }
-                // Lokale Hörstatistik: 1 s pro Tick bei laufender Wiedergabe.
+                // Local listening stats: 1 s per tick while playing.
                 if self.isPlaying { ListeningStatsStore.shared.addSeconds(1) }
-                // Absolute Buch-Zeit = Start des aktuellen Tracks + Position
-                // innerhalb dieses Tracks.
+                // Absolute book time = start of the current track + position
+                // within this track.
                 let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
                 self.currentTime = newTime
-                // Crash-Sicherung: Position lokal festhalten — auf alle 5s
-                // gedrosselt (UserDefaults-Writes sind nicht gratis). Das
-                // Verlustfenster bei Crash beträgt damit max. ~5s statt 30s.
+                // Crash safety: keep the position locally — throttled to every
+                // 5s (UserDefaults writes aren't free). The loss window on crash
+                // is thus at most ~5s instead of 30s.
                 let now = Date().timeIntervalSince1970
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
                     self.lastLocalSaveAt = now
@@ -802,11 +793,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
-                // Download-on-Play: Feed-only-Folge einer ABS-Show nach ~30 s
-                // am Server sichern (no-op, wenn nichts registriert ist).
+                // Download-on-play: save a feed-only episode of an ABS show to
+                // the server after ~30 s (no-op if nothing is registered).
                 PodcastServerSave.shared.playbackTick(itemId: self.item?.id, currentTime: self.currentTime)
-                // Buffering-Status gleich mitprüfen — nutzt denselben sauberen
-                // MainActor-Kontext, kein separater KVO-Observer nötig.
+                // Check the buffering status here too — uses the same clean
+                // MainActor context, no separate KVO observer needed.
                 if let currentItem = self.player?.currentItem {
                     self.isBuffering = self.isPlaying
                         && currentItem.isPlaybackBufferEmpty
@@ -893,7 +884,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         refreshLiveActivityIfActive()
     }
 
-    // MARK: - Aufräumen
+    // MARK: - Cleanup
 
     func stop() {
         endLiveActivity()
