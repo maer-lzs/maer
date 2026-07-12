@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Zentrale Einstellungen: Wiedergabe, Darstellung, Downloads/Speicher,
-/// Sync, Server/Abmelden, App-Info.
+/// Zentrale Einstellungen: Wiedergabe, Quellen, Downloads/Speicher, Sync,
+/// Darstellung, Statistik, Server/Abmelden, App-Info. Jede Zeile mit Icon.
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// For reloading after a library switch — the settings are pushed from
@@ -21,6 +21,7 @@ struct SettingsView: View {
     @State private var autoPlayNext: Bool =
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
+    @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
 
     @State private var availableLibraries: [ABSLibrary] = []
     @AppStorage(AppStorageKeys.selectedLibraryId) private var selectedLibraryId = ""
@@ -36,10 +37,10 @@ struct SettingsView: View {
     var body: some View {
         Form {
             playbackSection
-            appearanceSection
             sourcesSection
             downloadsSection
             syncSection
+            appearanceSection
             statsSection
             serverSection
             aboutSection
@@ -50,10 +51,12 @@ struct SettingsView: View {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
             if let libraries = try? await coordinator.provider.fetchLibraries() {
-                availableLibraries = libraries
+                // NUR Buch-Bibliotheken — Podcast-Libraries gehören zum
+                // Podcast-Tab, nicht in die Hörbuch-Bibliotheksauswahl.
+                availableLibraries = libraries.filter { !$0.isPodcast }
                 // Reflect the effective library when nothing was chosen yet.
-                if selectedLibraryId.isEmpty || !libraries.contains(where: { $0.id == selectedLibraryId }) {
-                    selectedLibraryId = libraries.first?.id ?? ""
+                if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
+                    selectedLibraryId = availableLibraries.first?.id ?? ""
                 }
             }
         }
@@ -77,38 +80,45 @@ struct SettingsView: View {
 
     private var playbackSection: some View {
         Section {
-            Picker("Skip Interval", selection: $skipInterval) {
+            Picker(selection: $skipInterval) {
                 ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
                     Text("\(Int(seconds)) seconds").tag(seconds)
                 }
+            } label: {
+                Label("Skip Interval", systemImage: "goforward")
             }
             .onChange(of: skipInterval) { _, newValue in
                 if let vm = coordinator.viewModel {
-                    // Aktive Session: aktualisiert auch die Lockscreen-Buttons.
-                    vm.setSkipInterval(newValue)
+                    vm.setSkipInterval(newValue)   // aktualisiert auch die Lockscreen-Buttons
                 } else {
                     UserDefaults.standard.set(newValue, forKey: AppStorageKeys.skipInterval)
                 }
             }
 
-            Picker("Default Speed", selection: $defaultRate) {
+            Picker(selection: $defaultRate) {
                 ForEach(availableRates, id: \.self) { rate in
                     Text("\(rate.formatted(.number.precision(.fractionLength(0...2))))×").tag(rate)
                 }
+            } label: {
+                Label("Default Speed", systemImage: "speedometer")
             }
             .onChange(of: defaultRate) { _, newValue in
                 UserDefaults.standard.set(Float(newValue), forKey: AppStorageKeys.defaultPlaybackRate)
             }
 
-            Toggle("Smart Rewind", isOn: $smartRewind)
-                .onChange(of: smartRewind) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
-                }
+            Toggle(isOn: $smartRewind) {
+                Label("Smart Rewind", systemImage: "backward.circle")
+            }
+            .onChange(of: smartRewind) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
+            }
 
-            Toggle("Auto-Play Next in Series", isOn: $autoPlayNext)
-                .onChange(of: autoPlayNext) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
-                }
+            Toggle(isOn: $autoPlayNext) {
+                Label("Auto-Play Next in Series", systemImage: "play.circle")
+            }
+            .onChange(of: autoPlayNext) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
+            }
         } header: {
             Text("Playback")
         } footer: {
@@ -116,78 +126,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Darstellung
-
-    private var appearanceSection: some View {
-        Section("Appearance") {
-            Picker("Appearance", selection: $appearance) {
-                Text("System").tag("system")
-                Text("Light").tag("light")
-                Text("Dark").tag("dark")
-            }
-            .pickerStyle(.segmented)
-        }
-    }
-
-    // MARK: - Downloads & Speicher
-
-    private var downloadsSection: some View {
-        Section {
-            Toggle("Warn When Not on Wi-Fi", isOn: $warnCellular)
-                .onChange(of: warnCellular) { _, newValue in
-                    UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
-                }
-
-            LabeledContent("Downloads") {
-                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-            }
-            Button("Delete All Downloads", role: .destructive) {
-                showDeleteAllDownloads = true
-            }
-            .disabled(downloadManager.downloadedItemIds.isEmpty)
-
-            LabeledContent("Cover Cache") {
-                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
-            }
-            Button("Clear Cover Cache") {
-                ImageCache.shared.clearCache()
-                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
-            }
-        } header: {
-            Text("Storage")
-        } footer: {
-            Text("Deleting downloads never deletes listening progress.")
-        }
-    }
-
-    // MARK: - Sync
-
-    private var syncSection: some View {
-        Section {
-            LabeledContent("Pending Updates") {
-                Text("\(pendingSyncCount)")
-            }
-            Button {
-                isSyncing = true
-                Task {
-                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
-                    pendingSyncCount = SyncQueue.shared.allPending().count
-                    isSyncing = false
-                }
-            } label: {
-                if isSyncing {
-                    ProgressView()
-                } else {
-                    Text("Sync Now")
-                }
-            }
-            .disabled(pendingSyncCount == 0 || isSyncing)
-        } header: {
-            Text("Sync")
-        } footer: {
-            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
-        }
-    }
+    // MARK: - Quellen
 
     private var sourcesSection: some View {
         Section("Sources") {
@@ -206,6 +145,102 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Downloads & Speicher
+
+    private var downloadsSection: some View {
+        Section {
+            Toggle(isOn: $warnCellular) {
+                Label("Warn When Not on Wi-Fi", systemImage: "wifi")
+            }
+            .onChange(of: warnCellular) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
+            }
+
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+            } label: {
+                Label("Downloads", systemImage: "arrow.down.circle")
+            }
+            Button(role: .destructive) {
+                showDeleteAllDownloads = true
+            } label: {
+                Label("Delete All Downloads", systemImage: "trash")
+            }
+            .disabled(downloadManager.downloadedItemIds.isEmpty)
+
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
+            } label: {
+                Label("Cover Cache", systemImage: "photo.on.rectangle")
+            }
+            Button {
+                ImageCache.shared.clearCache()
+                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+            } label: {
+                Label("Clear Cover Cache", systemImage: "trash")
+            }
+        } header: {
+            Text("Storage")
+        } footer: {
+            Text("Deleting downloads never deletes listening progress.")
+        }
+    }
+
+    // MARK: - Sync
+
+    private var syncSection: some View {
+        Section {
+            LabeledContent {
+                Text("\(pendingSyncCount)")
+            } label: {
+                Label("Pending Updates", systemImage: "arrow.triangle.2.circlepath")
+            }
+            Button {
+                isSyncing = true
+                Task {
+                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
+                    pendingSyncCount = SyncQueue.shared.allPending().count
+                    isSyncing = false
+                }
+            } label: {
+                if isSyncing {
+                    ProgressView()
+                } else {
+                    Label("Sync Now", systemImage: "arrow.clockwise")
+                }
+            }
+            .disabled(pendingSyncCount == 0 || isSyncing)
+
+            Toggle(isOn: $podcastICloudSync) {
+                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
+            }
+            .onChange(of: podcastICloudSync) { _, on in
+                if on { PodcastCloudSync.shared.start() }
+            }
+        } header: {
+            Text("Sync")
+        } footer: {
+            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible. iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled).")
+        }
+    }
+
+    // MARK: - Darstellung
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker(selection: $appearance) {
+                Text("System").tag("system")
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+            } label: {
+                Label("Appearance", systemImage: "circle.lefthalf.filled")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: - Statistik
+
     private var statsSection: some View {
         Section {
             NavigationLink {
@@ -220,25 +255,31 @@ struct SettingsView: View {
 
     private var serverSection: some View {
         Section("Server") {
-            LabeledContent("Address") {
+            LabeledContent {
                 Text(AppSession.shared.apiClient.baseURL.absoluteString)
                     .lineLimit(1)
                     .truncationMode(.middle)
+            } label: {
+                Label("Address", systemImage: "server.rack")
             }
-            // Only shown when the server actually has several libraries —
+            // Only shown when the server actually has several BOOK libraries —
             // with a single one the picker would just be noise.
             if availableLibraries.count > 1 {
-                Picker("Library", selection: $selectedLibraryId) {
+                Picker(selection: $selectedLibraryId) {
                     ForEach(availableLibraries) { library in
                         Text(library.name).tag(library.id)
                     }
+                } label: {
+                    Label("Library", systemImage: "books.vertical")
                 }
                 .onChange(of: selectedLibraryId) { _, _ in
                     Task { await libraryViewModel?.loadLibrary() }
                 }
             }
-            Button("Log Out", role: .destructive) {
+            Button(role: .destructive) {
                 showLogoutConfirm = true
+            } label: {
+                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
             }
         }
     }
@@ -247,8 +288,10 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version") {
+            LabeledContent {
                 Text(Self.versionString)
+            } label: {
+                Label("Version", systemImage: "info.circle")
             }
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")

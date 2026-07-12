@@ -31,6 +31,11 @@ nonisolated enum AppStorageKeys {
         return !(d.string(forKey: podcastIndexKey) ?? "").isEmpty
             && !(d.string(forKey: podcastIndexSecret) ?? "").isEmpty
     }
+    /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
+    static let podcastICloudSync = "podcastICloudSync"
+    static var podcastICloudSyncEnabled: Bool {
+        UserDefaults.standard.object(forKey: podcastICloudSync) as? Bool ?? true
+    }
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     static let librarySortOption = "librarySortOption"

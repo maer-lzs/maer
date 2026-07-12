@@ -358,7 +358,11 @@ final class LibraryViewModel: ObservableObject {
         // lokale Titel auch dann da, wenn der Server offline ist.
         await reloadLocalCache()
         do {
-            let libraries = try await provider.fetchLibraries()
+            // NUR Buch-Bibliotheken für den Hörbuch-Tab — Podcast-Libraries
+            // (mediaType == "podcast") gehören zum Podcast-Provider, nicht hier.
+            // Sonst würde `first` ggf. eine Podcast-Library als „Bibliothek"
+            // wählen und der Hörbuch-Tab bliebe leer/falsch.
+            let libraries = try await provider.fetchLibraries().filter { !$0.isPodcast }
             // The library chosen in the settings wins; fall back to the first
             // one when nothing is chosen or the chosen one no longer exists.
             let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)

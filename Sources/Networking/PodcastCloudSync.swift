@@ -30,6 +30,7 @@ final class PodcastCloudSync {
     /// Einmalig beim App-Start aufrufen: auf iCloud-Änderungen lauschen + sofort
     /// abgleichen.
     func start() {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(cloudChanged),
@@ -47,6 +48,7 @@ final class PodcastCloudSync {
     /// Lokale Podcast-Positionen und den iCloud-Blob zusammenführen
     /// (newest-wins) und beide Seiten auf den gemeinsamen Stand bringen.
     func reconcile() {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let defaults = UserDefaults.standard
 
         // Lokale Positionen einsammeln.
