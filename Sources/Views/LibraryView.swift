@@ -413,6 +413,8 @@ struct LibraryView: View {
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(shape: Circle()))
         .matchedGeometryEffect(id: "media", in: barNS)
+        .accessibilityLabel(Text("Home"))
+        .accessibilityHint(Text("Expands the bar"))
     }
 
     private var searchButton: some View {
@@ -420,6 +422,7 @@ struct LibraryView: View {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
         }
         .matchedGeometryEffect(id: "search", in: barNS)
+        .accessibilityLabel(Text("Search"))
     }
 
     // MARK: - Suchleiste
@@ -531,6 +534,16 @@ struct LibraryView: View {
                         recentlyAddedGrid
                     }
                 allBooksSection
+                if viewModel.isLoadingMore {
+                    // Progressives Nachladen läuft noch — dezenter Hinweis, dass
+                    // weitere Titel unterwegs sind.
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Loading more…").font(.footnote).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
             }
             // Explizit auf volle Breite zwingen — ohne das bestimmt sich die
             // Breite des Stacks nach seinem Inhalt statt nach der tatsächlich
@@ -556,23 +569,20 @@ struct LibraryView: View {
         .reportsBottomBarScroll()   // Scroll → Bottom-Zone ein-/ausklappen
     }
 
-    // MARK: „Kürzlich hinzugefügt" (2-Spalten-Grid, große Kacheln)
+    // MARK: „Kürzlich hinzugefügt" (große Kacheln, seitlich scrollend)
 
     private var recentlyAddedGrid: some View {
-        let spacing: CGFloat = 14
-        let cellW = max(120, (libraryWidth - gridHorizontalPadding * 2 - spacing) / 2)
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text("Recently Added").font(.title3).bold().padding(.horizontal)
-            LazyVGrid(
-                columns: [GridItem(.fixed(cellW), spacing: spacing), GridItem(.fixed(cellW), spacing: spacing)],
-                alignment: .leading, spacing: 20
-            ) {
-                ForEach(viewModel.recentlyAdded) { entry in
-                    BookGridCell(entry: entry, width: cellW,
-                                 playerCoordinator: playerCoordinator, libraryViewModel: viewModel)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 16) {
+                    ForEach(viewModel.recentlyAdded) { entry in
+                        BookGridCell(entry: entry, width: 180,
+                                     playerCoordinator: playerCoordinator, libraryViewModel: viewModel)
+                    }
                 }
+                .padding(.horizontal)
             }
-            .padding(.horizontal, gridHorizontalPadding)
         }
     }
 
@@ -596,7 +606,7 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Horizontale Sektion
+    // MARK: Horizontale Sektion (kompakt)
 
     private func horizontalSection(
         title: String,

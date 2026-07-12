@@ -94,6 +94,8 @@ struct MiniPlayerBar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text(item.title))
+            .accessibilityHint(Text("Opens the player"))
 
             // Skip-Buttons nur, wenn genug Platz ist UND nicht im iPhone-
             // Hochformat — dort soll mehr Titel sichtbar sein.

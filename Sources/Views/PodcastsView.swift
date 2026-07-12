@@ -392,17 +392,19 @@ struct PodcastsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Downloaded").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    // Reihenzahl an die Menge anpassen — 1 Download → 1 Reihe.
+                    // Reihenzahl an die Menge anpassen (1 Download → 1 Reihe);
+                    // jede Spalte nutzt die volle Bildschirmbreite.
                     LazyHGrid(rows: Array(repeating: GridItem(.fixed(84), spacing: 4),
                                           count: max(1, min(3, downloaded.count))),
                               spacing: 12) {
                         ForEach(downloaded) { item in
                             PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                                .frame(width: 320)
+                                .containerRelativeFrame(.horizontal)
                         }
                     }
-                    .padding(.horizontal)
+                    .scrollTargetLayout()
                 }
+                .scrollTargetBehavior(.viewAligned)
             }
         }
     }

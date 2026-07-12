@@ -24,6 +24,15 @@ struct PodcastDiscoverView: View {
                     description: Text(loadError)
                 )
                 .padding(.top, 40)
+            } else if results.isEmpty {
+                // Kein Treffer bzw. kein PodcastIndex-Key hinterlegt → statt
+                // eines leeren Grids ein klarer Leerzustand.
+                ContentUnavailableView(
+                    "Nothing to show",
+                    systemImage: "magnifyingglass",
+                    description: Text("Try a different search, or add a PodcastIndex API key in Settings for richer discovery.")
+                )
+                .padding(.top, 40)
             } else {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                     ForEach(results) { tile($0) }

@@ -3,8 +3,9 @@ import Combine
 
 /// Große „Als Nächstes"-Karte (Apple Podcasts): Episoden-Cover mit Show-Badge,
 /// darunter eine Textfläche in der Cover-Durchschnittsfarbe (weicher Übergang
-/// aus dem Bild). Tap öffnet die Folgenseite; Play-Pille + Download liegen als
-/// Overlay darüber und lösen daher keine Navigation aus.
+/// aus dem Bild). Tap auf die Karte spielt direkt weiter (Apple-Stil); die
+/// Info-Pille unten links öffnet die Folgenseite, der Download-Button liegt unten
+/// rechts — beide als Overlay, damit sie den Karten-Tap nicht auslösen.
 struct PodcastFeaturedCard: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -27,7 +28,7 @@ struct PodcastFeaturedCard: View {
 
     var body: some View {
         // Tap auf die Karte spielt direkt weiter (Apple-Stil); Detail per
-        // Info-Button oben links.
+        // Info-Pille unten links.
         Button {
             Task { await playerCoordinator.open(item: item) }
         } label: {
@@ -38,23 +39,11 @@ struct PodcastFeaturedCard: View {
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        .overlay(alignment: .topLeading) { detailButton.padding(10) }
-        .overlay(alignment: .bottomLeading) { playPill.padding(12) }
+        .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         .overlay(alignment: .bottomTrailing) {
             PodcastDownloadButton(item: item, tint: .white).padding(14)
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
-    }
-
-    private var detailButton: some View {
-        NavigationLink {
-            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
-        } label: {
-            Image(systemName: "info.circle.fill")
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.9), .black.opacity(0.3))
-        }
-        .buttonStyle(.plain)
     }
 
     /// Zuletzt gehört (relativ) aus lokalem/ABS-Fortschritt.
@@ -89,15 +78,21 @@ struct PodcastFeaturedCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 4) {
                     if isPlayed { Image(systemName: "checkmark.circle.fill").font(.caption) }
-                    Text(isPlayed ? String(localized: "Played") : lastPlayedText)
+                    // Restzeit · zuletzt gehört (früher in der Play-Pille) — bei
+                    // gehörten Folgen nur „Played".
+                    Text(isPlayed
+                         ? String(localized: "Played")
+                         : [remainingText, lastPlayedText].joined(separator: " · "))
                 }
                 .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                // Feste Höhen für die variablen Zeilen (Titel 2 Zeilen, Show) —
+                // sonst wird eine Karte mit mehr Text höher als die Nachbarn.
                 Text(item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let show = item.media?.metadata?.authorName {
-                    Text(show).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+                Text(item.media?.metadata?.authorName ?? " ")
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                    .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
             }
             .padding(14)
             .padding(.bottom, 40)   // Platz für die Overlay-Pille/Download
@@ -115,13 +110,15 @@ struct PodcastFeaturedCard: View {
         }
     }
 
-    private var playPill: some View {
-        Button {
-            Task { await playerCoordinator.open(item: item) }
+    /// Die Karte selbst ist tap-to-play; die Pille führt daher NICHT nochmal
+    /// zum Abspielen, sondern auf die Folgen-Detailseite (Info).
+    private var infoPill: some View {
+        NavigationLink {
+            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "play.fill").font(.caption)
-                Text(remainingText).font(.subheadline.weight(.medium))
+                Image(systemName: "info.circle").font(.caption)
+                Text("Details").font(.subheadline.weight(.medium))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
@@ -298,8 +295,10 @@ struct PodcastDownloadButton: View {
             Image(systemName: "checkmark.circle")
                 .font(.title3)
                 .foregroundStyle(tint)
+                .accessibilityLabel(Text("Downloaded"))
         } else if case .downloading(let f) = downloads.phase[item.id] {
             ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
+                .accessibilityLabel(Text("Downloading"))
         } else {
             Button {
                 Task {
@@ -312,6 +311,7 @@ struct PodcastDownloadButton: View {
                     .foregroundStyle(tint)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text("Download"))
         }
     }
 }
