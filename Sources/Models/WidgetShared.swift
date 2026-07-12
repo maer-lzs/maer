@@ -41,3 +41,28 @@ nonisolated struct WidgetSnapshot: Codable {
         try? data.write(to: url, options: .atomic)
     }
 }
+
+/// Vorschau der Podcast-„Als Nächstes"-Queue fürs Home-Screen-Widget. Die App
+/// schreibt bei jeder Queue-Änderung (siehe `PodcastQueue.save`), das Widget
+/// liest — über den App-Group-Container, weil es ein eigener Prozess ist.
+nonisolated struct PodcastQueueSnapshot: Codable {
+    struct Item: Codable {
+        var title: String
+        var show: String?
+    }
+    var items: [Item]
+
+    static var url: URL? {
+        AppGroup.containerURL?.appendingPathComponent("podcast-queue-snapshot.json")
+    }
+
+    static func load() -> PodcastQueueSnapshot? {
+        guard let url, let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(PodcastQueueSnapshot.self, from: data)
+    }
+
+    func save() {
+        guard let url = Self.url, let data = try? JSONEncoder().encode(self) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+}

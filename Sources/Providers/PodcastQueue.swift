@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI   // Array.move(fromOffsets:toOffset:) for the reorder API
+import WidgetKit
 
 /// Nutzer-verwaltete „Als Nächstes"-Warteschlange für Podcast-Folgen
 /// (quellenübergreifend, IDs `rss:`/`abspod:`). Persistiert lokal. Die aktuell
@@ -61,5 +62,17 @@ final class PodcastQueue: ObservableObject {
     private func save() {
         guard let data = try? JSONEncoder().encode(ids) else { return }
         try? data.write(to: fileURL, options: .atomic)
+        writeWidgetSnapshot()
+    }
+
+    /// Queue-Vorschau (Titel + Show der ersten Einträge) für das „Als Nächstes"-
+    /// Widget in den App-Group-Container schreiben und das Widget aktualisieren.
+    private func writeWidgetSnapshot() {
+        let items = ids.prefix(6).compactMap { id -> PodcastQueueSnapshot.Item? in
+            guard let item = AppSession.shared.libraryItem(forId: id) else { return nil }
+            return PodcastQueueSnapshot.Item(title: item.title, show: item.media?.metadata?.authorName)
+        }
+        PodcastQueueSnapshot(items: items).save()
+        WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext")
     }
 }

@@ -82,6 +82,7 @@
 				"ABSPlayer-Info.plist",
 				LiveActivityWidget/ContinueListeningWidget.swift,
 				LiveActivityWidget/MaerLiveActivity.swift,
+				LiveActivityWidget/PodcastUpNextWidget.swift,
 				MaerWidgets/Assets.xcassets,
 				MaerWidgets/Info.plist,
 			);
@@ -99,6 +100,7 @@
 			membershipExceptions = (
 				LiveActivityWidget/ContinueListeningWidget.swift,
 				LiveActivityWidget/MaerLiveActivity.swift,
+				LiveActivityWidget/PodcastUpNextWidget.swift,
 				Sources/Localizable.xcstrings,
 				Sources/Models/PlaybackActivityAttributes.swift,
 				Sources/Models/WidgetShared.swift,

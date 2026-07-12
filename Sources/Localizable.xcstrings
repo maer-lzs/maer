@@ -3188,6 +3188,26 @@
           }
         }
       }
+    },
+    "Your podcast queue at a glance.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Podcast-Warteschlange auf einen Blick."
+          }
+        }
+      }
+    },
+    "Queue is empty": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warteschlange ist leer"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
