@@ -20,6 +20,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Ob der Server Podcast-Bibliotheken hat — steuert die Tab-Sichtbarkeit.
     /// Erst nach einem erfolgreichen `refresh()` true.
     @Published private(set) var hasPodcasts = false
+    /// Server-Fortschritt je Episode (Key = `abspod:<item>:<episode>`) — Basis
+    /// für die Gehört-Anzeige der ABS-Folgen (lokal gibt es dafür nichts).
+    @Published private(set) var episodeProgress: [String: BookProgress] = [:]
 
     // MARK: - AudioProvider
 
@@ -93,6 +96,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             return
         }
         hasPodcasts = true
+        // Fortschritt aller Episoden in einem Rutsch (für die Gehört-Anzeige).
+        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
         var loaded: [PodcastShow] = []
         for library in libraries {
             guard let items = try? await client.fetchLibraryItems(libraryId: library.id) else { continue }
@@ -102,6 +107,34 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
         shows = loaded
+    }
+
+    /// Nur den Server-Fortschritt neu ziehen (nach Wiedergabe/„als gehört").
+    func refreshProgress() async {
+        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
+    }
+
+    /// Episode am Server als (un)gehört markieren und Fortschritt nachziehen.
+    func setPlayed(_ item: LibraryItem, _ played: Bool) async {
+        let (showId, episodeId) = Self.split(item.id)
+        guard let episodeId else { return }
+        let duration = item.media?.duration ?? 0
+        try? await client.updateEpisodeProgress(
+            libraryItemId: showId, episodeId: episodeId,
+            currentTime: played ? duration : 0, duration: duration, isFinished: played
+        )
+        await refreshProgress()
+    }
+
+    /// Gehört-Zustand einer ABS-Episode aus dem Server-Fortschritt.
+    func state(forEpisodeId itemId: String, duration: Double) -> EpisodePlayState {
+        guard let bp = episodeProgress[itemId] else { return .unplayed }
+        if bp.isFinished { return .played }
+        if bp.fraction > 0.001 {
+            let remaining = duration > 0 ? duration * (1 - bp.fraction) : 0
+            return .inProgress(fraction: min(max(bp.fraction, 0), 1), remaining: remaining)
+        }
+        return .unplayed
     }
 
     /// Einzelne Episode als LibraryItem aus dem geladenen Cache (für

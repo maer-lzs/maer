@@ -129,11 +129,12 @@ private struct PodcastFeaturedCard: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     private let width: CGFloat = 290
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
-    private var isPlayed: Bool { progress.state(for: item) == .played }
+    private var isPlayed: Bool { podcastPlayState(for: item) == .played }
 
     /// Show-Cover nur als Badge zeigen, wenn es sich vom Episoden-Cover
     /// unterscheidet (sonst wäre es redundant).
@@ -228,11 +229,18 @@ struct PodcastEpisodeDetailView: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
-    private var show: PodcastShow? { AppSession.shared.rssProvider.show(forEpisodeId: item.id) }
-    private var state: EpisodePlayState { progress.state(for: item) }
+    /// Show quellen-bewusst: ABS-Folge → aus dem ABS-Store, sonst RSS.
+    private var show: PodcastShow? {
+        if item.id.hasPrefix("abspod:") {
+            return absPodcast.shows.first { $0.episodes.contains { $0.guid == item.id } }
+        }
+        return AppSession.shared.rssProvider.show(forEpisodeId: item.id)
+    }
+    private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
     private var isInProgress: Bool {
         if case .inProgress = state { return true } else { return false }
@@ -327,7 +335,7 @@ struct PodcastEpisodeDetailView: View {
 
     private var markPlayedButton: some View {
         Button {
-            progress.setPlayed(item, !isPlayed)
+            podcastSetPlayed(item, !isPlayed)
         } label: {
             Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.title2)
@@ -464,8 +472,9 @@ struct PodcastEpisodeRow: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
 
-    private var state: EpisodePlayState { progress.state(for: item) }
+    private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
 
     var body: some View {
@@ -514,7 +523,7 @@ struct PodcastEpisodeRow: View {
         .onTapGesture { Task { await playerCoordinator.open(item: item) } }
         .contextMenu {
             Button {
-                progress.setPlayed(item, !isPlayed)
+                podcastSetPlayed(item, !isPlayed)
             } label: {
                 Label(
                     isPlayed ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
@@ -641,6 +650,28 @@ final class PodcastProgressStore: ObservableObject {
     /// Nach externem Schreiben von `localPosition` (z. B. Apple-Import) alle
     /// beobachtenden Zeilen neu bewerten lassen.
     func reload() { changeToken += 1; objectWillChange.send() }
+}
+
+// MARK: - Quellen-bewusster Gehört-Zustand
+
+/// Gehört-Zustand quellen-bewusst: ABS-Folgen (`abspod:`) aus dem
+/// Server-Fortschritt, RSS-Folgen (`rss:`) aus `localPosition`.
+@MainActor
+func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
+    if item.id.hasPrefix("abspod:") {
+        return ABSPodcastProvider.shared.state(forEpisodeId: item.id, duration: item.media?.duration ?? 0)
+    }
+    return PodcastProgressStore.shared.state(for: item)
+}
+
+/// „Als gehört/ungehört" quellen-bewusst: ABS → Server, RSS → lokal.
+@MainActor
+func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
+    if item.id.hasPrefix("abspod:") {
+        Task { await ABSPodcastProvider.shared.setPlayed(item, played) }
+    } else {
+        PodcastProgressStore.shared.setPlayed(item, played)
+    }
 }
 
 // MARK: - Gemeinsame Helfer
