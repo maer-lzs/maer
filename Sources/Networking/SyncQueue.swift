@@ -6,8 +6,8 @@ protocol SyncQueueStorage {
     func save(_ pending: [String: SyncQueue.PendingUpdate])
 }
 
-/// Schmale API-Sicht, die der Flush braucht — APIClient erfüllt sie; Tests
-/// können einen Mock unterschieben.
+/// Narrow API view the flush needs — APIClient satisfies it; tests can inject a
+/// mock.
 @MainActor
 protocol ProgressSyncAPI {
     func fetchAllProgress() async throws -> [String: BookProgress]
@@ -16,9 +16,9 @@ protocol ProgressSyncAPI {
 
 extension APIClient: ProgressSyncAPI {}
 
-/// Datei-Storage (atomar) — Standard außerhalb von Tests. Bewusst Top-Level:
-/// als in SyncQueue verschachtelter Typ würde er dessen MainActor-Isolation
-/// erben und wäre als Default-Argument nicht konstruierbar.
+/// File storage (atomic) — default outside tests. Deliberately top-level: as a
+/// type nested in SyncQueue it would inherit its MainActor isolation and could
+/// not be constructed as a default argument.
 struct SyncQueueFileStorage: SyncQueueStorage {
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("pending_sync.json")
@@ -33,20 +33,19 @@ struct SyncQueueFileStorage: SyncQueueStorage {
 
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
         guard let data = try? JSONEncoder().encode(pending) else { return }
-        // Atomar: ein App-Kill mitten im Schreiben darf die Queue nicht
-        // korrumpieren (load liefert sonst still [:] → alles verloren).
+        // Atomic: an app kill mid-write must not corrupt the queue (load would
+        // otherwise silently return [:] → everything lost).
         try? data.write(to: fileURL, options: .atomic)
     }
 }
 
-/// Persistiert nicht gesendete Fortschritts-Updates auf der Festplatte, damit
-/// sie einen App-Kill während einer Offline-Phase überleben. Ohne das wäre
-/// ein Fortschritts-Update verloren, wenn die App offline geschlossen wird,
-/// bevor der nächste automatische Sync-Versuch (alle 30s) drankommt.
+/// Persists unsent progress updates to disk so they survive an app kill during
+/// an offline phase. Without it a progress update would be lost if the app is
+/// closed offline before the next automatic sync attempt (every 30 s).
 ///
-/// Es wird bewusst nur der JEWEILS LETZTE Stand pro Buch gespeichert (ein
-/// Dictionary, kein Verlauf) — nur der neueste Fortschritt ist relevant,
-/// ältere Zwischenstände wären ohnehin überholt.
+/// Only the LATEST state per book is stored on purpose (a dictionary, no
+/// history) — only the newest progress matters, older intermediate states would
+/// be outdated anyway.
 @MainActor
 final class SyncQueue {
     static let shared = SyncQueue()
@@ -55,24 +54,24 @@ final class SyncQueue {
         let currentTime: Double
         let duration: Double
         let isFinished: Bool
-        /// ms epoch beim Einreihen — für „zuletzt gehört" in der Bibliothek.
-        /// Optional: Einträge aus älteren App-Versionen haben das Feld nicht.
+        /// ms epoch when queued — for "recently listened" in the library.
+        /// Optional: entries from older app versions lack this field.
         var queuedAt: Double? = nil
     }
 
     private let storage: SyncQueueStorage
 
-    /// Toleranz (Sekunden), ab der ein Serverstand als "weiter fortgeschritten"
-    /// gilt — dieselbe Schwelle wie beim Geräte-Abgleich im PlayerViewModel.
+    /// Tolerance (seconds) at which a server state counts as "further ahead" —
+    /// the same threshold as the device reconcile in PlayerViewModel.
     private let reconcileThreshold: Double = 5
 
-    /// Für Tests: eigenes Storage unterschieben.
+    /// For tests: inject a custom storage.
     init(storage: SyncQueueStorage) {
         self.storage = storage
     }
 
-    /// Kein Default-Argument: das würde im (nonisolated) Aufrufer-Kontext
-    /// ausgewertet und kollidiert mit der MainActor-Isolation.
+    /// No default argument: it would be evaluated in the (nonisolated) caller
+    /// context and clash with the MainActor isolation.
     private init() {
         self.storage = SyncQueueFileStorage()
     }
@@ -88,8 +87,8 @@ final class SyncQueue {
         save(pending)
     }
 
-    /// Alle wartenden Updates — für die Bibliothek, damit sie den lokal
-    /// neuesten (noch nicht gesendeten) Stand anzeigen kann.
+    /// All pending updates — for the library, so it can show the locally newest
+    /// (not-yet-sent) state.
     func allPending() -> [String: PendingUpdate] {
         loadAll()
     }
@@ -101,27 +100,25 @@ final class SyncQueue {
         save(pending)
     }
 
-    /// True, wenn mindestens ein Update auf seinen Versand wartet — z. B. um
-    /// dem Nutzer einen dezenten Hinweis zu zeigen.
+    /// True if at least one update is waiting to be sent — e.g. to show the user
+    /// a subtle hint.
     var hasPendingUpdates: Bool {
         !loadAll().isEmpty
     }
 
-    /// True, wenn für dieses Buch noch ein Update in der Queue liegt — damit der
-    /// Player nach einem Flush prüfen kann, ob sein eigener Stand nachgereicht
-    /// wurde.
+    /// True if an update for this book is still queued — so the player can check
+    /// after a flush whether its own state was sent.
     func hasPendingUpdate(itemId: String) -> Bool {
         loadAll()[itemId] != nil
     }
 
-    /// Versucht, alle wartenden Updates an den Server zu schicken. Wird beim
-    /// App-Start und bei Wiederverbindung aufgerufen (siehe LibraryView).
-    /// Updates, die weiterhin fehlschlagen (z. B. immer noch offline),
-    /// bleiben in der Queue und werden beim nächsten Aufruf erneut versucht.
-    /// True, während ein Flush läuft — App-Start und Reconnect können sonst
-    /// parallel flushen (doppelte/überholende Writes).
+    /// True while a flush is running — app start and reconnect could otherwise
+    /// flush in parallel (duplicate/overtaking writes).
     private var flushInFlight = false
 
+    /// Tries to send all pending updates to the server. Called at app start and
+    /// on reconnect (see LibraryView). Updates that keep failing (e.g. still
+    /// offline) stay in the queue and are retried on the next call.
     func flush(apiClient: ProgressSyncAPI) async {
         guard !flushInFlight else { return }
         flushInFlight = true
@@ -130,10 +127,10 @@ final class SyncQueue {
         let pending = loadAll()
         guard !pending.isEmpty else { return }
 
-        // Vor dem Schreiben einmal den aktuellen Serverstand aller Bücher holen,
-        // um veraltete Offline-Updates zu erkennen. Schlägt dieser Abruf fehl
-        // (z. B. weiterhin offline), wird NICHT blind geschrieben — die Queue
-        // bleibt unangetastet und der nächste Aufruf versucht es erneut.
+        // Fetch the current server state of all books once before writing, to
+        // detect stale offline updates. If this fetch fails (e.g. still
+        // offline), NOTHING is written blindly — the queue stays untouched and
+        // the next call retries.
         let serverProgress: [String: BookProgress]
         do {
             serverProgress = try await apiClient.fetchAllProgress()
@@ -142,15 +139,14 @@ final class SyncQueue {
         }
 
         for (itemId, update) in pending {
-            // Eintrag kann inzwischen weg sein (aktiver Player hat erfolgreich
-            // gesynct und entfernt) — dann NICHT mehr den älteren Stand schreiben.
+            // The entry may be gone by now (an active player synced and removed
+            // it successfully) — then do NOT write the older state anymore.
             guard hasPendingUpdate(itemId: itemId) else { continue }
-            // Servergewinn: Liegt dort inzwischen ein weiter fortgeschrittener
-            // Stand — etwa weil ein anderes Gerät weitergehört hat, während
-            // dieses offline war —, darf der veraltete Offline-Stand ihn nicht
-            // überschreiben. Der wartende Eintrag wird dann verworfen. Ein
-            // bewusstes "gehört"-Update (isFinished) bleibt davon ausgenommen,
-            // da es eine Statusentscheidung ist, kein zurückgebliebener Stand.
+            // Server wins: if a further-ahead state is now there — e.g. because
+            // another device kept listening while this one was offline — the
+            // stale offline state must not overwrite it. The pending entry is
+            // then dropped. A deliberate "finished" update (isFinished) is
+            // exempt, since it is a status decision, not a lagging state.
             if SyncRules.shouldDropQueuedUpdate(
                 queuedTime: update.currentTime,
                 queuedIsFinished: update.isFinished,
@@ -170,8 +166,8 @@ final class SyncQueue {
                 )
                 remove(itemId: itemId)
             } catch {
-                // Immer noch offline oder anderer Fehler — in der Queue
-                // belassen, nächster Versuch kommt automatisch.
+                // Still offline or another error — keep it in the queue, the
+                // next attempt comes automatically.
             }
         }
     }
