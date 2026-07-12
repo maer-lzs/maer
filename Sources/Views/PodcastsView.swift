@@ -133,7 +133,7 @@ struct PodcastsView: View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Queue").font(.title3).bold()
+                    Text("Up Next").font(.title3).bold()
                     Spacer()
                     NavigationLink {
                         PodcastQueueView(playerCoordinator: playerCoordinator)
@@ -158,7 +158,7 @@ struct PodcastsView: View {
     private var nextUpSection: some View {
         if !nextUp.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Up Next").font(.title2).bold().padding(.horizontal)
+                Text("Continue").font(.title2).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(nextUp) { item in
@@ -382,7 +382,7 @@ struct PodcastQueueView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("Queue")
+        .navigationTitle("Up Next")
         .toolbar {
             if !queue.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
@@ -394,7 +394,7 @@ struct PodcastQueueView: View {
         .overlay {
             if queue.isEmpty {
                 ContentUnavailableView(
-                    "Queue is empty",
+                    "Nothing up next",
                     systemImage: "text.line.first.and.arrowtriangle.forward",
                     description: Text("Add episodes with Play Next or Play Last.")
                 )
