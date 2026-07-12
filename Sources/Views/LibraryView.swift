@@ -19,6 +19,8 @@ struct LibraryView: View {
     @Namespace private var barNS
     @State private var libScrollY: CGFloat = 0
     private var barCollapsed: Bool { libScrollY > 60 }
+    /// Einheitliche Höhe der drei Elemente im eingeklappten Modus (= Lupe 56).
+    private let collapsedBarHeight: CGFloat = 56
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
@@ -127,7 +129,7 @@ struct LibraryView: View {
             // erscheinen Play/Pause & Co. doppelt.
             if !isShowingFullPlayer {
                 bottomBarContent
-                .animation(.spring(response: 0.34, dampingFraction: 0.86), value: barCollapsed)
+                .animation(.spring(response: 0.5, dampingFraction: 0.88), value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
                 // Höhe messen → als Freiraum an die Scroll-Inhalte reichen. NUR im
@@ -344,12 +346,15 @@ struct LibraryView: View {
     @ViewBuilder
     private var bottomBarContent: some View {
         if barCollapsed {
-            HStack(spacing: 10) {
-                homeButton
+            // Eine zentrierte, enge Gruppe — alle drei gleich hoch (56).
+            HStack(spacing: 0) {
                 Spacer(minLength: 0)
-                miniPlayer.frame(maxWidth: 300)
+                HStack(spacing: 6) {
+                    homeButton
+                    miniPlayer.frame(maxWidth: 230, maxHeight: collapsedBarHeight)
+                    searchButton
+                }
                 Spacer(minLength: 0)
-                searchButton.scaleEffect(0.88, anchor: .trailing)
             }
         } else {
             VStack(spacing: 8) {
@@ -401,10 +406,10 @@ struct LibraryView: View {
             navigationPath = NavigationPath()
         } label: {
             Image(systemName: "house.fill")
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 46, height: 46)
-                .contentShape(Rectangle())
+                .frame(width: collapsedBarHeight, height: collapsedBarHeight)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(shape: Circle()))
