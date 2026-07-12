@@ -9,6 +9,9 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     /// thumbnail derived from the cached cover instead of decoding the full
     /// ~2000 px image per cell — far less RAM, smoother scrolling.
     var useThumbnail: Bool = false
+    /// Zielgröße des Thumbnails in Pixeln (nil → Standard ~400 px). Für größere
+    /// Cover (z. B. 800 px) höher setzen, ohne das volle Bild zu decodieren.
+    var thumbnailMaxPixel: CGFloat? = nil
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
 
@@ -29,9 +32,11 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     private func load() async {
         guard let url else { return }
-        if useThumbnail, let thumb = await ImageCache.shared.thumbnail(for: url) {
-            uiImage = thumb
-            return
+        if useThumbnail {
+            let thumb = thumbnailMaxPixel != nil
+                ? await ImageCache.shared.thumbnail(for: url, maxPixelSize: thumbnailMaxPixel!)
+                : await ImageCache.shared.thumbnail(for: url)
+            if let thumb { uiImage = thumb; return }
         }
         if !useThumbnail, let cached = ImageCache.shared.image(for: url) {
             uiImage = cached

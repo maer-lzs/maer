@@ -103,23 +103,30 @@ final class ImageCache {
     /// from the disk tiers. Returns nil when the cover is not on disk yet —
     /// the caller then fetches the full image from the network as usual.
     func thumbnail(for url: URL) async -> UIImage? {
-        let cacheKey = key(for: url)
-        if let cached = thumbCache.object(forKey: cacheKey as NSString) {
+        await thumbnail(for: url, maxPixelSize: thumbPixelSize)
+    }
+
+    /// Wie oben, aber mit frei wählbarer Zielgröße (z. B. 800 px für die großen
+    /// „Als Nächstes"-Karten). Der Cache ist größen-bewusst gekeyt, damit sich
+    /// 400- und 800-px-Varianten desselben Covers nicht überschreiben.
+    func thumbnail(for url: URL, maxPixelSize: CGFloat) async -> UIImage? {
+        let fileKey = key(for: url)
+        let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
+        if let cached = thumbCache.object(forKey: cacheKey) {
             return cached
         }
-        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(cacheKey) }
-        let maxSize = thumbPixelSize
+        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
         // Disk read + decode off the MainActor — this runs per visible cell.
         let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
             for file in candidates {
                 if let data = try? Data(contentsOf: file) {
-                    return Self.decodedThumbnail(data, maxPixelSize: maxSize)
+                    return Self.decodedThumbnail(data, maxPixelSize: maxPixelSize)
                 }
             }
             return nil
         }.value
         guard let thumb else { return nil }
-        thumbCache.setObject(thumb, forKey: cacheKey as NSString, cost: cost(of: thumb))
+        thumbCache.setObject(thumb, forKey: cacheKey, cost: cost(of: thumb))
         return thumb
     }
 

@@ -169,7 +169,7 @@ private struct PodcastFeaturedCard: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
-    private let width: CGFloat = 290
+    private let width: CGFloat = 235
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     private var isPlayed: Bool { podcastPlayState(for: item) == .played }
@@ -203,7 +203,7 @@ private struct PodcastFeaturedCard: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            podcastArtwork(url: coverURL, size: width, corner: 0, forceThumbnail: true)
+            podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
                 .opacity(isPlayed ? 0.5 : 1)
                 // Bild läuft weich in die Farbfläche aus (der „blurry" Seam).
                 .overlay(alignment: .bottom) {
@@ -960,15 +960,17 @@ private func durationText(_ item: LibraryItem) -> String {
     return String(localized: "\(total) min")
 }
 
-/// Podcast-Cover (Remote-URL) mit Fallback-Mikrofon. `forceThumbnail` nutzt das
-/// leichte 400px-Thumbnail auch bei größeren Covern (glattes Scrollen der
-/// „Als Nächstes"-Karten statt Voll-Decode bis ~2200px).
+/// Podcast-Cover (Remote-URL) mit Fallback-Mikrofon. `thumbnailPixel` erzwingt
+/// ein Thumbnail dieser Zielgröße (z. B. 800 px für die „Als Nächstes"-Karten —
+/// scharf, aber viel leichter als der Voll-Decode bis ~2200 px).
 @ViewBuilder
-private func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, forceThumbnail: Bool = false) -> some View {
+private func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, thumbnailPixel: CGFloat? = nil) -> some View {
     let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
     Group {
         if let url {
-            CachedAsyncImage(url: url, useThumbnail: forceThumbnail || size <= 200) { image in
+            CachedAsyncImage(url: url,
+                             useThumbnail: thumbnailPixel != nil || size <= 200,
+                             thumbnailMaxPixel: thumbnailPixel) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 shape.fill(Color.secondary.opacity(0.15))
