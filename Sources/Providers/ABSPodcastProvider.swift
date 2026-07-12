@@ -140,14 +140,35 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         hasPodcasts = true
         // Fortschritt aller Episoden in einem Rutsch (für die Gehört-Anzeige).
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
-        var loaded: [PodcastShow] = []
+
+        // Show-Items je Library sammeln (wenige Requests).
+        var itemIds: [String] = []
         for library in libraries {
-            guard let items = try? await client.fetchLibraryItems(libraryId: library.id) else { continue }
-            for item in items {
-                guard let detail = try? await client.fetchItemDetail(itemId: item.id) else { continue }
-                loaded.append(podcastShow(from: detail))
+            if let items = try? await client.fetchLibraryItems(libraryId: library.id) {
+                itemIds.append(contentsOf: items.map(\.id))
             }
         }
+
+        // Detail-Fetches PARALLEL, gebündelt (max ~5 gleichzeitig) — seriell war
+        // bei vielen Shows spürbar langsam. Concurrency reicht (jeder Request
+        // suspendiert am Netz-await), Reihenfolge egal → am Ende sortieren.
+        let client = self.client
+        var loaded: [PodcastShow] = []
+        var i = 0
+        while i < itemIds.count {
+            let batch = itemIds[i..<min(i + 5, itemIds.count)]
+            i += 5
+            let details = await withTaskGroup(of: LibraryItemDetail?.self) { group in
+                for id in batch {
+                    group.addTask { try? await client.fetchItemDetail(itemId: id) }
+                }
+                var out: [LibraryItemDetail] = []
+                for await detail in group { if let detail { out.append(detail) } }
+                return out
+            }
+            loaded.append(contentsOf: details.map { podcastShow(from: $0) })
+        }
+
         // Nur übernehmen, wenn wirklich etwas geladen wurde — sonst (alle Detail-
         // Fetches scheiterten) den bisherigen Stand behalten.
         if !loaded.isEmpty || shows.isEmpty {
