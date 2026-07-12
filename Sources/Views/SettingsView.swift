@@ -58,12 +58,12 @@ struct SettingsView: View {
                 case .general:
                     appearanceSection
                     storageSection
-                    syncSection
-                    serverSection
                     aboutSection
                 case .audiobooks:
                     playbackSection
+                    serverSection
                     if availableLibraries.count > 1 { librarySection }
+                    syncSection
                     localFilesSection
                     statsSection
                 case .podcasts:
