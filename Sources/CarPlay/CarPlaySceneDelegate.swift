@@ -1,14 +1,13 @@
 import CarPlay
 import UIKit
 
-/// CarPlay-Szene: drei Tabs (Weiter hören / Heruntergeladen / Bibliothek) als
-/// Listen, Auswahl startet die Wiedergabe über den GEMEINSAMEN
-/// PlayerCoordinator (AppSession) und zeigt den Now-Playing-Screen — dessen
-/// Inhalt/Buttons kommen automatisch aus MPNowPlayingInfoCenter/RemoteCommands,
-/// die für den Lockscreen längst verdrahtet sind.
+/// CarPlay scene: three tabs (Continue / Downloaded / Library) as lists;
+/// selecting starts playback via the SHARED PlayerCoordinator (AppSession) and
+/// shows the Now Playing screen — its content/buttons come automatically from
+/// MPNowPlayingInfoCenter/RemoteCommands, already wired for the lock screen.
 ///
-/// Funktioniert auch beim KALTSTART im Auto (Telefon in der Tasche): die
-/// Bibliothek lädt hier selbst (fällt offline auf den Disk-Cache zurück).
+/// Works on a COLD START in the car (phone in the pocket): the library loads
+/// here itself (falls back to the disk cache offline).
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var interfaceController: CPInterfaceController?
 
@@ -50,7 +49,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         )
 
         var templates: [CPListTemplate] = [continueTab, downloadedTab, libraryTab]
-        // Podcast-Tab nur, wenn Abos vorhanden sind (Queue/Fortsetzen/Sendungen).
+        // Podcast tab only when subscriptions exist (queue/continue/shows).
         if let podcasts = await podcastTab() { templates.append(podcasts) }
 
         let tabBar = CPTabBarTemplate(templates: templates)
@@ -59,8 +58,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     // MARK: - Podcasts
 
-    /// Quellen-übergreifende Show-Liste (RSS + aktive ABS), über die
-    /// normalisierte Feed-URL dedupliziert (ABS bevorzugt).
+    /// Cross-source show list (RSS + active ABS), deduplicated by the
+    /// normalised feed URL (ABS preferred).
     private func dedupedPodcastShows() -> [PodcastShow] {
         let abs = AppStorageKeys.absPodcastsEnabledValue ? ABSPodcastProvider.shared.activeShows : []
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
@@ -70,8 +69,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return abs + rssOnly
     }
 
-    /// „Als Nächstes" (Queue) · „Fortsetzen" (angespielt) · „Sendungen"
-    /// (Drill-down zu den Folgen). Nil, wenn keine Podcasts abonniert sind.
+    /// "Up Next" (queue) · "Continue" (in progress) · "Shows" (drill-down to
+    /// episodes). Nil when no podcasts are subscribed.
     private func podcastTab() async -> CPListTemplate? {
         let shows = dedupedPodcastShows()
         guard !shows.isEmpty else { return nil }
@@ -122,7 +121,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return template
     }
 
-    /// Folgen einer Show als eigenes CarPlay-Listen-Template pushen.
+    /// Push a show's episodes as their own CarPlay list template.
     private func pushShowEpisodes(_ show: PodcastShow) async {
         let episodes = show.episodes.sorted { $0.pubDate > $1.pubDate }
             .prefix(Int(CPListTemplate.maximumItemCount))
@@ -134,7 +133,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         interfaceController?.pushTemplate(template, animated: true, completion: nil)
     }
 
-    /// Abspielbare Podcast-Zeile: Tap startet die Folge über den Coordinator.
+    /// Playable podcast row: tap starts the episode via the coordinator.
     private func playableItem(_ item: LibraryItem) async -> CPListItem {
         let coverURL = AppSession.shared.coverURL(forItemId: item.id)
         let image = coverURL != nil ? await ImageCache.shared.thumbnail(for: coverURL!) : nil
@@ -149,11 +148,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         return li
     }
 
-    /// Baut eine Buchliste; Cover kommen aus der Thumbnail-Stufe des
-    /// ImageCache (bereits klein dekodiert — fürs Auto genau richtig).
+    /// Builds a book list; covers come from the ImageCache thumbnail tier
+    /// (already decoded small — just right for the car).
     private func listTemplate(title: String, systemImage: String, entries: [LibraryEntry]) async -> CPListTemplate {
-        // CarPlay-Listen sind hart limitiert; mehr als das zeigt das System
-        // ohnehin nicht an, und jede Zeile kostet einen Thumbnail-Decode.
+        // CarPlay lists are hard-limited; the system won't show more anyway,
+        // and every row costs a thumbnail decode.
         let limited = entries.prefix(Int(CPListTemplate.maximumItemCount))
         var items: [CPListItem] = []
         for entry in limited {
@@ -185,7 +184,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func showNowPlaying() {
         guard let interfaceController else { return }
         let nowPlaying = CPNowPlayingTemplate.shared
-        // Nicht doppelt pushen, wenn Now Playing schon oben liegt.
+        // Don't push twice if Now Playing is already on top.
         if interfaceController.topTemplate != nowPlaying {
             interfaceController.pushTemplate(nowPlaying, animated: true, completion: nil)
         }

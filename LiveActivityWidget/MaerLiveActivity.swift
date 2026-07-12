@@ -2,9 +2,9 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// Widget-Bundle der Extension. Diese Datei gehört NUR zum Widget-Extension-
-/// Target (siehe ANLEITUNG.md) — zusätzlich braucht das Target
-/// `Sources/Models/PlaybackActivityAttributes.swift` als Mitglied.
+/// Widget bundle of the extension. This file belongs ONLY to the widget
+/// extension target (see ANLEITUNG.md) — the target also needs
+/// `Sources/Models/PlaybackActivityAttributes.swift` as a member.
 @main
 struct MaerWidgetBundle: WidgetBundle {
     var body: some Widget {
@@ -14,10 +14,10 @@ struct MaerWidgetBundle: WidgetBundle {
     }
 }
 
-/// Erscheint NUR während eines Schlaf-Timers (die App startet die Aktivität
-/// ausschließlich dort): Mond + Countdown, dazu Titel/Kapitel. Während
-/// normaler Wiedergabe liefert Apples „Now Playing" Insel-Präsenz und
-/// Lock-Screen-Player selbst — nichts wird gedoppelt.
+/// Appears ONLY during a sleep timer (the app starts the activity only there):
+/// moon + countdown, plus title/chapter. During normal playback Apple's "Now
+/// Playing" provides island presence and the lock-screen player itself —
+/// nothing is duplicated.
 struct PlaybackLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlaybackActivityAttributes.self) { context in
@@ -53,8 +53,8 @@ struct PlaybackLiveActivity: Widget {
             } compactLeading: {
                 StatusIcon(state: context.state)
             } compactTrailing: {
-                // Timer-Text ist gierig und würde sonst mittig schwimmen —
-                // fest nach rechts außen begrenzen.
+                // The timer text is greedy and would otherwise float centered —
+                // pin it to the far right.
                 CountdownText(state: context.state)
                     .font(.caption2)
                     .monospacedDigit()
@@ -107,9 +107,9 @@ private struct StatusIcon: View {
     }
 }
 
-/// Schlaf-Countdown gewinnt; sonst Kapitel-Countdown (kurz genug für die
-/// kompakte Pille). Live NUR während der Wiedergabe — bei Pause frieren
-/// beide ein (die App zählt den Schlaf-Timer nur beim Hören herunter).
+/// The sleep countdown wins; otherwise the chapter countdown (short enough for
+/// the compact pill). Live ONLY during playback — both freeze when paused (the
+/// app only counts the sleep timer down while listening).
 private struct CountdownText: View {
     let state: PlaybackActivityAttributes.ContentState
 

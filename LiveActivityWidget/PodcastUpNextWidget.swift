@@ -1,10 +1,10 @@
 import SwiftUI
 import WidgetKit
 
-/// Home-Screen-Widget „Als Nächstes": zeigt die nächsten Folgen der Podcast-
-/// Queue (Titel + Show). Daten kommen als Snapshot aus dem App-Group-Container
-/// (siehe `PodcastQueueSnapshot` in WidgetShared.swift); die App stößt bei jeder
-/// Queue-Änderung einen Reload an. Diese Datei gehört NUR zum Widget-Target.
+/// Home-screen widget "Up Next": shows the next episodes of the podcast queue
+/// (title + show). Data comes as a snapshot from the App Group container (see
+/// `PodcastQueueSnapshot` in WidgetShared.swift); the app triggers a reload on
+/// every queue change. This file belongs ONLY to the widget target.
 struct PodcastUpNextEntry: TimelineEntry {
     let date: Date
     let items: [PodcastQueueSnapshot.Item]

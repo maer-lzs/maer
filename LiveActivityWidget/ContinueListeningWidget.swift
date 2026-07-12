@@ -1,12 +1,12 @@
 import SwiftUI
 import WidgetKit
 
-/// Home-Screen-Widget „Weiterhören": zeigt das zuletzt gehörte Buch mit
-/// Cover, Fortschritt und Restzeit; ein Tap öffnet die App und setzt fort
-/// (maer://resume → ResumeRequest-Pfad). Daten kommen als Snapshot aus dem
-/// App-Group-Container (siehe WidgetShared.swift, gehört beiden Targets);
-/// die App stößt Reloads bei Play/Pause/Buchwechsel an.
-/// Diese Datei gehört NUR zum Widget-Extension-Target.
+/// Home-screen widget "Continue": shows the last played book with cover,
+/// progress and remaining time; a tap opens the app and resumes (maer://resume
+/// → ResumeRequest path). Data comes as a snapshot from the App Group container
+/// (see WidgetShared.swift, belongs to both targets); the app triggers reloads
+/// on play/pause/book change. This file belongs ONLY to the widget extension
+/// target.
 struct ContinueListeningEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetSnapshot?
@@ -32,8 +32,8 @@ struct ContinueListeningProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ContinueListeningEntry>) -> Void) {
-        // Daten-getrieben: die App lädt bei Zustandswechseln neu — das
-        // Widget selbst braucht keinen eigenen Rhythmus.
+        // Data-driven: the app reloads on state changes — the widget itself
+        // needs no timeline of its own.
         completion(Timeline(entries: [currentEntry()], policy: .never))
     }
 }
@@ -73,7 +73,7 @@ private struct ContinueListeningView: View {
         }
     }
 
-    /// Klein: Cover füllt das Widget, unten Titel + Fortschrittsbalken.
+    /// Small: cover fills the widget, title + progress bar at the bottom.
     private func small(_ snapshot: WidgetSnapshot) -> some View {
         ZStack(alignment: .bottom) {
             coverImage
@@ -92,7 +92,7 @@ private struct ContinueListeningView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(10)
         }
-        // Bis in die Widget-Ecken (containerBackground-Ränder ausgleichen).
+        // Reach into the widget corners (offset the containerBackground insets).
         .padding(-16)
     }
 
