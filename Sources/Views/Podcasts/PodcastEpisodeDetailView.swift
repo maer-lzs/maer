@@ -1,0 +1,194 @@
+import SwiftUI
+import Combine
+
+/// Folgenseite: Episoden-Cover + Titel, verlinkte Show, Play/Fortsetzen,
+/// Download, Gehört-Umschalter und Beschreibung — Hintergrund im
+/// Cover-Farbverlauf wie die Hörbuch-Detailseite.
+struct PodcastEpisodeDetailView: View {
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var progress = PodcastProgressStore.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @StateObject private var colorLoader = CoverColorLoader()
+    @State private var chapters: [ABSChapter] = []
+
+    private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
+    /// Show quellen-bewusst: ABS-Folge → aus dem ABS-Store, sonst RSS.
+    private var show: PodcastShow? {
+        if item.id.hasPrefix("abspod:") {
+            return absPodcast.shows.first { $0.episodes.contains { $0.guid == item.id } }
+        }
+        return AppSession.shared.rssProvider.show(forEpisodeId: item.id)
+    }
+    private var state: EpisodePlayState { podcastPlayState(for: item) }
+    private var isPlayed: Bool { state == .played }
+    private var isInProgress: Bool {
+        if case .inProgress = state { return true } else { return false }
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                stops: [
+                    .init(color: colorLoader.topAccent, location: 0.0),
+                    .init(color: colorLoader.topAccent.opacity(0.6), location: 0.35),
+                    .init(color: .black.opacity(0.85), location: 0.8)
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 18) {
+                    podcastArtwork(url: coverURL, size: 220, corner: 16)
+                        .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                        .opacity(isPlayed ? 0.6 : 1)
+
+                    VStack(spacing: 8) {
+                        Text(item.title)
+                            .font(.title3.bold())
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.white)
+                        showLink
+                        Text(metaText)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+
+                    HStack(spacing: 14) {
+                        playButton
+                        PodcastDownloadButton(item: item, tint: .white)
+                        markPlayedButton
+                    }
+
+                    chaptersSection
+
+                    if let description = item.media?.metadata?.description, !description.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Description").font(.headline).foregroundStyle(.white)
+                            Text(podcastPlainText(description))
+                                .font(.body)
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 8)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 56)
+                .bottomBarClearance()
+            }
+        }
+        .navigationTitle(show?.title ?? "")
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: coverURL) { await colorLoader.load(from: coverURL) }
+        // Kapitel lazy laden (RSS: JSON-Datei, ABS: aus dem Episoden-Objekt).
+        .task(id: item.id) {
+            chapters = (try? await AppSession.shared.provider(for: item.id)
+                .fetchItemDetail(itemId: item.id))?.media.chapters ?? []
+        }
+    }
+
+    /// Kapitelliste (Podcasting 2.0 / ABS). Tippen spielt ab dieser Stelle.
+    @ViewBuilder
+    private var chaptersSection: some View {
+        if !chapters.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Chapters").font(.headline).foregroundStyle(.white)
+                ForEach(chapters) { chapter in
+                    Button {
+                        Task {
+                            await playerCoordinator.open(item: item)
+                            await playerCoordinator.viewModel?.seek(to: chapter.start)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(chapterTimestamp(chapter.start))
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.6))
+                                .frame(width: 52, alignment: .leading)
+                            Text(chapter.title)
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
+                            Spacer(minLength: 4)
+                            Image(systemName: "play.circle")
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    Divider().overlay(.white.opacity(0.12))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        }
+    }
+
+    /// Sekunden → „m:ss" bzw. „h:mm:ss".
+    private func chapterTimestamp(_ seconds: Double) -> String {
+        let s = Int(seconds)
+        let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec)
+                     : String(format: "%d:%02d", m, sec)
+    }
+
+    @ViewBuilder
+    private var showLink: some View {
+        if let show {
+            NavigationLink {
+                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
+            } label: {
+                HStack(spacing: 8) {
+                    podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: 24, corner: 5)
+                    Text(show.title).font(.subheadline.weight(.medium))
+                    Image(systemName: "chevron.right").font(.caption2)
+                }
+                .foregroundStyle(.white.opacity(0.9))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var playButton: some View {
+        Button {
+            Task { await playerCoordinator.open(item: item) }
+        } label: {
+            Label(isInProgress ? String(localized: "Resume") : String(localized: "Play"),
+                  systemImage: "play.fill")
+                .font(.headline)
+                .padding(.horizontal, 22).padding(.vertical, 12)
+                .foregroundStyle(.white)
+                .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var markPlayedButton: some View {
+        Button {
+            podcastSetPlayed(item, !isPlayed)
+        } label: {
+            Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
+                .font(.title2)
+                .foregroundStyle(.white)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isPlayed ? Text("Mark as Unplayed") : Text("Mark as Played"))
+    }
+
+    private var metaText: String {
+        var parts: [String] = []
+        let date = relativeDateText(item)
+        if !date.isEmpty { parts.append(date) }
+        switch state {
+        case .played:
+            parts.append(String(localized: "Played"))
+        case .inProgress(_, let remaining):
+            parts.append(String(localized: "\(Int(remaining / 60)) min left"))
+        case .unplayed:
+            if let duration = item.media?.duration, duration > 0 { parts.append(durationText(item)) }
+        }
+        return parts.joined(separator: " · ")
+    }
+}
