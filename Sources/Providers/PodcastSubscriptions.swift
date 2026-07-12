@@ -300,7 +300,7 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Enclosure-URLs vergleichbar machen: Query & Scheme raus, klein, /-trim.
-    private nonisolated static func normalizeEnclosure(_ raw: String) -> String {
+    nonisolated static func normalizeEnclosure(_ raw: String) -> String {
         var s = raw.lowercased()
         if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
         s = s.replacingOccurrences(of: "https://", with: "")
