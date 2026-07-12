@@ -255,6 +255,14 @@ final class APIClient {
         _ = try await send(method: "POST", path: "api/podcasts", body: body)
     }
 
+    /// Cover eines Items server-seitig aus einer URL setzen (ABS lädt das Bild
+    /// selbst herunter). Für hochauflösende Feed-Cover (itunes:image), die ABS
+    /// beim Anlegen teils durch das kleine RSS-`<image>` ersetzt.
+    func updateItemCover(itemId: String, coverURL: String) async throws {
+        _ = try await send(method: "POST", path: "api/items/\(itemId)/cover",
+                           body: ["url": coverURL])
+    }
+
     /// Library-Item (Podcast-Show) server-seitig löschen. Braucht Delete-Rechte.
     func deleteLibraryItem(itemId: String) async throws {
         _ = try await send(method: "DELETE", path: "api/items/\(itemId)")

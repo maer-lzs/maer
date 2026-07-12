@@ -300,7 +300,7 @@ struct PodcastSourceView: View {
             Button {
                 isSyncing = true
                 Task {
-                    let r = await PodcastSubscriptionSync.reconcile()
+                    let r = await PodcastSubscriptionSync.reconcile(refreshExistingCovers: true)
                     syncMessage = syncSummary(r)
                     isSyncing = false
                 }

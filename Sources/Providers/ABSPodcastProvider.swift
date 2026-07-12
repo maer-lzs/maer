@@ -188,7 +188,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Podcast am Server abonnieren (Feed → anlegen → neu laden). Gibt `nil`
     /// bei Erfolg zurück, sonst eine Fehlermeldung mit dem gescheiterten Schritt
     /// (damit sich blindes Raten am ungetesteten Endpoint erübrigt).
-    func subscribeOnServer(feedURL: String, autoDownload: Bool = true) async -> String? {
+    /// - Parameter coverURL: Optionales, hochauflösendes Feed-Cover (unser
+    ///   `itunes:image`). Wird nach dem Anlegen server-seitig gesetzt, weil ABS
+    ///   beim Import oft das kleinere RSS-`<image>` nimmt.
+    func subscribeOnServer(feedURL: String, coverURL: String? = nil,
+                           autoDownload: Bool = true) async -> String? {
         do {
             guard let library = try await client.fetchPodcastLibraries().first else {
                 return "Keine Podcast-Bibliothek auf dem Server."
@@ -215,10 +219,33 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             } catch { return "Anlegen (POST podcasts): \(Self.msg(error))" }
 
             await refresh()
+            // Hochauflösendes Feed-Cover nachreichen (bevorzugt unser
+            // itunes:image; sonst das aus der Server-Feed-Antwort).
+            await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.imageUrl)
             return nil
         } catch {
             return "Bibliotheken: \(Self.msg(error))"
         }
+    }
+
+    /// Cover einer bestehenden Server-Show auf ein hochauflösendes Feed-Cover
+    /// heben. Best effort.
+    func updateShowCover(showId: String, coverURL: String) async {
+        guard showId.hasPrefix("abspod:"), !coverURL.isEmpty else { return }
+        let itemId = String(showId.dropFirst("abspod:".count))
+        try? await client.updateItemCover(itemId: itemId, coverURL: coverURL)
+    }
+
+    /// Das übergebene Cover auf die frisch angelegte Show anwenden (per Feed-URL
+    /// wiedergefunden). Best effort — schlägt es fehl, bleibt das ABS-Cover.
+    private func pushHighResCover(feedURL: String, cover: String?) async {
+        guard let cover, !cover.isEmpty else { return }
+        let norm = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        guard let show = shows.first(where: {
+            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm
+        }) else { return }
+        let itemId = String(show.id.dropFirst("abspod:".count))
+        try? await client.updateItemCover(itemId: itemId, coverURL: cover)
     }
 
     private static func msg(_ error: Error) -> String {

@@ -27,8 +27,11 @@ enum PodcastSubscriptionSync {
 
     /// Lokale RSS-Abos auf den Server spiegeln. Idempotent — mehrfaches Aufrufen
     /// legt nichts doppelt an. Läuft nie zwei Durchläufe gleichzeitig.
+    /// - Parameter refreshExistingCovers: auch bei schon synchronen Shows das
+    ///   hochauflösende Feed-Cover erneut auf den Server pushen (nur manuell —
+    ///   der Auto-Abgleich lässt bestehende Cover in Ruhe).
     @discardableResult
-    static func reconcile() async -> Report {
+    static func reconcile(refreshExistingCovers: Bool = false) async -> Report {
         var report = Report()
         guard !isRunning else { return report }
         isRunning = true
@@ -59,9 +62,15 @@ enum PodcastSubscriptionSync {
                 } else {
                     report.alreadySynced += 1
                 }
+                if refreshExistingCovers, let cover = show.artworkURL, !cover.isEmpty {
+                    await abs.updateShowCover(showId: existing.id, coverURL: cover)
+                }
                 continue
             }
-            if let error = await abs.subscribeOnServer(feedURL: show.feedURL) {
+            // Unser hochauflösendes Feed-Cover (itunes:image) mit auf den Server
+            // pushen — ABS zieht beim Anlegen sonst oft das kleinere RSS-<image>.
+            if let error = await abs.subscribeOnServer(feedURL: show.feedURL,
+                                                       coverURL: show.artworkURL) {
                 report.failed.append("\(show.title): \(error)")
             } else {
                 report.pushed += 1
