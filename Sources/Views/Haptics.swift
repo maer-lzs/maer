@@ -1,8 +1,8 @@
 import UIKit
 
-/// Kleiner zentraler Helfer für haptisches Feedback. Bewusst dezent gehalten
-/// (leichter Impuls), damit Play/Pause und Kapitelsprünge sich „wertig"
-/// anfühlen, ohne aufdringlich zu sein.
+/// Small central helper for haptic feedback. Deliberately subtle (a light
+/// impulse) so play/pause and chapter jumps feel "premium" without being
+/// intrusive.
 enum Haptics {
     @MainActor
     static func tap() {

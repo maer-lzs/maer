@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Cover mit dünnem Fortschrittsbalken darunter, Häkchen bei Fertig-Status
-/// oben rechts und Download-Indikator unten links.
+/// Cover with a thin progress bar below, a checkmark for finished status at the
+/// top right and a download indicator at the bottom left.
 struct BookCoverView: View {
     let url: URL?
     let progress: BookProgress?
-    /// Optional — nur nötig, damit der Download-Indikator weiß, für welches
-    /// Buch er den Status prüfen soll. Ohne itemId wird kein Indikator gezeigt.
+    /// Optional — only needed so the download indicator knows which book to
+    /// check the status for. Without itemId no indicator is shown.
     var itemId: String? = nil
     var size: CGFloat = 56
 
@@ -29,8 +29,8 @@ struct BookCoverView: View {
             }
             .frame(width: size, height: size)
             .clipShape(RoundedRectangle(cornerRadius: 8))
-            // Fertig gehörte Bücher werden zusätzlich zum Häkchen optisch
-            // "abgehakt" — entsättigt und leicht abgedunkelt.
+            // Finished books are visually "ticked off" in addition to the
+            // checkmark — desaturated and slightly dimmed.
             .saturation(progress?.isFinished == true ? 0 : 1)
             .opacity(progress?.isFinished == true ? 0.55 : 1)
             .overlay(alignment: .topTrailing) {
@@ -80,7 +80,7 @@ struct BookCoverView: View {
                 }
             }
 
-            // Dünner Balken unter dem Cover.
+            // Thin bar below the cover.
             if let progress, progress.isStarted {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {

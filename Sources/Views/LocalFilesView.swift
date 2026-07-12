@@ -1,11 +1,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Verwaltung importierter lokaler Audiodateien: über den Datei-Picker
-/// importieren (eine Auswahl = ein Hörbuch, mehrere Dateien werden zu einem
-/// mehrteiligen Titel zusammengefasst), Liste mit Löschen. Die Wiedergabe
-/// selbst läuft über die normale Bibliothek (LocalProvider mischt die
-/// Einträge dort ein).
+/// Management of imported local audio files: import via the file picker (one
+/// selection = one audiobook, several files are combined into one multi-file
+/// title), list with delete. Playback itself goes through the normal library
+/// (LocalProvider mixes the entries in there).
 struct LocalFilesView: View {
     @ObservedObject private var library = LocalLibrary.shared
     var onImported: (() -> Void)?

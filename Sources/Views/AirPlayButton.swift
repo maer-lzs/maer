@@ -1,13 +1,13 @@
 import SwiftUI
 import AVKit
 
-/// AirPlay-Auswahlbutton. Öffnet das System-Menü zur Auswahl von
-/// Ausgabegeräten (HomePod, Bluetooth-Kopfhörer, Apple TV …).
+/// AirPlay picker button. Opens the system menu to choose output devices
+/// (HomePod, Bluetooth headphones, Apple TV …).
 struct AirPlayButton: UIViewRepresentable {
     var tintColor: UIColor = .white
-    /// Farbe, wenn GERADE eine Route aktiv verbunden ist (z. B. Kopfhörer).
-    /// Standardmäßig identisch mit `tintColor` — sonst würde ungewollt Orange
-    /// aufblitzen, sobald irgendein Ausgabegerät aktiv ist.
+    /// Color when a route is CURRENTLY actively connected (e.g. headphones).
+    /// Identical to `tintColor` by default — otherwise orange would flash
+    /// unintentionally as soon as any output device is active.
     var activeTintColor: UIColor? = nil
 
     func makeUIView(context: Context) -> AVRoutePickerView {

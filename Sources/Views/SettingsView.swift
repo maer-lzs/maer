@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Zentrale Einstellungen, oben in Pill-Tabs aufgeteilt: „Allgemein" (Darstellung,
-/// Speicher, Sync, Server, App-Info) und je Medientyp „Hörbücher" (Wiedergabe,
-/// Bibliothek, Statistik, lokale Dateien) und „Podcasts" (Quellen, iCloud-Sync).
+/// Central settings, split into pill tabs at the top: "General" (appearance,
+/// storage, sync, server, app info) and per media type "Audiobooks" (playback,
+/// library, stats, local files) and "Podcasts" (sources, iCloud sync).
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// For reloading after a library switch — the settings are pushed from
@@ -85,8 +85,8 @@ struct SettingsView: View {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
             if let libraries = try? await coordinator.provider.fetchLibraries() {
-                // NUR Buch-Bibliotheken — Podcast-Libraries gehören zum
-                // Podcast-Tab, nicht in die Hörbuch-Bibliotheksauswahl.
+                // ONLY book libraries — podcast libraries belong to the podcast
+                // tab, not the audiobook library picker.
                 availableLibraries = libraries.filter { !$0.isPodcast }
                 // Reflect the effective library when nothing was chosen yet.
                 if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
@@ -249,7 +249,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Hörbücher
+    // MARK: - Audiobooks
 
     private var playbackSection: some View {
         Section {

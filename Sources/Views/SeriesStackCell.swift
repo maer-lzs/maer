@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Stapel-Kachel für eine Serie im Bibliotheks-Grid: oberstes Cover, dahinter
-/// die echten Cover der nächsten Bände leicht versetzt/gedreht; Zähler-Badge
-/// in derselben Größenklasse wie die Cover-Badges in BookCoverView.
+/// Stack tile for a series in the library grid: top cover, behind it the real
+/// covers of the next volumes slightly offset/rotated; counter badge in the same
+/// size class as the cover badges in BookCoverView.
 struct SeriesStackCell: View {
     let name: String
     let entries: [LibraryEntry]

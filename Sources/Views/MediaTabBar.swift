@@ -1,16 +1,16 @@
 import SwiftUI
 
-/// Glas-Tab-Leiste unten (unter dem Mini-Player) für die Inhaltstypen —
-/// Hörbücher/Podcasts/Musik/Radio. Eigenes Glas-Element in derselben
-/// Sprache wie Mini-Player und Pille; aktiver Tab in Akzentfarbe. Reine
-/// Komponente, der State (selektierter Typ) lebt in der LibraryView.
-/// Wird nur eingeblendet, wenn mindestens zwei Typen verfügbar sind.
+/// Glass tab bar at the bottom (below the mini-player) for the content types —
+/// audiobooks/podcasts/music/radio. Its own glass element in the same language
+/// as mini-player and pill; active tab in the accent color. Pure component, the
+/// state (selected type) lives in LibraryView. Only shown when at least two
+/// types are available.
 struct MediaTabBar: View {
     let types: [MediaType]
     let selected: MediaType
-    /// Direkter Callback statt Binding — der Wechsel hat Seiteneffekte
-    /// (Navigationspfad zurücksetzen), die in einem Binding-Setter unzuverlässig
-    /// wirkten (Tap „passierte nichts").
+    /// Direct callback instead of a binding — the switch has side effects
+    /// (resetting the navigation path) that were unreliable in a binding setter
+    /// (a tap "did nothing").
     let onSelect: (MediaType) -> Void
 
     var body: some View {

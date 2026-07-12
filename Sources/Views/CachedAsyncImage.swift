@@ -1,16 +1,16 @@
 import SwiftUI
 
-/// Ersatz für SwiftUIs `AsyncImage`, das einmal geladene Bilder cached und bei
-/// einem Fehlversuch automatisch einmal nachlädt. Löst das "mal da, mal
-/// nicht"-Problem, das AsyncImage in scrollbaren Grids/Listen zeigt.
+/// Replacement for SwiftUI's `AsyncImage` that caches loaded images and retries
+/// once automatically on a failed attempt. Solves the "sometimes there,
+/// sometimes not" problem AsyncImage shows in scrollable grids/lists.
 struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     let url: URL?
     /// True for small cells (grid, rows, mini player): display a ~400 px
     /// thumbnail derived from the cached cover instead of decoding the full
     /// ~2000 px image per cell — far less RAM, smoother scrolling.
     var useThumbnail: Bool = false
-    /// Zielgröße des Thumbnails in Pixeln (nil → Standard ~400 px). Für größere
-    /// Cover (z. B. 800 px) höher setzen, ohne das volle Bild zu decodieren.
+    /// Target thumbnail size in pixels (nil → default ~400 px). Set higher for
+    /// larger covers (e.g. 800 px) without decoding the full image.
     var thumbnailMaxPixel: CGFloat? = nil
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder

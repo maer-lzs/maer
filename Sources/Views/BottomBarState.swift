@@ -1,17 +1,17 @@
 import SwiftUI
 import Combine
 
-/// Geteilter Zustand der einklappbaren Bottom-Zone. Jede gescrollte Fläche der
-/// App (Bibliothek, Podcast-Home, Detailseiten) meldet ihren Scroll-Offset über
-/// `reportsBottomBarScroll()`; die `LibraryView` liest `collapsed` und baut die
-/// Leiste entsprechend auf — so verhält sich der Mini-Player überall gleich.
+/// Shared state of the collapsible bottom zone. Every scrolled surface of the
+/// app (library, podcast home, detail pages) reports its scroll offset via
+/// `reportsBottomBarScroll()`; `LibraryView` reads `collapsed` and builds the
+/// bar accordingly — so the mini-player behaves the same everywhere.
 @MainActor
 final class BottomBarState: ObservableObject {
     static let shared = BottomBarState()
     private init() {}
 
     @Published var scrollY: CGFloat = 0
-    /// Home-Tap klappt wieder auf; der nächste Scroll aktiviert das Einklappen erneut.
+    /// A home tap expands again; the next scroll re-enables collapsing.
     @Published var forceExpanded = false
 
     var collapsed: Bool { scrollY > 60 && !forceExpanded }
@@ -23,12 +23,12 @@ final class BottomBarState: ObservableObject {
 
     func expand() { forceExpanded = true }
 
-    /// Beim Tab-Wechsel: aufklappen (Stale-Offset der anderen Fläche vermeiden).
+    /// On a tab switch: expand (avoid the stale offset of the other surface).
     func reset() { scrollY = 0; forceExpanded = false }
 }
 
 extension View {
-    /// An JEDE gescrollte Fläche hängen — meldet den Offset an die Bottom-Zone.
+    /// Attach to EVERY scrolled surface — reports the offset to the bottom zone.
     func reportsBottomBarScroll() -> some View {
         onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
             BottomBarState.shared.report(y)

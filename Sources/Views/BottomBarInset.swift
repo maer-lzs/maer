@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Höhe der schwebenden Bottom-Zone (Mini-Player + Tab-Leiste), die als
-/// Overlay über allem liegt und deshalb KEINEN Platz reserviert. Jeder
-/// Scroll-Inhalt (Bibliothek, Podcasts, Detailseiten) hält unten so viel
-/// frei, damit die letzten Cover nicht unter dem Mini-Player verschwinden.
+/// Height of the floating bottom zone (mini-player + tab bar), which sits as an
+/// overlay above everything and therefore reserves NO space. Every scroll
+/// content (library, podcasts, detail pages) keeps this much free at the bottom
+/// so the last covers don't disappear under the mini-player.
 private struct BottomBarInsetKey: EnvironmentKey {
     static let defaultValue: CGFloat = 0
 }

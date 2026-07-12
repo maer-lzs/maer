@@ -5,11 +5,11 @@ import SwiftUI
 /// Overlay im NavigationStack der Bibliothek gehostet und erscheint damit auf
 /// jeder Ebene (Bibliothek, Buchdetail, voller Player).
 ///
-/// Eigene View mit `@ObservedObject`, damit Änderungen an `sourceHint`
-/// zuverlässig ankommen — ein nur über `coordinator.viewModel?.sourceHint`
-/// gelesener Wert würde nicht aktualisieren, da `PlayerCoordinator` nur
-/// benachrichtigt, wenn `viewModel` komplett neu GESETZT wird, nicht wenn sich
-/// Werte DARIN ändern (dasselbe Muster wie beim Play/Pause-Button).
+/// Its own view with `@ObservedObject` so changes to `sourceHint` arrive
+/// reliably — a value read only via `coordinator.viewModel?.sourceHint` would
+/// not update, since `PlayerCoordinator` only notifies when `viewModel` is
+/// completely re-SET, not when values WITHIN it change (the same pattern as the
+/// play/pause button).
 struct ResumeMessageBanner: View {
     @ObservedObject var viewModel: PlayerViewModel
 
@@ -27,8 +27,8 @@ struct ResumeMessageBanner: View {
                     .padding(.vertical, 10)
                     .modifier(AdaptiveGlassBackground(shape: shape))
                     .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
-                    // Rein informativ — darf Sortier-Menü, Abmelden, Such-Button,
-                    // Mini-Player oder Player-Steuerung nie abfangen.
+                    // Purely informational — must never intercept the sort menu,
+                    // sign-out, search button, mini-player or player controls.
                     .allowsHitTesting(false)
                     .transition(.move(edge: .leading).combined(with: .opacity))
             }
