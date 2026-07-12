@@ -5,11 +5,10 @@ import UIKit
 /// Play-Button, der die Wiedergabe im Coordinator startet und zum vollen
 /// Player navigiert. Wird beim Tippen auf ein Buch in der Bibliothek gezeigt.
 ///
-/// Drei Layouts je nach verfügbarem Platz:
-/// - iPhone Hochformat: großes Cover über die volle Breite mit Fade-Out
-/// - iPhone Querformat und iPad: Cover links, Titel/Infos/Buttons rechts
-///   daneben (mehr Platz durch die Breite sinnvoll genutzt statt nur
-///   verkleinert)
+/// Three layouts depending on available space:
+/// - iPhone portrait: large cover across the full width with fade-out
+/// - iPhone landscape and iPad: cover on the left, title/info/buttons to the
+///   right (the extra width used sensibly instead of just scaling down)
 struct BookDetailScreen: View {
     let entry: LibraryEntry
     @ObservedObject var coordinator: PlayerCoordinator
@@ -35,9 +34,9 @@ struct BookDetailScreen: View {
     }
 
 
-    /// Bewusst Screen-Breite statt GeometryReader — das Cover soll immer exakt
-    /// die volle Gerätebreite nutzen (nicht irgendeine ScrollView-Breite).
-    /// Über die WindowScene statt UIScreen.main (deprecated iOS 26).
+    /// Deliberately screen width instead of GeometryReader — the cover should
+    /// always use exactly the full device width (not some ScrollView width).
+    /// Via the WindowScene instead of UIScreen.main (deprecated iOS 26).
     private var heroCoverSize: CGFloat {
         let screen = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.screen }.first
@@ -75,11 +74,11 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Titel/Autor/Fortschritt — zentriert und weiß für die Hero-Ansicht (die
-    /// liegt auf dem farbigen Verlaufs-Hintergrund, da reicht `.primary`
-    /// nicht, das wäre im hellen Systemmodus schwarz und unlesbar),
-    /// linksbündig mit normalen adaptiven Farben fürs Nebeneinander-Layout
-    /// (dort ist der Hintergrund der normale Systemhintergrund).
+    /// Title/author/progress — centered and white for the hero view (it sits on
+    /// the colored gradient background, where `.primary` is not enough, that
+    /// would be black and unreadable in light system mode), left-aligned with
+    /// normal adaptive colors for the side-by-side layout (there the background
+    /// is the normal system background).
     private func titleBlock(alignment: HorizontalAlignment) -> some View {
         let isHero = alignment == .center
         return VStack(alignment: alignment, spacing: 6) {
@@ -149,7 +148,7 @@ struct BookDetailScreen: View {
                         }
                         trailingSections(isHero: false)
                     }
-                    // Platz für Back-Button oben, Mini-Player unten.
+                    // Room for the back button at the top, mini-player at the bottom.
                     .padding(.top, 60)
                     .padding(.bottom, 20)
                     .bottomBarClearance()
@@ -202,8 +201,8 @@ struct BookDetailScreen: View {
             || (geo.size.height > 0 && geo.size.width > geo.size.height)
         ZStack {
             if !useSideBySideLayout {
-                // Verlauf als HINTERGRUND für den ganzen oberen Bereich, wie
-                // beim großen Player — Cover und Titel liegen frei darüber.
+                // Gradient as the BACKGROUND for the whole upper area, like the
+                // large player — cover and title sit freely on top.
                 // Kein Schwarz mehr ganz oben (startet direkt mit der
                 // Cover-Farbe), wird bis knapp unter die Buttons hin
                 // weich zu Schwarz und bleibt danach schwarz.
@@ -252,15 +251,15 @@ struct BookDetailScreen: View {
 
                         trailingSections(isHero: true)
                     }
-                    // Freiraum fürs Seitenende: Mini-Player + Such-Button
-                    // überdecken sonst die letzten Zeilen.
+                    // Free space at the page end: mini-player + search button
+                    // otherwise cover the last lines.
                     .padding(.bottom, 20)
                     .bottomBarClearance()
                     .frame(maxWidth: 600)
                     .frame(maxWidth: .infinity)
                 }
                 // Ohne das hier hat die ScrollView selbst eine blickdichte
-                // Standard-Füllung, die über dem Verlauf im Hintergrund liegt.
+                // Standard fill that sits over the gradient in the background.
                 .scrollContentBackground(.hidden)
                 .reportsBottomBarScroll()
                 // Muss auf der ScrollView selbst sitzen (Kind kann die
@@ -353,12 +352,11 @@ struct BookDetailScreen: View {
         .padding(.horizontal)
     }
 
-    /// Ist DIESES Buch gerade die aktive Session, wird eine eigene, echt
-    /// beobachtende Unteransicht genutzt (siehe `ActivePlayButton`) — sonst
-    /// reagiert der Button nicht zuverlässig auf Play/Pause-Wechsel, aus
-    /// demselben Grund wie beim Mini-Player: `coordinator` selbst benachrichtigt
-    /// nur, wenn `viewModel` neu GESETZT wird, nicht wenn sich Werte DARIN
-    /// (wie `isPlaying`) ändern.
+    /// If THIS book is currently the active session, a dedicated, truly
+    /// observing subview is used (see `ActivePlayButton`) — otherwise the button
+    /// does not reliably react to play/pause changes, for the same reason as the
+    /// mini-player: `coordinator` itself only notifies when `viewModel` is
+    /// re-SET, not when values WITHIN it (like `isPlaying`) change.
     @ViewBuilder
     private func playButton(withPadding: Bool) -> some View {
         Group {
@@ -402,10 +400,9 @@ struct BookDetailScreen: View {
             || (genres?.isEmpty == false)
             || (duration ?? 0) > 0
 
-        // `withPadding` verrät zugleich, ob das die Hero-Ansicht ist (liegt
-        // auf dem farbigen Verlaufs-Hintergrund, braucht also weißen Text)
-        // oder das Nebeneinander-Layout (normaler Systemhintergrund, normale
-        // adaptive Farben reichen).
+        // `withPadding` also reveals whether this is the hero view (sits on the
+        // colored gradient background, so needs white text) or the side-by-side
+        // layout (normal system background, normal adaptive colors suffice).
         if hasAnyInfo {
             VStack(alignment: .leading, spacing: 6) {
                 if let series, !series.isEmpty {
@@ -456,11 +453,11 @@ struct BookDetailScreen: View {
         return hours > 0 ? String(localized: "\(hours) hr \(minutes) min") : String(localized: "\(minutes) min")
     }
 
-    /// Server-Beschreibungen enthalten oft rohes HTML (`<p>`, `<br>`, …) statt
-    /// reinem Text. Wandelt Absatz-/Zeilenumbrüche in echte Umbrüche um,
-    /// entfernt alle übrigen Tags und dekodiert die gängigsten
-    /// HTML-Entitäten — bewusst eine einfache Bereinigung statt einer vollen
-    /// HTML-Darstellung, das reicht für Klartext-Beschreibungen.
+    /// Server descriptions often contain raw HTML (`<p>`, `<br>`, …) instead of
+    /// plain text. Converts paragraph/line breaks into real breaks, removes all
+    /// remaining tags and decodes the most common HTML entities — deliberately a
+    /// simple cleanup instead of a full HTML render, which is enough for
+    /// plain-text descriptions.
     private static func plainText(fromHTML html: String) -> String {
         var text = html
         text = text.replacingOccurrences(of: "</p>", with: "\n\n", options: .caseInsensitive)
@@ -476,7 +473,7 @@ struct BookDetailScreen: View {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    // MARK: - Als gehört markieren
+    // MARK: - Mark as played
 
     private var isFinished: Bool {
         isFinishedOverride ?? (entry.progress?.isFinished ?? false)
@@ -503,9 +500,9 @@ struct BookDetailScreen: View {
         do {
             // Frischen Stand holen statt dem evtl. veralteten `detail` zu
             // vertrauen — und danach IMMER currentTime + duration + isFinished
-            // zusammen schicken. Ein PATCH mit nur {"isFinished": ...} überlässt
-            // dem Server, was er mit currentTime macht — genau das führte dazu,
-            // dass nach gehört→ungehört der reale Fortschritt verloren ging.
+            // send together. A PATCH with only {"isFinished": ...} leaves it to
+            // the server what to do with currentTime — exactly that caused the
+            // real progress to be lost after played→unplayed.
             let fresh = try await coordinator.provider.fetchItemDetail(itemId: entry.id)
             let duration = fresh.media.duration ?? 0
             let currentTime = fresh.userMediaProgress?.currentTime ?? 0
@@ -523,9 +520,9 @@ struct BookDetailScreen: View {
                 )
             }
             isFinishedOverride = target
-            // Ohne das hier würde die Bibliotheksliste weiter den alten Stand
-            // zeigen (Prozentzahl statt Häkchen), bis die App das nächste Mal
-            // in den Vordergrund kommt.
+            // Without this the library list would keep showing the old state
+            // (percentage instead of checkmark) until the app next comes to the
+            // foreground.
             await libraryViewModel.refreshProgress()
         } catch {
             if NetworkStatus.isOfflineError(error) {
@@ -691,15 +688,14 @@ struct BookDetailScreen: View {
         return String(localized: "Play")
     }
 
-    /// True, während der Coordinator gerade genau dieses Buch lädt. So dreht
-    /// sich der Spinner nur am richtigen Button, nicht wenn zufällig ein
-    /// anderes Buch geladen wird.
+    /// True while the coordinator is loading exactly this book. So the spinner
+    /// spins only on the right button, not when another book happens to load.
     private var isThisBookLoading: Bool {
         coordinator.isLoading && coordinator.activeItem?.id == entry.id
     }
 }
 
-/// Kapitelliste der Detailseite (lazy List — Bücher haben teils 400+ Kapitel).
+/// Chapter list of the detail page (lazy List — books sometimes have 400+ chapters).
 /// Tippen startet die Wiedergabe ab diesem Kapitel; beim aktiven Buch wird
 /// das laufende Kapitel markiert.
 private struct DetailChapterList: View {
@@ -762,10 +758,10 @@ private struct DetailChapterList: View {
     }
 }
 
-/// Play/Pause-Button für den Fall, dass DIESES Buch bereits die aktive
-/// Session ist. Eigene View, damit `viewModel` echt als @ObservedObject
-/// beobachtet wird — sonst reagiert der Button nicht zuverlässig auf
-/// Play/Pause-Wechsel (siehe Erklärung in `BookDetailScreen.playButton`).
+/// Play/pause button for the case that THIS book is already the active session.
+/// Its own view so `viewModel` is truly observed as @ObservedObject — otherwise
+/// the button does not reliably react to play/pause changes (see the explanation
+/// in `BookDetailScreen.playButton`).
 private struct ActivePlayButton<S: Shape>: View {
     @ObservedObject var viewModel: PlayerViewModel
     let shape: S
