@@ -797,6 +797,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 }
                 self.updateCurrentChapter()
                 self.updateNowPlayingInfo()
+                // Download-on-Play: Feed-only-Folge einer ABS-Show nach ~30 s
+                // am Server sichern (no-op, wenn nichts registriert ist).
+                PodcastServerSave.shared.playbackTick(itemId: self.item?.id, currentTime: self.currentTime)
                 // Buffering-Status gleich mitprüfen — nutzt denselben sauberen
                 // MainActor-Kontext, kein separater KVO-Observer nötig.
                 if let currentItem = self.player?.currentItem {

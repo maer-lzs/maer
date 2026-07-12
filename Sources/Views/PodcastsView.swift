@@ -606,7 +606,11 @@ struct PodcastShowView: View {
                         }
                         .padding(.horizontal).padding(.vertical, 10)
                         .contentShape(Rectangle())
-                        .onTapGesture { Task { await playerCoordinator.open(item: item) } }
+                        .onTapGesture {
+                            // Für „Download-on-Play" registrieren, dann streamen.
+                            PodcastServerSave.shared.register(rssItemId: item.id, showId: show.id, feed: ep)
+                            Task { await playerCoordinator.open(item: item) }
+                        }
                         Divider().padding(.leading)
                     }
                 }

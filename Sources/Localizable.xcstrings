@@ -2218,6 +2218,26 @@
         }
       }
     },
+    "Auto-save to server on play" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Abspielen am Server sichern"
+          }
+        }
+      }
+    },
+    "New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät. Auto-Sichern legt eine gestreamte Feed-Folge nach ~30 s am Server ab, damit ihr Fortschritt auch dort synct."
+          }
+        }
+      }
+    },
     "Subscriptions" : {
       "localizations" : {
         "de" : {

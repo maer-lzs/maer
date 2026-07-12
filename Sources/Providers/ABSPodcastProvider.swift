@@ -223,6 +223,14 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
+    /// Nach einem Server-Download: die (jetzt vorhandene) Server-Episoden-ID zu
+    /// einem Feed-Titel finden. Die Server-`audioURL` ist die ABS-Pfad-URL, nicht
+    /// die Origin-Enclosure → Abgleich über den Titel.
+    func serverEpisodeId(showId: String, title: String) -> String? {
+        shows.first { $0.id == showId }?
+            .episodes.first { $0.title == title }?.guid
+    }
+
     /// Show am Server LÖSCHEN (entfernt server-seitig alles inkl. Historie —
     /// nur für die ausdrückliche „Endgültig löschen"-Aktion, nicht fürs Archiv).
     func deleteShowOnServer(showId: String) async -> Bool {

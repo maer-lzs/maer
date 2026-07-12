@@ -13,6 +13,8 @@ struct PodcastSourceView: View {
     /// relevant, wenn der Server eine Podcast-Bibliothek hat.
     @State private var subscribeToServer = true
     @State private var subscribeError: String?
+    /// Feed-only-Folge beim Abspielen nach ~30 s automatisch am Server sichern.
+    @AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true
 
     private enum Source: Hashable { case apple, podcastIndex }
     @State private var source: Source = .apple
@@ -38,8 +40,11 @@ struct PodcastSourceView: View {
                     Toggle(isOn: $subscribeToServer) {
                         Label("Subscribe on server", systemImage: "cloud")
                     }
+                    Toggle(isOn: $autoSaveOnPlay) {
+                        Label("Auto-save to server on play", systemImage: "arrow.down.circle")
+                    }
                 } footer: {
-                    Text("New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device.")
+                    Text("New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too.")
                 }
             }
             searchSection
