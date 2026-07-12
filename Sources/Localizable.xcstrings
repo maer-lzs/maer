@@ -1787,11 +1787,22 @@
       }
     },
     "Progress updates that could not reach the server yet are sent automatically as soon as possible." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fortschritts-Updates, die den Server noch nicht erreicht haben, werden automatisch nachgereicht, sobald möglich."
+          }
+        }
+      }
+    },
+    "Progress updates that could not reach the server yet are sent automatically as soon as possible. iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fortschritts-Updates, die den Server noch nicht erreicht haben, werden automatisch nachgereicht. iCloud hält den Podcast-Fortschritt zwischen deinen eigenen Geräten synchron (iCloud muss aktiviert sein)."
           }
         }
       }
@@ -2295,16 +2306,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Fortschritt über iCloud syncen"
-          }
-        }
-      }
-    },
-    "Progress updates that could not reach the server yet are sent automatically as soon as possible. iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled)." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fortschritts-Updates, die den Server noch nicht erreicht haben, werden automatisch nachgereicht. iCloud hält den Podcast-Fortschritt zwischen deinen eigenen Geräten synchron (iCloud muss aktiviert sein)."
           }
         }
       }

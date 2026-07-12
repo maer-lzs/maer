@@ -7,13 +7,17 @@ import SwiftUI
 /// Wird nur eingeblendet, wenn mindestens zwei Typen verfügbar sind.
 struct MediaTabBar: View {
     let types: [MediaType]
-    @Binding var selected: MediaType
+    let selected: MediaType
+    /// Direkter Callback statt Binding — der Wechsel hat Seiteneffekte
+    /// (Navigationspfad zurücksetzen), die in einem Binding-Setter unzuverlässig
+    /// wirkten (Tap „passierte nichts").
+    let onSelect: (MediaType) -> Void
 
     var body: some View {
         HStack(spacing: 4) {
             ForEach(types) { type in
                 Button {
-                    withAnimation(.snappy(duration: 0.2)) { selected = type }
+                    onSelect(type)
                 } label: {
                     VStack(spacing: 2) {
                         Image(systemName: type.systemImage)
