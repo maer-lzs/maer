@@ -41,6 +41,8 @@ struct ABSBookmark: Codable, Identifiable, Equatable {
 /// einen eigenen Request zu brauchen.
 struct MediaProgressEntry: Decodable {
     let libraryItemId: String
+    /// Nur bei Podcast-Fortschritt gesetzt — identifiziert die Episode.
+    let episodeId: String?
     let currentTime: Double?
     let duration: Double?
     let progress: Double?
@@ -86,6 +88,11 @@ struct LibrariesResponse: Decodable {
 struct ABSLibrary: Decodable, Identifiable {
     let id: String
     let name: String
+    /// "book" | "podcast" — unterscheidet Hörbuch- von Podcast-Bibliotheken.
+    /// Default nil → bestehende Memberwise-Init-Aufrufe (RSS/Local) bleiben gültig.
+    var mediaType: String? = nil
+
+    var isPodcast: Bool { mediaType == "podcast" }
 }
 
 // MARK: - Bücherliste (List-Endpoint)
@@ -121,6 +128,9 @@ struct LibraryItemMedia: Codable {
     let duration: Double?
     let chapters: [ABSChapter]?
     let tracks: [ABSAudioTrack]?
+    /// Nur Podcast-Bibliotheken: die Folgen der Show (Detail-Endpoint).
+    /// Default nil, damit bestehende Memberwise-Init-Aufrufe unverändert bauen.
+    var episodes: [ABSPodcastEpisode]? = nil
 }
 
 struct LibraryItemMetadata: Codable {
@@ -131,6 +141,24 @@ struct LibraryItemMetadata: Codable {
     let genres: [String]?
     let publishedYear: LenientString?
     let description: String?
+    /// Nur Podcasts: Feed-URL (für Quellen-übergreifende Dedup mit RSS).
+    /// Default nil → bestehende Memberwise-Init-Aufrufe bleiben gültig.
+    var feedUrl: String? = nil
+}
+
+/// Eine Podcast-Folge einer ABS-Show (`media.episodes[]` im Detail-Endpoint).
+/// `audioTrack` ist der streambare Track (contentUrl relativ zum Server).
+struct ABSPodcastEpisode: Codable, Identifiable {
+    let id: String
+    let title: String?
+    let subtitle: String?
+    let description: String?
+    let publishedAt: Double?   // ms seit 1970
+    let duration: Double?
+    let index: Int?
+    let season: String?
+    let episode: String?
+    let audioTrack: ABSAudioTrack?
 }
 
 /// Manche Audiobookshelf-Felder (z. B. publishedYear) liefern je nach

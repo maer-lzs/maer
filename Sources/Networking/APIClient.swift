@@ -177,6 +177,50 @@ final class APIClient {
         _ = try await patch(path: "api/me/progress/\(itemId)", body: body)
     }
 
+    // MARK: Podcast (Episoden-Ebene)
+
+    /// Podcast-Bibliotheken (mediaType == "podcast").
+    func fetchPodcastLibraries() async throws -> [ABSLibrary] {
+        try await fetchLibraries().filter(\.isPodcast)
+    }
+
+    /// Episoden-Fortschritt aller Podcasts, gekeyt auf
+    /// `abspod:<libraryItemId>:<episodeId>` (passt zum Provider-Namespace).
+    func fetchPodcastEpisodeProgress() async throws -> [String: BookProgress] {
+        let data = try await get(path: "api/me")
+        let me = try decode(MeResponse.self, from: data)
+        var map: [String: BookProgress] = [:]
+        for entry in me.mediaProgress ?? [] {
+            guard let episodeId = entry.episodeId else { continue }
+            let fraction: Double
+            if let p = entry.progress {
+                fraction = p
+            } else if let c = entry.currentTime, let d = entry.duration, d > 0 {
+                fraction = c / d
+            } else {
+                fraction = 0
+            }
+            map["abspod:\(entry.libraryItemId):\(episodeId)"] = BookProgress(
+                fraction: min(max(fraction, 0), 1),
+                isFinished: entry.isFinished ?? false,
+                lastUpdate: entry.lastUpdate ?? 0,
+                currentTime: entry.currentTime
+            )
+        }
+        return map
+    }
+
+    /// Episoden-Fortschritt schreiben (PATCH auf den Episoden-Endpoint).
+    func updateEpisodeProgress(libraryItemId: String, episodeId: String,
+                               currentTime: Double, duration: Double, isFinished: Bool) async throws {
+        var body: [String: Any] = ["currentTime": currentTime, "isFinished": isFinished]
+        if duration > 0 {
+            body["duration"] = duration
+            body["progress"] = min(max(currentTime / duration, 0), 1)
+        }
+        _ = try await patch(path: "api/me/progress/\(libraryItemId)/\(episodeId)", body: body)
+    }
+
     // MARK: URLs für Cover und Streaming
 
     /// Cover-Bild-URL. AsyncImage kann keine Custom-Header setzen, deshalb hier
