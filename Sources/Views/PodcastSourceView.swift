@@ -333,8 +333,8 @@ struct PodcastSourceView: View {
         let directory: PodcastDirectory
         if source == .podcastIndex, AppStorageKeys.podcastIndexConfigured {
             directory = PodcastIndexDirectory(
-                key: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexKey) ?? "",
-                secret: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexSecret) ?? ""
+                key: AppStorageKeys.podcastIndexKeyValue,
+                secret: AppStorageKeys.podcastIndexSecretValue
             )
         } else {
             directory = ITunesDirectory()
@@ -363,10 +363,11 @@ struct PodcastSourceView: View {
     }
 }
 
-/// PodcastIndex-Zugang (optional) — Key + Secret eintragen.
+/// PodcastIndex-Zugang (optional) — Key (öffentlich, UserDefaults) + Secret
+/// (Credential, im Keychain).
 private struct PodcastIndexKeyView: View {
     @AppStorage(AppStorageKeys.podcastIndexKey) private var key = ""
-    @AppStorage(AppStorageKeys.podcastIndexSecret) private var secret = ""
+    @State private var secret = AppStorageKeys.podcastIndexSecretValue
 
     var body: some View {
         Form {
@@ -375,6 +376,9 @@ private struct PodcastIndexKeyView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 SecureField("API Secret", text: $secret)
+                    .onChange(of: secret) { _, newValue in
+                        AppStorageKeys.setPodcastIndexSecret(newValue)
+                    }
             } footer: {
                 Text("Optional. Get a free key at podcastindex.org — enables searching the open PodcastIndex catalog in addition to Apple.")
             }

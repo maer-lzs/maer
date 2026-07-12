@@ -328,8 +328,8 @@ struct SearchOverlay: View {
         let directory: PodcastDirectory
         if podcastSource == .podcastIndex, AppStorageKeys.podcastIndexConfigured {
             directory = PodcastIndexDirectory(
-                key: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexKey) ?? "",
-                secret: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexSecret) ?? ""
+                key: AppStorageKeys.podcastIndexKeyValue,
+                secret: AppStorageKeys.podcastIndexSecretValue
             )
         } else {
             directory = ITunesDirectory()

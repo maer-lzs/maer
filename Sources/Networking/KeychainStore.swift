@@ -48,4 +48,5 @@ enum KeychainStore {
 enum KeychainKey {
     static let serverURL = "serverURL"
     static let apiToken = "apiToken"
+    static let podcastIndexSecret = "podcastIndexSecret"
 }

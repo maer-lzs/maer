@@ -24,12 +24,41 @@ nonisolated enum AppStorageKeys {
     /// Optionaler PodcastIndex-Zugang für die Podcast-Suche (der iTunes-
     /// Katalog braucht keinen Key). Geringe Sensibilität → UserDefaults.
     static let podcastIndexKey = "podcastIndexKey"
+    /// Alter UserDefaults-Key des Secrets — nur noch für die einmalige
+    /// Migration in den Keychain (s. u.).
     static let podcastIndexSecret = "podcastIndexSecret"
 
+    /// Der API-Key ist ein öffentlicher Bezeichner → UserDefaults reicht.
+    static var podcastIndexKeyValue: String {
+        get { UserDefaults.standard.string(forKey: podcastIndexKey) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: podcastIndexKey) }
+    }
+
+    /// Das Secret ist ein Credential → Keychain statt Klartext-UserDefaults.
+    /// Beim ersten Zugriff wird ein evtl. alter UserDefaults-Wert migriert.
+    static var podcastIndexSecretValue: String {
+        if let s = KeychainStore.load(forKey: KeychainKey.podcastIndexSecret), !s.isEmpty {
+            return s
+        }
+        let old = UserDefaults.standard.string(forKey: podcastIndexSecret) ?? ""
+        if !old.isEmpty {
+            KeychainStore.save(old, forKey: KeychainKey.podcastIndexSecret)
+            UserDefaults.standard.removeObject(forKey: podcastIndexSecret)
+        }
+        return old
+    }
+
+    static func setPodcastIndexSecret(_ value: String) {
+        if value.isEmpty {
+            KeychainStore.delete(forKey: KeychainKey.podcastIndexSecret)
+        } else {
+            KeychainStore.save(value, forKey: KeychainKey.podcastIndexSecret)
+        }
+        UserDefaults.standard.removeObject(forKey: podcastIndexSecret)
+    }
+
     static var podcastIndexConfigured: Bool {
-        let d = UserDefaults.standard
-        return !(d.string(forKey: podcastIndexKey) ?? "").isEmpty
-            && !(d.string(forKey: podcastIndexSecret) ?? "").isEmpty
+        !podcastIndexKeyValue.isEmpty && !podcastIndexSecretValue.isEmpty
     }
     /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
     static let podcastICloudSync = "podcastICloudSync"
