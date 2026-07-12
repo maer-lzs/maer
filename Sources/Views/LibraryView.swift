@@ -29,6 +29,10 @@ struct LibraryView: View {
     /// Freiraum unten an alle Scroll-Inhalte gereicht, damit nichts verdeckt
     /// wird. Die Zone liegt als Overlay (reserviert keinen Platz selbst).
     @State private var bottomBarHeight: CGFloat = 0
+    /// Einstellungen als modales Sheet (NICHT in den Bibliotheks-Stack gepusht) —
+    /// sonst liegt das Mini-Player-Overlay darüber und dessen Medien-Pills lösen
+    /// aus den Einstellungen heraus einen Sprung zurück zur Bibliothek aus.
+    @State private var showSettings = false
     /// Aktiver Inhaltstyp-Tab. Heute nur Hörbücher; die untere Tab-Leiste
     /// erscheint erst, wenn eine zweite Quelle einen anderen Typ mitbringt.
     @State private var selectedMediaType: MediaType = .audiobooks
@@ -331,6 +335,14 @@ struct LibraryView: View {
                 }
                 .transition(.identity)
             }
+        }
+        // Einstellungen modal — eigener NavigationStack, Bottom-Zone auf 0
+        // gesetzt (kein Mini-Player im Sheet → keine Freiraum-Reservierung nötig).
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
+            }
+            .environment(\.bottomBarInset, 0)
         }
         // Voller Player als Overlay ÜBER der Bibliothek (statt Push).
         .overlay {
@@ -703,8 +715,8 @@ struct LibraryView: View {
     }
 
     private var settingsLink: some View {
-        NavigationLink {
-            SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
+        Button {
+            showSettings = true
         } label: {
             toolbarGlassIcon("gearshape")
         }

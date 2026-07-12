@@ -10,6 +10,7 @@ struct SettingsView: View {
     var libraryViewModel: LibraryViewModel? = nil
     @ObservedObject private var downloadManager = DownloadManager.shared
     let onLogout: () -> Void
+    @Environment(\.dismiss) private var dismiss
 
     private enum Tab: String, CaseIterable, Identifiable {
         case general, audiobooks, podcasts
@@ -73,6 +74,11 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
