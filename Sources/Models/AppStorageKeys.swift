@@ -55,6 +55,13 @@ nonisolated enum AppStorageKeys {
         for key in defaults.dictionaryRepresentation().keys {
             for prefix in ["playbackRate.", "localPosition."] where key.hasPrefix(prefix) {
                 let id = String(key.dropFirst(prefix.count))
+                // NUR rohe ABS-Buch-IDs bereinigen. Podcast-/Lokale-Keys
+                // (`rss:`/`abspod:`/`local:`) gehören anderen Quellen mit eigenem
+                // Lebenszyklus — `validItemIds` enthält nur Hörbücher, sonst
+                // würden hier ALLE Podcast-/Local-Fortschritte gelöscht.
+                if id.hasPrefix("rss:") || id.hasPrefix("abspod:") || id.hasPrefix("local:") {
+                    continue
+                }
                 if !validItemIds.contains(id) {
                     defaults.removeObject(forKey: key)
                 }
