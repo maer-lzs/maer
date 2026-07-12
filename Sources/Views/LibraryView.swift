@@ -14,6 +14,11 @@ struct LibraryView: View {
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
+    /// Scroll-gesteuertes Zusammenklappen der Bottom-Zone (Apple-Music-artig):
+    /// beim Scrollen in der Bibliothek wird sie zu einer kompakten Zeile.
+    @Namespace private var barNS
+    @State private var libScrollY: CGFloat = 0
+    private var barCollapsed: Bool { libScrollY > 60 }
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
@@ -121,59 +126,20 @@ struct LibraryView: View {
             // Player selbst wird die ganze Zeile ausgeblendet, sonst
             // erscheinen Play/Pause & Co. doppelt.
             if !isShowingFullPlayer {
-                VStack(spacing: 8) {
-                    // Quell-/Sync-Hinweis-Pille direkt ÜBER der Mini-Leiste, als
-                    // Teil der Bottom-Playback-Zone (nur sichtbar, wenn gesetzt —
-                    // reserviert sonst keinen Platz).
-                    if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
-                        ResumeMessageBanner(viewModel: vm)
-                    }
-                    // Mini-Leiste über die volle Breite — der Such-Button ist
-                    // jetzt eine Zeile tiefer (neben der Medien-Pille).
-                    if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
-                        MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                                isShowingFullPlayer = true
-                            }
-                        }
-                        // Book-switch swap: pushed below the screen edge
-                        // while cover/title/accent change, springs back up
-                        // (driven by the .task(id:) below).
-                        .offset(y: miniPlayerSwapOffset)
-                    }
-                    // Untere Zeile: Inhaltstyp-Pille (erst ab zwei Typen) plus
-                    // der Such-Button rechts daneben. Die Lupe sitzt bewusst
-                    // hier unten neben der Medien-Pille, nicht mehr in der
-                    // Mini-Player-Zeile.
-                    HStack(spacing: 10) {
-                        if availableMediaTypes.count > 1 {
-                            MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
-                                // Tab-Tipp führt immer zurück zur Wurzel der
-                                // jeweiligen Bibliothek — auch aus einem
-                                // gepushten Detail-Screen und auch beim erneuten
-                                // Tippen des schon aktiven Tabs (Standard-iOS).
-                                navigationPath = NavigationPath()
-                                withAnimation(.snappy(duration: 0.2)) {
-                                    selectedMediaType = newValue
-                                }
-                            }
-                        }
-                        Spacer(minLength: 0)
-                        FloatingSearchButton {
-                            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                                isShowingSearch = true
-                            }
-                        }
-                    }
-                }
+                bottomBarContent
+                .animation(.spring(response: 0.34, dampingFraction: 0.86), value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
-                // Höhe messen → als Freiraum an die Scroll-Inhalte reichen.
+                // Höhe messen → als Freiraum an die Scroll-Inhalte reichen. NUR im
+                // aufgeklappten Zustand, damit der Freiraum beim Zusammenklappen
+                // nicht schrumpft (das würde eine Scroll-Rückkopplung auslösen).
                 .background {
                     GeometryReader { proxy in
                         Color.clear
                             .onAppear { bottomBarHeight = proxy.size.height }
-                            .onChange(of: proxy.size.height) { _, h in bottomBarHeight = h }
+                            .onChange(of: proxy.size.height) { _, h in
+                                if !barCollapsed { bottomBarHeight = h }
+                            }
                     }
                 }
                 .task(id: playerCoordinator.activeItem?.id) {
@@ -369,6 +335,89 @@ struct LibraryView: View {
         }
     }
 
+    // MARK: - Bottom-Zone (scroll-gesteuert einklappbar)
+
+    /// Aufgeklappt: Banner · Mini-Player (voll) · [Medien-Pille | Lupe].
+    /// Kompakt: eine Zeile [Home-Button · Mini-Player mittig, kleiner · Lupe].
+    /// Player und Lupe gleiten per matchedGeometry; die Medien-Pille morpht in
+    /// den Home-Button.
+    @ViewBuilder
+    private var bottomBarContent: some View {
+        if barCollapsed {
+            HStack(spacing: 10) {
+                homeButton
+                Spacer(minLength: 0)
+                miniPlayer.frame(maxWidth: 300)
+                Spacer(minLength: 0)
+                searchButton.scaleEffect(0.88, anchor: .trailing)
+            }
+        } else {
+            VStack(spacing: 8) {
+                banner
+                miniPlayer
+                HStack(spacing: 10) {
+                    mediaBar
+                    Spacer(minLength: 0)
+                    searchButton
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var banner: some View {
+        if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
+            ResumeMessageBanner(viewModel: vm)
+        }
+    }
+
+    @ViewBuilder
+    private var miniPlayer: some View {
+        if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
+            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                    isShowingFullPlayer = true
+                }
+            }
+            .offset(y: miniPlayerSwapOffset)
+            .matchedGeometryEffect(id: "player", in: barNS)
+        }
+    }
+
+    @ViewBuilder
+    private var mediaBar: some View {
+        if availableMediaTypes.count > 1 {
+            MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
+                navigationPath = NavigationPath()
+                withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
+            }
+            .matchedGeometryEffect(id: "media", in: barNS)
+        }
+    }
+
+    /// Kompakter „Home"-Button (aus der Medien-Pille gemorpht) — zurück zur Wurzel.
+    private var homeButton: some View {
+        Button {
+            navigationPath = NavigationPath()
+        } label: {
+            Image(systemName: "house.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 46, height: 46)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .matchedGeometryEffect(id: "media", in: barNS)
+    }
+
+    private var searchButton: some View {
+        FloatingSearchButton {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
+        }
+        .matchedGeometryEffect(id: "search", in: barNS)
+    }
+
     // MARK: - Suchleiste
 
     private var offlineBanner: some View {
@@ -500,6 +549,10 @@ struct LibraryView: View {
             )
         }
         .refreshable { await viewModel.loadLibrary() }
+        // Scroll-Position → Bottom-Zone ein-/ausklappen.
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
+            libScrollY = y
+        }
     }
 
     // MARK: „Fortsetzen" (große Karten, wie im Podcast-Tab)
