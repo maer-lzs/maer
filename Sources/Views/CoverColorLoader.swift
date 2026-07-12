@@ -2,14 +2,12 @@ import SwiftUI
 import Combine
 import UIKit
 
-/// Lädt ein Cover-Bild und extrahiert dominante Farben daraus — eine für den
-/// ganzen Player-Hintergrund im Audible-Stil (`accent`), und zwei weitere nur
-/// aus dem oberen bzw. unteren Bildrand (`topAccent`/`bottomAccent`), damit
-/// Übergänge oben/unten farblich zum jeweils angrenzenden Bildbereich passen
-/// statt zu einer einzigen Durchschnittsfarbe fürs ganze Cover. Bewusst
-/// simpel gehalten: das Bild wird stark herunterskaliert und die
-/// durchschnittliche Farbe berechnet — reicht für einen stimmigen Verlauf
-/// völlig.
+/// Loads a cover image and extracts dominant colors from it — one for the whole
+/// Audible-style player background (`accent`), and two more only from the top
+/// and bottom image edges (`topAccent`/`bottomAccent`) so top/bottom transitions
+/// match the adjacent image area color-wise instead of a single average color
+/// for the whole cover. Deliberately kept simple: the image is heavily
+/// downscaled and the average color computed — plenty for a coherent gradient.
 @MainActor
 final class CoverColorLoader: ObservableObject {
     @Published var accent: Color = .gray
@@ -31,9 +29,9 @@ final class CoverColorLoader: ObservableObject {
         }
     }
 
-    /// Farben für eine Cover-URL vorab berechnen und cachen — z. B. schon beim
-    /// Laden der Liste, damit beim Scrollen der Karten NICHTS mehr passiert.
-    /// No-op, wenn bereits im Cache.
+    /// Precompute and cache colors for a cover URL — e.g. already when loading
+    /// the list, so NOTHING happens while scrolling the cards. No-op if already
+    /// cached.
     static func prewarm(url: URL?) async {
         guard let url, colorCache[url] == nil else { return }
         let image: UIImage
@@ -45,13 +43,13 @@ final class CoverColorLoader: ObservableObject {
             ImageCache.shared.set(img, data: data, for: url)
             image = img
         }
-        // Farbberechnung (CGContext-Draw) läuft off-main (nonisolated async).
+        // Color computation (CGContext draw) runs off-main (nonisolated async).
         if let colors = await colors(from: image) {
             colorCache[url] = colors
         }
     }
 
-    /// nonisolated + async → läuft auf dem Cooperative-Pool, nicht auf Main.
+    /// nonisolated + async → runs on the cooperative pool, not on main.
     private nonisolated static func colors(from image: UIImage) async -> (accent: Color, top: Color, bottom: Color)? {
         guard let base = averageColor(of: image) else { return nil }
         let top = crop(image, toTop: 0.3).flatMap { averageColor(of: $0) } ?? base
@@ -59,13 +57,12 @@ final class CoverColorLoader: ObservableObject {
         return (Color(base), Color(top), Color(bottom))
     }
 
-    /// Schneidet den oberen/unteren Bildanteil zu — bewusst über
-    /// `UIImage.draw(at:)` (UIKit-Koordinaten, eindeutig von oben nach unten)
-    /// statt direkt über einen rohen `CGContext`: dessen Koordinatensystem
-    /// läuft von unten nach oben, was beim gezielten Zuschneiden auf "oben"
-    /// vs. "unten" leicht zu einer vertauschten (falschen) Zuordnung führen
-    /// kann. Für die reine Gesamt-Durchschnittsfarbe (`accent`) war das
-    /// bisher egal, weil dort über alle Pixel gleichermaßen gemittelt wird.
+    /// Crops the top/bottom image portion — deliberately via `UIImage.draw(at:)`
+    /// (UIKit coordinates, unambiguously top to bottom) rather than a raw
+    /// `CGContext`: its coordinate system runs bottom to top, which for a
+    /// targeted crop to "top" vs. "bottom" can easily lead to a swapped (wrong)
+    /// mapping. For the pure overall average color (`accent`) this did not matter
+    /// before, since it averages over all pixels equally.
     private nonisolated static func crop(_ image: UIImage, toTop fraction: CGFloat) -> UIImage? {
         let cropHeight = image.size.height * fraction
         return crop(image, to: CGRect(x: 0, y: 0, width: image.size.width, height: cropHeight))
@@ -106,7 +103,7 @@ final class CoverColorLoader: ObservableObject {
         }
         guard count > 0 else { return nil }
 
-        // Leicht abdunkeln, damit weißer Text darauf lesbar bleibt.
+        // Darken slightly so white text on it stays readable.
         let factor = 0.7
         return UIColor(
             red: CGFloat(Double(r) / Double(count) / 255.0 * factor),
