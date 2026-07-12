@@ -8,6 +8,8 @@ struct FeedEpisode: Identifiable {
     let id: String
     let title: String
     let publishedAt: Double
+    let duration: Double
+    let enclosureUrl: String
     let raw: [String: Any]
 }
 
@@ -198,13 +200,15 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         let existing = Set(show.episodes.map { $0.title })
         return raw.compactMap { dict -> FeedEpisode? in
             let title = (dict["title"] as? String) ?? ""
-            guard !title.isEmpty, !existing.contains(title) else { return nil }
-            let id = (dict["guid"] as? String)
-                ?? ((dict["enclosure"] as? [String: Any])?["url"] as? String)
-                ?? title
+            let enclosure = ((dict["enclosure"] as? [String: Any])?["url"] as? String) ?? ""
+            guard !title.isEmpty, !enclosure.isEmpty, !existing.contains(title) else { return nil }
+            let id = (dict["guid"] as? String) ?? enclosure
             let publishedAt = (dict["publishedAt"] as? Double)
                 ?? (dict["publishedAt"] as? Int).map(Double.init) ?? 0
-            return FeedEpisode(id: id, title: title, publishedAt: publishedAt, raw: dict)
+            let duration = (dict["duration"] as? Double)
+                ?? (dict["duration"] as? Int).map(Double.init) ?? 0
+            return FeedEpisode(id: id, title: title, publishedAt: publishedAt,
+                               duration: duration, enclosureUrl: enclosure, raw: dict)
         }
         .sorted { $0.publishedAt < $1.publishedAt }   // älteste zuerst („von Anfang an")
     }

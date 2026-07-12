@@ -586,7 +586,11 @@ struct PodcastShowView: View {
                 Text("Available episodes").font(.title3).bold().padding(.horizontal)
                 LazyVStack(spacing: 0) {
                     ForEach(available) { ep in
+                        // Tippen = sofort vom Original-Host streamen (rss:-Item,
+                        // Fortschritt lokal+iCloud); Pfeil = am Server sichern.
+                        let item = feedEpisodePlayItem(show: liveShow, feed: ep)
                         HStack(spacing: 12) {
+                            Image(systemName: "play.circle").font(.title2).foregroundStyle(AppTheme.accent)
                             Text(ep.title).font(.subheadline).lineLimit(2)
                             Spacer(minLength: 8)
                             if downloading.contains(ep.id) {
@@ -595,12 +599,14 @@ struct PodcastShowView: View {
                                 Button {
                                     downloadAvailable(ep)
                                 } label: {
-                                    Image(systemName: "arrow.down.circle").font(.title3)
+                                    Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(.secondary)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
                         .padding(.horizontal).padding(.vertical, 10)
+                        .contentShape(Rectangle())
+                        .onTapGesture { Task { await playerCoordinator.open(item: item) } }
                         Divider().padding(.leading)
                     }
                 }
@@ -859,6 +865,25 @@ func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryIt
         ),
         addedAt: episode.pubDate
     )
+}
+
+/// Feed-only-Folge einer ABS-Show → abspielbares `rss:`-Item: streamt vom
+/// Original-Host, Fortschritt läuft lokal+iCloud (kein Server-Download nötig).
+/// Gleiche `rss:<feedKey>:<guid>`-ID wie RSS/PodcastIndex → gemeinsamer
+/// Fortschritt, und die Basis für den späteren Server-Handoff.
+@MainActor
+func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
+    let guid = "rss:\(PodcastSubscriptions.feedKey(show.feedURL)):\(feed.id)"
+    return LibraryItem(
+        id: guid,
+        media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(
+                title: feed.title, authorName: show.title, narratorName: nil,
+                seriesName: show.title, genres: nil, publishedYear: nil, description: nil),
+            duration: feed.duration, chapters: nil,
+            tracks: [ABSAudioTrack(index: 0, startOffset: nil, duration: feed.duration,
+                                   contentUrl: feed.enclosureUrl, metadata: nil)]),
+        addedAt: feed.publishedAt)
 }
 
 // MARK: - Quellen-bewusster Gehört-Zustand
