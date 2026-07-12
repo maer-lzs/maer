@@ -1,20 +1,20 @@
 import SwiftUI
 
-/// Vollflächiges Such-Overlay im Glas-Look des großen Players: fährt von
-/// unten hoch (Bibliothek scheint durch), Suchfeld mit Auto-Fokus und
-/// Echtzeit-Filterung, Bereichs-Chips (Alle/Autor/Genre/Serie) und
-/// Ergebnis-ZEILEN mit kleinen Cover-Thumbnails statt eines Grids.
-/// Gruppen-Bereiche öffnen ihre Bücher als Drill-down IN der Overlay;
-/// ein Buch-Tap schließt die Overlay und pusht die Detailseite.
+/// Full-screen search overlay in the glass look of the large player: slides up
+/// from the bottom (library shows through), search field with auto-focus and
+/// real-time filtering, scope chips (All/Author/Genre/Series) and result ROWS
+/// with small cover thumbnails instead of a grid. Group scopes open their books
+/// as a drill-down IN the overlay; a book tap closes the overlay and pushes the
+/// detail page.
 struct SearchOverlay: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
     let provider: any AudioProvider
-    /// Kontext: Hörbücher = Bibliothekssuche, Podcasts = Verzeichnis-Suche
-    /// (Apple/PodcastIndex) zum Abonnieren. Die Lupe folgt dem aktiven Tab.
+    /// Context: audiobooks = library search, podcasts = directory search
+    /// (Apple/PodcastIndex) to subscribe. The magnifier follows the active tab.
     let mediaType: MediaType
     let topInset: CGFloat
     let presentHeight: CGFloat
-    /// Buch gewählt: Aufrufer schließt die Overlay und pusht die Detailseite.
+    /// Book selected: the caller closes the overlay and pushes the detail page.
     let onSelect: (LibraryEntry) -> Void
     let onDismiss: () -> Void
 
@@ -46,18 +46,17 @@ struct SearchOverlay: View {
     @State private var searchText = ""
     @State private var scope: Scope = .all
     @State private var drilldown: Drilldown?
-    /// Während des Zufahrens die Tastatur-Safe-Area ignorieren: ihr
-    /// gleichzeitiges Verschwinden würde das Sheet mitten in der Abfahrt
-    /// re-layouten (sichtbares Ruckeln).
+    /// Ignore the keyboard safe area while closing: its simultaneous
+    /// disappearance would re-layout the sheet mid-descent (visible stutter).
     @State private var isDismissing = false
-    /// Offset-Kanäle wie beim FullPlayerOverlay: @GestureState folgt dem
-    /// Finger verzögerungsfrei (und resettet instant), releaseOffset fährt
-    /// Ein-/Ausblenden und übernimmt beim Loslassen nahtlos.
+    /// Offset channels as in FullPlayerOverlay: @GestureState follows the finger
+    /// without delay (and resets instantly), releaseOffset drives show/hide and
+    /// takes over seamlessly on release.
     @GestureState private var dragOffset: CGFloat = 0
     @State private var releaseOffset: CGFloat
     @FocusState private var searchFocused: Bool
 
-    /// Fläche für Feld/Chips/Buttons auf dem immer dunklen Glas.
+    /// Fill for field/chips/buttons on the always-dark glass.
     private let controlFill = Color.white.opacity(0.12)
     private let selectedFill = Color.white.opacity(0.2)
 
@@ -80,7 +79,7 @@ struct SearchOverlay: View {
         _releaseOffset = State(initialValue: presentHeight)
     }
 
-    /// 0 (unten) … 1 (voll präsentiert) — steuert den Dim hinter dem Sheet.
+    /// 0 (bottom) … 1 (fully presented) — controls the dim behind the sheet.
     private var presentProgress: CGFloat {
         guard presentHeight > 0 else { return 1 }
         let visibleOffset = max(0, releaseOffset + dragOffset)
@@ -89,18 +88,18 @@ struct SearchOverlay: View {
 
     var body: some View {
         ZStack {
-            // Leichter Dim zwischen Bibliothek und Glas-Sheet — fährt mit der
-            // Präsentation mit (beim Runterziehen kommt die Bibliothek also
-            // stufenlos wieder hervor) und schluckt Berührungen darunter.
+            // Light dim between library and glass sheet — follows the
+            // presentation (so pulling down brings the library back gradually)
+            // and swallows touches underneath.
             Color.black.opacity(0.35 * presentProgress)
                 .ignoresSafeArea()
 
             searchSheet
         }
         .onAppear {
-            // BEWUSST kein Auto-Fokus: die Overlay öffnet als Browse-Ansicht
-            // (Listen sind ohne Tastatur nutzbar) — die Tastatur kommt erst,
-            // wenn der Nutzer das Feld selbst antippt.
+            // DELIBERATELY no auto-focus: the overlay opens as a browse view
+            // (lists are usable without the keyboard) — the keyboard comes only
+            // when the user taps the field themselves.
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 releaseOffset = 0
             }
@@ -131,20 +130,20 @@ struct SearchOverlay: View {
         .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background { containerGlass }
-        // Die GANZE Fläche fängt Berührungen: ohne das reichen Taps/Scrolls
-        // in leeren Bereichen zur Bibliothek (und Bottom-Leiste) DURCH.
-        // Der Tap aufs Leere schiebt nebenbei die Tastatur weg; Buttons und
-        // Liste im Overlay behalten Vorrang (Kind-Gesten gewinnen).
+        // The WHOLE area catches touches: without this, taps/scrolls in empty
+        // areas pass THROUGH to the library (and bottom bar). Tapping empty space
+        // also dismisses the keyboard; buttons and the list in the overlay keep
+        // priority (child gestures win).
         .contentShape(Rectangle())
         .onTapGesture { searchFocused = false }
         .offset(y: max(0, releaseOffset + dragOffset))
-        // Container-Ränder ignorieren, die TASTATUR aber nur solange das
-        // Sheet steht — beim Zufahren wird sie mit ignoriert, sonst ruckelt
-        // ihr gleichzeitiges Verschwinden in die Abfahrt hinein.
+        // Ignore container edges, but the KEYBOARD only while the sheet stands —
+        // on close it is ignored too, otherwise its simultaneous disappearance
+        // stutters into the descent.
         .ignoresSafeArea(isDismissing ? .all : .container)
-        // Wie der große Player IMMER dunkel — „vollflächiges Glas-Sheet =
-        // dunkel" ist die etablierte Designsprache; heller Text auf dunklem
-        // Glas bleibt in jedem System-Schema gut lesbar.
+        // Like the large player ALWAYS dark — "full-screen glass sheet = dark"
+        // is the established design language; light text on dark glass stays
+        // readable in every system scheme.
         .environment(\.colorScheme, .dark)
     }
 
@@ -155,8 +154,8 @@ struct SearchOverlay: View {
             Capsule()
                 .fill(Color.primary.opacity(0.4))
                 .frame(width: 40, height: 5)
-                // Großzügige Greifzone: die 5-pt-Kapsel selbst wäre
-                // praktisch untreffbar.
+                // Generous grab zone: the 5-pt capsule itself would be
+                // practically unhittable.
                 .frame(maxWidth: .infinity, minHeight: 36)
                 .contentShape(Rectangle())
                 .gesture(dismissDrag)
@@ -183,9 +182,8 @@ struct SearchOverlay: View {
                     TextField(
                         "",
                         text: $searchText,
-                        // Eigener Prompt statt Systemfarbe: das Standard-
-                        // Placeholder-Grau säuft auf dem durchscheinenden
-                        // Glas ab.
+                        // Own prompt instead of the system color: the default
+                        // placeholder gray drowns on the translucent glass.
                         prompt: Text(mediaType == .podcasts ? "Search Podcasts" : "Title, author, series")
                             .foregroundStyle(Color.white.opacity(0.65))
                     )
@@ -224,7 +222,7 @@ struct SearchOverlay: View {
         }
     }
 
-    /// Ausreichend große Chips (44 pt), lokaler State → sofortige Reaktion.
+    /// Sufficiently large chips (44 pt), local state → instant reaction.
     private var scopeChips: some View {
         HStack(spacing: 8) {
             ForEach(Scope.allCases, id: \.self) { s in
@@ -248,7 +246,7 @@ struct SearchOverlay: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Podcast-Verzeichnis
+    // MARK: - Podcast directory
 
     private var podcastSourcePicker: some View {
         Picker("Search source", selection: $podcastSource) {
@@ -352,7 +350,7 @@ struct SearchOverlay: View {
         isSearchingPodcasts = false
     }
 
-    // MARK: - Ergebnisse
+    // MARK: - Results
 
     @ViewBuilder
     private var resultsList: some View {
@@ -478,7 +476,7 @@ struct SearchOverlay: View {
         .clipShape(shape)
     }
 
-    /// Cover-Thumbnail direkt aus einer URL (Podcast-Verzeichnis-Treffer).
+    /// Cover thumbnail directly from a URL (podcast directory result).
     private func thumbnail(for url: URL?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         return Group {
@@ -504,20 +502,20 @@ struct SearchOverlay: View {
             .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Daten
+    // MARK: - Data
 
     private var trimmedQuery: String {
         searchText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Leeres Feld = alle Bücher alphabetisch (Browse-Gefühl).
+    /// Empty field = all books alphabetically (browse feel).
     private var allBooksSorted: [LibraryEntry] {
         libraryViewModel.entries.sorted {
             $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
         }
     }
 
-    /// Echtzeit-Filter über Titel, Autor, Erzähler und Serie.
+    /// Real-time filter over title, author, narrator and series.
     private func filteredBooks(_ books: [LibraryEntry]) -> [LibraryEntry] {
         let query = trimmedQuery
         guard !query.isEmpty else { return books }
@@ -540,11 +538,11 @@ struct SearchOverlay: View {
         }
     }
 
-    /// Serien als (Name, Bände)-Gruppen aus der UNGEFILTERTEN Bibliothek —
-    /// die Suche durchsucht immer alles. (`seriesGroupedEntries` wendet den
-    /// Bibliotheksfilter an: mit Filter „Ungehört" fehlten hier sonst alle
-    /// durchgehörten Serien.) Gruppierung wie die Stapel (baseSeriesName,
-    /// case-insensitiv), Bände in Serienreihenfolge, auch Ein-Buch-Serien.
+    /// Series as (name, volumes) groups from the UNFILTERED library — search
+    /// always searches everything. (`seriesGroupedEntries` applies the library
+    /// filter: with the "Unfinished" filter all fully-played series would be
+    /// missing here otherwise.) Grouping like the stacks (baseSeriesName,
+    /// case-insensitive), volumes in series order, single-book series too.
     private var seriesGroups: [(name: String, entries: [LibraryEntry])] {
         var indexByKey: [String: Int] = [:]
         var groups: [(name: String, entries: [LibraryEntry])] = []
@@ -569,8 +567,8 @@ struct SearchOverlay: View {
 
     // MARK: - Dismiss
 
-    /// GLOBAL gemessen — lokale Koordinaten einer sich mitbewegenden Ebene
-    /// koppeln auf sich selbst zurück (das Geruckel der Player-Saga).
+    /// Measured GLOBALLY — local coordinates of a moving layer couple back onto
+    /// themselves (the stutter of the player saga).
     private var dismissDrag: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
@@ -579,7 +577,7 @@ struct SearchOverlay: View {
             .onEnded { value in
                 let end = max(0, value.translation.height)
                 let shouldDismiss = end > 120 || value.predictedEndTranslation.height > 240
-                // Offset nahtlos übernehmen (GestureState resettet instant).
+                // Take over the offset seamlessly (GestureState resets instantly).
                 releaseOffset = end
                 if shouldDismiss {
                     isDismissing = true
@@ -617,10 +615,10 @@ struct SearchOverlay: View {
         }
     }
 
-    /// Statisches Glas wie beim großen Player: immer dunkel getönt, kräftig
-    /// genug für gut lesbare Listen — die Bibliothek scheint nur als Ahnung
-    /// durch. Neutral ohne Cover-Akzent: die Suche gehört zur ganzen
-    /// Bibliothek, nicht zum gerade spielenden Buch.
+    /// Static glass like the large player: always dark-tinted, strong enough for
+    /// readable lists — the library only shows through faintly. Neutral without a
+    /// cover accent: search belongs to the whole library, not the currently
+    /// playing book.
     @ViewBuilder
     private var containerGlass: some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
