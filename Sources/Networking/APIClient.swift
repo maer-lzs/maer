@@ -26,8 +26,8 @@ enum APIError: LocalizedError {
         }
     }
 
-    /// Rohen Fehler-Body (oft eine ganze HTML- oder JSON-Seite) zu einer kurzen,
-    /// lesbaren Zeile eindampfen: Tags entfernen, Whitespace glätten, kürzen.
+    /// Condense a raw error body (often a whole HTML or JSON page) into a short,
+    /// readable line: strip tags, collapse whitespace, truncate.
     static func sanitize(_ body: String) -> String {
         var text = body.replacingOccurrences(
             of: "<[^>]+>", with: " ", options: .regularExpression)
@@ -38,23 +38,22 @@ enum APIError: LocalizedError {
     }
 }
 
-/// Schlanker API-Client für Audiobookshelf.
+/// Slim API client for Audiobookshelf.
 ///
-/// Bewusste Design-Entscheidung: Es wird KEIN Username/Passwort-Login verwendet.
-/// Stattdessen wird ein langlebiger API-Token verwendet (aus der Audiobookshelf
-/// Weboberfläche: Einstellungen -> Benutzer -> eigenen Account öffnen -> Token,
-/// oder bei neueren Versionen: Einstellungen -> API-Keys). Das ist genau das
-/// Prinzip, das auch das bestehende Scan-Script auf dem Pi nutzt (.abs-token).
-/// Dadurch ist der Client unabhängig davon, ob der Server das alte oder das
-/// neue JWT-Access/Refresh-Token-System verwendet.
+/// Deliberate design decision: NO username/password login is used. Instead a
+/// long-lived API token is used (from the Audiobookshelf web interface:
+/// Settings -> Users -> open your own account -> token, or on newer versions:
+/// Settings -> API Keys). This is the same principle the existing scan script on
+/// the Pi uses (.abs-token). It makes the client independent of whether the
+/// server uses the old or the new JWT access/refresh token system.
 @MainActor
 final class APIClient {
     private(set) var baseURL: URL
     private(set) var token: String?
 
-    /// Wird aufgerufen, sobald ein Request mit 401 (Token abgelehnt) scheitert.
-    /// Die App nutzt das, um automatisch zurück zum Setup-Screen zu wechseln,
-    /// statt nur eine Fehlermeldung mitten in der Bibliothek zu zeigen.
+    /// Called as soon as a request fails with 401 (token rejected). The app uses
+    /// it to switch back to the setup screen automatically, instead of just
+    /// showing an error in the middle of the library.
     var onUnauthorized: (() -> Void)?
 
     init(baseURL: URL, token: String? = nil) {
@@ -72,10 +71,10 @@ final class APIClient {
 
     // MARK: Login
 
-    /// Tauscht Benutzername/Passwort gegen einen Token (POST /login, liegt
-    /// an der Wurzel, nicht unter /api). Bevorzugt den langlebigen Legacy-
-    /// Token; neuere JWT-Server liefern nur `accessToken` (läuft ab — die
-    /// bestehende 401-Behandlung führt dann zurück zum Setup).
+    /// Exchanges username/password for a token (POST /login, at the root, not
+    /// under /api). Prefers the long-lived legacy token; newer JWT servers only
+    /// return `accessToken` (which expires — the existing 401 handling then
+    /// leads back to setup).
     func login(username: String, password: String) async throws -> String {
         let data = try await send(
             method: "POST",
@@ -113,10 +112,10 @@ final class APIClient {
         }
     }
 
-    /// Eine Seite der Bibliotheksliste (Server-Paging) — Basis fürs progressive
-    /// Laden: Seite 0 erscheint sofort, der Rest wird im Hintergrund
-    /// nachgezogen. Gibt zusätzlich die Gesamtzahl zurück, damit der Aufrufer
-    /// weiß, wann alles geladen ist.
+    /// One page of the library list (server paging) — basis for progressive
+    /// loading: page 0 appears immediately, the rest is fetched in the
+    /// background. Also returns the total count so the caller knows when
+    /// everything is loaded.
     func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
         -> (items: [LibraryItem], total: Int) {
         func fetch(minified: Bool) async throws -> LibraryItemsResponse {
@@ -134,11 +133,10 @@ final class APIClient {
         return (response.results, response.total ?? response.results.count)
     }
 
-    /// „Continue Listening" + „Recently Added" aus der ABS-`personalized`-Ansicht
-    /// in EINEM kleinen Request — damit die oberen Reihen sofort vollständig
-    /// stehen, auch während die Gesamtliste noch progressiv nachlädt. Best
-    /// effort: bei unerwartetem Shape leere Reihen (der progressive Voll-Load
-    /// füllt sie ohnehin nach).
+    /// "Continue Listening" + "Recently Added" from the ABS `personalized` view
+    /// in ONE small request — so the top rows are complete immediately, even
+    /// while the full list still loads progressively. Best effort: empty rows on
+    /// an unexpected shape (the progressive full load fills them anyway).
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed {
         let data = try await get(
             path: "api/libraries/\(libraryId)/personalized",
@@ -154,9 +152,8 @@ final class APIClient {
                            recentlyAdded: entities("recently-added"))
     }
 
-    /// Alle Fortschritts-Einträge des Nutzers auf einmal. Damit lässt sich die
-    /// komplette Bibliotheksliste mit Balken/Status versehen, ohne pro Buch
-    /// einen eigenen Request zu machen.
+    /// All of the user's progress entries at once. Lets the whole library list
+    /// be annotated with bars/status without a per-book request.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         let data = try await get(path: "api/me")
         let me = try decode(MeResponse.self, from: data)
@@ -223,9 +220,9 @@ final class APIClient {
             "currentTime": currentTime,
             "isFinished": isFinished
         ]
-        // duration/progress nur mitschicken, wenn wir die Dauer wirklich
-        // kennen — ein explizites progress: 0 würde einen evtl. vorhandenen
-        // Server-Fortschritt überschreiben (Multi-File-Bücher ohne Duration).
+        // Only send duration/progress when we actually know the duration — an
+        // explicit progress: 0 would overwrite any existing server progress
+        // (multi-file books without a duration).
         if duration > 0 {
             body["duration"] = duration
             body["progress"] = min(max(currentTime / duration, 0), 1)
@@ -279,20 +276,20 @@ final class APIClient {
 
     // MARK: Podcast-Verwaltung (Abo anlegen/entfernen)
 
-    /// Feed server-seitig parsen (Metadaten für ein neues Abo).
+    /// Parse a feed server-side (metadata for a new subscription).
     func fetchPodcastFeed(rssFeed: String) async throws -> PodcastFeedMetadata {
         let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
         return try decode(PodcastFeedResponse.self, from: data).podcast.metadata
     }
 
-    /// Ordner einer Bibliothek (Zielpfad für ein neues Abo). Der Detail-Endpoint
-    /// liefert das Library-Objekt direkt (folders auf oberster Ebene).
+    /// Folders of a library (target path for a new subscription). The detail
+    /// endpoint returns the library object directly (folders at the top level).
     func fetchLibraryFolders(libraryId: String) async throws -> [ABSFolder] {
         let data = try await get(path: "api/libraries/\(libraryId)")
         return (try decode(LibraryWithFolders.self, from: data).folders) ?? []
     }
 
-    /// Podcast server-seitig anlegen (POST /api/podcasts). Braucht Upload-Rechte.
+    /// Create a podcast server-side (POST /api/podcasts). Needs upload rights.
     func createPodcast(libraryId: String, folderId: String, path: String,
                        metadata: PodcastFeedMetadata, autoDownload: Bool) async throws {
         let meta: [String: Any] = [
@@ -311,21 +308,21 @@ final class APIClient {
         _ = try await send(method: "POST", path: "api/podcasts", body: body)
     }
 
-    /// Cover eines Items server-seitig aus einer URL setzen (ABS lädt das Bild
-    /// selbst herunter). Für hochauflösende Feed-Cover (itunes:image), die ABS
-    /// beim Anlegen teils durch das kleine RSS-`<image>` ersetzt.
+    /// Set an item's cover server-side from a URL (ABS downloads the image
+    /// itself). For high-resolution feed covers (itunes:image) that ABS
+    /// sometimes replaces with the small RSS `<image>` on creation.
     func updateItemCover(itemId: String, coverURL: String) async throws {
         _ = try await send(method: "POST", path: "api/items/\(itemId)/cover",
                            body: ["url": coverURL])
     }
 
-    /// Library-Item (Podcast-Show) server-seitig löschen. Braucht Delete-Rechte.
+    /// Delete a library item (podcast show) server-side. Needs delete rights.
     func deleteLibraryItem(itemId: String) async throws {
         _ = try await send(method: "DELETE", path: "api/items/\(itemId)")
     }
 
-    /// Alle Folgen eines Feeds (roh, damit sie 1:1 an `download-episodes`
-    /// zurückgegeben werden können — der Server erwartet sein Feed-Format).
+    /// All episodes of a feed (raw, so they can be passed 1:1 to
+    /// `download-episodes` — the server expects its own feed format).
     func fetchFeedEpisodes(rssFeed: String) async throws -> [[String: Any]] {
         let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -334,18 +331,18 @@ final class APIClient {
         return episodes
     }
 
-    /// Ausgewählte Feed-Folgen server-seitig herunterladen lassen.
+    /// Have selected feed episodes downloaded server-side.
     func downloadEpisodes(libraryItemId: String, episodes: [[String: Any]]) async throws {
         _ = try await sendJSON(method: "POST",
                                path: "api/podcasts/\(libraryItemId)/download-episodes",
                                json: episodes)
     }
 
-    // MARK: URLs für Cover und Streaming
+    // MARK: URLs for cover and streaming
 
-    /// Cover-Bild-URL. AsyncImage kann keine Custom-Header setzen, deshalb hier
-    /// der Token als Query-Parameter (für GET-Requests von Audiobookshelf offiziell
-    /// unterstützt). Schlimmstenfalls fehlt nur ein Cover-Bild, keine Kernfunktion.
+    /// Cover image URL. AsyncImage cannot set custom headers, so the token goes
+    /// as a query parameter here (officially supported for Audiobookshelf GET
+    /// requests). Worst case only a cover image is missing, no core function.
     func coverURL(forItemId itemId: String) -> URL? {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("api/items/\(itemId)/cover"),
@@ -359,12 +356,12 @@ final class APIClient {
         return components.url
     }
 
-    /// Absolute URL für einen Audio-Track. Die Authentifizierung erfolgt beim
-    /// Streaming NICHT per Query-Parameter, sondern per Authorization-Header
-    /// (siehe PlayerViewModel), das ist der robustere, offiziell unterstützte Weg
-    /// für AVPlayer (AVURLAssetHTTPHeaderFieldsKey).
+    /// Absolute URL for an audio track. Authentication for streaming is done NOT
+    /// via query parameter but via the Authorization header (see PlayerViewModel);
+    /// that is the more robust, officially supported way for AVPlayer
+    /// (AVURLAssetHTTPHeaderFieldsKey).
     func streamURL(forContentPath contentPath: String) -> URL? {
-        // Manche Server-Konfigurationen liefern bereits absolute URLs.
+        // Some server configurations already return absolute URLs.
         if contentPath.hasPrefix("http://") || contentPath.hasPrefix("https://") {
             return URL(string: contentPath)
         }
@@ -411,8 +408,8 @@ final class APIClient {
         return data
     }
 
-    /// Wie `send`, aber mit beliebigem JSON-Body (Dict ODER Array) — für
-    /// Endpoints wie `download-episodes`, die eine JSON-Liste erwarten.
+    /// Like `send`, but with an arbitrary JSON body (dict OR array) — for
+    /// endpoints like `download-episodes` that expect a JSON list.
     private func sendJSON(method: String, path: String, json: Any) async throws -> Data {
         let url = baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)

@@ -1,21 +1,20 @@
 import UIKit
 import ImageIO
 
-/// Zweistufiger Cache für Cover-Bilder: Arbeitsspeicher + Festplatte.
-/// Festplatte in ZWEI Ebenen:
-/// - `Caches/CoverCache`: normale Bibliothek — darf iOS bei Speicherdruck purgen.
-/// - `Application Support/Covers`: Cover HERUNTERGELADENER Bücher — persistent,
-///   damit das Offline-Versprechen nicht von iOS-Aufräumläufen abhängt.
+/// Two-tier cache for cover images: memory + disk. Disk in TWO tiers:
+/// - `Caches/CoverCache`: normal library — iOS may purge it under memory pressure.
+/// - `Application Support/Covers`: covers of DOWNLOADED books — persistent, so
+///   the offline promise does not depend on iOS cleanup runs.
 ///
-/// Bilder werden als ORIGINAL-Bytes gespeichert (kein JPEG-Re-Encode mehr),
-/// damit die volle Qualität vom Server erhalten bleibt.
+/// Images are stored as ORIGINAL bytes (no JPEG re-encode) to keep the full
+/// quality from the server.
 @MainActor
 final class ImageCache {
     static let shared = ImageCache()
 
     private let memoryCache = NSCache<NSString, UIImage>()
-    /// Läuft gerade ein Prefetch für dieses Cover? Verhindert, dass dasselbe
-    /// Cover mehrfach parallel geladen wird (Prefetch + sichtbare Zelle).
+    /// Is a prefetch running for this cover? Prevents loading the same cover
+    /// multiple times in parallel (prefetch + visible cell).
     private var inFlight = Set<URL>()
     /// Small tier derived from the full covers for grid/row cells: decoding
     /// the full ~2000 px cover for a ~150 pt cell costs ~16 MB RAM per image
@@ -39,7 +38,7 @@ final class ImageCache {
         let shortSidePixels = screen.map { min($0.bounds.width, $0.bounds.height) * $0.scale } ?? 1500
         maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
         memoryCache.countLimit = 300
-        // Byte-Deckel gegen Memory-Pressure durch große decodierte Cover.
+        // Byte cap against memory pressure from large decoded covers.
         memoryCache.totalCostLimit = 150 * 1024 * 1024
         thumbCache.countLimit = 600
         thumbCache.totalCostLimit = 40 * 1024 * 1024
@@ -51,15 +50,15 @@ final class ImageCache {
         where !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
-        // Persistente Cover nicht ins Backup (können jederzeit neu geladen werden).
+        // Keep persistent covers out of backups (can be re-downloaded anytime).
         var values = URLResourceValues()
         values.isExcludedFromBackup = true
         var dir = persistentDirectory
         try? dir.setResourceValues(values)
     }
 
-    /// Nur der URL-Pfad als Schlüssel — der Token in der Query würde den Key
-    /// sonst bei Token-Wechsel ändern.
+    /// Only the URL path as the key — the token in the query would otherwise
+    /// change the key on token rotation.
     private func key(for url: URL) -> String {
         url.path.replacingOccurrences(of: "/", with: "_")
     }
@@ -75,10 +74,10 @@ final class ImageCache {
         return cg.width * cg.height * 4
     }
 
-    /// Bilder > maxPixelSize hochwertig (ImageIO) verkleinern; kleinere
-    /// Originale unangetastet lassen. nonisolated + statisch: läuft auf einem
-    /// Hintergrund-Thread, NICHT auf dem MainActor (ImageIO-Decodes großer
-    /// Cover würden sonst das UI ruckeln lassen).
+    /// Downsample images > maxPixelSize at high quality (ImageIO); leave smaller
+    /// originals untouched. nonisolated + static: runs on a background thread,
+    /// NOT on the MainActor (ImageIO decodes of large covers would otherwise
+    /// stutter the UI).
     private nonisolated static func downsampled(_ data: Data, maxPixelSize: CGFloat) -> (UIImage, Data)? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
@@ -109,9 +108,9 @@ final class ImageCache {
         await thumbnail(for: url, maxPixelSize: thumbPixelSize)
     }
 
-    /// Wie oben, aber mit frei wählbarer Zielgröße (z. B. 800 px für die großen
-    /// „Als Nächstes"-Karten). Der Cache ist größen-bewusst gekeyt, damit sich
-    /// 400- und 800-px-Varianten desselben Covers nicht überschreiben.
+    /// As above, but with a freely chosen target size (e.g. 800 px for the large
+    /// "Up Next" cards). The cache is size-aware keyed so 400- and 800-px
+    /// variants of the same cover do not overwrite each other.
     func thumbnail(for url: URL, maxPixelSize: CGFloat) async -> UIImage? {
         let fileKey = key(for: url)
         let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
@@ -161,12 +160,12 @@ final class ImageCache {
         return nil
     }
 
-    /// Speichert auf Anzeigegröße reduziert (nicht pixelig, s. maxPixelSize).
-    /// Downsampling + Disk-Write laufen im Hintergrund; der Memory-Cache wird
-    /// danach mit der verkleinerten Fassung aktualisiert.
+    /// Stores it reduced to display size (not pixelated, see maxPixelSize).
+    /// Downsampling + disk write run in the background; the memory cache is then
+    /// updated with the downsized version.
     func set(_ image: UIImage, data: Data, for url: URL) {
         let cacheKey = key(for: url)
-        // Sofort verfügbar machen (Original, kostenbegrenzt durch NSCache).
+        // Make it available immediately (original, cost-limited by NSCache).
         memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
         let target = diskDirectory.appendingPathComponent(cacheKey)
         let maxSize = maxPixelSize
@@ -182,8 +181,8 @@ final class ImageCache {
         }
     }
 
-    /// Cover eines heruntergeladenen Buchs in den persistenten Ordner heben
-    /// (aus dem Cache verschieben oder frisch laden).
+    /// Lift a downloaded book's cover into the persistent folder (move it out of
+    /// the cache or fetch it fresh).
     func makePersistent(itemId: String, coverURL: URL?) async {
         let cacheKey = key(forItemId: itemId)
         let target = persistentDirectory.appendingPathComponent(cacheKey)
@@ -196,16 +195,16 @@ final class ImageCache {
         guard let coverURL,
               let (data, _) = try? await URLSession.shared.data(from: coverURL) else { return }
         let maxSize = maxPixelSize
-        // Downsampling + Write im Hintergrund, Abschluss abwarten (Aufrufer
-        // verlässt sich darauf, dass das Cover danach persistent liegt).
+        // Downsampling + write in the background, await completion (the caller
+        // relies on the cover being persistent afterwards).
         await Task.detached(priority: .utility) {
             guard let stored = Self.downsampled(data, maxPixelSize: maxSize) else { return }
             try? stored.1.write(to: target, options: .atomic)
         }.value
     }
 
-    /// Beim Löschen eines Downloads: persistentes Cover zurück in den
-    /// purgebaren Cache verschieben (bleibt sichtbar, ist aber aufräumbar).
+    /// On deleting a download: move the persistent cover back into the purgeable
+    /// cache (stays visible, but is now reclaimable).
     func removePersistent(itemId: String) {
         let cacheKey = key(forItemId: itemId)
         let source = persistentDirectory.appendingPathComponent(cacheKey)
@@ -217,20 +216,20 @@ final class ImageCache {
         }
     }
 
-    /// Cache-Dateien älter als das werden gelöscht — dadurch wird ein
-    /// serverseitig GEÄNDERTES Cover spätestens nach dieser Zeit neu geladen
-    /// (der Cache-Key ist bewusst pfad-stabil und invalidiert sonst nie).
+    /// Cache files older than this are deleted — so a server-side CHANGED cover
+    /// is re-fetched after this time at the latest (the cache key is
+    /// deliberately path-stable and otherwise never invalidates).
     private let cacheTTL: TimeInterval = 30 * 24 * 3600
-    /// Obergrenze für den purgebaren Cover-Cache.
+    /// Upper bound for the purgeable cover cache.
     private let maxCacheBytes = 200 * 1024 * 1024
 
-    /// Wartungspass, einmal pro App-Start:
-    /// 1) Persistente Cover ohne zugehörigen Download zurück in den Cache.
-    /// 2) Cache-Dateien über TTL löschen (Cover-Aktualisierung).
-    /// 3) Cache auf maxCacheBytes deckeln, älteste zuerst.
+    /// Maintenance pass, once per app start:
+    /// 1) Persistent covers without an associated download back into the cache.
+    /// 2) Delete cache files over TTL (cover refresh).
+    /// 3) Cap the cache at maxCacheBytes, oldest first.
     func performMaintenance(activeDownloadIds: Set<String>) {
-        // Reine Dateisystem-Arbeit — komplett im Hintergrund, nicht auf dem
-        // MainActor (kann bei großen Bibliotheken hunderte Dateien anfassen).
+        // Pure file-system work — entirely in the background, not on the
+        // MainActor (may touch hundreds of files with large libraries).
         let persistent = persistentDirectory
         let cache = diskDirectory
         let ttl = cacheTTL
@@ -238,7 +237,7 @@ final class ImageCache {
         Task.detached(priority: .utility) {
             let fm = FileManager.default
 
-            // 1) Persistente Cover ohne Download zurück in den Cache.
+            // 1) Persistent covers without a download back into the cache.
             if let files = try? fm.contentsOfDirectory(at: persistent, includingPropertiesForKeys: nil) {
                 for file in files {
                     let name = file.lastPathComponent
@@ -254,7 +253,7 @@ final class ImageCache {
                 }
             }
 
-            // 2) TTL + 3) Größendeckel.
+            // 2) TTL + 3) size cap.
             guard let files = try? fm.contentsOfDirectory(
                 at: cache,
                 includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
@@ -279,7 +278,7 @@ final class ImageCache {
         }
     }
 
-    /// Größe des purgebaren Cover-Caches in Bytes (für die Einstellungen).
+    /// Size of the purgeable cover cache in bytes (for the settings).
     func cacheSizeBytes() -> Int64 {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: diskDirectory, includingPropertiesForKeys: [.fileSizeKey]
@@ -297,9 +296,9 @@ final class ImageCache {
         for file in files { try? FileManager.default.removeItem(at: file) }
     }
 
-    /// Lädt ein Cover im Hintergrund vor, falls es noch nicht im Cache ist.
-    /// Nutzt die getimeoutete Maer-Session (kein ewig hängender Request) und
-    /// dedupliziert parallele Anfragen fürs gleiche Cover.
+    /// Prefetches a cover in the background if it is not cached yet. Uses the
+    /// timeouted Maer session (no forever-hanging request) and deduplicates
+    /// parallel requests for the same cover.
     func preload(_ url: URL) async {
         guard image(for: url) == nil, !inFlight.contains(url) else { return }
         inFlight.insert(url)
