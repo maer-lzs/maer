@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// Zentrale Einstellungen: Wiedergabe, Quellen, Downloads/Speicher, Sync,
-/// Darstellung, Statistik, Server/Abmelden, App-Info. Jede Zeile mit Icon.
+/// Zentrale Einstellungen, oben in Pill-Tabs aufgeteilt: „Allgemein" (Darstellung,
+/// Speicher, Sync, Server, App-Info) und je Medientyp „Hörbücher" (Wiedergabe,
+/// Bibliothek, Statistik, lokale Dateien) und „Podcasts" (Quellen, iCloud-Sync).
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// For reloading after a library switch — the settings are pushed from
@@ -9,6 +10,19 @@ struct SettingsView: View {
     var libraryViewModel: LibraryViewModel? = nil
     @ObservedObject private var downloadManager = DownloadManager.shared
     let onLogout: () -> Void
+
+    private enum Tab: String, CaseIterable, Identifiable {
+        case general, audiobooks, podcasts
+        var id: String { rawValue }
+        var label: LocalizedStringKey {
+            switch self {
+            case .general: return "General"
+            case .audiobooks: return "Audiobooks"
+            case .podcasts: return "Podcasts"
+            }
+        }
+    }
+    @State private var tab: Tab = .general
 
     @State private var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
@@ -35,19 +49,30 @@ struct SettingsView: View {
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
 
     var body: some View {
-        Form {
-            playbackSection
-            sourcesSection
-            downloadsSection
-            syncSection
-            appearanceSection
-            statsSection
-            serverSection
-            aboutSection
+        VStack(spacing: 0) {
+            pillTabs
+            Form {
+                switch tab {
+                case .general:
+                    appearanceSection
+                    storageSection
+                    syncSection
+                    serverSection
+                    aboutSection
+                case .audiobooks:
+                    playbackSection
+                    if availableLibraries.count > 1 { librarySection }
+                    localFilesSection
+                    statsSection
+                case .podcasts:
+                    podcastSourcesSection
+                    podcastSyncSection
+                }
+            }
+            .bottomBarClearance()
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
@@ -77,7 +102,146 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Wiedergabe
+    // MARK: - Pill-Tabs
+
+    private var pillTabs: some View {
+        HStack(spacing: 8) {
+            ForEach(Tab.allCases) { t in
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { tab = t }
+                } label: {
+                    Text(t.label)
+                        .font(.subheadline.weight(.medium))
+                        .padding(.vertical, 7)
+                        .padding(.horizontal, 16)
+                        .foregroundStyle(tab == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                        .background(
+                            tab == t ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.quaternary),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    // MARK: - Allgemein
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Picker(selection: $appearance) {
+                Text("System").tag("system")
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+            } label: {
+                Label("Appearance", systemImage: "circle.lefthalf.filled")
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    private var storageSection: some View {
+        Section {
+            Toggle(isOn: $warnCellular) {
+                Label("Warn When Not on Wi-Fi", systemImage: "wifi")
+            }
+            .onChange(of: warnCellular) { _, newValue in
+                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
+            }
+
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+            } label: {
+                Label("Downloads", systemImage: "arrow.down.circle")
+            }
+            Button(role: .destructive) {
+                showDeleteAllDownloads = true
+            } label: {
+                Label("Delete All Downloads", systemImage: "trash")
+            }
+            .disabled(downloadManager.downloadedItemIds.isEmpty)
+
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
+            } label: {
+                Label("Cover Cache", systemImage: "photo.on.rectangle")
+            }
+            Button {
+                ImageCache.shared.clearCache()
+                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
+            } label: {
+                Label("Clear Cover Cache", systemImage: "trash")
+            }
+        } header: {
+            Text("Storage")
+        } footer: {
+            Text("Deleting downloads never deletes listening progress.")
+        }
+    }
+
+    private var syncSection: some View {
+        Section {
+            LabeledContent {
+                Text("\(pendingSyncCount)")
+            } label: {
+                Label("Pending Updates", systemImage: "arrow.triangle.2.circlepath")
+            }
+            Button {
+                isSyncing = true
+                Task {
+                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
+                    pendingSyncCount = SyncQueue.shared.allPending().count
+                    isSyncing = false
+                }
+            } label: {
+                if isSyncing {
+                    ProgressView()
+                } else {
+                    Label("Sync Now", systemImage: "arrow.clockwise")
+                }
+            }
+            .disabled(pendingSyncCount == 0 || isSyncing)
+        } header: {
+            Text("Sync")
+        } footer: {
+            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
+        }
+    }
+
+    private var serverSection: some View {
+        Section("Server") {
+            LabeledContent {
+                Text(AppSession.shared.apiClient.baseURL.absoluteString)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            } label: {
+                Label("Address", systemImage: "server.rack")
+            }
+            Button(role: .destructive) {
+                showLogoutConfirm = true
+            } label: {
+                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        }
+    }
+
+    private var aboutSection: some View {
+        Section {
+            LabeledContent {
+                Text(Self.versionString)
+            } label: {
+                Label("Version", systemImage: "info.circle")
+            }
+        } footer: {
+            Text("Mär is an unofficial client for Audiobookshelf.")
+        }
+    }
+
+    // MARK: - Hörbücher
 
     private var playbackSection: some View {
         Section {
@@ -127,9 +291,22 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Quellen
+    private var librarySection: some View {
+        Section("Library") {
+            Picker(selection: $selectedLibraryId) {
+                ForEach(availableLibraries) { library in
+                    Text(library.name).tag(library.id)
+                }
+            } label: {
+                Label("Library", systemImage: "books.vertical")
+            }
+            .onChange(of: selectedLibraryId) { _, _ in
+                Task { await libraryViewModel?.loadLibrary() }
+            }
+        }
+    }
 
-    private var sourcesSection: some View {
+    private var localFilesSection: some View {
         Section("Sources") {
             NavigationLink {
                 LocalFilesView(onImported: {
@@ -138,109 +315,8 @@ struct SettingsView: View {
             } label: {
                 Label("Local Files", systemImage: "folder")
             }
-            NavigationLink {
-                PodcastSourceView()
-            } label: {
-                Label("Podcasts", systemImage: "mic")
-            }
         }
     }
-
-    // MARK: - Downloads & Speicher
-
-    private var downloadsSection: some View {
-        Section {
-            Toggle(isOn: $warnCellular) {
-                Label("Warn When Not on Wi-Fi", systemImage: "wifi")
-            }
-            .onChange(of: warnCellular) { _, newValue in
-                UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
-            }
-
-            LabeledContent {
-                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-            } label: {
-                Label("Downloads", systemImage: "arrow.down.circle")
-            }
-            Button(role: .destructive) {
-                showDeleteAllDownloads = true
-            } label: {
-                Label("Delete All Downloads", systemImage: "trash")
-            }
-            .disabled(downloadManager.downloadedItemIds.isEmpty)
-
-            LabeledContent {
-                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
-            } label: {
-                Label("Cover Cache", systemImage: "photo.on.rectangle")
-            }
-            Button {
-                ImageCache.shared.clearCache()
-                coverCacheBytes = ImageCache.shared.cacheSizeBytes()
-            } label: {
-                Label("Clear Cover Cache", systemImage: "trash")
-            }
-        } header: {
-            Text("Storage")
-        } footer: {
-            Text("Deleting downloads never deletes listening progress.")
-        }
-    }
-
-    // MARK: - Sync
-
-    private var syncSection: some View {
-        Section {
-            LabeledContent {
-                Text("\(pendingSyncCount)")
-            } label: {
-                Label("Pending Updates", systemImage: "arrow.triangle.2.circlepath")
-            }
-            Button {
-                isSyncing = true
-                Task {
-                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
-                    pendingSyncCount = SyncQueue.shared.allPending().count
-                    isSyncing = false
-                }
-            } label: {
-                if isSyncing {
-                    ProgressView()
-                } else {
-                    Label("Sync Now", systemImage: "arrow.clockwise")
-                }
-            }
-            .disabled(pendingSyncCount == 0 || isSyncing)
-
-            Toggle(isOn: $podcastICloudSync) {
-                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
-            }
-            .onChange(of: podcastICloudSync) { _, on in
-                if on { PodcastCloudSync.shared.start() }
-            }
-        } header: {
-            Text("Sync")
-        } footer: {
-            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible. iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled).")
-        }
-    }
-
-    // MARK: - Darstellung
-
-    private var appearanceSection: some View {
-        Section("Appearance") {
-            Picker(selection: $appearance) {
-                Text("System").tag("system")
-                Text("Light").tag("light")
-                Text("Dark").tag("dark")
-            } label: {
-                Label("Appearance", systemImage: "circle.lefthalf.filled")
-            }
-            .pickerStyle(.segmented)
-        }
-    }
-
-    // MARK: - Statistik
 
     private var statsSection: some View {
         Section {
@@ -252,50 +328,30 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Server
+    // MARK: - Podcasts
 
-    private var serverSection: some View {
-        Section("Server") {
-            LabeledContent {
-                Text(AppSession.shared.apiClient.baseURL.absoluteString)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+    private var podcastSourcesSection: some View {
+        Section("Sources") {
+            NavigationLink {
+                PodcastSourceView()
             } label: {
-                Label("Address", systemImage: "server.rack")
-            }
-            // Only shown when the server actually has several BOOK libraries —
-            // with a single one the picker would just be noise.
-            if availableLibraries.count > 1 {
-                Picker(selection: $selectedLibraryId) {
-                    ForEach(availableLibraries) { library in
-                        Text(library.name).tag(library.id)
-                    }
-                } label: {
-                    Label("Library", systemImage: "books.vertical")
-                }
-                .onChange(of: selectedLibraryId) { _, _ in
-                    Task { await libraryViewModel?.loadLibrary() }
-                }
-            }
-            Button(role: .destructive) {
-                showLogoutConfirm = true
-            } label: {
-                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                Label("Podcasts", systemImage: "mic")
             }
         }
     }
 
-    // MARK: - App-Info
-
-    private var aboutSection: some View {
+    private var podcastSyncSection: some View {
         Section {
-            LabeledContent {
-                Text(Self.versionString)
-            } label: {
-                Label("Version", systemImage: "info.circle")
+            Toggle(isOn: $podcastICloudSync) {
+                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
             }
+            .onChange(of: podcastICloudSync) { _, on in
+                if on { PodcastCloudSync.shared.start() }
+            }
+        } header: {
+            Text("Sync")
         } footer: {
-            Text("Mär is an unofficial client for Audiobookshelf.")
+            Text("iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server-based podcast sync (gpodder, Audiobookshelf) is configured under Sources → Podcasts.")
         }
     }
 

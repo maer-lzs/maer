@@ -3138,6 +3138,26 @@
           }
         }
       }
+    },
+    "General": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allgemein"
+          }
+        }
+      }
+    },
+    "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server-based podcast sync (gpodder, Audiobookshelf) is configured under Sources → Podcasts.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iCloud hält den Podcast-Fortschritt zwischen deinen Geräten synchron (iCloud muss aktiv sein). Server-basierter Podcast-Sync (gpodder, Audiobookshelf) wird unter Quellen → Podcasts eingerichtet."
+          }
+        }
+      }
     }
   },
   "version": "1.1"
