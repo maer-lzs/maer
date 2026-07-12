@@ -2,9 +2,9 @@ import Foundation
 import BackgroundTasks
 import UserNotifications
 
-/// Hintergrund-Aktualisierung der Podcast-Quellen: lädt Feeds + gpodder/ABS-Sync,
-/// benachrichtigt über neue Folgen und stößt Auto-Download an. Registrierung im
-/// `AppDelegate` beim Start, (Neu-)Planung beim Wechsel in den Hintergrund.
+/// Background refresh of the podcast sources: fetches feeds + gpodder/ABS sync,
+/// notifies about new episodes and triggers auto-download. Registered in
+/// `AppDelegate` at launch, (re)scheduled when moving to the background.
 @MainActor
 enum PodcastRefreshService {
     static let taskId = "de.lzs.ABSPlayer.podcastRefresh"
@@ -25,8 +25,8 @@ enum PodcastRefreshService {
         }
     }
 
-    /// Nächsten Hintergrund-Refresh anfragen (frühestens in ~4 h; iOS entscheidet
-    /// letztlich selbst über den Zeitpunkt).
+    /// Request the next background refresh (at earliest in ~4 h; iOS ultimately
+    /// decides the timing itself).
     static func schedule() {
         let request = BGAppRefreshTaskRequest(identifier: taskId)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 4 * 3600)
@@ -45,8 +45,8 @@ enum PodcastRefreshService {
         await PodcastAutoDownload.run(shows: shows)
     }
 
-    /// Quellen-übergreifende Show-Liste (RSS + aktive ABS), über die normalisierte
-    /// Feed-URL dedupliziert (ABS bevorzugt) — wie in der Podcast-Home-Ansicht.
+    /// Cross-source show list (RSS + active ABS), deduplicated by the normalised
+    /// feed URL (ABS preferred) — like the podcast home view.
     private static func dedupedShows() -> [PodcastShow] {
         let abs = AppStorageKeys.absPodcastsEnabledValue ? ABSPodcastProvider.shared.activeShows : []
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
@@ -56,22 +56,22 @@ enum PodcastRefreshService {
         return abs + rssOnly
     }
 
-    // MARK: - Neue-Folgen-Benachrichtigung
+    // MARK: - New-episode notification
 
-    /// Neue Folgen gegen den zuletzt gesehenen Stand (je Feed) erkennen und —
-    /// falls aktiviert & erlaubt — benachrichtigen. Erstkontakt setzt nur die
-    /// Basis (kein Spam über bereits vorhandene Folgen).
+    /// Detect new episodes against the last-seen state (per feed) and — if
+    /// enabled & allowed — notify. First contact only sets the baseline (no spam
+    /// about already-present episodes).
     private static func notifyNewEpisodes(_ shows: [PodcastShow]) async {
         let defaults = UserDefaults.standard
         var lastSeen = (defaults.dictionary(forKey: lastSeenKey) as? [String: Double]) ?? [:]
         let globalOn = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
-        // Je Show gebündelt: eine Meldung pro Show statt einer pro Folge.
+        // Bundled per show: one message per show instead of one per episode.
         var perShow: [(show: String, count: Int, firstTitle: String)] = []
 
         for show in shows {
             let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
             let newest = show.episodes.map(\.pubDate).max() ?? 0
-            // Nur benachrichtigen, wenn global UND für diese Show aktiviert.
+            // Only notify when enabled globally AND for this show.
             if globalOn, AppStorageKeys.podcastNotifyEnabled(show.id), let seen = lastSeen[key] {
                 let news = show.episodes.filter { $0.pubDate > seen }.sorted { $0.pubDate > $1.pubDate }
                 if !news.isEmpty {

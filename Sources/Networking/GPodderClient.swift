@@ -1,9 +1,9 @@
 import Foundation
 
-/// HTTP-Client für die gpodder-Sync-API (mygpo-Protokoll), wie sie oPodSync,
-/// Nextcloud GPodder und gpodder.net sprechen. Auth: HTTP Basic (der Login legt
-/// zusätzlich ein Session-Cookie an, das der geteilte Cookie-Store mitschickt).
-/// Reiner Transport — die Abgleich-Logik liegt in `GPodderSync`.
+/// HTTP client for the gpodder sync API (mygpo protocol) as spoken by oPodSync,
+/// Nextcloud GPodder and gpodder.net. Auth: HTTP Basic (login also sets a
+/// session cookie, sent along by the shared cookie store). Pure transport — the
+/// reconcile logic lives in `GPodderSync`.
 enum GPodderError: Error, LocalizedError {
     case badURL, network, status(Int)
     var errorDescription: String? {
@@ -47,30 +47,30 @@ final class GPodderClient {
         session = URLSession(configuration: cfg)
     }
 
-    // MARK: - Öffentliche API
+    // MARK: - Public API
 
-    /// Login per Basic-Auth → Session-Cookie. Wirft bei falschen Zugangsdaten.
+    /// Login via Basic auth → session cookie. Throws on wrong credentials.
     func login() async throws {
         _ = try await send(request("api/2/auth/\(enc(config.username))/login.json", method: "POST"),
                            allowAuthRetry: false)
     }
 
-    /// Volle aktuelle Abo-Liste dieses Geräts (URLs).
+    /// Full current subscription list of this device (URLs).
     func subscriptions() async throws -> [String] {
         let data = try await send(request(subsPath, method: "GET"))
-        // Ohne `since` liefert der Server die volle Liste als String-Array.
+        // Without `since` the server returns the full list as a string array.
         if let arr = try? JSONDecoder().decode([String].self, from: data) { return arr }
-        // Manche Server antworten immer im Änderungsformat.
+        // Some servers always answer in the change format.
         return (try? JSONDecoder().decode(SubChanges.self, from: data))?.add ?? []
     }
 
-    /// Abo-Änderungen hochladen (add/remove von Feed-URLs).
+    /// Upload subscription changes (add/remove of feed URLs).
     func uploadSubscriptions(add: [String], remove: [String]) async throws {
         let body = try JSONSerialization.data(withJSONObject: ["add": add, "remove": remove])
         _ = try await send(request(subsPath, method: "POST", body: body))
     }
 
-    /// Episoden-Aktionen seit `since` (0 = alles). Gibt Aktionen + neue Marke.
+    /// Episode actions since `since` (0 = everything). Returns actions + new marker.
     func episodeActions(since: Int) async throws -> (actions: [GPodderEpisodeAction], timestamp: Int) {
         let data = try await send(request(
             "api/2/episodes/\(enc(config.username)).json",
@@ -81,7 +81,7 @@ final class GPodderClient {
         return (resp.actions, resp.timestamp)
     }
 
-    /// Episoden-Aktionen hochladen. Gibt die neue Server-Marke zurück.
+    /// Upload episode actions. Returns the new server marker.
     @discardableResult
     func uploadEpisodeActions(_ actions: [[String: Any]]) async throws -> Int {
         guard !actions.isEmpty else { return 0 }

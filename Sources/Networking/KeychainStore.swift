@@ -1,10 +1,10 @@
 import Foundation
 import Security
 
-/// Sehr einfacher Keychain-Wrapper. Für eine Ein-User-App reicht das —
-/// keine Abhängigkeit von Drittanbieter-Paketen nötig.
+/// Very simple keychain wrapper. Enough for a single-user app — no third-party
+/// dependency needed.
 enum KeychainStore {
-    // WICHTIG: an deine tatsächliche Bundle-ID anpassen (siehe README).
+    // IMPORTANT: adjust to your actual bundle id (see README).
     private static let service = "com.example.absplayer"
 
     static func save(_ value: String, forKey key: String) {

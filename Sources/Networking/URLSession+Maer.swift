@@ -1,11 +1,10 @@
 import Foundation
 
 extension URLSession {
-    /// Session für nutzer-sichtbare Requests (API, Feed, PodcastIndex): kürzeres
-    /// Timeout als der 60-s-Default, damit ein hängender Server die UI nicht
-    /// lange blockiert. `waitsForConnectivity = false` → offline schlägt der
-    /// Request sofort fehl (die App zeigt dann ihren Offline-Zustand), statt zu
-    /// warten.
+    /// Session for user-visible requests (API, feed, PodcastIndex): shorter
+    /// timeout than the 60 s default so a hanging server does not block the UI
+    /// for long. `waitsForConnectivity = false` → offline the request fails
+    /// immediately (the app then shows its offline state) instead of waiting.
     static let maer: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 20

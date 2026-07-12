@@ -1,34 +1,33 @@
 import Foundation
 
-/// Synchronisiert den Podcast-Hörfortschritt (`localPosition`) über iCloud
-/// zwischen den eigenen Apple-Geräten — damit „auf dem iPad weiterhören" auch
-/// ohne ABS-Server funktioniert (und zusätzlich zu ihm).
+/// Syncs podcast progress (`localPosition`) across your own Apple devices via
+/// iCloud — so "continue on the iPad" works without an ABS server too (and in
+/// addition to it).
 ///
-/// Speicher: EIN konsolidierter `NSUbiquitousKeyValueStore`-Schlüssel mit einem
-/// Dict `id → [position, updatedAtMs]` für ALLE Podcast-IDs (`rss:` + `abspod:`).
-/// Ein Key statt tausender umgeht das 1024-Keys-Limit des KV-Stores.
+/// Storage: ONE consolidated `NSUbiquitousKeyValueStore` key holding a dict
+/// `id → [position, updatedAtMs]` for ALL podcast ids (`rss:` + `abspod:`).
+/// One key instead of thousands avoids the KV store's 1024-key limit.
 ///
-/// Merge-Regel: pro Episode gewinnt der jüngere `updatedAtMs`; der Gewinner
-/// wird auf die veraltete Seite (lokal ODER iCloud) zurückgeschrieben. Kein
-/// Ping-Pong, weil nur bei echtem Zeitstempel-Rückstand geschrieben wird.
+/// Merge rule: per episode the newer `updatedAtMs` wins; the winner is written
+/// back to the stale side (local OR iCloud). No ping-pong, because writes only
+/// happen on a real timestamp lag.
 ///
-/// Ohne aktivierte iCloud-KV-Capability bleibt der Store stumm — dann läuft
-/// alles wie bisher rein lokal (kein Crash, kein Datenverlust).
+/// Without the iCloud KV capability enabled the store stays silent — then
+/// everything runs purely locally as before (no crash, no data loss).
 @MainActor
 final class PodcastCloudSync {
     static let shared = PodcastCloudSync()
 
     private let store = NSUbiquitousKeyValueStore.default
     private let blobKey = "podcastProgress"
-    /// Nur Podcast-Positionen syncen — Hörbuch/lokale Positionen laufen über
-    /// den Server bzw. sind geräteintern.
+    /// Sync only podcast positions — audiobook/local positions go via the
+    /// server or are device-internal.
     private let podcastPrefixes = ["localPosition.rss:", "localPosition.abspod:"]
     private let keyPrefix = "localPosition."
 
     private init() {}
 
-    /// Einmalig beim App-Start aufrufen: auf iCloud-Änderungen lauschen + sofort
-    /// abgleichen.
+    /// Call once at app start: listen for iCloud changes + reconcile immediately.
     func start() {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         NotificationCenter.default.addObserver(
@@ -45,8 +44,8 @@ final class PodcastCloudSync {
         Task { @MainActor in reconcile() }
     }
 
-    /// Lokale Podcast-Positionen und den iCloud-Blob zusammenführen
-    /// (newest-wins) und beide Seiten auf den gemeinsamen Stand bringen.
+    /// Merge local podcast positions and the iCloud blob (newest-wins) and bring
+    /// both sides to the shared state.
     func reconcile() {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let defaults = UserDefaults.standard

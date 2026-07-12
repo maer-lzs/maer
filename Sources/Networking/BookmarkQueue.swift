@@ -1,12 +1,12 @@
 import Foundation
 
-/// Offline-Fähigkeit für Lesezeichen: Anlegen/Löschen, das den Server nicht
-/// erreicht, wird hier persistiert und nachgereicht (analog `SyncQueue`).
-/// Zusätzlich wird pro Buch die zuletzt vom Server geladene Liste gecacht,
-/// damit das Lesezeichen-Sheet auch offline etwas zeigen kann.
+/// Offline support for bookmarks: create/delete that does not reach the server
+/// is persisted here and retried later (like `SyncQueue`). Additionally, the
+/// list last loaded from the server is cached per book so the bookmark sheet
+/// can show something offline too.
 ///
-/// Ops behalten ihre REIHENFOLGE (Array, kein Dictionary): ein Löschen nach
-/// einem Anlegen derselben Position muss auch so beim Server ankommen.
+/// Ops keep their ORDER (array, not dictionary): a delete after a create of the
+/// same position must reach the server in that order.
 @MainActor
 final class BookmarkQueue {
     static let shared = BookmarkQueue()
@@ -31,8 +31,8 @@ final class BookmarkQueue {
 
     func enqueue(_ op: Operation) {
         var ops = pendingOps()
-        // Ein offline angelegtes Lesezeichen, das offline wieder gelöscht
-        // wird, hebt sich auf — beide Ops verwerfen statt sie zu senden.
+        // A bookmark created offline and deleted again offline cancels out —
+        // drop both ops instead of sending them.
         if case .delete(let itemId, let time) = op,
            let idx = ops.lastIndex(where: {
                if case .create(let cid, let ctime, _) = $0 { return cid == itemId && Int(ctime) == Int(time) }
@@ -58,9 +58,9 @@ final class BookmarkQueue {
 
     private var flushInFlight = false
 
-    /// Sendet wartende Ops in Original-Reihenfolge. Schlägt eine fehl, bleibt
-    /// sie samt allen NACHFOLGENDEN Ops desselben Buchs liegen (Reihenfolge
-    /// pro Buch bleibt gewahrt); Ops anderer Bücher werden weiter versucht.
+    /// Sends pending ops in original order. If one fails, it and all FOLLOWING
+    /// ops of the same book stay queued (per-book order is preserved); ops of
+    /// other books are still attempted.
     func flush(provider: any AudioProvider) async {
         guard !flushInFlight else { return }
         flushInFlight = true

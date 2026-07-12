@@ -1,14 +1,14 @@
 import Foundation
 
-/// „Download-on-Play": Wird eine Feed-only-Folge einer ABS-Show abgespielt
-/// (streamt vom Original-Host als `rss:`-Item), legt der Server sie nach ~30 s
-/// Anhören ab — so bekommt sie server-seitigen Fortschritt (Multi-Client/Web-UI),
-/// während die Wiedergabe sofort lief. Danach wird der lokale/iCloud-Fortschritt
-/// auf die neue Server-Episode umgeschlüsselt (Handoff).
+/// "Download-on-play": when a feed-only episode of an ABS show is played
+/// (streams from the original host as an `rss:` item), the server saves it after
+/// ~30 s of listening — so it gains server-side progress (multi-client/web UI)
+/// while playback started immediately. The local/iCloud progress is then
+/// re-keyed onto the new server episode (handoff).
 ///
-/// Best effort: schlägt der Handoff fehl (kein Match/kein Recht), liegt die Folge
-/// trotzdem am Server und der Fortschritt bleibt via iCloud auf den eigenen
-/// Geräten synchron.
+/// Best effort: if the handoff fails (no match/no permission), the episode is
+/// still on the server and progress stays in sync across your own devices via
+/// iCloud.
 @MainActor
 final class PodcastServerSave {
     static let shared = PodcastServerSave()
@@ -29,8 +29,8 @@ final class PodcastServerSave {
         pending[rssItemId] = Pending(showId: showId, feed: feed)
     }
 
-    /// Vom Player pro Tick aufgerufen. Löst den Server-Download aus, sobald die
-    /// registrierte Folge ~30 s lief.
+    /// Called by the player on each tick. Triggers the server download once the
+    /// registered episode has played ~30 s.
     func playbackTick(itemId: String?, currentTime: Double) {
         guard autoSave, let itemId, currentTime >= 30,
               !triggered.contains(itemId), let info = pending[itemId] else { return }
@@ -42,7 +42,7 @@ final class PodcastServerSave {
         let abs = ABSPodcastProvider.shared
         if await abs.downloadEpisode(showId: info.showId, episode: info.feed) != nil { return }
 
-        // Server lädt asynchron — pollen, bis die Folge auftaucht, dann Handoff.
+        // Server downloads asynchronously — poll until the episode appears, then handoff.
         for _ in 0..<12 {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             await abs.refresh()

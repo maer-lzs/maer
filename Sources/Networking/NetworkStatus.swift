@@ -1,13 +1,13 @@
 import Foundation
 import Network
 
-/// Einmaliger Snapshot-Check, ob aktuell WLAN verfügbar ist — kein
-/// dauerhafter Monitor, nur eine kurze Momentaufnahme vor dem Download.
+/// One-shot snapshot check whether Wi-Fi is currently available — not a
+/// continuous monitor, just a brief snapshot before a download.
 enum NetworkStatus {
-    /// Schützt vor doppeltem Auflösen der Continuation, falls der
-    /// Path-Handler mehrfach feuert, bevor der Monitor gecancelt ist.
-    /// Als actor statt Lock+Flag, damit der Zugriff auch unter Swift 6
-    /// Concurrency-Checking sauber isoliert ist.
+    /// Guards against resolving the continuation twice if the path handler
+    /// fires more than once before the monitor is cancelled. An actor rather
+    /// than lock+flag so access stays cleanly isolated under Swift 6
+    /// concurrency checking.
     private actor ResumeGuard {
         private var didResume = false
         func tryResume() -> Bool {
@@ -33,11 +33,10 @@ enum NetworkStatus {
         }
     }
 
-    /// Erkennt reine Netzwerk-Nichterreichbarkeit (kein Netz, Timeout, DNS
-    /// nicht auflösbar …) — im Unterschied zu echten Fehlern wie 401 oder
-    /// einem kaputten Server-Format, die NICHT als "offline" missverstanden
-    /// werden sollen. Zentral an einer Stelle, damit Player und Bibliothek
-    /// exakt dieselbe Definition von "offline" verwenden.
+    /// Detects pure network unreachability (no net, timeout, DNS failure …) —
+    /// as opposed to real errors like 401 or a broken server format, which must
+    /// NOT be mistaken for "offline". Centralised here so player and library use
+    /// the exact same definition of "offline".
     static func isOfflineError(_ error: Error) -> Bool {
         let nsError = error as NSError
         guard nsError.domain == NSURLErrorDomain else { return false }

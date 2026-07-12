@@ -1,9 +1,9 @@
 import Foundation
 
-/// Pro-Feed HTTP-Basic-Auth für private/Premium-Podcasts (Benutzer/Passwort im
-/// Keychain, gebunden an den stabilen `feedKey`). Liefert den
-/// `Authorization`-Header für Feed-Abruf, Streaming und Download. Nonisolated —
-/// vom Parser (Hintergrund), den Providern und dem Player nutzbar.
+/// Per-feed HTTP Basic auth for private/premium podcasts (user/password in the
+/// keychain, bound to the stable `feedKey`). Provides the `Authorization`
+/// header for feed fetch, streaming and download. Nonisolated — usable from the
+/// parser (background), the providers and the player.
 nonisolated enum PodcastFeedAuth {
     private static func key(_ feedKey: String) -> String { "feedAuth.\(feedKey)" }
 
@@ -25,7 +25,7 @@ nonisolated enum PodcastFeedAuth {
         credentials(feedKey: feedKey) != nil
     }
 
-    /// `Authorization: Basic …` für einen Feed (leer, wenn keine Zugangsdaten).
+    /// `Authorization: Basic …` for a feed (empty when there are no credentials).
     static func authHeader(feedKey: String) -> [String: String] {
         guard let c = credentials(feedKey: feedKey) else { return [:] }
         let token = Data("\(c.user):\(c.password)".utf8).base64EncodedString()

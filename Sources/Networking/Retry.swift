@@ -1,10 +1,10 @@
 import Foundation
 
-/// Ob ein Fehler *transient* ist — also ein Wiederholungsversuch Sinn ergibt
-/// (kurzer Server-Hänger, verlorene Verbindung, 5xx/429). Bewusst enger als
-/// `NetworkStatus.isOfflineError`: echte „kein Netz"-Fehler (kein Internet, DNS)
-/// werden NICHT wiederholt — dort ist sofort der Offline-/Cache-Fallback richtig.
-/// 401 (Auth) und Decoding-Fehler gelten ebenfalls als endgültig.
+/// Whether an error is *transient* — i.e. a retry makes sense (brief server
+/// hang, lost connection, 5xx/429). Deliberately narrower than
+/// `NetworkStatus.isOfflineError`: real "no network" errors (no internet, DNS)
+/// are NOT retried — there the offline/cache fallback is immediately right.
+/// 401 (auth) and decoding errors are also treated as final.
 func isTransientError(_ error: Error) -> Bool {
     if let api = error as? APIError, case .http(let code, _) = api {
         return code == 429 || (500...599).contains(code)
@@ -19,9 +19,9 @@ func isTransientError(_ error: Error) -> Bool {
     return transientCodes.contains(ns.code)
 }
 
-/// Führt `op` aus und wiederholt bei transienten Fehlern mit kurzem Backoff,
-/// bevor der Fehler durchgereicht wird. Endgültige Fehler (Offline, 401,
-/// Decoding) werfen sofort — der Aufrufer entscheidet dann über Cache-Fallback.
+/// Runs `op` and retries transient errors with a short backoff before
+/// rethrowing. Final errors (offline, 401, decoding) throw immediately — the
+/// caller then decides about the cache fallback.
 func withRetry<T>(attempts: Int = 3,
                   backoff: [Double] = [0.4, 1.2],
                   _ op: () async throws -> T) async throws -> T {
