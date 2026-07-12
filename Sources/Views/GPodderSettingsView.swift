@@ -81,6 +81,8 @@ struct GPodderSettingsView: View {
         }
         .navigationTitle("gpodder Sync")
         .navigationBarTitleDisplayMode(.inline)
+        // Mini-Player-Overlay nicht überlappen lassen.
+        .bottomBarClearance()
         // Beim Verlassen speichern, damit nichts verloren geht.
         .onDisappear { save() }
     }

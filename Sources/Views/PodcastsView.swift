@@ -403,6 +403,7 @@ struct PodcastQueueView: View {
             }
         }
         .listStyle(.plain)
+        .bottomBarClearance()
         .navigationTitle("Up Next")
         .toolbar {
             if !queue.isEmpty {

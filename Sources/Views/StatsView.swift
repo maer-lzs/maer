@@ -35,6 +35,7 @@ struct StatsView: View {
         }
         .navigationTitle("Statistics")
         .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
     }
 
     /// Schlichte Capsule-Balken; Wochenend-/Tagesbeschriftung nur unter

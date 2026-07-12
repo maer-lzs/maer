@@ -51,6 +51,7 @@ struct LocalFilesView: View {
         }
         .navigationTitle("Local Files")
         .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [.audio],

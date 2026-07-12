@@ -72,6 +72,7 @@ struct PodcastSourceView: View {
         }
         .navigationTitle("Podcasts")
         .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
         .fileImporter(
             isPresented: $showOPMLImporter,
             allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
@@ -432,5 +433,6 @@ private struct PodcastIndexKeyView: View {
         }
         .navigationTitle("PodcastIndex Access")
         .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
     }
 }

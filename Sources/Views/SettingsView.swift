@@ -47,6 +47,7 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             pendingSyncCount = SyncQueue.shared.allPending().count
