@@ -18,9 +18,10 @@ struct LibraryView: View {
     /// beim Scrollen in der Bibliothek wird sie zu einer kompakten Zeile.
     @Namespace private var barNS
     @State private var libScrollY: CGFloat = 0
-    private var barCollapsed: Bool { libScrollY > 60 }
-    /// Einheitliche Höhe der drei Elemente im eingeklappten Modus (= Lupe 56).
-    private let collapsedBarHeight: CGFloat = 56
+    /// Home-Tap klappt die Leiste wieder auf; nächster Scroll aktiviert das
+    /// Einklappen erneut.
+    @State private var barForceExpanded = false
+    private var barCollapsed: Bool { libScrollY > 60 && !barForceExpanded }
     /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
     /// (0 im Ruhezustand).
     @Environment(\.scenePhase) private var scenePhase
@@ -74,7 +75,7 @@ struct LibraryView: View {
                 case .audiobooks:
                     audiobooksContent
                 case .podcasts:
-                    PodcastsView(playerCoordinator: playerCoordinator)
+                    PodcastsView(playerCoordinator: playerCoordinator, onScroll: handleContentScroll)
                 default:
                     Spacer()
                 }
@@ -339,6 +340,14 @@ struct LibraryView: View {
 
     // MARK: - Bottom-Zone (scroll-gesteuert einklappbar)
 
+    /// Scroll aus JEDEM Tab (Hörbücher + Podcasts) steuert das Einklappen —
+    /// die Leiste verhält sich überall gleich.
+    private func handleContentScroll(_ y: CGFloat) {
+        libScrollY = y
+        // Nach dem Home-Aufklappen reaktiviert der nächste Scroll das Einklappen.
+        if barForceExpanded { barForceExpanded = false }
+    }
+
     /// Aufgeklappt: Banner · Mini-Player (voll) · [Medien-Pille | Lupe].
     /// Kompakt: eine Zeile [Home-Button · Mini-Player mittig, kleiner · Lupe].
     /// Player und Lupe gleiten per matchedGeometry; die Medien-Pille morpht in
@@ -346,15 +355,12 @@ struct LibraryView: View {
     @ViewBuilder
     private var bottomBarContent: some View {
         if barCollapsed {
-            // Eine zentrierte, enge Gruppe — alle drei gleich hoch (56).
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                HStack(spacing: 6) {
-                    homeButton
-                    miniPlayer.frame(maxWidth: 230, maxHeight: collapsedBarHeight)
-                    searchButton
-                }
-                Spacer(minLength: 0)
+            // Eine Zeile: Home links, Mini-Player mittig (unverändert, nur ohne
+            // AirPlay), Lupe rechts — enger Abstand.
+            HStack(spacing: 8) {
+                homeButton
+                miniPlayer
+                searchButton
             }
         } else {
             VStack(spacing: 8) {
@@ -379,7 +385,7 @@ struct LibraryView: View {
     @ViewBuilder
     private var miniPlayer: some View {
         if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
-            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item) {
+            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item, compact: barCollapsed) {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                     isShowingFullPlayer = true
                 }
@@ -394,21 +400,25 @@ struct LibraryView: View {
         if availableMediaTypes.count > 1 {
             MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
                 navigationPath = NavigationPath()
+                libScrollY = 0   // Tab-Wechsel klappt die Leiste auf
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
             }
             .matchedGeometryEffect(id: "media", in: barNS)
         }
     }
 
-    /// Kompakter „Home"-Button (aus der Medien-Pille gemorpht) — zurück zur Wurzel.
+    /// Kompakter „Home"-Button (aus der Medien-Pille gemorpht) — klappt die
+    /// Leiste wieder auf (bis zum nächsten Scroll).
     private var homeButton: some View {
         Button {
-            navigationPath = NavigationPath()
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
+                barForceExpanded = true
+            }
         } label: {
             Image(systemName: "house.fill")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: collapsedBarHeight, height: collapsedBarHeight)
+                .frame(width: 56, height: 56)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -556,7 +566,7 @@ struct LibraryView: View {
         .refreshable { await viewModel.loadLibrary() }
         // Scroll-Position → Bottom-Zone ein-/ausklappen.
         .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
-            libScrollY = y
+            handleContentScroll(y)
         }
     }
 

@@ -15,6 +15,8 @@ struct MiniPlayerBar: View {
     /// umgeschaltet hat.
     @ObservedObject var viewModel: PlayerViewModel
     let item: LibraryItem
+    /// Kompakt-Modus der eingeklappten Bottom-Zone: AirPlay entfällt (Platz).
+    var compact: Bool = false
     /// Öffnet den vollen Player. Kommt als Callback rein statt als eigener
     /// NavigationLink, weil diese Leiste (bewusst, damit sie auf jeder Ebene
     /// sichtbar bleibt) außerhalb des NavigationStack hängt und ein
@@ -123,7 +125,7 @@ struct MiniPlayerBar: View {
 
             // Ausgabequelle wechseln — bleibt auch im iPhone-Hochformat, nur
             // ein schlichtes weißes Icon direkt auf der Leiste.
-            if showExtendedControls || isCompactPortrait {
+            if !compact && (showExtendedControls || isCompactPortrait) {
                 AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 48)

@@ -15,6 +15,8 @@ struct InboxGroup: Identifiable {
 /// Episoden sind normale `LibraryItem`s und laufen über den Coordinator.
 struct PodcastsView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Scroll-Offset an die Bibliothek melden (für die einklappbare Bottom-Zone).
+    var onScroll: ((CGFloat) -> Void)? = nil
     @ObservedObject private var subs = PodcastSubscriptions.shared
     // Sektionen hängen an Fortschritt (gehört/läuft) und Downloads — beide
     // beobachten, damit sich „Als Nächstes"/„Geladen"/„Gehört" live neu bauen.
@@ -79,6 +81,10 @@ struct PodcastsView: View {
         }
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
+        }
+        // Scroll-Offset an die Bibliothek melden (einklappbare Bottom-Zone).
+        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
+            onScroll?(y)
         }
         .refreshable {
             await subs.refreshAll()
