@@ -126,6 +126,7 @@ struct PodcastEpisodeRow: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @ObservedObject private var downloads = DownloadManager.shared
 
     private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
@@ -192,6 +193,52 @@ struct PodcastEpisodeRow: View {
                     isPlayed ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
                     systemImage: isPlayed ? "arrow.uturn.backward.circle" : "checkmark.circle"
                 )
+            }
+        }
+        // Swipe-Aktionen greifen in `List`-Kontexten (Show-Seite, Queue); in
+        // reinen `LazyVStack`-Vorschauen bleibt das Kontextmenü.
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                PodcastQueue.shared.playNext(item.id)
+            } label: {
+                Label("Play Next", systemImage: "text.insert")
+            }
+            .tint(AppTheme.accent)
+            Button {
+                PodcastQueue.shared.playLast(item.id)
+            } label: {
+                Label("Play Last", systemImage: "text.append")
+            }
+            .tint(.gray)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button {
+                podcastSetPlayed(item, !isPlayed)
+            } label: {
+                Label(
+                    isPlayed ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
+                    systemImage: isPlayed ? "arrow.uturn.backward.circle" : "checkmark.circle"
+                )
+            }
+            .tint(.green)
+            if downloads.isDownloaded(itemId: item.id) {
+                Button(role: .destructive) {
+                    DownloadManager.shared.deleteDownload(itemId: item.id)
+                } label: {
+                    Label("Delete Download", systemImage: "trash")
+                }
+            } else {
+                Button {
+                    Task {
+                        let provider = AppSession.shared.provider(for: item.id)
+                        if let detail = try? await provider.fetchItemDetail(itemId: item.id) {
+                            await DownloadManager.shared.download(item: detail, provider: provider)
+                        }
+                    }
+                } label: {
+                    Label("Download", systemImage: "arrow.down.circle")
+                }
+                .tint(.blue)
             }
         }
     }

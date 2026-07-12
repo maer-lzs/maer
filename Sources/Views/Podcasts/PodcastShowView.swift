@@ -48,21 +48,23 @@ struct PodcastShowView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 16) {
-                header
-                Divider().padding(.horizontal)
-                LazyVStack(spacing: 0) {
-                    ForEach(sortedItems) { item in
-                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                        Divider().padding(.leading, 88)
-                    }
-                }
-                if isServerShow { availableSection } else { historySection }
+        // `List` (statt ScrollView) → Swipe-Aktionen an den Folgen-Zeilen.
+        List {
+            header
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            ForEach(sortedItems) { item in
+                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.visible)
             }
-            .padding(.top, 8)
-            .bottomBarClearance()
+            Group { if isServerShow { availableSection } else { historySection } }
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
         }
+        .listStyle(.plain)
+        .bottomBarClearance()
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
