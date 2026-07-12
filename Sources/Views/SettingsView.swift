@@ -37,6 +37,7 @@ struct SettingsView: View {
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
+    @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
     @State private var availableLibraries: [ABSLibrary] = []
     @AppStorage(AppStorageKeys.selectedLibraryId) private var selectedLibraryId = ""
@@ -67,6 +68,7 @@ struct SettingsView: View {
                     statsSection
                 case .podcasts:
                     podcastSourcesSection
+                    podcastNotificationSection
                     podcastSyncSection
                 }
             }
@@ -343,6 +345,24 @@ struct SettingsView: View {
             } label: {
                 Label("Podcasts", systemImage: "mic")
             }
+        }
+    }
+
+    private var podcastNotificationSection: some View {
+        Section {
+            Toggle(isOn: $newEpisodeNotifications) {
+                Label("Notify About New Episodes", systemImage: "bell")
+            }
+            .onChange(of: newEpisodeNotifications) { _, on in
+                guard on else { return }
+                Task {
+                    let granted = await PodcastRefreshService.requestAuthorization()
+                    if !granted { newEpisodeNotifications = false }
+                    else { PodcastRefreshService.schedule() }
+                }
+            }
+        } footer: {
+            Text("Checks your subscriptions in the background and notifies you when new episodes are published. Requires notification permission.")
         }
     }
 

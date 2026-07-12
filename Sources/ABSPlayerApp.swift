@@ -23,6 +23,15 @@ extension Notification.Name {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // BGTask-Handler registrieren — muss vor App-Fertigstart passieren.
+        PodcastRefreshService.registerBackgroundTask()
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
         handleEventsForBackgroundURLSession identifier: String,
         completionHandler: @escaping () -> Void
     ) {
@@ -74,6 +83,7 @@ final class SceneDelegate: NSObject, UIWindowSceneDelegate {
 struct ABSPlayerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -81,6 +91,10 @@ struct ABSPlayerApp: App {
                 // Globale Akzentfarbe der App: Orange statt System-Blau.
                 .tint(AppTheme.accent)
                 .preferredColorScheme(preferredScheme)
+                // Beim Wechsel in den Hintergrund den nächsten Podcast-Refresh planen.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .background { PodcastRefreshService.schedule() }
+                }
         }
     }
 

@@ -115,6 +115,12 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
+    /// Über neue Podcast-Folgen benachrichtigen (Hintergrund-Refresh). Opt-in.
+    static let podcastNewEpisodeNotifications = "podcastNewEpisodeNotifications"
+    static var podcastNewEpisodeNotificationsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: podcastNewEpisodeNotifications)
+    }
+
     /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {

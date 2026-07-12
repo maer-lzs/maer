@@ -3158,6 +3158,36 @@
           }
         }
       }
+    },
+    "Notify About New Episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über neue Folgen benachrichtigen"
+          }
+        }
+      }
+    },
+    "Checks your subscriptions in the background and notifies you when new episodes are published. Requires notification permission.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüft deine Abos im Hintergrund und benachrichtigt dich, wenn neue Folgen erscheinen. Benötigt die Mitteilungs-Erlaubnis."
+          }
+        }
+      }
+    },
+    "%lld new podcast episodes": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld neue Podcast-Folgen"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
