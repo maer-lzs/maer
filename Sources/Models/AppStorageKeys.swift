@@ -106,6 +106,15 @@ nonisolated enum AppStorageKeys {
         !gpodderServerURLValue.isEmpty && !gpodderUsernameValue.isEmpty && !gpodderPasswordValue.isEmpty
     }
 
+    /// ABS als Podcast-Quelle NUR wenn ausdrücklich aktiviert (Default AUS). Der
+    /// ABS-Server ist primär ein Hörbuch-Server; er soll nicht automatisch
+    /// annehmen, dass Podcasts existieren, nur weil eine Podcast-Bibliothek da ist.
+    static let absPodcastsEnabled = "absPodcastsEnabled"
+    static var absPodcastsEnabledValue: Bool {
+        get { UserDefaults.standard.bool(forKey: absPodcastsEnabled) }
+        set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
+    }
+
     /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {

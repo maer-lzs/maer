@@ -15,6 +15,8 @@ struct PodcastSourceView: View {
     @State private var subscribeError: String?
     /// Feed-only-Folge beim Abspielen nach ~30 s automatisch am Server sichern.
     @AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true
+    /// ABS als Podcast-Quelle nutzen (Default AUS — ABS ist primär Hörbuch-Server).
+    @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
 
     private enum Source: Hashable { case apple, podcastIndex }
     @State private var source: Source = .apple
@@ -38,7 +40,14 @@ struct PodcastSourceView: View {
 
     var body: some View {
         List {
-            if absPodcast.hasPodcasts {
+            Section {
+                Toggle(isOn: $absPodcastsEnabled) {
+                    Label("Use Audiobookshelf for podcasts", systemImage: "books.vertical")
+                }
+            } footer: {
+                Text("Off = your Audiobookshelf server is used only for audiobooks. Turn on to also manage podcasts on it (subscribe, download, sync).")
+            }
+            if absPodcastsEnabled && absPodcast.hasPodcasts {
                 Section {
                     Toggle(isOn: $subscribeToServer) {
                         Label("Subscribe on server", systemImage: "cloud")
@@ -58,7 +67,7 @@ struct PodcastSourceView: View {
             archivedSection
             addByURLSection
             importSection
-            if absPodcast.hasPodcasts { serverSyncSection }
+            if absPodcastsEnabled && absPodcast.hasPodcasts { serverSyncSection }
             NavigationLink {
                 GPodderSettingsView()
             } label: {
@@ -73,6 +82,10 @@ struct PodcastSourceView: View {
         .navigationTitle("Podcasts")
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
+        // Ein-/Ausschalten sofort wirksam: ABS probt bzw. leert seinen Stand.
+        .onChange(of: absPodcastsEnabled) { _, _ in
+            Task { await absPodcast.refresh() }
+        }
         .fileImporter(
             isPresented: $showOPMLImporter,
             allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],

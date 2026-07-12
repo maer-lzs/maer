@@ -70,7 +70,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     var mediaType: MediaType { .podcasts }
     var capabilities: ProviderCapabilities { [.progressSync, .downloadable] }
     var streamAuthHeaders: [String: String] { client.streamAuthHeaders }
-    var isAvailable: Bool { hasPodcasts }
+    /// Nur wenn der Nutzer ABS ausdrücklich als Podcast-Quelle aktiviert hat.
+    var isAvailable: Bool { AppStorageKeys.absPodcastsEnabledValue && hasPodcasts }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         try await client.fetchPodcastLibraries()
@@ -123,6 +124,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Nur prüfen, ob Podcast-Bibliotheken existieren (1 Request) — steuert die
     /// Tab-Sichtbarkeit, ohne alle Shows zu laden. Fehler/kein Login → false.
     func refreshAvailability() async {
+        // ABS ist opt-in als Podcast-Quelle — ohne Aktivierung NICHT den Server
+        // abfragen und Podcasts nicht als vorhanden annehmen.
+        guard AppStorageKeys.absPodcastsEnabledValue else {
+            if hasPodcasts { hasPodcasts = false }
+            return
+        }
         // NUR bei erfolgreicher Antwort aktualisieren. Ein transienter Fehler
         // (kein Netz/kurzer Hakler) darf `hasPodcasts` nicht auf false kippen —
         // sonst verschwindet der Podcast-Tab bzw. wird leer.
@@ -133,6 +140,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Shows + Folgen aller Podcast-Bibliotheken laden. Best effort: einzelne
     /// fehlgeschlagene Shows werden übersprungen, der Rest bleibt nutzbar.
     func refresh() async {
+        // ABS ist opt-in als Podcast-Quelle — ohne Aktivierung nichts laden und
+        // vorhandenen Stand leeren (der Nutzer nutzt ABS dann nur für Hörbücher).
+        guard AppStorageKeys.absPodcastsEnabledValue else {
+            if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
+            return
+        }
         // Fehlgeschlagener Library-Fetch → bestehenden Stand BEHALTEN, nicht
         // löschen (dieser refresh läuft bei jedem Tab-Wechsel; ein kurzer
         // Netz-Hakler leerte sonst den ganzen Podcast-Tab).
