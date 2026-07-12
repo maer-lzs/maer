@@ -21,6 +21,9 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var duration: Double            // Sekunden (0 wenn unbekannt)
     var description: String?
     var imageURL: String?
+    /// Podcasting-2.0-Kapitel (`<podcast:chapters url=… type=json+chapters>`).
+    /// Erst beim Öffnen der Folge geladen (RSSProvider.fetchItemDetail).
+    var chaptersURL: String?
 
     var id: String { guid }
 }
@@ -383,7 +386,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var text = ""
 
     // Aktuelles Item
-    private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = ""
+    private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = "", iChapters = ""
 
     func parse(_ data: Data) -> PodcastShow? {
         let parser = XMLParser(data: data)
@@ -405,7 +408,12 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         text = ""
         if el == "item" || el == "entry" {
             inItem = true
-            iTitle = ""; iGuid = ""; iAudio = ""; iDuration = ""; iDesc = ""; iImage = ""; iPubDate = ""
+            iTitle = ""; iGuid = ""; iAudio = ""; iDuration = ""; iDesc = ""; iImage = ""; iPubDate = ""; iChapters = ""
+        }
+        // Podcasting-2.0-Kapitel: JSON-URL im Item (nur JSON-Typ nutzen).
+        if el == "podcast:chapters", let url = attrs["url"],
+           (attrs["type"]?.contains("json") ?? true) {
+            iChapters = url
         }
         // Enclosure (RSS) bzw. Media/Link mit Audio-Typ
         if el == "enclosure", let url = attrs["url"], (attrs["type"]?.hasPrefix("audio") ?? true) {
@@ -442,7 +450,8 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
                         pubDate: Self.parseDate(iPubDate),
                         duration: Self.parseDuration(iDuration),
                         description: iDesc.isEmpty ? nil : iDesc,
-                        imageURL: iImage.isEmpty ? nil : iImage
+                        imageURL: iImage.isEmpty ? nil : iImage,
+                        chaptersURL: iChapters.isEmpty ? nil : iChapters
                     ))
                 }
             default: break

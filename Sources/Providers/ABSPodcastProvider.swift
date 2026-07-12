@@ -395,7 +395,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 description: episode.description
             ),
             duration: episode.duration ?? track?.duration,
-            chapters: nil,
+            chapters: episode.chapters,   // vom Server mitgelieferte Kapitel
             tracks: track.map { [$0] }
         )
         return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)

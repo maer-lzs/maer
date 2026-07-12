@@ -193,6 +193,8 @@ struct ABSPodcastEpisode: Codable, Identifiable {
     let season: String?
     let episode: String?
     let audioTrack: ABSAudioTrack?
+    /// Kapitel der Folge, sofern der Server sie mitliefert (sonst nil).
+    var chapters: [ABSChapter]? = nil
 }
 
 /// Manche Audiobookshelf-Felder (z. B. publishedYear) liefern je nach

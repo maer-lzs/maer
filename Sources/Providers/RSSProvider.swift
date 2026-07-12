@@ -34,7 +34,34 @@ final class RSSProvider: AudioProvider {
             throw NSError(domain: "RSSProvider", code: 404)
         }
         let item = libraryItem(show: found.show, episode: found.episode)
-        return LibraryItemDetail(id: item.id, media: item.media ?? emptyMedia, userMediaProgress: nil)
+        var media = item.media ?? emptyMedia
+        // Podcasting-2.0-Kapitel lazy nachladen (nur beim Öffnen der Folge).
+        if let raw = found.episode.chaptersURL, let url = URL(string: raw),
+           let chapters = await Self.loadChapters(url: url, duration: found.episode.duration) {
+            media = LibraryItemMedia(metadata: media.metadata, duration: media.duration,
+                                     chapters: chapters, tracks: media.tracks)
+        }
+        return LibraryItemDetail(id: item.id, media: media, userMediaProgress: nil)
+    }
+
+    // MARK: - Kapitel (Podcasting 2.0)
+
+    private struct PC20ChapterList: Decodable { let chapters: [PC20Chapter] }
+    private struct PC20Chapter: Decodable { let startTime: Double; let title: String? }
+
+    /// Kapitel-JSON laden und in `[ABSChapter]` mappen (end = nächster Start,
+    /// beim letzten die Episodendauer). Fehler → nil (Folge spielt ohne Kapitel).
+    static func loadChapters(url: URL, duration: Double) async -> [ABSChapter]? {
+        guard let (data, _) = try? await URLSession.maer.data(from: url),
+              let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data),
+              !list.chapters.isEmpty else { return nil }
+        let sorted = list.chapters.sorted { $0.startTime < $1.startTime }
+        return sorted.enumerated().map { i, c in
+            let end = i + 1 < sorted.count ? sorted[i + 1].startTime
+                : (duration > 0 ? duration : c.startTime)
+            return ABSChapter(id: i, start: c.startTime, end: end,
+                              title: c.title ?? String(localized: "Chapter \(i + 1)"))
+        }
     }
 
     func coverURL(forItemId itemId: String) -> URL? {

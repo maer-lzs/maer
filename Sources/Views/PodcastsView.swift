@@ -504,6 +504,7 @@ struct PodcastEpisodeDetailView: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
+    @State private var chapters: [ABSChapter] = []
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     /// Show quellen-bewusst: ABS-Folge → aus dem ABS-Store, sonst RSS.
@@ -554,6 +555,8 @@ struct PodcastEpisodeDetailView: View {
                         markPlayedButton
                     }
 
+                    chaptersSection
+
                     if let description = item.media?.metadata?.description, !description.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Description").font(.headline).foregroundStyle(.white)
@@ -573,6 +576,56 @@ struct PodcastEpisodeDetailView: View {
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
+        // Kapitel lazy laden (RSS: JSON-Datei, ABS: aus dem Episoden-Objekt).
+        .task(id: item.id) {
+            chapters = (try? await AppSession.shared.provider(for: item.id)
+                .fetchItemDetail(itemId: item.id))?.media.chapters ?? []
+        }
+    }
+
+    /// Kapitelliste (Podcasting 2.0 / ABS). Tippen spielt ab dieser Stelle.
+    @ViewBuilder
+    private var chaptersSection: some View {
+        if !chapters.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Chapters").font(.headline).foregroundStyle(.white)
+                ForEach(chapters) { chapter in
+                    Button {
+                        Task {
+                            await playerCoordinator.open(item: item)
+                            await playerCoordinator.viewModel?.seek(to: chapter.start)
+                        }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text(chapterTimestamp(chapter.start))
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(.white.opacity(0.6))
+                                .frame(width: 52, alignment: .leading)
+                            Text(chapter.title)
+                                .font(.subheadline)
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
+                            Spacer(minLength: 4)
+                            Image(systemName: "play.circle")
+                                .foregroundStyle(.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    Divider().overlay(.white.opacity(0.12))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        }
+    }
+
+    /// Sekunden → „m:ss" bzw. „h:mm:ss".
+    private func chapterTimestamp(_ seconds: Double) -> String {
+        let s = Int(seconds)
+        let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec)
+                     : String(format: "%d:%02d", m, sec)
     }
 
     @ViewBuilder
