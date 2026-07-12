@@ -1,18 +1,20 @@
 # Mär
 
-Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/).
-Fokus auf genau eine Sache: **verlässlicher Fortschritts-Sync** über mehrere
+Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/) **und Podcasts**.
+Sein Fundament: **verlässlicher Fortschritts-Sync** über mehrere
 Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird —
 auch komplett offline.
 
 > „Mär" ist ein altes Wort für Erzählung oder Geschichte — passend für einen
-> Hörbuch-Player. (Das Xcode-Projekt heißt intern weiterhin `ABSPlayer`;
+> Audio-Player. (Das Xcode-Projekt heißt intern weiterhin `ABSPlayer`;
 > „Mär" ist nur der Anzeigename.)
 
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel
-regelmäßig den Hörfortschritt verlor. Die App ist bewusst minimal gehalten:
-kein Multi-User, keine Podcasts, keine Server-Verwaltung — nur Hörbücher hören
-und den Stand sauber synchronisieren, online wie offline.
+regelmäßig den Hörfortschritt verlor. Inzwischen ist daraus ein universeller
+Client für selbst gehostete Audioquellen geworden — **Hörbücher und Podcasts**,
+auf einer Provider-Architektur —, dabei bewusst fokussiert: kein Multi-User,
+keine Server-Verwaltung, nur hören und den Stand verlässlich synchronisieren,
+online wie offline.
 
 > **Hinweis:** Dies ist ein privates Hobby-Projekt ohne Gewähr. Es ist nicht
 > mit dem Audiobookshelf-Projekt affiliiert.
@@ -141,6 +143,20 @@ und den Stand sauber synchronisieren, online wie offline.
   automatische Erholung bei mitten in der Wiedergabe kaputten Tracks statt
   stiller Stille, VoiceOver-Labels auf allen Transport-Buttons
 
+## Podcasts
+
+Version 2.0 macht Mär neben Hörbüchern zu einem vollwertigen **Podcast-Client**. Podcasts sind ein eigener Medientyp hinter demselben Provider-Protokoll — Hörbuch-Wiedergabe und -Sync bleiben unberührt; ein eigener Podcast-Tab erscheint erst, sobald es Abos gibt.
+
+- **Drei Abo-Quellen, abgeglichen:** lokale **RSS**-Feeds, optional **Audiobookshelf**-Podcast-Libraries und ein selbst gehosteter **gpodder/mygpo**-Server (z. B. [oPodSync](https://github.com/kd2org/opodsync)) als gleichwertiges Backend neben iCloud und ABS. Abos, Abbestellungen und Gehört-Status bleiben über alle drei in einem sauberen, abgeglichenen Stand — ein robustes Abbestellen entfernt einen Feed überall zugleich
+- **Apple-Podcasts-Import** bestehender Abos
+- **Home im Apple-Podcasts-Stil:** eine „Fortsetzen"-Reihe mit reichen Karten (Restzeit · zuletzt gehört · Kapitel), nutzungsbasierte Empfehlungen, die Als-Nächstes-Queue, eine Premium-Reihe, heruntergeladene Folgen und ein „Zuletzt aktualisiert"-Sendungsraster mit rotem Badge für neue, ungehörte Folgen
+- **Nutzungsbasierte Empfehlungen:** sprach- und themenbewusst aus deiner eigenen Bibliothek und Hörzeit, nach Autor/Publisher erweitert und im Round-Robin durchmischt, damit kein Anbieter dominiert
+- **Pro-Sendung-Einstellungen:** Inbox-Modus, nur neueste N behalten (mit Auto-Löschen alter Downloads), Auto-Download neuer Folgen und Benachrichtigungen je Sendung
+- **Premium-Feeds** per HTTP-Basic-Auth je Feed, im Schlüsselbund gespeichert
+- **Reiche Metadaten** aus RSS / Podcasting 2.0 und der PodcastIndex-API: Staffeln, Folgentyp, Explicit, Gäste/Personen, Transkripte, Funding-Links, Kategorien
+- **Background-Refresh** (`BGAppRefreshTask`) mit gebündelten Benachrichtigungen je Sendung, Offline-Downloads, Queue, Kapitel, hochauflösende Feed-Cover, CarPlay und ein „Als Nächstes"-Home-Widget
+- Hör-History-Brücke zwischen RSS- und ABS-Podcast-Folgen (geteilter Fortschritt, optionaler Server-Push)
+
 ## Die Sync-Kernregel
 
 Das Herzstück der App. Ein bewusst vom Nutzer ausgelöster Sprung (Scrubber,
@@ -166,8 +182,7 @@ wenn nur das Abschluss-Flag allein umgeschaltet wurde.
 
 ## Bewusst nicht enthalten
 
-Multi-User, Podcasts, Metadaten-Bearbeitung, Server-/
-Bibliotheksverwaltung.
+Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung.
 
 ## Voraussetzungen
 
@@ -254,7 +269,13 @@ Sources/
 │   ├── LocalProvider.swift         Importierte lokale Audiodateien (kein Server)
 │   ├── LocalLibrary.swift          Lokaler Datei-Index + AVAsset-Metadaten
 │   ├── RSSProvider.swift           Podcasts: RSS-Episoden als Library-Items
-│   └── PodcastSubscriptions.swift  Feed-Store + RSS/Atom-Parser (XMLParser)
+│   ├── ABSPodcastProvider.swift    Audiobookshelf-Podcast-Libraries (opt-in-Quelle)
+│   ├── PodcastSubscriptions.swift  Feed-Store + RSS/Podcasting-2.0-Parser (XMLParser)
+│   ├── PodcastSubscriptionSync.swift  Abgeglichenes Spiegeln lokal ↔ ABS
+│   ├── PodcastDirectory.swift      Entdecken über PodcastIndex + iTunes-Charts
+│   ├── PodcastRecommendationsStore.swift  Nutzungsbasiertes, thematisches Ranking
+│   ├── PodcastQueue.swift          Als-Nächstes-Queue für Folgen
+│   └── PodcastImport.swift         Apple-Podcasts-Abo-Import
 ├── CarPlay/
 │   └── CarPlaySceneDelegate.swift  CarPlay-Tabs (Weiter hören/Downloads/Bibliothek) + Now Playing
 ├── Models/
@@ -271,8 +292,16 @@ Sources/
 │   ├── NetworkMonitor.swift        Fortlaufende Netzwerk-Beobachtung (Auto-Reconnect)
 │   ├── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
 │   ├── BookmarkQueue.swift         Offline-Warteschlange + Cache für Lesezeichen
-│   └── SyncQueue.swift             Persistente Warteschlange für gescheiterte Updates
-│                                   (Storage/API hinter Protokollen, testbar)
+│   ├── SyncQueue.swift             Persistente Warteschlange für gescheiterte Updates
+│   │                               (Storage/API hinter Protokollen, testbar)
+│   ├── Retry.swift                 Backoff-Retry bei transienten Netzfehlern
+│   ├── URLSession+Maer.swift       Geteilte Session mit sinnvollen Timeouts
+│   ├── GPodderClient.swift         gpodder/mygpo-API-Client (Login, Abos, Episoden)
+│   ├── GPodderSync.swift           3-Wege-Abgleich der gpodder-Abos + Play-Aktionen
+│   ├── PodcastCloudSync.swift      iCloud-KV-Sync der lokalen Abos
+│   ├── PodcastFeedAuth.swift       Pro-Feed-Basic-Auth für Premium-Feeds (Schlüsselbund)
+│   ├── PodcastRefreshService.swift Hintergrund-Feed-Refresh + Neue-Folgen-Benachrichtigungen
+│   └── PodcastServerSave.swift     Nachträgliches Server-Sichern gestreamter Feed-Folgen
 ├── ViewModels/
 │   ├── AuthViewModel.swift         Setup-Screen-Logik
 │   ├── LibraryViewModel.swift      Bücherliste + Fortschritt, Sortierung, Serien-Gruppierung,
@@ -305,7 +334,11 @@ Sources/
     ├── PlayerView.swift            Player-UI (Audible-Stil)
     ├── CoverColorLoader.swift      Extrahiert Akzentfarbe aus dem Cover
     ├── ChapterListView.swift       Kapitelliste als Sheet
-    └── Haptics.swift               Kleiner Helfer für haptisches Feedback
+    ├── Haptics.swift               Kleiner Helfer für haptisches Feedback
+    ├── MediaTabBar.swift           Medientyp-Umschalter Hörbücher/Podcasts
+    ├── PodcastsView.swift          Podcast-Home (Fortsetzen, Empfehlungen, Queue, Reihen)
+    ├── PodcastSourceView.swift     Podcasts hinzufügen/importieren, Abo-Quellen wählen
+    └── Podcasts/                   Sendung, Folge, Queue, Discover, Pro-Sendung-Einstellungen, Karten
 ```
 
 **Architektur-Hinweis Mini-Player:** Der `PlayerCoordinator` lebt in
@@ -318,7 +351,8 @@ Verwendete API-Endpunkte:
 | Zweck | Endpoint |
 |---|---|
 | Bibliotheken | `GET /api/libraries` |
-| Bücherliste | `GET /api/libraries/{id}/items?minified=1` |
+| Bücherliste (progressives Paging) | `GET /api/libraries/{id}/items?minified=1&limit=&page=` |
+| Fortsetzen-/Kürzlich-Reihen | `GET /api/libraries/{id}/personalized` |
 | Buchdetails + Kapitel + Fortschritt | `GET /api/items/{id}?expanded=1` |
 | Fortschritt schreiben | `PATCH /api/me/progress/{itemId}` |
 | Fortschritt für die ganze Bibliothek | `GET /api/me` |
@@ -326,6 +360,9 @@ Verwendete API-Endpunkte:
 | Lesezeichen | `GET /api/me`, `POST/DELETE /api/me/item/{id}/bookmark…` |
 | Cover | `GET /api/items/{id}/cover?token=...` |
 | Audio-Stream | direkte `contentUrl` aus den Track-Daten, mit `Authorization: Bearer` Header |
+| gpodder/mygpo-Sync | `POST /api/2/auth/{user}/login.json`, `GET/POST /api/2/subscriptions/{user}/{device}.json`, `GET/POST /api/2/episodes/{user}.json` |
+
+Podcasts sprechen zusätzlich mit externen **RSS-Feeds**, der **PodcastIndex**-API (Entdecken/Metadaten, optionaler Key) und deinem selbst gehosteten **gpodder/mygpo**-Server.
 
 ## Über dieses Projekt
 Mär ist mit Unterstützung von KI entwickelt.

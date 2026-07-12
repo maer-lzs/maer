@@ -1,11 +1,11 @@
 # Mär
 
-A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/).
-The app focuses on one thing: **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0 — including while fully offline.
+A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/) **and podcasts**.
+Its foundation is **reliable playback progress sync** across multiple devices, without accidentally resetting a book to 0 — including while fully offline.
 
-> „Mär“ is an old German word for a tale or story — fitting for an audiobook player. The Xcode project is still called `ABSPlayer` internally; “Mär” is only the display name.
+> „Mär“ is an old German word for a tale or story — fitting for an audio player. The Xcode project is still called `ABSPlayer` internally; “Mär” is only the display name.
 
-Mär started as a private replacement for a client that regularly lost playback progress when switching devices. The app is intentionally minimal: no multi-user support, no podcasts, no server administration — just listening to audiobooks and keeping progress in sync, online or off.
+Mär started as a private replacement for a client that regularly lost playback progress when switching devices. It has since grown into a universal client for self-hosted audio — **audiobooks and podcasts** — built on a provider architecture, while staying deliberately focused: no multi-user support, no server administration, just listening and keeping progress reliably in sync, online or off.
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
@@ -54,6 +54,20 @@ Mär started as a private replacement for a client that regularly lost playback 
 - Performance: grid cells decode a small derived thumbnail instead of the full cover — smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
 - Hardening: free-space check before downloads start, magic-byte container detection with automatic file-extension repair (unit-tested), automatic recovery when a track fails mid-playback instead of silent stalling, VoiceOver labels on all transport controls
 
+## Podcasts
+
+Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts are a separate media type behind the same provider protocol, so audiobook playback and sync stay untouched; a dedicated podcast tab appears only once you have subscriptions.
+
+- **Three subscription sources, reconciled:** local **RSS** feeds, opt-in **Audiobookshelf** podcast libraries, and a self-hosted **gpodder/mygpo** server (e.g. [oPodSync](https://github.com/kd2org/opodsync)) as an equal backend next to iCloud and ABS. Subscriptions, unsubscribes, and play state are kept in one clean, reconciled state across all three — a robust unsubscribe removes a feed from every source at once
+- **Apple Podcasts import** of your existing subscriptions
+- **Apple-Podcasts-style home:** a “Continue” row of rich featured cards (remaining time · last played · chapter), usage-driven recommendations, the up-next queue, a premium row, downloaded episodes, and a “Recently updated” show grid with a red badge for new unheard episodes
+- **Usage-driven recommendations:** language-aware and themed from your own library and listening time, expanded by author/publisher and round-robin mixed so no single publisher dominates
+- **Per-show settings:** inbox mode, keep-latest-N with automatic trimming of old downloads, auto-download of new episodes, and per-show new-episode notifications
+- **Premium feeds** via per-feed HTTP Basic auth, stored in the keychain
+- **Rich metadata** from RSS / Podcasting 2.0 and the PodcastIndex API: seasons, episode type, explicit flag, guests/persons, transcripts, funding links, categories
+- **Background refresh** (`BGAppRefreshTask`) with bundled per-show notifications, offline downloads, a play queue, chapters, high-resolution feed covers, CarPlay, and a home-screen “Up Next” widget
+- Listening-history bridging between RSS and ABS podcast episodes (shared progress, optional server push)
+
 ## Core sync rule
 
 This is the heart of the app. A user-triggered seek action — scrubber, chapter jump, ±30s, or lock screen control — is treated as intentional and synced immediately, even backwards. A warning dialog only appears if progress drops by more than 120 seconds **without user action**, for example due to a faulty client reset. If the user cancels, playback jumps back to the last stored position.
@@ -64,7 +78,7 @@ Every progress write always sends a complete record (current time, duration, and
 
 ## Intentionally not included
 
-Multi-user support, podcasts, metadata editing, and server/library administration.
+Multi-user support, metadata editing, and server/library administration.
 
 ## Requirements
 
@@ -133,7 +147,13 @@ Sources/
 │   ├── LocalProvider.swift         Imported local audio files (no server)
 │   ├── LocalLibrary.swift          Local file index + AVAsset metadata extraction
 │   ├── RSSProvider.swift           Podcasts: RSS episodes mapped to library items
-│   └── PodcastSubscriptions.swift  Feed store + XMLParser-based RSS/Atom parser
+│   ├── ABSPodcastProvider.swift    Audiobookshelf podcast libraries (opt-in source)
+│   ├── PodcastSubscriptions.swift  Feed store + XMLParser-based RSS/Podcasting-2.0 parser
+│   ├── PodcastSubscriptionSync.swift  Reconciled local ↔ ABS subscription mirroring
+│   ├── PodcastDirectory.swift      Discovery via PodcastIndex + iTunes charts
+│   ├── PodcastRecommendationsStore.swift  Usage-driven, themed recommendation ranking
+│   ├── PodcastQueue.swift          Up-next play queue for episodes
+│   └── PodcastImport.swift         Apple Podcasts subscription import
 ├── CarPlay/
 │   └── CarPlaySceneDelegate.swift  CarPlay tabs (continue/downloaded/library) + Now Playing
 ├── Models/
@@ -150,8 +170,16 @@ Sources/
 │   ├── NetworkMonitor.swift        Continuous connectivity observation (auto-reconnect)
 │   ├── NetworkStatus.swift         One-shot Wi-Fi check and shared offline-error detection
 │   ├── BookmarkQueue.swift         Offline queue + cache for bookmark create/delete
-│   └── SyncQueue.swift             Persistent queue for failed progress updates (storage/API
-│                                   behind protocols for testability)
+│   ├── SyncQueue.swift             Persistent queue for failed progress updates (storage/API
+│   │                               behind protocols for testability)
+│   ├── Retry.swift                 Backoff retry for transient network errors
+│   ├── URLSession+Maer.swift       Shared session with sane request/resource timeouts
+│   ├── GPodderClient.swift         gpodder/mygpo API client (login, subscriptions, episodes)
+│   ├── GPodderSync.swift           3-way reconcile of gpodder subscriptions + play actions
+│   ├── PodcastCloudSync.swift      iCloud key-value sync of local subscriptions
+│   ├── PodcastFeedAuth.swift       Per-feed HTTP Basic auth for premium feeds (keychain)
+│   ├── PodcastRefreshService.swift Background feed refresh + new-episode notifications
+│   └── PodcastServerSave.swift     Deferred server-side save of streamed feed episodes
 ├── ViewModels/
 │   ├── AuthViewModel.swift         Setup screen logic
 │   ├── LibraryViewModel.swift      Loads book list and progress, sorting, series grouping,
@@ -184,7 +212,11 @@ Sources/
     ├── PlayerView.swift            Audible-style player UI
     ├── CoverColorLoader.swift      Extracts an accent color from the cover
     ├── ChapterListView.swift       Chapter list as a sheet
-    └── Haptics.swift               Small haptic feedback helper
+    ├── Haptics.swift               Small haptic feedback helper
+    ├── MediaTabBar.swift           Audiobooks/Podcasts media-type switcher
+    ├── PodcastsView.swift          Podcast home (continue, recommendations, queue, shelves)
+    ├── PodcastSourceView.swift     Add/import podcasts and pick subscription sources
+    └── Podcasts/                   Show, episode, queue, discover, per-show settings, cards
 ```
 
 **Mini-player architecture note:** `PlayerCoordinator` lives in `LibraryView` and survives navigation. Playback is not stopped when leaving the player screen or when the mini-player is temporarily hidden — it only stops when explicitly opening a different book.
@@ -194,7 +226,8 @@ API endpoints used:
 | Purpose | Endpoint |
 |---|---|
 | Libraries | `GET /api/libraries` |
-| Book list | `GET /api/libraries/{id}/items?minified=1` |
+| Book list (progressive paging) | `GET /api/libraries/{id}/items?minified=1&limit=&page=` |
+| Continue / Recently-Added shelves | `GET /api/libraries/{id}/personalized` |
 | Book details, chapters and progress | `GET /api/items/{id}?expanded=1` |
 | Write progress | `PATCH /api/me/progress/{itemId}` |
 | Progress for the whole library | `GET /api/me` |
@@ -202,6 +235,9 @@ API endpoints used:
 | Bookmarks | `GET /api/me`, `POST/DELETE /api/me/item/{id}/bookmark…` |
 | Cover | `GET /api/items/{id}/cover?token=...` |
 | Audio stream | direct `contentUrl` from the track data, with `Authorization: Bearer` header |
+| gpodder/mygpo sync | `POST /api/2/auth/{user}/login.json`, `GET/POST /api/2/subscriptions/{user}/{device}.json`, `GET/POST /api/2/episodes/{user}.json` |
+
+Podcasts additionally talk to external **RSS feeds**, the **PodcastIndex** API (discovery/metadata, optional key), and your self-hosted **gpodder/mygpo** server.
 
 ## About this project
 
