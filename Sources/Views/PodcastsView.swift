@@ -426,6 +426,7 @@ struct PodcastShowView: View {
     @State private var availableLoaded = false
     @State private var loadingAvailable = false
     @State private var downloading: Set<String> = []
+    @State private var downloadError: String?
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
     /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
     @AppStorage private var newestFirst: Bool
@@ -474,6 +475,14 @@ struct PodcastShowView: View {
                     Image(systemName: "arrow.up.arrow.down")
                 }
             }
+        }
+        .alert("Download failed", isPresented: Binding(
+            get: { downloadError != nil },
+            set: { if !$0 { downloadError = nil } }
+        )) {
+            Button("OK", role: .cancel) { downloadError = nil }
+        } message: {
+            if let downloadError { Text(downloadError) }
         }
     }
 
@@ -595,7 +604,11 @@ struct PodcastShowView: View {
     private func downloadAvailable(_ ep: FeedEpisode) {
         downloading.insert(ep.id)
         Task {
-            _ = await absPodcast.downloadEpisode(showId: show.id, episode: ep)
+            if let error = await absPodcast.downloadEpisode(showId: show.id, episode: ep) {
+                downloadError = error
+                downloading.remove(ep.id)
+                return
+            }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             await absPodcast.refresh()
             available.removeAll { $0.id == ep.id }
