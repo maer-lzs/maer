@@ -34,7 +34,7 @@ final class PodcastQueue: ObservableObject {
         save()
     }
 
-    /// Ans Ende der Warteschlange.
+    /// To the end of the queue.
     func playLast(_ id: String) {
         guard !ids.contains(id) else { return }
         ids.append(id)

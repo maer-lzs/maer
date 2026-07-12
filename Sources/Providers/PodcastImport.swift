@@ -15,7 +15,7 @@ enum PodcastImport {
 
     // MARK: - OPML
 
-    /// Alle `xmlUrl`-Feeds aus einer OPML-Datei (Reihenfolge wie in der Datei).
+    /// All `xmlUrl` feeds from an OPML file (order as in the file).
     nonisolated static func parseOPML(_ data: Data) -> [String] {
         let parser = OPMLParser()
         return parser.parse(data)
@@ -142,8 +142,8 @@ enum PodcastImport {
 }
 
 /// Minimaler OPML-Parser: sammelt alle `xmlUrl`-Attribute (Feed-URLs).
-/// `nonisolated`, damit er aus dem nonisolated `parseOPML` erzeugt werden kann
-/// (Projekt-Default ist sonst MainActor-Isolation).
+/// `nonisolated` so it can be created from the nonisolated `parseOPML` (the
+/// project default is otherwise MainActor isolation).
 private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {
     private var feedURLs: [String] = []
 

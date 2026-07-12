@@ -189,8 +189,8 @@ struct LibraryItemMetadata: Codable {
     var feedUrl: String? = nil
 }
 
-/// Eine Podcast-Folge einer ABS-Show (`media.episodes[]` im Detail-Endpoint).
-/// `audioTrack` ist der streambare Track (contentUrl relativ zum Server).
+/// A podcast episode of an ABS show (`media.episodes[]` in the detail endpoint).
+/// `audioTrack` is the streamable track (contentUrl relative to the server).
 struct ABSPodcastEpisode: Codable, Identifiable {
     let id: String
     let title: String?
@@ -210,7 +210,7 @@ struct ABSPodcastEpisode: Codable, Identifiable {
     var enclosure: ABSEnclosure? = nil
 }
 
-/// Enclosure einer Feed-Folge (nur die URL interessiert uns als Fallback-Key).
+/// Enclosure of a feed episode (only the URL matters to us as a fallback key).
 struct ABSEnclosure: Codable {
     let url: String?
 }

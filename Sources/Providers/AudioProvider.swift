@@ -48,17 +48,17 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
     var mediaType: MediaType { get }
     var capabilities: ProviderCapabilities { get }
 
-    // MARK: Bibliothek
+    // MARK: Library
     func fetchLibraries() async throws -> [ABSLibrary]
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem]
-    /// Eine Seite der Bibliothek (Server-Paging). Standard-Implementierung
-    /// (siehe Extension) liefert die ganze Liste als eine Seite — nur ABS
-    /// paginiert echt; lokale/RSS-Quellen sind ohnehin klein.
+    /// One page of the library (server paging). The default implementation
+    /// (see extension) returns the whole list as a single page — only ABS
+    /// paginates for real; local/RSS sources are small anyway.
     func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
         -> (items: [LibraryItem], total: Int)
-    /// Fertige „Continue"/„Recently Added"-Reihen der Quelle (ABS
-    /// `personalized`). Standard: leer — nur ABS liefert sie; lokale/RSS-Quellen
-    /// leiten diese Reihen aus ihrer (kleinen) Vollliste ab.
+    /// Prebuilt "Continue"/"Recently Added" rows of the source (ABS
+    /// `personalized`). Default: empty — only ABS provides them; local/RSS sources
+    /// derive these rows from their (small) full list.
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail
 

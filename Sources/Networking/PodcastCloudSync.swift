@@ -85,12 +85,12 @@ final class PodcastCloudSync {
             store.synchronize()
         }
         if localChanged {
-            // UI/Sektionen und ABS-Provider-Anzeige frisch bewerten lassen.
+            // Have the UI/sections and ABS provider display re-evaluate.
             PodcastProgressStore.shared.reload()
         }
     }
 
-    /// `[Double]` aus einem plist-Wert (Array aus `Double`/`NSNumber`).
+    /// `[Double]` from a plist value (array of `Double`/`NSNumber`).
     private static func coerce(_ value: Any) -> [Double]? {
         if let d = value as? [Double] { return d }
         if let n = value as? [NSNumber] { return n.map(\.doubleValue) }

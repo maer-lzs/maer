@@ -13,17 +13,17 @@ import UIKit
 final class LocalLibrary: ObservableObject {
     static let shared = LocalLibrary()
 
-    /// Ein importiertes Element (persistierte Metadaten + Dateiliste).
+    /// An imported item (persisted metadata + file list).
     struct Entry: Codable, Identifiable {
         var id: String                 // "local:<uuid>"
         var title: String
         var author: String?
         var duration: Double
         var addedAt: Double
-        /// Track-Dateinamen relativ zum Item-Ordner, in Abspielreihenfolge.
+        /// Track filenames relative to the item folder, in playback order.
         var trackFiles: [String]
         var chapters: [ABSChapter]
-        /// true, wenn beim Import ein Cover extrahiert wurde (cover.jpg).
+        /// true if a cover was extracted on import (cover.jpg).
         var hasCover: Bool
     }
 
@@ -60,8 +60,8 @@ final class LocalLibrary: ObservableObject {
         return LibraryItemDetail(id: entry.id, media: media(for: entry), userMediaProgress: nil)
     }
 
-    /// Lokale Datei-URL eines Tracks anhand des Stream-Pfads (contentUrl =
-    /// "<uuid>/<dateiname>").
+    /// Local file URL of a track from the stream path (contentUrl =
+    /// "<uuid>/<filename>").
     func fileURL(forContentPath contentPath: String) -> URL? {
         let url = audioDir.appendingPathComponent(contentPath)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
@@ -132,7 +132,7 @@ final class LocalLibrary: ObservableObject {
         guard !trackFiles.isEmpty else { return }
 
         let meta = await Self.extractMetadata(dir: dir, files: trackFiles)
-        // Cover extrahieren (aus dem ersten Track).
+        // Extract the cover (from the first track).
         var hasCover = false
         if let artwork = meta.artwork {
             let coverURL = dir.appendingPathComponent("cover.jpg")
@@ -191,7 +191,7 @@ final class LocalLibrary: ObservableObject {
             if let duration = try? await asset.load(.duration) {
                 totalDuration += duration.seconds.isFinite ? duration.seconds : 0
             }
-            // Metadaten nur aus der ersten Datei.
+            // Metadata only from the first file.
             if index == 0, let items = try? await asset.load(.commonMetadata) {
                 for item in items {
                     if item.commonKey == .commonKeyTitle, let v = try? await item.load(.stringValue) { title = v }
@@ -199,7 +199,7 @@ final class LocalLibrary: ObservableObject {
                     if item.commonKey == .commonKeyArtwork, let v = try? await item.load(.dataValue) { artwork = v }
                 }
             }
-            // Eingebettete Kapitel je Datei (Zeiten auf die Gesamtposition heben).
+            // Embedded chapters per file (lift times to the overall position).
             if let groups = try? await asset.loadChapterMetadataGroups(
                 bestMatchingPreferredLanguages: Locale.preferredLanguages
             ) {
@@ -218,7 +218,7 @@ final class LocalLibrary: ObservableObject {
             }
         }
 
-        // Mehrteilig ohne eingebettete Kapitel: jede Datei = ein Kapitel.
+        // Multi-file without embedded chapters: each file = one chapter.
         if chapters.isEmpty && files.count > 1 {
             var offset: Double = 0
             for (index, file) in files.enumerated() {

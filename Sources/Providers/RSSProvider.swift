@@ -13,13 +13,13 @@ final class RSSProvider: AudioProvider {
 
     var providerId: String { "rss" }
     var mediaType: MediaType { .podcasts }
-    /// Podcast-Tab erst zeigen, wenn mindestens ein Feed abonniert ist.
+    /// Only show the podcast tab once at least one feed is subscribed.
     var isAvailable: Bool { subs.hasSubscriptions }
     /// Episodes can be downloaded for offline; no server sync, no server
     /// bookmarks.
     var capabilities: ProviderCapabilities { [.downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
-    /// Private/Premium-Feeds: Basic-Auth je Feed (aus dem `feedKey` der Item-ID).
+    /// Private/premium feeds: per-feed Basic auth (from the `feedKey` of the item id).
     func streamAuthHeaders(forItemId itemId: String) -> [String: String] {
         PodcastFeedAuth.authHeader(forItemId: itemId)
     }
@@ -47,7 +47,7 @@ final class RSSProvider: AudioProvider {
         return LibraryItemDetail(id: item.id, media: media, userMediaProgress: nil)
     }
 
-    // MARK: - Kapitel (Podcasting 2.0)
+    // MARK: - Chapters (Podcasting 2.0)
 
     private struct PC20ChapterList: Decodable { let chapters: [PC20Chapter] }
     private struct PC20Chapter: Decodable { let startTime: Double; let title: String? }
@@ -78,7 +78,7 @@ final class RSSProvider: AudioProvider {
         URL(string: contentPath)
     }
 
-    // Fortschritt rein lokal (kein Server) — wie LocalProvider.
+    // Progress purely local (no server) — like LocalProvider.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         var map: [String: BookProgress] = [:]
         for (show, episode) in subs.allEpisodes() {

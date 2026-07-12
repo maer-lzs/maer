@@ -12,8 +12,8 @@ final class LocalProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "local" }
-    /// Keine Capability: keine Server-Sync, keine Server-Lesezeichen,
-    /// keine Remote-Suche, kein Passwort-Login.
+    /// No capabilities: no server sync, no server bookmarks, no remote search,
+    /// no password login.
     var capabilities: ProviderCapabilities { [] }
     var streamAuthHeaders: [String: String] { [:] }
 
@@ -61,7 +61,7 @@ final class LocalProvider: AudioProvider {
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
-    // Keine Server-Lesezeichen (Capability fehlt — wird nie aufgerufen).
+    // No server bookmarks (capability missing — never called).
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
     func deleteBookmark(itemId: String, time: Double) async throws {}

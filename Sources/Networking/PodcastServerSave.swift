@@ -14,8 +14,8 @@ final class PodcastServerSave {
     static let shared = PodcastServerSave()
     private init() {}
 
-    /// Wie der Toggle in den Einstellungen (`@AppStorage("podcastAutoSaveOnPlay")`),
-    /// hier direkt aus UserDefaults — Default an.
+    /// Like the toggle in the settings (`@AppStorage("podcastAutoSaveOnPlay")`),
+    /// here directly from UserDefaults — default on.
     private var autoSave: Bool {
         UserDefaults.standard.object(forKey: "podcastAutoSaveOnPlay") as? Bool ?? true
     }
@@ -24,7 +24,7 @@ final class PodcastServerSave {
     private var pending: [String: Pending] = [:]   // rss-Item-ID → Info
     private var triggered: Set<String> = []
 
-    /// Beim Antippen einer Feed-only-Folge registrieren (rss-Item, ABS-Show).
+    /// Register on tapping a feed-only episode (rss item, ABS show).
     func register(rssItemId: String, showId: String, feed: FeedEpisode) {
         pending[rssItemId] = Pending(showId: showId, feed: feed)
     }
@@ -54,8 +54,8 @@ final class PodcastServerSave {
         }
     }
 
-    /// Lokalen/iCloud-Fortschritt der rss-Folge auf die Server-Episode umziehen
-    /// und einmal an den ABS-Server schreiben.
+    /// Move the local/iCloud progress of the rss episode onto the server episode
+    /// and write it once to the ABS server.
     private func migrateProgress(from old: String, to new: String, duration: Double) async {
         let d = UserDefaults.standard
         guard let arr = d.array(forKey: AppStorageKeys.localPosition(old)) as? [Double], arr.count == 2 else { return }

@@ -15,7 +15,7 @@ enum GPodderError: Error, LocalizedError {
     }
 }
 
-/// Eine Episoden-Aktion aus der Server-Antwort (`GET episodes`).
+/// An episode action from the server response (`GET episodes`).
 struct GPodderEpisodeAction: Decodable {
     let podcast: String?     // Feed-URL
     let episode: String?     // Enclosure-URL
@@ -123,7 +123,7 @@ final class GPodderClient {
         catch { throw GPodderError.network }
         guard let http = resp as? HTTPURLResponse else { throw GPodderError.network }
         // 401 mit reinem Basic-Auth: manche Server (z. B. gpodder.net) wollen erst
-        // einen Login → Session-Cookie. Einmal einloggen und wiederholen.
+        // a login → session cookie. Log in once and retry.
         if http.statusCode == 401, allowAuthRetry {
             try await login()
             return try await send(req, allowAuthRetry: false)

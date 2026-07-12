@@ -38,9 +38,9 @@ enum PodcastSubscriptionSync {
         defer { isRunning = false }
 
         let abs = ABSPodcastProvider.shared
-        // Ohne Server-Podcast-Bibliothek gibt es kein Ziel zum Spiegeln.
+        // Without a server podcast library there is no target to mirror to.
         guard abs.hasPodcasts else { return report }
-        // Erst den echten Server-Stand laden, sonst legen wir evtl. Dubletten an.
+        // Load the real server state first, otherwise we might create duplicates.
         await abs.refresh()
 
         // Server-Feeds (aktiv + archiviert) normalisiert indexieren.

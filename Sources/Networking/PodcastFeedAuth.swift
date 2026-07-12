@@ -32,7 +32,7 @@ nonisolated enum PodcastFeedAuth {
         return ["Authorization": "Basic \(token)"]
     }
 
-    /// Auth-Header aus einer `rss:<feedKey>:<guid>`-Item-ID (leer sonst).
+    /// Auth header from an `rss:<feedKey>:<guid>` item id (empty otherwise).
     static func authHeader(forItemId id: String) -> [String: String] {
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count >= 2, parts[0] == "rss" else { return [:] }

@@ -66,13 +66,13 @@ final class PodcastRecommendationsStore: ObservableObject {
         loadedAt = Date()
     }
 
-    /// Nach dem Abonnieren aus der Liste nehmen.
+    /// Remove from the list after subscribing.
     func remove(feedURL: String) {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
     }
 
-    // MARK: - Signale aus der eigenen Nutzung
+    // MARK: - Signals from your own usage
 
     private var mineShows: [PodcastShow] {
         PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows

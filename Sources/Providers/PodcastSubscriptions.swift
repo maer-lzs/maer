@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-/// Person aus dem Feed (`<podcast:person>` / `itunes:owner`) — Host/Gast.
+/// Person from the feed (`<podcast:person>` / `itunes:owner`) — host/guest.
 nonisolated struct PodcastPerson: Codable, Hashable {
     var name: String
     var role: String?
@@ -44,7 +44,7 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var duration: Double            // Sekunden (0 wenn unbekannt)
     var description: String?
     var imageURL: String?
-    /// Podcasting-2.0-Kapitel (`<podcast:chapters url=… type=json+chapters>`).
+    /// Podcasting 2.0 chapters (`<podcast:chapters url=… type=json+chapters>`).
     /// Loaded only when opening the episode (RSSProvider.fetchItemDetail).
     var chaptersURL: String?
     // Rich metadata (optional → backward-compatible)
@@ -114,8 +114,8 @@ final class PodcastSubscriptions: ObservableObject {
         return String(h, radix: 16)
     }
 
-    /// Feed-URLs vergleichbar machen (Schema/`www.`/Query/Trailing-Slash egal),
-    /// damit http/https- bzw. Slash-Varianten desselben Feeds zusammenfallen.
+    /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
+    /// http/https or slash variants of the same feed collapse together.
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
@@ -178,8 +178,8 @@ final class PodcastSubscriptions: ObservableObject {
         return guid
     }
 
-    /// Zwei Shows desselben Feeds vereinen: Metadaten der reicheren behalten,
-    /// Episoden nach guid deduplizieren, neueste zuerst.
+    /// Merge two shows of the same feed: keep the metadata of the richer one,
+    /// deduplicate episodes by guid, newest first.
     private nonisolated static func merge(_ a: PodcastShow, _ b: PodcastShow) -> PodcastShow {
         let (base, other) = a.episodes.count >= b.episodes.count ? (a, b) : (b, a)
         var result = base
@@ -189,7 +189,7 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// `localPosition.<altGuid>` → `<neuGuid>` umziehen (nur wenn Ziel leer).
+    /// Move `localPosition.<oldGuid>` → `<newGuid>` (only if the target is empty).
     private nonisolated static func migrateLocalPosition(from old: String, to new: String) {
         let d = UserDefaults.standard
         let oldKey = AppStorageKeys.localPosition(old)
@@ -265,7 +265,7 @@ final class PodcastSubscriptions: ObservableObject {
         var progressApplied = 0   // episodes with applied progress/played
     }
 
-    /// OPML-Datei importieren: jeden `xmlUrl`-Feed abonnieren (kein Fortschritt).
+    /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
     func importOPML(_ data: Data) async -> ImportResult {
         var result = ImportResult()
         for feed in PodcastImport.parseOPML(data) {
@@ -290,8 +290,8 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Bildet Apples Enclosure-URLs auf unsere Episoden ab und schreibt deren
-    /// Fortschritt in `localPosition` (dieselbe Ablage, die der Player nutzt).
+    /// Maps Apple's enclosure URLs to our episodes and writes their progress
+    /// into `localPosition` (the same store the player uses).
     private func applyAppleProgress(_ progress: [PodcastImport.AppleProgress]) -> Int {
         guard !progress.isEmpty else { return 0 }
         // Nach normalisierter Enclosure-URL indizieren (Query/Scheme egal).
@@ -404,7 +404,7 @@ final class PodcastSubscriptions: ObservableObject {
     // MARK: - Laden + Parsen
 
     private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
-        // Private/Premium-Feeds: Basic-Auth-Header mitschicken, wenn hinterlegt.
+        // Private/premium feeds: send the Basic auth header if stored.
         var request = URLRequest(url: feedURL)
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
             request.setValue(value, forHTTPHeaderField: field)
@@ -483,7 +483,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
             iSeason = nil; iEpisodeNum = nil; iEpisodeType = ""; iExplicit = nil; iLink = ""; iTranscript = ""
             iPersons = []
         }
-        // Podcasting-2.0-Kapitel: JSON-URL im Item (nur JSON-Typ nutzen).
+        // Podcasting 2.0 chapters: JSON URL in the item (use JSON type only).
         if el == "podcast:chapters", let url = attrs["url"],
            (attrs["type"]?.contains("json") ?? true) {
             iChapters = url
@@ -492,11 +492,11 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "podcast:transcript", inItem, iTranscript.isEmpty, let url = attrs["url"] {
             iTranscript = url
         }
-        // Person (Name folgt als Textinhalt) — Attribute jetzt merken.
+        // Person (name follows as text content) — remember the attributes now.
         if el == "podcast:person" { pendingPersonAttrs = attrs }
-        // Funding (Label folgt als Text) — URL merken.
+        // Funding (label follows as text) — remember the URL.
         if el == "podcast:funding" { pendingFundingURL = attrs["url"] }
-        // Kategorien (auch verschachtelt: Eltern + Kind feuern beide).
+        // Categories (also nested: parent + child both fire).
         if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
             showCategories.append(cat)
         }
@@ -593,7 +593,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         return 0
     }
 
-    /// `itunes:explicit`: true/yes/explicit → true, false/no/clean → false, sonst nil.
+    /// `itunes:explicit`: true/yes/explicit → true, false/no/clean → false, else nil.
     private static func parseExplicit(_ s: String) -> Bool? {
         switch s.lowercased() {
         case "true", "yes", "explicit": return true
@@ -602,7 +602,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         }
     }
 
-    // "HH:MM:SS", "MM:SS" oder reine Sekunden → Sekunden.
+    // "HH:MM:SS", "MM:SS" or plain seconds → seconds.
     private static func parseDuration(_ s: String) -> Double {
         if s.contains(":") {
             let parts = s.split(separator: ":").compactMap { Double($0) }

@@ -91,7 +91,7 @@ final class BookmarkQueue {
         save(remaining)
     }
 
-    // MARK: - Offline-Cache der Server-Liste
+    // MARK: - Offline cache of the server list
 
     func cache(_ bookmarks: [ABSBookmark], forItemId itemId: String) {
         UserDefaults.standard.set(
@@ -106,8 +106,8 @@ final class BookmarkQueue {
         return bookmarks
     }
 
-    /// Cache + Pending-Ops zusammengerechnet: das, was der Nutzer offline als
-    /// aktuellen Stand sehen soll (optimistisch).
+    /// Cache + pending ops combined: what the user should see offline as the
+    /// current state (optimistic).
     func effectiveBookmarks(forItemId itemId: String) -> [ABSBookmark] {
         var bookmarks = cachedBookmarks(forItemId: itemId)
         for op in pendingOps() where op.itemId == itemId {

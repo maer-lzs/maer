@@ -63,12 +63,12 @@ final class ImageCache {
         url.path.replacingOccurrences(of: "/", with: "_")
     }
 
-    /// Muss zum Pfad von `APIClient.coverURL` passen (api/items/{id}/cover).
+    /// Must match the path of `APIClient.coverURL` (api/items/{id}/cover).
     private func key(forItemId itemId: String) -> String {
         "_api_items_\(itemId)_cover"
     }
 
-    /// Decoded-Bytes als NSCache-Kosten (Pixel × 4).
+    /// Decoded bytes as NSCache cost (pixels × 4).
     private func cost(of image: UIImage) -> Int {
         guard let cg = image.cgImage else { return 1 }
         return cg.width * cg.height * 4
@@ -288,7 +288,7 @@ final class ImageCache {
         }
     }
 
-    /// Leert den purgebaren Cover-Cache (persistente Download-Cover bleiben).
+    /// Clears the purgeable cover cache (persistent download covers stay).
     func clearCache() {
         memoryCache.removeAllObjects()
         thumbCache.removeAllObjects()

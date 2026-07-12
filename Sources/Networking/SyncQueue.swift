@@ -1,6 +1,6 @@
 import Foundation
 
-/// Persistenz-Abstraktion der Queue — in Tests durch In-Memory ersetzbar.
+/// Persistence abstraction of the queue — replaceable with in-memory in tests.
 protocol SyncQueueStorage {
     func load() -> [String: SyncQueue.PendingUpdate]
     func save(_ pending: [String: SyncQueue.PendingUpdate])

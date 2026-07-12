@@ -99,7 +99,7 @@ enum PodcastRefreshService {
         }
     }
 
-    /// Benachrichtigungs-Erlaubnis anfragen (beim Aktivieren des Toggles).
+    /// Request notification permission (when enabling the toggle).
     @discardableResult
     static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current()

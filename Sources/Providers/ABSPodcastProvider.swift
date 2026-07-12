@@ -114,7 +114,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         )
     }
 
-    // ABS-Podcasts nutzen keine (Buch-)Lesezeichen.
+    // ABS podcasts use no (book) bookmarks.
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] { [] }
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
     func deleteBookmark(itemId: String, time: Double) async throws {}
@@ -421,8 +421,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     // MARK: - Mapping
 
-    /// `abspod:<showId>:<episodeId>` zerlegen. ABS-IDs enthalten keine
-    /// Doppelpunkte, daher ist maxSplits 2 eindeutig.
+    /// Split `abspod:<showId>:<episodeId>`. ABS ids contain no colons, so
+    /// maxSplits 2 is unambiguous.
     private static func split(_ itemId: String) -> (show: String, episode: String?) {
         let parts = itemId.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
         guard parts.count >= 2, parts[0] == "abspod" else { return (itemId, nil) }
@@ -455,7 +455,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         )
     }
 
-    /// PodcastEpisode → LibraryItem (Track = Episoden-Audiofile).
+    /// PodcastEpisode → LibraryItem (track = episode audio file).
     private static func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
         LibraryItem(
             id: episode.guid,
@@ -478,7 +478,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         )
     }
 
-    /// Server-Detail einer Show + Episode → LibraryItemDetail der Episode.
+    /// Server detail of a show + episode → LibraryItemDetail of the episode.
     private static func episodeDetail(itemId: String, show: LibraryItemDetail, episode: ABSPodcastEpisode) -> LibraryItemDetail {
         let track = episode.audioTrack.map {
             ABSAudioTrack(index: 0, startOffset: nil,

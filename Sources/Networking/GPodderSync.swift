@@ -40,7 +40,7 @@ final class GPodderSync {
         catch { return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
     }
 
-    /// Abos (und History – Teil 2) abgleichen. Idempotent, nie zwei gleichzeitig.
+    /// Reconcile subscriptions (and history – part 2). Idempotent, never two at once.
     @discardableResult
     func reconcile() async -> Report {
         var report = Report()
@@ -62,14 +62,14 @@ final class GPodderSync {
         return report
     }
 
-    /// Einmal pro App-Session automatisch, wenn aktiviert & konfiguriert.
+    /// Once per app session automatically, if enabled & configured.
     func autoReconcileIfNeeded() async {
         guard !Self.didAutoReconcile, AppStorageKeys.gpodderEnabledValue, config != nil else { return }
         Self.didAutoReconcile = true
         await reconcile()
     }
 
-    // MARK: - Abo-Sync (Union-Merge, nicht-destruktiv)
+    // MARK: - Subscription sync (union merge, non-destructive)
 
     /// 3-way merge server ↔ local ↔ last-synced state: add new feeds on both
     /// sides AND propagate unsubscribes. The last-synced state (normalised URLs)
@@ -90,14 +90,14 @@ final class GPodderSync {
         let local = Set(localByNorm.keys)
         let server = Set(serverByNorm.keys)
 
-        // Genuine Adds (nur eine Seite, nicht im Vorstand) → auf die andere Seite.
+        // Genuine adds (only one side, not in the prior state) → to the other side.
         let addToServer = local.subtracting(server).subtracting(prev)
         let addLocally = server.subtracting(local).subtracting(prev)
-        // Genuine Removes (war synchron, jetzt nur noch eine Seite) → abbestellen.
+        // Genuine removes (was synced, now only one side) → unsubscribe.
         let removeFromServer = prev.intersection(server).subtracting(local)
         let removeLocally = prev.intersection(local).subtracting(server)
 
-        // Server-Seite: add + remove in einem Request.
+        // Server side: add + remove in one request.
         if !addToServer.isEmpty || !removeFromServer.isEmpty {
             try await client.uploadSubscriptions(
                 add: addToServer.compactMap { localByNorm[$0] },
@@ -165,7 +165,7 @@ final class GPodderSync {
         _ = try? await GPodderClient(config: config).uploadEpisodeActions([action])
     }
 
-    // MARK: - History-Sync (Episoden-Aktionen ↔ localPosition)
+    // MARK: - History sync (episode actions ↔ localPosition)
 
     /// Adopt server play actions into `localPosition` (newer timestamp wins) and
     /// conversely upload positions changed since the last push as play actions.
@@ -228,7 +228,7 @@ final class GPodderSync {
         return (pulled, out.count)
     }
 
-    // MARK: - Zeitstempel (gpodder nutzt ISO 8601 ohne Zeitzone, UTC)
+    // MARK: - Timestamps (gpodder uses ISO 8601 without time zone, UTC)
 
     private static let iso: DateFormatter = {
         let f = DateFormatter()

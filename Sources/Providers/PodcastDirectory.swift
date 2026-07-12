@@ -19,7 +19,7 @@ protocol PodcastDirectory {
     func search(_ term: String) async throws -> [PodcastSearchResult]
 }
 
-// MARK: - iTunes / Apple (kein Key)
+// MARK: - iTunes / Apple (no key)
 
 /// Apple's podcast search — keyless, returns the feed URL directly.
 struct ITunesDirectory: PodcastDirectory {
@@ -77,7 +77,7 @@ struct ITunesDirectory: PodcastDirectory {
         }
     }
 
-    /// Toplist-Feed: nur die enthaltenen iTunes-IDs interessieren (`im:id`).
+    /// Top-list feed: only the contained iTunes ids matter (`im:id`).
     private struct ChartResponse: Decodable {
         struct Feed: Decodable { let entry: [Entry] }
         struct Entry: Decodable {
@@ -94,14 +94,14 @@ struct ITunesDirectory: PodcastDirectory {
 
 // MARK: - PodcastIndex (optionaler Key)
 
-/// Offener Podcast-Katalog. Braucht API-Key + Secret; Requests sind
-/// SHA1-signiert (Key+Secret+Zeitstempel).
+/// Open podcast catalog. Needs an API key + secret; requests are SHA1-signed
+/// (key+secret+timestamp).
 struct PodcastIndexDirectory: PodcastDirectory {
     let key: String
     let secret: String
 
-    /// SHA1-Hex von Key+Secret+Datum — der Authorization-Header. Ausgelagert
-    /// und unit-getestet (Signatur-Fehler fallen sonst erst am Server auf).
+    /// SHA1 hex of key+secret+date — the Authorization header. Extracted and
+    /// unit-tested (signature errors would otherwise only surface at the server).
     static func authHeader(key: String, secret: String, date: String) -> String {
         let hash = Insecure.SHA1.hash(data: Data((key + secret + date).utf8))
         return hash.map { String(format: "%02x", $0) }.joined()
@@ -152,7 +152,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
-    // MARK: - Episoden (volle Historie)
+    // MARK: - Episodes (full history)
 
     private struct EpisodesResponse: Decodable {
         struct Item: Decodable {
@@ -187,7 +187,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         }
     }
 
-    /// Signierter Request (SHA1-Hex von Key+Secret+Unix-Sekunden im Header).
+    /// Signed request (SHA1 hex of key+secret+unix seconds in the header).
     private func signedRequest(url: URL) -> URLRequest {
         let authDate = String(Int(Date().timeIntervalSince1970))
         var request = URLRequest(url: url)
@@ -199,9 +199,9 @@ struct PodcastIndexDirectory: PodcastDirectory {
     }
 }
 
-/// Eine Folge aus PodcastIndex (roh) — wird von `PodcastSubscriptions` mit der
-/// stabilen `rss:<feedKey>:<guid>`-ID gemappt, damit sie mit Feed-Folgen
-/// dedupliziert und denselben Fortschritts-Key nutzt.
+/// An episode from PodcastIndex (raw) — mapped by `PodcastSubscriptions` to the
+/// stable `rss:<feedKey>:<guid>` id so it deduplicates with feed episodes and
+/// uses the same progress key.
 struct PodcastIndexEpisode {
     let guid: String?
     let title: String?
