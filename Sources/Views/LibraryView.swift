@@ -30,20 +30,20 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
-    /// Gemessene Höhe der schwebenden Bottom-Zone (Mini-Player + Tabs) — als
-    /// Freiraum unten an alle Scroll-Inhalte gereicht, damit nichts verdeckt
-    /// wird. Die Zone liegt als Overlay (reserviert keinen Platz selbst).
+    /// Measured height of the floating bottom zone (mini-player + tabs) — passed
+    /// as bottom free space to all scroll contents so nothing is covered. The
+    /// zone is an overlay (reserves no space itself).
     @State private var bottomBarHeight: CGFloat = 0
-    /// Einstellungen als modales Sheet (NICHT in den Bibliotheks-Stack gepusht) —
-    /// sonst liegt das Mini-Player-Overlay darüber und dessen Medien-Pills lösen
-    /// aus den Einstellungen heraus einen Sprung zurück zur Bibliothek aus.
+    /// Settings as a modal sheet (NOT pushed onto the library stack) — otherwise
+    /// the mini-player overlay lies over it and its media pills trigger a jump
+    /// back to the library from within the settings.
     @State private var showSettings = false
-    /// Aktiver Inhaltstyp-Tab. Heute nur Hörbücher; die untere Tab-Leiste
-    /// erscheint erst, wenn eine zweite Quelle einen anderen Typ mitbringt.
+    /// Active content-type tab. Today audiobooks only; the bottom tab bar only
+    /// appears when a second source brings a different type.
     @State private var selectedMediaType: MediaType = .audiobooks
 
-    /// Verfügbare Inhaltstypen aus allen aktiven Quellen (dedupliziert,
-    /// in fester Reihenfolge). Heute `[.audiobooks]`.
+    /// Available content types from all active sources (deduplicated, in a fixed
+    /// order). Today `[.audiobooks]`.
     private var availableMediaTypes: [MediaType] {
         let present = Set(AppSession.shared.allProviders.filter(\.isAvailable).map(\.mediaType))
         return MediaType.allCases.filter { present.contains($0) }
@@ -66,7 +66,7 @@ struct LibraryView: View {
                     offlineBanner
                 }
 
-                // Inhalt nach Tab. Heute nur Hörbücher; Podcasts/Musik kommen
+                // Content by tab. Today audiobooks only; podcasts/music come
                 // additiv als weitere Cases mit eigenen Views.
                 switch selectedMediaType {
                 case .audiobooks:
@@ -102,37 +102,35 @@ struct LibraryView: View {
                     }
                 }
             }
-            // Programmatic push aus dem Such-Overlay (Buch-Tap): die Overlay
-            // fährt runter und legt die Item-ID auf den Pfad.
+            // Programmatic push from the search overlay (book tap): the overlay
+            // slides down and puts the item id on the path.
             .navigationDestination(for: String.self) { itemId in
                 if let entry = viewModel.entries.first(where: { $0.id == itemId }) {
                     BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
                 }
             }
         }
-        // Bottom-Zone als OVERLAY (reserviert keinen Platz) — den Freiraum
-        // liefern die Scroll-Inhalte selbst über `bottomBarClearance()`, was
-        // auch gepushte Screens (Detail, Podcast-Show) sauber abdeckt.
+        // Bottom zone as an OVERLAY (reserves no space) — the free space is
+        // provided by the scroll contents themselves via `bottomBarClearance()`,
+        // which also covers pushed screens (detail, podcast show) cleanly.
         .overlay(alignment: .bottom) {
-            // Mini-Leiste und Such-Button in EINER Zeile, damit der Such-
-            // Button nie nach oben verschoben wird, nur weil die Mini-Leiste
-            // erscheint/verschwindet — beide bleiben auf gleicher Höhe.
-            // Zentral über dem ganzen NavigationStack, damit beide auf jeder
-            // Ebene (Bibliothek UND Buchdetail) sichtbar bleiben. Da diese
-            // Zeile strukturell AUSSERHALB des NavigationStack liegt, kann
-            // die Mini-Leiste nicht per eigenem NavigationLink navigieren —
-            // stattdessen hängt sie sich per Callback in den Navigationspfad
-            // des Stacks ein (siehe navigationPath oben). Auf dem vollen
-            // Player selbst wird die ganze Zeile ausgeblendet, sonst
-            // erscheinen Play/Pause & Co. doppelt.
+            // Mini bar and search button in ONE row so the search button is never
+            // shifted up just because the mini bar appears/disappears — both stay
+            // at the same height. Centrally above the whole NavigationStack so
+            // both stay visible on every level (library AND book detail). Since
+            // this row is structurally OUTSIDE the NavigationStack, the mini bar
+            // cannot navigate via its own NavigationLink — instead it hooks into
+            // the stack's navigation path via a callback (see navigationPath
+            // above). On the full player itself the whole row is hidden,
+            // otherwise play/pause & co. would appear twice.
             if !isShowingFullPlayer {
                 bottomBarContent
                 .animation(.spring(response: 0.5, dampingFraction: 0.88), value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
-                // Höhe messen → als Freiraum an die Scroll-Inhalte reichen. NUR im
-                // aufgeklappten Zustand, damit der Freiraum beim Zusammenklappen
-                // nicht schrumpft (das würde eine Scroll-Rückkopplung auslösen).
+                // Measure the height → pass it as free space to the scroll
+                // contents. ONLY while expanded, so the free space doesn't shrink
+                // on collapse (that would trigger a scroll feedback loop).
                 .background {
                     GeometryReader { proxy in
                         Color.clear
@@ -181,8 +179,8 @@ struct LibraryView: View {
         // settings) inherit the same cover accent as the glass elements in
         // the bottom row. The detail page overrides it with its own loader.
         .environment(\.glassAccent, playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil)
-        // Freiraum-Höhe an ALLE Inhalte (auch gepushte Screens) reichen; auf
-        // dem vollen Player 0 (er deckt alles ab).
+        // Pass the free-space height to ALL contents (also pushed screens); 0 on
+        // the full player (it covers everything).
         .environment(\.bottomBarInset, isShowingFullPlayer ? 0 : bottomBarHeight)
         .task {
             // Series data lives here — hand the coordinator a lookup for the
@@ -190,54 +188,53 @@ struct LibraryView: View {
             playerCoordinator.nextInSeriesProvider = { [weak viewModel] itemId in
                 viewModel?.nextInSeries(after: itemId)?.item
             }
-            // Cover-Wartung (TTL, Größenlimit, verwaiste persistente Cover).
+            // Cover maintenance (TTL, size limit, orphaned persistent covers).
             ImageCache.shared.performMaintenance(
                 activeDownloadIds: DownloadManager.shared.downloadedItemIds
             )
-            // Download-Wartung: falsche Datei-Endungen aller Bücher reparieren.
+            // Download maintenance: repair wrong file extensions of all books.
             DownloadManager.shared.performMaintenance()
-            // Einmalig: unlesbare Alt-Dateien entfernen (Auto-Heilung ersetzt sie).
+            // One-time: remove unreadable old files (auto-heal replaces them).
             DownloadManager.shared.performDeepValidation()
             if viewModel.entries.isEmpty {
                 await viewModel.loadLibrary()
             }
-            // Zuletzt gehörtes Buch still in den Mini-Player holen.
+            // Silently bring the last played book into the mini-player.
             await playerCoordinator.restoreLastSession(from: viewModel.entries)
             // Cold start via quick action / Siri: the request arrived before
             // the library was loaded — execute it now.
             await handlePendingResumeRequest()
-            // Falls beim letzten Mal offline Fortschritt liegen geblieben ist
-            // (App wurde offline beendet, bevor der Sync durchging): jetzt
-            // nachreichen.
+            // If offline progress was left over last time (the app was closed
+            // offline before the sync went through): flush it now.
             await SyncQueue.shared.flush(apiClient: provider)
             await BookmarkQueue.shared.flush(provider: provider)
             await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
-            // Prüfen, ob der ABS-Server Podcast-Bibliotheken hat → Podcast-Tab
-            // erscheint auch ohne lokale RSS-Abos (1 Request, kein Voll-Laden).
+            // Check whether the ABS server has podcast libraries → the podcast tab
+            // appears even without local RSS subscriptions (1 request, no full load).
             await AppSession.shared.absPodcastProvider.refreshAvailability()
-            // Podcast-Fortschritt über iCloud abgleichen (geräteübergreifend).
+            // Reconcile podcast progress via iCloud (across devices).
             PodcastCloudSync.shared.start()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            // Kehrt die App in den Vordergrund zurück, still die Fortschritts-
-            // balken aktualisieren — z. B. wenn zwischenzeitlich auf einem
-            // anderen Gerät weitergehört wurde.
+            // When the app returns to the foreground, silently refresh the
+            // progress bars — e.g. if listening continued on another device in
+            // the meantime.
             if newPhase == .active {
-                PodcastCloudSync.shared.reconcile()   // iCloud-Podcast-Stand ziehen
+                PodcastCloudSync.shared.reconcile()   // pull the iCloud podcast state
                 Task {
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
                 }
             }
-            // Home-Screen-Quick-Action fürs zuletzt gehörte Buch anbieten.
+            // Offer the home-screen quick action for the last played book.
             if newPhase == .background {
-                PodcastCloudSync.shared.reconcile()   // lokalen Stand nach iCloud pushen
+                PodcastCloudSync.shared.reconcile()   // push the local state to iCloud
                 updateQuickActions()
             }
         }
         .onOpenURL { url in
-            // Home-Screen-Widget: maer://resume → Weiterhören-Pfad (wie
-            // Quick Action / Siri).
+            // Home-screen widget: maer://resume → resume path (like the quick
+            // action / Siri).
             guard url.scheme == "maer" else { return }
             ResumeRequest.pending = true
             Task { await handlePendingResumeRequest() }
@@ -247,10 +244,9 @@ struct LibraryView: View {
             Task { await handlePendingResumeRequest() }
         }
         .onChange(of: networkMonitor.isConnected) { _, isConnected in
-            // Deckt den Fall ab, dass die App die ganze Zeit offen war,
-            // während die Verbindung wiederkam — ohne diesen Trigger würde
-            // der "Offline"-Hinweis fälschlich stehen bleiben, obwohl längst
-            // wieder Netz da ist.
+            // Covers the case that the app was open the whole time while the
+            // connection returned — without this trigger the "offline" hint would
+            // wrongly stay, though there is network again.
             if isConnected && viewModel.isShowingOfflineCache {
                 Task { await viewModel.loadLibrary() }
             }
@@ -261,9 +257,8 @@ struct LibraryView: View {
                     await playerCoordinator.viewModel?.updateSyncStatusFromQueue()
                 }
             } else {
-                // Verbindung weg, während evtl. gerade abgespielt wird: den
-                // Sync-Status sofort sichtbar auf "offline" setzen, ohne etwas
-                // in die Queue zu legen.
+                // Connection lost while possibly playing: set the sync status
+                // visibly to "offline" immediately, without queueing anything.
                 playerCoordinator.viewModel?.markConnectionLostWhilePlaying()
             }
         }
@@ -275,14 +270,14 @@ struct LibraryView: View {
         } message: {
             Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
         }
-        // Logout (manuell oder automatisch bei 401): Wiedergabe sauber beenden —
-        // finaler Sync-Versuch landet bei totem Token in der Queue und wird nach
-        // dem nächsten Login nachgereicht; Lockscreen-Anzeige wird geräumt.
+        // Logout (manual or automatic on 401): end playback cleanly — the final
+        // sync attempt lands in the queue with a dead token and is sent after the
+        // next login; the lock-screen display is cleared.
         .onDisappear {
             playerCoordinator.viewModel?.stop()
         }
-        // Such-Overlay als Glas-Sheet über der Bibliothek — UNTER dem vollen
-        // Player (dieses .overlay steht früher in der Kette).
+        // Search overlay as a glass sheet over the library — BELOW the full
+        // player (this .overlay comes earlier in the chain).
         .overlay {
             if isShowingSearch {
                 GeometryReader { proxy in
@@ -302,19 +297,19 @@ struct LibraryView: View {
                 .transition(.identity)
             }
         }
-        // Einstellungen modal — eigener NavigationStack, Bottom-Zone auf 0
-        // gesetzt (kein Mini-Player im Sheet → keine Freiraum-Reservierung nötig).
+        // Settings modal — its own NavigationStack, bottom zone set to 0 (no
+        // mini-player in the sheet → no free-space reservation needed).
         .sheet(isPresented: $showSettings) {
             NavigationStack {
                 SettingsView(coordinator: playerCoordinator, libraryViewModel: viewModel, onLogout: onLogout)
             }
             .environment(\.bottomBarInset, 0)
         }
-        // Voller Player als Overlay ÜBER der Bibliothek (statt Push).
+        // Full player as an overlay OVER the library (instead of push).
         .overlay {
             if isShowingFullPlayer {
-                // Insets hier lesen (normaler Safe-Area-Kontext) und explizit
-                // durchreichen — das Overlay selbst ignoriert Safe Areas am Root.
+                // Read the insets here (normal safe-area context) and pass them
+                // explicitly — the overlay itself ignores safe areas at the root.
                 GeometryReader { proxy in
                     FullPlayerOverlay(
                         coordinator: playerCoordinator,
@@ -322,20 +317,20 @@ struct LibraryView: View {
                         bottomInset: proxy.safeAreaInsets.bottom,
                         presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
                     ) {
-                        // Sheet ist hier schon unten — nur Mini-Leiste weich einblenden.
+                        // The sheet is already down here — just fade the mini bar in.
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                             isShowingFullPlayer = false
                         }
                     }
                 }
-                // Kein .move-Transition: Ein-/Ausfahren läuft über den Offset im
-                // Overlay (unterbrechbar, kann nicht mehr hängen bleiben).
+                // No .move transition: slide in/out runs via the offset in the
+                // overlay (interruptible, can no longer get stuck).
                 .transition(.identity)
             }
         }
     }
 
-    // MARK: - Bottom-Zone (scroll-gesteuert einklappbar)
+    // MARK: - Bottom zone (scroll-driven collapsible)
 
     /// Aufgeklappt: Banner · Mini-Player (voll) · [Medien-Pille | Lupe].
     /// Kompakt: eine Zeile [Home-Button · Mini-Player mittig, kleiner · Lupe].
@@ -344,8 +339,8 @@ struct LibraryView: View {
     @ViewBuilder
     private var bottomBarContent: some View {
         if barCollapsed {
-            // Eine Zeile: Home links, Mini-Player mittig (unverändert, nur ohne
-            // AirPlay), Lupe rechts — enger Abstand.
+            // One row: home left, mini-player centered (unchanged, just without
+            // AirPlay), magnifier right — tight spacing.
             HStack(spacing: 8) {
                 homeButton
                 miniPlayer
@@ -396,8 +391,8 @@ struct LibraryView: View {
         }
     }
 
-    /// Kompakter „Home"-Button (aus der Medien-Pille gemorpht) — klappt die
-    /// Leiste wieder auf (bis zum nächsten Scroll).
+    /// Compact "Home" button (morphed from the media pill) — expands the bar
+    /// again (until the next scroll).
     private var homeButton: some View {
         Button {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
@@ -449,12 +444,11 @@ struct LibraryView: View {
     private let gridSpacing: CGFloat = 16
     private let gridHorizontalPadding: CGFloat = 16
 
-    /// Selbst berechnete Spaltenzahl statt `.adaptive` — das hat sich als
-    /// unzuverlässig erwiesen (mal keine Neuberechnung nach einer Rotation,
-    /// mal eine Spaltenbreite, die nicht zur tatsächlichen Cover-Größe
-    /// passte und dadurch überlappte). Mit einer einzigen verlässlichen
-    /// Breitenmessung als Quelle für sowohl Spaltenzahl als auch Zellgröße
-    /// gibt es keine Mehrdeutigkeit mehr.
+    /// Self-computed column count instead of `.adaptive` — that proved
+    /// unreliable (sometimes no recompute after a rotation, sometimes a column
+    /// width that did not match the actual cover size and thus overlapped). With
+    /// a single reliable width measurement as the source for both column count
+    /// and cell size there is no more ambiguity.
     private var columnCount: Int {
         guard libraryWidth > 0 else { return 3 }
         let available = libraryWidth - gridHorizontalPadding * 2
@@ -462,8 +456,8 @@ struct LibraryView: View {
         return max(count, 1)
     }
 
-    /// Zellbreite, die exakt zur berechneten Spaltenzahl passt — Grid und
-    /// Cover-Größe nutzen immer denselben Wert, können also nie auseinanderlaufen.
+    /// Cell width that exactly matches the computed column count — grid and cover
+    /// size always use the same value, so they can never diverge.
     private var gridCellWidth: CGFloat {
         guard libraryWidth > 0 else { return 132 }
         let available = libraryWidth - gridHorizontalPadding * 2
@@ -471,7 +465,7 @@ struct LibraryView: View {
         return (available - totalSpacing) / CGFloat(columnCount)
     }
 
-    /// Hörbuch-Tab: Lade-/Fehler-/Leer-Zustände und die eigentliche Liste.
+    /// Audiobook tab: loading/error/empty states and the actual list.
     @ViewBuilder
     private var audiobooksContent: some View {
         if viewModel.isLoading && viewModel.entries.isEmpty {
@@ -489,7 +483,7 @@ struct LibraryView: View {
             .padding()
             Spacer()
         } else if viewModel.entries.isEmpty {
-            // Verbunden, aber der Server hat (noch) keine Bücher.
+            // Connected, but the server has no books (yet).
             Spacer()
             ContentUnavailableView {
                 Label("No Audiobooks", systemImage: "books.vertical")
@@ -535,8 +529,8 @@ struct LibraryView: View {
                     }
                 allBooksSection
                 if viewModel.isLoadingMore {
-                    // Progressives Nachladen läuft noch — dezenter Hinweis, dass
-                    // weitere Titel unterwegs sind.
+                    // Progressive loading is still running — subtle hint that
+                    // more titles are on the way.
                     HStack(spacing: 8) {
                         ProgressView()
                         Text("Loading more…").font(.footnote).foregroundStyle(.secondary)
@@ -545,15 +539,14 @@ struct LibraryView: View {
                     .padding(.vertical, 8)
                 }
             }
-            // Explizit auf volle Breite zwingen — ohne das bestimmt sich die
-            // Breite des Stacks nach seinem Inhalt statt nach der tatsächlich
-            // verfügbaren Bildschirmbreite, was zu einem zirkulären Bezug mit
-            // dem Grid darin führen konnte.
+            // Force full width explicitly — without it the stack's width follows
+            // its content instead of the actually available screen width, which
+            // could lead to a circular reference with the grid inside.
             .frame(maxWidth: .infinity)
             .padding(.vertical)
-            // Freiraum als INNEN-Abstand: die ScrollView bleibt vollflächig,
-            // Inhalt scrollt weiter hinter dem Glas durch, ruht aber über der
-            // Bottom-Zone (kein schwarzer Bereich hinter dem Mini-Player).
+            // Free space as INNER padding: the ScrollView stays full-bleed,
+            // content keeps scrolling behind the glass but rests above the bottom
+            // zone (no black area behind the mini-player).
             .bottomBarClearance()
             .background(
                 GeometryReader { geo in
@@ -566,10 +559,10 @@ struct LibraryView: View {
             )
         }
         .refreshable { await viewModel.loadLibrary() }
-        .reportsBottomBarScroll()   // Scroll → Bottom-Zone ein-/ausklappen
+        .reportsBottomBarScroll()   // scroll → collapse/expand the bottom zone
     }
 
-    // MARK: „Kürzlich hinzugefügt" (große Kacheln, seitlich scrollend)
+    // MARK: "Recently Added" (large tiles, side-scrolling)
 
     private var recentlyAddedGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -586,7 +579,7 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: „Fortsetzen" (große Karten, wie im Podcast-Tab)
+    // MARK: "Continue" (large cards, like the podcast tab)
 
     private var continueFeaturedSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -606,7 +599,7 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Horizontale Sektion (kompakt)
+    // MARK: Horizontal section (compact)
 
     private func horizontalSection(
         title: String,
@@ -619,7 +612,7 @@ struct LibraryView: View {
                 Text(title)
                     .font(.title3).bold()
                 if let subtitle {
-                    // Belegter Speicher; Kontext-Menü übers Ellipsis-Icon.
+                    // Used storage; context menu via the ellipsis icon.
                     Menu {
                         menu()
                     } label: {
@@ -637,8 +630,8 @@ struct LibraryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(entries) { entry in
-                        // Wertbasiert, damit ein navigationPath-Reset (Medien-Tab)
-                        // auch aus dieser Reihe bis zur Wurzel zurückpoppt.
+                        // Value-based so a navigationPath reset (media tab) also
+                        // pops this row back to the root.
                         NavigationLink(value: entry.id) {
                             VStack(alignment: .leading, spacing: 6) {
                                 BookCoverView(
@@ -673,7 +666,7 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Alle Bücher
+    // MARK: All Books
 
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -688,16 +681,15 @@ struct LibraryView: View {
         }
     }
 
-    /// Grid bei Serien-Sortierung: Serien als Stapel, Einzelbücher normal.
+    /// Grid under series sorting: series as stacks, single books normal.
     private var seriesGrid: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(viewModel.seriesGroupedEntries) { gridEntry in
                 switch gridEntry {
                 case .single(let entry):
-                    // Gleicher Top-Abstand wie der Fächer-Headroom der Stapel-
-                    // Kacheln — sonst sitzen Cover/Texte in gemischten Zeilen
-                    // auf unterschiedlichen Höhen.
+                    // Same top spacing as the fan headroom of the stack tiles —
+                    // otherwise covers/texts in mixed rows sit at different heights.
                     BookGridCell(
                         entry: entry,
                         width: gridCellWidth,
@@ -724,7 +716,7 @@ struct LibraryView: View {
         .padding(.horizontal)
     }
 
-    /// Detailansicht einer Serie: alle Bände in Reihenfolge.
+    /// Detail view of a series: all volumes in order.
     private func seriesDetail(name: String, entries: [LibraryEntry]) -> some View {
         ScrollView {
             bookGrid(entries)
@@ -734,7 +726,7 @@ struct LibraryView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: Weiterhören von außen (Quick Action / Siri)
+    // MARK: Resume from outside (quick action / Siri)
 
     /// Executes a pending "continue listening" request (home-screen quick
     /// action or Siri shortcut): open the last played book and play.
@@ -760,8 +752,8 @@ struct LibraryView: View {
         await playerCoordinator.open(item: item)
     }
 
-    /// Item zu einer ID quellenübergreifend (Hörbuch-Liste ODER Podcast-
-    /// Provider) — für Weiterhören/Quick-Action/Siri.
+    /// Item for an id across sources (audiobook list OR podcast provider) — for
+    /// resume/quick-action/Siri.
     private func item(forId id: String) -> LibraryItem? {
         viewModel.entries.first(where: { $0.id == id })?.item
             ?? AppSession.shared.libraryItem(forId: id)
@@ -849,11 +841,11 @@ struct LibraryView: View {
             .tint(.primary)
     }
 
-    /// Cover-Grid mit selbst berechneter Spaltenzahl und -breite (siehe
-    /// `columnCount`/`gridCellWidth`) statt `.adaptive` — Grid und Cover-Größe
-    /// nutzen jetzt garantiert denselben Wert, können also nie mehr
-    /// auseinanderlaufen (weder zu schmal mit Überlappung, noch unnötig
-    /// wenige Spalten auf einem schmalen iPhone).
+    /// Cover grid with a self-computed column count and width (see
+    /// `columnCount`/`gridCellWidth`) instead of `.adaptive` — grid and cover
+    /// size are now guaranteed to use the same value, so they can never diverge
+    /// (neither too narrow with overlap, nor unnecessarily few columns on a
+    /// narrow iPhone).
     private func bookGrid(_ entries: [LibraryEntry]) -> some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {

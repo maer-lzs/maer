@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// „Entdecken": Trending-Podcasts über PodcastIndex (falls Key hinterlegt),
-/// sonst iTunes-Top-Charts. Antippen von „+" abonniert direkt (am Server, wenn
-/// ABS-Podcasts aktiv sind; sonst lokal + gpodder-Abgleich).
+/// "Discover": trending podcasts via PodcastIndex (if a key is set), otherwise
+/// iTunes top charts. Tapping "+" subscribes directly (on the server if ABS
+/// podcasts are active; otherwise locally + gpodder reconcile).
 struct PodcastDiscoverView: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
