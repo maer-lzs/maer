@@ -21,6 +21,14 @@ struct ProviderCapabilities: OptionSet {
     static let downloadable = ProviderCapabilities(rawValue: 1 << 4)
 }
 
+/// Vorgefertigte „Continue"/„Recently Added"-Reihen einer Quelle — damit die
+/// oberen Bibliotheks-Reihen sofort vollständig stehen, während die Gesamtliste
+/// noch progressiv nachlädt.
+struct LibrarySeed {
+    var continueListening: [LibraryItem] = []
+    var recentlyAdded: [LibraryItem] = []
+}
+
 /// Die eine Schnittstelle, über die der Mär-Core (Player, Downloads, Sync,
 /// Suche, CarPlay, Widgets) Audioquellen sieht. Provider liefern NUR Daten —
 /// alles andere (Offline, Sleep, Kapitel-Logik, Queue, Statistik) gehört
@@ -45,6 +53,15 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
     // MARK: Bibliothek
     func fetchLibraries() async throws -> [ABSLibrary]
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem]
+    /// Eine Seite der Bibliothek (Server-Paging). Standard-Implementierung
+    /// (siehe Extension) liefert die ganze Liste als eine Seite — nur ABS
+    /// paginiert echt; lokale/RSS-Quellen sind ohnehin klein.
+    func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
+        -> (items: [LibraryItem], total: Int)
+    /// Fertige „Continue"/„Recently Added"-Reihen der Quelle (ABS
+    /// `personalized`). Standard: leer — nur ABS liefert sie; lokale/RSS-Quellen
+    /// leiten diese Reihen aus ihrer (kleinen) Vollliste ab.
+    func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail
 
     // MARK: Medien
@@ -67,6 +84,18 @@ protocol AudioProvider: AnyObject, ProgressSyncAPI {
 extension AudioProvider {
     /// Standard: item-unabhängig die Quellen-Header.
     func streamAuthHeaders(forItemId itemId: String) -> [String: String] { streamAuthHeaders }
+
+    /// Standard: kein echtes Server-Paging — die ganze (kleine) Liste als eine
+    /// Seite. ABS überschreibt das mit echtem `limit`/`page`.
+    func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
+        -> (items: [LibraryItem], total: Int) {
+        let all = try await fetchLibraryItems(libraryId: libraryId)
+        return (all, all.count)
+    }
+
+    /// Standard: keine vorgefertigten Reihen — der Aufrufer leitet sie aus der
+    /// Vollliste ab. ABS überschreibt das mit der `personalized`-Ansicht.
+    func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed { LibrarySeed() }
 
     /// Standard: die meisten Quellen liefern Hörbücher.
     var mediaType: MediaType { .audiobooks }

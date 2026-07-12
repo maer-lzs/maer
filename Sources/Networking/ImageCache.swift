@@ -14,6 +14,9 @@ final class ImageCache {
     static let shared = ImageCache()
 
     private let memoryCache = NSCache<NSString, UIImage>()
+    /// Läuft gerade ein Prefetch für dieses Cover? Verhindert, dass dasselbe
+    /// Cover mehrfach parallel geladen wird (Prefetch + sichtbare Zelle).
+    private var inFlight = Set<URL>()
     /// Small tier derived from the full covers for grid/row cells: decoding
     /// the full ~2000 px cover for a ~150 pt cell costs ~16 MB RAM per image
     /// and stutters scrolling with large libraries. Memory-only — always
@@ -295,9 +298,13 @@ final class ImageCache {
     }
 
     /// Lädt ein Cover im Hintergrund vor, falls es noch nicht im Cache ist.
+    /// Nutzt die getimeoutete Maer-Session (kein ewig hängender Request) und
+    /// dedupliziert parallele Anfragen fürs gleiche Cover.
     func preload(_ url: URL) async {
-        guard image(for: url) == nil else { return }
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
+        guard image(for: url) == nil, !inFlight.contains(url) else { return }
+        inFlight.insert(url)
+        defer { inFlight.remove(url) }
+        guard let (data, _) = try? await URLSession.maer.data(from: url),
               let image = UIImage(data: data) else { return }
         set(image, data: data, for: url)
     }

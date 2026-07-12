@@ -133,6 +133,17 @@ struct PodcastFeedMetadata: Decodable {
 
 struct LibraryItemsResponse: Decodable {
     let results: [LibraryItem]
+    /// Gesamtzahl der Items in der Bibliothek (Server-Paging) — steuert, wie
+    /// viele Seiten das progressive Nachladen noch holen muss.
+    let total: Int?
+}
+
+/// Eine Reihe der ABS-`personalized`-Ansicht („Continue Listening",
+/// „Recently Added", …) — genutzt, um genau diese beiden Reihen sofort
+/// vollständig zu befüllen, während die Gesamtliste progressiv nachlädt.
+struct PersonalizedShelf: Decodable {
+    let id: String
+    let entities: [LibraryItem]?
 }
 
 struct LibraryItem: Codable, Identifiable {

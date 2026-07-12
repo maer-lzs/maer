@@ -16,10 +16,25 @@ enum APIError: LocalizedError {
             if code == 401 {
                 return String(localized: "The server rejected the token (401). Please check the token.")
             }
-            return String(localized: "Server error \(code): \(String(body.prefix(200)))")
+            let detail = APIError.sanitize(body)
+            if detail.isEmpty {
+                return String(localized: "Server error \(code).")
+            }
+            return String(localized: "Server error \(code): \(detail)")
         case .decoding(let detail):
             return String(localized: "Unexpected response format from the server: \(detail)")
         }
+    }
+
+    /// Rohen Fehler-Body (oft eine ganze HTML- oder JSON-Seite) zu einer kurzen,
+    /// lesbaren Zeile eindampfen: Tags entfernen, Whitespace glätten, kürzen.
+    static func sanitize(_ body: String) -> String {
+        var text = body.replacingOccurrences(
+            of: "<[^>]+>", with: " ", options: .regularExpression)
+        text = text.replacingOccurrences(
+            of: "\\s+", with: " ", options: .regularExpression)
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(text.prefix(160))
     }
 }
 
@@ -96,6 +111,47 @@ final class APIClient {
             let data = try await get(path: "api/libraries/\(libraryId)/items")
             return try decode(LibraryItemsResponse.self, from: data).results
         }
+    }
+
+    /// Eine Seite der Bibliotheksliste (Server-Paging) — Basis fürs progressive
+    /// Laden: Seite 0 erscheint sofort, der Rest wird im Hintergrund
+    /// nachgezogen. Gibt zusätzlich die Gesamtzahl zurück, damit der Aufrufer
+    /// weiß, wann alles geladen ist.
+    func fetchLibraryItemsPage(libraryId: String, limit: Int, page: Int) async throws
+        -> (items: [LibraryItem], total: Int) {
+        func fetch(minified: Bool) async throws -> LibraryItemsResponse {
+            var query = [
+                URLQueryItem(name: "limit", value: String(limit)),
+                URLQueryItem(name: "page", value: String(page)),
+            ]
+            if minified { query.append(URLQueryItem(name: "minified", value: "1")) }
+            let data = try await get(path: "api/libraries/\(libraryId)/items", query: query)
+            return try decode(LibraryItemsResponse.self, from: data)
+        }
+        let response: LibraryItemsResponse
+        do { response = try await fetch(minified: true) }
+        catch APIError.decoding { response = try await fetch(minified: false) }
+        return (response.results, response.total ?? response.results.count)
+    }
+
+    /// „Continue Listening" + „Recently Added" aus der ABS-`personalized`-Ansicht
+    /// in EINEM kleinen Request — damit die oberen Reihen sofort vollständig
+    /// stehen, auch während die Gesamtliste noch progressiv nachlädt. Best
+    /// effort: bei unerwartetem Shape leere Reihen (der progressive Voll-Load
+    /// füllt sie ohnehin nach).
+    func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed {
+        let data = try await get(
+            path: "api/libraries/\(libraryId)/personalized",
+            query: [URLQueryItem(name: "minified", value: "1")]
+        )
+        guard let shelves = try? decode([PersonalizedShelf].self, from: data) else {
+            return LibrarySeed()
+        }
+        func entities(_ id: String) -> [LibraryItem] {
+            shelves.first { $0.id == id }?.entities ?? []
+        }
+        return LibrarySeed(continueListening: entities("continue-listening"),
+                           recentlyAdded: entities("recently-added"))
     }
 
     /// Alle Fortschritts-Einträge des Nutzers auf einmal. Damit lässt sich die

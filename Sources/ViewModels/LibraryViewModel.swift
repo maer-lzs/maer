@@ -76,6 +76,9 @@ final class LibraryViewModel: ObservableObject {
     /// wird, weil der Server nicht erreichbar war — für einen dezenten
     /// Hinweis in der UI statt eines harten Fehlers.
     @Published var isShowingOfflineCache = false
+    /// True, solange nach der ersten (sofort sichtbaren) Seite noch weitere
+    /// Seiten progressiv nachgeladen werden — steuert den „Loading more…"-Fuß.
+    @Published var isLoadingMore = false
 
     /// Sortierung/Filter werden in UserDefaults gemerkt — bleiben also über
     /// App-Neustarts hinweg erhalten. Wechselt der Nutzer die Sortierart,
@@ -105,6 +108,13 @@ final class LibraryViewModel: ObservableObject {
     private let provider: any AudioProvider
     private var cachedItems: [LibraryItem] = []
     private var libraryId: String?
+    /// Vom Server vorgefertigte „Continue"/„Recently Added"-Reihen — in `rebuild`
+    /// mit den bereits geladenen Seiten vereinigt, damit die oberen Reihen sofort
+    /// vollständig sind und beim Nachladen nie kürzer werden.
+    private var librarySeed = LibrarySeed()
+    /// Signatur des zuletzt geschriebenen Disk-Caches — vermeidet redundantes
+    /// JSON-Schreiben, wenn sich Items/Progress nicht geändert haben.
+    private var lastSavedSignature: Int?
     /// Zuletzt über den lokalen Provider geladene Einträge — als Cache, damit
     /// `rebuild` (synchron, viele Aufrufer) sie ohne erneuten async-Fetch
     /// anhängen kann. Aktualisiert in loadLibrary/refresh (immer über den
@@ -362,7 +372,11 @@ final class LibraryViewModel: ObservableObject {
             // (mediaType == "podcast") gehören zum Podcast-Provider, nicht hier.
             // Sonst würde `first` ggf. eine Podcast-Library als „Bibliothek"
             // wählen und der Hörbuch-Tab bliebe leer/falsch.
-            let libraries = try await provider.fetchLibraries().filter { !$0.isPodcast }
+            // Transiente Fehler (Timeout/5xx/Verbindung verloren) kurz mit
+            // Backoff wiederholen, bevor ein Fehler den Offline-/Cache-Fallback
+            // auslöst — echte Offline-Fehler und 401 werfen weiterhin sofort.
+            let libraries = try await withRetry { try await self.provider.fetchLibraries() }
+                .filter { !$0.isPodcast }
             // The library chosen in the settings wins; fall back to the first
             // one when nothing is chosen or the chosen one no longer exists.
             let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
@@ -371,20 +385,63 @@ final class LibraryViewModel: ObservableObject {
                 return
             }
 
-            async let itemsTask = provider.fetchLibraryItems(libraryId: library.id)
             async let progressTask = provider.fetchAllProgress()
-            let items = try await itemsTask
+            // Fertige „Continue"/„Recently Added"-Reihen vom Server (ein kleiner
+            // Request) — damit die oberen Reihen SOFORT vollständig stehen,
+            // unabhängig davon, auf welcher Seite ein gestartetes Buch liegt.
+            async let seedTask = provider.fetchLibrarySeed(libraryId: library.id)
+
+            // Progressives Laden: die erste Seite sofort anzeigen, den Rest
+            // seitenweise im Hintergrund anhängen. Alle clientseitigen
+            // Funktionen (Sortierung, Filter, Serien-Stapel, Suche) arbeiten
+            // auf dem bereits Geladenen und vervollständigen sich, sobald
+            // weitere Seiten eintreffen — nichts bricht, es konvergiert nur.
+            let pageSize = 50
+            let first = try await withRetry {
+                try await self.provider.fetchLibraryItemsPage(
+                    libraryId: library.id, limit: pageSize, page: 0)
+            }
             let progress = (try? await progressTask) ?? [:]
+            librarySeed = (try? await seedTask) ?? LibrarySeed()
 
             libraryId = library.id
             isShowingOfflineCache = false
-            rebuild(items: items, progress: progress)
-            saveLibraryDiskCache(items: items, progress: progress)
-            // Nur hier (vollständige Liste!): verwaiste pro-Buch-Keys entsorgen —
-            // im Hintergrund, der Scan über alle Defaults-Keys ist nicht gratis.
-            let validIds = Set(items.map(\.id))
-            Task.detached(priority: .utility) {
-                AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+            var accumulated = first.items
+            let total = first.total
+            rebuild(items: accumulated, progress: progress)
+            isLoading = false   // erstes Bild steht — Spinner weg, Rest lädt leise
+
+            // Restliche Seiten anhängen (im selben Ladevorgang). Ein
+            // Netzwerkabbruch mitten im Nachladen behält das bereits Gezeigte,
+            // statt in den Offline-Fallback zu springen. Zwischen-Rebuilds
+            // gedrosselt (nur jede 3. Seite) — ein garantierter finaler Rebuild
+            // danach hält das Ergebnis identisch, spart aber Zwischenarbeit.
+            isLoadingMore = accumulated.count < total
+            var page = 1
+            do {
+                while accumulated.count < total {
+                    let next = try await provider.fetchLibraryItemsPage(
+                        libraryId: library.id, limit: pageSize, page: page)
+                    if next.items.isEmpty { break }
+                    accumulated += next.items
+                    page += 1
+                    if page % 3 == 0 { rebuild(items: accumulated, progress: progress) }
+                }
+            } catch {
+                // Abbruch beim Nachladen: geladene Teilliste behalten.
+            }
+            rebuild(items: accumulated, progress: progress)   // finaler Rebuild
+            isLoadingMore = false
+
+            // Nur bei VOLLSTÄNDIG geladener Liste persistieren/aufräumen — sonst
+            // würde eine Teilliste den guten Offline-Cache überschreiben bzw.
+            // (cleanup) pro-Buch-Keys nicht geladener Bücher fälschlich löschen.
+            if accumulated.count >= total {
+                saveLibraryDiskCache(items: accumulated, progress: progress)
+                let validIds = Set(accumulated.map(\.id))
+                Task.detached(priority: .utility) {
+                    AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+                }
             }
             Task { await prefetchAllCovers() }
         } catch {
@@ -438,48 +495,72 @@ final class LibraryViewModel: ObservableObject {
         rebuild(items: cachedItems, progress: progress)
     }
 
+    /// Ein Server-Item + (server/lokaler) Fortschritt + gequeuete Updates → ein
+    /// anzeigefertiger `LibraryEntry`. Ausgelagert, damit sowohl die Vollliste
+    /// als auch die Seed-Reihen (Continue/Kürzlich) exakt gleich aufbereitet
+    /// werden.
+    private func makeEntry(item: LibraryItem,
+                           progress: [String: BookProgress],
+                           queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
+        var p = progress[item.id]
+        // Multi-File-Fallback: Kennt der Server keine fraction (duration
+        // dort 0/leer), aber eine Position, aus der LOKAL bekannten
+        // Buchdauer nachrechnen — sonst fehlen Balken/„Weiter hören".
+        if let existing = p, existing.fraction <= 0.001, !existing.isFinished,
+           let time = existing.currentTime, time > 0,
+           let duration = item.media?.duration, duration > 0 {
+            p = BookProgress(
+                fraction: min(max(time / duration, 0), 1),
+                isFinished: existing.isFinished,
+                lastUpdate: existing.lastUpdate,
+                currentTime: time
+            )
+        }
+        // Noch nicht gesendete (gequeuete) Updates ÜBER den Serverstand
+        // legen — sonst zeigt die Bibliothek bis zum Flush den alten Stand,
+        // was wie Fortschrittsverlust aussieht.
+        if let q = queued[item.id] {
+            let duration = q.duration > 0 ? q.duration : (item.media?.duration ?? 0)
+            p = BookProgress(
+                fraction: duration > 0 ? min(max(q.currentTime / duration, 0), 1) : (p?.fraction ?? 0),
+                isFinished: q.isFinished,
+                lastUpdate: q.queuedAt ?? p?.lastUpdate ?? 0,
+                currentTime: q.currentTime
+            )
+        }
+        return LibraryEntry(item: item, progress: p)
+    }
+
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
         cachedItems = items
         let queued = SyncQueue.shared.allPending()
-        let combined = items.map { item -> LibraryEntry in
-            var p = progress[item.id]
-            // Multi-File-Fallback: Kennt der Server keine fraction (duration
-            // dort 0/leer), aber eine Position, aus der LOKAL bekannten
-            // Buchdauer nachrechnen — sonst fehlen Balken/„Weiter hören".
-            if let existing = p, existing.fraction <= 0.001, !existing.isFinished,
-               let time = existing.currentTime, time > 0,
-               let duration = item.media?.duration, duration > 0 {
-                p = BookProgress(
-                    fraction: min(max(time / duration, 0), 1),
-                    isFinished: existing.isFinished,
-                    lastUpdate: existing.lastUpdate,
-                    currentTime: time
-                )
-            }
-            // Noch nicht gesendete (gequeuete) Updates ÜBER den Serverstand
-            // legen — sonst zeigt die Bibliothek bis zum Flush den alten Stand,
-            // was wie Fortschrittsverlust aussieht.
-            if let q = queued[item.id] {
-                let duration = q.duration > 0 ? q.duration : (item.media?.duration ?? 0)
-                p = BookProgress(
-                    fraction: duration > 0 ? min(max(q.currentTime / duration, 0), 1) : (p?.fraction ?? 0),
-                    isFinished: q.isFinished,
-                    lastUpdate: q.queuedAt ?? p?.lastUpdate ?? 0,
-                    currentTime: q.currentTime
-                )
-            }
-            return LibraryEntry(item: item, progress: p)
-        }
+        let combined = items.map { makeEntry(item: $0, progress: progress, queued: queued) }
         // Lokale Dateien (über ihren Provider vorgeladen, siehe localCache)
         // immer mit einmischen — unabhängig vom Server-Status, sie sind ja
         // per Definition offline verfügbar.
         entries = combined + localCache
 
-        continueListening = combined
-            .filter { ($0.progress?.isStarted ?? false) }
+        // Continue/Kürzlich als Vereinigung aus den bereits geladenen Seiten UND
+        // dem Server-Seed — so sind beide Reihen sofort vollständig und werden
+        // beim progressiven Nachladen nie kürzer (ein gestartetes Buch weit
+        // hinten in der Liste fehlt sonst, bis seine Seite geladen ist). Bereits
+        // geladene Einträge gewinnen (frischerer Fortschritt).
+        let byId = Dictionary(combined.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+
+        var continueById: [String: LibraryEntry] = [:]
+        for e in combined where e.progress?.isStarted ?? false { continueById[e.id] = e }
+        for item in librarySeed.continueListening where byId[item.id] == nil {
+            let e = makeEntry(item: item, progress: progress, queued: queued)
+            if e.progress?.isStarted ?? false { continueById[e.id] = e }
+        }
+        continueListening = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
 
-        recentlyAdded = combined
+        var recentById = byId
+        for item in librarySeed.recentlyAdded where recentById[item.id] == nil {
+            recentById[item.id] = makeEntry(item: item, progress: progress, queued: queued)
+        }
+        recentlyAdded = recentById.values
             .sorted { ($0.item.addedAt ?? 0) > ($1.item.addedAt ?? 0) }
             .prefix(15)
             .map { $0 }
@@ -496,6 +577,19 @@ final class LibraryViewModel: ObservableObject {
     }
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {
+        // Nur schreiben, wenn sich wirklich etwas geändert hat — sonst schreibt
+        // jeder Reload/refreshProgress denselben JSON erneut auf die Platte.
+        // Billige Signatur aus ids+addedAt (Items) und keys+lastUpdate (Progress).
+        var hasher = Hasher()
+        hasher.combine(items.count)
+        for item in items { hasher.combine(item.id); hasher.combine(item.addedAt ?? 0) }
+        for (key, p) in progress.sorted(by: { $0.key < $1.key }) {
+            hasher.combine(key); hasher.combine(p.lastUpdate); hasher.combine(p.isFinished)
+        }
+        let signature = hasher.finalize()
+        guard signature != lastSavedSignature else { return }
+        lastSavedSignature = signature
+
         // Encode + write off the main thread: with large libraries this is a
         // visible hitch right when the refresh spinner settles.
         let cache = LibraryDiskCache(items: items, progress: progress)
@@ -511,13 +605,22 @@ final class LibraryViewModel: ObservableObject {
         return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
     }
 
-    /// Lädt alle Cover einmal im Hintergrund vor, nacheinander statt
-    /// gleichzeitig — schont den (oft übers Internet erreichten) eigenen
-    /// Server. Bereits gecachte Cover werden dabei übersprungen (siehe
-    /// `ImageCache.preload`), Wiederholungsaufrufe sind also günstig.
+    /// Lädt nur die RELEVANTEN Cover im Hintergrund vor (nacheinander, schont
+    /// den oft übers Internet erreichten Server): die oberen Reihen (Continue,
+    /// Kürzlich) plus die ersten sichtbaren Einträge der Liste. Der Rest lädt
+    /// lazy beim Scrollen über `CachedAsyncImage` — das spart bei großen
+    /// Bibliotheken hunderte unnötige Requests. Bereits gecachte Cover werden
+    /// übersprungen (siehe `ImageCache.preload`), Wiederholungen sind günstig.
     private func prefetchAllCovers() async {
-        for item in cachedItems {
-            guard let url = provider.coverURL(forItemId: item.id) else { continue }
+        var ids: [String] = []
+        var seen = Set<String>()
+        func add(_ id: String) { if seen.insert(id).inserted { ids.append(id) } }
+        for e in continueListening { add(e.id) }
+        for e in recentlyAdded { add(e.id) }
+        for item in cachedItems.prefix(40) { add(item.id) }
+
+        for id in ids {
+            guard let url = provider.coverURL(forItemId: id) else { continue }
             await ImageCache.shared.preload(url)
         }
     }
