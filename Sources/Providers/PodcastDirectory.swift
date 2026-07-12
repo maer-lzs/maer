@@ -8,6 +8,8 @@ struct PodcastSearchResult: Identifiable {
     var author: String?
     var artworkURL: String?
     var feedURL: String
+    /// Kategorien des Feeds (nur PodcastIndex) — für das Empfehlungs-Ranking.
+    var categories: [String]? = nil
 
     var id: String { feedURL }
 }
@@ -111,8 +113,20 @@ struct PodcastIndexDirectory: PodcastDirectory {
             let author: String?
             let image: String?
             let url: String?
+            let categories: [String: String]?   // {id: name}
         }
         let feeds: [Feed]
+    }
+
+    private static func map(_ feed: Response.Feed) -> PodcastSearchResult? {
+        guard let feedURL = feed.url else { return nil }
+        return PodcastSearchResult(
+            title: feed.title ?? feedURL,
+            author: feed.author,
+            artworkURL: feed.image,
+            feedURL: feedURL,
+            categories: feed.categories.map { Array($0.values) }
+        )
     }
 
     func search(_ term: String) async throws -> [PodcastSearchResult] {
@@ -120,40 +134,22 @@ struct PodcastIndexDirectory: PodcastDirectory {
         components.queryItems = [URLQueryItem(name: "q", value: term)]
         guard let url = components.url else { return [] }
         let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
-        let response = try JSONDecoder().decode(Response.self, from: data)
-        return response.feeds.compactMap { feed in
-            guard let feedURL = feed.url else { return nil }
-            return PodcastSearchResult(
-                title: feed.title ?? feedURL,
-                author: feed.author,
-                artworkURL: feed.image,
-                feedURL: feedURL
-            )
-        }
+        return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
-    /// Trending-Podcasts (für „Entdecken"/Empfehlungen). Gleiche Feed-Form wie
-    /// die Suche. `categories` filtert auf deine Interessen (PodcastIndex `cat`).
-    func trending(max: Int = 40, lang: String? = "en", categories: [String] = []) async throws -> [PodcastSearchResult] {
+    /// Trending-Podcasts (für „Entdecken"/Empfehlungen). `lang` filtert nach
+    /// Sprache, `categories` auf deine Interessen (PodcastIndex `cat`).
+    func trending(max: Int = 40, lang: String? = nil, categories: [String] = []) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/podcasts/trending")!
         var q = [URLQueryItem(name: "max", value: String(max))]
-        if let lang { q.append(URLQueryItem(name: "lang", value: lang)) }
+        if let lang, !lang.isEmpty { q.append(URLQueryItem(name: "lang", value: lang)) }
         if !categories.isEmpty {
             q.append(URLQueryItem(name: "cat", value: categories.prefix(5).joined(separator: ",")))
         }
         components.queryItems = q
         guard let url = components.url else { return [] }
         let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
-        let response = try JSONDecoder().decode(Response.self, from: data)
-        return response.feeds.compactMap { feed in
-            guard let feedURL = feed.url else { return nil }
-            return PodcastSearchResult(
-                title: feed.title ?? feedURL,
-                author: feed.author,
-                artworkURL: feed.image,
-                feedURL: feedURL
-            )
-        }
+        return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
     // MARK: - Episoden (volle Historie)
