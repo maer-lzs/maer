@@ -2,24 +2,24 @@ import SwiftUI
 import Combine
 import UIKit
 
-/// Eine Kachel in „Zuletzt aktualisiert" (Apple-Podcasts-Stil): Show + Zeitpunkt
-/// der letzten Aktualisierung + Anzahl neuer Folgen seit der zuletzt gehörten.
+/// A tile in "Recently updated" (Apple Podcasts style): show + time of the last
+/// update + number of new episodes since the last played one.
 struct RecentShowInfo: Identifiable {
     let show: PodcastShow
-    let lastUpdated: Double   // ms epoch der neuesten Folge
+    let lastUpdated: Double   // ms epoch of the newest episode
     let newCount: Int
     var id: String { show.id }
 }
 
-/// Podcast-Tab im Stil von Apple Podcasts: oben eine Reihe großer
-/// „Als Nächstes"-Karten (neueste Folgen als Blickfang), darunter eine
-/// kompakte Show-Reihe zum Blättern und die vollständige Folgen-Liste.
-/// Episoden sind normale `LibraryItem`s und laufen über den Coordinator.
+/// Podcast tab in Apple Podcasts style: at the top a row of large "Up Next"
+/// cards (newest episodes as eye-catchers), below it a compact show row to
+/// browse and the full episode list. Episodes are normal `LibraryItem`s and run
+/// through the coordinator.
 struct PodcastsView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
-    // Sektionen hängen an Fortschritt (gehört/läuft) und Downloads — beide
-    // beobachten, damit sich „Als Nächstes"/„Geladen"/„Gehört" live neu bauen.
+    // Sections depend on progress (played/in progress) and downloads — observe
+    // both so "Up Next"/"Downloaded"/"Played" rebuild live.
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
@@ -27,9 +27,8 @@ struct PodcastsView: View {
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @State private var subscribingRec: Set<String> = []
 
-    /// Shows aller Podcast-Quellen (RSS + ABS), dedupliziert über die
-    /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
-    /// bevorzugt.
+    /// Shows of all podcast sources (RSS + ABS), deduplicated by the normalised
+    /// feed URL — on a duplicate the ABS show (synced) is preferred.
     private var allShows: [PodcastShow] {
         let abs = absPodcast.activeShows
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
@@ -39,15 +38,15 @@ struct PodcastsView: View {
         return abs + rssOnly
     }
 
-    // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
-    // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
-    // sofort, die Sektionen kommen einen Frame später.
-    @State private var nextUp: [LibraryItem] = []           // „Continue" (große Karten)
-    @State private var recentShows: [RecentShowInfo] = []   // „Zuletzt aktualisiert" (Show-Grid)
+    // Section contents are NOT computed synchronously in the body (that
+    // stuttered on tab switch) but filled in a `.task` — the tab appears
+    // immediately, the sections come a frame later.
+    @State private var nextUp: [LibraryItem] = []           // "Continue" (large cards)
+    @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
     @State private var downloaded: [LibraryItem] = []
     @State private var showAddPodcasts = false
 
-    /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
+    /// Recompute when subscriptions, downloads or progress change.
     private var recomputeToken: String {
         "\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)"
     }
@@ -65,7 +64,7 @@ struct PodcastsView: View {
             .padding(.top, 8)
             .bottomBarClearance()
         }
-        // Kein Abo → statt blank ein Leer-Zustand mit Weg zum Hinzufügen/Import.
+        // No subscription → instead of blank, an empty state with a path to add/import.
         .overlay {
             if allShows.isEmpty && downloaded.isEmpty && queue.isEmpty {
                 ContentUnavailableView {
@@ -105,9 +104,9 @@ struct PodcastsView: View {
         }
     }
 
-    /// „Fortsetzen": NUR angefangene (in-progress) Folgen, sortiert nach dem
-    /// letzten Hörzeitpunkt (wie bei Hörbüchern) — nicht nach Pubdatum. Fertige
-    /// fallen automatisch raus. Neues entdecken macht „Zuletzt aktualisiert".
+    /// "Continue": ONLY started (in-progress) episodes, sorted by the last
+    /// listening time (as with audiobooks) — not by pub date. Finished ones drop
+    /// out automatically. Discovering new is what "Recently updated" is for.
     private func computeNextUp() -> [LibraryItem] {
         var picks: [(item: LibraryItem, playedAt: Double)] = []
         for show in allShows {
@@ -122,9 +121,9 @@ struct PodcastsView: View {
         return picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map { $0.item }
     }
 
-    /// „Zuletzt aktualisiert": alle Shows nach Zeitpunkt der neuesten Folge
-    /// sortiert, mit der Anzahl neuer (ungehörter) Folgen seit der zuletzt
-    /// gehörten. Keine endlosen Folgenlisten mehr — ein Show-Grid.
+    /// "Recently updated": all shows sorted by the time of the newest episode,
+    /// with the number of new (unplayed) episodes since the last played one. No
+    /// more endless episode lists — a show grid.
     private func computeRecentShows() -> [RecentShowInfo] {
         var infos: [RecentShowInfo] = []
         for show in allShows {
@@ -136,9 +135,9 @@ struct PodcastsView: View {
         return infos.sorted { $0.lastUpdated > $1.lastUpdated }
     }
 
-    /// Neue Folgen seit der zuletzt gehörten: Anzahl ungehörter Folgen, die
-    /// NEUER sind als die jüngste bereits gehörte. Ohne jede gehörte Folge
-    /// zählen alle ungehörten.
+    /// New episodes since the last played one: number of unplayed episodes that
+    /// are NEWER than the most recent already-played one. Without any played
+    /// episode, all unplayed ones count.
     private func newEpisodeCount(_ show: PodcastShow) -> Int {
         let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
         let lastPlayed = items
@@ -151,7 +150,7 @@ struct PodcastsView: View {
         return items.filter { podcastPlayState(for: $0) == .unplayed }.count
     }
 
-    /// „Geladen" quellen-übergreifend: alle geräteseitig heruntergeladenen Folgen.
+    /// "Downloaded" cross-source: all episodes downloaded on the device.
     private func computeDownloaded() -> [LibraryItem] {
         let ids = downloads.downloadedItemIds
         guard !ids.isEmpty else { return [] }
@@ -165,8 +164,8 @@ struct PodcastsView: View {
 
     @ViewBuilder
     private var queueSection: some View {
-        // Nur die zuflösbaren IDs zeigen (verwaiste Einträge stillschweigend
-        // überspringen — die Reorder-Seite räumt sie beim Abspielen auf).
+        // Show only the resolvable ids (skip orphaned entries silently — the
+        // reorder page cleans them up on play).
         let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
@@ -190,7 +189,7 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Als Nächstes (große Karten, eine pro Show)
+    // MARK: - Up Next (large cards, one per show)
 
     @ViewBuilder
     private var nextUpSection: some View {
@@ -211,7 +210,7 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Empfohlen (externe Popularität, unter den Karten)
+    // MARK: - Recommended (external popularity, below the cards)
 
     @ViewBuilder
     private var recommendationsSection: some View {
