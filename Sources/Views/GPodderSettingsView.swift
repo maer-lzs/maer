@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Zugang zu einem gpodder-kompatiblen Sync-Server (oPodSync, Nextcloud GPodder,
-/// gpodder.net) — gleichwertig neben iCloud und ABS. Server/Nutzer/Passwort
-/// eingeben, Verbindung testen, aktivieren; danach gleichen Abos (und History)
-/// beim Öffnen des Podcast-Tabs automatisch ab.
+/// Access to a gpodder-compatible sync server (oPodSync, Nextcloud GPodder,
+/// gpodder.net) — on par with iCloud and ABS. Enter server/user/password, test
+/// the connection, enable it; subscriptions (and history) then reconcile
+/// automatically when opening the podcast tab.
 struct GPodderSettingsView: View {
     @State private var serverURL = AppStorageKeys.gpodderServerURLValue
     @State private var username = AppStorageKeys.gpodderUsernameValue
@@ -81,7 +81,7 @@ struct GPodderSettingsView: View {
         }
         .navigationTitle("gpodder Sync")
         .navigationBarTitleDisplayMode(.inline)
-        // Mini-Player-Overlay nicht überlappen lassen.
+        // Don't let the mini-player overlay overlap.
         .bottomBarClearance()
         // Beim Verlassen speichern, damit nichts verloren geht.
         .onDisappear { save() }

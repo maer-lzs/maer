@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Lesezeichen des aktuellen Buchs: aktuelle Position sichern (mit Titel),
-/// Liste mit Springen per Tap und Löschen per Swipe. Serverseitig über die
-/// ABS-Bookmark-API — nur online verfügbar (kein Offline-Queueing).
+/// Bookmarks of the current book: save the current position (with title), list
+/// with jump on tap and delete on swipe. Server-side via the ABS bookmark API —
+/// only available online (no offline queueing).
 struct BookmarksSheet: View {
     @ObservedObject var viewModel: PlayerViewModel
     @Environment(\.dismiss) private var dismiss
@@ -101,7 +101,7 @@ struct BookmarksSheet: View {
     private func reload() async {
         guard let itemId = viewModel.item?.id else { return }
         isLoading = true
-        // Nachzügler zuerst versuchen, damit die Server-Liste sie enthält.
+        // Try pending items first so the server list includes them.
         await BookmarkQueue.shared.flush(provider: viewModel.provider)
         do {
             let fresh = try await viewModel.provider.fetchBookmarks(itemId: itemId)

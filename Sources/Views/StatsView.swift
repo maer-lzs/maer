@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Lokale Hörstatistik: Hörzeit heute/7 Tage/gesamt, Balken der letzten
-/// 14 Tage (eigene Capsules, kein Chart-Framework), Tage-Serie und Anzahl
-/// abgeschlossener Bücher. Daten kommen aus dem ListeningStatsStore.
+/// Local listening stats: listening time today/7 days/total, bars of the last
+/// 14 days (own capsules, no chart framework), day streak and number of finished
+/// books. Data comes from the ListeningStatsStore.
 struct StatsView: View {
     @ObservedObject private var stats = ListeningStatsStore.shared
     var libraryViewModel: LibraryViewModel?

@@ -1,9 +1,9 @@
 import SwiftUI
 import Combine
 
-/// Folgenseite: Episoden-Cover + Titel, verlinkte Show, Play/Fortsetzen,
-/// Download, Gehört-Umschalter und Beschreibung — Hintergrund im
-/// Cover-Farbverlauf wie die Hörbuch-Detailseite.
+/// Episode page: episode cover + title, linked show, play/resume, download,
+/// played toggle and description — background in the cover gradient like the
+/// audiobook detail page.
 struct PodcastEpisodeDetailView: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator

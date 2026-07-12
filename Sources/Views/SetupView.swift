@@ -1,9 +1,8 @@
 import SwiftUI
 
-/// Demo-Zugang für den App-Review (Apple verlangt bei Server-gebundenen Apps
-/// einen testbaren Zugang). Vor dem Einreichen mit einem gehosteten
-/// Demo-Server befüllen; solange beide Werte nil sind, erscheint in der App
-/// nichts davon.
+/// Demo access for the app review (Apple requires a testable account for
+/// server-bound apps). Fill in with a hosted demo server before submitting; as
+/// long as both values are nil, none of it appears in the app.
 enum DemoAccess {
     static let serverURL: String? = nil
     static let apiToken: String? = nil

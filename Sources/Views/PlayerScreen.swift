@@ -1,12 +1,11 @@
 import SwiftUI
 
 /// Zeigt die aktuell im PlayerCoordinator laufende Session als vollen
-/// Player-Screen. Lädt selbst nichts mehr — das Laden übernimmt der
-/// Coordinator, damit dieselbe Session auch von der Mini-Player-Leiste aus
-/// sichtbar bleibt.
+/// Player screen. Loads nothing itself anymore — the coordinator handles
+/// loading so the same session stays visible from the mini-player bar too.
 struct PlayerScreen: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// Wird von der Overlay-Präsentation durchgereicht (Drag-to-dismiss).
+    /// Passed through from the overlay presentation (drag-to-dismiss).
     var dragProgress: CGFloat = 0
     /// Eck-Radius des Overlay-Sheets — wird an PlayerView durchgereicht.
     var cornerRadius: CGFloat = 0

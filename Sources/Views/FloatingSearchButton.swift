@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// Schwebender Lupen-Button unten — angelehnt an den separaten, schwebenden
-/// Such-Button, den Apple seit iOS 26 in Music & Co. nutzt. Öffnet das
-/// vollflächige `SearchOverlay` (Glas-Sheet mit Echtzeit-Suche), statt sich
-/// selbst zu einem Feld aufzuklappen.
+/// Search button as Apple uses it since iOS 26 in Music & co. Opens the
+/// full-screen `SearchOverlay` (glass sheet with real-time search) instead of
+/// expanding into a field itself.
 struct FloatingSearchButton: View {
     let action: () -> Void
 

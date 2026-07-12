@@ -1,8 +1,8 @@
 import SwiftUI
 import Combine
 
-/// Pro-Show-Einstellungen: Tempo (greift als Start-Rate), Auto-Download neuer
-/// Folgen und Sortierung. Erreichbar über das Schieberegler-Symbol der Show.
+/// Per-show settings: speed (used as the start rate), auto-download of new
+/// episodes and sorting. Reachable via the show's slider icon.
 struct PodcastShowSettingsSheet: View {
     let showId: String
     @Binding var newestFirst: Bool
