@@ -13,6 +13,7 @@ struct PodcastsView: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @ObservedObject private var queue = PodcastQueue.shared
 
     /// Shows aller Podcast-Quellen (RSS + ABS), dedupliziert über die
     /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
@@ -40,6 +41,7 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
+                queueSection
                 nextUpSection
                 showsShelf
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
@@ -95,6 +97,35 @@ struct PodcastsView: View {
             .flatMap { show in show.episodes.map { podcastLibraryItem(show: show, episode: $0) } }
             .filter { ids.contains($0.id) }
             .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+    }
+
+    // MARK: - Queue (nutzer-verwaltete Warteschlange)
+
+    @ViewBuilder
+    private var queueSection: some View {
+        // Nur die zuflösbaren IDs zeigen (verwaiste Einträge stillschweigend
+        // überspringen — die Reorder-Seite räumt sie beim Abspielen auf).
+        let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Queue").font(.title3).bold()
+                    Spacer()
+                    NavigationLink {
+                        PodcastQueueView(playerCoordinator: playerCoordinator)
+                    } label: {
+                        Text("Edit")
+                    }
+                }
+                .padding(.horizontal)
+                LazyVStack(spacing: 0) {
+                    ForEach(items.prefix(5)) { item in
+                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                        Divider().padding(.leading, 88)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Als Nächstes (große Karten, eine pro Show)
@@ -154,6 +185,47 @@ struct PodcastsView: View {
                     PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
                     Divider().padding(.leading, 88)
                 }
+            }
+        }
+    }
+}
+
+/// Reorderbare „Queue"-Seite: umsortieren (`.onMove`/EditButton), per Swipe
+/// entfernen, Tap auf eine Zeile spielt sie (und nimmt sie aus der Queue).
+struct PodcastQueueView: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var queue = PodcastQueue.shared
+
+    var body: some View {
+        List {
+            ForEach(queue.ids, id: \.self) { id in
+                if let item = AppSession.shared.libraryItem(forId: id) {
+                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                }
+            }
+            .onMove { queue.move(from: $0, to: $1) }
+            .onDelete { offsets in
+                offsets.map { queue.ids[$0] }.forEach { queue.remove($0) }
+            }
+        }
+        .listStyle(.plain)
+        .navigationTitle("Queue")
+        .toolbar {
+            if !queue.isEmpty {
+                ToolbarItem(placement: .topBarTrailing) { EditButton() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Clear", role: .destructive) { queue.clear() }
+                }
+            }
+        }
+        .overlay {
+            if queue.isEmpty {
+                ContentUnavailableView(
+                    "Queue is empty",
+                    systemImage: "text.line.first.and.arrowtriangle.forward",
+                    description: Text("Add episodes with Play Next or Play Last.")
+                )
             }
         }
     }
@@ -727,6 +799,16 @@ struct PodcastEpisodeRow: View {
         .contentShape(Rectangle())
         .onTapGesture { Task { await playerCoordinator.open(item: item) } }
         .contextMenu {
+            Button {
+                PodcastQueue.shared.playNext(item.id)
+            } label: {
+                Label("Play Next", systemImage: "text.insert")
+            }
+            Button {
+                PodcastQueue.shared.playLast(item.id)
+            } label: {
+                Label("Play Last", systemImage: "text.append")
+            }
             Button {
                 podcastSetPlayed(item, !isPlayed)
             } label: {

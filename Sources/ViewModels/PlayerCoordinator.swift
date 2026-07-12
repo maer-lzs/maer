@@ -36,6 +36,11 @@ final class PlayerCoordinator: ObservableObject {
     ///   die Wiedergabe direkt nach dem Laden), false beim stillen
     ///   Wiederherstellen nach App-Start (bleibt pausiert).
     func open(item: LibraryItem, autoplay: Bool = true) async {
+        // Podcast-Folge, die man abspielt, gehört nicht mehr in die „Als
+        // Nächstes"-Queue (die laufende Folge steht nie drin).
+        if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+            PodcastQueue.shared.remove(item.id)
+        }
         if activeItem?.id == item.id, viewModel != nil {
             if autoplay { await viewModel?.playWithServerCheck() }
             return
@@ -88,8 +93,18 @@ final class PlayerCoordinator: ObservableObject {
     /// plays to its end, open the next unfinished book of the same series.
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
         viewModel.onBookFinished = { [weak self] finishedItemId in
-            guard let self,
-                  UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+            guard let self else { return }
+            // Podcast: nach dem Ende die nächste Folge aus der „Als Nächstes"-
+            // Queue starten (die beendete war beim Abspielen schon raus).
+            if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
+                if let nextId = PodcastQueue.shared.first,
+                   let item = AppSession.shared.libraryItem(forId: nextId) {
+                    Task { await self.open(item: item) }
+                    return
+                }
+            }
+            // Hörbücher: nächstes Serien-Buch (nur bei aktiviertem Setting).
+            guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
                   let next = self.nextInSeriesProvider?(finishedItemId) else { return }
             Task { await self.open(item: next) }
         }
