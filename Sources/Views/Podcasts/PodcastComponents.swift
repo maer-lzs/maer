@@ -26,8 +26,10 @@ struct PodcastFeaturedCard: View {
     }
 
     var body: some View {
-        NavigationLink {
-            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
+        // Tap auf die Karte spielt direkt weiter (Apple-Stil); Detail per
+        // Info-Button oben links.
+        Button {
+            Task { await playerCoordinator.open(item: item) }
         } label: {
             cardBody
         }
@@ -36,11 +38,40 @@ struct PodcastFeaturedCard: View {
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        // Aktionen als Overlay → eigener Tap-Bereich, keine Navigation.
+        .overlay(alignment: .topLeading) { detailButton.padding(10) }
         .overlay(alignment: .bottomLeading) { playPill.padding(12) }
         .overlay(alignment: .bottomTrailing) {
             PodcastDownloadButton(item: item, tint: .white).padding(14)
         }
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+    }
+
+    private var detailButton: some View {
+        NavigationLink {
+            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
+        } label: {
+            Image(systemName: "info.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.white.opacity(0.9), .black.opacity(0.3))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Zuletzt gehört (relativ) aus lokalem/ABS-Fortschritt.
+    private var lastPlayedText: String {
+        let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+        let absTs = absPodcast.episodeProgress[item.id]?.lastUpdate ?? 0
+        let ts = max(localTs, absTs)
+        guard ts > 0 else { return relativeDateText(item) }
+        return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
+    }
+
+    /// „12 Min übrig" wenn angespielt, sonst die Dauer.
+    private var remainingText: String {
+        if case .inProgress(_, let remaining) = podcastPlayState(for: item), remaining > 0 {
+            return String(localized: "\(Int(remaining / 60)) min left")
+        }
+        return durationText(item)
     }
 
     private var cardBody: some View {
@@ -58,7 +89,7 @@ struct PodcastFeaturedCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 4) {
                     if isPlayed { Image(systemName: "checkmark.circle.fill").font(.caption) }
-                    Text(isPlayed ? String(localized: "Played") : relativeDateText(item))
+                    Text(isPlayed ? String(localized: "Played") : lastPlayedText)
                 }
                 .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                 Text(item.title)
@@ -90,7 +121,7 @@ struct PodcastFeaturedCard: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "play.fill").font(.caption)
-                Text(durationText(item)).font(.subheadline.weight(.medium))
+                Text(remainingText).font(.subheadline.weight(.medium))
             }
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
@@ -175,26 +206,7 @@ struct PodcastEpisodeRow: View {
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .onTapGesture { Task { await playerCoordinator.open(item: item) } }
-        .contextMenu {
-            Button {
-                PodcastQueue.shared.playNext(item.id)
-            } label: {
-                Label("Play Next", systemImage: "text.insert")
-            }
-            Button {
-                PodcastQueue.shared.playLast(item.id)
-            } label: {
-                Label("Play Last", systemImage: "text.append")
-            }
-            Button {
-                podcastSetPlayed(item, !isPlayed)
-            } label: {
-                Label(
-                    isPlayed ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
-                    systemImage: isPlayed ? "arrow.uturn.backward.circle" : "checkmark.circle"
-                )
-            }
-        }
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
         // Swipe-Aktionen greifen in `List`-Kontexten (Show-Seite, Queue); in
         // reinen `LazyVStack`-Vorschauen bleibt das Kontextmenü.
         .swipeActions(edge: .leading, allowsFullSwipe: true) {

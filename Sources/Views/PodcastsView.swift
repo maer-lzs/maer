@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import UIKit
 
 /// Eine Kachel in „Zuletzt aktualisiert" (Apple-Podcasts-Stil): Show + Zeitpunkt
 /// der letzten Aktualisierung + Anzahl neuer Folgen seit der zuletzt gehörten.
@@ -58,9 +59,8 @@ struct PodcastsView: View {
                 recommendationsSection
                 queueSection
                 premiumSection
-                showsShelf
+                downloadedShelf
                 recentlyUpdatedSection
-                if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
             }
             .padding(.top, 8)
             .bottomBarClearance()
@@ -105,29 +105,21 @@ struct PodcastsView: View {
         }
     }
 
-    /// „Als Nächstes" quellen-übergreifend: pro Show die laufende bzw. nächste
-    /// ungehörte Folge (chronologisch weiter), sonst die älteste ungehörte.
+    /// „Fortsetzen": NUR angefangene (in-progress) Folgen, sortiert nach dem
+    /// letzten Hörzeitpunkt (wie bei Hörbüchern) — nicht nach Pubdatum. Fertige
+    /// fallen automatisch raus. Neues entdecken macht „Zuletzt aktualisiert".
     private func computeNextUp() -> [LibraryItem] {
-        var picks: [(item: LibraryItem, date: Double)] = []
+        var picks: [(item: LibraryItem, playedAt: Double)] = []
         for show in allShows {
-            let items = show.episodes
-                .sorted { $0.pubDate < $1.pubDate }
-                .map { podcastLibraryItem(show: show, episode: $0) }
-            func st(_ i: LibraryItem) -> EpisodePlayState { podcastPlayState(for: i) }
-
-            if let running = items.last(where: {
-                if case .inProgress = st($0) { return true } else { return false }
-            }) {
-                picks.append((running, running.addedAt ?? 0)); continue
-            }
-            let lastPlayed = items.lastIndex { st($0) == .played }
-            let range = lastPlayed.map { items.index(after: $0)..<items.endIndex } ?? items.indices
-            if let next = items[range].first(where: { st($0) == .unplayed }) {
-                picks.append((next, next.addedAt ?? 0))
+            for ep in show.episodes {
+                let item = podcastLibraryItem(show: show, episode: ep)
+                guard case .inProgress = podcastPlayState(for: item) else { continue }
+                let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
+                picks.append((item, max(localTs, absTs)))
             }
         }
-        // Nur die 10 aktuellsten in „Als Nächstes" — nicht jede Show.
-        return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
+        return picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map { $0.item }
     }
 
     /// „Zuletzt aktualisiert": alle Shows nach Zeitpunkt der neuesten Folge
@@ -239,10 +231,23 @@ struct PodcastsView: View {
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
-                podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 110, corner: 12)
+                podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 132, corner: 14)
                 subscribeControl(r).padding(6)
             }
-            Text(r.title).font(.caption).lineLimit(2).frame(width: 110, alignment: .leading)
+            Text(r.title).font(.caption).lineLimit(2).frame(width: 132, alignment: .leading)
+        }
+        .contextMenu {
+            Button {
+                subscribingRec.insert(r.feedURL)
+                Task {
+                    await subscribeRecommendation(r.feedURL)
+                    recommendations.remove(feedURL: r.feedURL)
+                    subscribingRec.remove(r.feedURL)
+                }
+            } label: { Label("Subscribe", systemImage: "plus.circle") }
+            Button {
+                UIPasteboard.general.string = r.feedURL
+            } label: { Label("Copy Feed URL", systemImage: "doc.on.doc") }
         }
     }
 
@@ -294,6 +299,7 @@ struct PodcastsView: View {
                             recentTile(info)
                         }
                         .buttonStyle(.plain)
+                        .podcastShowMenu(info.show)
                     }
                 }
                 .padding(.horizontal)
@@ -369,6 +375,7 @@ struct PodcastsView: View {
                                 ShowTile(show: show)
                             }
                             .buttonStyle(.plain)
+                            .podcastShowMenu(show)
                         }
                     }
                     .padding(.horizontal)
@@ -377,50 +384,24 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Sendungen (kompakte Cover-Reihe + „Alle" → Grid)
+    // MARK: - Geladen (3 Reihen, seitlich scrollbar)
 
     @ViewBuilder
-    private var showsShelf: some View {
-        // Alle Podcast-Quellen (RSS + ABS); Kachel = nur Cover + Titel, die
-        // Folgenliste baut erst die Show-Seite (lazy).
-        let shows = allShows
-        if !shows.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Shows").font(.title3).bold()
-                    Spacer()
-                    NavigationLink {
-                        PodcastShowsGridView(shows: shows, playerCoordinator: playerCoordinator)
-                    } label: {
-                        Text("See All")
-                    }
-                }
-                .padding(.horizontal)
+    private var downloadedShelf: some View {
+        if !downloaded.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Downloaded").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(shows) { show in
-                            NavigationLink {
-                                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
-                            } label: {
-                                ShowTile(show: show)
-                            }
-                            .buttonStyle(.plain)
+                    // Reihenzahl an die Menge anpassen — 1 Download → 1 Reihe.
+                    LazyHGrid(rows: Array(repeating: GridItem(.fixed(84), spacing: 4),
+                                          count: max(1, min(3, downloaded.count))),
+                              spacing: 12) {
+                        ForEach(downloaded) { item in
+                            PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                                .frame(width: 320)
                         }
                     }
                     .padding(.horizontal)
-                }
-            }
-        }
-    }
-
-    /// Gemeinsame Zeilenliste (Titel + `PodcastEpisodeRow` + Trenner).
-    private func episodeListSection(title: LocalizedStringKey, episodes: [LibraryItem]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.title3).bold().padding(.horizontal)
-            LazyVStack(spacing: 0) {
-                ForEach(episodes) { item in
-                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                    Divider().padding(.leading, 88)
                 }
             }
         }

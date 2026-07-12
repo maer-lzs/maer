@@ -1,5 +1,79 @@
 import SwiftUI
 import Combine
+import UIKit
+
+/// Feed komplett abbestellen — aus BEIDEN Quellen anhand der normalisierten
+/// Feed-URL: RSS-Abo entfernen (gpodder-Reconcile schickt danach `remove`) UND
+/// eine evtl. gleichnamige ABS-Show archivieren (Server-Historie bleibt). So
+/// kommt der Feed nicht als „andere Quelle" zurück.
+@MainActor
+func podcastUnsubscribe(_ show: PodcastShow) {
+    let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
+    for s in PodcastSubscriptions.shared.shows
+        where PodcastSubscriptions.normalizeFeedURL(s.feedURL) == norm {
+        PodcastSubscriptions.shared.unsubscribe(id: s.id)
+    }
+    for s in ABSPodcastProvider.shared.shows
+        where PodcastSubscriptions.normalizeFeedURL(s.feedURL) == norm {
+        ABSPodcastProvider.shared.setArchived(s.id, true)
+    }
+    Task { await GPodderSync.shared.reconcile() }
+}
+
+extension View {
+    /// Einheitliches Folgen-Kontextmenü (Force Touch / Long-Press) — überall
+    /// gleich: Abspielen, in die Queue, gehört/ungehört, laden/löschen.
+    @ViewBuilder
+    func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
+        contextMenu {
+            Button {
+                Task { await playerCoordinator.open(item: item) }
+            } label: { Label("Play", systemImage: "play.fill") }
+            Button {
+                PodcastQueue.shared.playNext(item.id)
+            } label: { Label("Play Next", systemImage: "text.insert") }
+            Button {
+                PodcastQueue.shared.playLast(item.id)
+            } label: { Label("Play Last", systemImage: "text.append") }
+            let played = podcastPlayState(for: item) == .played
+            Button {
+                podcastSetPlayed(item, !played)
+            } label: {
+                Label(played ? String(localized: "Mark as Unplayed") : String(localized: "Mark as Played"),
+                      systemImage: played ? "arrow.uturn.backward.circle" : "checkmark.circle")
+            }
+            if DownloadManager.shared.isDownloaded(itemId: item.id) {
+                Button(role: .destructive) {
+                    DownloadManager.shared.deleteDownload(itemId: item.id)
+                } label: { Label("Delete Download", systemImage: "trash") }
+            } else {
+                Button {
+                    Task {
+                        let p = AppSession.shared.provider(for: item.id)
+                        if let d = try? await p.fetchItemDetail(itemId: item.id) {
+                            await DownloadManager.shared.download(item: d, provider: p)
+                        }
+                    }
+                } label: { Label("Download", systemImage: "arrow.down.circle") }
+            }
+        }
+    }
+
+    /// Einheitliches Sendungs-Kontextmenü (abonniert): alle gehört, abbestellen.
+    @ViewBuilder
+    func podcastShowMenu(_ show: PodcastShow) -> some View {
+        contextMenu {
+            Button {
+                for ep in show.episodes {
+                    podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
+                }
+            } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
+            Button(role: .destructive) {
+                podcastUnsubscribe(show)
+            } label: { Label("Unsubscribe", systemImage: "minus.circle") }
+        }
+    }
+}
 
 /// PodcastShow + Episode → LibraryItem (quellen-agnostisch). Der Namespace im
 /// `guid`/`id` (`rss:`/`abspod:`) routet Wiedergabe/Cover/Fortschritt auf die

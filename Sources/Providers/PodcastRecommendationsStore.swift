@@ -133,25 +133,48 @@ final class PodcastRecommendationsStore: ObservableObject {
         return r.title.lowercased().contains(a)
     }
 
-    /// Autor-Treffer zuerst, dann nach gewichteter Kategorie-Nähe.
+    /// Autor-Treffer + Kategorie-Nähe als Basis-Rang, dann per Round-Robin über
+    /// die Autoren durchmischen (max. 3 je Autor) — so dominiert kein Verlag
+    /// (z. B. „Die Zeit") die ersten Plätze.
     private func rank(_ list: [PodcastSearchResult],
                      authorHits: Set<String>,
                      categoryWeights: [String]) -> [PodcastSearchResult] {
-        // Kategorie → Rangwert (frühere = höher), für ein weiches Nähe-Maß.
         var catScore: [String: Double] = [:]
         for (i, c) in categoryWeights.enumerated() { catScore[c] = Double(categoryWeights.count - i) }
-
         func score(_ r: PodcastSearchResult) -> Double {
             (r.categories ?? []).reduce(0) { $0 + (catScore[$1] ?? 0) }
         }
-        return list.enumerated()
+
+        // 1. Basis-Reihenfolge (Autor-Treffer zuerst, dann Kategorie-Nähe).
+        let ordered = list.enumerated()
             .map { (idx, r) in (r: r, author: authorHits.contains(PodcastSubscriptions.normalizeFeedURL(r.feedURL)), score: score(r), idx: idx) }
             .sorted {
-                if $0.author != $1.author { return $0.author }        // Autor-Treffer zuerst
-                if $0.score != $1.score { return $0.score > $1.score } // dann Kategorie-Nähe
+                if $0.author != $1.author { return $0.author }
+                if $0.score != $1.score { return $0.score > $1.score }
                 return $0.idx < $1.idx
             }
             .map { $0.r }
+
+        // 2. Nach Autor gruppieren (Reihenfolge = Priorität), pro Autor deckeln.
+        var groups: [String: [PodcastSearchResult]] = [:]
+        var authorOrder: [String] = []
+        for r in ordered {
+            let key = r.author.flatMap { $0.isEmpty ? nil : $0.lowercased() } ?? r.title.lowercased()
+            if groups[key] == nil { authorOrder.append(key); groups[key] = [] }
+            if groups[key]!.count < 3 { groups[key]!.append(r) }
+        }
+
+        // 3. Round-Robin: je Runde ein Treffer pro Autor → durchmischt.
+        var result: [PodcastSearchResult] = []
+        var round = 0, progressed = true
+        while progressed {
+            progressed = false
+            for key in authorOrder where round < groups[key]!.count {
+                result.append(groups[key]![round]); progressed = true
+            }
+            round += 1
+        }
+        return result
     }
 
     private func excludeSubscribed(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {

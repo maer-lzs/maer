@@ -172,7 +172,7 @@ struct PodcastShowView: View {
         if isServerShow {
             Menu {
                 Button {
-                    absPodcast.setArchived(show.id, true)
+                    podcastUnsubscribe(show)   // ABS archivieren + evtl. RSS-Dopplung entfernen
                     dismiss()
                 } label: {
                     Label("End subscription (archive)", systemImage: "archivebox")
@@ -187,7 +187,7 @@ struct PodcastShowView: View {
             }
         } else {
             Button(role: .destructive) {
-                subs.unsubscribe(id: show.id)
+                podcastUnsubscribe(show)   // aus beiden Quellen (RSS + evtl. ABS)
                 dismiss()
             } label: {
                 Label("Unsubscribe", systemImage: "minus.circle")

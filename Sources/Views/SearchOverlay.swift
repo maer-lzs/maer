@@ -301,6 +301,20 @@ struct SearchOverlay: View {
         }
         .padding(.horizontal, 20)
         .frame(minHeight: 64)
+        .contextMenu {
+            if !podcastSubs.shows.contains(where: { $0.feedURL == result.feedURL }) {
+                Button {
+                    subscribingFeeds.insert(result.feedURL)
+                    Task {
+                        _ = await podcastSubs.subscribe(urlString: result.feedURL)
+                        subscribingFeeds.remove(result.feedURL)
+                    }
+                } label: { Label("Subscribe", systemImage: "plus.circle") }
+            }
+            Button {
+                UIPasteboard.general.string = result.feedURL
+            } label: { Label("Copy Feed URL", systemImage: "doc.on.doc") }
+        }
     }
 
     @ViewBuilder

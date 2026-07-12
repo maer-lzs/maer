@@ -2,8 +2,9 @@ import SwiftUI
 
 /// Große „Fortsetzen"-Karte für Hörbücher — analog zur Podcast-Karte: Cover
 /// oben, darunter eine Textfläche in der Cover-Durchschnittsfarbe (weicher
-/// Übergang), Titel/Autor + Fortschritt, Play-Pille unten links. Tap öffnet die
-/// Buchdetailseite (wertbasiert, damit ein Medien-Tab-Reset zurückpoppt).
+/// Übergang), Restzeit · zuletzt gehört, Titel/Autor, aktuelles Kapitel und
+/// Fortschritt. Tap auf die Karte spielt direkt weiter (Apple-Stil); Detail per
+/// Info-Button oben links, mehr Aktionen per Long-Press.
 struct BookFeaturedCard: View {
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -14,7 +15,9 @@ struct BookFeaturedCard: View {
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: entry.id) }
 
     var body: some View {
-        NavigationLink(value: entry.id) {
+        Button {
+            Task { await playerCoordinator.open(item: entry.item) }
+        } label: {
             cardBody
         }
         .buttonStyle(.plain)
@@ -22,13 +25,22 @@ struct BookFeaturedCard: View {
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        // Play als Overlay → eigener Tap-Bereich, keine Navigation.
+        .overlay(alignment: .topLeading) { detailButton.padding(10) }
         .overlay(alignment: .bottomLeading) { playPill.padding(12) }
         .modifier(BookCellContextMenu(
             entry: entry,
             playerCoordinator: playerCoordinator,
             libraryViewModel: libraryViewModel
         ))
+    }
+
+    private var detailButton: some View {
+        NavigationLink(value: entry.id) {
+            Image(systemName: "info.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.white.opacity(0.9), .black.opacity(0.3))
+        }
+        .buttonStyle(.plain)
     }
 
     private var cardBody: some View {
@@ -41,16 +53,18 @@ struct BookFeaturedCard: View {
                 }
 
             VStack(alignment: .leading, spacing: 5) {
-                if let p = entry.progress, p.isStarted,
-                   let remaining = p.remainingText(bookDuration: entry.item.media?.duration) {
-                    Text(remaining)
-                        .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                let sub = [remainingText, lastPlayedText].compactMap { $0 }.joined(separator: " · ")
+                if !sub.isEmpty {
+                    Text(sub).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                 }
                 Text(entry.item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let author = entry.item.author {
                     Text(author).font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                }
+                if let chapter = currentChapter {
+                    Text(chapter).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
                 }
                 if let p = entry.progress, p.isStarted {
                     ProgressView(value: p.fraction)
@@ -80,5 +94,24 @@ struct BookFeaturedCard: View {
             .background(Capsule().fill(.white.opacity(0.22)))
         }
         .buttonStyle(.plain)
+    }
+
+    // MARK: - Reicher Karten-Inhalt
+
+    private var remainingText: String? {
+        guard let p = entry.progress, p.isStarted else { return nil }
+        return p.remainingText(bookDuration: entry.item.media?.duration)
+    }
+
+    private var lastPlayedText: String? {
+        guard let ts = entry.progress?.lastUpdate, ts > 0 else { return nil }
+        return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
+    }
+
+    /// Aktuelles Kapitel (nur wenn Kapitel in den Item-Daten vorliegen).
+    private var currentChapter: String? {
+        guard let chapters = entry.item.media?.chapters, !chapters.isEmpty,
+              let t = entry.progress?.currentTime else { return nil }
+        return chapters.last(where: { t >= $0.start })?.title
     }
 }

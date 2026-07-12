@@ -528,7 +528,7 @@ struct LibraryView: View {
                         )
                     }
                     if !viewModel.recentlyAdded.isEmpty {
-                        horizontalSection(title: String(localized: "Recently Added"), entries: viewModel.recentlyAdded)
+                        recentlyAddedGrid
                     }
                 allBooksSection
             }
@@ -554,6 +554,26 @@ struct LibraryView: View {
         }
         .refreshable { await viewModel.loadLibrary() }
         .reportsBottomBarScroll()   // Scroll → Bottom-Zone ein-/ausklappen
+    }
+
+    // MARK: „Kürzlich hinzugefügt" (2-Spalten-Grid, große Kacheln)
+
+    private var recentlyAddedGrid: some View {
+        let spacing: CGFloat = 14
+        let cellW = max(120, (libraryWidth - gridHorizontalPadding * 2 - spacing) / 2)
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Recently Added").font(.title3).bold().padding(.horizontal)
+            LazyVGrid(
+                columns: [GridItem(.fixed(cellW), spacing: spacing), GridItem(.fixed(cellW), spacing: spacing)],
+                alignment: .leading, spacing: 20
+            ) {
+                ForEach(viewModel.recentlyAdded) { entry in
+                    BookGridCell(entry: entry, width: cellW,
+                                 playerCoordinator: playerCoordinator, libraryViewModel: viewModel)
+                }
+            }
+            .padding(.horizontal, gridHorizontalPadding)
+        }
     }
 
     // MARK: „Fortsetzen" (große Karten, wie im Podcast-Tab)
