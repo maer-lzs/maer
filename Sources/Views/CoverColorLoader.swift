@@ -16,8 +16,19 @@ final class CoverColorLoader: ObservableObject {
     @Published var topAccent: Color = .gray
     @Published var bottomAccent: Color = .gray
 
+    /// Fertige Farben je Cover-URL — einmal berechnet, dann sofort wieder da.
+    /// Nimmt die Farb-Arbeit aus dem Scroll heraus (Karten, die erneut
+    /// erscheinen, treffen den Cache statt neu zu rechnen).
+    private static var colorCache: [URL: (accent: Color, top: Color, bottom: Color)] = [:]
+
     func load(from url: URL?) async {
         guard let url else { return }
+        if let cached = Self.colorCache[url] {
+            accent = cached.accent
+            topAccent = cached.top
+            bottomAccent = cached.bottom
+            return
+        }
         let image: UIImage
         if let cached = ImageCache.shared.image(for: url) {
             image = cached
@@ -38,6 +49,7 @@ final class CoverColorLoader: ObservableObject {
             accent = colors.accent
             topAccent = colors.top
             bottomAccent = colors.bottom
+            Self.colorCache[url] = colors
         }
     }
 
