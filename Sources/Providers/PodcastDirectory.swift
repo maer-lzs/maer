@@ -132,11 +132,15 @@ struct PodcastIndexDirectory: PodcastDirectory {
         }
     }
 
-    /// Trending-Podcasts (für „Entdecken"). Gleiche Feed-Form wie die Suche.
-    func trending(max: Int = 40, lang: String? = "en") async throws -> [PodcastSearchResult] {
+    /// Trending-Podcasts (für „Entdecken"/Empfehlungen). Gleiche Feed-Form wie
+    /// die Suche. `categories` filtert auf deine Interessen (PodcastIndex `cat`).
+    func trending(max: Int = 40, lang: String? = "en", categories: [String] = []) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/podcasts/trending")!
         var q = [URLQueryItem(name: "max", value: String(max))]
         if let lang { q.append(URLQueryItem(name: "lang", value: lang)) }
+        if !categories.isEmpty {
+            q.append(URLQueryItem(name: "cat", value: categories.prefix(5).joined(separator: ",")))
+        }
         components.queryItems = q
         guard let url = components.url else { return [] }
         let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))

@@ -22,6 +22,8 @@ struct PodcastsView: View {
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @ObservedObject private var queue = PodcastQueue.shared
+    @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+    @State private var subscribingRec: Set<String> = []
 
     /// Shows aller Podcast-Quellen (RSS + ABS), dedupliziert über die
     /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
@@ -52,6 +54,7 @@ struct PodcastsView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
                 nextUpSection
+                recommendationsSection
                 queueSection
                 showsShelf
                 inboxSection
@@ -84,6 +87,7 @@ struct PodcastsView: View {
             await absPodcast.refresh()                       // ABS-Podcasts laden
             await GPodderSync.shared.autoReconcileIfNeeded()       // gpodder-Abos abgleichen
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // lokale Abos spiegeln
+            await recommendations.refreshIfNeeded()               // Empfehlungen (extern)
         }
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
@@ -201,6 +205,63 @@ struct PodcastsView: View {
                 }
                 .scrollTargetBehavior(.viewAligned)
             }
+        }
+    }
+
+    // MARK: - Empfohlen (externe Popularität, unter den Karten)
+
+    @ViewBuilder
+    private var recommendationsSection: some View {
+        if !recommendations.results.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Recommended").font(.title3).bold().padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(recommendations.results) { r in recommendationTile(r) }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+    }
+
+    private func recommendationTile(_ r: PodcastSearchResult) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 110, corner: 12)
+                subscribeControl(r).padding(6)
+            }
+            Text(r.title).font(.caption).lineLimit(2).frame(width: 110, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private func subscribeControl(_ r: PodcastSearchResult) -> some View {
+        if subscribingRec.contains(r.feedURL) {
+            ProgressView().controlSize(.small)
+                .padding(4).background(Circle().fill(.black.opacity(0.35)))
+        } else {
+            Button {
+                subscribingRec.insert(r.feedURL)
+                Task {
+                    await subscribeRecommendation(r.feedURL)
+                    recommendations.remove(feedURL: r.feedURL)
+                    subscribingRec.remove(r.feedURL)
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3).foregroundStyle(.white, AppTheme.accent)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func subscribeRecommendation(_ feedURL: String) async {
+        if AppStorageKeys.absPodcastsEnabledValue, absPodcast.hasPodcasts {
+            _ = await absPodcast.subscribeOnServer(feedURL: feedURL)
+        } else {
+            _ = await subs.subscribe(urlString: feedURL)
+            await GPodderSync.shared.reconcile()
         }
     }
 
