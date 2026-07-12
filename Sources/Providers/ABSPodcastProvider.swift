@@ -117,21 +117,29 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Nur prüfen, ob Podcast-Bibliotheken existieren (1 Request) — steuert die
     /// Tab-Sichtbarkeit, ohne alle Shows zu laden. Fehler/kein Login → false.
     func refreshAvailability() async {
-        let libs = try? await client.fetchPodcastLibraries()
-        hasPodcasts = (libs?.isEmpty == false)
+        // NUR bei erfolgreicher Antwort aktualisieren. Ein transienter Fehler
+        // (kein Netz/kurzer Hakler) darf `hasPodcasts` nicht auf false kippen —
+        // sonst verschwindet der Podcast-Tab bzw. wird leer.
+        guard let libs = try? await client.fetchPodcastLibraries() else { return }
+        hasPodcasts = !libs.isEmpty
     }
 
     /// Shows + Folgen aller Podcast-Bibliotheken laden. Best effort: einzelne
     /// fehlgeschlagene Shows werden übersprungen, der Rest bleibt nutzbar.
     func refresh() async {
-        guard let libraries = try? await client.fetchPodcastLibraries(), !libraries.isEmpty else {
+        // Fehlgeschlagener Library-Fetch → bestehenden Stand BEHALTEN, nicht
+        // löschen (dieser refresh läuft bei jedem Tab-Wechsel; ein kurzer
+        // Netz-Hakler leerte sonst den ganzen Podcast-Tab).
+        guard let libraries = try? await client.fetchPodcastLibraries() else { return }
+        guard !libraries.isEmpty else {
+            // Server hat wirklich keine Podcast-Bibliothek.
             hasPodcasts = false
             shows = []
             return
         }
         hasPodcasts = true
         // Fortschritt aller Episoden in einem Rutsch (für die Gehört-Anzeige).
-        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
+        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
         var loaded: [PodcastShow] = []
         for library in libraries {
             guard let items = try? await client.fetchLibraryItems(libraryId: library.id) else { continue }
@@ -140,8 +148,12 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 loaded.append(podcastShow(from: detail))
             }
         }
-        shows = loaded
-        changeToken += 1
+        // Nur übernehmen, wenn wirklich etwas geladen wurde — sonst (alle Detail-
+        // Fetches scheiterten) den bisherigen Stand behalten.
+        if !loaded.isEmpty || shows.isEmpty {
+            shows = loaded
+            changeToken += 1
+        }
     }
 
     /// Nur den Server-Fortschritt neu ziehen (nach Wiedergabe/„als gehört").
