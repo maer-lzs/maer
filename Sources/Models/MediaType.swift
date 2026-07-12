@@ -1,9 +1,8 @@
 import Foundation
 
-/// Inhaltstyp einer Quelle/eines Items — bestimmt, in welchem unteren Tab
-/// der Inhalt lebt. Tabs gehen nach TYP, nicht nach Quelle: mehrere Quellen
-/// desselben Typs (z. B. Audiobookshelf + lokale Dateien) landen im selben
-/// Tab. Podcast/Musik/Radio kommen additiv mit ihren Providern.
+/// Content type of a source/item — decides which bottom tab it lives in.
+/// Tabs group by type, not source: several sources of the same type
+/// (e.g. Audiobookshelf + local files) share one tab.
 enum MediaType: String, CaseIterable, Identifiable {
     case audiobooks
     case podcasts

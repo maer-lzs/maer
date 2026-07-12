@@ -1,15 +1,15 @@
 import Foundation
 import Combine
 
-/// Rohdaten der lokalen Hörstatistik: Sekunden pro Kalendertag
-/// ("yyyy-MM-dd", lokale Zeitzone). Bewusst simpel — JSON in Documents.
+/// Raw local listening stats: seconds per calendar day ("yyyy-MM-dd", local
+/// time zone). Deliberately simple — JSON in Documents.
 nonisolated struct ListeningStatsData: Codable {
     var secondsPerDay: [String: Int] = [:]
 }
 
-/// Erfasst Hörzeit (1-Sekunden-Ticks aus dem Player-Zeitbeobachter) und
-/// beantwortet die Fragen der Statistik-Seite. Disk-Writes gedrosselt und
-/// im Hintergrund — das Ticken darf nichts kosten.
+/// Records listening time (1-second ticks from the player time observer) and
+/// answers the stats page's questions. Disk writes throttled and in the
+/// background — ticking must cost nothing.
 @MainActor
 final class ListeningStatsStore: ObservableObject {
     static let shared = ListeningStatsStore()
@@ -39,8 +39,8 @@ final class ListeningStatsStore: ObservableObject {
         dayFormatter.string(from: date)
     }
 
-    /// Vom Player-Tick (1×/s bei laufender Wiedergabe): Hörzeit auf heute
-    /// buchen; auf Disk höchstens alle 30 s.
+    /// From the player tick (1×/s while playing): add listening time to today;
+    /// persist to disk at most every 30 s.
     func addSeconds(_ seconds: Int) {
         data.secondsPerDay[Self.dayKey(for: Date()), default: 0] += seconds
         let now = Date().timeIntervalSince1970
@@ -50,7 +50,7 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
-    /// Bei Pause/Stop: verbleibende Sekunden sofort sichern.
+    /// On pause/stop: persist the remaining seconds immediately.
     func flush() {
         save()
     }
@@ -64,7 +64,7 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
-    // MARK: - Abfragen
+    // MARK: - Queries
 
     func seconds(on date: Date) -> Int {
         data.secondsPerDay[Self.dayKey(for: date)] ?? 0
@@ -78,7 +78,7 @@ final class ListeningStatsStore: ObservableObject {
         dailySeconds(lastDays: days).reduce(0) { $0 + $1.seconds }
     }
 
-    /// Älteste zuerst — direkt als Balkenreihe darstellbar.
+    /// Oldest first — ready to render as a bar row.
     func dailySeconds(lastDays days: Int) -> [(date: Date, seconds: Int)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -88,8 +88,8 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
-    /// Tage am Stück mit Hörzeit, bis heute (ein hörfreier heutiger Tag
-    /// bricht die Serie noch nicht — gezählt wird ab gestern rückwärts).
+    /// Consecutive days with listening time, up to today (a listen-free today
+    /// does not yet break the streak — counting runs backwards from yesterday).
     func currentStreak() -> Int {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())

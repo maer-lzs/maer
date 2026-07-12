@@ -7,10 +7,9 @@ struct ABSUser: Decodable {
     let username: String
 }
 
-/// Antwort von /api/me — enthält alle Fortschritts-Einträge des Nutzers.
-/// Antwort von POST /login. Ältere Server liefern den langlebigen `token`,
-/// neuere (JWT-Auth ab v2.26) einen `accessToken` — beide Felder optional,
-/// verwendet wird bevorzugt der langlebige.
+/// Response of POST /login. Older servers return the long-lived `token`, newer
+/// ones (JWT auth from v2.26) an `accessToken` — both optional, the long-lived
+/// one is preferred.
 struct LoginResponse: Decodable {
     let user: LoginUser
 }
@@ -20,13 +19,14 @@ struct LoginUser: Decodable {
     let accessToken: String?
 }
 
+/// Response of /api/me — holds all of the user's progress entries.
 struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
     let bookmarks: [ABSBookmark]?
 }
 
-/// Lesezeichen (serverseitig am User gespeichert). `time` sind ganze
-/// Sekunden und zugleich der Schlüssel zum Löschen.
+/// Bookmark (stored server-side on the user). `time` is whole seconds and
+/// doubles as the delete key.
 struct ABSBookmark: Codable, Identifiable, Equatable {
     let libraryItemId: String
     let title: String
@@ -36,12 +36,11 @@ struct ABSBookmark: Codable, Identifiable, Equatable {
     var id: String { "\(libraryItemId)-\(time)" }
 }
 
-/// Ein Fortschritts-Eintrag aus /api/me. Wird lokal den Büchern zugeordnet,
-/// damit die ganze Bibliotheksliste Indikatoren zeigen kann, ohne pro Buch
-/// einen eigenen Request zu brauchen.
+/// A progress entry from /api/me. Mapped to books locally so the whole library
+/// list can show indicators without a per-book request.
 struct MediaProgressEntry: Decodable {
     let libraryItemId: String
-    /// Nur bei Podcast-Fortschritt gesetzt — identifiziert die Episode.
+    /// Set only for podcast progress — identifies the episode.
     let episodeId: String?
     let currentTime: Double?
     let duration: Double?
@@ -50,16 +49,15 @@ struct MediaProgressEntry: Decodable {
     let lastUpdate: Double?
 }
 
-/// Kompakte, view-freundliche Fortschrittsinfo für ein Buch. Codable, damit
-/// sie zusammen mit der Bücherliste für den Offline-Zugriff zwischengespeichert
-/// werden kann.
+/// Compact, view-friendly progress info for a book. Codable so it can be cached
+/// alongside the book list for offline access.
 struct BookProgress: Equatable, Codable {
     let fraction: Double      // 0...1
     let isFinished: Bool
-    let lastUpdate: Double    // ms seit 1970, für Sortierung "zuletzt gehört"
-    /// Absolute Position in Sekunden — Fallback, um fraction lokal aus der
-    /// Buchdauer nachzurechnen, wenn der Server sie nicht liefert (Multi-File-
-    /// Bücher mit fehlender Server-Duration). Optional: alte Disk-Caches.
+    let lastUpdate: Double    // ms since 1970, for "recently listened" sorting
+    /// Absolute position in seconds — fallback to recompute fraction locally
+    /// from the book duration when the server omits it (multi-file books with a
+    /// missing server duration). Optional: old disk caches.
     var currentTime: Double? = nil
 
     var percentInt: Int { Int((fraction * 100).rounded()) }
@@ -88,31 +86,31 @@ struct LibrariesResponse: Decodable {
 struct ABSLibrary: Decodable, Identifiable {
     let id: String
     let name: String
-    /// "book" | "podcast" — unterscheidet Hörbuch- von Podcast-Bibliotheken.
-    /// Default nil → bestehende Memberwise-Init-Aufrufe (RSS/Local) bleiben gültig.
+    /// "book" | "podcast" — distinguishes audiobook from podcast libraries.
+    /// Default nil → existing memberwise-init callers (RSS/Local) stay valid.
     var mediaType: String? = nil
-    /// Ordner der Bibliothek (der Listen-Endpoint liefert sie meist mit) —
-    /// Zielpfad für ein neu angelegtes Podcast-Abo.
+    /// Library folders (the list endpoint usually includes them) — target path
+    /// for a newly created podcast subscription.
     var folders: [ABSFolder]? = nil
 
     var isPodcast: Bool { mediaType == "podcast" }
 }
 
-// MARK: - Podcast-Verwaltung (Ordner, Feed-Metadaten)
+// MARK: - Podcast management (folders, feed metadata)
 
-/// Ordner einer Bibliothek — Zielpfad für ein neu angelegtes Podcast-Abo.
+/// A library folder — target path for a newly created podcast subscription.
 struct ABSFolder: Decodable, Identifiable {
     let id: String
     let fullPath: String?
 }
 
-/// `GET /api/libraries/{id}` liefert das Library-Objekt DIREKT (folders auf
-/// oberster Ebene) — NICHT in `{ library: … }` verpackt.
+/// `GET /api/libraries/{id}` returns the library object DIRECTLY (folders at
+/// the top level) — NOT wrapped in `{ library: … }`.
 struct LibraryWithFolders: Decodable {
     let folders: [ABSFolder]?
 }
 
-/// Antwort von POST /api/podcasts/feed — server-seitig geparster Feed.
+/// Response of POST /api/podcasts/feed — server-side parsed feed.
 struct PodcastFeedResponse: Decodable {
     let podcast: PodcastFeedData
 }
@@ -129,18 +127,18 @@ struct PodcastFeedMetadata: Decodable {
     let feedUrl: String?
 }
 
-// MARK: - Bücherliste (List-Endpoint)
+// MARK: - Book list (list endpoint)
 
 struct LibraryItemsResponse: Decodable {
     let results: [LibraryItem]
-    /// Gesamtzahl der Items in der Bibliothek (Server-Paging) — steuert, wie
-    /// viele Seiten das progressive Nachladen noch holen muss.
+    /// Total number of items in the library (server paging) — drives how many
+    /// pages the progressive load still has to fetch.
     let total: Int?
 }
 
-/// Eine Reihe der ABS-`personalized`-Ansicht („Continue Listening",
-/// „Recently Added", …) — genutzt, um genau diese beiden Reihen sofort
-/// vollständig zu befüllen, während die Gesamtliste progressiv nachlädt.
+/// A shelf of the ABS `personalized` view ("Continue Listening",
+/// "Recently Added", …) — used to fill exactly those two rows completely while
+/// the full list still loads progressively.
 struct PersonalizedShelf: Decodable {
     let id: String
     let entities: [LibraryItem]?
@@ -160,7 +158,7 @@ struct LibraryItem: Codable, Identifiable {
     }
 }
 
-// MARK: - Buchdetails (Expanded-Endpoint, für den Player)
+// MARK: - Book details (expanded endpoint, for the player)
 
 struct LibraryItemDetail: Codable, Identifiable {
     let id: String
@@ -173,8 +171,8 @@ struct LibraryItemMedia: Codable {
     let duration: Double?
     let chapters: [ABSChapter]?
     let tracks: [ABSAudioTrack]?
-    /// Nur Podcast-Bibliotheken: die Folgen der Show (Detail-Endpoint).
-    /// Default nil, damit bestehende Memberwise-Init-Aufrufe unverändert bauen.
+    /// Podcast libraries only: the show's episodes (detail endpoint).
+    /// Default nil so existing memberwise-init callers keep building.
     var episodes: [ABSPodcastEpisode]? = nil
 }
 
@@ -186,8 +184,8 @@ struct LibraryItemMetadata: Codable {
     let genres: [String]?
     let publishedYear: LenientString?
     let description: String?
-    /// Nur Podcasts: Feed-URL (für Quellen-übergreifende Dedup mit RSS).
-    /// Default nil → bestehende Memberwise-Init-Aufrufe bleiben gültig.
+    /// Podcasts only: feed URL (for cross-source dedup with RSS).
+    /// Default nil → existing memberwise-init callers stay valid.
     var feedUrl: String? = nil
 }
 
@@ -204,10 +202,10 @@ struct ABSPodcastEpisode: Codable, Identifiable {
     let season: String?
     let episode: String?
     let audioTrack: ABSAudioTrack?
-    /// Kapitel der Folge, sofern der Server sie mitliefert (sonst nil).
+    /// The episode's chapters, if the server includes them (else nil).
     var chapters: [ABSChapter]? = nil
-    /// Original-Feed-`guid`/Enclosure — Brückenschlüssel zu den `rss:`-IDs, damit
-    /// dieselbe Folge über beide Quellen (RSS + ABS) eine gemeinsame History hat.
+    /// Original feed `guid`/enclosure — bridge key to the `rss:` ids so the same
+    /// episode shares one history across both sources (RSS + ABS).
     var guid: String? = nil
     var enclosure: ABSEnclosure? = nil
 }
@@ -271,6 +269,6 @@ struct MediaProgress: Codable {
     let duration: Double?
     let progress: Double?
     let isFinished: Bool?
-    /// ms seit 1970 — für den Geräte-Abgleich (neuerer Eintrag gewinnt).
+    /// ms since 1970 — for the device reconcile (newer entry wins).
     let lastUpdate: Double?
 }

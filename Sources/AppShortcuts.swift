@@ -1,14 +1,14 @@
 import AppIntents
 import Foundation
 
-/// "Weiterhören": öffnet die App und setzt das zuletzt gehörte Buch fort —
-/// derselbe Pfad wie die Home-Screen-Quick-Action (Pending-Flag +
-/// Notification, ausgeführt von der Bibliothek).
+/// "Continue listening": opens the app and resumes the last played book — the
+/// same path as the home-screen quick action (pending flag + notification,
+/// carried out by the library).
 struct ContinueListeningIntent: AppIntent {
     static let title: LocalizedStringResource = "Continue Listening"
     static let description = IntentDescription("Resumes the last played audiobook.")
-    /// Robusteste Variante: App in den Vordergrund holen und dort starten
-    /// (Audio-Start aus dem Hintergrund wäre fehleranfälliger).
+    /// Most robust variant: bring the app to the foreground and start there
+    /// (starting audio from the background would be more error-prone).
     static let openAppWhenRun = true
 
     @MainActor
@@ -19,11 +19,10 @@ struct ContinueListeningIntent: AppIntent {
     }
 }
 
-// MARK: - "Spiele [Buch]"
+// MARK: - "Play [book]"
 
-/// Buch-Entität für den Siri-Parameter — gespeist aus dem Bibliotheks-Disk-
-/// Cache (liegt als JSON in Documents), damit die Suche auch funktioniert,
-/// wenn die App nicht läuft.
+/// Book entity for the Siri parameter — fed from the library disk cache (JSON
+/// in Documents) so search works even when the app is not running.
 struct BookEntity: AppEntity {
     static let typeDisplayRepresentation: TypeDisplayRepresentation = "Audiobook"
     static let defaultQuery = BookQuery()
@@ -41,8 +40,8 @@ struct BookEntity: AppEntity {
 }
 
 struct BookQuery: EntityStringQuery {
-    /// Minimal-Decoder für library_cache.json (unbekannte Felder ignoriert
-    /// JSONDecoder) — kein Zugriff auf die MainActor-ViewModels nötig.
+    /// Minimal decoder for library_cache.json (JSONDecoder ignores unknown
+    /// fields) — no access to the MainActor view models needed.
     private nonisolated struct CachedLibrary: Decodable {
         struct Item: Decodable {
             struct Media: Decodable {
@@ -83,7 +82,7 @@ struct BookQuery: EntityStringQuery {
     }
 }
 
-/// "Spiele [Buch]": öffnet die App und startet gezielt dieses Buch.
+/// "Play [book]": opens the app and starts this specific book.
 struct PlayBookIntent: AppIntent {
     static let title: LocalizedStringResource = "Play Audiobook"
     static let description = IntentDescription("Plays a specific audiobook from your library.")

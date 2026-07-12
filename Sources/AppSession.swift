@@ -1,10 +1,10 @@
 import Foundation
 
-/// Prozessweite Wiedergabe-/Bibliotheks-Session. Bisher lebten Coordinator
-/// und LibraryViewModel als @StateObject in der LibraryView — bei einem
-/// CarPlay-KALTSTART (App wird nur für die Auto-Szene geweckt, keine UI)
-/// existierten sie damit gar nicht. Hier gehören sie dem Prozess; UI und
-/// CarPlay-Szene teilen sich dieselben Instanzen (ein Player, eine Queue).
+/// Process-wide playback/library session. Coordinator and LibraryViewModel used
+/// to live as @StateObject in LibraryView — on a CarPlay COLD START (the app is
+/// woken only for the car scene, no UI) they did not exist at all. Here they
+/// belong to the process; UI and CarPlay scene share the same instances (one
+/// player, one queue).
 @MainActor
 final class AppSession {
     static let shared = AppSession()
@@ -13,25 +13,25 @@ final class AppSession {
     /// updated IN PLACE on login, so the objects below stay valid.
     let authViewModel = AuthViewModel()
 
-    /// Der Server-Provider (Audiobookshelf) — Basis für Login, Bibliotheks-
-    /// Auswahl, Settings. `apiClient` bleibt für die ABS-spezifische Anmeldung.
+    /// The server provider (Audiobookshelf) — basis for login, library choice,
+    /// settings. `apiClient` remains for the ABS-specific sign-in.
     var provider: any AudioProvider { authViewModel.apiClient }
     var apiClient: APIClient { authViewModel.apiClient }
 
-    /// Lokale Dateien als zweite Quelle (immer vorhanden, kein Login).
+    /// Local files as a second source (always present, no login).
     var localProvider: LocalProvider { LocalProvider.shared }
 
-    /// Podcasts (RSS-Feeds) als Quelle vom Typ `.podcasts`.
+    /// Podcasts (RSS feeds) as a source of type `.podcasts`.
     var rssProvider: RSSProvider { RSSProvider.shared }
 
-    /// Audiobookshelf-Podcasts (server-synchronisiert) als zweite Podcast-Quelle.
+    /// Audiobookshelf podcasts (server-synced) as a second podcast source.
     var absPodcastProvider: ABSPodcastProvider { ABSPodcastProvider.shared }
 
-    /// Alle aktiven Quellen.
+    /// All active sources.
     var allProviders: [any AudioProvider] { [provider, localProvider, rssProvider, absPodcastProvider] }
 
-    /// Routet ein Item auf seine Quelle anhand des ID-Präfix. Das ist die
-    /// EINZIGE Stelle, die ID-Namespaces kennen darf (der Router).
+    /// Routes an item to its source by id prefix. This is the ONLY place allowed
+    /// to know id namespaces (the router).
     func provider(for itemId: String) -> any AudioProvider {
         if itemId.hasPrefix("local:") { return localProvider }
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
@@ -39,21 +39,19 @@ final class AppSession {
         return provider
     }
 
-    /// Cover-URL eines beliebigen Items über SEINE Quelle — Views dürfen nie
-    /// einen festen Provider annehmen (sonst falsches/kein Cover für lokale
-    /// Dateien und Podcast-Episoden).
+    /// Cover URL of any item via ITS source — views must never assume a fixed
+    /// provider (else wrong/no cover for local files and podcast episodes).
     func coverURL(forItemId itemId: String) -> URL? {
         provider(for: itemId).coverURL(forItemId: itemId)
     }
 
-    /// Findet das `LibraryItem` zu einer ID quellenübergreifend — für
-    /// „Weiterhören"/Wiederherstellen, wenn das Item NICHT in der
-    /// Hörbuch-Liste steht (Podcast-Episoden liegen z. B. nur beim
-    /// RSS-Provider). Hörbücher/lokale Titel kommen aus der Bibliotheksliste
-    /// des Aufrufers und werden hier nicht extra gesucht.
+    /// Finds the `LibraryItem` for an id across sources — for resume/restore
+    /// when the item is NOT in the audiobook list (podcast episodes live only in
+    /// the RSS provider, for example). Audiobooks/local titles come from the
+    /// caller's library list and are not looked up here.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         if itemId.hasPrefix("rss:") {
-            return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) über den guid-Index
+            return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) via the guid index
         }
         if itemId.hasPrefix("abspod:") {
             return absPodcastProvider.libraryItem(forEpisodeId: itemId)

@@ -2,9 +2,9 @@ import SwiftUI
 import UIKit
 import CarPlay
 
-/// Zentrale Typen/Signale für "Weiterhören" von außen (Home-Screen Quick
-/// Action, Siri-Shortcut): beide setzen nur ein Pending-Flag + Notification;
-/// die Bibliothek (Besitzerin von Liste + Coordinator) führt aus.
+/// Central types/signals for "resume" from outside (home-screen quick action,
+/// Siri shortcut): both only set a pending flag + notification; the library
+/// (owner of list + coordinator) carries it out.
 enum ResumeRequest {
     static let quickActionType = "resumeLastBook"
     /// Set by quick action / Siri intent, consumed by the library screen.
@@ -18,14 +18,14 @@ extension Notification.Name {
     static let resumeLastBookRequested = Notification.Name("resumeLastBookRequested")
 }
 
-/// Background-Download-Events + Szenen-Konfiguration (Quick Actions brauchen
-/// mit SwiftUI-Lifecycle einen eigenen Scene-Delegate).
+/// Background download events + scene configuration (quick actions need their
+/// own scene delegate with the SwiftUI lifecycle).
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // BGTask-Handler registrieren — muss vor App-Fertigstart passieren.
+        // Register BGTask handler — must happen before launch finishes.
         PodcastRefreshService.registerBackgroundTask()
         return true
     }
@@ -88,10 +88,10 @@ struct ABSPlayerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                // Globale Akzentfarbe der App: Orange statt System-Blau.
+                // App-wide accent color: orange instead of system blue.
                 .tint(AppTheme.accent)
                 .preferredColorScheme(preferredScheme)
-                // Beim Wechsel in den Hintergrund den nächsten Podcast-Refresh planen.
+                // On moving to the background, schedule the next podcast refresh.
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { PodcastRefreshService.schedule() }
                 }
@@ -108,8 +108,8 @@ struct ABSPlayerApp: App {
     }
 }
 
-/// Zentrale Stelle für App-weite Farben. Wenn du die Akzentfarbe ändern
-/// willst, reicht es, sie hier anzupassen.
+/// Central place for app-wide colors. To change the accent color, adjust it
+/// here.
 enum AppTheme {
     static let accent = Color.orange
 }

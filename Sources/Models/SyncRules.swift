@@ -1,13 +1,13 @@
 import Foundation
 
-/// Reine, zustandslose Entscheidungsregeln des Sync-Kerns — hierher extrahiert,
-/// damit sie ohne Player/Netz/Dateisystem unit-testbar sind. Verhalten ist
-/// identisch zu den früheren Inline-Versionen in PlayerViewModel/SyncQueue.
+/// Pure, stateless decision rules of the sync core — extracted here so they are
+/// unit-testable without player/network/file system. Behaviour is identical to
+/// the former inline versions in PlayerViewModel/SyncQueue.
 enum SyncRules {
 
-    /// Geräte-Abgleich: Serverstand übernehmen?
-    /// Mit Zeitstempel: neuerer Eintrag + spürbare Abweichung (auch rückwärts).
-    /// Ohne Zeitstempel (alte Server): nur vorwärts.
+    /// Device reconcile: adopt the server state?
+    /// With timestamp: newer entry + noticeable difference (also backwards).
+    /// Without timestamp (old servers): forward only.
     static func shouldAdoptServerState(
         serverTime: Double,
         serverUpdateMs: Double,
@@ -22,9 +22,8 @@ enum SyncRules {
         return serverTime > currentTime + tolerance
     }
 
-    /// Queue-Flush: wartendes Update verwerfen, weil der Server inzwischen
-    /// weiter ist? isFinished-Updates sind Statusentscheidungen und werden
-    /// nie verworfen.
+    /// Queue flush: drop a pending update because the server is now further
+    /// ahead? isFinished updates are status decisions and are never dropped.
     static func shouldDropQueuedUpdate(
         queuedTime: Double,
         queuedIsFinished: Bool,
@@ -36,8 +35,8 @@ enum SyncRules {
         return fraction * duration > queuedTime + tolerance
     }
 
-    /// Crash-Sicherung: lokale Tick-Sicherung statt Serverstand verwenden?
-    /// Nur wenn sie JÜNGER als der Server-Eintrag ist und spürbar abweicht.
+    /// Crash safety: use the local tick backup instead of the server state?
+    /// Only if it is NEWER than the server entry and differs noticeably.
     static func shouldRestoreLocalPosition(
         savedTime: Double,
         savedAtMs: Double,
@@ -48,7 +47,7 @@ enum SyncRules {
         savedAtMs > serverUpdateMs && abs(savedTime - serverTime) > tolerance
     }
 
-    /// Nicht vom Nutzer ausgelöster Rückschritt, der als verdächtig gilt?
+    /// A non-user-initiated backward jump considered suspicious?
     static func isSuspiciousDrop(
         currentTime: Double,
         lastSyncedTime: Double,
@@ -58,19 +57,19 @@ enum SyncRules {
     }
 }
 
-/// Multi-File-Zeitrechnung: absolute Buchzeit ↔ Track-Index. Rein und
-/// unit-testbar; PlayerViewModel delegiert hierher.
+/// Multi-file time math: absolute book time ↔ track index. Pure and
+/// unit-testable; PlayerViewModel delegates here.
 enum TrackMath {
 
-    /// Kumulative Startzeit eines Tracks: startOffset vom Server, sonst Summe
-    /// der Einzeldauern. Außerhalb des Bereichs: Buchdauer.
+    /// Cumulative start time of a track: startOffset from the server, else the
+    /// sum of the individual durations. Out of range: book duration.
     static func trackStart(index: Int, tracks: [ABSAudioTrack], bookDuration: Double) -> Double {
         guard index >= 0, index < tracks.count else { return bookDuration }
         if let offset = tracks[index].startOffset { return offset }
         return tracks[..<index].reduce(0) { $0 + ($1.duration ?? 0) }
     }
 
-    /// Track, in den eine absolute Buchzeit fällt (letzter Track fängt Rest).
+    /// Track that an absolute book time falls into (last track catches the rest).
     static func trackIndex(for absoluteTime: Double, tracks: [ABSAudioTrack], bookDuration: Double) -> Int {
         for index in tracks.indices {
             let start = trackStart(index: index, tracks: tracks, bookDuration: bookDuration)

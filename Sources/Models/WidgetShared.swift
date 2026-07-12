@@ -1,8 +1,8 @@
 import Foundation
 
-/// App Group — gemeinsamer Container von App und Widget-Extension.
-/// Forks: an die eigene Bundle-Struktur anpassen (zusätzlich in den
-/// .entitlements-Dateien BEIDER Targets ändern).
+/// App Group — shared container of app and widget extension.
+/// Forks: adapt to your own bundle structure (also change it in the
+/// .entitlements files of BOTH targets).
 nonisolated enum AppGroup {
     static let identifier = "group.de.lzs.ABSPlayer"
 
@@ -11,14 +11,14 @@ nonisolated enum AppGroup {
     }
 }
 
-/// Zuletzt gehörtes Buch fürs Home-Screen-Widget: die App schreibt (siehe
-/// PlayerViewModel+Widget), das Widget liest — eigener Prozess, deshalb
-/// über den App-Group-Container. Datei gehört BEIDEN Targets.
+/// Last-played book for the home-screen widget: the app writes (see
+/// PlayerViewModel+Widget), the widget reads — separate process, hence via the
+/// App Group container. File belongs to BOTH targets.
 nonisolated struct WidgetSnapshot: Codable {
     var itemId: String
     var title: String
     var author: String?
-    /// 0…1 Buchfortschritt zum Schreibzeitpunkt.
+    /// 0…1 book progress at write time.
     var fraction: Double
     var remainingText: String?
     var isPlaying: Bool
@@ -26,7 +26,7 @@ nonisolated struct WidgetSnapshot: Codable {
     static var snapshotURL: URL? {
         AppGroup.containerURL?.appendingPathComponent("widget-snapshot.json")
     }
-    /// Cover-Thumbnail als PNG neben dem Snapshot.
+    /// Cover thumbnail as PNG next to the snapshot.
     static var coverURL: URL? {
         AppGroup.containerURL?.appendingPathComponent("widget-cover.png")
     }
@@ -42,9 +42,9 @@ nonisolated struct WidgetSnapshot: Codable {
     }
 }
 
-/// Vorschau der Podcast-„Als Nächstes"-Queue fürs Home-Screen-Widget. Die App
-/// schreibt bei jeder Queue-Änderung (siehe `PodcastQueue.save`), das Widget
-/// liest — über den App-Group-Container, weil es ein eigener Prozess ist.
+/// Preview of the podcast "Up Next" queue for the home-screen widget. The app
+/// writes on every queue change (see `PodcastQueue.save`), the widget reads —
+/// via the App Group container, since it is a separate process.
 nonisolated struct PodcastQueueSnapshot: Codable {
     struct Item: Codable {
         var title: String

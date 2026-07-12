@@ -1,17 +1,17 @@
 import ActivityKit
 import Foundation
 
-/// Beschreibt die laufende Wiedergabe für Live Activity / Dynamic Island —
-/// bewusst als schmale ERGÄNZUNG zu Apples System-„Now Playing" (das Cover,
-/// Scrubber und Transport bereits liefert): Kapitelname + Kapitel-Countdown,
-/// und während eines Schlaf-Timers dessen Countdown (Mond).
-/// Diese Datei gehört in BEIDE Targets (App + Widget-Extension) — sie ist
-/// der gemeinsame Vertrag zwischen App und Lock-Screen-UI.
-/// nonisolated: die Codable-Konformanz muss aus dem nonisolated
-/// ActivityKit-Kontext nutzbar sein (Projekt-Default ist MainActor).
+/// Describes the running playback for Live Activity / Dynamic Island —
+/// deliberately a slim addition to Apple's system "Now Playing" (which already
+/// provides cover, scrubber, transport): chapter name + chapter countdown, and
+/// during a sleep timer its countdown (moon).
+/// This file belongs to BOTH targets (app + widget extension) — it is the
+/// shared contract between app and lock-screen UI.
+/// nonisolated: the Codable conformance must be usable from the nonisolated
+/// ActivityKit context (project default is MainActor).
 nonisolated struct PlaybackActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
-        /// Render-Basis für `Text(timerInterval:)` im Widget.
+        /// Render base for `Text(timerInterval:)` in the widget.
         var capturedAt: Date
         var isPlaying: Bool
         var chapterName: String?

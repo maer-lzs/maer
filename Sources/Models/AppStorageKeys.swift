@@ -1,8 +1,7 @@
 import Foundation
 
-/// Zentrale Stelle für alle UserDefaults-Keys — statt verstreuter String-
-/// Literale. Pro-Buch-Keys werden über `cleanupPerBookKeys` entsorgt, sobald
-/// das Buch nicht mehr in der (vollständigen) Bibliothek existiert.
+/// Central place for all UserDefaults keys. Per-book keys are pruned via
+/// `cleanupPerBookKeys` once a book no longer exists in the (full) library.
 // nonisolated: pure key helpers, must be callable from background tasks
 // (the project uses default MainActor isolation).
 nonisolated enum AppStorageKeys {
@@ -21,21 +20,21 @@ nonisolated enum AppStorageKeys {
     static let autoPlayNextInSeries = "autoPlayNextInSeries"
     /// Bookmark create/delete ops that have not reached the server yet.
     static let pendingBookmarkOps = "pendingBookmarkOps"
-    /// Optionaler PodcastIndex-Zugang für die Podcast-Suche (der iTunes-
-    /// Katalog braucht keinen Key). Geringe Sensibilität → UserDefaults.
+    /// Optional PodcastIndex key for podcast search (the iTunes catalog needs
+    /// none). Low sensitivity → UserDefaults.
     static let podcastIndexKey = "podcastIndexKey"
-    /// Alter UserDefaults-Key des Secrets — nur noch für die einmalige
-    /// Migration in den Keychain (s. u.).
+    /// Old UserDefaults key of the secret — kept only for the one-time
+    /// migration into the keychain (see below).
     static let podcastIndexSecret = "podcastIndexSecret"
 
-    /// Der API-Key ist ein öffentlicher Bezeichner → UserDefaults reicht.
+    /// The API key is a public identifier → UserDefaults is enough.
     static var podcastIndexKeyValue: String {
         get { UserDefaults.standard.string(forKey: podcastIndexKey) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: podcastIndexKey) }
     }
 
-    /// Das Secret ist ein Credential → Keychain statt Klartext-UserDefaults.
-    /// Beim ersten Zugriff wird ein evtl. alter UserDefaults-Wert migriert.
+    /// The secret is a credential → keychain instead of plaintext UserDefaults.
+    /// A leftover UserDefaults value is migrated on first access.
     static var podcastIndexSecretValue: String {
         if let s = KeychainStore.load(forKey: KeychainKey.podcastIndexSecret), !s.isEmpty {
             return s
@@ -60,17 +59,17 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexConfigured: Bool {
         !podcastIndexKeyValue.isEmpty && !podcastIndexSecretValue.isEmpty
     }
-    // MARK: - gpodder / oPodSync (offener Podcast-Sync neben iCloud/ABS)
+    // MARK: - gpodder / oPodSync (open podcast sync next to iCloud/ABS)
 
     static let gpodderServerURL = "gpodderServerURL"
     static let gpodderUsername = "gpodderUsername"
     static let gpodderEnabled = "gpodderEnabled"
-    /// Fortlaufende „since"-Marken der gpodder-API (Server liefert Int-Zeitstempel).
+    /// Rolling "since" marker of the gpodder API (server returns Int timestamps).
     static let gpodderEpisodeSince = "gpodderEpisodeSince"
-    /// Zeitpunkt (s), bis zu dem wir Episoden-Aktionen bereits gepusht haben.
+    /// Time (s) up to which episode actions have already been pushed.
     static let gpodderLastEpisodePush = "gpodderLastEpisodePush"
-    /// Zuletzt synchronisierter Abo-Stand (normalisierte Feed-URLs) — Basis fürs
-    /// 3-Wege-Merge, damit Abbestellungen erkannt und propagiert werden.
+    /// Last synced subscription state (normalised feed URLs) — basis for the
+    /// 3-way merge so unsubscribes are detected and propagated.
     static let gpodderLastSyncedFeeds = "gpodderLastSyncedFeeds"
 
     static var gpodderServerURLValue: String {
@@ -85,7 +84,7 @@ nonisolated enum AppStorageKeys {
         get { UserDefaults.standard.bool(forKey: gpodderEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: gpodderEnabled) }
     }
-    /// Passwort → Keychain (Credential, nie Klartext-UserDefaults).
+    /// Password → keychain (credential, never plaintext UserDefaults).
     static var gpodderPasswordValue: String {
         KeychainStore.load(forKey: KeychainKey.gpodderPassword) ?? ""
     }
@@ -94,7 +93,7 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.gpodderPassword) }
     }
 
-    /// Stabile Geräte-ID für die gpodder-Sync (einmalig erzeugt, dann fest).
+    /// Stable device id for gpodder sync (created once, then fixed).
     static var gpodderDeviceIdValue: String {
         if let id = UserDefaults.standard.string(forKey: "gpodderDeviceId"), !id.isEmpty { return id }
         let id = "maer-" + UUID().uuidString.prefix(8).lowercased()
@@ -106,22 +105,22 @@ nonisolated enum AppStorageKeys {
         !gpodderServerURLValue.isEmpty && !gpodderUsernameValue.isEmpty && !gpodderPasswordValue.isEmpty
     }
 
-    /// ABS als Podcast-Quelle NUR wenn ausdrücklich aktiviert (Default AUS). Der
-    /// ABS-Server ist primär ein Hörbuch-Server; er soll nicht automatisch
-    /// annehmen, dass Podcasts existieren, nur weil eine Podcast-Bibliothek da ist.
+    /// ABS as a podcast source only when explicitly enabled (default OFF). The
+    /// ABS server is primarily an audiobook server; it must not assume podcasts
+    /// exist just because a podcast library is present.
     static let absPodcastsEnabled = "absPodcastsEnabled"
     static var absPodcastsEnabledValue: Bool {
         get { UserDefaults.standard.bool(forKey: absPodcastsEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
-    /// Über neue Podcast-Folgen benachrichtigen (Hintergrund-Refresh). Opt-in.
+    /// Notify about new podcast episodes (background refresh). Opt-in.
     static let podcastNewEpisodeNotifications = "podcastNewEpisodeNotifications"
     static var podcastNewEpisodeNotificationsEnabled: Bool {
         UserDefaults.standard.bool(forKey: podcastNewEpisodeNotifications)
     }
 
-    /// Podcast-Hörfortschritt über iCloud zwischen den eigenen Geräten syncen.
+    /// Sync podcast progress across your own devices via iCloud.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {
         UserDefaults.standard.object(forKey: podcastICloudSync) as? Bool ?? true
@@ -137,32 +136,32 @@ nonisolated enum AppStorageKeys {
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
 
-    /// Pro-Show-Wiedergabetempo (greift als Start-Rate für Folgen dieser Show,
-    /// solange keine folgen-eigene Rate gemerkt ist).
+    /// Per-show playback speed (start rate for this show's episodes until an
+    /// episode has its own saved rate).
     static func podcastShowRate(_ showId: String) -> String { "podcastShowRate.\(showId)" }
 
-    // MARK: - Pro-Show-Verhalten (Inbox / Benachrichtigung / Trimmen)
+    // MARK: - Per-show behaviour (inbox / notification / trimming)
 
-    /// „Neue Folgen"-Modus je Show: "all" | "latest" | "off" (Default all).
+    /// "New episodes" mode per show: "all" | "latest" | "off" (default all).
     static func podcastInboxMode(_ showId: String) -> String { "podcastInboxMode.\(showId)" }
     static func podcastInboxModeValue(_ showId: String) -> String {
         UserDefaults.standard.string(forKey: podcastInboxMode(showId)) ?? "all"
     }
-    /// Über neue Folgen dieser Show benachrichtigen (Default an; greift nur, wenn
-    /// die globale Benachrichtigung aktiv ist).
+    /// Notify about new episodes of this show (default on; only takes effect
+    /// when the global notification is enabled).
     static func podcastNotify(_ showId: String) -> String { "podcastNotify.\(showId)" }
     static func podcastNotifyEnabled(_ showId: String) -> Bool {
         UserDefaults.standard.object(forKey: podcastNotify(showId)) as? Bool ?? true
     }
-    /// Nur die neuesten N Folgen dieser Show behalten (0 = unbegrenzt).
+    /// Keep only the latest N episodes of this show (0 = unlimited).
     static func podcastEpisodeLimit(_ showId: String) -> String { "podcastEpisodeLimit.\(showId)" }
     static func podcastEpisodeLimitValue(_ showId: String) -> Int {
         UserDefaults.standard.integer(forKey: podcastEpisodeLimit(showId))
     }
 
-    /// Show-ID aus einer Podcast-Folgen-ID ableiten (`rss:<key>:<guid>` →
-    /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed-Key/Item-ID
-    /// enthalten kein `:`, daher sind die ersten beiden Segmente die Show-ID.
+    /// Derive the show id from a podcast episode id (`rss:<key>:<guid>` →
+    /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed key/item id
+    /// contain no `:`, so the first two segments are the show id.
     static func podcastShowId(forEpisodeId id: String) -> String? {
         guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return nil }
         let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
@@ -170,18 +169,18 @@ nonisolated enum AppStorageKeys {
         return parts.prefix(2).joined(separator: ":")
     }
 
-    /// Entfernt pro-Buch-Einträge zu Büchern, die es nicht mehr gibt.
-    /// Nur mit einer VOLLSTÄNDIGEN Bibliotheksliste aufrufen (nie mit der
-    /// gefilterten Offline-Liste — sonst fliegen gültige Keys raus).
+    /// Removes per-book entries for books that no longer exist. Only call with a
+    /// FULL library list (never the filtered offline list — valid keys would be
+    /// dropped otherwise).
     static func cleanupPerBookKeys(validItemIds: Set<String>) {
         let defaults = UserDefaults.standard
         for key in defaults.dictionaryRepresentation().keys {
             for prefix in ["playbackRate.", "localPosition."] where key.hasPrefix(prefix) {
                 let id = String(key.dropFirst(prefix.count))
-                // NUR rohe ABS-Buch-IDs bereinigen. Podcast-/Lokale-Keys
-                // (`rss:`/`abspod:`/`local:`) gehören anderen Quellen mit eigenem
-                // Lebenszyklus — `validItemIds` enthält nur Hörbücher, sonst
-                // würden hier ALLE Podcast-/Local-Fortschritte gelöscht.
+                // Only prune raw ABS book ids. Podcast/local keys
+                // (`rss:`/`abspod:`/`local:`) belong to other sources with their
+                // own lifecycle — `validItemIds` holds audiobooks only, so all
+                // podcast/local progress would be deleted here otherwise.
                 if id.hasPrefix("rss:") || id.hasPrefix("abspod:") || id.hasPrefix("local:") {
                     continue
                 }
