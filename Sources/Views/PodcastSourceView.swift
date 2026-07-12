@@ -59,6 +59,13 @@ struct PodcastSourceView: View {
                     Text("New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too.")
                 }
             }
+            Section {
+                NavigationLink {
+                    PodcastDiscoverView()
+                } label: {
+                    Label("Discover", systemImage: "sparkles.rectangle.stack")
+                }
+            }
             searchSection
             if !results.isEmpty || isSearching {
                 resultsSection

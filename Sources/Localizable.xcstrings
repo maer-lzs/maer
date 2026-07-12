@@ -3208,6 +3208,26 @@
           }
         }
       }
+    },
+    "Discover": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entdecken"
+          }
+        }
+      }
+    },
+    "Couldn't load Discover": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entdecken konnte nicht geladen werden"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

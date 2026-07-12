@@ -41,8 +41,30 @@ struct ITunesDirectory: PodcastDirectory {
         ]
         guard let url = components.url else { return [] }
         let (data, _) = try await URLSession.maer.data(from: url)
-        let response = try JSONDecoder().decode(Response.self, from: data)
-        return response.results.compactMap { item in
+        return Self.map(try JSONDecoder().decode(Response.self, from: data))
+    }
+
+    /// Top-Charts (Fallback für „Entdecken", wenn kein PodcastIndex-Key gesetzt
+    /// ist): iTunes-Toplist → Feed-URLs per Batch-Lookup nachziehen.
+    func topPodcasts(limit: Int = 40) async throws -> [PodcastSearchResult] {
+        let region = (Locale.current.region?.identifier ?? "US").lowercased()
+        guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)/json") else { return [] }
+        let (data, _) = try await URLSession.maer.data(from: chartURL)
+        let ids = (try JSONDecoder().decode(ChartResponse.self, from: data)).feed.entry.map { $0.id.attributes.imId }
+        guard !ids.isEmpty else { return [] }
+
+        var comp = URLComponents(string: "https://itunes.apple.com/lookup")!
+        comp.queryItems = [
+            URLQueryItem(name: "id", value: ids.joined(separator: ",")),
+            URLQueryItem(name: "entity", value: "podcast")
+        ]
+        guard let lookupURL = comp.url else { return [] }
+        let (ldata, _) = try await URLSession.maer.data(from: lookupURL)
+        return Self.map(try JSONDecoder().decode(Response.self, from: ldata))
+    }
+
+    private static func map(_ response: Response) -> [PodcastSearchResult] {
+        response.results.compactMap { item in
             guard let feed = item.feedUrl else { return nil }
             return PodcastSearchResult(
                 title: item.collectionName ?? feed,
@@ -51,6 +73,20 @@ struct ITunesDirectory: PodcastDirectory {
                 feedURL: feed
             )
         }
+    }
+
+    /// Toplist-Feed: nur die enthaltenen iTunes-IDs interessieren (`im:id`).
+    private struct ChartResponse: Decodable {
+        struct Feed: Decodable { let entry: [Entry] }
+        struct Entry: Decodable {
+            struct ID: Decodable { let attributes: Attributes }
+            struct Attributes: Decodable {
+                let imId: String
+                enum CodingKeys: String, CodingKey { case imId = "im:id" }
+            }
+            let id: ID
+        }
+        let feed: Feed
     }
 }
 
@@ -82,6 +118,26 @@ struct PodcastIndexDirectory: PodcastDirectory {
     func search(_ term: String) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/search/byterm")!
         components.queryItems = [URLQueryItem(name: "q", value: term)]
+        guard let url = components.url else { return [] }
+        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
+        let response = try JSONDecoder().decode(Response.self, from: data)
+        return response.feeds.compactMap { feed in
+            guard let feedURL = feed.url else { return nil }
+            return PodcastSearchResult(
+                title: feed.title ?? feedURL,
+                author: feed.author,
+                artworkURL: feed.image,
+                feedURL: feedURL
+            )
+        }
+    }
+
+    /// Trending-Podcasts (für „Entdecken"). Gleiche Feed-Form wie die Suche.
+    func trending(max: Int = 40, lang: String? = "en") async throws -> [PodcastSearchResult] {
+        var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/podcasts/trending")!
+        var q = [URLQueryItem(name: "max", value: String(max))]
+        if let lang { q.append(URLQueryItem(name: "lang", value: lang)) }
+        components.queryItems = q
         guard let url = components.url else { return [] }
         let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
         let response = try JSONDecoder().decode(Response.self, from: data)
