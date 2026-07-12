@@ -28,7 +28,7 @@ final class AuthViewModel: ObservableObject {
         self.apiClient = APIClient(baseURL: url, token: storedToken)
         self.isLoggedIn = (storedToken?.isEmpty == false) && !storedURLString.isEmpty
 
-        // Läuft der Token ab (401), automatisch zurück zum Setup-Screen.
+        // If the token expires (401), automatically go back to the setup screen.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
             self.errorMessage = String(localized: "Session expired — please sign in again.")
@@ -36,8 +36,8 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
-    /// Übersetzt technische Verbindungsfehler in klare, handlungsleitende
-    /// Meldungen fürs Onboarding.
+    /// Translates technical connection errors into clear, actionable messages
+    /// for onboarding.
     private static func friendlyMessage(for error: Error) -> String {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain {
@@ -68,10 +68,9 @@ final class AuthViewModel: ObservableObject {
         return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
-    /// Verbindet per Benutzername/Passwort (POST /login → Token) ODER mit
-    /// einem direkt eingegebenen API-Token; anschließend wird die Verbindung
-    /// über einen Bibliotheks-Abruf verifiziert und der Token im Keychain
-    /// gesichert.
+    /// Connects via username/password (POST /login → token) OR with a directly
+    /// entered API token; the connection is then verified via a library fetch
+    /// and the token stored in the keychain.
     func connect() async {
         errorMessage = nil
         guard let url = Self.normalizedURL(from: serverURLString) else {

@@ -1,11 +1,10 @@
 import Foundation
 import Combine
 
-/// Hält die aktuell laufende Wiedergabe-Session, unabhängig davon, ob der
-/// volle Player-Screen gerade sichtbar ist oder nicht. Das ist die
-/// Voraussetzung für die Mini-Player-Leiste: früher wurde der Player beim
-/// Verlassen des Screens gestoppt, jetzt läuft er weiter, bis der Nutzer ihn
-/// explizit schließt oder ein anderes Buch öffnet.
+/// Holds the currently running playback session, regardless of whether the full
+/// player screen is visible or not. This is the prerequisite for the mini-player
+/// bar: the player used to stop when leaving the screen, now it keeps running
+/// until the user explicitly closes it or opens another book.
 @MainActor
 final class PlayerCoordinator: ObservableObject {
     @Published private(set) var viewModel: PlayerViewModel?
@@ -20,24 +19,23 @@ final class PlayerCoordinator: ObservableObject {
     /// next setting when a book finishes.
     var nextInSeriesProvider: ((String) -> LibraryItem?)?
 
-    /// Merkt sich die zuletzt gehörte Item-ID über App-Neustarts hinweg, damit
-    /// das Buch beim nächsten Start direkt im Mini-Player griffbereit ist.
+    /// Remembers the last played item id across app restarts so the book is
+    /// ready in the mini-player right away on the next launch.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
 
     init(provider: any AudioProvider) {
         self.provider = provider
     }
 
-    /// Öffnet ein Buch. Ist es bereits aktiv, passiert nichts außer ggf. dem
-    /// Fortsetzen der Wiedergabe. Ist ein anderes Buch aktiv, wird dessen
-    /// Session sauber beendet (inkl. finalem Sync), bevor das neue geladen
-    /// wird.
-    /// - Parameter autoplay: true bei bewusstem Öffnen durch den Nutzer (startet
-    ///   die Wiedergabe direkt nach dem Laden), false beim stillen
-    ///   Wiederherstellen nach App-Start (bleibt pausiert).
+    /// Opens a book. If it is already active, nothing happens except possibly
+    /// resuming playback. If another book is active, its session is cleanly ended
+    /// (incl. a final sync) before the new one is loaded.
+    /// - Parameter autoplay: true on a deliberate open by the user (starts
+    ///   playback right after loading), false on a silent restore after app
+    ///   start (stays paused).
     func open(item: LibraryItem, autoplay: Bool = true) async {
-        // Podcast-Folge, die man abspielt, gehört nicht mehr in die „Als
-        // Nächstes"-Queue (die laufende Folge steht nie drin).
+        // A podcast episode you play no longer belongs in the "Up Next" queue
+        // (the currently playing episode is never in it).
         if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
             PodcastQueue.shared.remove(item.id)
         }
@@ -68,11 +66,10 @@ final class PlayerCoordinator: ObservableObject {
                 await newViewModel.playWithServerCheck()
             }
         } catch {
-            // Server nicht erreichbar (z. B. offline unterwegs) — falls das
-            // Buch heruntergeladen ist, mit den beim Download mitgespeicherten
-            // Buchdetails weitermachen, statt komplett zu scheitern. Ohne das
-            // bräuchte selbst ein längst heruntergeladenes Buch noch eine
-            // funktionierende Serververbindung nur zum Öffnen.
+            // Server unreachable (e.g. offline on the go) — if the book is
+            // downloaded, continue with the book details saved at download time
+            // instead of failing entirely. Without this even a long-downloaded
+            // book would need a working server connection just to open.
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
                 let newViewModel = PlayerViewModel(provider: itemProvider)
                 await newViewModel.load(item: cached, isOfflineFallback: true)
@@ -94,8 +91,8 @@ final class PlayerCoordinator: ObservableObject {
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
         viewModel.onBookFinished = { [weak self] finishedItemId in
             guard let self else { return }
-            // Podcast: nach dem Ende die nächste Folge aus der „Als Nächstes"-
-            // Queue starten (die beendete war beim Abspielen schon raus).
+            // Podcast: after the end, start the next episode from the "Up Next"
+            // queue (the finished one was already removed on play).
             if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
                 if let nextId = PodcastQueue.shared.first,
                    let item = AppSession.shared.libraryItem(forId: nextId) {
@@ -103,22 +100,21 @@ final class PlayerCoordinator: ObservableObject {
                     return
                 }
             }
-            // Hörbücher: nächstes Serien-Buch (nur bei aktiviertem Setting).
+            // Audiobooks: next book in the series (only if the setting is on).
             guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
                   let next = self.nextInSeriesProvider?(finishedItemId) else { return }
             Task { await self.open(item: next) }
         }
     }
 
-    /// Stellt beim App-Start die zuletzt gehörte Session wieder her — pausiert,
-    /// damit nichts von selbst losspielt. Das Buch erscheint direkt im
-    /// Mini-Player. Wird aus der Bibliothek aufgerufen, sobald die Liste da ist
-    /// (damit wir das passende LibraryItem haben).
+    /// Restores the last played session on app start — paused, so nothing plays
+    /// by itself. The book appears right in the mini-player. Called from the
+    /// library once the list is available (so we have the matching LibraryItem).
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
-        // Zuletzt Gehörtes kann aus JEDER Quelle stammen — Podcast-Episoden
-        // stehen NICHT in der Hörbuch-Liste, sondern nur beim RSS-Provider.
+        // The last played item can come from ANY source — podcast episodes are
+        // NOT in the audiobook list, only in the RSS provider.
         guard let item = entries.first(where: { $0.id == lastId })?.item
             ?? AppSession.shared.libraryItem(forId: lastId) else { return }
         await open(item: item, autoplay: false)

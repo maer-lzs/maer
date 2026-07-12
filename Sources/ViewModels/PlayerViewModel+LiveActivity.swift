@@ -1,27 +1,27 @@
 import ActivityKit
 import Foundation
 
-/// Live Activity (Lock Screen / Dynamic Island) NUR während eines
-/// Schlaf-Timers: eine Live Activity hat IMMER auch eine Lock-Screen-
-/// Darstellung (island-only bietet Apple nicht an) — während normaler
-/// Wiedergabe wäre die redundant zu Apples „Now Playing", das die Insel-
-/// Präsenz (Waveform) ohnehin selbst liefert. Der Schlaf-Countdown dagegen
-/// ist die eine Information, die Apples Player nicht kennt.
-/// Sichtbar erst mit vorhandenem Widget-Extension-Target; die App-Seite
-/// hier funktioniert auch ohne.
+/// Live Activity (lock screen / Dynamic Island) ONLY during a sleep timer: a
+/// Live Activity ALWAYS also has a lock-screen presentation (Apple offers no
+/// island-only) — during normal playback it would be redundant with Apple's
+/// "Now Playing", which provides the island presence (waveform) itself anyway.
+/// The sleep countdown, by contrast, is the one piece of information Apple's
+/// player does not know.
+/// Only visible with a present widget extension target; the app side here works
+/// without one too.
 extension PlayerViewModel {
 
-    /// Aktualisiert eine laufende Aktivität; NEU gestartet wird nur, wenn
-    /// gerade ein Schlaf-Timer läuft (Aufruf aus den Timer-Startpfaden).
+    /// Updates a running activity; a NEW one is started only when a sleep timer
+    /// is currently running (called from the timer start paths).
     func updateLiveActivity() {
         guard let item, duration > 0 else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        // Ohne Timer keine NEUE Aktivität; eine laufende wird weiter
-        // aktualisiert (Play/Pause/Seek), bis der Timer sie beendet.
+        // No NEW activity without a timer; a running one keeps updating
+        // (play/pause/seek) until the timer ends it.
         guard liveActivity != nil || sleepTimerRemaining != nil else { return }
 
         let now = Date()
-        // Audio-Sekunden → Wall-Clock über die Wiedergabegeschwindigkeit.
+        // Audio seconds → wall clock via the playback speed.
         let rate = max(Double(playbackRate), 0.1)
         let chapterEnd = currentChapter.map { chapter in
             now.addingTimeInterval(max(0, chapter.end - currentTime) / rate)
@@ -54,9 +54,8 @@ extension PlayerViewModel {
         liveActivity = try? Activity.request(attributes: attributes, content: content)
     }
 
-    /// Aktualisiert eine bereits LAUFENDE Aktivität (Pause, Seek, Kapitel-
-    /// oder Schlaf-Timer-Wechsel) — startet aber nie eine neue. Neu
-    /// gestartet wird nur über play().
+    /// Updates an already RUNNING activity (pause, seek, chapter or sleep-timer
+    /// change) — but never starts a new one. A new one is started only via play().
     func refreshLiveActivityIfActive() {
         guard liveActivity != nil else { return }
         updateLiveActivity()

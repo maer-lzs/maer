@@ -2,9 +2,9 @@ import Foundation
 import UIKit
 import WidgetKit
 
-/// Versorgt das Home-Screen-„Weiterhören"-Widget: Snapshot (JSON) + Cover-
-/// Thumbnail in den App-Group-Container schreiben und ein Widget-Reload
-/// anstoßen. Gedrosselt — Widget-Reloads haben ein Systembudget.
+/// Feeds the home-screen "Continue" widget: writes a snapshot (JSON) + cover
+/// thumbnail into the App Group container and triggers a widget reload.
+/// Throttled — widget reloads have a system budget.
 extension PlayerViewModel {
     private static var lastWidgetWriteAt: TimeInterval = 0
     private static var lastWidgetCoverItemId: String?

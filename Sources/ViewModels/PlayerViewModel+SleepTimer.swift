@@ -4,13 +4,13 @@ import AVFoundation
 import MediaPlayer
 import UIKit
 
-/// Sleep-Timer (feste Minuten / bis Kapitelende) inkl. Lautstärke-Fade.
+/// Sleep timer (fixed minutes / until chapter end) incl. volume fade.
 extension PlayerViewModel {
 
-    // MARK: - Sleep-Timer
+    // MARK: - Sleep timer
 
-    /// Blendet in den letzten Sekunden aus; beim Timer-Ende pausieren und die
-    /// Lautstärke fürs nächste Abspielen zurücksetzen.
+    /// Fades out in the last seconds; on timer end pause and reset the volume
+    /// for the next playback.
     private func applySleepFade(remaining: Double) {
         guard remaining < sleepFadeDuration else { return }
         player?.volume = Float(max(0, remaining / sleepFadeDuration))
@@ -96,8 +96,8 @@ extension PlayerViewModel {
         }
     }
 
-    /// Sleep-Timer bis zum Ende des aktuellen Kapitels. Statt fester Minuten
-    /// läuft die Wiedergabe bis zur Kapitelgrenze und pausiert dann.
+    /// Sleep timer until the end of the current chapter. Instead of fixed
+    /// minutes, playback runs to the chapter boundary and then pauses.
     func startSleepTimerUntilChapterEnd() {
         sleepTask?.cancel()
         guard let chapter = currentChapter else {
