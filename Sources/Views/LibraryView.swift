@@ -456,7 +456,7 @@ struct LibraryView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
                 if !viewModel.continueListening.isEmpty {
-                        horizontalSection(title: String(localized: "Continue Listening"), entries: viewModel.continueListening)
+                        continueFeaturedSection
                     }
                     if !viewModel.downloadedEntries.isEmpty {
                         horizontalSection(
@@ -500,6 +500,26 @@ struct LibraryView: View {
             )
         }
         .refreshable { await viewModel.loadLibrary() }
+    }
+
+    // MARK: „Fortsetzen" (große Karten, wie im Podcast-Tab)
+
+    private var continueFeaturedSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Continue").font(.title2).bold().padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(viewModel.continueListening) { entry in
+                        BookFeaturedCard(entry: entry,
+                                         playerCoordinator: playerCoordinator,
+                                         libraryViewModel: viewModel)
+                    }
+                }
+                .padding(.horizontal)
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+        }
     }
 
     // MARK: Horizontale Sektion
