@@ -30,7 +30,7 @@ struct PodcastsView: View {
     // Sektions-Inhalte werden NICHT synchron im Body berechnet (das ruckelte
     // beim Tab-Wechsel), sondern in einem `.task` gefüllt — der Tab erscheint
     // sofort, die Sektionen kommen einen Frame später.
-    @State private var continueItems: [LibraryItem] = []   // in-progress (große Karten)
+    @State private var nextUp: [LibraryItem] = []           // „Als Nächstes" (große Karten)
     @State private var inboxItems: [LibraryItem] = []       // neueste ungehörte/laufende
     @State private var downloaded: [LibraryItem] = []
     @State private var inboxFilter: PodcastEpisodeFilter = .new
@@ -43,7 +43,7 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
-                continueSection
+                nextUpSection
                 queueSection
                 inboxSection
                 showsShelf
@@ -58,11 +58,11 @@ struct PodcastsView: View {
         }
         .task { await absPodcast.refresh() }   // ABS-Podcasts beim Öffnen laden
         .task(id: recomputeToken) {
-            continueItems = computeContinue()
+            nextUp = computeNextUp()
             inboxItems = computeInbox()
             downloaded = computeDownloaded()
             // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
-            for item in continueItems {
+            for item in nextUp {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
             }
             // Neue Folgen aktivierter Shows im Hintergrund lokal laden.
@@ -70,18 +70,28 @@ struct PodcastsView: View {
         }
     }
 
-    /// „Fortsetzen" quellen-übergreifend: alle angespielten (in-progress) Folgen,
-    /// neueste zuerst, gedeckelt — die großen Karten oben.
-    private func computeContinue() -> [LibraryItem] {
+    /// „Als Nächstes" quellen-übergreifend: pro Show die laufende bzw. nächste
+    /// ungehörte Folge (chronologisch weiter), sonst die älteste ungehörte.
+    private func computeNextUp() -> [LibraryItem] {
         var picks: [(item: LibraryItem, date: Double)] = []
         for show in allShows {
-            for ep in show.episodes {
-                let item = podcastLibraryItem(show: show, episode: ep)
-                if case .inProgress = podcastPlayState(for: item) {
-                    picks.append((item, item.addedAt ?? 0))
-                }
+            let items = show.episodes
+                .sorted { $0.pubDate < $1.pubDate }
+                .map { podcastLibraryItem(show: show, episode: $0) }
+            func st(_ i: LibraryItem) -> EpisodePlayState { podcastPlayState(for: i) }
+
+            if let running = items.last(where: {
+                if case .inProgress = st($0) { return true } else { return false }
+            }) {
+                picks.append((running, running.addedAt ?? 0)); continue
+            }
+            let lastPlayed = items.lastIndex { st($0) == .played }
+            let range = lastPlayed.map { items.index(after: $0)..<items.endIndex } ?? items.indices
+            if let next = items[range].first(where: { st($0) == .unplayed }) {
+                picks.append((next, next.addedAt ?? 0))
             }
         }
+        // Nur die 10 aktuellsten in „Als Nächstes" — nicht jede Show.
         return picks.sorted { $0.date > $1.date }.prefix(10).map { $0.item }
     }
 
@@ -123,7 +133,7 @@ struct PodcastsView: View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Up Next").font(.title3).bold()
+                    Text("Queue").font(.title3).bold()
                     Spacer()
                     NavigationLink {
                         PodcastQueueView(playerCoordinator: playerCoordinator)
@@ -142,16 +152,16 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Fortsetzen (große Karten, angespielte Folgen)
+    // MARK: - Als Nächstes (große Karten, eine pro Show)
 
     @ViewBuilder
-    private var continueSection: some View {
-        if !continueItems.isEmpty {
+    private var nextUpSection: some View {
+        if !nextUp.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Continue").font(.title2).bold().padding(.horizontal)
+                Text("Up Next").font(.title2).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(continueItems) { item in
+                        ForEach(nextUp) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
                     }
