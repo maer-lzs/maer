@@ -41,11 +41,113 @@ final class PodcastSubscriptions: ObservableObject {
     private init() {
         if let data = try? Data(contentsOf: fileURL),
            let decoded = try? JSONDecoder().decode([PodcastShow].self, from: data) {
-            shows = decoded
+            shows = migrated(decoded)
         }
     }
 
     var hasSubscriptions: Bool { !shows.isEmpty }
+
+    // MARK: - Stabile ids + Dedup (Migration)
+
+    /// Deterministischer Schlüssel eines Feeds (FNV‑1a hex über die
+    /// normalisierte URL). Ersetzt das früher genutzte `String.hashValue`, das
+    /// pro App-Start neu geseedet war und so Duplikate + Fortschrittsverlust
+    /// verursacht hat.
+    nonisolated static func feedKey(_ feedURL: String) -> String {
+        stableHash(normalizeFeedURL(feedURL))
+    }
+
+    nonisolated static func stableHash(_ s: String) -> String {
+        var h: UInt64 = 1469598103934665603          // FNV offset basis
+        for b in s.utf8 { h = (h ^ UInt64(b)) &* 1099511628211 }   // FNV prime
+        return String(h, radix: 16)
+    }
+
+    /// Feed-URLs vergleichbar machen (Schema/`www.`/Query/Trailing-Slash egal),
+    /// damit http/https- bzw. Slash-Varianten desselben Feeds zusammenfallen.
+    nonisolated static func normalizeFeedURL(_ raw: String) -> String {
+        var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
+        s = s.replacingOccurrences(of: "https://", with: "")
+             .replacingOccurrences(of: "http://", with: "")
+        if s.hasPrefix("www.") { s.removeFirst(4) }
+        while s.hasSuffix("/") { s.removeLast() }
+        return s
+    }
+
+    /// Persistierte Shows auf stabile ids/guids bringen und Doppel-Shows
+    /// (gleiche normalisierte Feed-URL) zusammenführen. Idempotent — spätere
+    /// Starts ändern nichts mehr. Beim Umschlüsseln der guids wandert der
+    /// zugehörige `localPosition`-Fortschritt mit (alt→neu), damit der gerade
+    /// importierte Apple-Fortschritt erhalten bleibt.
+    private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
+        var byKey: [String: PodcastShow] = [:]
+        var order: [String] = []
+        var changed = false
+
+        for show in decoded {
+            let key = Self.feedKey(show.feedURL)
+            var rebuilt = show
+            rebuilt.id = "feed:\(key)"
+            if rebuilt.id != show.id { changed = true }
+            rebuilt.episodes = show.episodes.map { ep in
+                var e = ep
+                let newGuid = "rss:\(key):\(Self.originalGuid(ep.guid))"
+                if newGuid != ep.guid {
+                    Self.migrateLocalPosition(from: ep.guid, to: newGuid)
+                    e.guid = newGuid
+                    changed = true
+                }
+                return e
+            }
+
+            if let existing = byKey[key] {
+                byKey[key] = Self.merge(existing, rebuilt)
+                changed = true
+            } else {
+                byKey[key] = rebuilt
+                order.append(key)
+            }
+        }
+
+        let result = order.compactMap { byKey[$0] }
+        if changed {
+            // Direkt zurückschreiben, damit die Bereinigung persistent ist.
+            if let data = try? JSONEncoder().encode(result) {
+                try? data.write(to: fileURL, options: .atomic)
+            }
+        }
+        return result
+    }
+
+    /// Aus `rss:<hash>:<original>` den ursprünglichen guid herauslösen
+    /// (der selbst Doppelpunkte enthalten kann → maxSplits 2).
+    private nonisolated static func originalGuid(_ guid: String) -> String {
+        let parts = guid.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        if parts.count == 3, parts[0] == "rss" { return String(parts[2]) }
+        return guid
+    }
+
+    /// Zwei Shows desselben Feeds vereinen: Metadaten der reicheren behalten,
+    /// Episoden nach guid deduplizieren, neueste zuerst.
+    private nonisolated static func merge(_ a: PodcastShow, _ b: PodcastShow) -> PodcastShow {
+        let (base, other) = a.episodes.count >= b.episodes.count ? (a, b) : (b, a)
+        var result = base
+        var seen = Set(base.episodes.map { $0.guid })
+        let extra = other.episodes.filter { seen.insert($0.guid).inserted }
+        result.episodes = (base.episodes + extra).sorted { $0.pubDate > $1.pubDate }
+        return result
+    }
+
+    /// `localPosition.<altGuid>` → `<neuGuid>` umziehen (nur wenn Ziel leer).
+    private nonisolated static func migrateLocalPosition(from old: String, to new: String) {
+        let d = UserDefaults.standard
+        let oldKey = AppStorageKeys.localPosition(old)
+        let newKey = AppStorageKeys.localPosition(new)
+        guard d.object(forKey: newKey) == nil, let value = d.array(forKey: oldKey) else { return }
+        d.set(value, forKey: newKey)
+        d.removeObject(forKey: oldKey)
+    }
 
     // MARK: - Abos
 
@@ -67,6 +169,76 @@ final class PodcastSubscriptions: ObservableObject {
     func unsubscribe(id: String) {
         shows.removeAll { $0.id == id }
         save()
+    }
+
+    // MARK: - Import (OPML / Apple Podcasts)
+
+    /// Ergebnis eines Imports fürs UI-Feedback.
+    struct ImportResult {
+        var subscribed = 0        // neu/aktualisiert abonniert
+        var failed = 0            // Feed nicht ladbar
+        var progressApplied = 0   // Episoden mit übernommenem Fortschritt/Gehört
+    }
+
+    /// OPML-Datei importieren: jeden `xmlUrl`-Feed abonnieren (kein Fortschritt).
+    func importOPML(_ data: Data) async -> ImportResult {
+        var result = ImportResult()
+        for feed in PodcastImport.parseOPML(data) {
+            if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
+        }
+        return result
+    }
+
+    /// Apple-Podcasts-`MTLibrary.sqlite` importieren: Abos + Fortschritt + Gehört.
+    /// `nil`, wenn die Datei nicht als SQLite geöffnet werden kann.
+    func importAppleLibrary(at url: URL) async -> ImportResult? {
+        // SQLite-Read vom MainActor weg (kann bei großer DB dauern); der
+        // Security-Scope-Zugriff der aufrufenden View gilt prozessweit.
+        guard let library = await Task.detached(priority: .userInitiated, operation: {
+            PodcastImport.readAppleLibrary(at: url)
+        }).value else { return nil }
+        var result = ImportResult()
+        for feed in library.feedURLs {
+            if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
+        }
+        result.progressApplied = applyAppleProgress(library.progress)
+        return result
+    }
+
+    /// Bildet Apples Enclosure-URLs auf unsere Episoden ab und schreibt deren
+    /// Fortschritt in `localPosition` (dieselbe Ablage, die der Player nutzt).
+    private func applyAppleProgress(_ progress: [PodcastImport.AppleProgress]) -> Int {
+        guard !progress.isEmpty else { return 0 }
+        // Nach normalisierter Enclosure-URL indizieren (Query/Scheme egal).
+        var byURL: [String: PodcastImport.AppleProgress] = [:]
+        for p in progress { byURL[Self.normalizeEnclosure(p.enclosureURL)] = p }
+
+        var applied = 0
+        for show in shows {
+            for episode in show.episodes {
+                guard let match = byURL[Self.normalizeEnclosure(episode.audioURL)] else { continue }
+                let duration = episode.duration > 0 ? episode.duration : match.duration
+                let time = match.isPlayed ? max(duration, match.playhead) : match.playhead
+                guard time > 1 else { continue }
+                UserDefaults.standard.set(
+                    [time, Date().timeIntervalSince1970 * 1000],
+                    forKey: AppStorageKeys.localPosition(episode.guid)
+                )
+                applied += 1
+            }
+        }
+        if applied > 0 { PodcastProgressStore.shared.reload() }
+        return applied
+    }
+
+    /// Enclosure-URLs vergleichbar machen: Query & Scheme raus, klein, /-trim.
+    private nonisolated static func normalizeEnclosure(_ raw: String) -> String {
+        var s = raw.lowercased()
+        if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
+        s = s.replacingOccurrences(of: "https://", with: "")
+             .replacingOccurrences(of: "http://", with: "")
+        while s.hasSuffix("/") { s.removeLast() }
+        return s
     }
 
     /// Alle Feeds neu laden (Pull-to-refresh). Fehlgeschlagene behalten ihren
@@ -124,7 +296,13 @@ final class PodcastSubscriptions: ObservableObject {
 /// übersprungen. Internal (nicht private) — mit Unit-Tests abgedeckt.
 final class RSSFeedParser: NSObject, XMLParserDelegate {
     private let feedURL: String
-    init(feedURL: String) { self.feedURL = feedURL }
+    /// Stabiler, deterministischer Feed-Schlüssel (NICHT `String.hashValue`,
+    /// das pro App-Start neu geseedet ist) — Basis für Show-id und guids.
+    private let feedKey: String
+    init(feedURL: String) {
+        self.feedURL = feedURL
+        self.feedKey = PodcastSubscriptions.feedKey(feedURL)
+    }
 
     private var showTitle = ""
     private var showAuthor: String?
@@ -143,7 +321,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         parser.delegate = self
         guard parser.parse(), !showTitle.isEmpty || !episodes.isEmpty else { return nil }
         return PodcastShow(
-            id: "feed:\(feedURL.hashValue)",
+            id: "feed:\(feedKey)",
             title: showTitle.isEmpty ? feedURL : showTitle,
             author: showAuthor,
             artworkURL: showImage,
@@ -189,7 +367,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
                 inItem = false
                 if !iAudio.isEmpty {
                     episodes.append(PodcastEpisode(
-                        guid: "rss:\(feedURL.hashValue):\(iGuid.isEmpty ? iAudio : iGuid)",
+                        guid: "rss:\(feedKey):\(iGuid.isEmpty ? iAudio : iGuid)",
                         title: iTitle.isEmpty ? String(localized: "Untitled Episode") : iTitle,
                         audioURL: iAudio,
                         pubDate: Self.parseDate(iPubDate),

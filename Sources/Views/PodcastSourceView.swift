@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Podcasts abonnieren (Einstellungen → Quellen → Podcasts): nach Namen
 /// suchen (Apple/PodcastIndex) und mit einem Tap abonnieren, alternativ per
@@ -19,6 +20,11 @@ struct PodcastSourceView: View {
     @State private var feedURL = ""
     @State private var urlError: String?
 
+    @State private var showOPMLImporter = false
+    @State private var showAppleImporter = false
+    @State private var importMessage: String?
+    @State private var isImporting = false
+
     var body: some View {
         List {
             searchSection
@@ -27,6 +33,7 @@ struct PodcastSourceView: View {
             }
             subscriptionsSection
             addByURLSection
+            importSection
             NavigationLink {
                 PodcastIndexKeyView()
             } label: {
@@ -35,6 +42,24 @@ struct PodcastSourceView: View {
         }
         .navigationTitle("Podcasts")
         .navigationBarTitleDisplayMode(.inline)
+        .fileImporter(
+            isPresented: $showOPMLImporter,
+            allowedContentTypes: [UTType(filenameExtension: "opml") ?? .xml, .xml],
+            allowsMultipleSelection: false
+        ) { handleImport($0, apple: false) }
+        .fileImporter(
+            isPresented: $showAppleImporter,
+            allowedContentTypes: [UTType(filenameExtension: "sqlite") ?? .database, .database, .data],
+            allowsMultipleSelection: false
+        ) { handleImport($0, apple: true) }
+        .alert("Import", isPresented: Binding(
+            get: { importMessage != nil },
+            set: { if !$0 { importMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { importMessage = nil }
+        } message: {
+            if let importMessage { Text(importMessage) }
+        }
         // Debounce: nach Tippen kurz warten, dann suchen.
         .task(id: searchText) {
             let term = searchText.trimmingCharacters(in: .whitespaces)
@@ -169,6 +194,70 @@ struct PodcastSourceView: View {
                 Label("Add by URL", systemImage: "link")
             }
         }
+    }
+
+    // MARK: - Import
+
+    @ViewBuilder
+    private var importSection: some View {
+        Section {
+            Button {
+                showOPMLImporter = true
+            } label: {
+                Label("Import OPML", systemImage: "square.and.arrow.down")
+            }
+            .disabled(isImporting)
+            Button {
+                showAppleImporter = true
+            } label: {
+                Label("Import from Apple Podcasts", systemImage: "square.and.arrow.down.on.square")
+            }
+            .disabled(isImporting)
+            if isImporting {
+                HStack { ProgressView(); Text("Importing…").foregroundStyle(.secondary) }
+            }
+        } header: {
+            Text("Import")
+        } footer: {
+            Text("OPML brings in subscriptions from other podcast apps. Apple Podcasts import reads an MTLibrary.sqlite copied from a Mac and also restores play progress and played state.")
+        }
+    }
+
+    /// Ausgewählte Datei einlesen und importieren (OPML oder Apple-SQLite).
+    private func handleImport(_ result: Result<[URL], Error>, apple: Bool) {
+        guard case .success(let urls) = result, let url = urls.first else { return }
+        isImporting = true
+        Task {
+            defer { isImporting = false }
+            // Datei liegt außerhalb der Sandbox → Zugriff explizit anfordern.
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+
+            if apple {
+                if let r = await subs.importAppleLibrary(at: url) {
+                    importMessage = summary(r)
+                } else {
+                    importMessage = String(localized: "Could not read this file as an Apple Podcasts database.")
+                }
+            } else {
+                guard let data = try? Data(contentsOf: url) else {
+                    importMessage = String(localized: "Could not read this file.")
+                    return
+                }
+                importMessage = summary(await subs.importOPML(data))
+            }
+        }
+    }
+
+    private func summary(_ r: PodcastSubscriptions.ImportResult) -> String {
+        var lines = [String(localized: "\(r.subscribed) subscriptions imported")]
+        if r.progressApplied > 0 {
+            lines.append(String(localized: "\(r.progressApplied) episodes with progress"))
+        }
+        if r.failed > 0 {
+            lines.append(String(localized: "\(r.failed) feeds could not be loaded"))
+        }
+        return lines.joined(separator: "\n")
     }
 
     // MARK: - Logik
