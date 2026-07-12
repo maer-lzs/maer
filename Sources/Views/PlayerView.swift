@@ -3,13 +3,13 @@ import SwiftUI
 struct PlayerView: View {
     @ObservedObject var viewModel: PlayerViewModel
     let coverURL: URL?
-    /// Fortschritt der Nach-unten-Zieh-Geste (0…1) aus der Overlay-Präsentation.
-    /// Blendet beim Ziehen den opaken Hintergrund aus, damit die Bibliothek
-    /// dahinter durchscheint. 0 = Ruhezustand (immersiv, unverändert).
+    /// Progress of the drag-down gesture (0…1) from the overlay presentation.
+    /// Fades out the opaque background while dragging so the library shows
+    /// through behind it. 0 = at rest (immersive, unchanged).
     var dragProgress: CGFloat = 0
-    /// Eck-Radius des Overlay-Sheets (aus der Präsentation). Klippt den
-    /// vollflächigen Hintergrund passend zur runden Glasform, damit keine
-    /// eckigen Ecken über das Glas hinausragen. 0 = keine Rundung.
+    /// Corner radius of the overlay sheet (from the presentation). Clips the
+    /// full-screen background to the rounded glass shape so no square corners
+    /// stick out past the glass. 0 = no rounding.
     var cornerRadius: CGFloat = 0
     /// Explizite Safe-Area-Insets (Overlay-Root ignoriert Safe Areas).
     var topInset: CGFloat = 0
@@ -29,15 +29,14 @@ struct PlayerView: View {
     var body: some View {
         GeometryReader { geo in
         ZStack {
-            // Cover-Farbe als Hintergrund (Audible-Style) — als GEFÜLLTE runde
-            // Form (nicht Gradient + clipShape). Grund: clipShape berechnete die
-            // Rundung gegen die safe-area-große Fläche und ignoresSafeArea
-            // streckte sie danach auf Vollbild — diese Streckung ist geometrie-
-            // abhängig, sodass der obere Bereich beim ersten Ziehframe (Offset)
-            // minimal „springen“ konnte. Als gefüllte Form wird die Rundung
-            // direkt gegen die Vollbild-Geometrie gerechnet: identische Deckung
-            // oben (Statusbar) bei Ruhe UND beim ersten Ziehframe, gleiche runde
-            // Ecken wie der glassEffect.
+            // Cover color as background (Audible style) — as a FILLED rounded
+            // shape (not gradient + clipShape). Reason: clipShape computed the
+            // rounding against the safe-area-sized area and ignoresSafeArea then
+            // stretched it to full screen — that stretch is geometry-dependent,
+            // so the top could "jump" minimally on the first drag frame (offset).
+            // As a filled shape the rounding is computed directly against the
+            // full-screen geometry: identical top coverage (status bar) at rest
+            // AND on the first drag frame, same rounded corners as the glassEffect.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -46,13 +45,13 @@ struct PlayerView: View {
                         endPoint: .bottom
                     )
                 )
-                // Ruhezustand ~0.9, beim Ziehen zügig ausblenden → Glass dominiert.
+                // At rest ~0.9, fade out quickly while dragging → glass dominates.
                 .opacity(max(0.0, 0.9 - Double(dragProgress) * 0.9))
 
-            // Querformat (iPhone UND iPad): Cover links neben den Controls.
-            // Höhen-Guard: beim ersten Layout-Pass kann geo 0 melden — sonst
-            // kippt der Zweig mitten in der Öffnungs-Animation (bleibt stecken).
-            // AnyLayout statt if/else: stabile Identität bei Orientierungswechsel.
+            // Landscape (iPhone AND iPad): cover to the left of the controls.
+            // Height guard: on the first layout pass geo can report 0 — otherwise
+            // the branch tips over mid opening-animation (gets stuck). AnyLayout
+            // instead of if/else: stable identity on orientation change.
             let sideBySide = verticalSizeClass == .compact
                 || (geo.size.height > 0 && geo.size.width > geo.size.height)
             let layout = sideBySide
@@ -80,10 +79,10 @@ struct PlayerView: View {
             .padding(.bottom, bottomInset)
         }
         .overlay(alignment: .bottom) {
-            // Dieselbe globale Quell-/Sync-Hinweis-Pille wie über der
-            // Mini-Leiste — im vollen Player unten mit kleinem Abstand über den
-            // Steuerelementen. Nur sichtbar, wenn gesetzt (reserviert sonst
-            // keinen Platz); rein informativ (allowsHitTesting(false) in der View).
+            // The same global source/sync hint pill as above the mini bar — in
+            // the full player at the bottom, slightly above the controls. Only
+            // visible when set (reserves no space otherwise); purely
+            // informational (allowsHitTesting(false) in the view).
             if viewModel.sourceHint != nil {
                 ResumeMessageBanner(viewModel: viewModel)
                     .padding(.bottom, bottomInset + 16)
@@ -278,7 +277,7 @@ struct PlayerView: View {
     private var transportControls: some View {
         let skip = Int(viewModel.skipInterval)
         return HStack(spacing: 24) {
-            // Kapitel zurück (bzw. an den Kapitelanfang, siehe previousChapter).
+            // Previous chapter (or to the chapter start, see previousChapter).
             Button { viewModel.previousChapter() } label: {
                 Image(systemName: "backward.end.fill").font(.title3)
             }
@@ -300,7 +299,7 @@ struct PlayerView: View {
             }
             .accessibilityLabel(Text("Skip forward \(skip) seconds"))
 
-            // Nächstes Kapitel.
+            // Next chapter.
             Button { viewModel.nextChapter() } label: {
                 Image(systemName: "forward.end.fill").font(.title3)
             }
@@ -383,8 +382,8 @@ struct PlayerView: View {
             AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                 .frame(width: 44, height: 44)
 
-            // Nur bei Quellen mit Lesezeichen-Capability (ABS kann es;
-            // künftige Quellen wie RSS evtl. nicht).
+            // Only for sources with the bookmark capability (ABS can do it;
+            // future sources like RSS maybe not).
             if viewModel.provider.capabilities.contains(.bookmarks) {
                 Button { showBookmarks = true } label: {
                     Label("Bookmarks", systemImage: "bookmark")
