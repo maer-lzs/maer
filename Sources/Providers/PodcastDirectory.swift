@@ -83,17 +83,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/search/byterm")!
         components.queryItems = [URLQueryItem(name: "q", value: term)]
         guard let url = components.url else { return [] }
-
-        // Auth: SHA1-Hex von Key+Secret+Unix-Sekunden.
-        let authDate = String(Int(Date().timeIntervalSince1970))
-
-        var request = URLRequest(url: url)
-        request.setValue(key, forHTTPHeaderField: "X-Auth-Key")
-        request.setValue(authDate, forHTTPHeaderField: "X-Auth-Date")
-        request.setValue(Self.authHeader(key: key, secret: secret, date: authDate), forHTTPHeaderField: "Authorization")
-        request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
-
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, _) = try await URLSession.shared.data(for: signedRequest(url: url))
         let response = try JSONDecoder().decode(Response.self, from: data)
         return response.feeds.compactMap { feed in
             guard let feedURL = feed.url else { return nil }
@@ -105,4 +95,63 @@ struct PodcastIndexDirectory: PodcastDirectory {
             )
         }
     }
+
+    // MARK: - Episoden (volle Historie)
+
+    private struct EpisodesResponse: Decodable {
+        struct Item: Decodable {
+            let guid: String?
+            let title: String?
+            let description: String?
+            let enclosureUrl: String?
+            let datePublished: Double?   // Unix-Sekunden
+            let duration: Double?
+            let image: String?
+        }
+        let items: [Item]
+    }
+
+    /// Folgen eines Feeds über PodcastIndex — oft VOLLSTÄNDIGER als der Live-Feed
+    /// (der Index speichert Historie). Bis zu `max` Folgen in einem Call.
+    func episodes(feedURL: String, max: Int = 1000) async throws -> [PodcastIndexEpisode] {
+        var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/episodes/byfeedurl")!
+        components.queryItems = [
+            URLQueryItem(name: "url", value: feedURL),
+            URLQueryItem(name: "max", value: String(max))
+        ]
+        guard let url = components.url else { return [] }
+        let (data, _) = try await URLSession.shared.data(for: signedRequest(url: url))
+        let response = try JSONDecoder().decode(EpisodesResponse.self, from: data)
+        return response.items.map {
+            PodcastIndexEpisode(
+                guid: $0.guid, title: $0.title, enclosureUrl: $0.enclosureUrl,
+                datePublished: $0.datePublished, duration: $0.duration,
+                description: $0.description, image: $0.image
+            )
+        }
+    }
+
+    /// Signierter Request (SHA1-Hex von Key+Secret+Unix-Sekunden im Header).
+    private func signedRequest(url: URL) -> URLRequest {
+        let authDate = String(Int(Date().timeIntervalSince1970))
+        var request = URLRequest(url: url)
+        request.setValue(key, forHTTPHeaderField: "X-Auth-Key")
+        request.setValue(authDate, forHTTPHeaderField: "X-Auth-Date")
+        request.setValue(Self.authHeader(key: key, secret: secret, date: authDate), forHTTPHeaderField: "Authorization")
+        request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
+        return request
+    }
+}
+
+/// Eine Folge aus PodcastIndex (roh) — wird von `PodcastSubscriptions` mit der
+/// stabilen `rss:<feedKey>:<guid>`-ID gemappt, damit sie mit Feed-Folgen
+/// dedupliziert und denselben Fortschritts-Key nutzt.
+struct PodcastIndexEpisode {
+    let guid: String?
+    let title: String?
+    let enclosureUrl: String?
+    let datePublished: Double?
+    let duration: Double?
+    let description: String?
+    let image: String?
 }

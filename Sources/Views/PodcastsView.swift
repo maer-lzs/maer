@@ -427,7 +427,16 @@ struct PodcastShowView: View {
     @State private var loadingAvailable = false
     @State private var downloading: Set<String> = []
     @State private var downloadError: String?
+    @State private var loadingHistory = false
+    @State private var historyResult: String?
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
+
+    /// Aktuelle Show aus dem Store (nicht der beim Öffnen übergebene Snapshot) —
+    /// damit nachgeladene Folgen (PodcastIndex/Server) sofort erscheinen.
+    private var liveShow: PodcastShow {
+        if isServerShow { return absPodcast.shows.first { $0.id == show.id } ?? show }
+        return subs.shows.first { $0.id == show.id } ?? show
+    }
     /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
     @AppStorage private var newestFirst: Bool
 
@@ -440,7 +449,7 @@ struct PodcastShowView: View {
     /// Folgen dieser Show als LibraryItems, nach Umschalter sortiert — lazy im
     /// Body (nur wenn die Seite wirklich angezeigt wird).
     private var sortedItems: [LibraryItem] {
-        AppSession.shared.rssProvider.showItems(for: show).sorted { a, b in
+        AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }
@@ -457,7 +466,7 @@ struct PodcastShowView: View {
                         Divider().padding(.leading, 88)
                     }
                 }
-                if isServerShow { availableSection }
+                if isServerShow { availableSection } else { historySection }
             }
             .padding(.top, 8)
             .bottomBarClearance()
@@ -613,6 +622,35 @@ struct PodcastShowView: View {
             await absPodcast.refresh()
             available.removeAll { $0.id == ep.id }
             downloading.remove(ep.id)
+        }
+    }
+
+    /// RSS-Shows: volle Folgen-Historie über PodcastIndex nachladen (wenn Key
+    /// hinterlegt) — holt auch alte Folgen, die aus dem Live-Feed gefallen sind.
+    @ViewBuilder
+    private var historySection: some View {
+        if AppStorageKeys.podcastIndexConfigured {
+            VStack(alignment: .leading, spacing: 8) {
+                Divider().padding(.horizontal)
+                Button {
+                    Task {
+                        loadingHistory = true
+                        let n = await subs.loadFullHistory(showId: show.id)
+                        historyResult = n > 0
+                            ? String(localized: "\(n) episodes added")
+                            : String(localized: "No additional episodes found.")
+                        loadingHistory = false
+                    }
+                } label: {
+                    Label(loadingHistory ? String(localized: "Loading…") : String(localized: "Load full history"),
+                          systemImage: "clock.arrow.circlepath")
+                }
+                .disabled(loadingHistory)
+                .padding(.horizontal)
+                if let historyResult {
+                    Text(historyResult).font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
+                }
+            }
         }
     }
 }

@@ -189,6 +189,42 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
+    /// Volle Historie einer Show über PodcastIndex nachladen (wenn Key
+    /// hinterlegt) und in die persistierten Folgen mergen. Gleiche
+    /// `rss:<feedKey>:<guid>`-IDs wie der Feed → Dedup + gemeinsamer
+    /// Fortschritts-Key. Rückgabe: Zahl NEU hinzugekommener Folgen.
+    func loadFullHistory(showId: String) async -> Int {
+        guard AppStorageKeys.podcastIndexConfigured,
+              let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
+        let show = shows[idx]
+        let dir = PodcastIndexDirectory(
+            key: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexKey) ?? "",
+            secret: UserDefaults.standard.string(forKey: AppStorageKeys.podcastIndexSecret) ?? ""
+        )
+        guard let piEpisodes = try? await dir.episodes(feedURL: show.feedURL) else { return 0 }
+        let key = Self.feedKey(show.feedURL)
+        var seen = Set(show.episodes.map { $0.guid })
+        var added: [PodcastEpisode] = []
+        for pi in piEpisodes {
+            guard let audio = pi.enclosureUrl, !audio.isEmpty else { continue }
+            let guid = "rss:\(key):\(pi.guid ?? audio)"   // wie RSSFeedParser
+            guard seen.insert(guid).inserted else { continue }
+            added.append(PodcastEpisode(
+                guid: guid,
+                title: pi.title ?? String(localized: "Untitled Episode"),
+                audioURL: audio,
+                pubDate: (pi.datePublished ?? 0) * 1000,
+                duration: pi.duration ?? 0,
+                description: pi.description,
+                imageURL: pi.image
+            ))
+        }
+        guard !added.isEmpty else { return 0 }
+        shows[idx].episodes = (show.episodes + added).sorted { $0.pubDate > $1.pubDate }
+        save()
+        return added.count
+    }
+
     // MARK: - Import (OPML / Apple Podcasts)
 
     /// Ergebnis eines Imports fürs UI-Feedback.

@@ -1069,6 +1069,36 @@
         }
       }
     },
+    "Load full history" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ganze Historie laden"
+          }
+        }
+      }
+    },
+    "%lld episodes added" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Folgen ergänzt"
+          }
+        }
+      }
+    },
+    "No additional episodes found." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine zusätzlichen Folgen gefunden."
+          }
+        }
+      }
+    },
     "Loading library…" : {
       "localizations" : {
         "de" : {
