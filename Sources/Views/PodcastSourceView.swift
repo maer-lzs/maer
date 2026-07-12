@@ -15,7 +15,7 @@ struct PodcastSourceView: View {
     @State private var subscribeError: String?
     /// Feed-only-Folge beim Abspielen nach ~30 s automatisch am Server sichern.
     @AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true
-    /// ABS als Podcast-Quelle nutzen (Default AUS — ABS ist primär Hörbuch-Server).
+    /// Use ABS as a podcast source (default OFF — ABS is primarily an audiobook server).
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
 
     private enum Source: Hashable { case apple, podcastIndex }
@@ -85,7 +85,7 @@ struct PodcastSourceView: View {
             } label: {
                 Label("PodcastIndex Access", systemImage: "key")
             }
-            // Abo-Liste bewusst ganz unten (nach Suche/Hinzufügen/Verwaltung).
+            // Subscription list deliberately at the very bottom (after search/add/manage).
             subscriptionsSection
             archivedSection
         }
@@ -217,7 +217,7 @@ struct PodcastSourceView: View {
             || absPodcast.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
     }
 
-    /// Abo anlegen — am Server (synchronisiert), wenn möglich/gewählt, sonst lokal.
+    /// Create a subscription — on the server (synced) if possible/chosen, else locally.
     private func performSubscribe(feedURL: String) async -> Bool {
         if subscribeToServer, absPodcast.hasPodcasts {
             if let error = await absPodcast.subscribeOnServer(feedURL: feedURL) {
@@ -335,8 +335,8 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// Lokale RSS-Abos auf den Server spiegeln (ABS kanonisch) — für einen
-    /// bereinigten, geräteübergreifenden Stand. Idempotent.
+    /// Mirror local RSS subscriptions to the server (ABS canonical) — for a
+    /// reconciled, cross-device state. Idempotent.
     private var serverSyncSection: some View {
         Section {
             Button {
@@ -373,13 +373,13 @@ struct PodcastSourceView: View {
         return lines.joined(separator: "\n")
     }
 
-    /// Ausgewählte Datei einlesen und importieren (OPML oder Apple-SQLite).
+    /// Read and import the selected file (OPML or Apple SQLite).
     private func handleImport(_ result: Result<[URL], Error>, apple: Bool) {
         guard case .success(let urls) = result, let url = urls.first else { return }
         isImporting = true
         Task {
             defer { isImporting = false }
-            // Datei liegt außerhalb der Sandbox → Zugriff explizit anfordern.
+            // File is outside the sandbox → request access explicitly.
             let accessed = url.startAccessingSecurityScopedResource()
             defer { if accessed { url.stopAccessingSecurityScopedResource() } }
 
@@ -447,8 +447,8 @@ struct PodcastSourceView: View {
     }
 }
 
-/// PodcastIndex-Zugang (optional) — Key (öffentlich, UserDefaults) + Secret
-/// (Credential, im Keychain).
+/// PodcastIndex access (optional) — key (public, UserDefaults) + secret
+/// (credential, in the keychain).
 private struct PodcastIndexKeyView: View {
     @AppStorage(AppStorageKeys.podcastIndexKey) private var key = ""
     @State private var secret = AppStorageKeys.podcastIndexSecretValue

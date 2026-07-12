@@ -11,8 +11,7 @@ struct PodcastShowView: View {
 
     @State private var descriptionExpanded = false
     @State private var showDeleteConfirm = false
-    // „Ältere Folgen nachladen" (nur ABS-Shows): Feed-Folgen, die noch nicht am
-    // Server liegen.
+    // "Load older episodes" (ABS shows only): feed episodes not yet on the server.
     @State private var available: [FeedEpisode] = []
     @State private var availableLoaded = false
     @State private var loadingAvailable = false
@@ -23,8 +22,8 @@ struct PodcastShowView: View {
     @State private var showSettings = false
     private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
 
-    /// Aktuelle Show aus dem Store (nicht der beim Öffnen übergebene Snapshot) —
-    /// damit nachgeladene Folgen (PodcastIndex/Server) sofort erscheinen.
+    /// Current show from the store (not the snapshot passed on open) — so
+    /// loaded-in episodes (PodcastIndex/server) appear immediately.
     private var liveShow: PodcastShow {
         if isServerShow { return absPodcast.shows.first { $0.id == show.id } ?? show }
         return subs.shows.first { $0.id == show.id } ?? show
@@ -165,8 +164,8 @@ struct PodcastShowView: View {
         }
     }
 
-    /// ABS-Show: archivieren (Server bleibt) bzw. endgültig löschen; RSS-Show:
-    /// lokal abbestellen.
+    /// ABS show: archive (server stays) or delete permanently; RSS show:
+    /// unsubscribe locally.
     @ViewBuilder
     private var manageButton: some View {
         if isServerShow {
@@ -195,8 +194,8 @@ struct PodcastShowView: View {
         }
     }
 
-    /// Feed-Folgen, die noch nicht am Server liegen — server-seitig nachladbar
-    /// (für „von Anfang an hören"). Wird erst auf Knopfdruck geladen.
+    /// Feed episodes not yet on the server — downloadable server-side (for
+    /// "listen from the start"). Loaded only on button press.
     @ViewBuilder
     private var availableSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -243,7 +242,7 @@ struct PodcastShowView: View {
                         .padding(.horizontal).padding(.vertical, 10)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            // Für „Download-on-Play" registrieren, dann streamen.
+                            // Register for "download-on-play", then stream.
                             PodcastServerSave.shared.register(rssItemId: item.id, showId: show.id, feed: ep)
                             Task { await playerCoordinator.open(item: item) }
                         }
@@ -254,8 +253,8 @@ struct PodcastShowView: View {
         }
     }
 
-    /// Server anweisen, die Folge zu laden; danach neu einlesen (der Download
-    /// läuft server-seitig asynchron, daher kurz warten).
+    /// Tell the server to load the episode; then re-read (the download runs
+    /// server-side asynchronously, so wait briefly).
     private func downloadAvailable(_ ep: FeedEpisode) {
         downloading.insert(ep.id)
         Task {
@@ -271,8 +270,8 @@ struct PodcastShowView: View {
         }
     }
 
-    /// RSS-Shows: volle Folgen-Historie über PodcastIndex nachladen (wenn Key
-    /// hinterlegt) — holt auch alte Folgen, die aus dem Live-Feed gefallen sind.
+    /// RSS shows: load the full episode history via PodcastIndex (if a key is
+    /// set) — also fetches old episodes that fell out of the live feed.
     @ViewBuilder
     private var historySection: some View {
         if AppStorageKeys.podcastIndexConfigured {

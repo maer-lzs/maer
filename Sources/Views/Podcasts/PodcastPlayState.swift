@@ -1,35 +1,35 @@
 import SwiftUI
 import Combine
 
-/// Drei Zustände einer Episode fürs UI — ungehört, angespielt (mit Restzeit)
-/// oder komplett gehört. Podcasts syncen NICHT über den Server; die Basis ist
-/// die lokale `localPosition` (die der Player alle 5 s schreibt).
+/// Three states of an episode for the UI — unplayed, in progress (with remaining
+/// time) or fully played. Podcasts do NOT sync via the server; the basis is the
+/// local `localPosition` (which the player writes every 5 s).
 enum EpisodePlayState: Equatable {
     case unplayed
     case inProgress(fraction: Double, remaining: Double)
     case played
 }
 
-/// Reaktiver Zugriff auf den lokalen Podcast-Fortschritt. Nötig, weil
-/// `localPosition` in UserDefaults liegt (kein @Published) — ohne diesen Store
-/// würde ein „als gehört markieren" die Liste nicht sofort aktualisieren.
+/// Reactive access to the local podcast progress. Needed because
+/// `localPosition` lives in UserDefaults (no @Published) — without this store a
+/// "mark as played" would not update the list immediately.
 @MainActor
 final class PodcastProgressStore: ObservableObject {
     static let shared = PodcastProgressStore()
-    // Expliziter Publisher statt @Published: unter dem Projekt-Default
-    // `MainActor` scheitert die synthetisierte ObservableObject-Conformance
-    // aus einer @Published-Property. Wir senden die Änderung selbst.
+    // Explicit publisher instead of @Published: under the project default
+    // `MainActor` the synthesized ObservableObject conformance from a @Published
+    // property fails. We send the change ourselves.
     nonisolated let objectWillChange = ObservableObjectPublisher()
-    /// Zählt Fortschritts-Änderungen — als `.task`-id, um die Podcast-Sektionen
-    /// gezielt neu zu berechnen (statt bei jedem Body-Eval).
+    /// Counts progress changes — used as a `.task` id to recompute the podcast
+    /// sections deliberately (instead of on every body eval).
     private(set) var changeToken = 0
 
     func state(for item: LibraryItem) -> EpisodePlayState {
         state(guid: item.id, duration: item.media?.duration ?? 0)
     }
 
-    /// Zustand direkt aus guid + Dauer — ohne ein `LibraryItem` zu bauen
-    /// (die Podcast-Sektionen rechnen so über tausende Folgen ohne Overhead).
+    /// State directly from guid + duration — without building a `LibraryItem`
+    /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
         guard duration > 0,
               let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
@@ -40,7 +40,7 @@ final class PodcastProgressStore: ObservableObject {
         return .unplayed
     }
 
-    /// „Als gehört" schreibt die Position ans Ende, „ungehört" löscht sie.
+    /// "Played" writes the position to the end, "unplayed" deletes it.
     func setPlayed(_ item: LibraryItem, _ played: Bool) {
         let key = AppStorageKeys.localPosition(item.id)
         if played, let duration = item.media?.duration, duration > 0 {
@@ -52,23 +52,22 @@ final class PodcastProgressStore: ObservableObject {
         objectWillChange.send()
     }
 
-    /// Nach externem Schreiben von `localPosition` (z. B. Apple-Import) alle
-    /// beobachtenden Zeilen neu bewerten lassen.
+    /// After an external write of `localPosition` (e.g. Apple import), have all
+    /// observing rows re-evaluate.
     func reload() { changeToken += 1; objectWillChange.send() }
 }
 
-/// Gehört-Zustand vereinheitlicht (Reconciliation): `localPosition` spiegelt
-/// bereits lokal+iCloud (nach `PodcastCloudSync.reconcile`); für `abspod:`
-/// zusätzlich den ABS-Server-Stand einbeziehen — der jüngere Zeitstempel
-/// gewinnt.
+/// Played state unified (reconciliation): `localPosition` already mirrors
+/// local+iCloud (after `PodcastCloudSync.reconcile`); for `abspod:` also include
+/// the ABS server state — the newer timestamp wins.
 @MainActor
 func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     let duration = item.media?.duration ?? 0
-    // Gleichwertige IDs beider Quellen (self + Brücke über die Feed-guid), damit
-    // die importierte rss:-History auch auf der ABS-Kopie sichtbar ist.
+    // Equivalent ids of both sources (self + bridge via the feed guid) so the
+    // imported rss: history is visible on the ABS copy too.
     let ids = ABSPodcastProvider.shared.equivalentIds(item.id)
 
-    // Jüngster lokaler Stand über alle Brücken-IDs.
+    // Newest local state across all bridge ids.
     var bestGuid: String?
     var bestTs = -1.0
     for id in ids {
@@ -78,7 +77,7 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
         }
     }
 
-    // Server-Stand der abspod:-Kopie einbeziehen (jüngerer Zeitstempel gewinnt).
+    // Include the server state of the abspod: copy (newer timestamp wins).
     if let absId = ids.first(where: { $0.hasPrefix("abspod:") }) {
         let absTs = ABSPodcastProvider.shared.episodeProgress[absId]?.lastUpdate ?? -1
         if absTs > bestTs {
@@ -89,13 +88,13 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     return PodcastProgressStore.shared.state(guid: bestGuid, duration: duration)
 }
 
-/// „Als gehört/ungehört": immer lokal setzen (→ iCloud propagiert es) und bei
-/// ABS zusätzlich am Server; danach sofort nach iCloud pushen.
+/// "Mark played/unplayed": always set locally (→ iCloud propagates it) and for
+/// ABS additionally on the server; then push to iCloud immediately.
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
     PodcastProgressStore.shared.setPlayed(item, played)
-    // Auch am Server spiegeln: die abspod:-Kopie ist self (abspod-Item) oder die
-    // über die Feed-guid gebrückte Server-Folge (rss-Item).
+    // Mirror on the server too: the abspod: copy is self (abspod item) or the
+    // server episode bridged via the feed guid (rss item).
     let absId = item.id.hasPrefix("abspod:")
         ? item.id
         : ABSPodcastProvider.shared.bridgedABSId(forRSS: item.id)
@@ -105,4 +104,4 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
     PodcastCloudSync.shared.reconcile()
 }
 
-// MARK: - Gemeinsame Helfer
+// MARK: - Shared helpers
