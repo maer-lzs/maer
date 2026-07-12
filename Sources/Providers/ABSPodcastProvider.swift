@@ -1,9 +1,9 @@
 import Foundation
 import Combine
 
-/// Eine Feed-Folge (roh vom Server geparst), die noch nicht in der Library
-/// liegt und server-seitig nachgeladen werden kann. `raw` wird 1:1 an
-/// `download-episodes` zurückgegeben (der Server erwartet sein Feed-Format).
+/// A feed episode (parsed raw from the server) that is not yet in the library
+/// and can be downloaded server-side. `raw` is passed 1:1 to
+/// `download-episodes` (the server expects its own feed format).
 struct FeedEpisode: Identifiable {
     let id: String
     let title: String
@@ -13,12 +13,12 @@ struct FeedEpisode: Identifiable {
     let raw: [String: Any]
 }
 
-/// Audiobookshelf-Podcasts als eigene Quelle vom Typ `.podcasts`. Anders als
-/// der Haupt-ABS-Provider (Hörbücher, rohe IDs) namespaced dieser Provider
-/// seine IDs mit `abspod:<libraryItemId>:<episodeId>` — eine Episode ist die
-/// abspielbare Einheit. Nutzt den geteilten `APIClient` (Netzwerk/Auth) und
-/// hängt sich über `.progressSync` in die bestehende Sync-Maschinerie ein →
-/// Fortschritt/Gehört pro Episode syncen server-seitig über alle Geräte.
+/// Audiobookshelf podcasts as their own source of type `.podcasts`. Unlike the
+/// main ABS provider (audiobooks, raw ids) this provider namespaces its ids with
+/// `abspod:<libraryItemId>:<episodeId>` — an episode is the playable unit. Uses
+/// the shared `APIClient` (network/auth) and hooks into the existing sync
+/// machinery via `.progressSync` → progress/played per episode sync server-side
+/// across all devices.
 @MainActor
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
     static let shared = ABSPodcastProvider()
@@ -30,31 +30,31 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     private var client: APIClient { AppSession.shared.apiClient }
 
-    /// Geladene Shows samt Folgen (für die Podcast-UI). Wird von `refresh()`
-    /// befüllt.
+    /// Loaded shows with their episodes (for the podcast UI). Filled by
+    /// `refresh()`.
     @Published private(set) var shows: [PodcastShow] = []
-    /// Ob der Server Podcast-Bibliotheken hat — steuert die Tab-Sichtbarkeit.
-    /// Erst nach einem erfolgreichen `refresh()` true.
+    /// Whether the server has podcast libraries — drives tab visibility. Only
+    /// true after a successful `refresh()`.
     @Published private(set) var hasPodcasts = false
-    /// Server-Fortschritt je Episode (Key = `abspod:<item>:<episode>`) — Basis
-    /// für die Gehört-Anzeige der ABS-Folgen (lokal gibt es dafür nichts).
+    /// Server progress per episode (key = `abspod:<item>:<episode>`) — basis for
+    /// the played state of ABS episodes (there is nothing local for it).
     @Published private(set) var episodeProgress: [String: BookProgress] = [:]
 
-    /// Brücke über die Original-Feed-`guid`: `abspod:`-Episoden-ID ↔ `rss:`-ID
-    /// derselben Folge. So teilen sich RSS- und ABS-Kopie einer Folge eine
-    /// gemeinsame Hör-History (Anzeige-Brücke + Server-Push).
+    /// Bridge via the original feed `guid`: `abspod:` episode id ↔ `rss:` id of
+    /// the same episode. So the RSS and ABS copy of an episode share one
+    /// listening history (display bridge + server push).
     private var absToRSS: [String: String] = [:]
     private var rssToABS: [String: String] = [:]
-    /// Zählt Änderungen (Shows/Fortschritt) — als `.task`-id in der UI, damit
-    /// „Als Nächstes"/„Geladen" nach ABS-Laden bzw. „gehört" neu rechnen.
+    /// Counts changes (shows/progress) — used as a `.task` id in the UI so
+    /// "Up Next"/"Downloaded" recompute after an ABS load or "played".
     @Published private(set) var changeToken = 0
-    /// Archivierte Shows (client-seitig): „Abo beenden" blendet nur aus, ohne am
-    /// Server zu löschen — Show + Hörhistorie bleiben erhalten, reaktivierbar.
+    /// Archived shows (client-side): "end subscription" only hides, without
+    /// deleting on the server — show + history stay, reactivatable.
     @Published private(set) var archivedShowIds: Set<String> = []
 
-    /// Shows ohne archivierte (für die aktiven Sektionen).
+    /// Shows without archived ones (for the active sections).
     var activeShows: [PodcastShow] { shows.filter { !archivedShowIds.contains($0.id) } }
-    /// Nur die archivierten Shows (zum Reaktivieren).
+    /// Only the archived shows (to reactivate).
     var archivedShows: [PodcastShow] { shows.filter { archivedShowIds.contains($0.id) } }
 
     /// Show archivieren/reaktivieren (persistiert, KEIN Server-Eingriff).
@@ -70,15 +70,15 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     var mediaType: MediaType { .podcasts }
     var capabilities: ProviderCapabilities { [.progressSync, .downloadable] }
     var streamAuthHeaders: [String: String] { client.streamAuthHeaders }
-    /// Nur wenn der Nutzer ABS ausdrücklich als Podcast-Quelle aktiviert hat.
+    /// Only when the user explicitly enabled ABS as a podcast source.
     var isAvailable: Bool { AppStorageKeys.absPodcastsEnabledValue && hasPodcasts }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         try await client.fetchPodcastLibraries()
     }
 
-    /// Bibliotheks-Items sind hier die Shows (nicht direkt abspielbar). Die
-    /// Podcast-UI lädt über `refresh()`; diese Methode ist nur Vertrag.
+    /// Library items here are the shows (not directly playable). The podcast UI
+    /// loads via `refresh()`; this method is only the contract.
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
         try await client.fetchLibraryItems(libraryId: libraryId)
     }
@@ -119,48 +119,48 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     func createBookmark(itemId: String, time: Double, title: String) async throws {}
     func deleteBookmark(itemId: String, time: Double) async throws {}
 
-    // MARK: - Laden für die UI
+    // MARK: - Loading for the UI
 
-    /// Nur prüfen, ob Podcast-Bibliotheken existieren (1 Request) — steuert die
-    /// Tab-Sichtbarkeit, ohne alle Shows zu laden. Fehler/kein Login → false.
+    /// Only check whether podcast libraries exist (1 request) — drives tab
+    /// visibility without loading all shows. Error/no login → false.
     func refreshAvailability() async {
-        // ABS ist opt-in als Podcast-Quelle — ohne Aktivierung NICHT den Server
-        // abfragen und Podcasts nicht als vorhanden annehmen.
+        // ABS is opt-in as a podcast source — without it enabled do NOT query the
+        // server and do not assume podcasts exist.
         guard AppStorageKeys.absPodcastsEnabledValue else {
             if hasPodcasts { hasPodcasts = false }
             return
         }
-        // NUR bei erfolgreicher Antwort aktualisieren. Ein transienter Fehler
-        // (kein Netz/kurzer Hakler) darf `hasPodcasts` nicht auf false kippen —
-        // sonst verschwindet der Podcast-Tab bzw. wird leer.
+        // Update ONLY on a successful response. A transient error (no net/brief
+        // hiccup) must not flip `hasPodcasts` to false — otherwise the podcast
+        // tab disappears or goes empty.
         guard let libs = try? await client.fetchPodcastLibraries() else { return }
         hasPodcasts = !libs.isEmpty
     }
 
-    /// Shows + Folgen aller Podcast-Bibliotheken laden. Best effort: einzelne
-    /// fehlgeschlagene Shows werden übersprungen, der Rest bleibt nutzbar.
+    /// Load shows + episodes of all podcast libraries. Best effort: individual
+    /// failed shows are skipped, the rest stays usable.
     func refresh() async {
-        // ABS ist opt-in als Podcast-Quelle — ohne Aktivierung nichts laden und
-        // vorhandenen Stand leeren (der Nutzer nutzt ABS dann nur für Hörbücher).
+        // ABS is opt-in as a podcast source — without it enabled load nothing and
+        // clear the existing state (the user then uses ABS for audiobooks only).
         guard AppStorageKeys.absPodcastsEnabledValue else {
             if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
             return
         }
-        // Fehlgeschlagener Library-Fetch → bestehenden Stand BEHALTEN, nicht
-        // löschen (dieser refresh läuft bei jedem Tab-Wechsel; ein kurzer
-        // Netz-Hakler leerte sonst den ganzen Podcast-Tab).
+        // Failed library fetch → KEEP the existing state, don't clear (this
+        // refresh runs on every tab switch; a brief net hiccup would otherwise
+        // empty the whole podcast tab).
         guard let libraries = try? await client.fetchPodcastLibraries() else { return }
         guard !libraries.isEmpty else {
-            // Server hat wirklich keine Podcast-Bibliothek.
+            // The server really has no podcast library.
             hasPodcasts = false
             shows = []
             return
         }
         hasPodcasts = true
-        // Fortschritt aller Episoden in einem Rutsch (für die Gehört-Anzeige).
+        // Progress of all episodes in one go (for the played state).
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
 
-        // Show-Items je Library sammeln (wenige Requests).
+        // Collect show items per library (few requests).
         var itemIds: [String] = []
         for library in libraries {
             if let items = try? await client.fetchLibraryItems(libraryId: library.id) {
@@ -168,9 +168,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
 
-        // Detail-Fetches PARALLEL, gebündelt (max ~5 gleichzeitig) — seriell war
-        // bei vielen Shows spürbar langsam. Concurrency reicht (jeder Request
-        // suspendiert am Netz-await), Reihenfolge egal → am Ende sortieren.
+        // Detail fetches in PARALLEL, batched (max ~5 at once) — serial was
+        // noticeably slow with many shows. Concurrency is enough (each request
+        // suspends at the net await), order irrelevant → sort at the end.
         let client = self.client
         var loaded: [PodcastShow] = []
         var newAbsToRSS: [String: String] = [:]
@@ -189,7 +189,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
             for detail in details {
                 loaded.append(podcastShow(from: detail))
-                // Brücke Feed-guid → beide IDs aufbauen (für gemeinsame History).
+                // Build the feed-guid bridge → both ids (for shared history).
                 let feedURL = detail.media.metadata?.feedUrl ?? ""
                 guard !feedURL.isEmpty else { continue }
                 let feedKey = PodcastSubscriptions.feedKey(feedURL)
@@ -203,8 +203,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             }
         }
 
-        // Nur übernehmen, wenn wirklich etwas geladen wurde — sonst (alle Detail-
-        // Fetches scheiterten) den bisherigen Stand behalten.
+        // Only adopt if something was actually loaded — otherwise (all detail
+        // fetches failed) keep the previous state.
         if !loaded.isEmpty || shows.isEmpty {
             shows = loaded
             absToRSS = newAbsToRSS
@@ -213,20 +213,20 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
-    /// Gleichwertige IDs derselben Folge über beide Quellen (self + Brücke).
+    /// Equivalent ids of the same episode across both sources (self + bridge).
     func equivalentIds(_ id: String) -> [String] {
         if id.hasPrefix("abspod:"), let rss = absToRSS[id] { return [id, rss] }
         if id.hasPrefix("rss:"), let abs = rssToABS[id] { return [id, abs] }
         return [id]
     }
 
-    /// Zur `rss:`-Folge die passende `abspod:`-Server-Folge (falls am Server).
+    /// The matching `abspod:` server episode for an `rss:` episode (if on server).
     func bridgedABSId(forRSS id: String) -> String? { rssToABS[id] }
 
-    /// Lokale (RSS-)Hör-History auf die passenden Server-Folgen pushen — nur wo
-    /// der lokale Stand jünger ist als der Server. Idempotent. Nach dem Push den
-    /// Server-Fortschritt neu ziehen. Greift nur für Folgen, die am Server
-    /// existieren (heruntergeladen); ältere bleiben über lokal+iCloud erhalten.
+    /// Push local (RSS) listening history to the matching server episodes — only
+    /// where the local state is newer than the server. Idempotent. Re-pull the
+    /// server progress after the push. Applies only to episodes that exist on
+    /// the server (downloaded); older ones stay via local+iCloud.
     func pushLocalHistoryToServer() async {
         var didPush = false
         for (absId, rssId) in absToRSS {
@@ -251,20 +251,20 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         if didPush { await refreshProgress() }
     }
 
-    /// Nur den Server-Fortschritt neu ziehen (nach Wiedergabe/„als gehört").
+    /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
         episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
         changeToken += 1
     }
 
-    // MARK: - Verwaltung (Abo anlegen / entfernen)
+    // MARK: - Management (create / remove subscription)
 
-    /// Podcast am Server abonnieren (Feed → anlegen → neu laden). Gibt `nil`
-    /// bei Erfolg zurück, sonst eine Fehlermeldung mit dem gescheiterten Schritt
-    /// (damit sich blindes Raten am ungetesteten Endpoint erübrigt).
-    /// - Parameter coverURL: Optionales, hochauflösendes Feed-Cover (unser
-    ///   `itunes:image`). Wird nach dem Anlegen server-seitig gesetzt, weil ABS
-    ///   beim Import oft das kleinere RSS-`<image>` nimmt.
+    /// Subscribe to a podcast on the server (feed → create → reload). Returns
+    /// `nil` on success, otherwise an error message with the failed step (so
+    /// there's no blind guessing at the untested endpoint).
+    /// - Parameter coverURL: optional high-resolution feed cover (our
+    ///   `itunes:image`). Set server-side after creation because ABS often takes
+    ///   the smaller RSS `<image>` on import.
     func subscribeOnServer(feedURL: String, coverURL: String? = nil,
                            autoDownload: Bool = true) async -> String? {
         do {
@@ -275,7 +275,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             do { metadata = try await client.fetchPodcastFeed(rssFeed: feedURL) }
             catch { return "Feed (podcasts/feed): \(Self.msg(error))" }
 
-            // Ordner kommen meist schon mit dem Listen-Endpoint; sonst Detail.
+            // Folders usually come with the list endpoint; otherwise detail.
             var folders = library.folders ?? []
             if folders.isEmpty {
                 do { folders = try await client.fetchLibraryFolders(libraryId: library.id) }
@@ -293,8 +293,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             } catch { return "Anlegen (POST podcasts): \(Self.msg(error))" }
 
             await refresh()
-            // Hochauflösendes Feed-Cover nachreichen (bevorzugt unser
-            // itunes:image; sonst das aus der Server-Feed-Antwort).
+            // Push the high-resolution feed cover (prefer our itunes:image;
+            // otherwise the one from the server feed response).
             await pushHighResCover(feedURL: feedURL, cover: coverURL ?? metadata.imageUrl)
             return nil
         } catch {
@@ -302,16 +302,16 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
-    /// Cover einer bestehenden Server-Show auf ein hochauflösendes Feed-Cover
-    /// heben. Best effort.
+    /// Lift the cover of an existing server show to a high-resolution feed
+    /// cover. Best effort.
     func updateShowCover(showId: String, coverURL: String) async {
         guard showId.hasPrefix("abspod:"), !coverURL.isEmpty else { return }
         let itemId = String(showId.dropFirst("abspod:".count))
         try? await client.updateItemCover(itemId: itemId, coverURL: coverURL)
     }
 
-    /// Das übergebene Cover auf die frisch angelegte Show anwenden (per Feed-URL
-    /// wiedergefunden). Best effort — schlägt es fehl, bleibt das ABS-Cover.
+    /// Apply the given cover to the freshly created show (found again by feed
+    /// URL). Best effort — if it fails, the ABS cover stays.
     private func pushHighResCover(feedURL: String, cover: String?) async {
         guard let cover, !cover.isEmpty else { return }
         let norm = PodcastSubscriptions.normalizeFeedURL(feedURL)
@@ -326,8 +326,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
-    /// Feed-Folgen einer ABS-Show, die noch NICHT am Server liegen (nachladbar).
-    /// Abgleich über den Titel (die Library-Episoden tragen die Feed-Titel).
+    /// Feed episodes of an ABS show that are NOT yet on the server (loadable).
+    /// Matched by title (the library episodes carry the feed titles).
     func availableEpisodes(for show: PodcastShow) async -> [FeedEpisode] {
         guard !show.feedURL.isEmpty,
               let raw = try? await client.fetchFeedEpisodes(rssFeed: show.feedURL) else { return [] }
@@ -344,10 +344,10 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             return FeedEpisode(id: id, title: title, publishedAt: publishedAt,
                                duration: duration, enclosureUrl: enclosure, raw: dict)
         }
-        .sorted { $0.publishedAt < $1.publishedAt }   // älteste zuerst („von Anfang an")
+        .sorted { $0.publishedAt < $1.publishedAt }   // oldest first ("from the start")
     }
 
-    /// Ausgewählte Feed-Folge server-seitig herunterladen lassen. `nil` = ok.
+    /// Have a selected feed episode downloaded server-side. `nil` = ok.
     func downloadEpisode(showId: String, episode: FeedEpisode) async -> String? {
         do {
             try await client.downloadEpisodes(libraryItemId: Self.split(showId).show, episodes: [episode.raw])
@@ -357,16 +357,16 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
-    /// Nach einem Server-Download: die (jetzt vorhandene) Server-Episoden-ID zu
-    /// einem Feed-Titel finden. Die Server-`audioURL` ist die ABS-Pfad-URL, nicht
-    /// die Origin-Enclosure → Abgleich über den Titel.
+    /// After a server download: find the (now existing) server episode id for a
+    /// feed title. The server `audioURL` is the ABS path URL, not the origin
+    /// enclosure → match by title.
     func serverEpisodeId(showId: String, title: String) -> String? {
         shows.first { $0.id == showId }?
             .episodes.first { $0.title == title }?.guid
     }
 
-    /// Show am Server LÖSCHEN (entfernt server-seitig alles inkl. Historie —
-    /// nur für die ausdrückliche „Endgültig löschen"-Aktion, nicht fürs Archiv).
+    /// DELETE a show on the server (removes everything server-side incl.
+    /// history — only for the explicit "delete permanently" action, not archive).
     func deleteShowOnServer(showId: String) async -> Bool {
         do {
             try await client.deleteLibraryItem(itemId: Self.split(showId).show)
@@ -377,7 +377,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         }
     }
 
-    /// Ungültige Pfad-Zeichen für den Server-Ordnernamen ersetzen.
+    /// Replace invalid path characters for the server folder name.
     private static func sanitizePathComponent(_ s: String) -> String {
         let invalid = CharacterSet(charactersIn: "/\\:*?\"<>|")
         let cleaned = s.components(separatedBy: invalid).joined(separator: " ")
@@ -385,7 +385,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         return cleaned.isEmpty ? "Podcast" : cleaned
     }
 
-    /// Episode am Server als (un)gehört markieren und Fortschritt nachziehen.
+    /// Mark an episode (un)played on the server and re-pull progress.
     func setPlayed(_ item: LibraryItem, _ played: Bool) async {
         let (showId, episodeId) = Self.split(item.id)
         guard let episodeId else { return }
@@ -397,7 +397,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         await refreshProgress()
     }
 
-    /// Gehört-Zustand einer ABS-Episode aus dem Server-Fortschritt.
+    /// Played state of an ABS episode from the server progress.
     func state(forEpisodeId itemId: String, duration: Double) -> EpisodePlayState {
         guard let bp = episodeProgress[itemId] else { return .unplayed }
         if bp.isFinished { return .played }
@@ -408,8 +408,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         return .unplayed
     }
 
-    /// Einzelne Episode als LibraryItem aus dem geladenen Cache (für
-    /// „Weiterhören"/Wiederherstellen) — synchron, ohne Netz.
+    /// Single episode as a LibraryItem from the loaded cache (for
+    /// resume/restore) — synchronous, no network.
     func libraryItem(forEpisodeId itemId: String) -> LibraryItem? {
         for show in shows {
             if let episode = show.episodes.first(where: { $0.guid == itemId }) {
@@ -446,8 +446,8 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             id: "abspod:\(detail.id)",
             title: meta?.title ?? "",
             author: meta?.authorName,
-            // Cover läuft über coverURL(forItemId:) — hier als String mitgeben,
-            // damit auch die reinen URL-Zugriffe der RSS-UI (ShowTile) greifen.
+            // Cover goes via coverURL(forItemId:) — pass it as a string here too
+            // so the pure URL accesses of the RSS UI (ShowTile) work as well.
             artworkURL: client.coverURL(forItemId: detail.id)?.absoluteString,
             description: meta?.description,
             feedURL: meta?.feedUrl ?? "",
