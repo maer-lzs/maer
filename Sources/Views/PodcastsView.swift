@@ -225,10 +225,6 @@ private struct PodcastFeaturedCard: View {
             .padding(.bottom, 40)   // Platz für die Overlay-Pille/Download
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        // Die statischen Karteninhalte (Bild + Verlauf + Badge + Text) in EINE
-        // Ebene rastern → beim horizontalen Scrollen wird nur diese Textur
-        // bewegt statt Verlauf/Bild/Clip pro Frame neu zusammengesetzt.
-        .drawingGroup()
     }
 
     @ViewBuilder
