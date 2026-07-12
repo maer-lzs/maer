@@ -1,26 +1,25 @@
 import SwiftUI
 
-/// Persistente Leiste am unteren Bildschirmrand, solange eine Wiedergabe
-/// aktiv ist. Schwebt als abgerundete Kapsel mit Rand zu den Bildschirm-
-/// kanten — angelehnt an Apples aktuelles "Liquid Glass"-Design (iOS 26),
-/// mit einem Material-Rückfallnetz für ältere iOS-Versionen.
+/// Persistent bar at the bottom of the screen while playback is active. Floats
+/// as a rounded capsule with a margin to the screen edges — modeled on Apple's
+/// current "Liquid Glass" design (iOS 26), with a material fallback for older iOS
+/// versions.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// Der aktive Player, direkt als beobachtetes Objekt statt nur über
-    /// `coordinator.viewModel` gelesen — sonst bemerkt SwiftUI Änderungen an
-    /// dessen eigenen @Published-Werten (isPlaying, currentTime, …) nicht
-    /// zuverlässig, weil `coordinator` selbst nur benachrichtigt, wenn
-    /// `viewModel` komplett neu GESETZT wird, nicht wenn sich Werte DARIN
-    /// ändern. Das war der Grund, warum Play/Pause nicht immer sofort
-    /// umgeschaltet hat.
+    /// The active player, observed directly instead of only via
+    /// `coordinator.viewModel` — otherwise SwiftUI does not reliably notice
+    /// changes to its own @Published values (isPlaying, currentTime, …), because
+    /// `coordinator` itself only notifies when `viewModel` is completely re-SET,
+    /// not when values WITHIN it change. That was why play/pause did not always
+    /// toggle immediately.
     @ObservedObject var viewModel: PlayerViewModel
     let item: LibraryItem
-    /// Kompakt-Modus der eingeklappten Bottom-Zone: AirPlay entfällt (Platz).
+    /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
     var compact: Bool = false
-    /// Öffnet den vollen Player. Kommt als Callback rein statt als eigener
-    /// NavigationLink, weil diese Leiste (bewusst, damit sie auf jeder Ebene
-    /// sichtbar bleibt) außerhalb des NavigationStack hängt und ein
-    /// NavigationLink dort keinen Stack zum Navigieren finden würde.
+    /// Opens the full player. Passed in as a callback instead of an own
+    /// NavigationLink, because this bar (deliberately, so it stays visible on
+    /// every level) hangs outside the NavigationStack and a NavigationLink would
+    /// find no stack to navigate there.
     let onOpenPlayer: () -> Void
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -33,12 +32,11 @@ struct MiniPlayerBar: View {
         horizontalSizeClass == .compact && verticalSizeClass == .regular
     }
 
-    /// Schwellenwert, ab dem genug Platz für Titeltext UND alle Zusatz-
-    /// Buttons gleichzeitig da ist. Bewusst an der TATSÄCHLICH verfügbaren
-    /// Breite gemessen, nicht am Geräte-Typ — in einem schmalen Fenster
-    /// (z. B. Split View, Stage Manager, ein verkleinertes Mac-Fenster) gilt
-    /// ein iPad sonst weiterhin als "hat immer Platz", obwohl es das im
-    /// konkreten Fenster gerade nicht hat.
+    /// Threshold above which there is enough room for title text AND all the
+    /// extra buttons at once. Deliberately measured against the ACTUALLY
+    /// available width, not the device type — in a narrow window (e.g. Split
+    /// View, Stage Manager, a shrunk Mac window) an iPad would otherwise still
+    /// count as "always has room", though in the concrete window it does not.
     private let extendedControlsThreshold: CGFloat = 360
 
     private var showExtendedControls: Bool {
@@ -51,16 +49,15 @@ struct MiniPlayerBar: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            // Der Klickbereich füllt bewusst den gesamten verfügbaren Platz
-            // bis zu den Transport-Buttons — auch bei einem sehr kurzen
-            // Buchtitel bleibt der Tippbereich groß, statt sich eng um den
-            // Text zu ziehen.
+            // The tap area deliberately fills the whole available space up to
+            // the transport buttons — even with a very short book title the tap
+            // area stays large instead of hugging the text tightly.
             Button(action: onOpenPlayer) {
                 HStack(spacing: 12) {
-                    // Fortschritt als Ring ums Cover statt als Balken — im
-                    // Audible-Stil, passt sich der abgerundeten Kapselform
-                    // natürlicher an als eine gerade Linie. Bewusst kleiner
-                    // gehalten, damit mehr Platz für den Titeltext bleibt.
+                    // Progress as a ring around the cover instead of a bar —
+                    // Audible style, fits the rounded capsule shape more
+                    // naturally than a straight line. Kept deliberately small so
+                    // more room remains for the title text.
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.title)
@@ -97,8 +94,8 @@ struct MiniPlayerBar: View {
             .accessibilityLabel(Text(item.title))
             .accessibilityHint(Text("Opens the player"))
 
-            // Skip-Buttons nur, wenn genug Platz ist UND nicht im iPhone-
-            // Hochformat — dort soll mehr Titel sichtbar sein.
+            // Skip buttons only when there is enough room AND not in iPhone
+            // portrait — there more of the title should be visible.
             if showExtendedControls && !isCompactPortrait {
                 Button {
                     viewModel.skip(by: -viewModel.skipInterval)
@@ -125,16 +122,16 @@ struct MiniPlayerBar: View {
                 .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
             }
 
-            // Ausgabequelle wechseln — bleibt auch im iPhone-Hochformat, nur
-            // ein schlichtes weißes Icon direkt auf der Leiste.
+            // Switch output route — stays in iPhone portrait too, just a plain
+            // white icon directly on the bar.
             if !compact && (showExtendedControls || isCompactPortrait) {
                 AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 48)
             }
 
-            // Play/Pause: schlichtes weißes Icon, kein eigener Hintergrund —
-            // wieder dieselbe Größe wie die anderen Transport-Buttons.
+            // Play/pause: plain white icon, no own background — again the same
+            // size as the other transport buttons.
             Button {
                 viewModel.togglePlayPause()
             } label: {
@@ -161,13 +158,13 @@ struct MiniPlayerBar: View {
         )
     }
 
-    /// Cover mit dünnem, kreisförmigem Fortschrittsring — liegt am Rand UMS
-    /// Cover herum (Ring etwas größer als das Cover), nicht als kleinerer
-    /// Kreis darüber.
+    /// Cover with a thin circular progress ring — sits at the edge AROUND the
+    /// cover (ring slightly larger than the cover), not as a smaller circle on
+    /// top.
     private var coverWithProgressRing: some View {
         let coverSize: CGFloat = 34
-        // Ring so groß wie Cover + Strichstärke: die Innenkante des Rings liegt
-        // damit direkt auf der Coverkante, ohne Spalt dazwischen.
+        // Ring as large as cover + stroke width: the inner edge of the ring thus
+        // sits directly on the cover edge, with no gap in between.
         let ringSize: CGFloat = 36
 
         return ZStack {
