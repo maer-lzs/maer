@@ -48,9 +48,9 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             uiImage = image
             return
         }
-        // Ein automatischer zweiter Versuch nach kurzer Pause — deckt die
-        // meisten kurzen Netzwerk-Aussetzer/Server-Hakler ab, ohne dass der
-        // Nutzer manuell etwas tun muss.
+        // An automatic second attempt after a short pause — covers most brief
+        // network dropouts/server hiccups without the user having to do anything
+        // manually.
         if let image = await fetch(url, retryDelay: 800_000_000) {
             uiImage = image
         }

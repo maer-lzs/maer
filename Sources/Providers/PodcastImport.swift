@@ -27,8 +27,8 @@ enum PodcastImport {
     /// (which is also in our RSS feed).
     nonisolated struct AppleProgress: Sendable {
         let enclosureURL: String
-        let playhead: Double   // Sekunden
-        let duration: Double   // Sekunden (0 wenn unbekannt)
+        let playhead: Double   // seconds
+        let duration: Double   // seconds (0 if unknown)
         let isPlayed: Bool
     }
 
@@ -141,7 +141,7 @@ enum PodcastImport {
     }
 }
 
-/// Minimaler OPML-Parser: sammelt alle `xmlUrl`-Attribute (Feed-URLs).
+/// Minimal OPML parser: collects all `xmlUrl` attributes (feed URLs).
 /// `nonisolated` so it can be created from the nonisolated `parseOPML` (the
 /// project default is otherwise MainActor isolation).
 private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {

@@ -41,7 +41,7 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var title: String
     var audioURL: String
     var pubDate: Double             // ms epoch
-    var duration: Double            // Sekunden (0 wenn unbekannt)
+    var duration: Double            // seconds (0 if unknown)
     var description: String?
     var imageURL: String?
     /// Podcasting 2.0 chapters (`<podcast:chapters url=… type=json+chapters>`).
@@ -199,7 +199,7 @@ final class PodcastSubscriptions: ObservableObject {
         d.removeObject(forKey: oldKey)
     }
 
-    // MARK: - Abos
+    // MARK: - Subscriptions
 
     /// Subscribe to a feed (loads + parses immediately). Already-present feeds
     /// are only refreshed.
@@ -238,7 +238,7 @@ final class PodcastSubscriptions: ObservableObject {
         var added: [PodcastEpisode] = []
         for pi in piEpisodes {
             guard let audio = pi.enclosureUrl, !audio.isEmpty else { continue }
-            let guid = "rss:\(key):\(pi.guid ?? audio)"   // wie RSSFeedParser
+            let guid = "rss:\(key):\(pi.guid ?? audio)"   // like RSSFeedParser
             guard seen.insert(guid).inserted else { continue }
             added.append(PodcastEpisode(
                 guid: guid,
@@ -294,7 +294,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// into `localPosition` (the same store the player uses).
     private func applyAppleProgress(_ progress: [PodcastImport.AppleProgress]) -> Int {
         guard !progress.isEmpty else { return 0 }
-        // Nach normalisierter Enclosure-URL indizieren (Query/Scheme egal).
+        // Index by normalized enclosure URL (query/scheme don't matter).
         var byURL: [String: PodcastImport.AppleProgress] = [:]
         for p in progress { byURL[Self.normalizeEnclosure(p.enclosureURL)] = p }
 
@@ -320,14 +320,14 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
         if applied > 0 {
-            shows = updated   // ggf. korrigierte Dauern übernehmen (didSet baut Index neu)
+            shows = updated   // adopt possibly corrected durations (didSet rebuilds the index)
             save()
             PodcastProgressStore.shared.reload()
         }
         return applied
     }
 
-    /// Enclosure-URLs vergleichbar machen: Query & Scheme raus, klein, /-trim.
+    /// Make enclosure URLs comparable: drop query & scheme, lowercase, trim /.
     nonisolated static func normalizeEnclosure(_ raw: String) -> String {
         var s = raw.lowercased()
         if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
@@ -337,8 +337,7 @@ final class PodcastSubscriptions: ObservableObject {
         return s
     }
 
-    /// Alle Feeds neu laden (Pull-to-refresh). Fehlgeschlagene behalten ihren
-    /// Cache-Stand.
+    /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.
     func refreshAll() async {
         var updated = shows
         for (index, show) in shows.enumerated() {
@@ -401,7 +400,7 @@ final class PodcastSubscriptions: ObservableObject {
         return URL(string: s)
     }
 
-    // MARK: - Laden + Parsen
+    // MARK: - Loading + Parsing
 
     private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
         // Private/premium feeds: send the Basic auth header if stored.
@@ -500,7 +499,7 @@ final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
             showCategories.append(cat)
         }
-        // Enclosure (RSS) bzw. Media/Link mit Audio-Typ
+        // Enclosure (RSS) or media/link with audio type
         if el == "enclosure", let url = attrs["url"], (attrs["type"]?.hasPrefix("audio") ?? true) {
             iAudio = url
         }

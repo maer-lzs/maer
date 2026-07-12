@@ -128,13 +128,13 @@ final class RSSProvider: AudioProvider {
 
     private func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
         LibraryItem(
-            id: episode.guid,   // bereits "rss:<feed>:<guid>"
+            id: episode.guid,   // already "rss:<feed>:<guid>"
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: episode.title,
-                    authorName: show.title,     // Show als „Autor" → Anzeige „Show — Folge"
+                    authorName: show.title,     // show as "author" → display "Show — Episode"
                     narratorName: nil,
-                    seriesName: show.title,      // gruppiert Folgen unter der Show
+                    seriesName: show.title,      // groups episodes under the show
                     genres: nil,
                     publishedYear: nil,
                     description: episode.description

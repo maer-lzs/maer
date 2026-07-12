@@ -1,7 +1,7 @@
 import SwiftUI
 import Combine
 
-/// Folgenliste einer Show mit Kopf (Artwork, Titel, Autor, Beschreibung).
+/// Episode list of a show with header (artwork, title, author, description).
 struct PodcastShowView: View {
     let show: PodcastShow
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -37,8 +37,8 @@ struct PodcastShowView: View {
         _newestFirst = AppStorage(wrappedValue: true, "podcastSort.\(show.id)")
     }
 
-    /// Folgen dieser Show als LibraryItems, nach Umschalter sortiert — lazy im
-    /// Body (nur wenn die Seite wirklich angezeigt wird).
+    /// Episodes of this show as LibraryItems, sorted by the toggle — lazy in the
+    /// body (only when the page is actually shown).
     private var sortedItems: [LibraryItem] {
         AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
@@ -47,7 +47,7 @@ struct PodcastShowView: View {
     }
 
     var body: some View {
-        // `List` (statt ScrollView) → Swipe-Aktionen an den Folgen-Zeilen.
+        // `List` (instead of ScrollView) → swipe actions on the episode rows.
         List {
             header
                 .listRowInsets(EdgeInsets())
@@ -171,7 +171,7 @@ struct PodcastShowView: View {
         if isServerShow {
             Menu {
                 Button {
-                    podcastUnsubscribe(show)   // ABS archivieren + evtl. RSS-Dopplung entfernen
+                    podcastUnsubscribe(show)   // archive ABS + remove possible RSS duplicate
                     dismiss()
                 } label: {
                     Label("End subscription (archive)", systemImage: "archivebox")
@@ -186,7 +186,7 @@ struct PodcastShowView: View {
             }
         } else {
             Button(role: .destructive) {
-                podcastUnsubscribe(show)   // aus beiden Quellen (RSS + evtl. ABS)
+                podcastUnsubscribe(show)   // from both sources (RSS + possibly ABS)
                 dismiss()
             } label: {
                 Label("Unsubscribe", systemImage: "minus.circle")
@@ -221,8 +221,8 @@ struct PodcastShowView: View {
                 Text("Available episodes").font(.title3).bold().padding(.horizontal)
                 LazyVStack(spacing: 0) {
                     ForEach(available) { ep in
-                        // Tippen = sofort vom Original-Host streamen (rss:-Item,
-                        // Fortschritt lokal+iCloud); Pfeil = am Server sichern.
+                        // Tap = stream immediately from the original host (rss:
+                        // item, progress local+iCloud); arrow = save on the server.
                         let item = feedEpisodePlayItem(show: liveShow, feed: ep)
                         HStack(spacing: 12) {
                             Image(systemName: "play.circle").font(.title2).foregroundStyle(AppTheme.accent)

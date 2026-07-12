@@ -1,9 +1,9 @@
 import SwiftUI
 
 
-/// Voller Player mit Drag-to-dismiss. Eigene View mit LOKALEM Drag-State:
-/// pro Ziehframe wird nur dieses Overlay neu ausgewertet, nicht die ganze
-/// Bibliothek — das war die Ursache des Rucklers beim Ziehstart.
+/// Full player with drag-to-dismiss. Its own view with LOCAL drag state: on each
+/// drag frame only this overlay is re-evaluated, not the whole library — that was
+/// the cause of the stutter at drag start.
 struct FullPlayerOverlay: View {
     @ObservedObject var coordinator: PlayerCoordinator
     let topInset: CGFloat
@@ -51,7 +51,7 @@ struct FullPlayerOverlay: View {
                 // height → 0), otherwise a dim flash on mount/unmount.
                 .opacity(Double(visual) * 0.45 * Double(1 - min(1, offset / presentHeight)))
 
-            // Das GANZE Glas-Sheet bewegt sich als eine Einheit mit dem Finger.
+            // The WHOLE glass sheet moves as one unit with the finger.
             ZStack(alignment: .top) {
                 PlayerScreen(
                     coordinator: coordinator,
@@ -156,7 +156,7 @@ struct FullPlayerOverlay: View {
             .highPriorityGesture(dismissGesture)
     }
 
-    /// Global gemessen (Offset-Container), minimumDistance 0.
+    /// Measured globally (offset container), minimumDistance 0.
     private var dismissGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in

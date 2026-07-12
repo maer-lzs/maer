@@ -27,8 +27,8 @@ struct PodcastFeaturedCard: View {
     }
 
     var body: some View {
-        // Tap auf die Karte spielt direkt weiter (Apple-Stil); Detail per
-        // Info-Pille unten links.
+        // Tapping the card resumes directly (Apple style); detail via the info
+        // pill at the bottom left.
         Button {
             Task { await playerCoordinator.open(item: item) }
         } label: {
@@ -95,7 +95,7 @@ struct PodcastFeaturedCard: View {
                     .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
             }
             .padding(14)
-            .padding(.bottom, 40)   // Platz für die Overlay-Pille/Download
+            .padding(.bottom, 40)   // room for the overlay pill/download
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -123,8 +123,8 @@ struct PodcastFeaturedCard: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            // Solide, halbtransparente Kapsel statt Material-Blur — Blur ist
-            // beim horizontalen Scrollen pro Frame teuer.
+            // Solid, semi-transparent capsule instead of material blur — blur is
+            // expensive per frame during horizontal scrolling.
             .background(Capsule().fill(.white.opacity(0.22)))
         }
         .buttonStyle(.plain)
@@ -147,8 +147,8 @@ struct ShowTile: View {
     }
 }
 
-/// Reiche Episoden-Zeile: Cover, Show + Titel, Datum/Restzeit, Fortschritt,
-/// Play- und Download-Button. Tap spielt ab.
+/// Rich episode row: cover, show + title, date/remaining time, progress,
+/// play and download button. Tap plays.
 struct PodcastEpisodeRow: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -286,7 +286,7 @@ struct PodcastEpisodeRow: View {
 /// arrow → ring while loading → checkmark when downloaded. Reused in card + row.
 struct PodcastDownloadButton: View {
     let item: LibraryItem
-    /// Icon-Farbe — Default passt in Listen; auf farbigem/dunklem Grund `.white`.
+    /// Icon color — the default fits in lists; use `.white` on a colored/dark background.
     var tint: Color = .secondary
     @ObservedObject private var downloads = DownloadManager.shared
 
@@ -316,4 +316,4 @@ struct PodcastDownloadButton: View {
     }
 }
 
-// MARK: - Wiedergabe-Zustand
+// MARK: - Playback state

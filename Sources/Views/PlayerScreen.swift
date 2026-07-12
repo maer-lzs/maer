@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// Zeigt die aktuell im PlayerCoordinator laufende Session als vollen
-/// Player screen. Loads nothing itself anymore — the coordinator handles
+/// Shows the session currently running in the PlayerCoordinator as the full
+/// player screen. Loads nothing itself anymore — the coordinator handles
 /// loading so the same session stays visible from the mini-player bar too.
 struct PlayerScreen: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// Passed through from the overlay presentation (drag-to-dismiss).
     var dragProgress: CGFloat = 0
-    /// Eck-Radius des Overlay-Sheets — wird an PlayerView durchgereicht.
+    /// Corner radius of the overlay sheet — passed through to PlayerView.
     var cornerRadius: CGFloat = 0
     /// Explizite Safe-Area-Insets (Root ignoriert Safe Areas).
     var topInset: CGFloat = 0

@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// Detailseite eines Buchs: Cover, Titel, Autor, Beschreibung und ein
-/// Play-Button, der die Wiedergabe im Coordinator startet und zum vollen
-/// Player navigiert. Wird beim Tippen auf ein Buch in der Bibliothek gezeigt.
+/// Detail page of a book: cover, title, author, description and a play button
+/// that starts playback in the coordinator and navigates to the full player.
+/// Shown when tapping a book in the library.
 ///
 /// Three layouts depending on available space:
 /// - iPhone portrait: large cover across the full width with fade-out
@@ -158,12 +158,12 @@ struct BookDetailScreen: View {
                 .reportsBottomBarScroll()
             }
         }
-        // Cover-Spalte bis an die Bildschirmkanten.
+        // Cover column all the way to the screen edges.
         .ignoresSafeArea()
     }
 
-    /// Kapitel-Link, Fehlertext und Beschreibung — geteilt zwischen Hoch- und
-    /// Querformat-Layout.
+    /// Chapter link, error text and description — shared between the portrait and
+    /// landscape layouts.
     @ViewBuilder
     private func trailingSections(isHero: Bool) -> some View {
         if let chapters = detail?.media.chapters, !chapters.isEmpty {
@@ -203,9 +203,9 @@ struct BookDetailScreen: View {
             if !useSideBySideLayout {
                 // Gradient as the BACKGROUND for the whole upper area, like the
                 // large player — cover and title sit freely on top.
-                // Kein Schwarz mehr ganz oben (startet direkt mit der
-                // Cover-Farbe), wird bis knapp unter die Buttons hin
-                // weich zu Schwarz und bleibt danach schwarz.
+                // No more black at the very top (starts directly with the cover
+                // color), fades softly to black just below the buttons and stays
+                // black after that.
                 LinearGradient(
                     stops: [
                         .init(color: colorLoader.topAccent, location: 0.00),
@@ -258,12 +258,12 @@ struct BookDetailScreen: View {
                     .frame(maxWidth: 600)
                     .frame(maxWidth: .infinity)
                 }
-                // Ohne das hier hat die ScrollView selbst eine blickdichte
-                // Standard fill that sits over the gradient in the background.
+                // Without this the ScrollView itself has an opaque default fill
+                // that sits over the gradient in the background.
                 .scrollContentBackground(.hidden)
                 .reportsBottomBarScroll()
-                // Muss auf der ScrollView selbst sitzen (Kind kann die
-                // Sicherheitszone nicht durchbrechen).
+                // Must sit on the ScrollView itself (a child cannot break through
+                // the safe area).
                 .ignoresSafeArea(edges: .top)
                 // Portrait/hero layout is ALWAYS dark (cover gradient):
                 // pin the scheme so .primary text and glass stay light-on-dark.
@@ -295,7 +295,7 @@ struct BookDetailScreen: View {
 
     // MARK: - Play/Pause
 
-    /// Play-Button + optionaler „Von Anfang starten"-Link darunter.
+    /// Play button + optional "Start from beginning" link below it.
     @ViewBuilder
     private func playArea(withPadding: Bool) -> some View {
         VStack(spacing: 8) {
@@ -310,8 +310,8 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// Bewusster Neustart: Sprung auf 0 gilt als Nutzeraktion und wird sofort
-    /// gesynct (kein Konflikt-Dialog).
+    /// Deliberate restart: a jump to 0 counts as a user action and is synced
+    /// immediately (no conflict dialog).
     private func restartFromBeginning() async {
         if coordinator.activeItem?.id == entry.id, let vm = coordinator.viewModel {
             await vm.seek(to: 0)
@@ -322,7 +322,7 @@ struct BookDetailScreen: View {
         }
     }
 
-    // MARK: - Kapitel
+    // MARK: - Chapters
 
     private func chapterLink(_ chapters: [ABSChapter], isHero: Bool) -> some View {
         NavigationLink {
@@ -498,9 +498,9 @@ struct BookDetailScreen: View {
     private func toggleFinishedMark() async {
         errorMessage = nil
         do {
-            // Frischen Stand holen statt dem evtl. veralteten `detail` zu
-            // vertrauen — und danach IMMER currentTime + duration + isFinished
-            // send together. A PATCH with only {"isFinished": ...} leaves it to
+            // Fetch a fresh state instead of trusting the possibly stale
+            // `detail` — and then ALWAYS send currentTime + duration + isFinished
+            // together. A PATCH with only {"isFinished": ...} leaves it to
             // the server what to do with currentTime — exactly that caused the
             // real progress to be lost after played→unplayed.
             let fresh = try await coordinator.provider.fetchItemDetail(itemId: entry.id)
@@ -514,7 +514,7 @@ struct BookDetailScreen: View {
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
             } catch {
-                // Statusentscheidung nicht verlieren: queuen, Flush reicht nach.
+                // Don't lose the status decision: queue it, the flush sends it later.
                 SyncQueue.shared.enqueue(
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target
                 )
@@ -526,8 +526,8 @@ struct BookDetailScreen: View {
             await libraryViewModel.refreshProgress()
         } catch {
             if NetworkStatus.isOfflineError(error) {
-                // Schon der Frisch-Abruf scheiterte (offline): mit lokal
-                // bekannten Werten queuen statt die Entscheidung zu verlieren.
+                // Even the fresh fetch failed (offline): queue with locally known
+                // values instead of losing the decision.
                 let target = !isFinished
                 let duration = entry.item.media?.duration ?? 0
                 let currentTime = (entry.progress?.fraction ?? 0) * duration
@@ -696,8 +696,8 @@ struct BookDetailScreen: View {
 }
 
 /// Chapter list of the detail page (lazy List — books sometimes have 400+ chapters).
-/// Tippen startet die Wiedergabe ab diesem Kapitel; beim aktiven Buch wird
-/// das laufende Kapitel markiert.
+/// Tapping starts playback from this chapter; for the active book the current
+/// chapter is highlighted.
 private struct DetailChapterList: View {
     let bookTitle: String
     let chapters: [ABSChapter]

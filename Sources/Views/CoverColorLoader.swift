@@ -14,14 +14,14 @@ final class CoverColorLoader: ObservableObject {
     @Published var topAccent: Color = .gray
     @Published var bottomAccent: Color = .gray
 
-    /// Fertige Farben je Cover-URL — einmal berechnet, dann sofort wieder da.
-    /// Nimmt die Farb-Arbeit aus dem Scroll heraus (Karten, die erneut
-    /// erscheinen, treffen den Cache statt neu zu rechnen).
+    /// Ready-made colors per cover URL — computed once, then instantly available.
+    /// Takes the color work out of scrolling (cards that reappear hit the cache
+    /// instead of recomputing).
     private static var colorCache: [URL: (accent: Color, top: Color, bottom: Color)] = [:]
 
     func load(from url: URL?) async {
         guard let url else { return }
-        await Self.prewarm(url: url)   // stellt sicher, dass die Farbe im Cache ist
+        await Self.prewarm(url: url)   // ensures the color is in the cache
         if let cached = Self.colorCache[url] {
             accent = cached.accent
             topAccent = cached.top

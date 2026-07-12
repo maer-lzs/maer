@@ -16,7 +16,7 @@ extension EnvironmentValues {
 }
 
 extension View {
-    /// Unten so viel Platz lassen, wie die schwebende Bottom-Zone hoch ist.
+    /// Leave as much space at the bottom as the floating bottom zone is tall.
     func bottomBarClearance() -> some View {
         modifier(BottomBarClearance())
     }

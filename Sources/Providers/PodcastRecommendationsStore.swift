@@ -28,8 +28,8 @@ final class PodcastRecommendationsStore: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        let listening = listeningByShow()                 // showId → Hörsekunden
-        let topAuthors = weightedAuthors(listening)        // meistgehörte Autoren
+        let listening = listeningByShow()                 // showId → seconds listened
+        let topAuthors = weightedAuthors(listening)        // most-listened authors
         let topCats = weightedCategories(listening)        // gewichtete Kategorien
         let lang = dominantLanguage()
 
@@ -40,7 +40,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             : ITunesDirectory()
 
         var pool: [PodcastSearchResult] = []
-        var authorHits = Set<String>()   // normalisierte Feed-URLs aus Autor-Expansion
+        var authorHits = Set<String>()   // normalized feed URLs from author expansion
 
         // 1. Same author/publisher: fetch their other shows via search.
         for author in topAuthors.prefix(3) {
@@ -164,7 +164,7 @@ final class PodcastRecommendationsStore: ObservableObject {
             if groups[key]!.count < 3 { groups[key]!.append(r) }
         }
 
-        // 3. Round-Robin: je Runde ein Treffer pro Autor → durchmischt.
+        // 3. Round-robin: one hit per author each round → interleaved.
         var result: [PodcastSearchResult] = []
         var round = 0, progressed = true
         while progressed {

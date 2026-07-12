@@ -57,7 +57,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Only the archived shows (to reactivate).
     var archivedShows: [PodcastShow] { shows.filter { archivedShowIds.contains($0.id) } }
 
-    /// Show archivieren/reaktivieren (persistiert, KEIN Server-Eingriff).
+    /// Archive/reactivate a show (persisted, NO server interaction).
     func setArchived(_ showId: String, _ archived: Bool) {
         if archived { archivedShowIds.insert(showId) } else { archivedShowIds.remove(showId) }
         UserDefaults.standard.set(Array(archivedShowIds), forKey: Self.archiveKey)
@@ -488,7 +488,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: episode.title,
-                authorName: show.media.metadata?.title,   // Show-Titel als „Autor"
+                authorName: show.media.metadata?.title,   // show title as "author"
                 narratorName: nil,
                 seriesName: show.media.metadata?.title,
                 genres: nil,
@@ -496,7 +496,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                 description: episode.description
             ),
             duration: episode.duration ?? track?.duration,
-            chapters: episode.chapters,   // vom Server mitgelieferte Kapitel
+            chapters: episode.chapters,   // chapters delivered by the server
             tracks: track.map { [$0] }
         )
         return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)

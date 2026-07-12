@@ -9,8 +9,8 @@ extension PlayerViewModel {
     private static var lastWidgetWriteAt: TimeInterval = 0
     private static var lastWidgetCoverItemId: String?
 
-    /// - Parameter force: true bei Zustandswechseln (Play/Pause/Laden/Ende);
-    ///   false beim periodischen Ticken (greift max. 1×/Minute).
+    /// - Parameter force: true on state changes (play/pause/load/end); false on
+    ///   the periodic tick (applies at most 1×/minute).
     func updateWidgetSnapshot(force: Bool = false) {
         guard let item, duration > 0 else { return }
         let now = Date().timeIntervalSince1970
@@ -27,8 +27,8 @@ extension PlayerViewModel {
             isPlaying: isPlaying
         ).save()
 
-        // Cover nur beim Buchwechsel kopieren (Thumbnail-Stufe reicht dem
-        // Widget locker).
+        // Copy the cover only on a book change (the thumbnail tier is plenty for
+        // the widget).
         if Self.lastWidgetCoverItemId != item.id {
             Self.lastWidgetCoverItemId = item.id
             let coverURL = provider.coverURL(forItemId: item.id)
@@ -44,7 +44,7 @@ extension PlayerViewModel {
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
     }
 
-    /// Nutzt die bestehenden Katalog-Keys ("%lld hr %lld min left").
+    /// Uses the existing catalog keys ("%lld hr %lld min left").
     private static func widgetRemainingText(_ seconds: Double) -> String {
         let hours = Int(seconds) / 3600
         let minutes = (Int(seconds) % 3600) / 60

@@ -38,8 +38,8 @@ struct StatsView: View {
         .bottomBarClearance()
     }
 
-    /// Schlichte Capsule-Balken; Wochenend-/Tagesbeschriftung nur unter
-    /// jedem zweiten Balken, damit nichts kollidiert.
+    /// Plain capsule bars; weekday/day label only under every other bar so
+    /// nothing collides.
     private var barChart: some View {
         let days = stats.dailySeconds(lastDays: 14)
         let maxSeconds = max(days.map(\.seconds).max() ?? 0, 1)

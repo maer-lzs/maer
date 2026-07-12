@@ -12,7 +12,7 @@ enum PodcastRefreshService {
 
     // MARK: - BGTask
 
-    /// Handler registrieren — MUSS vor App-Fertigstart laufen (AppDelegate).
+    /// Register the handler — MUST run before app launch finishes (AppDelegate).
     static func registerBackgroundTask() {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { task in
             let bg = task as? BGAppRefreshTask
@@ -35,7 +35,7 @@ enum PodcastRefreshService {
 
     // MARK: - Ablauf
 
-    /// Alle Podcast-Quellen aktualisieren, neue Folgen melden, Auto-Download.
+    /// Refresh all podcast sources, report new episodes, auto-download.
     static func run() async {
         await PodcastSubscriptions.shared.refreshAll()
         await GPodderSync.shared.reconcile()

@@ -37,7 +37,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         /// Connection lost, current state NOT written yet — but nothing is (yet)
         /// in the queue (no syncProgress failure).
         case offline
-        /// Echter Fehler (kein reines Offline-Problem).
+        /// Real error (not a pure offline problem).
         case failed
 
         var label: String {
@@ -348,7 +348,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Laden
+    // MARK: - Loading
 
     /// - Parameter isOfflineFallback: true when this book was opened via the
     ///   offline metadata cache (server unreachable) instead of a fresh server
@@ -387,8 +387,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             Task { await DownloadManager.shared.download(item: item, provider: provider) }
         }
 
-        // Kernregel beim Start: Serverstand gewinnt, nie bei 0 anfangen,
-        // wenn der Server schon Fortschritt kennt.
+        // Core rule at start: the server state wins, never start at 0 when the
+        // server already knows progress.
         let serverProgress = item.userMediaProgress?.currentTime ?? 0
         let serverUpdateMs = item.userMediaProgress?.lastUpdate ?? 0
         var startTime = serverProgress
@@ -541,9 +541,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         return true
     }
 
-    /// Erkennt das BUCH-Ende (letztes Item fertig): sofort als abgeschlossen
-    /// syncen statt auf den 30s-Timer zu warten. Track-Wechsel brauchen keinen
-    /// Beobachter mehr — der Index kommt pro Tick aus `itemTrackIndex`.
+    /// Detects the BOOK end (last item finished): sync as finished immediately
+    /// instead of waiting for the 30s timer. Track changes no longer need an
+    /// observer — the index comes per tick from `itemTrackIndex`.
     private func observeBookEnd(lastItem: AVPlayerItem?) {
         if let observer = trackAdvanceObserver {
             NotificationCenter.default.removeObserver(observer)
@@ -608,7 +608,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         Task { await seek(to: max(0, currentTime - rewind), userInitiated: false) }
     }
 
-    /// Startet die Wiedergabe, gleicht aber vorher kurz mit dem Server ab.
+    /// Starts playback, but first briefly reconciles with the server.
     /// Covers the device switch: if you pause on the iPhone and want to continue
     /// on the iPad seconds later, the iPad jumps to the newer server state before
     /// playing — instead of starting from the old local state and overwriting the
@@ -744,7 +744,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func setPlaybackRate(_ rate: Float) {
         playbackRate = rate
         if isPlaying { player?.rate = rate }
-        // Pro Buch merken.
+        // Remember per book.
         if let item {
             UserDefaults.standard.set(rate, forKey: AppStorageKeys.playbackRate(item.id))
         }
@@ -753,7 +753,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func setSkipInterval(_ seconds: Double) {
         skipInterval = seconds
         UserDefaults.standard.set(seconds, forKey: AppStorageKeys.skipInterval)
-        // Lockscreen-Buttons sofort nachziehen.
+        // Update the lock-screen buttons immediately.
         MPRemoteCommandCenter.shared().skipForwardCommand.preferredIntervals = [NSNumber(value: seconds)]
         MPRemoteCommandCenter.shared().skipBackwardCommand.preferredIntervals = [NSNumber(value: seconds)]
     }

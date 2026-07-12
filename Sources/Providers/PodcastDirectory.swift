@@ -14,7 +14,7 @@ struct PodcastSearchResult: Identifiable {
     var id: String { feedURL }
 }
 
-/// Ein durchsuchbares Podcast-Verzeichnis.
+/// A searchable podcast directory.
 protocol PodcastDirectory {
     func search(_ term: String) async throws -> [PodcastSearchResult]
 }
@@ -160,7 +160,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
             let title: String?
             let description: String?
             let enclosureUrl: String?
-            let datePublished: Double?   // Unix-Sekunden
+            let datePublished: Double?   // Unix seconds
             let duration: Double?
             let image: String?
         }

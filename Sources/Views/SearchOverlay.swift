@@ -118,7 +118,7 @@ struct SearchOverlay: View {
                 resultsList
             }
         }
-        // Podcast-Verzeichnis wird per Debounce gesucht (nur im Podcast-Modus).
+        // The podcast directory is searched with a debounce (podcast mode only).
         .task(id: searchText) {
             guard mediaType == .podcasts else { return }
             let term = searchText.trimmingCharacters(in: .whitespaces)

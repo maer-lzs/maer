@@ -69,7 +69,7 @@ struct BookFeaturedCard: View {
                     .frame(maxWidth: .infinity, minHeight: 6, alignment: .topLeading)
             }
             .padding(14)
-            .padding(.bottom, 40)   // Platz für die Overlay-Pille
+            .padding(.bottom, 40)   // room for the overlay pill
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -90,7 +90,7 @@ struct BookFeaturedCard: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Reicher Karten-Inhalt
+    // MARK: - Rich card content
 
     private var remainingText: String? {
         guard let p = entry.progress, p.isStarted else { return nil }
@@ -102,8 +102,8 @@ struct BookFeaturedCard: View {
         return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
     }
 
-    /// Aktuelles Kapitel — aus den (lazy nachgeladenen) Kapiteln, sonst aus den
-    /// evtl. schon vorhandenen Item-Daten.
+    /// Current chapter — from the (lazily loaded) chapters, otherwise from the
+    /// possibly already-present item data.
     private var currentChapter: String? {
         guard let chapters = loadedChapters ?? entry.item.media?.chapters,
               !chapters.isEmpty, let t = entry.progress?.currentTime else { return nil }

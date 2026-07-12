@@ -13,7 +13,7 @@ struct PodcastEpisodeDetailView: View {
     @State private var chapters: [ABSChapter] = []
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
-    /// Show quellen-bewusst: ABS-Folge → aus dem ABS-Store, sonst RSS.
+    /// Source-aware show: ABS episode → from the ABS store, otherwise RSS.
     private var show: PodcastShow? {
         if item.id.hasPrefix("abspod:") {
             return absPodcast.shows.first { $0.episodes.contains { $0.guid == item.id } }
@@ -156,14 +156,14 @@ struct PodcastEpisodeDetailView: View {
         .navigationTitle(show?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        // Kapitel lazy laden (RSS: JSON-Datei, ABS: aus dem Episoden-Objekt).
+        // Load chapters lazily (RSS: JSON file, ABS: from the episode object).
         .task(id: item.id) {
             chapters = (try? await AppSession.shared.provider(for: item.id)
                 .fetchItemDetail(itemId: item.id))?.media.chapters ?? []
         }
     }
 
-    /// Kapitelliste (Podcasting 2.0 / ABS). Tippen spielt ab dieser Stelle.
+    /// Chapter list (Podcasting 2.0 / ABS). Tapping plays from that point.
     @ViewBuilder
     private var chaptersSection: some View {
         if !chapters.isEmpty {
@@ -200,7 +200,7 @@ struct PodcastEpisodeDetailView: View {
         }
     }
 
-    /// Sekunden → „m:ss" bzw. „h:mm:ss".
+    /// Seconds → "m:ss" or "h:mm:ss".
     private func chapterTimestamp(_ seconds: Double) -> String {
         let s = Int(seconds)
         let h = s / 3600, m = (s % 3600) / 60, sec = s % 60

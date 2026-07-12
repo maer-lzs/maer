@@ -103,7 +103,7 @@ struct BookContextMenuItems: View {
             duration = fresh.media.duration ?? 0
             currentTime = fresh.userMediaProgress?.currentTime ?? 0
         } else {
-            // Offline/Fehler: lokal bekannte Werte statt stillem Abbruch.
+            // Offline/error: locally known values instead of a silent abort.
             duration = entry.item.media?.duration ?? 0
             currentTime = (entry.progress?.fraction ?? 0) * duration
         }
@@ -115,7 +115,7 @@ struct BookContextMenuItems: View {
                 isFinished: newIsFinished
             )
         } catch {
-            // Statusentscheidung nicht verlieren: queuen, Flush reicht nach.
+            // Don't lose the status decision: queue it, the flush sends it later.
             SyncQueue.shared.enqueue(
                 itemId: entry.id,
                 currentTime: newIsFinished ? duration : currentTime,
@@ -185,7 +185,7 @@ struct BookCellContextMenu: ViewModifier {
     }
 }
 
-// MARK: - Grid-Zelle
+// MARK: - Grid cell
 
 /// A book cell (cover + title + author + status) incl. navigation to the detail
 /// page and Haptic Touch menu — identical in library and browse.
@@ -242,10 +242,10 @@ struct BookGridCell: View {
     }
 }
 
-// MARK: - Browse-Grid
+// MARK: - Browse grid
 
-/// Cover-Grid einer Gruppe — misst seine Breite selbst und nutzt dieselbe
-/// Spalten-Mathematik wie die Bibliothek (siehe LibraryView-Kommentar).
+/// Cover grid of a group — measures its own width and uses the same column math
+/// as the library (see the LibraryView comment).
 struct BrowseBooksScreen: View {
     let title: String
     let entries: [LibraryEntry]

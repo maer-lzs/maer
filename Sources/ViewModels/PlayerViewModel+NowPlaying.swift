@@ -45,7 +45,7 @@ extension PlayerViewModel {
     func updateNowPlayingInfo() {
         var info: [String: Any] = [:]
         let bookTitle = item?.media.metadata?.title ?? String(localized: "Audiobook")
-        // Kapitel als Titel, Buch als Album — so zeigt der Lockscreen beides.
+        // Chapter as title, book as album — so the lock screen shows both.
         if let chapter = currentChapter {
             info[MPMediaItemPropertyTitle] = chapter.title
             info[MPMediaItemPropertyAlbumTitle] = bookTitle

@@ -1,8 +1,8 @@
 import SwiftUI
 import Combine
 
-/// Reorderbare „Queue"-Seite: umsortieren (`.onMove`/EditButton), per Swipe
-/// entfernen, Tap auf eine Zeile spielt sie (und nimmt sie aus der Queue).
+/// Reorderable "queue" page: reorder (`.onMove`/EditButton), swipe to remove,
+/// tap a row to play it (and remove it from the queue).
 struct PodcastQueueView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var queue = PodcastQueue.shared

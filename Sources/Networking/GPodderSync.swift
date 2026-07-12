@@ -10,10 +10,10 @@ final class GPodderSync {
     private init() {}
 
     struct Report: Equatable {
-        var addedLocally = 0        // vom Server neu abonniert
-        var pushedToServer = 0      // lokale Abos zum Server geschoben
-        var historyPulled = 0       // Episoden-Positionen vom Server übernommen
-        var historyPushed = 0       // Episoden-Positionen zum Server geschoben
+        var addedLocally = 0        // newly subscribed from the server
+        var pushedToServer = 0      // local subscriptions pushed to the server
+        var historyPulled = 0       // episode positions pulled from the server
+        var historyPushed = 0       // episode positions pushed to the server
         var error: String?
     }
 
@@ -105,7 +105,7 @@ final class GPodderSync {
             )
             report.pushedToServer = addToServer.count
         }
-        // Lokale Seite: neue Feeds abonnieren, abbestellte entfernen.
+        // Local side: subscribe to new feeds, remove unsubscribed ones.
         var addedLocallyNorms = Set<String>()
         for norm in addLocally {
             if let raw = serverByNorm[norm], await subs.subscribe(urlString: raw) {
@@ -181,7 +181,7 @@ final class GPodderSync {
                 (ep.guid, show.feedURL, ep.duration)
         }
 
-        // --- Pull: Server → lokal ---
+        // --- Pull: server → local ---
         let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
         let (actions, newSince) = try await client.episodeActions(since: since)
         var pulled = 0
@@ -198,7 +198,7 @@ final class GPodderSync {
         }
         defaults.set(newSince, forKey: AppStorageKeys.gpodderEpisodeSince)
         if pulled > 0 {
-            PodcastProgressStore.shared.reload()   // UI + iCloud-Reconcile anstoßen
+            PodcastProgressStore.shared.reload()   // trigger UI + iCloud reconcile
             PodcastCloudSync.shared.reconcile()
         }
 

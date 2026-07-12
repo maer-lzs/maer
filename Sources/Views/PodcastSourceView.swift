@@ -1,19 +1,19 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Podcasts abonnieren (Einstellungen → Quellen → Podcasts): nach Namen
-/// suchen (Apple/PodcastIndex) und mit einem Tap abonnieren, alternativ per
-/// Feed-URL; abonnierte Shows verwalten. Quellenspezifische Verwaltung,
-/// analog `LocalFilesView` — der Podcast-Tab konsumiert nur.
+/// Subscribe to podcasts (Settings → Sources → Podcasts): search by name
+/// (Apple/PodcastIndex) and subscribe with one tap, or via feed URL; manage
+/// subscribed shows. Source-specific management, analogous to `LocalFilesView`
+/// — the podcast tab only consumes.
 struct PodcastSourceView: View {
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
 
-    /// Neue Abos auf dem ABS-Server anlegen (synchronisiert) statt lokal — nur
-    /// relevant, wenn der Server eine Podcast-Bibliothek hat.
+    /// Create new subscriptions on the ABS server (synced) instead of locally —
+    /// only relevant if the server has a podcast library.
     @State private var subscribeToServer = true
     @State private var subscribeError: String?
-    /// Feed-only-Folge beim Abspielen nach ~30 s automatisch am Server sichern.
+    /// Automatically save a feed-only episode on the server after ~30 s of play.
     @AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true
     /// Use ABS as a podcast source (default OFF — ABS is primarily an audiobook server).
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
@@ -92,7 +92,7 @@ struct PodcastSourceView: View {
         .navigationTitle("Podcasts")
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
-        // Ein-/Ausschalten sofort wirksam: ABS probt bzw. leert seinen Stand.
+        // Toggling takes effect immediately: ABS probes or clears its state.
         .onChange(of: absPodcastsEnabled) { _, _ in
             Task { await absPodcast.refresh() }
         }
@@ -122,7 +122,7 @@ struct PodcastSourceView: View {
         } message: {
             if let subscribeError { Text(subscribeError) }
         }
-        // Debounce: nach Tippen kurz warten, dann suchen.
+        // Debounce: wait briefly after typing, then search.
         .task(id: searchText) {
             let term = searchText.trimmingCharacters(in: .whitespaces)
             guard term.count >= 2 else { results = []; return }
@@ -132,7 +132,7 @@ struct PodcastSourceView: View {
         }
     }
 
-    // MARK: - Suche
+    // MARK: - Search
 
     @ViewBuilder
     private var searchSection: some View {
@@ -210,7 +210,7 @@ struct PodcastSourceView: View {
         }
     }
 
-    /// Bereits abonniert (lokal ODER am Server) — normalisierte Feed-URL.
+    /// Already subscribed (locally OR on the server) — normalized feed URL.
     private func isSubscribed(_ feedURL: String) -> Bool {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         return subs.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
@@ -229,9 +229,9 @@ struct PodcastSourceView: View {
         return await subs.subscribe(urlString: feedURL)
     }
 
-    // MARK: - Abos / URL
+    // MARK: - Subscriptions / URL
 
-    /// Archivierte Server-Shows (Abo beendet, Historie am Server erhalten).
+    /// Archived server shows (subscription ended, history kept on the server).
     @ViewBuilder
     private var archivedSection: some View {
         let archived = absPodcast.archivedShows
@@ -283,7 +283,7 @@ struct PodcastSourceView: View {
                     let url = feedURL.trimmingCharacters(in: .whitespaces)
                     guard !url.isEmpty else { return }
                     urlError = nil
-                    // Zugangsdaten VOR dem Abruf hinterlegen (private/Premium-Feeds).
+                    // Store credentials BEFORE fetching (private/premium feeds).
                     PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(url),
                                         user: feedUser.trimmingCharacters(in: .whitespaces),
                                         password: feedPassword)

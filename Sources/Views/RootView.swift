@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct RootView: View {
-    /// Prozessweite Session (siehe AppSession): dieselben Instanzen werden
-    /// auch von der CarPlay-Szene verwendet.
+    /// Process-wide session (see AppSession): the same instances are also used
+    /// by the CarPlay scene.
     @ObservedObject private var authViewModel = AppSession.shared.authViewModel
 
     var body: some View {

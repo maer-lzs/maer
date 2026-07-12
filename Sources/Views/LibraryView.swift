@@ -2,25 +2,25 @@ import SwiftUI
 import UIKit
 
 struct LibraryView: View {
-    // Prozessweite Instanzen (AppSession) statt eigener @StateObjects — die
-    // CarPlay-Szene teilt sich Player und Bibliothek mit der UI.
+    // Process-wide instances (AppSession) instead of own @StateObjects — the
+    // CarPlay scene shares the player and library with the UI.
     @ObservedObject private var viewModel: LibraryViewModel
     @ObservedObject private var playerCoordinator: PlayerCoordinator
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var downloadManager = DownloadManager.shared
-    /// Abos beobachten, damit der Podcast-Tab sofort erscheint/verschwindet.
+    /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
     @State private var isShowingSearch = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
-    /// Scroll-gesteuertes Zusammenklappen der Bottom-Zone (Apple-Music-artig):
-    /// beim Scrollen in der Bibliothek wird sie zu einer kompakten Zeile.
+    /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
+    /// in the library turns it into a compact row.
     @Namespace private var barNS
     @ObservedObject private var bottomBar = BottomBarState.shared
     private var barCollapsed: Bool { bottomBar.collapsed }
-    /// Vertikaler Zieh-Versatz des vollen Players beim Nach-unten-Entlassen
-    /// (0 im Ruhezustand).
+    /// Vertical drag offset of the full player while dismissing downward
+    /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var systemColorScheme
     /// Cover accent of the ACTIVE book — shared with every glass element in
@@ -67,7 +67,7 @@ struct LibraryView: View {
                 }
 
                 // Content by tab. Today audiobooks only; podcasts/music come
-                // additiv als weitere Cases mit eigenen Views.
+                // additively as further cases with their own views.
                 switch selectedMediaType {
                 case .audiobooks:
                     audiobooksContent
@@ -332,10 +332,10 @@ struct LibraryView: View {
 
     // MARK: - Bottom zone (scroll-driven collapsible)
 
-    /// Aufgeklappt: Banner · Mini-Player (voll) · [Medien-Pille | Lupe].
-    /// Kompakt: eine Zeile [Home-Button · Mini-Player mittig, kleiner · Lupe].
-    /// Player und Lupe gleiten per matchedGeometry; die Medien-Pille morpht in
-    /// den Home-Button.
+    /// Expanded: banner · mini-player (full) · [media pill | search].
+    /// Compact: one row [home button · mini-player centered, smaller · search].
+    /// Player and search glide via matchedGeometry; the media pill morphs into
+    /// the home button.
     @ViewBuilder
     private var bottomBarContent: some View {
         if barCollapsed {
@@ -384,7 +384,7 @@ struct LibraryView: View {
         if availableMediaTypes.count > 1 {
             MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
                 navigationPath = NavigationPath()
-                bottomBar.reset()   // Tab-Wechsel klappt die Leiste auf
+                bottomBar.reset()   // switching tabs expands the bar
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
             }
             .matchedGeometryEffect(id: "media", in: barNS)
@@ -437,9 +437,9 @@ struct LibraryView: View {
 
     @State private var libraryWidth: CGFloat = 0
 
-    /// Kleinste erlaubte Spaltenbreite — bei diesem Wert lag die
-    /// Spaltenbreite auch schon vor den ganzen Grid-Anpassungen, er ergibt
-    /// auf einem normalen iPhone-Hochformat 3 Spalten.
+    /// Smallest allowed column width — the column width was already at this
+    /// value before all the grid adjustments; it yields 3 columns on a normal
+    /// iPhone portrait.
     private let minColumnWidth: CGFloat = 108
     private let gridSpacing: CGFloat = 16
     private let gridHorizontalPadding: CGFloat = 16

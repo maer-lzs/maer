@@ -198,7 +198,7 @@ extension PlayerViewModel {
     }
 
 
-    /// Setzt das Buch serverseitig auf "abgeschlossen" bzw. hebt das wieder auf.
+    /// Sets the book to "finished" server-side, or reverses it.
     func toggleFinished() async {
         guard let item else { return }
         // Respect the same in-flight guard as syncProgress — otherwise this

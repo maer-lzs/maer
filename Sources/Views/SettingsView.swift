@@ -262,7 +262,7 @@ struct SettingsView: View {
             }
             .onChange(of: skipInterval) { _, newValue in
                 if let vm = coordinator.viewModel {
-                    vm.setSkipInterval(newValue)   // aktualisiert auch die Lockscreen-Buttons
+                    vm.setSkipInterval(newValue)   // also updates the lock-screen buttons
                 } else {
                     UserDefaults.standard.set(newValue, forKey: AppStorageKeys.skipInterval)
                 }

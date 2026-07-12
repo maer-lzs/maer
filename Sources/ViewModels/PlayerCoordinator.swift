@@ -51,9 +51,8 @@ final class PlayerCoordinator: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        // Quelle des Items bestimmen (Server vs. lokale Dateien) — der
-        // injizierte `provider` ist die Standardquelle, lokale Items werden
-        // umgeleitet.
+        // Determine the item's source (server vs. local files) — the injected
+        // `provider` is the default source, local items are routed away.
         let itemProvider = AppSession.shared.provider(for: item.id)
         do {
             let detail = try await itemProvider.fetchItemDetail(itemId: item.id)
@@ -120,7 +119,7 @@ final class PlayerCoordinator: ObservableObject {
         await open(item: item, autoplay: false)
     }
 
-    /// Beendet die Wiedergabe komplett (Mini-Leiste verschwindet).
+    /// Stops playback completely (the mini bar disappears).
     func close() {
         viewModel?.stop()
         viewModel = nil

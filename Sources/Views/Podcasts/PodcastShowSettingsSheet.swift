@@ -7,7 +7,7 @@ struct PodcastShowSettingsSheet: View {
     let showId: String
     @Binding var newestFirst: Bool
     @Environment(\.dismiss) private var dismiss
-    @State private var rate: Float?          // nil = Standard-Tempo
+    @State private var rate: Float?          // nil = default speed
     @State private var autoDownload = false
     @State private var inboxMode = "all"     // all | latest | off
     @State private var notify = true
@@ -86,7 +86,7 @@ struct PodcastShowSettingsSheet: View {
             }
             .onChange(of: episodeLimit) { _, n in
                 UserDefaults.standard.set(n, forKey: AppStorageKeys.podcastEpisodeLimit(showId))
-                // Sofort anwenden, damit die Show-Seite gleich schlanker wird.
+                // Apply immediately so the show page gets leaner right away.
                 Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: n) }
             }
         }

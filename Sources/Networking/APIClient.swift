@@ -274,7 +274,7 @@ final class APIClient {
         _ = try await patch(path: "api/me/progress/\(libraryItemId)/\(episodeId)", body: body)
     }
 
-    // MARK: Podcast-Verwaltung (Abo anlegen/entfernen)
+    // MARK: Podcast management (create/remove subscription)
 
     /// Parse a feed server-side (metadata for a new subscription).
     func fetchPodcastFeed(rssFeed: String) async throws -> PodcastFeedMetadata {

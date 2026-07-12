@@ -86,20 +86,20 @@ struct PodcastsView: View {
             await absPodcast.refresh()
         }
         .task {
-            await absPodcast.refresh()                       // ABS-Podcasts laden
-            await GPodderSync.shared.autoReconcileIfNeeded()       // gpodder-Abos abgleichen
-            await PodcastSubscriptionSync.autoReconcileIfNeeded()  // lokale Abos spiegeln
-            await recommendations.refreshIfNeeded()               // Empfehlungen (extern)
+            await absPodcast.refresh()                       // load ABS podcasts
+            await GPodderSync.shared.autoReconcileIfNeeded()       // reconcile gpodder subscriptions
+            await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
+            await recommendations.refreshIfNeeded()               // recommendations (external)
         }
         .task(id: recomputeToken) {
             nextUp = computeNextUp()
             recentShows = computeRecentShows()
             downloaded = computeDownloaded()
-            // Kartenfarben vorab berechnen → beim Scrollen passiert nichts mehr.
+            // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
             }
-            // Neue Folgen aktivierter Shows im Hintergrund lokal laden.
+            // Load new episodes of active shows locally in the background.
             await PodcastAutoDownload.run(shows: allShows)
         }
     }
@@ -280,7 +280,7 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Zuletzt aktualisiert (Show-Grid, 2 Spalten)
+    // MARK: - Recently updated (show grid, 2 columns)
 
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
@@ -339,11 +339,10 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Premium (private/bezahlte Feeds)
+    // MARK: - Premium (private/paid feeds)
 
-    /// Premium, wenn Basic-Auth-Zugangsdaten hinterlegt sind ODER die Feed-URL
-    /// nach privatem/bezahltem Zugang aussieht (Token im Query bzw. bekannter
-    /// Premium-Host).
+    /// Premium if basic-auth credentials are stored OR the feed URL looks like
+    /// private/paid access (token in the query or a known premium host).
     private func isPremium(_ show: PodcastShow) -> Bool {
         if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(show.feedURL)) {
             return true
@@ -383,7 +382,7 @@ struct PodcastsView: View {
         }
     }
 
-    // MARK: - Geladen (3 Reihen, seitlich scrollbar)
+    // MARK: - Downloaded (3 rows, horizontally scrollable)
 
     @ViewBuilder
     private var downloadedShelf: some View {
@@ -391,8 +390,8 @@ struct PodcastsView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Downloaded").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    // Reihenzahl an die Menge anpassen (1 Download → 1 Reihe);
-                    // jede Spalte nutzt die volle Bildschirmbreite.
+                    // Adapt the row count to the amount (1 download → 1 row);
+                    // each column uses the full screen width.
                     LazyHGrid(rows: Array(repeating: GridItem(.fixed(84), spacing: 4),
                                           count: max(1, min(3, downloaded.count))),
                               spacing: 12) {

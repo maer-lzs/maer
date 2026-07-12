@@ -26,8 +26,8 @@ struct MiniPlayerBar: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var measuredWidth: CGFloat = 0
 
-    /// iPhone im Hochformat: dort ist der Platz knapp, deshalb entfallen die
-    /// Skip-Buttons zugunsten von mehr Titeltext — nur AirPlay + Play bleiben.
+    /// iPhone in portrait: space is tight, so the skip buttons are dropped in
+    /// favor of more title text — only AirPlay + play remain.
     private var isCompactPortrait: Bool {
         horizontalSizeClass == .compact && verticalSizeClass == .regular
     }

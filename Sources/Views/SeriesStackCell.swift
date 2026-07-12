@@ -12,7 +12,7 @@ struct SeriesStackCell: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack {
-                // Bis zu zwei echte Folge-Cover hinter dem obersten.
+                // Up to two real episode covers behind the topmost one.
                 ForEach(Array(entries.dropFirst().prefix(2).enumerated()), id: \.element.id) { index, entry in
                     CachedAsyncImage(url: coverURL(entry.id), useThumbnail: true) { image in
                         image.resizable().aspectRatio(contentMode: .fill)

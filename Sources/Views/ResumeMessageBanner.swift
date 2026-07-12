@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Globale, transiente Glas-Pille (Icon + kurzer Text), die anzeigt, woher der
-/// aktuelle Stand stammt bzw. wie er gesichert ist. Wird EINMAL zentral als
-/// Overlay im NavigationStack der Bibliothek gehostet und erscheint damit auf
-/// jeder Ebene (Bibliothek, Buchdetail, voller Player).
+/// Global, transient glass pill (icon + short text) showing where the current
+/// state comes from and how it is saved. Hosted ONCE centrally as an overlay in
+/// the library's NavigationStack, so it appears on every level (library, book
+/// detail, full player).
 ///
 /// Its own view with `@ObservedObject` so changes to `sourceHint` arrive
 /// reliably — a value read only via `coordinator.viewModel?.sourceHint` would

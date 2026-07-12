@@ -25,8 +25,8 @@ struct PodcastDiscoverView: View {
                 )
                 .padding(.top, 40)
             } else if results.isEmpty {
-                // Kein Treffer bzw. kein PodcastIndex-Key hinterlegt → statt
-                // eines leeren Grids ein klarer Leerzustand.
+                // No match or no PodcastIndex key stored → a clear empty state
+                // instead of an empty grid.
                 ContentUnavailableView(
                     "Nothing to show",
                     systemImage: "magnifyingglass",
@@ -81,7 +81,7 @@ struct PodcastDiscoverView: View {
         }
     }
 
-    /// Bereits abonniert (lokal ODER am Server) — normalisierte Feed-URL.
+    /// Already subscribed (locally OR on the server) — normalized feed URL.
     private func isSubscribed(_ feedURL: String) -> Bool {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         return subs.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
@@ -93,7 +93,7 @@ struct PodcastDiscoverView: View {
             _ = await absPodcast.subscribeOnServer(feedURL: feedURL)
         } else {
             _ = await subs.subscribe(urlString: feedURL)
-            await GPodderSync.shared.reconcile()   // neues Abo gleich zum Server
+            await GPodderSync.shared.reconcile()   // push the new subscription to the server
         }
     }
 

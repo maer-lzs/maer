@@ -50,7 +50,7 @@ final class PodcastCloudSync {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
         let defaults = UserDefaults.standard
 
-        // Lokale Positionen einsammeln.
+        // Collect local positions.
         var local: [String: [Double]] = [:]
         for (key, value) in defaults.dictionaryRepresentation() {
             guard podcastPrefixes.contains(where: { key.hasPrefix($0) }),
@@ -58,7 +58,7 @@ final class PodcastCloudSync {
             local[String(key.dropFirst(keyPrefix.count))] = arr
         }
 
-        // iCloud-Blob (defensiv koerzieren — KV-Store liefert NSNumber-Arrays).
+        // iCloud blob (coerce defensively — KV store returns NSNumber arrays).
         var cloud: [String: [Double]] = [:]
         if let raw = store.dictionary(forKey: blobKey) {
             for (id, value) in raw {
@@ -72,10 +72,10 @@ final class PodcastCloudSync {
             let lts = local[id]?[1] ?? -1
             let cts = cloud[id]?[1] ?? -1
             if cts > lts, let c = cloud[id] {
-                defaults.set(c, forKey: keyPrefix + id)   // iCloud neuer → lokal
+                defaults.set(c, forKey: keyPrefix + id)   // iCloud newer → local
                 localChanged = true
             } else if lts > cts, let l = local[id] {
-                cloud[id] = l                              // lokal neuer → iCloud
+                cloud[id] = l                              // local newer → iCloud
                 cloudChangedFlag = true
             }
         }

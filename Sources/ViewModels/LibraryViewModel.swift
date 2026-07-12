@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-/// Ein Buch samt (optionalem) Fortschritt — die Einheit, die die Views anzeigen.
+/// A book with (optional) progress — the unit the views display.
 struct LibraryEntry: Identifiable {
     let item: LibraryItem
     let progress: BookProgress?
@@ -27,8 +27,8 @@ enum SortOption: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Sinnvolle Standardrichtung je Sortierart — Titel/Autor/Serie
-    /// alphabetisch aufsteigend (A→Z), alles Zeitbasierte neuestes zuerst.
+    /// Sensible default direction per sort type — title/author/series
+    /// alphabetically ascending (A→Z), everything time-based newest first.
     var defaultAscending: Bool {
         switch self {
         case .titel, .autor, .serie: return true
@@ -242,9 +242,9 @@ final class LibraryViewModel: ObservableObject {
         base.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
     }
 
-    /// sortedFilteredEntries, bei dem Serien mit mehr als einem Buch zu einem
-    /// Stapel zusammengefasst sind (Reihenfolge innerhalb: Bandnummer, da die
-    /// Liste bei Sortierung „Serie" bereits so sortiert ankommt).
+    /// sortedFilteredEntries where series with more than one book are grouped
+    /// into a stack (order within: volume number, since the list already arrives
+    /// sorted that way under "Series" sorting).
     var seriesGroupedEntries: [GridEntry] {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
@@ -361,8 +361,8 @@ final class LibraryViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        // Lokale Quelle immer zuerst (in-memory, nie ein Fehler) — so sind
-        // lokale Titel auch dann da, wenn der Server offline ist.
+        // Local source always first (in-memory, never an error) — so local
+        // titles are there even when the server is offline.
         await reloadLocalCache()
         do {
             // ONLY book libraries for the audiobook tab — podcast libraries
@@ -406,7 +406,7 @@ final class LibraryViewModel: ObservableObject {
             var accumulated = first.items
             let total = first.total
             rebuild(items: accumulated, progress: progress)
-            isLoading = false   // erstes Bild steht — Spinner weg, Rest lädt leise
+            isLoading = false   // first view is ready — spinner off, rest loads quietly
 
             // Append the remaining pages (in the same load). A network drop
             // mid-load keeps what is already shown instead of jumping to the

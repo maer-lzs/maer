@@ -20,7 +20,7 @@ struct GPodderEpisodeAction: Decodable {
     let podcast: String?     // Feed-URL
     let episode: String?     // Enclosure-URL
     let action: String?      // "play" | "download" | "delete" | "new"
-    let timestamp: String?   // ISO 8601, ohne Zeitzone
+    let timestamp: String?   // ISO 8601, without timezone
     let position: Int?       // aktuelle Position (s)
     let total: Int?          // Gesamtdauer (s)
     let started: Int?
@@ -122,7 +122,7 @@ final class GPodderClient {
         do { (data, resp) = try await session.data(for: req) }
         catch { throw GPodderError.network }
         guard let http = resp as? HTTPURLResponse else { throw GPodderError.network }
-        // 401 mit reinem Basic-Auth: manche Server (z. B. gpodder.net) wollen erst
+        // 401 with plain basic auth: some servers (e.g. gpodder.net) first want
         // a login → session cookie. Log in once and retry.
         if http.statusCode == 401, allowAuthRetry {
             try await login()

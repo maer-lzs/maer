@@ -83,7 +83,7 @@ struct GPodderSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         // Don't let the mini-player overlay overlap.
         .bottomBarClearance()
-        // Beim Verlassen speichern, damit nichts verloren geht.
+        // Save on leaving so nothing is lost.
         .onDisappear { save() }
     }
 

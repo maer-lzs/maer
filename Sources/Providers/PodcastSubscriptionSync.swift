@@ -10,9 +10,9 @@ import Foundation
 @MainActor
 enum PodcastSubscriptionSync {
     struct Report: Equatable {
-        var pushed = 0          // neu am Server angelegt
-        var reactivated = 0     // archivierten Server-Eintrag wieder aktiviert
-        var alreadySynced = 0   // war schon am Server
+        var pushed = 0          // newly created on the server
+        var reactivated = 0     // reactivated an archived server entry
+        var alreadySynced = 0   // already on the server
         var failed: [String] = []
 
         var isEmpty: Bool {
@@ -43,13 +43,13 @@ enum PodcastSubscriptionSync {
         // Load the real server state first, otherwise we might create duplicates.
         await abs.refresh()
 
-        // Server-Feeds (aktiv + archiviert) normalisiert indexieren.
+        // Index server feeds (active + archived) normalized.
         var serverByURL: [String: PodcastShow] = [:]
         for show in abs.shows where !show.feedURL.isEmpty {
             serverByURL[PodcastSubscriptions.normalizeFeedURL(show.feedURL)] = show
         }
 
-        // Lokale Abos intern dedupen (gleiche normalisierte URL nur einmal).
+        // Dedupe local subscriptions internally (same normalized URL only once).
         var seen = Set<String>()
         for show in PodcastSubscriptions.shared.shows where !show.feedURL.isEmpty {
             let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)

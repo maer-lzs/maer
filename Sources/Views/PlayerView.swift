@@ -64,17 +64,17 @@ struct PlayerView: View {
                 }
                 .padding()
                 .padding(.top, 8)
-                // Lesbare Spalte hochkant, breiter nebeneinander.
+                // Readable column in portrait, wider side by side.
                 .frame(maxWidth: sideBySide ? 900 : 500)
-                // Nebeneinander: vertikal im Viewport zentrieren (iPad).
+                // Side by side: center vertically in the viewport (iPad).
                 .frame(
                     maxWidth: .infinity,
                     minHeight: sideBySide ? max(0, geo.size.height - topInset - bottomInset) : 0
                 )
             }
-            // Kein Bounce, wenn der Inhalt passt → kein Scroll-Snap beim Ziehstart.
+            // No bounce when the content fits → no scroll snap at drag start.
             .scrollBounceBehavior(.basedOnSize)
-            // Insets explizit (Root ignoriert Safe Areas) → Layout wie zuvor.
+            // Explicit insets (root ignores safe areas) → layout as before.
             .padding(.top, topInset)
             .padding(.bottom, bottomInset)
         }
@@ -149,9 +149,9 @@ struct PlayerView: View {
         } // GeometryReader
     }
 
-    // MARK: - Bausteine
+    // MARK: - Building blocks
 
-    /// Alle Bedienelemente unterhalb/neben dem Cover (geteilt Hoch/Quer).
+    /// All controls below/beside the cover (shared portrait/landscape).
     @ViewBuilder
     private var controlsColumn: some View {
         chapterHeader
@@ -247,8 +247,8 @@ struct PlayerView: View {
                 }
             )
             .background(alignment: .leading) {
-                // Kapitelmarken: kleine Striche an den Kapitelgrenzen. Rein
-                // visuell, liegen hinter dem Slider-Track.
+                // Chapter marks: small ticks at the chapter boundaries. Purely
+                // visual, sit behind the slider track.
                 if viewModel.duration > 0, viewModel.chapters.count > 1 {
                     GeometryReader { geo in
                         ForEach(viewModel.chapters) { chapter in
