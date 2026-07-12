@@ -84,6 +84,12 @@ extension PlayerViewModel {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
                     UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
+                    // gpodder: RSS-Folgen-Position gleich mit hochschieben
+                    // (periodisch + bei Pause/Stop/Seek). No-op ohne Konfig.
+                    if item.id.hasPrefix("rss:") {
+                        GPodderSync.shared.notePlayback(rssItemId: item.id,
+                                                        position: currentTime, duration: duration)
+                    }
                 }
             }
             // Nur Übergänge melden (kein 30s-Spam): offline/queued/failed → gesichert.

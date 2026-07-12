@@ -69,6 +69,9 @@ nonisolated enum AppStorageKeys {
     static let gpodderEpisodeSince = "gpodderEpisodeSince"
     /// Zeitpunkt (s), bis zu dem wir Episoden-Aktionen bereits gepusht haben.
     static let gpodderLastEpisodePush = "gpodderLastEpisodePush"
+    /// Zuletzt synchronisierter Abo-Stand (normalisierte Feed-URLs) — Basis fürs
+    /// 3-Wege-Merge, damit Abbestellungen erkannt und propagiert werden.
+    static let gpodderLastSyncedFeeds = "gpodderLastSyncedFeeds"
 
     static var gpodderServerURLValue: String {
         get { UserDefaults.standard.string(forKey: gpodderServerURL) ?? "" }

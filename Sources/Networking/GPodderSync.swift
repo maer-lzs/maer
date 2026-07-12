@@ -71,31 +71,88 @@ final class GPodderSync {
 
     // MARK: - Abo-Sync (Union-Merge, nicht-destruktiv)
 
-    /// Server- und lokale Abo-Liste vereinen: fehlende Feeds beidseitig ergänzen.
-    /// Entfernungen werden in v1 bewusst NICHT propagiert (destruktiv) — das kommt
-    /// mit sauberem Delta-Tracking später.
+    /// 3-Wege-Merge Server ↔ lokal ↔ zuletzt synchronisierter Stand: neue Feuds
+    /// beidseitig ergänzen UND Abbestellungen propagieren. Der zuletzt
+    /// synchronisierte Stand (normalisierte URLs) unterscheidet „neu abonniert"
+    /// von „abbestellt". Erster Lauf (leerer Vorstand) = nicht-destruktive Union.
     private func syncSubscriptions(_ client: GPodderClient) async throws -> Report {
         var report = Report()
         let subs = PodcastSubscriptions.shared
+        let defaults = UserDefaults.standard
 
         let serverURLs = try await client.subscriptions()
         let serverByNorm = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
                                       uniquingKeysWith: { a, _ in a })
         let localByNorm = Dictionary(subs.shows.map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
                                      uniquingKeysWith: { a, _ in a })
+        let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
 
-        // Server → lokal: neue Feeds hier abonnieren (parst den Feed).
-        for (norm, rawURL) in serverByNorm where localByNorm[norm] == nil {
-            if await subs.subscribe(urlString: rawURL) { report.addedLocally += 1 }
+        let local = Set(localByNorm.keys)
+        let server = Set(serverByNorm.keys)
+
+        // Genuine Adds (nur eine Seite, nicht im Vorstand) → auf die andere Seite.
+        let addToServer = local.subtracting(server).subtracting(prev)
+        let addLocally = server.subtracting(local).subtracting(prev)
+        // Genuine Removes (war synchron, jetzt nur noch eine Seite) → abbestellen.
+        let removeFromServer = prev.intersection(server).subtracting(local)
+        let removeLocally = prev.intersection(local).subtracting(server)
+
+        // Server-Seite: add + remove in einem Request.
+        if !addToServer.isEmpty || !removeFromServer.isEmpty {
+            try await client.uploadSubscriptions(
+                add: addToServer.compactMap { localByNorm[$0] },
+                remove: removeFromServer.compactMap { serverByNorm[$0] }
+            )
+            report.pushedToServer = addToServer.count
+        }
+        // Lokale Seite: neue Feeds abonnieren, abbestellte entfernen.
+        var addedLocallyNorms = Set<String>()
+        for norm in addLocally {
+            if let raw = serverByNorm[norm], await subs.subscribe(urlString: raw) {
+                report.addedLocally += 1
+                addedLocallyNorms.insert(norm)
+            }
+        }
+        for norm in removeLocally {
+            if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
+                subs.unsubscribe(id: show.id)
+            }
         }
 
-        // Lokal → Server: lokale, dem Server unbekannte Feeds hochladen.
-        let toPush = localByNorm.filter { serverByNorm[$0.key] == nil }.map { $0.value }
-        if !toPush.isEmpty {
-            try await client.uploadSubscriptions(add: toPush, remove: [])
-            report.pushedToServer = toPush.count
-        }
+        // Konvergierter Stand = in beiden vorhanden + beidseitige Neuzugänge.
+        // Nur ERFOLGREICH lokal abonnierte zählen → fehlgeschlagene werden beim
+        // nächsten Lauf erneut versucht (statt dauerhaft als „synchron" zu gelten).
+        let converged = local.intersection(server).union(addToServer).union(addedLocallyNorms)
+        defaults.set(Array(converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
         return report
+    }
+
+    // MARK: - Echtzeit-Push (einzelne Folge beim Hören/Pausieren)
+
+    /// Vom Player aufgerufen, sobald eine `rss:`-Folge Fortschritt schreibt
+    /// (periodisch + bei Pause/Stop/Seek). Schiebt eine einzelne Play-Aktion an
+    /// den Server — best effort, blockiert die Wiedergabe nicht.
+    func notePlayback(rssItemId: String, position: Double, duration: Double) {
+        guard AppStorageKeys.gpodderEnabledValue, config != nil,
+              rssItemId.hasPrefix("rss:") else { return }
+        Task { await pushSingle(rssItemId: rssItemId, position: position, duration: duration) }
+    }
+
+    private func pushSingle(rssItemId: String, position: Double, duration: Double) async {
+        guard let config,
+              let found = PodcastSubscriptions.shared.episode(guid: rssItemId) else { return }
+        let total = duration > 0 ? duration : found.episode.duration
+        let action: [String: Any] = [
+            "podcast": found.show.feedURL,
+            "episode": found.episode.audioURL,
+            "device": config.deviceId,
+            "action": "play",
+            "timestamp": Self.isoTimestamp(Date().timeIntervalSince1970 * 1000),
+            "started": 0,
+            "position": Int(position),
+            "total": Int(total)
+        ]
+        _ = try? await GPodderClient(config: config).uploadEpisodeActions([action])
     }
 
     // MARK: - History-Sync (Episoden-Aktionen ↔ localPosition)
