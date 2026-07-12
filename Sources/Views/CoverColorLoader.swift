@@ -18,30 +18,35 @@ final class CoverColorLoader: ObservableObject {
 
     func load(from url: URL?) async {
         guard let url else { return }
+        let image: UIImage
         if let cached = ImageCache.shared.image(for: url) {
-            apply(cached)
-            return
+            image = cached
+        } else {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                guard let img = UIImage(data: data) else { return }
+                ImageCache.shared.set(img, data: data, for: url)
+                image = img
+            } catch {
+                // Kein Cover / kein Netz: neutraler Standard bleibt bestehen.
+                return
+            }
         }
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            guard let image = UIImage(data: data) else { return }
-            ImageCache.shared.set(image, data: data, for: url)
-            apply(image)
-        } catch {
-            // Kein Cover / kein Netz: neutraler Standard bleibt bestehen.
+        // Farbberechnung (CGContext-Draw) NICHT auf dem MainActor — sonst
+        // ruckelt das Scrollen, wenn mehrere Karten gleichzeitig erscheinen.
+        if let colors = await Self.colors(from: image) {
+            accent = colors.accent
+            topAccent = colors.top
+            bottomAccent = colors.bottom
         }
     }
 
-    private func apply(_ image: UIImage) {
-        if let color = Self.averageColor(of: image) {
-            accent = Color(color)
-        }
-        if let top = Self.crop(image, toTop: 0.3), let color = Self.averageColor(of: top) {
-            topAccent = Color(color)
-        }
-        if let bottom = Self.crop(image, toBottom: 0.3), let color = Self.averageColor(of: bottom) {
-            bottomAccent = Color(color)
-        }
+    /// nonisolated + async → läuft auf dem Cooperative-Pool, nicht auf Main.
+    private nonisolated static func colors(from image: UIImage) async -> (accent: Color, top: Color, bottom: Color)? {
+        guard let base = averageColor(of: image) else { return nil }
+        let top = crop(image, toTop: 0.3).flatMap { averageColor(of: $0) } ?? base
+        let bottom = crop(image, toBottom: 0.3).flatMap { averageColor(of: $0) } ?? base
+        return (Color(base), Color(top), Color(bottom))
     }
 
     /// Schneidet den oberen/unteren Bildanteil zu — bewusst über
@@ -51,18 +56,18 @@ final class CoverColorLoader: ObservableObject {
     /// vs. "unten" leicht zu einer vertauschten (falschen) Zuordnung führen
     /// kann. Für die reine Gesamt-Durchschnittsfarbe (`accent`) war das
     /// bisher egal, weil dort über alle Pixel gleichermaßen gemittelt wird.
-    private static func crop(_ image: UIImage, toTop fraction: CGFloat) -> UIImage? {
+    private nonisolated static func crop(_ image: UIImage, toTop fraction: CGFloat) -> UIImage? {
         let cropHeight = image.size.height * fraction
         return crop(image, to: CGRect(x: 0, y: 0, width: image.size.width, height: cropHeight))
     }
 
-    private static func crop(_ image: UIImage, toBottom fraction: CGFloat) -> UIImage? {
+    private nonisolated static func crop(_ image: UIImage, toBottom fraction: CGFloat) -> UIImage? {
         let cropHeight = image.size.height * fraction
         let y = image.size.height - cropHeight
         return crop(image, to: CGRect(x: 0, y: y, width: image.size.width, height: cropHeight))
     }
 
-    private static func crop(_ image: UIImage, to rect: CGRect) -> UIImage? {
+    private nonisolated static func crop(_ image: UIImage, to rect: CGRect) -> UIImage? {
         guard rect.width > 0, rect.height > 0 else { return nil }
         let renderer = UIGraphicsImageRenderer(size: rect.size)
         return renderer.image { _ in
@@ -70,7 +75,7 @@ final class CoverColorLoader: ObservableObject {
         }
     }
 
-    private static func averageColor(of image: UIImage) -> UIColor? {
+    private nonisolated static func averageColor(of image: UIImage) -> UIColor? {
         guard let cgImage = image.cgImage else { return nil }
         let width = 24, height = 24
         var pixels = [UInt8](repeating: 0, count: width * height * 4)

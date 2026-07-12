@@ -19,7 +19,6 @@ struct PodcastsView: View {
     // sofort, die Sektionen kommen einen Frame später.
     @State private var nextUp: [LibraryItem] = []
     @State private var downloaded: [LibraryItem] = []
-    @State private var played: [LibraryItem] = []
 
     /// Neu berechnen, wenn sich Abos, Downloads oder Fortschritt ändern.
     private var recomputeToken: String {
@@ -32,7 +31,6 @@ struct PodcastsView: View {
                 nextUpSection
                 showsShelf
                 if !downloaded.isEmpty { episodeListSection(title: "Downloaded", episodes: downloaded) }
-                if !played.isEmpty { episodeListSection(title: "Played", episodes: played) }
             }
             .padding(.top, 8)
             .bottomBarClearance()
@@ -41,7 +39,6 @@ struct PodcastsView: View {
         .task(id: recomputeToken) {
             nextUp = rss.nextUpItems()
             downloaded = rss.downloadedEpisodeItems()
-            played = rss.playedEpisodeItems()
         }
     }
 

@@ -231,11 +231,18 @@ final class PodcastSubscriptions: ObservableObject {
         var byURL: [String: PodcastImport.AppleProgress] = [:]
         for p in progress { byURL[Self.normalizeEnclosure(p.enclosureURL)] = p }
 
+        var updated = shows
         var applied = 0
-        for show in shows {
-            for episode in show.episodes {
+        for s in updated.indices {
+            for e in updated[s].episodes.indices {
+                let episode = updated[s].episodes[e]
                 guard let match = byURL[Self.normalizeEnclosure(episode.audioURL)] else { continue }
-                let duration = episode.duration > 0 ? episode.duration : match.duration
+                // Fehlt die Dauer im Feed (kein `itunes:duration`), die von Apple
+                // übernehmen — sonst kann „gehört" (time ≥ duration−1) nie greifen.
+                if episode.duration <= 0, match.duration > 0 {
+                    updated[s].episodes[e].duration = match.duration
+                }
+                let duration = updated[s].episodes[e].duration
                 let time = match.isPlayed ? max(duration, match.playhead) : match.playhead
                 guard time > 1 else { continue }
                 UserDefaults.standard.set(
@@ -245,7 +252,11 @@ final class PodcastSubscriptions: ObservableObject {
                 applied += 1
             }
         }
-        if applied > 0 { PodcastProgressStore.shared.reload() }
+        if applied > 0 {
+            shows = updated   // ggf. korrigierte Dauern übernehmen (didSet baut Index neu)
+            save()
+            PodcastProgressStore.shared.reload()
+        }
         return applied
     }
 

@@ -140,22 +140,6 @@ final class RSSProvider: AudioProvider {
             .map { libraryItem(show: show, episode: $0) }
     }
 
-    /// Abgeschlossene Folgen, zuletzt gehörte zuerst, gedeckelt — Zustand direkt
-    /// aus `localPosition`, LibraryItem nur für die (max. `limit`) Treffer.
-    func playedEpisodeItems(limit: Int = 20) -> [LibraryItem] {
-        var played: [(show: PodcastShow, episode: PodcastEpisode, updatedAt: Double)] = []
-        for (show, episode) in subs.allEpisodes() {
-            guard episode.duration > 0,
-                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(episode.guid)) as? [Double],
-                  stored.count == 2, stored[0] >= episode.duration - 1 else { continue }
-            played.append((show, episode, stored[1]))
-        }
-        return played
-            .sorted { $0.updatedAt > $1.updatedAt }
-            .prefix(limit)
-            .map { libraryItem(show: $0.show, episode: $0.episode) }
-    }
-
     // MARK: - Mapping Episode → LibraryItem
 
     private func libraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
