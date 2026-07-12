@@ -198,7 +198,7 @@ private struct PodcastFeaturedCard: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            podcastArtwork(url: coverURL, size: width, corner: 0)
+            podcastArtwork(url: coverURL, size: width, corner: 0, forceThumbnail: true)
                 .opacity(isPlayed ? 0.5 : 1)
                 // Bild läuft weich in die Farbfläche aus (der „blurry" Seam).
                 .overlay(alignment: .bottom) {
@@ -249,7 +249,9 @@ private struct PodcastFeaturedCard: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial, in: Capsule())
+            // Solide, halbtransparente Kapsel statt Material-Blur — Blur ist
+            // beim horizontalen Scrollen pro Frame teuer.
+            .background(Capsule().fill(.white.opacity(0.22)))
         }
         .buttonStyle(.plain)
     }
@@ -954,13 +956,15 @@ private func durationText(_ item: LibraryItem) -> String {
     return String(localized: "\(total) min")
 }
 
-/// Podcast-Cover (Remote-URL) mit Fallback-Mikrofon.
+/// Podcast-Cover (Remote-URL) mit Fallback-Mikrofon. `forceThumbnail` nutzt das
+/// leichte 400px-Thumbnail auch bei größeren Covern (glattes Scrollen der
+/// „Als Nächstes"-Karten statt Voll-Decode bis ~2200px).
 @ViewBuilder
-private func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat) -> some View {
+private func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, forceThumbnail: Bool = false) -> some View {
     let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)
     Group {
         if let url {
-            CachedAsyncImage(url: url, useThumbnail: size <= 200) { image in
+            CachedAsyncImage(url: url, useThumbnail: forceThumbnail || size <= 200) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
             } placeholder: {
                 shape.fill(Color.secondary.opacity(0.15))
