@@ -5,10 +5,10 @@ import MediaPlayer
 import UIKit
 
 /// Sync-Politik: periodischer Sync, Reentrancy-Guard, Konflikt-Erkennung,
-/// Geräte-Abgleich, Offline-Queue-Anbindung und Gehört-Status.
+/// Device reconcile, offline-queue integration and played state.
 extension PlayerViewModel {
 
-    // MARK: - Sync (die eigentliche Existenzberechtigung der App)
+    // MARK: - Sync (the app's actual reason for existing)
 
     func startSyncTimer() {
         syncTask?.cancel()
@@ -21,15 +21,15 @@ extension PlayerViewModel {
         }
     }
 
-    /// Schreibt den Fortschritt an den Server. Reentrancy-sicher: Es ist nie
-    /// mehr als ein Write gleichzeitig unterwegs — parallele Writes könnten
-    /// sich im Netz überholen und der ältere Stand würde gewinnen.
-    /// - Parameter force: erzwingt einen Sync auch ohne die 5-Sekunden-Schwelle
-    ///   (z. B. bei Pause oder wenn die App in den Hintergrund geht).
+    /// Writes the progress to the server. Reentrancy-safe: there is never more
+    /// than one write in flight — parallel writes could overtake each other on
+    /// the network and the older state would win.
+    /// - Parameter force: forces a sync even without the 5-second threshold
+    ///   (e.g. on pause or when the app goes to the background).
     func syncProgress(force: Bool) async {
         if syncInFlight {
-            // Timer-Ticks verwerfen (der nächste kommt eh); bewusste Syncs
-            // (Pause/Seek) nach Abschluss einmal mit frischem Stand nachziehen.
+            // Drop timer ticks (the next one comes anyway); deliberate syncs
+            // (pause/seek) are re-run once with a fresh state after completion.
             if force { syncFollowUpRequested = true }
             return
         }
@@ -48,8 +48,8 @@ extension PlayerViewModel {
         guard let item else { return }
         guard force || abs(currentTime - lastSyncedTime) >= 5 else { return }
 
-        // Kernregel: Ein Rückschritt, den der Nutzer NICHT selbst ausgelöst hat,
-        // wird nie stillschweigend geschrieben.
+        // Core rule: a backward jump the user did NOT initiate is never written
+        // silently.
         if !suppressConflictForNextSync,
            SyncRules.isSuspiciousDrop(
                currentTime: currentTime,
@@ -75,36 +75,35 @@ extension PlayerViewModel {
             suppressConflictForNextSync = false
             SyncQueue.shared.remove(itemId: item.id)
             if let key = localPositionKey {
-                // Podcasts (rss:/abspod:) halten `localPosition` als iCloud-
-                // Sync-Basis — auch ABS-Podcasts, damit iCloud sie geräte-
-                // übergreifend abgleicht. Nur bei Büchern (Server = Ablage) wird
-                // die lokale Crash-Sicherung nach erfolgreichem Sync entfernt.
+                // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
+                // sync basis — including ABS podcasts, so iCloud reconciles them
+                // across devices. Only for books (server = store of record) is
+                // the local crash backup removed after a successful sync.
                 let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
                 if provider.capabilities.contains(.progressSync) && !isPodcast {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
                     UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
-                    // gpodder: Podcast-Position gleich mit hochschieben
-                    // (periodisch + bei Pause/Stop/Seek). No-op ohne Konfig;
-                    // abspod: wird über die Feed-guid-Brücke abgebildet.
+                    // gpodder: push the podcast position too (periodically + on
+                    // pause/stop/seek). No-op without config; abspod: is mapped
+                    // via the feed-guid bridge.
                     if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
                         GPodderSync.shared.notePlayback(itemId: item.id,
                                                         position: currentTime, duration: duration)
                     }
                 }
             }
-            // Nur Übergänge melden (kein 30s-Spam): offline/queued/failed → gesichert.
+            // Report only transitions (no 30s spam): offline/queued/failed → saved.
             if syncStatus != .synced {
                 showSourceHint(.saved)
             }
             syncStatus = .synced
         } catch {
             if NetworkStatus.isOfflineError(error) {
-                // Erwartbar, kein echter Fehler: kein Netz gerade, z. B. auf
-                // Reisen. Den aktuellen Stand in die Offline-Queue legen,
-                // damit er auch einen App-Kill übersteht, statt verloren zu
-                // gehen — beim nächsten Start bzw. bei Wiederverbindung wird
-                // sie automatisch geleert (siehe SyncQueue).
+                // Expected, not a real error: no network right now, e.g. while
+                // travelling. Put the current state into the offline queue so it
+                // survives an app kill instead of being lost — it is flushed
+                // automatically on the next start or on reconnect (see SyncQueue).
                 SyncQueue.shared.enqueue(
                     itemId: item.id,
                     currentTime: currentTime,
@@ -115,10 +114,10 @@ extension PlayerViewModel {
                 if syncStatus != .queued { showSourceHint(.queued) }
                 syncStatus = .queued
             } else {
-                // Ein echter Fehler (z. B. abgelaufener Token, Serverproblem) —
-                // sichtbar machen, aber den Stand trotzdem queuen: sonst wäre
-                // er verloren, wenn die App vor dem nächsten Versuch beendet
-                // wird. Der Flush reconciled ohnehin gegen den Server.
+                // A real error (e.g. expired token, server problem) — surface
+                // it, but queue the state anyway: it would otherwise be lost if
+                // the app is closed before the next attempt. The flush reconciles
+                // against the server anyway.
                 SyncQueue.shared.enqueue(
                     itemId: item.id,
                     currentTime: currentTime,
@@ -131,30 +130,28 @@ extension PlayerViewModel {
         }
     }
 
-    /// Verbindung ging verloren, während gerade abgespielt wird: den sichtbaren
-    /// Sync-Status sofort auf "offline" setzen, statt bis zum nächsten
-    /// Sync-Tick (alle 30s) zu warten. Es wird bewusst NICHTS in die Queue
-    /// gelegt — das geschieht weiterhin nur, wenn ein echter
-    /// syncProgress-Versuch fehlschlägt.
+    /// Connection lost while playing: set the visible sync status to "offline"
+    /// immediately instead of waiting for the next sync tick (every 30s).
+    /// Deliberately NOTHING is queued — that still happens only when a real
+    /// syncProgress attempt fails.
     func markConnectionLostWhilePlaying() {
         guard isPlaying, syncStatus == .synced else { return }
         syncStatus = .offline
         showSourceHint(.offline)
     }
 
-    /// Nach einem Flush der Offline-Queue aufrufen: Wurde der eigene Eintrag
-    /// erfolgreich nachgereicht, den sichtbaren Status von .queued auf .synced
-    /// nachziehen — sonst bliebe der "wird nachgereicht"-Hinweis bis zum
-    /// nächsten Sync-Tick stehen, obwohl längst synchronisiert.
+    /// Call after a flush of the offline queue: if our own entry was sent
+    /// successfully, move the visible status from .queued to .synced — otherwise
+    /// the "will be sent" hint would stay until the next sync tick, though long
+    /// since synced.
     func updateSyncStatusFromQueue() async {
         guard let item, syncStatus != .synced else { return }
         if !SyncQueue.shared.hasPendingUpdate(itemId: item.id) {
             if syncStatus == .queued || syncStatus == .failed { showSourceHint(.saved) }
             syncStatus = .synced
-            // Server-Zeitstempel des EIGENEN nachgereichten Writes übernehmen,
-            // ohne die Position zu adoptieren — sonst hält der nächste Abgleich
-            // unseren (älteren) Flush-Stand für ein fremdes Gerät und springt
-            // zurück.
+            // Adopt the server timestamp of OUR own flushed write without
+            // adopting the position — otherwise the next reconcile mistakes our
+            // (older) flush state for a foreign device and jumps back.
             if let fresh = try? await provider.fetchItemDetail(itemId: item.id),
                let ms = fresh.userMediaProgress?.lastUpdate {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
@@ -162,15 +159,15 @@ extension PlayerViewModel {
         }
     }
 
-    /// Nutzer hat im Dialog bestätigt: den niedrigeren Stand wirklich schreiben.
+    /// User confirmed in the dialog: really write the lower state.
     func confirmLowerProgress() async {
         suppressConflictForNextSync = true
         pendingServerConflict = nil
         await syncProgress(force: true)
     }
 
-    /// Nutzer hat abgebrochen: zurück zum zuletzt gespeicherten Serverstand
-    /// springen, damit der Konflikt aufgelöst ist und nicht erneut aufpoppt.
+    /// User cancelled: jump back to the last saved server state so the conflict
+    /// is resolved and does not pop up again.
     func cancelAndRestoreServerPosition() {
         pendingServerConflict = nil
         Task { await seek(to: lastSyncedTime, userInitiated: false) }
@@ -180,16 +177,16 @@ extension PlayerViewModel {
         pendingServerConflict = nil
     }
 
-    /// Nutzer hat im Dialog bestätigt: die Sprung-Serie war wirklich gewollt,
-    /// aktuellen (weiter vorne liegenden) Stand sofort synchronisieren.
+    /// User confirmed in the dialog: the jump series was really intended, sync
+    /// the current (further-ahead) state immediately.
     func confirmLockscreenJump() async {
         suspiciousLockscreenJump = nil
         suppressConflictForNextSync = true
         await syncProgress(force: true)
     }
 
-    /// Nutzer hat abgebrochen: zurück zum Stand vor Beginn der Sprung-Serie
-    /// springen — vermutlich Taschen-Kontakt, nicht gewollt.
+    /// User cancelled: jump back to the state before the jump series began —
+    /// probably pocket contact, not intended.
     func cancelLockscreenJump() {
         guard let jump = suspiciousLockscreenJump else { return }
         suspiciousLockscreenJump = nil
@@ -204,8 +201,8 @@ extension PlayerViewModel {
     /// Setzt das Buch serverseitig auf "abgeschlossen" bzw. hebt das wieder auf.
     func toggleFinished() async {
         guard let item else { return }
-        // Denselben In-Flight-Guard respektieren wie syncProgress — sonst kann
-        // dieser Write einen laufenden Positions-Write im Netz überholen.
+        // Respect the same in-flight guard as syncProgress — otherwise this
+        // write could overtake a running position write on the network.
         while syncInFlight {
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
@@ -213,8 +210,8 @@ extension PlayerViewModel {
         defer { syncInFlight = false }
 
         let target = !isFinished
-        // Gehört markieren setzt den Fortschritt explizit ans Buchende;
-        // Rückgängig behält den aktuellen Stand und kippt nur das Flag.
+        // Marking as finished sets the progress explicitly to the book end;
+        // undoing keeps the current state and only flips the flag.
         let writeTime = target ? duration : currentTime
         do {
             try await provider.updateProgress(
@@ -225,8 +222,8 @@ extension PlayerViewModel {
             )
             SyncQueue.shared.remove(itemId: item.id)
         } catch {
-            // Nutzer-Statusentscheidung nicht verlieren: queuen, lokal
-            // trotzdem übernehmen — der Flush reicht sie nach.
+            // Don't lose the user's status decision: queue it, apply locally
+            // anyway — the flush sends it later.
             SyncQueue.shared.enqueue(
                 itemId: item.id,
                 currentTime: writeTime,
@@ -242,8 +239,8 @@ extension PlayerViewModel {
             }
         }
         isFinished = target
-        // Provider ohne Server-Sync (RSS/lokal): Gehört-Status lebt in
-        // `localPosition` — hier direkt setzen bzw. entfernen.
+        // Providers without server sync (RSS/local): the played state lives in
+        // `localPosition` — set or remove it directly here.
         if !provider.capabilities.contains(.progressSync), let key = localPositionKey {
             if target {
                 UserDefaults.standard.set([duration, Date().timeIntervalSince1970 * 1000], forKey: key)
@@ -252,9 +249,9 @@ extension PlayerViewModel {
             }
         }
         if target {
-            // Lokalen Zustand angleichen: ans Buchende springen und Sync-Stand
-            // nachziehen — sonst schriebe der periodische Sync gleich wieder
-            // den alten Stand mit isFinished=false.
+            // Align the local state: jump to the book end and update the sync
+            // state — otherwise the periodic sync would immediately write the old
+            // state with isFinished=false again.
             await seek(to: duration, userInitiated: false)
             lastSyncedTime = duration
         } else {
@@ -263,22 +260,22 @@ extension PlayerViewModel {
     }
 
 
-    /// Wird aufgerufen, wenn die App wieder in den Vordergrund kommt. Deckt den
-    /// Fall ab, dass zwischenzeitlich auf einem anderen Gerät weitergehört
-    /// wurde, während diese App-Instanz nur im Hintergrund lag (nicht beendet).
-    /// Übernimmt den Serverstand NUR, wenn er weiter ist als die lokale
-    /// Position — nie umgekehrt, das würde eigenen Fortschritt verwerfen.
+    /// Called when the app comes back to the foreground. Covers the case that
+    /// another device kept listening in the meantime while this app instance was
+    /// only in the background (not killed). Adopts the server state ONLY if it is
+    /// further ahead than the local position — never the reverse, which would
+    /// discard own progress.
     func reconcileWithServer() async {
         guard let item else { return }
         do {
             let fresh = try await provider.fetchItemDetail(itemId: item.id)
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
             let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
-            // Neuerer Server-Eintrag als der zuletzt gesehene + abweichende
-            // Position → anderes Gerät hat geschrieben. Übernehmen — auch
-            // RÜCKWÄRTS (bewusstes Zurückspulen dort ist gewollt). Nach
-            // eigenem Write ist serverTime ≈ currentTime → kein Sprung.
-            // Fallback ohne lastUpdate (alte Server): nur vorwärts wie bisher.
+            // Newer server entry than the last seen + differing position →
+            // another device wrote. Adopt — also BACKWARDS (a deliberate rewind
+            // there is intended). After our own write serverTime ≈ currentTime →
+            // no jump. Fallback without lastUpdate (old servers): forward only as
+            // before.
             let isNewer = serverUpdate > lastKnownServerUpdate
             let adopt = SyncRules.shouldAdoptServerState(
                 serverTime: serverTime,
@@ -291,8 +288,8 @@ extension PlayerViewModel {
                 lastSyncedTime = serverTime
                 showSourceHint(.serverAdopted)
             }
-            // Auch das Abschluss-Flag vom neueren Eintrag übernehmen — z. B.
-            // auf einem anderen Gerät als (un)gehört markiert.
+            // Also adopt the finished flag from the newer entry — e.g. marked
+            // (un)played on another device.
             if isNewer, let serverFinished = fresh.userMediaProgress?.isFinished,
                serverFinished != isFinished {
                 isFinished = serverFinished
@@ -300,8 +297,8 @@ extension PlayerViewModel {
             lastKnownServerUpdate = max(lastKnownServerUpdate, serverUpdate)
             syncStatus = .synced
         } catch {
-            // Kein Netz o.ä.: einfach mit dem lokalen Stand weitermachen,
-            // kein Abbruch der Wiedergabe wegen eines Abgleich-Fehlers.
+            // No network etc.: just continue with the local state, no playback
+            // interruption because of a reconcile error.
         }
     }
 }
