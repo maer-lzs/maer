@@ -10,7 +10,11 @@ import Combine
 @MainActor
 final class ABSPodcastProvider: ObservableObject, AudioProvider {
     static let shared = ABSPodcastProvider()
-    private init() {}
+    private init() {
+        archivedShowIds = Set(UserDefaults.standard.stringArray(forKey: Self.archiveKey) ?? [])
+    }
+
+    private static let archiveKey = "abspod.archivedShows"
 
     private var client: APIClient { AppSession.shared.apiClient }
 
@@ -26,6 +30,21 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Zählt Änderungen (Shows/Fortschritt) — als `.task`-id in der UI, damit
     /// „Als Nächstes"/„Geladen" nach ABS-Laden bzw. „gehört" neu rechnen.
     @Published private(set) var changeToken = 0
+    /// Archivierte Shows (client-seitig): „Abo beenden" blendet nur aus, ohne am
+    /// Server zu löschen — Show + Hörhistorie bleiben erhalten, reaktivierbar.
+    @Published private(set) var archivedShowIds: Set<String> = []
+
+    /// Shows ohne archivierte (für die aktiven Sektionen).
+    var activeShows: [PodcastShow] { shows.filter { !archivedShowIds.contains($0.id) } }
+    /// Nur die archivierten Shows (zum Reaktivieren).
+    var archivedShows: [PodcastShow] { shows.filter { archivedShowIds.contains($0.id) } }
+
+    /// Show archivieren/reaktivieren (persistiert, KEIN Server-Eingriff).
+    func setArchived(_ showId: String, _ archived: Bool) {
+        if archived { archivedShowIds.insert(showId) } else { archivedShowIds.remove(showId) }
+        UserDefaults.standard.set(Array(archivedShowIds), forKey: Self.archiveKey)
+        changeToken += 1
+    }
 
     // MARK: - AudioProvider
 

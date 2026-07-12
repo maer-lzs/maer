@@ -47,6 +47,7 @@ struct PodcastSourceView: View {
                 resultsSection
             }
             subscriptionsSection
+            archivedSection
             addByURLSection
             importSection
             NavigationLink {
@@ -191,6 +192,24 @@ struct PodcastSourceView: View {
     }
 
     // MARK: - Abos / URL
+
+    /// Archivierte Server-Shows (Abo beendet, Historie am Server erhalten).
+    @ViewBuilder
+    private var archivedSection: some View {
+        let archived = absPodcast.archivedShows
+        if !archived.isEmpty {
+            Section("Archived") {
+                ForEach(archived) { show in
+                    HStack {
+                        Text(show.title).lineLimit(1)
+                        Spacer()
+                        Button("Reactivate") { absPodcast.setArchived(show.id, false) }
+                            .buttonStyle(.borderless)
+                    }
+                }
+            }
+        }
+    }
 
     @ViewBuilder
     private var subscriptionsSection: some View {

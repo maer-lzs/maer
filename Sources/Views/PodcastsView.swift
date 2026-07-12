@@ -18,7 +18,7 @@ struct PodcastsView: View {
     /// normalisierte Feed-URL — bei Dopplung wird die ABS-Show (synchronisiert)
     /// bevorzugt.
     private var allShows: [PodcastShow] {
-        let abs = absPodcast.shows
+        let abs = absPodcast.activeShows
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
         let rssOnly = subs.shows.filter {
             !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
@@ -415,9 +415,12 @@ struct PodcastShowView: View {
     let show: PodcastShow
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var descriptionExpanded = false
+    @State private var showDeleteConfirm = false
+    private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
     /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
     @AppStorage private var newestFirst: Bool
 
@@ -485,17 +488,50 @@ struct PodcastShowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .onTapGesture { withAnimation { descriptionExpanded.toggle() } }
             }
+            manageButton
+                .font(.subheadline)
+                .padding(.top, 4)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .confirmationDialog("Delete on server?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete on server", role: .destructive) {
+                Task { _ = await absPodcast.deleteShowOnServer(showId: show.id); dismiss() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the podcast and its listening history from the server for everyone.")
+        }
+    }
+
+    /// ABS-Show: archivieren (Server bleibt) bzw. endgültig löschen; RSS-Show:
+    /// lokal abbestellen.
+    @ViewBuilder
+    private var manageButton: some View {
+        if isServerShow {
+            Menu {
+                Button {
+                    absPodcast.setArchived(show.id, true)
+                    dismiss()
+                } label: {
+                    Label("End subscription (archive)", systemImage: "archivebox")
+                }
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label("Delete on server", systemImage: "trash")
+                }
+            } label: {
+                Label("Manage subscription", systemImage: "ellipsis.circle")
+            }
+        } else {
             Button(role: .destructive) {
                 subs.unsubscribe(id: show.id)
                 dismiss()
             } label: {
                 Label("Unsubscribe", systemImage: "minus.circle")
             }
-            .font(.subheadline)
-            .padding(.top, 4)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal)
     }
 }
 

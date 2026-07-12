@@ -2094,6 +2094,86 @@
         }
       }
     },
+    "Subscribe failed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abonnieren fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Manage subscription" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abo verwalten"
+          }
+        }
+      }
+    },
+    "End subscription (archive)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abo beenden (archivieren)"
+          }
+        }
+      }
+    },
+    "Delete on server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am Server löschen"
+          }
+        }
+      }
+    },
+    "Delete on server?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am Server löschen?"
+          }
+        }
+      }
+    },
+    "This removes the podcast and its listening history from the server for everyone." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das entfernt den Podcast und seine Hörhistorie für alle vom Server."
+          }
+        }
+      }
+    },
+    "Archived" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiviert"
+          }
+        }
+      }
+    },
+    "Reactivate" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reaktivieren"
+          }
+        }
+      }
+    },
     "Subscriptions" : {
       "localizations" : {
         "de" : {
