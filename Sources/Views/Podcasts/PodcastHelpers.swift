@@ -2,10 +2,10 @@ import SwiftUI
 import Combine
 import UIKit
 
-/// Feed komplett abbestellen — aus BEIDEN Quellen anhand der normalisierten
-/// Feed-URL: RSS-Abo entfernen (gpodder-Reconcile schickt danach `remove`) UND
-/// eine evtl. gleichnamige ABS-Show archivieren (Server-Historie bleibt). So
-/// kommt der Feed nicht als „andere Quelle" zurück.
+/// Fully unsubscribe from a feed — from BOTH sources by the normalised feed URL:
+/// remove the RSS subscription (the gpodder reconcile then sends `remove`) AND
+/// archive a same-named ABS show (server history stays). So the feed does not
+/// come back as "another source".
 @MainActor
 func podcastUnsubscribe(_ show: PodcastShow) {
     let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
@@ -21,8 +21,8 @@ func podcastUnsubscribe(_ show: PodcastShow) {
 }
 
 extension View {
-    /// Einheitliches Folgen-Kontextmenü (Force Touch / Long-Press) — überall
-    /// gleich: Abspielen, in die Queue, gehört/ungehört, laden/löschen.
+    /// Unified episode context menu (Force Touch / long-press) — the same
+    /// everywhere: play, into the queue, played/unplayed, download/delete.
     @ViewBuilder
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
         contextMenu {
@@ -59,7 +59,7 @@ extension View {
         }
     }
 
-    /// Einheitliches Sendungs-Kontextmenü (abonniert): alle gehört, abbestellen.
+    /// Unified show context menu (subscribed): mark all played, unsubscribe.
     @ViewBuilder
     func podcastShowMenu(_ show: PodcastShow) -> some View {
         contextMenu {
@@ -75,9 +75,9 @@ extension View {
     }
 }
 
-/// PodcastShow + Episode → LibraryItem (quellen-agnostisch). Der Namespace im
-/// `guid`/`id` (`rss:`/`abspod:`) routet Wiedergabe/Cover/Fortschritt auf die
-/// richtige Quelle.
+/// PodcastShow + episode → LibraryItem (source-agnostic). The namespace in the
+/// `guid`/`id` (`rss:`/`abspod:`) routes playback/cover/progress to the right
+/// source.
 func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
     LibraryItem(
         id: episode.guid,
@@ -95,10 +95,10 @@ func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryIt
     )
 }
 
-/// Pro-Show-Auto-Download: lädt für aktivierte Shows die neuesten, seit dem
-/// Einschalten erschienenen Folgen lokal (quellenübergreifend RSS + ABS). Nur
-/// Folgen NACH dem Aktivierungszeitpunkt werden gezogen, damit vom Nutzer
-/// gelöschte Altfolgen nicht endlos neu geladen werden.
+/// Per-show auto-download: for enabled shows, downloads the newest episodes that
+/// appeared since enabling, locally (cross-source RSS + ABS). Only episodes
+/// AFTER the enabling time are pulled so old episodes deleted by the user are not
+/// re-downloaded endlessly.
 @MainActor
 enum PodcastAutoDownload {
     static func flagKey(_ showId: String) -> String { "podcastAutoDownload.\(showId)" }
@@ -110,12 +110,12 @@ enum PodcastAutoDownload {
 
     static func setEnabled(_ showId: String, _ on: Bool) {
         UserDefaults.standard.set(on, forKey: flagKey(showId))
-        // Beim Einschalten den Stichtag setzen → ab jetzt neue Folgen.
+        // On enabling, set the cutoff date → new episodes from now on.
         if on { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId)) }
     }
 
-    /// Für alle aktivierten Shows die neuen (seit Stichtag), noch nicht lokal
-    /// vorhandenen Folgen ziehen. `perShow` deckelt pro Durchlauf.
+    /// For all enabled shows, pull the new (since the cutoff), not-yet-local
+    /// episodes. `perShow` caps it per run.
     static func run(shows: [PodcastShow], perShow: Int = 3) async {
         let dm = DownloadManager.shared
         for show in shows where isEnabled(show.id) {
@@ -134,10 +134,10 @@ enum PodcastAutoDownload {
     }
 }
 
-/// Feed-only-Folge einer ABS-Show → abspielbares `rss:`-Item: streamt vom
-/// Original-Host, Fortschritt läuft lokal+iCloud (kein Server-Download nötig).
-/// Gleiche `rss:<feedKey>:<guid>`-ID wie RSS/PodcastIndex → gemeinsamer
-/// Fortschritt, und die Basis für den späteren Server-Handoff.
+/// Feed-only episode of an ABS show → playable `rss:` item: streams from the
+/// original host, progress runs local+iCloud (no server download needed). Same
+/// `rss:<feedKey>:<guid>` id as RSS/PodcastIndex → shared progress, and the
+/// basis for the later server handoff.
 @MainActor
 func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
     let guid = "rss:\(PodcastSubscriptions.feedKey(show.feedURL)):\(feed.id)"
@@ -153,10 +153,10 @@ func feedEpisodePlayItem(show: PodcastShow, feed: FeedEpisode) -> LibraryItem {
         addedAt: feed.publishedAt)
 }
 
-// MARK: - Quellen-bewusster Gehört-Zustand
+// MARK: - Source-aware played state
 
-/// HTML aus Episodenbeschreibungen zu Plaintext entschärfen (Tags/Entities),
-/// analog `BookDetailScreen.plainText(fromHTML:)`.
+/// Reduce HTML from episode descriptions to plain text (tags/entities),
+/// analogous to `BookDetailScreen.plainText(fromHTML:)`.
 func podcastPlainText(_ html: String) -> String {
     var text = html
     text = text.replacingOccurrences(of: "</p>", with: "\n\n", options: .caseInsensitive)
@@ -169,14 +169,14 @@ func podcastPlainText(_ html: String) -> String {
     return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-/// „vor 2 Tagen" — relatives Datum aus `addedAt` (pubDate).
+/// "2 days ago" — relative date from `addedAt` (pubDate).
 func relativeDateText(_ item: LibraryItem) -> String {
     guard let added = item.addedAt, added > 0 else { return "" }
     return Date(timeIntervalSince1970: added / 1000)
         .formatted(.relative(presentation: .named))
 }
 
-/// „55 min" bzw. „1 Std 51 min" aus der Episodendauer.
+/// "55 min" or "1 h 51 min" from the episode duration.
 func durationText(_ item: LibraryItem) -> String {
     let total = Int((item.media?.duration ?? 0) / 60)
     if total >= 60 {
@@ -185,9 +185,9 @@ func durationText(_ item: LibraryItem) -> String {
     return String(localized: "\(total) min")
 }
 
-/// Podcast-Cover (Remote-URL) mit Fallback-Mikrofon. `thumbnailPixel` erzwingt
-/// ein Thumbnail dieser Zielgröße (z. B. 800 px für die „Als Nächstes"-Karten —
-/// scharf, aber viel leichter als der Voll-Decode bis ~2200 px).
+/// Podcast cover (remote URL) with a fallback microphone. `thumbnailPixel`
+/// forces a thumbnail of this target size (e.g. 800 px for the "Up Next" cards —
+/// sharp, but far lighter than the full decode up to ~2200 px).
 @ViewBuilder
 func podcastArtwork(url: URL?, size: CGFloat, corner: CGFloat, thumbnailPixel: CGFloat? = nil) -> some View {
     let shape = RoundedRectangle(cornerRadius: corner, style: .continuous)

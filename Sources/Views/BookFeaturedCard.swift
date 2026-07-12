@@ -1,17 +1,17 @@
 import SwiftUI
 
-/// Große „Fortsetzen"-Karte für Hörbücher — analog zur Podcast-Karte: Cover
-/// oben, darunter eine Textfläche in der Cover-Durchschnittsfarbe (weicher
-/// Übergang), Restzeit · zuletzt gehört, Titel/Autor und aktuelles Kapitel.
-/// Tap auf die Karte spielt direkt weiter (Apple-Stil); Detail per Info-Pille
-/// unten links, mehr Aktionen per Long-Press.
+/// Large "Continue" card for audiobooks — analogous to the podcast card: cover
+/// on top, below it a text area in the cover's average color (soft transition),
+/// remaining · last played, title/author and current chapter. Tapping the card
+/// resumes directly (Apple style); detail via the info pill at the bottom left,
+/// more actions via long-press.
 struct BookFeaturedCard: View {
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
     @StateObject private var colorLoader = CoverColorLoader()
-    /// Kapitel werden lazy aus dem Item-Detail nachgeladen — die Bibliotheks-
-    /// liste kommt „minified" und enthält keine Kapitel (siehe currentChapter).
+    /// Chapters are loaded lazily from the item detail — the library list comes
+    /// "minified" and contains no chapters (see currentChapter).
     @State private var loadedChapters: [ABSChapter]?
     private let width: CGFloat = 235
 
@@ -55,9 +55,9 @@ struct BookFeaturedCard: View {
                 if !sub.isEmpty {
                     Text(sub).font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                 }
-                // Feste Höhen für die variablen Zeilen (Titel 1 Zeile, Autor,
-                // Kapitel) — sonst wird eine Karte mit mehr Text höher als die
-                // Nachbarn und die Reihe wirkt ungleichmäßig.
+                // Fixed heights for the variable lines (title 1 line, author,
+                // chapter) — otherwise a card with more text gets taller than its
+                // neighbours and the row looks uneven.
                 Text(entry.item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: 22, alignment: .topLeading)
@@ -74,8 +74,8 @@ struct BookFeaturedCard: View {
         }
     }
 
-    /// Die Karte selbst ist tap-to-play; die Pille führt daher NICHT nochmal
-    /// zum Abspielen, sondern auf die Detailseite (Info).
+    /// The card itself is tap-to-play; the pill therefore does NOT play again but
+    /// opens the detail page (info).
     private var infoPill: some View {
         NavigationLink(value: entry.id) {
             HStack(spacing: 6) {
@@ -110,9 +110,9 @@ struct BookFeaturedCard: View {
         return chapters.last(where: { t >= $0.start })?.title
     }
 
-    /// Kapitel des Buchs einmal aus dem Detail holen (die Liste ist „minified",
-    /// ohne Kapitel) — Ergebnis prozessweit gecacht, damit Scrollen/Neuzeichnen
-    /// keinen erneuten Request auslöst.
+    /// Fetch the book's chapters once from the detail (the list is "minified",
+    /// without chapters) — result cached process-wide so scrolling/redrawing
+    /// triggers no new request.
     private func loadChapters() async {
         if let existing = entry.item.media?.chapters, !existing.isEmpty { return }
         if let cached = FeaturedChapterCache.shared.chapters(for: entry.id) {
@@ -127,8 +127,8 @@ struct BookFeaturedCard: View {
     }
 }
 
-/// Prozessweiter Kapitel-Cache für die „Fortsetzen"-Karten — je Buch nur einmal
-/// das Detail holen, danach aus dem Speicher.
+/// Process-wide chapter cache for the "Continue" cards — fetch the detail once
+/// per book, then from memory.
 @MainActor
 final class FeaturedChapterCache {
     static let shared = FeaturedChapterCache()
@@ -137,9 +137,9 @@ final class FeaturedChapterCache {
     func store(_ chapters: [ABSChapter], for id: String) { cache[id] = chapters }
 }
 
-/// Download-Steuerung für ein Hörbuch (Zustand aus dem DownloadManager) —
-/// visuell identisch zur Podcast-Karte: Pfeil → Ring beim Laden → Häkchen wenn
-/// geladen.
+/// Download control for an audiobook (state from the DownloadManager) —
+/// visually identical to the podcast card: arrow → ring while loading →
+/// checkmark when downloaded.
 struct BookDownloadButton: View {
     let entry: LibraryEntry
     let provider: any AudioProvider

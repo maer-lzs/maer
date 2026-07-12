@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Gemeinsame Bausteine für Buch-Grids: Zelle, Haptic-Touch-Menü und die
-/// Autoren-/Genre-Browsing-Screens. Aus `LibraryView` extrahiert, damit die
-/// Browse-Grids exakt dieselbe Optik und dasselbe Menü bekommen.
+/// Shared building blocks for book grids: cell, Haptic Touch menu and the
+/// author/genre browsing screens. Extracted from `LibraryView` so the browse
+/// grids get exactly the same look and the same menu.
 
-/// Statuszeile unter dem Cover ("Abgeschlossen" / "noch x Std." / "x % gehört").
+/// Status line below the cover ("Finished" / "x h left" / "x % listened").
 @MainActor
 func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     if p.isFinished { return String(localized: "Completed") }
@@ -15,9 +15,9 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     return ""
 }
 
-// MARK: - Kontextmenü (Haptic Touch)
+// MARK: - Context menu (Haptic Touch)
 
-/// Menüeinträge: Abspielen, Download-Steuerung passend zur Phase, Gehört-Status.
+/// Menu items: play, download control matching the phase, played status.
 struct BookContextMenuItems: View {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
@@ -83,17 +83,17 @@ struct BookContextMenuItems: View {
         }
     }
 
-    /// Lädt kurz die Track-Info nach (die Liste selbst hat nur die schlanken
-    /// Metadaten) und startet dann den Download — ohne WLAN-Rückfrage, das ist
-    /// hier bewusst die schnelle Variante fürs Kontextmenü.
+    /// Briefly loads the track info (the list itself only has the slim metadata)
+    /// and then starts the download — without a Wi-Fi prompt, deliberately the
+    /// quick variant for the context menu here.
     private func quickDownload() async {
         guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
         await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
     }
 
-    /// Wie in BookDetailScreen: immer den vollständigen Datensatz
-    /// (currentTime + duration + isFinished) schicken, nie nur das Flag
-    /// allein — sonst geht der reale Fortschritt verloren (siehe Sync-Bugfix).
+    /// As in BookDetailScreen: always send the complete record (currentTime +
+    /// duration + isFinished), never the flag alone — otherwise the real progress
+    /// is lost (see sync bugfix).
     private func quickToggleFinished() async {
         let provider = playerCoordinator.provider
         let newIsFinished = !(entry.progress?.isFinished ?? false)
@@ -166,7 +166,7 @@ struct BookContextPreview: View {
     }
 }
 
-/// Hängt Menü + Glas-Preview an eine beliebige Buchzelle.
+/// Attaches menu + glass preview to any book cell.
 struct BookCellContextMenu: ViewModifier {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
@@ -187,8 +187,8 @@ struct BookCellContextMenu: ViewModifier {
 
 // MARK: - Grid-Zelle
 
-/// Eine Buchzelle (Cover + Titel + Autor + Status) inkl. Navigation zur
-/// Detailseite und Haptic-Touch-Menü — identisch in Bibliothek und Browse.
+/// A book cell (cover + title + author + status) incl. navigation to the detail
+/// page and Haptic Touch menu — identical in library and browse.
 struct BookGridCell: View {
     let entry: LibraryEntry
     let width: CGFloat
@@ -196,10 +196,10 @@ struct BookGridCell: View {
     let libraryViewModel: LibraryViewModel
 
     var body: some View {
-        // Wertbasierte Navigation (statt closure-basiert), damit ein Reset des
-        // navigationPath — z. B. beim Tippen eines Medien-Tabs — das Detail
-        // sauber bis zur Bibliothekswurzel zurückpoppt. Ziel: das gemeinsame
-        // navigationDestination(for: String.self) in der LibraryView.
+        // Value-based navigation (instead of closure-based) so a reset of the
+        // navigationPath — e.g. tapping a media tab — pops the detail cleanly
+        // back to the library root. Target: the shared
+        // navigationDestination(for: String.self) in LibraryView.
         NavigationLink(value: entry.id) {
             VStack(alignment: .leading, spacing: 6) {
                 BookCoverView(
