@@ -67,7 +67,9 @@ private nonisolated struct LibraryDiskCache: Codable {
 
 @MainActor
 final class LibraryViewModel: ObservableObject {
-    @Published var entries: [LibraryEntry] = []
+    @Published var entries: [LibraryEntry] = [] {
+        didSet { entriesStamp &+= 1 }
+    }
     @Published var continueListening: [LibraryEntry] = []
     @Published var recentlyAdded: [LibraryEntry] = []
     @Published var isLoading = false
@@ -151,8 +153,46 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Memoized derived lists
+
+    /// The sorted/grouped lists below are read from `body` — and the body can be
+    /// re-evaluated very often (scroll, download ticks, playback state). The
+    /// locale-aware sorts are far too expensive to run per evaluation, so both
+    /// lists are memoized and recomputed only when one of their inputs changes.
+    private var entriesStamp = 0
+    private struct DerivedKey: Equatable {
+        var stamp: Int
+        var sort: SortOption
+        var ascending: Bool
+        var filter: FilterOption
+        /// Downloads only affect the result under the "downloaded" filter; the
+        /// set hash keeps the key stable otherwise.
+        var downloadsHash: Int
+    }
+    private func derivedKey() -> DerivedKey {
+        DerivedKey(
+            stamp: entriesStamp, sort: sortOption, ascending: sortAscending,
+            filter: filterOption,
+            downloadsHash: filterOption == .heruntergeladen
+                ? DownloadManager.shared.downloadedItemIds.hashValue : 0
+        )
+    }
+    private var sortedCacheKey: DerivedKey?
+    private var sortedCache: [LibraryEntry] = []
+    private var groupedCacheKey: DerivedKey?
+    private var groupedCache: [GridEntry] = []
+
     /// The "All Books" list, prepared by the current sort, direction and filter.
     var sortedFilteredEntries: [LibraryEntry] {
+        let key = derivedKey()
+        if key == sortedCacheKey { return sortedCache }
+        let value = computeSortedFilteredEntries()
+        sortedCacheKey = key
+        sortedCache = value
+        return value
+    }
+
+    private func computeSortedFilteredEntries() -> [LibraryEntry] {
         let filtered = entries.filter(matchesFilter)
 
         // Each case deliberately returns the ASCENDING order — the direction is
@@ -244,8 +284,19 @@ final class LibraryViewModel: ObservableObject {
 
     /// sortedFilteredEntries where series with more than one book are grouped
     /// into a stack (order within: volume number, since the list already arrives
-    /// sorted that way under "Series" sorting).
+    /// sorted that way under "Series" sorting). Memoized like
+    /// `sortedFilteredEntries` (two sorts + a regex per entry are far too
+    /// expensive per body evaluation).
     var seriesGroupedEntries: [GridEntry] {
+        let key = derivedKey()
+        if key == groupedCacheKey { return groupedCache }
+        let value = computeSeriesGroupedEntries()
+        groupedCacheKey = key
+        groupedCache = value
+        return value
+    }
+
+    private func computeSeriesGroupedEntries() -> [GridEntry] {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
         // Group from the UNFILTERED (but series-sorted) list so stacks always
