@@ -354,7 +354,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   offline metadata cache (server unreachable) instead of a fresh server
     ///   response — only controls the brief "Resumed from …" hint, otherwise
     ///   identical behaviour.
-    func load(item: LibraryItemDetail, isOfflineFallback: Bool = false) async {
+    /// - Parameter restart: replay from the beginning — ignore any saved/server
+    ///   position, clear the finished flag, and write `0` through immediately
+    ///   (server + iCloud/gpodder) without the conflict guard blocking the
+    ///   intended backward jump. Makes "replay a finished episode" reliable for
+    ///   every source, not just feeds without server progress.
+    func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
         self.item = item
         chapters = item.media.chapters ?? []
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
@@ -405,6 +410,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = saved[0]
             restoredFromLocal = true
         }
+        // Explicit replay: ignore any saved/server position and begin at 0.
+        if restart {
+            startTime = 0
+            restoredFromLocal = false
+        }
         let startIndex = trackIndex(for: startTime)
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 
@@ -417,7 +427,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         lastSyncedTime = serverProgress
         lastKnownServerUpdate = serverUpdateMs
         currentTime = startTime
-        isFinished = item.userMediaProgress?.isFinished ?? false
+        isFinished = restart ? false : (item.userMediaProgress?.isFinished ?? false)
         // Remembered per-book speed; then a per-show podcast rate (if set);
         // otherwise the default speed from the settings instead of a hard 1.0.
         let showRate: Float? = AppStorageKeys.podcastShowId(forEpisodeId: item.id).flatMap {
@@ -435,12 +445,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // at 0) "adopted server position" would be misleading.
         if isOfflineFallback || restoredFromLocal {
             showSourceHint(.localUsed)
-        } else if serverProgress > 0 {
+        } else if serverProgress > 0 && !restart {
             showSourceHint(.serverAdopted)
         }
         if restoredFromLocal {
             // Flush the restored state immediately (offline → queue). No conflict
             // dialog: the state was intended before the crash.
+            suppressConflictForNextSync = true
+            await syncProgress(force: true)
+        }
+        if restart {
+            // Deliberate replay from 0: write it through immediately (server +
+            // iCloud/gpodder) and don't let the conflict guard flag the backward
+            // jump — starting over is intended, on every source.
             suppressConflictForNextSync = true
             await syncProgress(force: true)
         }

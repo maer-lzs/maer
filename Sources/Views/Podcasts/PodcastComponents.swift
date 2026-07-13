@@ -259,11 +259,16 @@ struct PodcastEpisodeRow: View {
     private var playButton: some View {
         Button {
             Task {
-                // A finished episode replays from the beginning and is set back to
-                // unplayed: marking it unplayed clears the saved position, so the
-                // following open() starts at 0.
-                if isPlayed { podcastSetPlayed(item, false) }
-                await playerCoordinator.open(item: item)
+                if isPlayed {
+                    // A finished episode replays from the beginning and is set
+                    // back to unplayed. `restart` starts at 0 and writes it
+                    // through on every source (server + iCloud/gpodder); the
+                    // local flip updates the row immediately.
+                    podcastSetPlayed(item, false)
+                    await playerCoordinator.open(item: item, restart: true)
+                } else {
+                    await playerCoordinator.open(item: item)
+                }
             }
         } label: {
             Image(systemName: "play.circle.fill")

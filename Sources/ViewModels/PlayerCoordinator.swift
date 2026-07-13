@@ -33,13 +33,15 @@ final class PlayerCoordinator: ObservableObject {
     /// - Parameter autoplay: true on a deliberate open by the user (starts
     ///   playback right after loading), false on a silent restore after app
     ///   start (stays paused).
-    func open(item: LibraryItem, autoplay: Bool = true) async {
+    func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
         // A podcast episode you play no longer belongs in the "Up Next" queue
         // (the currently playing episode is never in it).
         if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
             PodcastQueue.shared.remove(item.id)
         }
-        if activeItem?.id == item.id, viewModel != nil {
+        // A restart must reload (start at 0) even if it's the active item — don't
+        // take the "already open, just resume" shortcut.
+        if !restart, activeItem?.id == item.id, viewModel != nil {
             if autoplay { await viewModel?.playWithServerCheck() }
             return
         }
@@ -57,7 +59,7 @@ final class PlayerCoordinator: ObservableObject {
         do {
             let detail = try await itemProvider.fetchItemDetail(itemId: item.id)
             let newViewModel = PlayerViewModel(provider: itemProvider)
-            await newViewModel.load(item: detail)
+            await newViewModel.load(item: detail, restart: restart)
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
             UserDefaults.standard.set(item.id, forKey: lastItemKey)

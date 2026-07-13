@@ -225,7 +225,15 @@ struct PodcastEpisodeDetailView: View {
 
     private var playButton: some View {
         Button {
-            Task { await playerCoordinator.open(item: item) }
+            Task {
+                if isPlayed {
+                    // Replay a finished episode from the beginning + mark unplayed.
+                    podcastSetPlayed(item, false)
+                    await playerCoordinator.open(item: item, restart: true)
+                } else {
+                    await playerCoordinator.open(item: item)
+                }
+            }
         } label: {
             Label(isInProgress ? String(localized: "Resume") : String(localized: "Play"),
                   systemImage: "play.fill")
