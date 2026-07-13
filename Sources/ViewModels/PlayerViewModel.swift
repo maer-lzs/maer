@@ -808,7 +808,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     let assetSeconds = currentItem.duration.seconds
                     let real = assetSeconds.isFinite && assetSeconds > 0 ? assetSeconds : self.duration
                     let corrected = max(real, newTime)
-                    if abs(corrected - self.duration) > 0.5 { self.duration = corrected }
+                    if abs(corrected - self.duration) > 0.5 {
+                        self.duration = corrected
+                        // Persist the real duration into the episode model —
+                        // feeds without/with wrong itunes:duration otherwise
+                        // never get a working played/remaining state in lists.
+                        if let id = self.item?.id, id.hasPrefix("rss:"),
+                           assetSeconds.isFinite, assetSeconds > 0 {
+                            PodcastSubscriptions.shared.updateEpisodeDuration(guid: id, duration: assetSeconds)
+                        }
+                    }
                 }
                 // Crash safety: keep the position locally — throttled to every
                 // 5s (UserDefaults writes aren't free). The loss window on crash

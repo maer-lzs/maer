@@ -154,14 +154,44 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Make feed URLs comparable (scheme/`www.`/query/trailing slash ignored) so
     /// http/https or slash variants of the same feed collapse together.
+    /// Dedup rule for Apple-import collisions on the same enclosure: played
+    /// beats unplayed, then the further playhead wins.
+    nonisolated static func isBetterAppleProgress(
+        _ a: PodcastImport.AppleProgress, than b: PodcastImport.AppleProgress
+    ) -> Bool {
+        if a.isPlayed != b.isPlayed { return a.isPlayed }
+        return a.playhead > b.playhead
+    }
+
+    /// Query parameters that carry feed IDENTITY — two URLs differing in one of
+    /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
+    /// not collapse into one subscription. Everything else (tracking params
+    /// etc.) is still stripped.
+    nonisolated private static let identityQueryParams: Set<String> =
+        ["token", "auth", "key", "id", "show", "feed", "user", "podcast"]
+
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        if let q = s.firstIndex(of: "?") { s = String(s[..<q]) }
+        var identityQuery = ""
+        if let q = s.firstIndex(of: "?") {
+            // Keep identity-relevant parameters (sorted, canonical) so feeds
+            // that differ only in a token/show id stay distinct subscriptions;
+            // drop the rest (tracking) as before.
+            let query = String(s[s.index(after: q)...])
+            let kept = query.split(separator: "&")
+                .filter { pair in
+                    let name = pair.split(separator: "=", maxSplits: 1)[0]
+                    return identityQueryParams.contains(String(name))
+                }
+                .sorted()
+            if !kept.isEmpty { identityQuery = "?" + kept.joined(separator: "&") }
+            s = String(s[..<q])
+        }
         s = s.replacingOccurrences(of: "https://", with: "")
              .replacingOccurrences(of: "http://", with: "")
         if s.hasPrefix("www.") { s.removeFirst(4) }
         while s.hasSuffix("/") { s.removeLast() }
-        return s
+        return s + identityQuery
     }
 
     /// Bring persisted shows to stable ids/guids and merge duplicate shows (same
@@ -339,9 +369,15 @@ final class PodcastSubscriptions: ObservableObject {
     /// into `localPosition` (the same store the player uses).
     private func applyAppleProgress(_ progress: [PodcastImport.AppleProgress]) -> Int {
         guard !progress.isEmpty else { return 0 }
-        // Index by normalized enclosure URL (query/scheme don't matter).
+        // Index by normalized enclosure URL (query/scheme don't matter). On a
+        // collision keep the BETTER entry (played beats unplayed, then the
+        // further playhead) — "last in array wins" could keep the worse state.
         var byURL: [String: PodcastImport.AppleProgress] = [:]
-        for p in progress { byURL[Self.normalizeEnclosure(p.enclosureURL)] = p }
+        for p in progress {
+            let key = Self.normalizeEnclosure(p.enclosureURL)
+            if let existing = byURL[key], !Self.isBetterAppleProgress(p, than: existing) { continue }
+            byURL[key] = p
+        }
 
         var updated = shows
         var applied = 0
@@ -380,6 +416,17 @@ final class PodcastSubscriptions: ObservableObject {
              .replacingOccurrences(of: "http://", with: "")
         while s.hasSuffix("/") { s.removeLast() }
         return s
+    }
+
+    /// Adopt the real asset duration measured by the player — feeds often omit
+    /// or round `itunes:duration`, and without a duration the played/remaining
+    /// state cannot be derived. Persisted so lists and play-state math work
+    /// from then on.
+    func updateEpisodeDuration(guid: String, duration: Double) {
+        guard duration > 0, duration.isFinite, let idx = episodeIndex[guid] else { return }
+        guard abs(shows[idx.show].episodes[idx.episode].duration - duration) > 1 else { return }
+        shows[idx.show].episodes[idx.episode].duration = duration
+        save()
     }
 
     /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.

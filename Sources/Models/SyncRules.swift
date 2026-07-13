@@ -22,6 +22,18 @@ enum SyncRules {
         return serverTime > currentTime + tolerance
     }
 
+    /// Device reconcile: is the server entry (within tolerance) exactly the
+    /// state WE last wrote? A reconcile must not mistake our own echo for a
+    /// foreign device — server clocks can run ahead of the device clock, so a
+    /// pure timestamp comparison is not enough after an offline stretch.
+    static func isOwnServerEcho(
+        serverTime: Double,
+        lastSyncedTime: Double,
+        tolerance: Double = 5
+    ) -> Bool {
+        abs(serverTime - lastSyncedTime) <= tolerance
+    }
+
     /// Queue flush: drop a pending update because the server is now further
     /// ahead? isFinished updates are status decisions and are never dropped.
     static func shouldDropQueuedUpdate(

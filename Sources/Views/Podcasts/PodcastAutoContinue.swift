@@ -25,22 +25,69 @@ enum PodcastAutoContinue {
     }
 
     static func next(after finishedItemId: String) -> LibraryItem? {
-        let shows = allShows()
-        let finishedShow = shows.first { show in
-            show.episodes.contains { podcastLibraryItem(show: show, episode: $0).id == finishedItemId }
-        }
-        var finishedPub: Double?
-        if let show = finishedShow {
-            finishedPub = show.episodes
-                .first { podcastLibraryItem(show: show, episode: $0).id == finishedItemId }?
-                .pubDate
+        pick(
+            shows: allShows(),
+            finishedItemId: finishedItemId,
+            equivalentIds: { ABSPodcastProvider.shared.equivalentIds($0) },
+            playState: { podcastPlayState(for: $0) },
+            lastPlayed: { id in
+                // Bridge-aware: the freshest progress of an episode can live
+                // under its rss:/abspod: twin — take the max over all ids.
+                ABSPodcastProvider.shared.equivalentIds(id).reduce(0.0) { best, eqId in
+                    let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(eqId)) as? [Double])?.last ?? 0
+                    let absTs = ABSPodcastProvider.shared.episodeProgress[eqId]?.lastUpdate ?? 0
+                    return max(best, max(localTs, absTs))
+                }
+            }
+        )
+    }
+
+    /// Pure decision core (testable): all state lookups injected.
+    /// The finished episode is matched bridge-aware — a finished `rss:` playback
+    /// must find its show even when the catalog lists the ABS variant
+    /// (`abspod:` guids), otherwise step 1 (same show) would be skipped.
+    static func pick(
+        shows: [PodcastShow],
+        finishedItemId: String,
+        equivalentIds: (String) -> [String],
+        playState: (LibraryItem) -> EpisodePlayState,
+        lastPlayed: (String) -> Double
+    ) -> LibraryItem? {
+        let finishedIds = Set(equivalentIds(finishedItemId))
+        func isFinishedEpisode(_ guid: String) -> Bool {
+            finishedIds.contains(guid) || !finishedIds.isDisjoint(with: equivalentIds(guid))
         }
 
-        // 1. Same show: the NEXT NEWER unheard episode (closest pubDate above the
-        //    finished one) — move forward in time, never back to an older one.
-        if let show = finishedShow, let pub = finishedPub,
-           let item = nextNewerUnheard(in: show, after: pub) {
-            return item
+        var finishedShow: PodcastShow?
+        var finishedEpisode: PodcastEpisode?
+        for show in shows {
+            if let ep = show.episodes.first(where: { isFinishedEpisode($0.guid) }) {
+                finishedShow = show
+                finishedEpisode = ep
+                break
+            }
+        }
+
+        // 1. Same show: the NEXT NEWER unheard episode — strictly forward in
+        //    time; episodes sharing the finished pubDate (batch releases) count
+        //    too, ordered stably by guid.
+        if let show = finishedShow, let finished = finishedEpisode {
+            let candidate = show.episodes
+                .filter {
+                    !isFinishedEpisode($0.guid)
+                        && ($0.pubDate > finished.pubDate
+                            || ($0.pubDate == finished.pubDate && $0.guid > finished.guid))
+                }
+                .sorted {
+                    $0.pubDate != $1.pubDate ? $0.pubDate < $1.pubDate : $0.guid < $1.guid
+                }
+                .lazy
+                .map { podcastLibraryItem(show: show, episode: $0) }
+                .first { item in
+                    if case .played = playState(item) { return false }
+                    return true
+                }
+            if let candidate { return candidate }
         }
 
         // 2. Otherwise continue what was played most recently: the last started,
@@ -48,32 +95,13 @@ enum PodcastAutoContinue {
         var started: [(item: LibraryItem, ts: Double)] = []
         for show in shows {
             for ep in show.episodes {
+                guard !isFinishedEpisode(ep.guid) else { continue }
                 let item = podcastLibraryItem(show: show, episode: ep)
-                guard item.id != finishedItemId else { continue }
-                if case .inProgress = podcastPlayState(for: item) {
+                if case .inProgress = playState(item) {
                     started.append((item, lastPlayed(item.id)))
                 }
             }
         }
         return started.max(by: { $0.ts < $1.ts })?.item
-    }
-
-    /// The unheard episode with the smallest pubDate strictly newer than `pub`.
-    private static func nextNewerUnheard(in show: PodcastShow, after pub: Double) -> LibraryItem? {
-        show.episodes
-            .filter { $0.pubDate > pub }
-            .sorted { $0.pubDate < $1.pubDate }   // closest newer first
-            .lazy
-            .map { podcastLibraryItem(show: show, episode: $0) }
-            .first { item in
-                if case .played = podcastPlayState(for: item) { return false }
-                return true
-            }
-    }
-
-    private static func lastPlayed(_ itemId: String) -> Double {
-        let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double])?.last ?? 0
-        let absTs = ABSPodcastProvider.shared.episodeProgress[itemId]?.lastUpdate ?? 0
-        return max(localTs, absTs)
     }
 }

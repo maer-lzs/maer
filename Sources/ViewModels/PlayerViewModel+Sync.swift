@@ -73,6 +73,11 @@ extension PlayerViewModel {
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
+            // Our own write moved the server's lastUpdate forward — record that
+            // (device-clock approximation), otherwise the next reconcile takes
+            // our own echo for a foreign device and jumps back to the older
+            // position after an offline stretch (see also isOwnServerEcho).
+            lastKnownServerUpdate = max(lastKnownServerUpdate, Date().timeIntervalSince1970 * 1000)
             SyncQueue.shared.remove(itemId: item.id)
             if let key = localPositionKey {
                 // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
@@ -127,6 +132,13 @@ extension PlayerViewModel {
                 errorMessage = String(localized: "Sync failed: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)")
                 syncStatus = .failed
             }
+            // The state is persisted in the queue = locally committed: treat it
+            // like a successful write for the conflict bookkeeping. Otherwise a
+            // user-confirmed rewind that failed to send would re-trigger the
+            // conflict dialog on every following tick (lastSyncedTime still on
+            // the old higher value), and the suppress flag would stay stuck.
+            lastSyncedTime = currentTime
+            suppressConflictForNextSync = false
         }
     }
 
@@ -277,7 +289,11 @@ extension PlayerViewModel {
             // no jump. Fallback without lastUpdate (old servers): forward only as
             // before.
             let isNewer = serverUpdate > lastKnownServerUpdate
-            let adopt = SyncRules.shouldAdoptServerState(
+            // Own-echo guard: if the server holds exactly the state WE last
+            // wrote, it is not a foreign device — regardless of timestamps
+            // (server clocks can run ahead of the device clock).
+            let ownEcho = SyncRules.isOwnServerEcho(serverTime: serverTime, lastSyncedTime: lastSyncedTime)
+            let adopt = !ownEcho && SyncRules.shouldAdoptServerState(
                 serverTime: serverTime,
                 serverUpdateMs: serverUpdate,
                 lastKnownServerUpdateMs: lastKnownServerUpdate,

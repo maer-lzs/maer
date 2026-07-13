@@ -40,6 +40,13 @@ final class DownloadManager: ObservableObject {
         var pendingPause = false
         var pendingCancel = false
         var resumeData: Data?
+        /// Track index the in-flight transfer belongs to — binds `resumeData`
+        /// to ITS track. Consumed by "the first non-skipped track", the resume
+        /// data of track N could otherwise continue as track M's file when M's
+        /// file disappeared between pause and resume (wrong audio under that
+        /// index).
+        var inFlightTrackIndex: Int?
+        var resumeTrackIndex: Int?
     }
 
     @Published private(set) var downloadedItemIds: Set<String> = []
@@ -77,9 +84,18 @@ final class DownloadManager: ObservableObject {
                 Self.scanDownloads(downloadsDir: downloadsDir, metaDir: metaDir)
             }.value
             guard let self else { return }
-            // Merge: a download finished while scanning must not be dropped.
-            self.downloadedItemIds.formUnion(scan.ids)
-            self.totalDownloadsSize = scan.totalSize
+            // Merge: a download finished while scanning must not be dropped —
+            // but a download DELETED while scanning must not come back either
+            // (the stale scan still contains it). Re-check the meta file, the
+            // criterion deleteDownload removes, at merge time.
+            let stillPresent = scan.ids.filter { id in
+                FileManager.default.fileExists(
+                    atPath: metaDir.appendingPathComponent("\(id).json").path)
+            }
+            self.downloadedItemIds.formUnion(stillPresent)
+            self.totalDownloadsSize = stillPresent == scan.ids
+                ? scan.totalSize
+                : self.downloadedItemIds.reduce(0) { $0 + self.downloadSize(forItemId: $1) }
         }
     }
 
@@ -404,9 +420,10 @@ final class DownloadManager: ObservableObject {
         }
 
         resumeProvider = provider
-        // Carry mid-file resume data over from a pause (used once, for the
-        // first track that is actually transferred).
+        // Carry mid-file resume data over from a pause — used once, and ONLY
+        // for the exact track it was captured from (see resumeTrackIndex).
         var carriedResumeData = controls[itemId]?.resumeData
+        let carriedResumeIndex = controls[itemId]?.resumeTrackIndex
         controls[itemId] = DownloadControl(detail: item, resumeData: nil)
         phase[itemId] = .downloading(0)
         let dir = itemDirectory(itemId)
@@ -445,8 +462,12 @@ final class DownloadManager: ObservableObject {
                 }
 
                 let baseProgress = completedFraction
-                let resumeData = carriedResumeData
-                carriedResumeData = nil
+                // Resume data only for ITS track (a resumed transfer ignores the
+                // request URL — applied to another index it would store the
+                // wrong audio under that file name).
+                let resumeData = carriedResumeIndex == index ? carriedResumeData : nil
+                if resumeData != nil { carriedResumeData = nil }
+                controls[itemId]?.inFlightTrackIndex = index
                 try await FileDownloader.shared.download(
                     request: request,
                     to: destination,
@@ -512,14 +533,20 @@ final class DownloadManager: ObservableObject {
                 lastPublishedFraction[itemId] = nil
             } else {
                 // Pause: remember resume data for a mid-file continuation.
+                let inFlight = controls[itemId]?.inFlightTrackIndex
                 controls[itemId]?.resumeData = cancelled.resumeData
+                controls[itemId]?.resumeTrackIndex = inFlight
                 controls[itemId]?.pendingPause = false
                 phase[itemId] = .paused(progress)
+                // Reset the coalescing anchor so the first ticks after a resume
+                // are published again (purely visual).
+                lastPublishedFraction[itemId] = nil
             }
         } catch {
             // Keep partial files: the next attempt fetches only missing tracks.
             phase[itemId] = .failed(String(localized: "Download failed: \(error.localizedDescription)"))
             controls[itemId]?.currentTask = nil
+            lastPublishedFraction[itemId] = nil
         }
     }
 

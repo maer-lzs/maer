@@ -506,7 +506,9 @@ final class LibraryViewModel: ObservableObject {
                 rebuild(items: downloaded, progress: cache.progress)
             } else if let cache = await loadDiskCache() {
                 // Another error, but a cache exists: keep showing the last known
-                // state silently, without a misleading offline hint.
+                // state silently, without a misleading offline hint — including
+                // clearing a leftover hint from an earlier offline load.
+                isShowingOfflineCache = false
                 rebuild(items: cache.items, progress: cache.progress)
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -540,7 +542,9 @@ final class LibraryViewModel: ObservableObject {
     /// the server again (uses the already-loaded server items).
     func refreshAfterLocalChange() async {
         await reloadLocalCache()
-        let progress = (try? await provider.fetchAllProgress()) ?? [:]
+        // Offline/error: keep the last known progress — `?? [:]` used to blank
+        // out every bar and the Continue row until the next successful load.
+        let progress = (try? await provider.fetchAllProgress()) ?? lastProgress
         rebuild(items: cachedItems, progress: progress)
     }
 
@@ -579,8 +583,13 @@ final class LibraryViewModel: ObservableObject {
         return LibraryEntry(item: item, progress: p)
     }
 
+    /// Progress used by the last rebuild — the fallback when a silent refresh
+    /// can't reach the server (otherwise all bars/Continue would blank out).
+    private var lastProgress: [String: BookProgress] = [:]
+
     private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
         cachedItems = items
+        lastProgress = progress
         let queued = SyncQueue.shared.allPending()
         let combined = items.map { makeEntry(item: $0, progress: progress, queued: queued) }
         // Always mix in local files (preloaded via their provider, see

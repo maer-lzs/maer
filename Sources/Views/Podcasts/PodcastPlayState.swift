@@ -28,13 +28,22 @@ final class PodcastProgressStore: ObservableObject {
         state(guid: item.id, duration: item.media?.duration ?? 0)
     }
 
+    /// Position marker meaning "played" for episodes WITHOUT a known duration
+    /// (feeds without itunes:duration). 30 days in seconds — far beyond any real
+    /// episode/audiobook, and small enough for the Int conversions in the
+    /// gpodder push. Without it, "mark as played" was a silent no-op for
+    /// duration-less episodes (state() could never reach `time >= duration - 1`).
+    static let playedSentinel: Double = 2_592_000
+
     /// State directly from guid + duration — without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
-        guard duration > 0,
-              let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
+        guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
               stored.count == 2 else { return .unplayed }
         let time = stored[0]
+        // Sentinel first: works independently of a (missing) duration.
+        if time >= Self.playedSentinel { return .played }
+        guard duration > 0 else { return .unplayed }
         if time >= duration - 1 { return .played }
         if time > 1 { return .inProgress(fraction: min(max(time / duration, 0), 1), remaining: duration - time) }
         return .unplayed
@@ -46,8 +55,13 @@ final class PodcastProgressStore: ObservableObject {
     /// episode would flip back to played. The fresh zero wins and propagates.
     func setPlayed(_ item: LibraryItem, _ played: Bool) {
         let key = AppStorageKeys.localPosition(item.id)
-        if played, let duration = item.media?.duration, duration > 0 {
-            UserDefaults.standard.set([duration, Date().timeIntervalSince1970 * 1000], forKey: key)
+        if played {
+            // With a known duration write the real end; without one the sentinel
+            // — previously the else branch wrote the UNPLAYED tombstone for
+            // duration-less episodes, making "mark as played" a silent no-op.
+            let duration = item.media?.duration ?? 0
+            let position = duration > 0 ? duration : Self.playedSentinel
+            UserDefaults.standard.set([position, Date().timeIntervalSince1970 * 1000], forKey: key)
         } else {
             UserDefaults.standard.set([0.0, Date().timeIntervalSince1970 * 1000], forKey: key)
         }
