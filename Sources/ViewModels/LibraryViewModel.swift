@@ -2,13 +2,13 @@ import Foundation
 import Combine
 
 /// A book with (optional) progress — the unit the views display.
-struct LibraryEntry: Identifiable {
+nonisolated struct LibraryEntry: Identifiable {
     let item: LibraryItem
     let progress: BookProgress?
     var id: String { item.id }
 }
 
-enum SortOption: String, CaseIterable, Identifiable {
+nonisolated enum SortOption: String, CaseIterable, Identifiable {
     case titel = "Titel"
     case autor = "Autor"
     case serie = "Serie"
@@ -37,7 +37,7 @@ enum SortOption: String, CaseIterable, Identifiable {
     }
 }
 
-enum FilterOption: String, CaseIterable, Identifiable {
+nonisolated enum FilterOption: String, CaseIterable, Identifiable {
     case alle = "Alle"
     case unfertig = "Unfertig"
     case fertig = "Fertig"
@@ -200,13 +200,23 @@ final class LibraryViewModel: ObservableObject {
     /// Internal (not private) so tests can compare the memoized accessor
     /// against a fresh computation.
     func computeSortedFilteredEntries() -> [LibraryEntry] {
-        let filtered = entries.filter(matchesFilter)
+        Self.sortedFiltered(entries: entries, sort: sortOption, ascending: sortAscending,
+                            filter: filterOption,
+                            downloadedIds: DownloadManager.shared.downloadedItemIds)
+    }
+
+    /// Pure sorting/filtering core — nonisolated so the off-main rebuild (S6)
+    /// can pre-compute it over a snapshot.
+    nonisolated static func sortedFiltered(
+        entries: [LibraryEntry], sort: SortOption, ascending: Bool,
+        filter: FilterOption, downloadedIds: Set<String>
+    ) -> [LibraryEntry] {
+        let filtered = entries.filter { matchesFilter($0, filter: filter, downloadedIds: downloadedIds) }
 
         // Each case deliberately returns the ASCENDING order — the direction is
-        // then applied uniformly via `sortAscending`, instead of reasoning about
-        // it separately in each case.
+        // then applied uniformly, instead of reasoning about it per case.
         let ascendingSorted: [LibraryEntry]
-        switch sortOption {
+        switch sort {
         case .titel:
             ascendingSorted = filtered.sorted {
                 $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
@@ -236,21 +246,27 @@ final class LibraryViewModel: ObservableObject {
         case .zuletztGehoert:
             ascendingSorted = filtered.sorted { ($0.progress?.lastUpdate ?? 0) < ($1.progress?.lastUpdate ?? 0) }
         }
-        return sortAscending ? ascendingSorted : ascendingSorted.reversed()
+        return ascending ? ascendingSorted : ascendingSorted.reversed()
     }
 
-    private func matchesFilter(_ entry: LibraryEntry) -> Bool {
-        switch filterOption {
+    /// Filter over a downloads SNAPSHOT: non-downloadable sources (local files)
+    /// are offline-available by definition — mirrors
+    /// `DownloadManager.isDownloaded` without touching main-actor state.
+    nonisolated private static func matchesFilter(
+        _ entry: LibraryEntry, filter: FilterOption, downloadedIds: Set<String>
+    ) -> Bool {
+        switch filter {
         case .alle: return true
         case .unfertig: return !(entry.progress?.isFinished ?? false)
         case .fertig: return entry.progress?.isFinished ?? false
-        case .heruntergeladen: return DownloadManager.shared.isDownloaded(itemId: entry.id)
+        case .heruntergeladen:
+            return entry.id.hasPrefix("local:") || downloadedIds.contains(entry.id)
         }
     }
 
     /// An entry in the "All Books" grid under series sorting: either a single
     /// book or a series stack.
-    enum GridEntry: Identifiable {
+    nonisolated enum GridEntry: Identifiable {
         case single(LibraryEntry)
         case series(name: String, entries: [LibraryEntry])
         var id: String {
@@ -305,6 +321,15 @@ final class LibraryViewModel: ObservableObject {
 
     /// Internal (not private) — see `computeSortedFilteredEntries`.
     func computeSeriesGroupedEntries() -> [GridEntry] {
+        Self.seriesGrouped(entries: entries, ascending: sortAscending, filter: filterOption,
+                           downloadedIds: DownloadManager.shared.downloadedItemIds)
+    }
+
+    /// Pure series-grouping core — nonisolated for the off-main rebuild (S6).
+    nonisolated static func seriesGrouped(
+        entries: [LibraryEntry], ascending: Bool,
+        filter: FilterOption, downloadedIds: Set<String>
+    ) -> [GridEntry] {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
         // Group from the UNFILTERED (but series-sorted) list so stacks always
@@ -321,7 +346,7 @@ final class LibraryViewModel: ObservableObject {
                 return a.item.title.localizedCaseInsensitiveCompare(b.item.title) == .orderedAscending
             }
         }
-        for entry in (sortAscending ? sortedAll : sortedAll.reversed()) {
+        for entry in (ascending ? sortedAll : sortedAll.reversed()) {
             guard let name = Self.baseSeriesName(entry.item.media?.metadata?.seriesName) else {
                 result.append(.single(entry))
                 continue
@@ -334,17 +359,20 @@ final class LibraryViewModel: ObservableObject {
                 result.append(.series(name: name, entries: [entry]))
             }
         }
+        func matches(_ e: LibraryEntry) -> Bool {
+            matchesFilter(e, filter: filter, downloadedIds: downloadedIds)
+        }
         // Single-book „series" render as a normal book; then apply the
         // filter: singles must match, stacks stay if ANY book matches.
         return result.compactMap { item in
             if case .series(let name, let books) = item {
                 if books.count == 1 {
-                    return matchesFilter(books[0]) ? .single(books[0]) : nil
+                    return matches(books[0]) ? .single(books[0]) : nil
                 }
-                return books.contains(where: matchesFilter) ? .series(name: name, entries: books) : nil
+                return books.contains(where: matches) ? .series(name: name, entries: books) : nil
             }
             if case .single(let entry) = item {
-                return matchesFilter(entry) ? item : nil
+                return matches(entry) ? item : nil
             }
             return item
         }
@@ -424,7 +452,7 @@ final class LibraryViewModel: ObservableObject {
         guard let cache = await loadDiskCache(), !cache.items.isEmpty else { return }
         await reloadLocalCache()
         isShowingOfflineCache = false
-        rebuild(items: cache.items, progress: cache.progress)
+        await rebuild(items: cache.items, progress: cache.progress)
     }
 
     func loadLibrary() async {
@@ -481,13 +509,13 @@ final class LibraryViewModel: ObservableObject {
                 isShowingOfflineCache = true
                 // Offline only what is really playable: downloaded books.
                 let downloaded = cache.items.filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
-                rebuild(items: downloaded, progress: cache.progress)
+                await rebuild(items: downloaded, progress: cache.progress)
             } else if let cache = await loadDiskCache() {
                 // Another error, but a cache exists: keep showing the last known
                 // state silently, without a misleading offline hint — including
                 // clearing a leftover hint from an earlier offline load.
                 isShowingOfflineCache = false
-                rebuild(items: cache.items, progress: cache.progress)
+                await rebuild(items: cache.items, progress: cache.progress)
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
@@ -531,7 +559,7 @@ final class LibraryViewModel: ObservableObject {
         isShowingOfflineCache = false
         var accumulated = first.items
         let total = first.total
-        rebuild(items: accumulated, progress: progress)
+        await rebuild(items: accumulated, progress: progress)
         isLoading = false   // first view is ready — spinner off, rest loads quietly
 
         // Append the remaining pages (in the same load). A network drop
@@ -548,12 +576,12 @@ final class LibraryViewModel: ObservableObject {
                 if next.items.isEmpty { break }
                 accumulated += next.items
                 page += 1
-                if page % 3 == 0 { rebuild(items: accumulated, progress: progress) }
+                if page % 3 == 0 { await rebuild(items: accumulated, progress: progress) }
             }
         } catch {
             // Abort while loading more: keep the loaded partial list.
         }
-        rebuild(items: accumulated, progress: progress)   // final rebuild
+        await rebuild(items: accumulated, progress: progress)   // final rebuild
         isLoadingMore = false
 
         // Only persist/clean up with a FULLY loaded list — otherwise a
@@ -587,7 +615,7 @@ final class LibraryViewModel: ObservableObject {
             items = fresh
         }
         isShowingOfflineCache = false
-        rebuild(items: items, progress: progress)
+        await rebuild(items: items, progress: progress)
         saveLibraryDiskCache(items: items, progress: progress)
     }
 
@@ -598,15 +626,15 @@ final class LibraryViewModel: ObservableObject {
         // Offline/error: keep the last known progress — `?? [:]` used to blank
         // out every bar and the Continue row until the next successful load.
         let progress = (try? await provider.fetchAllProgress()) ?? lastProgress
-        rebuild(items: cachedItems, progress: progress)
+        await rebuild(items: cachedItems, progress: progress)
     }
 
     /// A server item + (server/local) progress + queued updates → a
     /// display-ready `LibraryEntry`. Extracted so both the full list and the
     /// seed rows (Continue/Recently Added) are prepared exactly the same way.
-    private func makeEntry(item: LibraryItem,
-                           progress: [String: BookProgress],
-                           queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
+    nonisolated private static func makeEntry(item: LibraryItem,
+                                              progress: [String: BookProgress],
+                                              queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
         var p = progress[item.id]
         // Multi-file fallback: if the server has no fraction (duration 0/empty
         // there) but a position, recompute it from the LOCALLY known book
@@ -640,40 +668,113 @@ final class LibraryViewModel: ObservableObject {
     /// can't reach the server (otherwise all bars/Continue would blank out).
     private var lastProgress: [String: BookProgress] = [:]
 
-    private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) {
-        cachedItems = items
-        lastProgress = progress
-        let queued = SyncQueue.shared.allPending()
-        let combined = items.map { makeEntry(item: $0, progress: progress, queued: queued) }
-        // Always mix in local files (preloaded via their provider, see
-        // localCache) — regardless of server status, they are offline available
-        // by definition.
-        entries = combined + localCache
+    /// Everything the off-main rebuild computation needs, as a value snapshot.
+    nonisolated struct RebuildInput: Sendable {
+        let items: [LibraryItem]
+        let progress: [String: BookProgress]
+        let queued: [String: SyncQueue.PendingUpdate]
+        let localCache: [LibraryEntry]
+        let seedContinue: [LibraryItem]
+        let seedRecent: [LibraryItem]
+        let sort: SortOption
+        let ascending: Bool
+        let filter: FilterOption
+        let downloadedIds: Set<String>
+    }
+
+    nonisolated struct RebuildOutput: Sendable {
+        let entries: [LibraryEntry]
+        let continueListening: [LibraryEntry]
+        let recentlyAdded: [LibraryEntry]
+        let sorted: [LibraryEntry]
+        let grouped: [GridEntry]
+    }
+
+    /// S6: the expensive part of a rebuild — makeEntry over every item, the
+    /// Continue/Recently unions and sorts, AND the memoized derived lists — runs
+    /// OFF the main actor over the snapshot; the main actor only assigns.
+    nonisolated static func computeRebuild(_ input: RebuildInput) -> RebuildOutput {
+        let combined = input.items.map {
+            makeEntry(item: $0, progress: input.progress, queued: input.queued)
+        }
+        // Always mix in local files (preloaded via their provider) — regardless
+        // of server status, they are offline available by definition.
+        let entries = combined + input.localCache
 
         // Continue/Recently as the union of the already-loaded pages AND the
         // server seed — so both rows are complete immediately and never get
-        // shorter while loading progressively (a started book far down the list
-        // would otherwise be missing until its page loads). Already-loaded
-        // entries win (fresher progress).
+        // shorter while loading progressively. Already-loaded entries win
+        // (fresher progress).
         let byId = Dictionary(combined.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
         var continueById: [String: LibraryEntry] = [:]
         for e in combined where e.progress?.isStarted ?? false { continueById[e.id] = e }
-        for item in librarySeed.continueListening where byId[item.id] == nil {
-            let e = makeEntry(item: item, progress: progress, queued: queued)
+        for item in input.seedContinue where byId[item.id] == nil {
+            let e = makeEntry(item: item, progress: input.progress, queued: input.queued)
             if e.progress?.isStarted ?? false { continueById[e.id] = e }
         }
-        continueListening = continueById.values
+        let continueListening = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
 
         var recentById = byId
-        for item in librarySeed.recentlyAdded where recentById[item.id] == nil {
-            recentById[item.id] = makeEntry(item: item, progress: progress, queued: queued)
+        for item in input.seedRecent where recentById[item.id] == nil {
+            recentById[item.id] = makeEntry(item: item, progress: input.progress, queued: input.queued)
         }
-        recentlyAdded = recentById.values
+        let recentlyAdded = recentById.values
             .sorted { ($0.item.addedAt ?? 0) > ($1.item.addedAt ?? 0) }
             .prefix(15)
             .map { $0 }
+
+        // Pre-compute the memoized derived lists for the new state so the first
+        // body evaluation after the assignment hits a warm cache.
+        let sorted = sortedFiltered(entries: entries, sort: input.sort,
+                                    ascending: input.ascending, filter: input.filter,
+                                    downloadedIds: input.downloadedIds)
+        let grouped = seriesGrouped(entries: entries, ascending: input.ascending,
+                                    filter: input.filter, downloadedIds: input.downloadedIds)
+        return RebuildOutput(entries: entries, continueListening: continueListening,
+                             recentlyAdded: recentlyAdded, sorted: sorted, grouped: grouped)
+    }
+
+    /// Coalescing: while one off-main rebuild runs, later calls just replace the
+    /// pending snapshot (merge to latest) instead of queuing up.
+    private var rebuildRunning = false
+    private var pendingRebuild: (items: [LibraryItem], progress: [String: BookProgress])?
+
+    private func rebuild(items: [LibraryItem], progress: [String: BookProgress]) async {
+        if rebuildRunning {
+            pendingRebuild = (items, progress)
+            return
+        }
+        rebuildRunning = true
+        cachedItems = items
+        lastProgress = progress
+        let input = RebuildInput(
+            items: items, progress: progress,
+            queued: SyncQueue.shared.allPending(),
+            localCache: localCache,
+            seedContinue: librarySeed.continueListening,
+            seedRecent: librarySeed.recentlyAdded,
+            sort: sortOption, ascending: sortAscending, filter: filterOption,
+            downloadedIds: DownloadManager.shared.downloadedItemIds
+        )
+        let output = await Task.detached(priority: .userInitiated) {
+            Self.computeRebuild(input)
+        }.value
+        entries = output.entries   // didSet bumps entriesStamp
+        continueListening = output.continueListening
+        recentlyAdded = output.recentlyAdded
+        // Warm the memo caches (key derived AFTER the entries assignment).
+        let key = derivedKey()
+        sortedCacheKey = key
+        sortedCache = output.sorted
+        groupedCacheKey = key
+        groupedCache = output.grouped
+        rebuildRunning = false
+        if let pending = pendingRebuild {
+            pendingRebuild = nil
+            await rebuild(items: pending.items, progress: pending.progress)
+        }
     }
 
     /// Query the local source ONLY via its provider (items + progress) — the

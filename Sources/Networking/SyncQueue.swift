@@ -50,7 +50,7 @@ struct SyncQueueFileStorage: SyncQueueStorage {
 final class SyncQueue {
     static let shared = SyncQueue()
 
-    struct PendingUpdate: Codable {
+    nonisolated struct PendingUpdate: Codable {
         let currentTime: Double
         let duration: Double
         let isFinished: Bool
