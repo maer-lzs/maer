@@ -531,6 +531,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         addTimeObserver()
         observeBookEnd(lastItem: items.last)
+        correctDurationFromAssetIfSingleTrack(items.first)
 
         if seekWithin > 0.5 {
             newPlayer.seek(to: CMTime(seconds: seekWithin, preferredTimescale: 1000))
@@ -539,6 +540,25 @@ final class PlayerViewModel: NSObject, ObservableObject {
             newPlayer.rate = playbackRate
         }
         return true
+    }
+
+    /// For single-track items (podcasts) the feed-declared duration is often
+    /// wrong, rounded or missing — so playback runs past the shown time. The
+    /// asset's real duration is authoritative; load it asynchronously and correct
+    /// the total once known (guarded against a race with a newly opened item).
+    private func correctDurationFromAssetIfSingleTrack(_ firstItem: AVPlayerItem?) {
+        guard tracks.count == 1, let asset = firstItem?.asset as? AVURLAsset else { return }
+        let openedItemId = item?.id
+        Task { [weak self] in
+            guard let cmDuration = try? await asset.load(.duration) else { return }
+            let seconds = cmDuration.seconds
+            await MainActor.run { [weak self] in
+                guard let self, self.item?.id == openedItemId,
+                      seconds.isFinite, seconds > 0,
+                      abs(seconds - self.duration) > 1 else { return }
+                self.duration = seconds
+            }
+        }
     }
 
     /// Detects the BOOK end (last item finished): sync as finished immediately
