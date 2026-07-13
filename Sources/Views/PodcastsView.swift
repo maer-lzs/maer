@@ -87,9 +87,13 @@ struct PodcastsView: View {
             NavigationStack { PodcastSourceView() }
         }
         .reportsBottomBarScroll()   // collapsible bottom zone
+        // Own task: .refreshable cancels its task when the bounce settles — an
+        // early release must not silently abort the full refresh mid-way.
         .refreshable {
-            await subs.refreshAll()
-            await absPodcast.refresh()
+            await Task {
+                await subs.refreshAll()
+                await absPodcast.refresh()
+            }.value
         }
         .task {
             await absPodcast.refreshIfStale()                // ABS catalog (throttled)

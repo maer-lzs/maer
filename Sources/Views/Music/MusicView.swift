@@ -12,7 +12,10 @@ struct MusicView: View {
 
     var body: some View {
         Group {
-            if let error = vm.errorText {
+            // Full-screen error ONLY when there is nothing to show — a failed
+            // refresh must never displace the already-loaded library (stale
+            // beats empty, like the book library).
+            if let error = vm.errorText, vm.albums.isEmpty {
                 ContentUnavailableView {
                     Label("Music unavailable", systemImage: "music.note")
                 } description: {
@@ -30,11 +33,21 @@ struct MusicView: View {
             }
         }
         .task { await vm.loadIfNeeded() }
-        .refreshable { await vm.reload() }
+        // Lift the work into its own task: .refreshable cancels ITS task when
+        // the bounce settles — that used to abort the request and surface a
+        // fake error page.
+        .refreshable { await Task { await vm.reload() }.value }
     }
 
     private var content: some View {
         LazyVStack(alignment: .leading, spacing: 24) {
+            // Inline hint when a refresh failed but content is still shown.
+            if let error = vm.errorText {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
             if !vm.newest.isEmpty { shelf("Recently Added", vm.newest) }
             if !vm.frequent.isEmpty { shelf("Most Played", vm.frequent) }
 
