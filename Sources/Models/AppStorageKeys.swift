@@ -105,6 +105,37 @@ nonisolated enum AppStorageKeys {
         !gpodderServerURLValue.isEmpty && !gpodderUsernameValue.isEmpty && !gpodderPasswordValue.isEmpty
     }
 
+    // MARK: - Subsonic / Navidrome (music source)
+
+    static let subsonicServerURL = "subsonicServerURL"
+    static let subsonicUsername = "subsonicUsername"
+    static let subsonicEnabled = "subsonicEnabled"
+
+    static var subsonicServerURLValue: String {
+        get { UserDefaults.standard.string(forKey: subsonicServerURL) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: subsonicServerURL) }
+    }
+    static var subsonicUsernameValue: String {
+        get { UserDefaults.standard.string(forKey: subsonicUsername) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: subsonicUsername) }
+    }
+    static var subsonicEnabledValue: Bool {
+        get { UserDefaults.standard.bool(forKey: subsonicEnabled) }
+        set { UserDefaults.standard.set(newValue, forKey: subsonicEnabled) }
+    }
+    /// Password → keychain (credential, never plaintext UserDefaults).
+    static var subsonicPasswordValue: String {
+        KeychainStore.load(forKey: KeychainKey.subsonicPassword) ?? ""
+    }
+    static func setSubsonicPassword(_ value: String) {
+        if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.subsonicPassword) }
+        else { KeychainStore.save(value, forKey: KeychainKey.subsonicPassword) }
+    }
+
+    static var subsonicConfigured: Bool {
+        !subsonicServerURLValue.isEmpty && !subsonicUsernameValue.isEmpty && !subsonicPasswordValue.isEmpty
+    }
+
     /// ABS as a podcast source only when explicitly enabled (default OFF). The
     /// ABS server is primarily an audiobook server; it must not assume podcasts
     /// exist just because a podcast library is present.

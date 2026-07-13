@@ -27,8 +27,13 @@ final class AppSession {
     /// Audiobookshelf podcasts (server-synced) as a second podcast source.
     var absPodcastProvider: ABSPodcastProvider { ABSPodcastProvider.shared }
 
+    /// Subsonic/Navidrome music as a source of type `.music`.
+    var subsonicProvider: SubsonicProvider { SubsonicProvider.shared }
+
     /// All active sources.
-    var allProviders: [any AudioProvider] { [provider, localProvider, rssProvider, absPodcastProvider] }
+    var allProviders: [any AudioProvider] {
+        [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider]
+    }
 
     /// Routes an item to its source by id prefix. This is the ONLY place allowed
     /// to know id namespaces (the router).
@@ -36,6 +41,7 @@ final class AppSession {
         if itemId.hasPrefix("local:") { return localProvider }
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
         if itemId.hasPrefix("rss:") { return rssProvider }
+        if itemId.hasPrefix("sub:") { return subsonicProvider }
         return provider
     }
 
