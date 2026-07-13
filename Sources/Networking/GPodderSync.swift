@@ -134,6 +134,9 @@ final class GPodderSync {
     /// server — best effort, does not block playback. `abspod:` episodes are
     /// mapped to their `rss:` counterpart via the feed `guid` bridge (only
     /// possible when the same feed is also subscribed as RSS/gpodder).
+    /// Per-episode throttle for the real-time push (posInt + last push time).
+    private var lastRealtimePush: [String: (position: Int, atMs: Double)] = [:]
+
     func notePlayback(itemId: String, position: Double, duration: Double) {
         guard AppStorageKeys.gpodderEnabledValue, config != nil else { return }
         let rssId: String?
@@ -145,6 +148,15 @@ final class GPodderSync {
             rssId = nil
         }
         guard let rssId else { return }
+        // Coalesce: skip if the same episode was just pushed at a near-identical
+        // position (rapid ticks/seeks). The periodic reconcile still catches any
+        // dropped update via the last-push cursor, so nothing is lost.
+        let nowMs = Date().timeIntervalSince1970 * 1000
+        let posInt = Int(position)
+        if let last = lastRealtimePush[rssId], nowMs - last.atMs < 8000, abs(posInt - last.position) < 5 {
+            return
+        }
+        lastRealtimePush[rssId] = (posInt, nowMs)
         Task { await pushSingle(rssItemId: rssId, position: position, duration: duration) }
     }
 
@@ -188,7 +200,7 @@ final class GPodderSync {
         for a in actions where (a.action?.lowercased() == "play") {
             guard let enc = a.episode, let pos = a.position,
                   let match = byEnclosure[PodcastSubscriptions.normalizeEnclosure(enc)] else { continue }
-            let tsMs = Self.parseTimestamp(a.timestamp)
+            guard let tsMs = Self.parseTimestamp(a.timestamp) else { continue }
             let localArr = defaults.array(forKey: AppStorageKeys.localPosition(match.id)) as? [Double]
             let localTs = (localArr?.count == 2) ? localArr![1] : -1
             if tsMs > localTs {
@@ -237,13 +249,28 @@ final class GPodderSync {
         f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return f
     }()
+    private static let isoFractional: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private static let iso8601 = ISO8601DateFormatter()
 
-    /// „2009-12-12T09:00:00" → ms seit 1970 (UTC). Fallback: jetzt.
-    private static func parseTimestamp(_ s: String?) -> Double {
-        guard let s, !s.isEmpty else { return Date().timeIntervalSince1970 * 1000 }
+    /// "2009-12-12T09:00:00" → ms since 1970 (UTC). Returns nil when the timestamp
+    /// is missing or unparseable — the caller then SKIPS the action rather than
+    /// assuming "now", which would wrongly beat a newer local position and clobber
+    /// real progress. Also tolerates fractional seconds and explicit zone offsets.
+    private static func parseTimestamp(_ s: String?) -> Double? {
+        guard let s, !s.isEmpty else { return nil }
+        let hasZone = s.hasSuffix("Z")
+            || s.range(of: #"[+-]\d\d:?\d\d$"#, options: .regularExpression) != nil
+        let normalized = hasZone ? s : s + "Z"
+        if let d = isoFractional.date(from: normalized) { return d.timeIntervalSince1970 * 1000 }
+        if let d = iso8601.date(from: normalized) { return d.timeIntervalSince1970 * 1000 }
+        // Legacy fixed formatter (no zone designator).
         let clean = s.hasSuffix("Z") ? String(s.dropLast()) : s
         if let d = iso.date(from: clean) { return d.timeIntervalSince1970 * 1000 }
-        return Date().timeIntervalSince1970 * 1000
+        return nil
     }
 
     private static func isoTimestamp(_ ms: Double) -> String {

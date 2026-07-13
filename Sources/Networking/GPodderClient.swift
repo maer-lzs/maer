@@ -8,21 +8,21 @@ enum GPodderError: Error, LocalizedError {
     case badURL, network, status(Int)
     var errorDescription: String? {
         switch self {
-        case .badURL: return "Ungültige Server-URL."
-        case .network: return "Keine Verbindung zum gpodder-Server."
-        case .status(let c): return "Server antwortete mit HTTP \(c)."
+        case .badURL: return String(localized: "Invalid server URL.")
+        case .network: return String(localized: "Cannot reach the gpodder server.")
+        case .status(let c): return String(localized: "The server responded with HTTP \(c).")
         }
     }
 }
 
 /// An episode action from the server response (`GET episodes`).
 struct GPodderEpisodeAction: Decodable {
-    let podcast: String?     // Feed-URL
-    let episode: String?     // Enclosure-URL
+    let podcast: String?     // feed URL
+    let episode: String?     // enclosure URL
     let action: String?      // "play" | "download" | "delete" | "new"
     let timestamp: String?   // ISO 8601, without timezone
-    let position: Int?       // aktuelle Position (s)
-    let total: Int?          // Gesamtdauer (s)
+    let position: Int?       // current position (s)
+    let total: Int?          // total duration (s)
     let started: Int?
 }
 
@@ -91,7 +91,7 @@ final class GPodderClient {
         return (try? JSONDecoder().decode(TimestampResp.self, from: data))?.timestamp ?? 0
     }
 
-    // MARK: - Intern
+    // MARK: - Internal
 
     private var subsPath: String {
         "api/2/subscriptions/\(enc(config.username))/\(enc(config.deviceId)).json"
@@ -117,19 +117,46 @@ final class GPodderClient {
     }
 
     @discardableResult
-    private func send(_ req: URLRequest, allowAuthRetry: Bool = true) async throws -> Data {
+    private func send(_ req: URLRequest, allowAuthRetry: Bool = true, attempt: Int = 0) async throws -> Data {
         let (data, resp): (Data, URLResponse)
         do { (data, resp) = try await session.data(for: req) }
-        catch { throw GPodderError.network }
+        catch {
+            // Retry transient network errors (timeout, connection dropped) with a
+            // short backoff before giving up — a brief server hiccup should not
+            // fail the whole reconcile. A real offline error is not retried.
+            if attempt < maxRetries, Self.isTransientURLError(error) {
+                try? await Self.backoff(attempt)
+                return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
+            }
+            throw GPodderError.network
+        }
         guard let http = resp as? HTTPURLResponse else { throw GPodderError.network }
         // 401 with plain basic auth: some servers (e.g. gpodder.net) first want
         // a login → session cookie. Log in once and retry.
         if http.statusCode == 401, allowAuthRetry {
             try await login()
-            return try await send(req, allowAuthRetry: false)
+            return try await send(req, allowAuthRetry: false, attempt: attempt)
+        }
+        // Retry transient server errors (rate limit / 5xx).
+        if attempt < maxRetries, http.statusCode == 429 || (500..<600).contains(http.statusCode) {
+            try? await Self.backoff(attempt)
+            return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
         }
         guard (200..<300).contains(http.statusCode) else { throw GPodderError.status(http.statusCode) }
         return data
+    }
+
+    private let maxRetries = 2
+
+    private static func backoff(_ attempt: Int) async throws {
+        try await Task.sleep(nanoseconds: UInt64((0.4 * pow(2, Double(attempt))) * 1_000_000_000))
+    }
+
+    /// Timeout / dropped connection / host unreachable are worth a retry; a clean
+    /// "offline" is not (it fails fast and the app shows its offline state).
+    private static func isTransientURLError(_ error: Error) -> Bool {
+        [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost, NSURLErrorCannotConnectToHost]
+            .contains((error as NSError).code)
     }
 
     private func enc(_ s: String) -> String {
