@@ -17,6 +17,10 @@ struct RecentShowInfo: Identifiable {
 /// through the coordinator.
 struct PodcastsView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// False while the tab is mounted but hidden (kept alive for fast
+    /// switching): the section recompute is skipped then and re-fires on
+    /// becoming visible (isActive is part of the recompute token).
+    var isActive: Bool = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
     // Sections depend on progress (played/in progress) and downloads — observe
     // both so "Up Next"/"Downloaded"/"Played" rebuild live.
@@ -46,9 +50,10 @@ struct PodcastsView: View {
     @State private var downloaded: [LibraryItem] = []
     @State private var showAddPodcasts = false
 
-    /// Recompute when subscriptions, downloads or progress change.
+    /// Recompute when subscriptions, downloads or progress change — and when the
+    /// tab becomes visible again (isActive gates the actual work).
     private var recomputeToken: String {
-        "\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)"
+        "\(isActive)-\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)"
     }
 
     var body: some View {
@@ -87,15 +92,19 @@ struct PodcastsView: View {
             await absPodcast.refresh()
         }
         .task {
-            await absPodcast.refresh()                       // load ABS podcasts
+            await absPodcast.refreshIfStale()                // ABS catalog (throttled)
             await GPodderSync.shared.autoReconcileIfNeeded()       // reconcile gpodder subscriptions
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
             await recommendations.refreshIfNeeded()               // recommendations (external)
         }
         .task(id: recomputeToken) {
-            nextUp = computeNextUp()
-            recentShows = computeRecentShows()
-            downloaded = computeDownloaded()
+            // Hidden-but-mounted: skip; the token includes isActive, so the task
+            // re-fires with fresh data when the tab becomes visible again.
+            guard isActive else { return }
+            let sections = computeSections()
+            nextUp = sections.nextUp
+            recentShows = sections.recentShows
+            downloaded = sections.downloaded
             // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
@@ -105,60 +114,61 @@ struct PodcastsView: View {
         }
     }
 
-    /// "Continue": ONLY started (in-progress) episodes, sorted by the last
-    /// listening time (as with audiobooks) — not by pub date. Finished ones drop
-    /// out automatically. Discovering new is what "Recently updated" is for.
-    private func computeNextUp() -> [LibraryItem] {
+    private struct SectionData {
+        var nextUp: [LibraryItem] = []
+        var recentShows: [RecentShowInfo] = []
+        var downloaded: [LibraryItem] = []
+    }
+
+    /// All three sections in ONE pass over shows×episodes: one `LibraryItem` and
+    /// one `podcastPlayState` per episode (previously three separate passes ×
+    /// several state reads — thousands of redundant UserDefaults hits per
+    /// recompute on big subscription sets).
+    ///
+    /// - "Continue" (nextUp): only in-progress episodes, by last listening time.
+    /// - "Recently updated": shows by newest episode, with the count of unplayed
+    ///   episodes newer than the last played one (all unplayed without one).
+    /// - "Downloaded": episodes present on device, newest first.
+    private func computeSections() -> SectionData {
+        let downloadedIds = downloads.downloadedItemIds
         var picks: [(item: LibraryItem, playedAt: Double)] = []
+        var infos: [RecentShowInfo] = []
+        var downloadedItems: [LibraryItem] = []
+
         for show in allShows {
+            let inboxOff = AppStorageKeys.podcastInboxModeValue(show.id) == "off"
+            var newest = 0.0
+            var lastPlayedAdded: Double?
+            var unplayedAdded: [Double] = []
+
             for ep in show.episodes {
                 let item = podcastLibraryItem(show: show, episode: ep)
-                guard case .inProgress = podcastPlayState(for: item) else { continue }
-                let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
-                let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
-                picks.append((item, max(localTs, absTs)))
+                newest = max(newest, ep.pubDate)
+                switch podcastPlayState(for: item) {
+                case .inProgress:
+                    let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                    let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
+                    picks.append((item, max(localTs, absTs)))
+                case .played:
+                    lastPlayedAdded = max(lastPlayedAdded ?? 0, item.addedAt ?? 0)
+                case .unplayed:
+                    unplayedAdded.append(item.addedAt ?? 0)
+                }
+                if downloadedIds.contains(item.id) { downloadedItems.append(item) }
+            }
+
+            if !inboxOff, newest > 0 {
+                let newCount = lastPlayedAdded.map { lp in unplayedAdded.filter { $0 > lp }.count }
+                    ?? unplayedAdded.count
+                infos.append(RecentShowInfo(show: show, lastUpdated: newest, newCount: newCount))
             }
         }
-        return picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map { $0.item }
-    }
 
-    /// "Recently updated": all shows sorted by the time of the newest episode,
-    /// with the number of new (unplayed) episodes since the last played one. No
-    /// more endless episode lists — a show grid.
-    private func computeRecentShows() -> [RecentShowInfo] {
-        var infos: [RecentShowInfo] = []
-        for show in allShows {
-            if AppStorageKeys.podcastInboxModeValue(show.id) == "off" { continue }
-            guard let newest = show.episodes.map(\.pubDate).max(), newest > 0 else { continue }
-            infos.append(RecentShowInfo(show: show, lastUpdated: newest,
-                                        newCount: newEpisodeCount(show)))
-        }
-        return infos.sorted { $0.lastUpdated > $1.lastUpdated }
-    }
-
-    /// New episodes since the last played one: number of unplayed episodes that
-    /// are NEWER than the most recent already-played one. Without any played
-    /// episode, all unplayed ones count.
-    private func newEpisodeCount(_ show: PodcastShow) -> Int {
-        let items = show.episodes.map { podcastLibraryItem(show: show, episode: $0) }
-        let lastPlayed = items
-            .filter { podcastPlayState(for: $0) == .played }
-            .map { $0.addedAt ?? 0 }
-            .max()
-        if let lastPlayed {
-            return items.filter { ($0.addedAt ?? 0) > lastPlayed && podcastPlayState(for: $0) == .unplayed }.count
-        }
-        return items.filter { podcastPlayState(for: $0) == .unplayed }.count
-    }
-
-    /// "Downloaded" cross-source: all episodes downloaded on the device.
-    private func computeDownloaded() -> [LibraryItem] {
-        let ids = downloads.downloadedItemIds
-        guard !ids.isEmpty else { return [] }
-        return allShows
-            .flatMap { show in show.episodes.map { podcastLibraryItem(show: show, episode: $0) } }
-            .filter { ids.contains($0.id) }
-            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+        return SectionData(
+            nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map(\.item),
+            recentShows: infos.sorted { $0.lastUpdated > $1.lastUpdated },
+            downloaded: downloadedItems.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+        )
     }
 
     // MARK: - Queue (nutzer-verwaltete Warteschlange)

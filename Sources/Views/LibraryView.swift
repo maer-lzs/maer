@@ -41,6 +41,14 @@ struct LibraryView: View {
     /// Active content-type tab. Today audiobooks only; the bottom tab bar only
     /// appears when a second source brings a different type.
     @State private var selectedMediaType: MediaType = .audiobooks
+    /// Tabs that have been shown at least once — they stay mounted (hidden)
+    /// afterwards so their state/tasks survive switching. Never-visited tabs
+    /// aren't mounted at all (no startup cost for the podcast/music chain).
+    @State private var mountedTabs: Set<MediaType> = [.audiobooks]
+
+    private func isTabMounted(_ type: MediaType) -> Bool {
+        mountedTabs.contains(type) || selectedMediaType == type
+    }
 
     /// Available content types from all active sources (deduplicated, in a fixed
     /// order). Today `[.audiobooks]`.
@@ -66,17 +74,28 @@ struct LibraryView: View {
                     offlineBanner
                 }
 
-                // Content by tab. Today audiobooks only; podcasts/music come
-                // additively as further cases with their own views.
-                switch selectedMediaType {
-                case .audiobooks:
-                    audiobooksContent
-                case .podcasts:
-                    PodcastsView(playerCoordinator: playerCoordinator)
-                case .music:
-                    MusicView(playerCoordinator: playerCoordinator)
-                default:
-                    Spacer()
+                // Content by tab. Once visited, a tab stays MOUNTED (hidden via
+                // opacity) instead of being torn down by a `switch` — a branch
+                // change used to destroy all @State/@StateObject/.task of the
+                // old tab, so every return re-ran the tab's full load chain
+                // (that was the tab-switch sluggishness).
+                ZStack {
+                    if isTabMounted(.audiobooks) {
+                        audiobooksContent
+                            .tabVisibility(selectedMediaType == .audiobooks)
+                    }
+                    if isTabMounted(.podcasts) {
+                        PodcastsView(playerCoordinator: playerCoordinator,
+                                     isActive: selectedMediaType == .podcasts)
+                            .tabVisibility(selectedMediaType == .podcasts)
+                    }
+                    if isTabMounted(.music) {
+                        MusicView(playerCoordinator: playerCoordinator)
+                            .tabVisibility(selectedMediaType == .music)
+                    }
+                }
+                .onChange(of: selectedMediaType) { _, newValue in
+                    mountedTabs.insert(newValue)
                 }
             }
             .navigationTitle(selectedMediaType == .audiobooks ? Text("Library") : Text(selectedMediaType.label))
@@ -868,4 +887,14 @@ struct LibraryView: View {
         .padding(.horizontal)
     }
 
+}
+
+extension View {
+    /// Visibility of a kept-alive tab: hidden tabs stay mounted (state/tasks
+    /// survive) but are invisible, untouchable and hidden from VoiceOver.
+    func tabVisibility(_ visible: Bool) -> some View {
+        opacity(visible ? 1 : 0)
+            .allowsHitTesting(visible)
+            .accessibilityHidden(!visible)
+    }
 }

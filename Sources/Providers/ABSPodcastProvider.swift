@@ -137,6 +137,17 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         hasPodcasts = !libs.isEmpty
     }
 
+    /// Timestamp of the last successful refresh — basis for the throttle below.
+    private var lastRefreshAt: Date?
+
+    /// Throttled refresh for frequent, implicit callers (the podcast tab's
+    /// mount task): skips when the catalog was loaded recently. Pull-to-refresh
+    /// keeps calling `refresh()` directly for an unconditional reload.
+    func refreshIfStale(maxAge: TimeInterval = 300) async {
+        if let last = lastRefreshAt, Date().timeIntervalSince(last) < maxAge { return }
+        await refresh()
+    }
+
     /// Load shows + episodes of all podcast libraries. Best effort: individual
     /// failed shows are skipped, the rest stays usable.
     func refresh() async {
@@ -211,6 +222,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             rssToABS = newRSSToABS
             changeToken += 1
         }
+        lastRefreshAt = Date()
     }
 
     /// Equivalent ids of the same episode across both sources (self + bridge).
