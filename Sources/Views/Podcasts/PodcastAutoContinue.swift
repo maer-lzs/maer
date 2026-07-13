@@ -1,10 +1,10 @@
 import Foundation
 
 /// Picks the next podcast episode to auto-play after one finishes when the
-/// Up-Next queue is empty. Binge order (user choice): the next unheard episode
-/// of the SAME show first; only when that show is exhausted, fall back to other
-/// subscriptions — the most recently started (in-progress) episode, else the
-/// newest unheard one.
+/// Up-Next queue is empty. Order (user choice): the next NEWER unheard episode of
+/// the SAME show (move forward in time, never to an older one); if the show has
+/// no newer unheard episode, continue with what was played most recently (the
+/// last started, still-in-progress episode across all subscriptions).
 @MainActor
 enum PodcastAutoContinue {
     /// Shows of all podcast sources (RSS + ABS), deduplicated by feed URL
@@ -29,38 +29,43 @@ enum PodcastAutoContinue {
         let finishedShow = shows.first { show in
             show.episodes.contains { podcastLibraryItem(show: show, episode: $0).id == finishedItemId }
         }
+        var finishedPub: Double?
+        if let show = finishedShow {
+            finishedPub = show.episodes
+                .first { podcastLibraryItem(show: show, episode: $0).id == finishedItemId }?
+                .pubDate
+        }
 
-        // 1. Same show: newest unheard episode (excluding the finished one).
-        if let show = finishedShow, let item = newestUnheard(in: show, excluding: finishedItemId) {
+        // 1. Same show: the NEXT NEWER unheard episode (closest pubDate above the
+        //    finished one) — move forward in time, never back to an older one.
+        if let show = finishedShow, let pub = finishedPub,
+           let item = nextNewerUnheard(in: show, after: pub) {
             return item
         }
 
-        // 2./3. Other shows: most recently started, else newest unheard.
+        // 2. Otherwise continue what was played most recently: the last started,
+        //    still-in-progress episode across all subscriptions.
         var started: [(item: LibraryItem, ts: Double)] = []
-        var unheard: [(item: LibraryItem, pub: Double)] = []
-        for show in shows where show.id != finishedShow?.id {
+        for show in shows {
             for ep in show.episodes {
                 let item = podcastLibraryItem(show: show, episode: ep)
-                switch podcastPlayState(for: item) {
-                case .inProgress: started.append((item, lastPlayed(item.id)))
-                case .unplayed: unheard.append((item, ep.pubDate))
-                case .played: break
+                guard item.id != finishedItemId else { continue }
+                if case .inProgress = podcastPlayState(for: item) {
+                    started.append((item, lastPlayed(item.id)))
                 }
             }
         }
-        if let best = started.max(by: { $0.ts < $1.ts }) { return best.item }
-        if let best = unheard.max(by: { $0.pub < $1.pub }) { return best.item }
-        return nil
+        return started.max(by: { $0.ts < $1.ts })?.item
     }
 
-    /// The newest not-yet-finished episode of a show, excluding one id.
-    private static func newestUnheard(in show: PodcastShow, excluding id: String) -> LibraryItem? {
+    /// The unheard episode with the smallest pubDate strictly newer than `pub`.
+    private static func nextNewerUnheard(in show: PodcastShow, after pub: Double) -> LibraryItem? {
         show.episodes
-            .sorted { $0.pubDate > $1.pubDate }
+            .filter { $0.pubDate > pub }
+            .sorted { $0.pubDate < $1.pubDate }   // closest newer first
             .lazy
             .map { podcastLibraryItem(show: show, episode: $0) }
             .first { item in
-                guard item.id != id else { return false }
                 if case .played = podcastPlayState(for: item) { return false }
                 return true
             }
