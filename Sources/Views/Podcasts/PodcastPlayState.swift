@@ -40,13 +40,16 @@ final class PodcastProgressStore: ObservableObject {
         return .unplayed
     }
 
-    /// "Played" writes the position to the end, "unplayed" deletes it.
+    /// "Played" writes the position to the end; "unplayed" writes a `[0, now]`
+    /// tombstone instead of deleting the key — a deleted key loses against the
+    /// old iCloud value on the next reconcile (newest-timestamp merge) and the
+    /// episode would flip back to played. The fresh zero wins and propagates.
     func setPlayed(_ item: LibraryItem, _ played: Bool) {
         let key = AppStorageKeys.localPosition(item.id)
         if played, let duration = item.media?.duration, duration > 0 {
             UserDefaults.standard.set([duration, Date().timeIntervalSince1970 * 1000], forKey: key)
         } else {
-            UserDefaults.standard.removeObject(forKey: key)
+            UserDefaults.standard.set([0.0, Date().timeIntervalSince1970 * 1000], forKey: key)
         }
         changeToken += 1
         objectWillChange.send()
@@ -90,8 +93,10 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 
 /// "Mark played/unplayed": always set locally (→ iCloud propagates it) and for
 /// ABS additionally on the server; then push to iCloud immediately.
+/// - Parameter syncCloud: bulk callers (mark all) pass false and run ONE full
+///   reconcile afterwards instead of one merge per episode.
 @MainActor
-func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
+func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true) {
     PodcastProgressStore.shared.setPlayed(item, played)
     // Mirror on the server too: the abspod: copy is self (abspod item) or the
     // server episode bridged via the feed guid (rss item).
@@ -101,7 +106,9 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool) {
     if let absId, let absItem = AppSession.shared.libraryItem(forId: absId) {
         Task { await ABSPodcastProvider.shared.setPlayed(absItem, played) }
     }
-    PodcastCloudSync.shared.reconcile()
+    // Targeted single-id merge — the full reconcile enumerates ALL UserDefaults
+    // keys and is far too expensive per episode (see bulk callers).
+    if syncCloud { PodcastCloudSync.shared.reconcile(changedId: item.id) }
 }
 
 // MARK: - Shared helpers

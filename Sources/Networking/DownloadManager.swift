@@ -46,6 +46,21 @@ final class DownloadManager: ObservableObject {
     /// Phase per book: downloading (weighted progress), paused, or failed.
     @Published private(set) var phase: [String: DownloadPhase] = [:]
     private var controls: [String: DownloadControl] = [:]
+    /// Coalescing for progress publishes — URLSession reports every chunk, but
+    /// publishing the @Published `phase` re-renders every observing view (all
+    /// cover cells, episode rows, the library). Only meaningful steps go out.
+    private var lastPublishedFraction: [String: Double] = [:]
+
+    /// Publish a download fraction only when it moved ≥1% since the last
+    /// publish (or reached the end) — cuts the invalidation storm during
+    /// downloads from dozens per second to at most ~100 per download.
+    private func publishProgress(itemId: String, fraction: Double) {
+        guard case .downloading = phase[itemId] else { return }
+        let last = lastPublishedFraction[itemId] ?? -1
+        guard fraction - last >= 0.01 || fraction >= 1 else { return }
+        lastPublishedFraction[itemId] = fraction
+        phase[itemId] = .downloading(fraction)
+    }
     /// Cached instead of computed — the view reads it on every render; a disk
     /// scan per progress tick would be expensive.
     @Published private(set) var totalDownloadsSize: Int64 = 0
@@ -414,9 +429,8 @@ final class DownloadManager: ObservableObject {
                     resumeData: resumeData,
                     onProgress: { fraction in
                         Task { @MainActor in
-                            if case .downloading = DownloadManager.shared.phase[itemId] {
-                                DownloadManager.shared.phase[itemId] = .downloading(baseProgress + fraction * perTrackWeight)
-                            }
+                            DownloadManager.shared.publishProgress(
+                                itemId: itemId, fraction: baseProgress + fraction * perTrackWeight)
                         }
                     },
                     onTask: { task in
@@ -463,6 +477,7 @@ final class DownloadManager: ObservableObject {
             downloadedItemIds.insert(itemId)
             phase[itemId] = nil
             controls[itemId] = nil
+            lastPublishedFraction[itemId] = nil
             recalculateTotalSize()
         } catch let cancelled as DownloadCancelledError {
             let progress = phase[itemId]?.progress ?? 0
@@ -470,6 +485,7 @@ final class DownloadManager: ObservableObject {
                 // Abort: clear visible state, keep completed tracks on disk.
                 phase[itemId] = nil
                 controls[itemId] = nil
+                lastPublishedFraction[itemId] = nil
             } else {
                 // Pause: remember resume data for a mid-file continuation.
                 controls[itemId]?.resumeData = cancelled.resumeData

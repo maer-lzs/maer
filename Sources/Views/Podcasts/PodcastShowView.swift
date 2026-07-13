@@ -46,11 +46,14 @@ struct PodcastShowView: View {
         }
     }
 
-    /// Bulk mark every episode of this show as played/unplayed.
+    /// Bulk mark every episode of this show as played/unplayed. One iCloud
+    /// reconcile at the end instead of one per episode (each full reconcile
+    /// scans ALL UserDefaults keys).
     private func markAllEpisodes(played: Bool) {
         for item in sortedItems {
-            podcastSetPlayed(item, played)
+            podcastSetPlayed(item, played, syncCloud: false)
         }
+        PodcastCloudSync.shared.reconcile()
     }
 
     var body: some View {

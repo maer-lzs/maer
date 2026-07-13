@@ -27,9 +27,16 @@ final class PodcastCloudSync {
 
     private init() {}
 
+    /// Guard against double observer registration (start() can run again when
+    /// the library view is recreated, e.g. logout→login) — a second observer
+    /// would double every reconcile on external iCloud changes.
+    private var didStart = false
+
     /// Call once at app start: listen for iCloud changes + reconcile immediately.
     func start() {
         guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard !didStart else { reconcile(); return }
+        didStart = true
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(cloudChanged),
@@ -87,6 +94,36 @@ final class PodcastCloudSync {
         if localChanged {
             // Have the UI/sections and ABS provider display re-evaluate.
             PodcastProgressStore.shared.reload()
+        }
+    }
+
+    /// Targeted single-episode merge — for the frequent per-write callers
+    /// (mark played/unplayed, position saves). The full `reconcile()` enumerates
+    /// the ENTIRE UserDefaults per call, which is far too expensive to run per
+    /// episode (mark-all on a 200-episode show = 200 full scans).
+    func reconcile(changedId id: String) {
+        guard AppStorageKeys.podcastICloudSyncEnabled else { return }
+        guard id.hasPrefix("rss:") || id.hasPrefix("abspod:") else { return }
+        let defaults = UserDefaults.standard
+        var cloud: [String: Any] = store.dictionary(forKey: blobKey) ?? [:]
+
+        let localArr = defaults.array(forKey: keyPrefix + id).flatMap { Self.coerce($0) }
+        let cloudArr = cloud[id].flatMap { Self.coerce($0) }
+        let lts = (localArr?.count == 2) ? localArr![1] : -1
+        let cts = (cloudArr?.count == 2) ? cloudArr![1] : -1
+        if cts > lts, let c = cloudArr {
+            defaults.set(c, forKey: keyPrefix + id)
+            PodcastProgressStore.shared.reload()
+        } else if lts > cts, let l = localArr {
+            cloud[id] = l
+            store.set(cloud, forKey: blobKey)
+            store.synchronize()
+        } else if localArr == nil, cloudArr != nil {
+            // Local delete (mark unplayed) wins only with a fresh timestamp we
+            // don't have — write an explicit zero so other devices follow.
+            cloud[id] = [0.0, Date().timeIntervalSince1970 * 1000]
+            store.set(cloud, forKey: blobKey)
+            store.synchronize()
         }
     }
 
