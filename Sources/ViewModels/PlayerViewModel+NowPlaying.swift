@@ -77,7 +77,7 @@ extension PlayerViewModel {
     /// Loads the cover for the lock screen / Dynamic Island — uses the same
     /// shared cache as the library and retries once automatically on failure.
     private static func loadImage(for url: URL) async -> UIImage? {
-        if let cached = ImageCache.shared.image(for: url) {
+        if let cached = await ImageCache.shared.image(for: url) {
             return cached
         }
         if let (image, data) = await fetchImage(url) {

@@ -38,7 +38,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
                 : await ImageCache.shared.thumbnail(for: url)
             if let thumb { uiImage = thumb; return }
         }
-        if !useThumbnail, let cached = ImageCache.shared.image(for: url) {
+        if !useThumbnail, let cached = await ImageCache.shared.image(for: url) {
             uiImage = cached
             return
         }

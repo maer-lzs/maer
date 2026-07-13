@@ -145,19 +145,26 @@ final class ImageCache {
         return UIImage(cgImage: cg)
     }
 
-    func image(for url: URL) -> UIImage? {
+    /// Full-size cached image. Memory-cache hits return immediately; the disk
+    /// read + full decode run off-main (a ~2000 px decode on the main actor was
+    /// a visible hitch right when pushing the detail screen / full player).
+    func image(for url: URL) async -> UIImage? {
         let cacheKey = key(for: url)
         if let cached = memoryCache.object(forKey: cacheKey as NSString) {
             return cached
         }
-        for dir in [persistentDirectory, diskDirectory] {
-            let fileURL = dir.appendingPathComponent(cacheKey)
-            if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
-                memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
-                return image
+        let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(cacheKey) }
+        let image = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            for fileURL in candidates {
+                if let data = try? Data(contentsOf: fileURL), let image = UIImage(data: data) {
+                    return image
+                }
             }
-        }
-        return nil
+            return nil
+        }.value
+        guard let image else { return nil }
+        memoryCache.setObject(image, forKey: cacheKey as NSString, cost: cost(of: image))
+        return image
     }
 
     /// Stores it reduced to display size (not pixelated, see maxPixelSize).
@@ -296,11 +303,22 @@ final class ImageCache {
         for file in files { try? FileManager.default.removeItem(at: file) }
     }
 
+    /// Whether a cover exists in the memory cache or on disk (no decode).
+    private func isCached(_ url: URL) -> Bool {
+        let cacheKey = key(for: url)
+        if memoryCache.object(forKey: cacheKey as NSString) != nil { return true }
+        return [persistentDirectory, diskDirectory].contains {
+            FileManager.default.fileExists(atPath: $0.appendingPathComponent(cacheKey).path)
+        }
+    }
+
     /// Prefetches a cover in the background if it is not cached yet. Uses the
     /// timeouted Maer session (no forever-hanging request) and deduplicates
     /// parallel requests for the same cover.
     func preload(_ url: URL) async {
-        guard image(for: url) == nil, !inFlight.contains(url) else { return }
+        // Existence check only — no need to decode the image just to know the
+        // cover is already cached.
+        guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)
         defer { inFlight.remove(url) }
         guard let (data, _) = try? await URLSession.maer.data(from: url),

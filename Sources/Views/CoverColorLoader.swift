@@ -35,7 +35,7 @@ final class CoverColorLoader: ObservableObject {
     static func prewarm(url: URL?) async {
         guard let url, colorCache[url] == nil else { return }
         let image: UIImage
-        if let cached = ImageCache.shared.image(for: url) {
+        if let cached = await ImageCache.shared.image(for: url) {
             image = cached
         } else {
             guard let (data, _) = try? await URLSession.shared.data(from: url),

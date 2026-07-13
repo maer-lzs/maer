@@ -161,14 +161,16 @@ struct PodcastEpisodeRow: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @ObservedObject private var downloads = DownloadManager.shared
 
-    private var state: EpisodePlayState { podcastPlayState(for: item) }
-    private var isPlayed: Bool { state == .played }
     private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
     private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
 
     var body: some View {
+        // Resolve the play state ONCE per render — it deserializes UserDefaults,
+        // and the row used to read it 3-4 times per body evaluation.
+        let state = podcastPlayState(for: item)
+        let isPlayed = state == .played
         HStack(alignment: .center, spacing: 10) {
-            rowBody
+            rowBody(state: state, isPlayed: isPlayed)
             Spacer(minLength: 6)
             infoButton
             PodcastDownloadButton(item: item)
@@ -228,20 +230,24 @@ struct PodcastEpisodeRow: View {
 
     /// Tappable row body (cover + text). Behaviour depends on `rowTap`; the
     /// trailing controls stay separate so they always receive their own taps.
-    @ViewBuilder private var rowBody: some View {
+    @ViewBuilder private func rowBody(state: EpisodePlayState, isPlayed: Bool) -> some View {
         switch rowTap {
         case .play:
-            Button { Task { await playerCoordinator.open(item: item) } } label: { rowContent }
-                .buttonStyle(.plain)
+            Button { Task { await playerCoordinator.open(item: item) } } label: {
+                rowContent(state: state, isPlayed: isPlayed)
+            }
+            .buttonStyle(.plain)
         case .detail:
-            NavigationLink(value: PodcastRoute.episode(itemId: item.id)) { rowContent }
-                .buttonStyle(.plain)
+            NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
+                rowContent(state: state, isPlayed: isPlayed)
+            }
+            .buttonStyle(.plain)
         case .none:
-            rowContent
+            rowContent(state: state, isPlayed: isPlayed)
         }
     }
 
-    private var rowContent: some View {
+    private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
             podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
                 // Played episodes dimmed, as in Apple Podcasts.
@@ -268,7 +274,7 @@ struct PodcastEpisodeRow: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                    Text(metaText).font(.caption2).foregroundStyle(.secondary)
+                    Text(metaText(state: state)).font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.top, 1)
             }
@@ -292,7 +298,7 @@ struct PodcastEpisodeRow: View {
             playerCoordinator.viewModel?.pause()
         } else if isCurrent {
             playerCoordinator.viewModel?.play()
-        } else if isPlayed {
+        } else if podcastPlayState(for: item) == .played {
             // Replay a finished episode from the beginning + mark unplayed.
             // `restart` writes 0 through on every source (server + iCloud/gpodder).
             podcastSetPlayed(item, false)
@@ -315,7 +321,7 @@ struct PodcastEpisodeRow: View {
     }
 
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".
-    private var metaText: String {
+    private func metaText(state: EpisodePlayState) -> String {
         var parts: [String] = []
         let date = relativeDateText(item)
         if !date.isEmpty { parts.append(date) }
