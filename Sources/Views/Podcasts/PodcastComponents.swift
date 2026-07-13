@@ -113,9 +113,7 @@ struct PodcastFeaturedCard: View {
     /// The card itself is tap-to-play; the pill therefore does NOT play again but
     /// opens the episode detail page (info).
     private var infoPill: some View {
-        NavigationLink {
-            PodcastEpisodeDetailView(item: item, playerCoordinator: playerCoordinator)
-        } label: {
+        NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle").font(.caption)
                 Text("Details").font(.subheadline.weight(.medium))
@@ -193,6 +191,7 @@ struct PodcastEpisodeRow: View {
                     }
                     Text(metaText).font(.caption2).foregroundStyle(.secondary)
                     Spacer(minLength: 4)
+                    infoButton
                     PodcastDownloadButton(item: item)
                     playButton
                 }
@@ -261,6 +260,18 @@ struct PodcastEpisodeRow: View {
                 .foregroundStyle(AppTheme.accent)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Opens the episode detail page (info) — value-based so the media tab can
+    /// pop back to the library.
+    private var infoButton: some View {
+        NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
+            Image(systemName: "info.circle")
+                .font(.body)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("Details"))
     }
 
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".

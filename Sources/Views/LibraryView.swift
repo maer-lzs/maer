@@ -397,6 +397,9 @@ struct LibraryView: View {
     /// again (until the next scroll).
     private var homeButton: some View {
         Button {
+            // Home = back to the library root (pops any pushed detail page) AND
+            // expand the bar again.
+            navigationPath = NavigationPath()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
                 bottomBar.expand()
             }

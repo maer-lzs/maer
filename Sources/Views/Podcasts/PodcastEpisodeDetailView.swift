@@ -211,9 +211,7 @@ struct PodcastEpisodeDetailView: View {
     @ViewBuilder
     private var showLink: some View {
         if let show {
-            NavigationLink {
-                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
-            } label: {
+            NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
                 HStack(spacing: 8) {
                     podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: 24, corner: 5)
                     Text(show.title).font(.subheadline.weight(.medium))

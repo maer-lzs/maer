@@ -90,14 +90,19 @@ final class PlayerCoordinator: ObservableObject {
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
         viewModel.onBookFinished = { [weak self] finishedItemId in
             guard let self else { return }
-            // Podcast: after the end, start the next episode from the "Up Next"
-            // queue (the finished one was already removed on play).
+            // Podcast: after the end, start the next episode. First the "Up Next"
+            // queue (the finished one was already removed on play); if empty, the
+            // binge fallback (next unheard of the same show, then other subs).
             if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
                 if let nextId = PodcastQueue.shared.first,
                    let item = AppSession.shared.libraryItem(forId: nextId) {
                     Task { await self.open(item: item) }
                     return
                 }
+                if let next = PodcastAutoContinue.next(after: finishedItemId) {
+                    Task { await self.open(item: next) }
+                }
+                return
             }
             // Audiobooks: next book in the series (only if the setting is on).
             guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),

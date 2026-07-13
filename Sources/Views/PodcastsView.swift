@@ -64,6 +64,7 @@ struct PodcastsView: View {
             .padding(.top, 8)
             .bottomBarClearance()
         }
+        .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
         // No subscription → instead of blank, an empty state with a path to add/import.
         .overlay {
             if allShows.isEmpty && downloaded.isEmpty && queue.isEmpty {
@@ -172,9 +173,7 @@ struct PodcastsView: View {
                 HStack {
                     Text("Up Next").font(.title3).bold()
                     Spacer()
-                    NavigationLink {
-                        PodcastQueueView(playerCoordinator: playerCoordinator)
-                    } label: {
+                    NavigationLink(value: PodcastRoute.queue) {
                         Text("Edit")
                     }
                 }
@@ -292,9 +291,7 @@ struct PodcastsView: View {
                     alignment: .leading, spacing: 18
                 ) {
                     ForEach(recentShows) { info in
-                        NavigationLink {
-                            PodcastShowView(show: info.show, playerCoordinator: playerCoordinator)
-                        } label: {
+                        NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
                             recentTile(info)
                         }
                         .buttonStyle(.plain)
@@ -367,9 +364,7 @@ struct PodcastsView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(shows) { show in
-                            NavigationLink {
-                                PodcastShowView(show: show, playerCoordinator: playerCoordinator)
-                            } label: {
+                            NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
                                 ShowTile(show: show)
                             }
                             .buttonStyle(.plain)
