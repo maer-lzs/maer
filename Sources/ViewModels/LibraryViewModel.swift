@@ -60,7 +60,8 @@ enum FilterOption: String, CaseIterable, Identifiable {
 /// Top-level on purpose: nested
 /// in the @MainActor class it would inherit its isolation and the detached
 /// background encode could not use the Codable conformance.
-private nonisolated struct LibraryDiskCache: Codable {
+/// Internal (not private) so tests can write fixture caches.
+nonisolated struct LibraryDiskCache: Codable {
     let items: [LibraryItem]
     let progress: [String: BookProgress]
 }
@@ -121,11 +122,15 @@ final class LibraryViewModel: ObservableObject {
     /// via LocalLibrary — otherwise it gets messy).
     private var localCache: [LibraryEntry] = []
 
-    private let diskCacheURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        .appendingPathComponent("library_cache.json")
+    private let diskCacheURL: URL
 
-    init(provider: any AudioProvider) {
+    init(
+        provider: any AudioProvider,
+        diskCacheURL: URL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("library_cache.json")
+    ) {
         self.provider = provider
+        self.diskCacheURL = diskCacheURL
 
         let defaults = UserDefaults.standard
 
@@ -408,93 +413,66 @@ final class LibraryViewModel: ObservableObject {
     /// refresh + reconnect can fire together → double rebuilds, visible hitch).
     private var loadInFlight = false
 
+    /// K1 — cache-first (stale-while-revalidate): render the last persisted
+    /// library state IMMEDIATELY at cold start, before any network round-trip;
+    /// `loadLibrary` then replaces it silently. Deliberately the FULL cached
+    /// state (no downloaded-filtering — that belongs to the offline FALLBACK)
+    /// and no offline banner (showing the cache at start is not an offline
+    /// condition). No-op when entries are already showing or no cache exists.
+    func showCachedLibraryIfAvailable() async {
+        guard entries.isEmpty, !loadInFlight else { return }
+        guard let cache = await loadDiskCache(), !cache.items.isEmpty else { return }
+        await reloadLocalCache()
+        isShowingOfflineCache = false
+        rebuild(items: cache.items, progress: cache.progress)
+    }
+
     func loadLibrary() async {
         guard !loadInFlight else { return }
         loadInFlight = true
         defer { loadInFlight = false }
-        isLoading = true
+        // Spinner only when there is nothing on screen yet (first install /
+        // no cache) — with the cache-first render the network load runs silently.
+        isLoading = entries.isEmpty
         errorMessage = nil
         defer { isLoading = false }
         // Local source always first (in-memory, never an error) — so local
         // titles are there even when the server is offline.
         await reloadLocalCache()
         do {
-            // ONLY book libraries for the audiobook tab — podcast libraries
-            // (mediaType == "podcast") belong to the podcast provider, not here.
-            // Otherwise `first` might pick a podcast library as "the library" and
-            // the audiobook tab would stay empty/wrong.
-            // Retry transient errors (timeout/5xx/connection lost) briefly with
-            // backoff before an error triggers the offline/cache fallback — real
-            // offline errors and 401 still throw immediately.
-            let libraries = try await withRetry { try await self.provider.fetchLibraries() }
-                .filter { !$0.isPodcast }
-            // The library chosen in the settings wins; fall back to the first
-            // one when nothing is chosen or the chosen one no longer exists.
+            // K2 — skip the first serial round-trip: with a stored library id,
+            // start progress/seed/first page immediately and only VALIDATE the
+            // library list in parallel. If the stored library vanished, fall
+            // back to today's resolve-then-load behavior.
             let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
-            guard let library = libraries.first(where: { $0.id == storedId }) ?? libraries.first else {
-                errorMessage = String(localized: "No library found on the server.")
-                return
-            }
-
-            async let progressTask = provider.fetchAllProgress()
-            // Prebuilt "Continue"/"Recently Added" rows from the server (one small
-            // request) — so the top rows are complete IMMEDIATELY, regardless of
-            // which page a started book is on.
-            async let seedTask = provider.fetchLibrarySeed(libraryId: library.id)
-
-            // Progressive loading: show the first page immediately, append the
-            // rest page by page in the background. All client-side functions
-            // (sort, filter, series stacks, search) work on what is already
-            // loaded and complete themselves as more pages arrive — nothing
-            // breaks, it just converges.
-            let pageSize = 50
-            let first = try await withRetry {
-                try await self.provider.fetchLibraryItemsPage(
-                    libraryId: library.id, limit: pageSize, page: 0)
-            }
-            let progress = (try? await progressTask) ?? [:]
-            librarySeed = (try? await seedTask) ?? LibrarySeed()
-
-            libraryId = library.id
-            isShowingOfflineCache = false
-            var accumulated = first.items
-            let total = first.total
-            rebuild(items: accumulated, progress: progress)
-            isLoading = false   // first view is ready — spinner off, rest loads quietly
-
-            // Append the remaining pages (in the same load). A network drop
-            // mid-load keeps what is already shown instead of jumping to the
-            // offline fallback. Intermediate rebuilds are throttled (only every
-            // 3rd page) — a guaranteed final rebuild afterwards keeps the result
-            // identical but saves intermediate work.
-            isLoadingMore = accumulated.count < total
-            var page = 1
-            do {
-                while accumulated.count < total {
-                    let next = try await provider.fetchLibraryItemsPage(
-                        libraryId: library.id, limit: pageSize, page: page)
-                    if next.items.isEmpty { break }
-                    accumulated += next.items
-                    page += 1
-                    if page % 3 == 0 { rebuild(items: accumulated, progress: progress) }
+            if let storedId {
+                async let validationTask: [ABSLibrary]? = try? await withRetry {
+                    try await self.provider.fetchLibraries()
+                }.filter { !$0.isPodcast }
+                do {
+                    try await loadContent(libraryId: storedId)
+                    // Late validation: the id no longer exists → reload properly.
+                    if let libraries = await validationTask,
+                       !libraries.contains(where: { $0.id == storedId }) {
+                        try await resolveAndLoad(libraries: libraries)
+                    }
+                } catch {
+                    // The direct load failed — maybe the stored library is gone
+                    // (e.g. 404). If validation can name a replacement, use it;
+                    // a real offline error falls through to the cache fallback.
+                    guard let libraries = await validationTask,
+                          !libraries.contains(where: { $0.id == storedId }) else { throw error }
+                    try await resolveAndLoad(libraries: libraries)
                 }
-            } catch {
-                // Abort while loading more: keep the loaded partial list.
+            } else {
+                // ONLY book libraries for the audiobook tab — podcast libraries
+                // belong to the podcast provider. Retry transient errors briefly
+                // (timeout/5xx) before the offline/cache fallback; real offline
+                // errors and 401 still throw immediately.
+                let libraries = try await withRetry { try await self.provider.fetchLibraries() }
+                    .filter { !$0.isPodcast }
+                try await resolveAndLoad(libraries: libraries)
             }
-            rebuild(items: accumulated, progress: progress)   // final rebuild
-            isLoadingMore = false
-
-            // Only persist/clean up with a FULLY loaded list — otherwise a
-            // partial list would overwrite the good offline cache, or (cleanup)
-            // wrongly delete per-book keys of not-yet-loaded books.
-            if accumulated.count >= total {
-                saveLibraryDiskCache(items: accumulated, progress: progress)
-                let validIds = Set(accumulated.map(\.id))
-                Task.detached(priority: .utility) {
-                    AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
-                }
-            }
-            Task { await prefetchAllCovers() }
         } catch {
             // Only treat real network unreachability as "offline" — another
             // error (e.g. server hang, broken format) must not wrongly show the
@@ -514,6 +492,81 @@ final class LibraryViewModel: ObservableObject {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
         }
+    }
+
+    /// Resolve the library (settings choice wins, else the first) and load it.
+    private func resolveAndLoad(libraries: [ABSLibrary]) async throws {
+        let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+        guard let library = libraries.first(where: { $0.id == storedId }) ?? libraries.first else {
+            errorMessage = String(localized: "No library found on the server.")
+            return
+        }
+        try await loadContent(libraryId: library.id)
+    }
+
+    /// Full progressive content load of one library: progress + seed in
+    /// parallel, first page immediately, remaining pages quietly, disk cache and
+    /// key cleanup only when complete. Extracted so the K2 fast path (stored
+    /// library id, no prior fetchLibraries round-trip) shares one implementation
+    /// with the resolve path.
+    private func loadContent(libraryId id: String) async throws {
+        async let progressTask = provider.fetchAllProgress()
+        // Prebuilt "Continue"/"Recently Added" rows from the server (one small
+        // request) — so the top rows are complete IMMEDIATELY, regardless of
+        // which page a started book is on.
+        async let seedTask = provider.fetchLibrarySeed(libraryId: id)
+
+        // Progressive loading: show the first page immediately, append the
+        // rest page by page in the background. All client-side functions
+        // (sort, filter, series stacks, search) work on what is already
+        // loaded and complete themselves as more pages arrive.
+        let pageSize = 50
+        let first = try await withRetry {
+            try await self.provider.fetchLibraryItemsPage(libraryId: id, limit: pageSize, page: 0)
+        }
+        let progress = (try? await progressTask) ?? [:]
+        librarySeed = (try? await seedTask) ?? LibrarySeed()
+
+        libraryId = id
+        isShowingOfflineCache = false
+        var accumulated = first.items
+        let total = first.total
+        rebuild(items: accumulated, progress: progress)
+        isLoading = false   // first view is ready — spinner off, rest loads quietly
+
+        // Append the remaining pages (in the same load). A network drop
+        // mid-load keeps what is already shown instead of jumping to the
+        // offline fallback. Intermediate rebuilds are throttled (only every
+        // 3rd page) — a guaranteed final rebuild afterwards keeps the result
+        // identical but saves intermediate work.
+        isLoadingMore = accumulated.count < total
+        var page = 1
+        do {
+            while accumulated.count < total {
+                let next = try await provider.fetchLibraryItemsPage(
+                    libraryId: id, limit: pageSize, page: page)
+                if next.items.isEmpty { break }
+                accumulated += next.items
+                page += 1
+                if page % 3 == 0 { rebuild(items: accumulated, progress: progress) }
+            }
+        } catch {
+            // Abort while loading more: keep the loaded partial list.
+        }
+        rebuild(items: accumulated, progress: progress)   // final rebuild
+        isLoadingMore = false
+
+        // Only persist/clean up with a FULLY loaded list — otherwise a
+        // partial list would overwrite the good offline cache, or (cleanup)
+        // wrongly delete per-book keys of not-yet-loaded books.
+        if accumulated.count >= total {
+            saveLibraryDiskCache(items: accumulated, progress: progress)
+            let validIds = Set(accumulated.map(\.id))
+            Task.detached(priority: .utility) {
+                AppStorageKeys.cleanupPerBookKeys(validItemIds: validIds)
+            }
+        }
+        Task { await prefetchAllCovers() }
     }
 
     /// Silently refreshes only the progress data (bars, "Continue"), without

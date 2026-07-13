@@ -184,11 +184,16 @@ final class MockProvider: AudioProvider {
     var items: [LibraryItem] = []
     var progress: [String: BookProgress] = [:]
     var failProgress = false
+    /// Library ids whose item fetch fails (simulates a vanished library).
+    var failForLibraryIds: Set<String> = []
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         [ABSLibrary(id: "mock-lib", name: "Mock")]
     }
-    func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { items }
+    func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
+        if failForLibraryIds.contains(libraryId) { throw NSError(domain: "mock", code: 404) }
+        return items
+    }
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         throw NSError(domain: "mock", code: 404)
     }

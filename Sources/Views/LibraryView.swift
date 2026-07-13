@@ -218,9 +218,15 @@ struct LibraryView: View {
             // One-time: remove unreadable old files (auto-heal replaces them).
             DownloadManager.shared.performDeepValidation()
             if viewModel.entries.isEmpty {
+                // K1/K3 cold start: render the cached library IMMEDIATELY and
+                // restore the mini-player from it — BEFORE the network load,
+                // which then replaces everything silently.
+                await viewModel.showCachedLibraryIfAvailable()
+                await playerCoordinator.restoreLastSession(from: viewModel.entries)
                 await viewModel.loadLibrary()
             }
-            // Silently bring the last played book into the mini-player.
+            // Silently bring the last played book into the mini-player (no-op
+            // when the cache-first path above already restored it).
             await playerCoordinator.restoreLastSession(from: viewModel.entries)
             // Cold start via quick action / Siri: the request arrived before
             // the library was loaded — execute it now.
