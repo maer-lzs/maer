@@ -73,6 +73,8 @@ struct LibraryView: View {
                     audiobooksContent
                 case .podcasts:
                     PodcastsView(playerCoordinator: playerCoordinator)
+                case .music:
+                    MusicView(playerCoordinator: playerCoordinator)
                 default:
                     Spacer()
                 }

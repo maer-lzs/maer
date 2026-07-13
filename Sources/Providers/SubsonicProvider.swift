@@ -58,18 +58,43 @@ final class SubsonicProvider: AudioProvider {
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
-        guard let client, let albumId = Self.albumId(fromItemId: itemId),
-              let album = try await client.album(id: albumId) else {
+        guard let client else { throw SubsonicClient.SubsonicError.network }
+        // Album or playlist — both become a multi-track item.
+        let songs: [SubsonicSong]
+        let title: String?
+        let artist: String?
+        let genre: String?
+        if let albumId = Self.id(itemId, kind: "album"), let album = try await client.album(id: albumId) {
+            songs = album.song ?? []; title = album.name; artist = album.artist; genre = album.genre
+        } else if let playlistId = Self.id(itemId, kind: "playlist"),
+                  let pl = try await client.playlist(id: playlistId) {
+            songs = pl.entry ?? []; title = pl.name; artist = nil; genre = nil
+        } else {
             throw SubsonicClient.SubsonicError.decoding
         }
-        let songs = album.song ?? []
+        let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
+        let media = LibraryItemMedia(
+            metadata: LibraryItemMetadata(
+                title: title, authorName: artist, narratorName: nil,
+                seriesName: nil, genres: genre.map { [$0] }, publishedYear: nil,
+                description: nil
+            ),
+            duration: total,
+            chapters: chapters,
+            tracks: tracks
+        )
+        return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)
+    }
+
+    /// Songs → player tracks (per-song stream URL via `contentUrl` = song id) plus
+    /// one chapter per song so "next chapter" = "next song".
+    private static func tracksAndChapters(from songs: [SubsonicSong])
+        -> (tracks: [ABSAudioTrack], chapters: [ABSChapter], total: Double) {
         var tracks: [ABSAudioTrack] = []
         var chapters: [ABSChapter] = []
         var offset = 0.0
         for (i, song) in songs.enumerated() {
             let dur = Double(song.duration ?? 0)
-            // contentUrl = raw song id; streamURL(forContentPath:) turns it into
-            // the authenticated stream URL.
             tracks.append(ABSAudioTrack(
                 index: i, startOffset: offset, duration: dur,
                 contentUrl: song.id, metadata: ABSFileMetadata(size: song.size)
@@ -80,24 +105,45 @@ final class SubsonicProvider: AudioProvider {
             ))
             offset += dur
         }
-        let media = LibraryItemMedia(
-            metadata: LibraryItemMetadata(
-                title: album.name, authorName: album.artist, narratorName: nil,
-                seriesName: nil, genres: album.genre.map { [$0] }, publishedYear: nil,
-                description: nil
-            ),
-            duration: offset,
-            chapters: chapters,
-            tracks: tracks
-        )
-        return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)
+        return (tracks, chapters, offset)
+    }
+
+    // MARK: - View-facing browse (Music tab)
+
+    /// A shelf of albums as library items. `type`: newest | frequent | recent | …
+    func albumShelf(type: String, size: Int = 20) async throws -> [LibraryItem] {
+        guard let client else { return [] }
+        return try await client.albumList2(type: type, size: size).map(libraryItem(from:))
+    }
+
+    func allArtists() async throws -> [SubsonicArtist] {
+        guard let client else { return [] }
+        return try await client.artists()
+    }
+
+    /// Albums of one artist as library items.
+    func artistAlbums(artistId: String) async throws -> [LibraryItem] {
+        guard let client else { return [] }
+        return (try await client.artist(id: artistId)?.album ?? []).map(libraryItem(from:))
+    }
+
+    func allPlaylists() async throws -> [SubsonicPlaylist] {
+        guard let client else { return [] }
+        return try await client.playlists()
+    }
+
+    /// Search across albums/songs → album library items (albums directly, songs
+    /// mapped to their album where present).
+    func searchAlbums(query: String) async throws -> [LibraryItem] {
+        guard let client else { return [] }
+        return (try await client.search3(query: query).album ?? []).map(libraryItem(from:))
     }
 
     // MARK: - Media
 
     func coverURL(forItemId itemId: String) -> URL? {
-        guard let client, let albumId = Self.albumId(fromItemId: itemId) else { return nil }
-        return client.mediaURL("getCoverArt", ["id": albumId, "size": "600"])
+        guard let client, let id = Self.rawId(itemId) else { return nil }
+        return client.mediaURL("getCoverArt", ["id": id, "size": "600"])
     }
 
     func streamURL(forContentPath contentPath: String) -> URL? {
@@ -136,11 +182,20 @@ final class SubsonicProvider: AudioProvider {
     }
 
     static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
+    static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
 
-    static func albumId(fromItemId itemId: String) -> String? {
-        let prefix = "sub:album:"
+    /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`.
+    static func id(_ itemId: String, kind: String) -> String? {
+        let prefix = "sub:\(kind):"
         guard itemId.hasPrefix(prefix) else { return nil }
         return String(itemId.dropFirst(prefix.count))
+    }
+
+    /// The bare id after `sub:<kind>:` regardless of kind (for cover art).
+    private static func rawId(_ itemId: String) -> String? {
+        guard itemId.hasPrefix("sub:") else { return nil }
+        let raw = itemId.split(separator: ":", omittingEmptySubsequences: false).dropFirst(2).joined(separator: ":")
+        return raw.isEmpty ? nil : raw
     }
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
