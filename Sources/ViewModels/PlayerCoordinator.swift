@@ -7,10 +7,21 @@ import Combine
 /// until the user explicitly closes it or opens another book.
 @MainActor
 final class PlayerCoordinator: ObservableObject {
-    @Published private(set) var viewModel: PlayerViewModel?
+    @Published private(set) var viewModel: PlayerViewModel? {
+        didSet {
+            // Mirror the active session's play state so list rows (e.g. podcast
+            // episode rows) can show a live play/pause button without each
+            // observing the nested view model.
+            isPlayingCancellable = viewModel?.$isPlaying.sink { [weak self] in self?.isPlaying = $0 }
+            if viewModel == nil { isPlaying = false }
+        }
+    }
     @Published private(set) var activeItem: LibraryItem?
     @Published private(set) var isLoading = false
+    @Published private(set) var isPlaying = false
     @Published var loadError: String?
+
+    private var isPlayingCancellable: AnyCancellable?
 
     let provider: any AudioProvider
 

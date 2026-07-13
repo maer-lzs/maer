@@ -145,15 +145,17 @@ struct ShowTile: View {
     }
 }
 
-/// Rich episode row: cover, show + title, date/remaining time, progress,
-/// play and download button. Playing runs via the play button; whole-row
-/// tap-to-play is opt-in (`tapToPlay`) — the show page turns it off so only the
-/// button plays.
+/// What tapping the row body (cover + text) does. The trailing controls
+/// (info / download / play) are always separate and work in every mode.
+enum PodcastRowTap { case play, detail, none }
+
+/// Rich episode row: cover, show + title, date/remaining time, progress, and a
+/// trailing cluster of consistent gray controls (info · download · play/pause).
 struct PodcastEpisodeRow: View {
     let item: LibraryItem
-    /// Whether tapping anywhere on the row plays it (queue/inbox); off on the
-    /// show page, where only the play button plays.
-    var tapToPlay: Bool = true
+    /// Tapping the row body: play it (queue/inbox), open its detail page
+    /// (downloads) or nothing (show page — only the play button plays).
+    var rowTap: PodcastRowTap = .play
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
@@ -161,52 +163,20 @@ struct PodcastEpisodeRow: View {
 
     private var state: EpisodePlayState { podcastPlayState(for: item) }
     private var isPlayed: Bool { state == .played }
+    private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
+    private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
-                // Played episodes dimmed, as in Apple Podcasts.
-                .opacity(isPlayed ? 0.5 : 1)
-
-            VStack(alignment: .leading, spacing: 3) {
-                if let show = item.media?.metadata?.authorName {
-                    Text(show.uppercased())
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Text(item.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(isPlayed ? .secondary : .primary)
-                    .lineLimit(2)
-
-                if case .inProgress(let fraction, _) = state {
-                    // In progress: thin bar + remaining time.
-                    ProgressView(value: fraction)
-                        .tint(AppTheme.accent)
-                        .padding(.trailing, 40)
-                        .padding(.top, 2)
-                }
-
-                HStack(spacing: 8) {
-                    if isPlayed {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(metaText).font(.caption2).foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    infoButton
-                    PodcastDownloadButton(item: item)
-                }
-                .padding(.top, 1)
-            }
+        HStack(alignment: .center, spacing: 10) {
+            rowBody
+            Spacer(minLength: 6)
+            infoButton
+            PodcastDownloadButton(item: item)
             playButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
-        .onTapGesture { if tapToPlay { Task { await playerCoordinator.open(item: item) } } }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
         // Swipe actions apply in `List` contexts (show page, queue); in pure
         // `LazyVStack` previews the context menu remains.
@@ -256,35 +226,88 @@ struct PodcastEpisodeRow: View {
         }
     }
 
-    private var playButton: some View {
-        Button {
-            Task {
-                if isPlayed {
-                    // A finished episode replays from the beginning and is set
-                    // back to unplayed. `restart` starts at 0 and writes it
-                    // through on every source (server + iCloud/gpodder); the
-                    // local flip updates the row immediately.
-                    podcastSetPlayed(item, false)
-                    await playerCoordinator.open(item: item, restart: true)
-                } else {
-                    await playerCoordinator.open(item: item)
+    /// Tappable row body (cover + text). Behaviour depends on `rowTap`; the
+    /// trailing controls stay separate so they always receive their own taps.
+    @ViewBuilder private var rowBody: some View {
+        switch rowTap {
+        case .play:
+            Button { Task { await playerCoordinator.open(item: item) } } label: { rowContent }
+                .buttonStyle(.plain)
+        case .detail:
+            NavigationLink(value: PodcastRoute.episode(itemId: item.id)) { rowContent }
+                .buttonStyle(.plain)
+        case .none:
+            rowContent
+        }
+    }
+
+    private var rowContent: some View {
+        HStack(alignment: .center, spacing: 12) {
+            podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
+                // Played episodes dimmed, as in Apple Podcasts.
+                .opacity(isPlayed ? 0.5 : 1)
+            VStack(alignment: .leading, spacing: 3) {
+                if let show = item.media?.metadata?.authorName {
+                    Text(show.uppercased())
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
+                Text(item.title)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(isPlayed ? .secondary : .primary)
+                    .lineLimit(2)
+                if case .inProgress(let fraction, _) = state {
+                    ProgressView(value: fraction)
+                        .tint(AppTheme.accent)
+                        .padding(.top, 2)
+                }
+                HStack(spacing: 6) {
+                    if isPlayed {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(metaText).font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.top, 1)
             }
-        } label: {
-            Image(systemName: "play.circle.fill")
-                .font(.system(size: 38))
-                .foregroundStyle(.primary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private var playButton: some View {
+        Button { Task { await playButtonTapped() } } label: {
+            Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")
+                .font(.system(size: 30))
+                .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("Play"))
+        .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
+    }
+
+    private func playButtonTapped() async {
+        if isPlayingThis {
+            playerCoordinator.viewModel?.pause()
+        } else if isCurrent {
+            playerCoordinator.viewModel?.play()
+        } else if isPlayed {
+            // Replay a finished episode from the beginning + mark unplayed.
+            // `restart` writes 0 through on every source (server + iCloud/gpodder).
+            podcastSetPlayed(item, false)
+            await playerCoordinator.open(item: item, restart: true)
+        } else {
+            await playerCoordinator.open(item: item)
+        }
     }
 
     /// Opens the episode detail page (info) — value-based so the media tab can
-    /// pop back to the library.
+    /// pop back to the library. Same icon size as the download control.
     private var infoButton: some View {
         NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
             Image(systemName: "info.circle")
-                .font(.body)
+                .font(.title3)
                 .foregroundStyle(.secondary)
         }
         .buttonStyle(.plain)

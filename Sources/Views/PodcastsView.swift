@@ -384,20 +384,13 @@ struct PodcastsView: View {
         if !downloaded.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Downloaded").font(.title3).bold().padding(.horizontal)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    // Adapt the row count to the amount (1 download → 1 row);
-                    // each column uses the full screen width.
-                    LazyHGrid(rows: Array(repeating: GridItem(.fixed(84), spacing: 4),
-                                          count: max(1, min(3, downloaded.count))),
-                              spacing: 12) {
-                        ForEach(downloaded) { item in
-                            PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
-                                .containerRelativeFrame(.horizontal)
-                        }
+                // Vertical list — grows downward with the page instead of scrolling
+                // sideways. Tapping a row opens its episode detail page.
+                LazyVStack(spacing: 0) {
+                    ForEach(downloaded) { item in
+                        PodcastEpisodeRow(item: item, rowTap: .detail, playerCoordinator: playerCoordinator)
                     }
-                    .scrollTargetLayout()
                 }
-                .scrollTargetBehavior(.viewAligned)
             }
         }
     }
