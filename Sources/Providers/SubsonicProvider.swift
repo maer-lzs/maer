@@ -13,6 +13,16 @@ final class SubsonicProvider: AudioProvider {
 
     private var client: SubsonicClient?
 
+    /// Songs (id + start offset) per item id, so `updateProgress` can tell which
+    /// song is playing. Keyed by item id — NOT a single slot — because browsing an
+    /// album's detail also calls `fetchItemDetail` and must not clobber the song
+    /// map of a different item that is actually playing.
+    private var songsByItemId: [String: [(id: String, start: Double)]] = [:]
+    private var lastScrobbledSong: [String: String] = [:]
+
+    /// Albums the user starred (favorites), loaded lazily from the server.
+    private var starredAlbumIds: Set<String>?
+
     var providerId: String { "sub" }
     var mediaType: MediaType { .music }
     /// Password login + own search; content is streamed from a server and can be
@@ -73,6 +83,9 @@ final class SubsonicProvider: AudioProvider {
             throw SubsonicClient.SubsonicError.decoding
         }
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
+        // Remember the songs + offsets so playback can scrobble each one.
+        songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
+        lastScrobbledSong[itemId] = nil
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: title, authorName: artist, narratorName: nil,
@@ -132,6 +145,27 @@ final class SubsonicProvider: AudioProvider {
         return try await client.playlists()
     }
 
+    // MARK: - Favorites (star)
+
+    /// Whether an album item is starred; loads the starred set once and caches it.
+    func isStarred(itemId: String) async -> Bool {
+        guard let albumId = Self.id(itemId, kind: "album") else { return false }
+        if starredAlbumIds == nil, let client {
+            starredAlbumIds = Set((try? await client.starredAlbums())?.map(\.id) ?? [])
+        }
+        return starredAlbumIds?.contains(albumId) ?? false
+    }
+
+    /// Toggles the album's starred state on the server; returns the new state.
+    @discardableResult
+    func toggleStar(itemId: String) async -> Bool {
+        guard let client, let albumId = Self.id(itemId, kind: "album") else { return false }
+        let newValue = !(starredAlbumIds?.contains(albumId) ?? false)
+        try? await client.star(id: albumId, starred: newValue)
+        if newValue { starredAlbumIds?.insert(albumId) } else { starredAlbumIds?.remove(albumId) }
+        return newValue
+    }
+
     /// Search across albums/songs → album library items (albums directly, songs
     /// mapped to their album where present).
     func searchAlbums(query: String) async throws -> [LibraryItem] {
@@ -154,7 +188,17 @@ final class SubsonicProvider: AudioProvider {
     // MARK: - Progress (no server sync — like local files; scrobble is separate)
 
     func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
-    func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
+
+    /// No position sync, but scrobble each song as it starts playing (play counts
+    /// on the server, Last.fm/ListenBrainz where configured). Called ~every 30 s
+    /// and on pause/seek, so a song-change is detected within one interval.
+    func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
+        guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
+        guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
+        guard song.id != lastScrobbledSong[itemId] else { return }
+        lastScrobbledSong[itemId] = song.id
+        try? await client.scrobble(id: song.id, submission: true)
+    }
 
     // MARK: - Bookmarks (unsupported)
 

@@ -19,6 +19,14 @@ struct SubsonicBody: Decodable {
     let searchResult3: SubsonicSearchResult3?
     let playlists: SubsonicPlaylists?
     let playlist: SubsonicPlaylist?     // getPlaylist (playlist with entries)
+    let starred2: SubsonicStarred2?     // getStarred2
+}
+
+/// Starred (favorited) content — used for the album favorite state.
+struct SubsonicStarred2: Decodable {
+    let album: [SubsonicAlbum]?
+    let song: [SubsonicSong]?
+    let artist: [SubsonicArtist]?
 }
 
 struct SubsonicAPIError: Decodable {

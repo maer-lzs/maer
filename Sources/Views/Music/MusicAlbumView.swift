@@ -6,11 +6,15 @@ import SwiftUI
 struct MusicAlbumView: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var downloadManager = DownloadManager.shared
 
     @State private var detail: LibraryItemDetail?
     @State private var loadFailed = false
+    @State private var starred = false
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
+    /// Albums can be starred; playlists cannot.
+    private var isAlbum: Bool { SubsonicProvider.id(item.id, kind: "album") != nil }
 
     var body: some View {
         List {
@@ -51,7 +55,46 @@ struct MusicAlbumView: View {
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
-        .task(id: item.id) { await loadDetail() }
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                downloadButton
+                if isAlbum {
+                    Button {
+                        Task { starred = await SubsonicProvider.shared.toggleStar(itemId: item.id) }
+                    } label: {
+                        Image(systemName: starred ? "heart.fill" : "heart")
+                    }
+                    .tint(starred ? .red : nil)
+                }
+            }
+        }
+        .task(id: item.id) {
+            await loadDetail()
+            if isAlbum { starred = await SubsonicProvider.shared.isStarred(itemId: item.id) }
+        }
+    }
+
+    @ViewBuilder
+    private var downloadButton: some View {
+        if downloadManager.isDownloaded(itemId: item.id) {
+            Button(role: .destructive) {
+                downloadManager.deleteDownload(itemId: item.id)
+            } label: {
+                Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
+            }
+        } else if downloadManager.isDownloading(itemId: item.id) {
+            Button {
+                downloadManager.cancelDownload(itemId: item.id)
+            } label: {
+                Image(systemName: "stop.circle")
+            }
+        } else if let detail {
+            Button {
+                Task { await downloadManager.download(item: detail, provider: AppSession.shared.subsonicProvider) }
+            } label: {
+                Image(systemName: "arrow.down.circle")
+            }
+        }
     }
 
     private var header: some View {

@@ -51,6 +51,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         var templates: [CPListTemplate] = [continueTab, downloadedTab, libraryTab]
         // Podcast tab only when subscriptions exist (queue/continue/shows).
         if let podcasts = await podcastTab() { templates.append(podcasts) }
+        // Music tab only when a Subsonic source is configured + enabled.
+        if let music = await musicTab() { templates.append(music) }
 
         let tabBar = CPTabBarTemplate(templates: templates)
         interfaceController?.setRootTemplate(tabBar, animated: true, completion: nil)
@@ -118,6 +120,34 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
         let template = CPListTemplate(title: String(localized: "Podcasts"), sections: sections)
         template.tabImage = UIImage(systemName: "mic")
+        return template
+    }
+
+    // MARK: - Music
+
+    /// "Recently Added" + "Albums"; tapping an album plays it. Nil when no
+    /// Subsonic source is configured/enabled.
+    private func musicTab() async -> CPListTemplate? {
+        guard SubsonicProvider.shared.isAvailable else { return nil }
+        let cap = Int(CPListTemplate.maximumItemCount)
+        let newest = (try? await SubsonicProvider.shared.albumShelf(type: "newest", size: 20)) ?? []
+        let all = (try? await SubsonicProvider.shared.fetchLibraryItems(libraryId: "sub")) ?? []
+
+        var sections: [CPListSection] = []
+        if !newest.isEmpty {
+            var items: [CPListItem] = []
+            for album in newest.prefix(cap) { items.append(await playableItem(album)) }
+            sections.append(CPListSection(items: items, header: String(localized: "Recently Added"), sectionIndexTitle: nil))
+        }
+        if !all.isEmpty {
+            var items: [CPListItem] = []
+            for album in all.prefix(cap) { items.append(await playableItem(album)) }
+            sections.append(CPListSection(items: items, header: String(localized: "Albums"), sectionIndexTitle: nil))
+        }
+        guard !sections.isEmpty else { return nil }
+
+        let template = CPListTemplate(title: String(localized: "Music"), sections: sections)
+        template.tabImage = UIImage(systemName: "music.note")
         return template
     }
 

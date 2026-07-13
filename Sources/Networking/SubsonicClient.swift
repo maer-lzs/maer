@@ -151,6 +151,11 @@ struct SubsonicClient {
         _ = try await get(starred ? "star" : "unstar", ["id": id])
     }
 
+    /// Starred albums (favorites).
+    func starredAlbums() async throws -> [SubsonicAlbum] {
+        try await get("getStarred2").starred2?.album ?? []
+    }
+
     // MARK: - Helpers
 
     private static func randomSalt() -> String {
