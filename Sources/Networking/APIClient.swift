@@ -81,7 +81,7 @@ final class APIClient {
             path: "login",
             body: ["username": username, "password": password]
         )
-        let response = try decode(LoginResponse.self, from: data)
+        let response = try await decode(LoginResponse.self, from: data)
         guard let token = response.user.token ?? response.user.accessToken, !token.isEmpty else {
             throw APIError.decoding("Login-Antwort enthält keinen Token")
         }
@@ -92,7 +92,7 @@ final class APIClient {
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         let data = try await get(path: "api/libraries")
-        return try decode(LibrariesResponse.self, from: data).libraries
+        return try await decode(LibrariesResponse.self, from: data).libraries
     }
 
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
@@ -105,10 +105,10 @@ final class APIClient {
                 path: "api/libraries/\(libraryId)/items",
                 query: [URLQueryItem(name: "minified", value: "1")]
             )
-            return try decode(LibraryItemsResponse.self, from: data).results
+            return try await decode(LibraryItemsResponse.self, from: data).results
         } catch APIError.decoding {
             let data = try await get(path: "api/libraries/\(libraryId)/items")
-            return try decode(LibraryItemsResponse.self, from: data).results
+            return try await decode(LibraryItemsResponse.self, from: data).results
         }
     }
 
@@ -125,7 +125,7 @@ final class APIClient {
             ]
             if minified { query.append(URLQueryItem(name: "minified", value: "1")) }
             let data = try await get(path: "api/libraries/\(libraryId)/items", query: query)
-            return try decode(LibraryItemsResponse.self, from: data)
+            return try await decode(LibraryItemsResponse.self, from: data)
         }
         let response: LibraryItemsResponse
         do { response = try await fetch(minified: true) }
@@ -142,7 +142,7 @@ final class APIClient {
             path: "api/libraries/\(libraryId)/personalized",
             query: [URLQueryItem(name: "minified", value: "1")]
         )
-        guard let shelves = try? decode([PersonalizedShelf].self, from: data) else {
+        guard let shelves = try? await decode([PersonalizedShelf].self, from: data) else {
             return LibrarySeed()
         }
         func entities(_ id: String) -> [LibraryItem] {
@@ -156,7 +156,7 @@ final class APIClient {
     /// be annotated with bars/status without a per-book request.
     func fetchAllProgress() async throws -> [String: BookProgress] {
         let data = try await get(path: "api/me")
-        let me = try decode(MeResponse.self, from: data)
+        let me = try await decode(MeResponse.self, from: data)
         var map: [String: BookProgress] = [:]
         for entry in me.mediaProgress ?? [] {
             let fraction: Double
@@ -182,7 +182,7 @@ final class APIClient {
     /// Bookmarks live on the user object — filtered here per book.
     func fetchBookmarks(itemId: String) async throws -> [ABSBookmark] {
         let data = try await get(path: "api/me")
-        let me = try decode(MeResponse.self, from: data)
+        let me = try await decode(MeResponse.self, from: data)
         return (me.bookmarks ?? [])
             .filter { $0.libraryItemId == itemId }
             .sorted { $0.time < $1.time }
@@ -210,7 +210,7 @@ final class APIClient {
                 URLQueryItem(name: "include", value: "progress")
             ]
         )
-        return try decode(LibraryItemDetail.self, from: data)
+        return try await decode(LibraryItemDetail.self, from: data)
     }
 
     // MARK: Progress
@@ -241,7 +241,7 @@ final class APIClient {
     /// `abspod:<libraryItemId>:<episodeId>` (matches the provider namespace).
     func fetchPodcastEpisodeProgress() async throws -> [String: BookProgress] {
         let data = try await get(path: "api/me")
-        let me = try decode(MeResponse.self, from: data)
+        let me = try await decode(MeResponse.self, from: data)
         var map: [String: BookProgress] = [:]
         for entry in me.mediaProgress ?? [] {
             guard let episodeId = entry.episodeId else { continue }
@@ -279,14 +279,14 @@ final class APIClient {
     /// Parse a feed server-side (metadata for a new subscription).
     func fetchPodcastFeed(rssFeed: String) async throws -> PodcastFeedMetadata {
         let data = try await send(method: "POST", path: "api/podcasts/feed", body: ["rssFeed": rssFeed])
-        return try decode(PodcastFeedResponse.self, from: data).podcast.metadata
+        return try await decode(PodcastFeedResponse.self, from: data).podcast.metadata
     }
 
     /// Folders of a library (target path for a new subscription). The detail
     /// endpoint returns the library object directly (folders at the top level).
     func fetchLibraryFolders(libraryId: String) async throws -> [ABSFolder] {
         let data = try await get(path: "api/libraries/\(libraryId)")
-        return (try decode(LibraryWithFolders.self, from: data).folders) ?? []
+        return (try await decode(LibraryWithFolders.self, from: data).folders) ?? []
     }
 
     /// Create a podcast server-side (POST /api/podcasts). Needs upload rights.
@@ -424,11 +424,17 @@ final class APIClient {
         return data
     }
 
-    private func decode<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+    /// Decode OFF the main actor — APIClient is MainActor-isolated by project
+    /// default, so the big payloads (all-progress, library pages, podcast
+    /// details) used to be parsed on the UI thread and caused visible hitches
+    /// during the silent cache refresh. Same pattern as ImageCache (P8b).
+    private func decode<T: Decodable & Sendable>(_ type: T.Type, from data: Data) async throws -> T {
         do {
-            return try JSONDecoder().decode(T.self, from: data)
+            return try await Task.detached(priority: .userInitiated) {
+                try JSONDecoder().decode(T.self, from: data)
+            }.value
         } catch let DecodingError.keyNotFound(key, _) {
-            throw APIError.decoding("Feld '\(key.stringValue)' fehlt in der Antwort")
+            throw APIError.decoding("Field '\(key.stringValue)' missing in the response")
         } catch let DecodingError.typeMismatch(_, context) {
             throw APIError.decoding(context.debugDescription)
         } catch {

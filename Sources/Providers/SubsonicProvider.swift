@@ -64,7 +64,7 @@ final class SubsonicProvider: AudioProvider {
         // Alphabetical is the stable "browse all" order; the Music tab (later)
         // requests newest/frequent separately for its shelves.
         let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
-        return albums.map(libraryItem(from:))
+        return await Self.mapAlbums(albums)
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -126,7 +126,7 @@ final class SubsonicProvider: AudioProvider {
     /// A shelf of albums as library items. `type`: newest | frequent | recent | …
     func albumShelf(type: String, size: Int = 20) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return try await client.albumList2(type: type, size: size).map(libraryItem(from:))
+        return await Self.mapAlbums(try await client.albumList2(type: type, size: size))
     }
 
     func allArtists() async throws -> [SubsonicArtist] {
@@ -137,7 +137,7 @@ final class SubsonicProvider: AudioProvider {
     /// Albums of one artist as library items.
     func artistAlbums(artistId: String) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return (try await client.artist(id: artistId)?.album ?? []).map(libraryItem(from:))
+        return await Self.mapAlbums(try await client.artist(id: artistId)?.album ?? [])
     }
 
     func allPlaylists() async throws -> [SubsonicPlaylist] {
@@ -170,7 +170,7 @@ final class SubsonicProvider: AudioProvider {
     /// mapped to their album where present).
     func searchAlbums(query: String) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return (try await client.search3(query: query).album ?? []).map(libraryItem(from:))
+        return await Self.mapAlbums(try await client.search3(query: query).album ?? [])
     }
 
     // MARK: - Media
@@ -208,7 +208,15 @@ final class SubsonicProvider: AudioProvider {
 
     // MARK: - Mapping helpers
 
-    private func libraryItem(from album: SubsonicAlbum) -> LibraryItem {
+    /// Map a page of albums OFF the main actor (per-album ISO8601 parsing adds
+    /// up on big catalogs; the provider is MainActor by project default).
+    nonisolated private static func mapAlbums(_ albums: [SubsonicAlbum]) async -> [LibraryItem] {
+        await Task.detached(priority: .userInitiated) {
+            albums.map { libraryItem(from: $0) }
+        }.value
+    }
+
+    nonisolated private static func libraryItem(from album: SubsonicAlbum) -> LibraryItem {
         LibraryItem(
             id: Self.itemId(albumId: album.id),
             media: LibraryItemMedia(
@@ -225,18 +233,18 @@ final class SubsonicProvider: AudioProvider {
         )
     }
 
-    static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
-    static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
+    nonisolated static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
+    nonisolated static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
 
     /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`.
-    static func id(_ itemId: String, kind: String) -> String? {
+    nonisolated static func id(_ itemId: String, kind: String) -> String? {
         let prefix = "sub:\(kind):"
         guard itemId.hasPrefix(prefix) else { return nil }
         return String(itemId.dropFirst(prefix.count))
     }
 
     /// The bare id after `sub:<kind>:` regardless of kind (for cover art).
-    private static func rawId(_ itemId: String) -> String? {
+    nonisolated private static func rawId(_ itemId: String) -> String? {
         guard itemId.hasPrefix("sub:") else { return nil }
         let raw = itemId.split(separator: ":", omittingEmptySubsequences: false).dropFirst(2).joined(separator: ":")
         return raw.isEmpty ? nil : raw
@@ -245,12 +253,12 @@ final class SubsonicProvider: AudioProvider {
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
     /// Navidrome sends fractional seconds, which the default parser rejects — try
     /// both.
-    private static let iso8601Fractional: ISO8601DateFormatter = {
+    nonisolated private static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
-    private static func parseCreated(_ raw: String?) -> Double? {
+    nonisolated private static func parseCreated(_ raw: String?) -> Double? {
         guard let raw else { return nil }
         let date = iso8601Fractional.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
         return date.map { $0.timeIntervalSince1970 * 1000 }

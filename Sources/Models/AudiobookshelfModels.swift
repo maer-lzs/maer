@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - Authorisierung / Nutzer
 
-struct ABSUser: Decodable {
+nonisolated struct ABSUser: Decodable {
     let id: String
     let username: String
 }
@@ -10,24 +10,24 @@ struct ABSUser: Decodable {
 /// Response of POST /login. Older servers return the long-lived `token`, newer
 /// ones (JWT auth from v2.26) an `accessToken` — both optional, the long-lived
 /// one is preferred.
-struct LoginResponse: Decodable {
+nonisolated struct LoginResponse: Decodable {
     let user: LoginUser
 }
 
-struct LoginUser: Decodable {
+nonisolated struct LoginUser: Decodable {
     let token: String?
     let accessToken: String?
 }
 
 /// Response of /api/me — holds all of the user's progress entries.
-struct MeResponse: Decodable {
+nonisolated struct MeResponse: Decodable {
     let mediaProgress: [MediaProgressEntry]?
     let bookmarks: [ABSBookmark]?
 }
 
 /// Bookmark (stored server-side on the user). `time` is whole seconds and
 /// doubles as the delete key.
-struct ABSBookmark: Codable, Identifiable, Equatable {
+nonisolated struct ABSBookmark: Codable, Identifiable, Equatable {
     let libraryItemId: String
     let title: String
     let time: Double
@@ -38,7 +38,7 @@ struct ABSBookmark: Codable, Identifiable, Equatable {
 
 /// A progress entry from /api/me. Mapped to books locally so the whole library
 /// list can show indicators without a per-book request.
-struct MediaProgressEntry: Decodable {
+nonisolated struct MediaProgressEntry: Decodable {
     let libraryItemId: String
     /// Set only for podcast progress — identifies the episode.
     let episodeId: String?
@@ -51,7 +51,7 @@ struct MediaProgressEntry: Decodable {
 
 /// Compact, view-friendly progress info for a book. Codable so it can be cached
 /// alongside the book list for offline access.
-struct BookProgress: Equatable, Codable {
+nonisolated struct BookProgress: Equatable, Codable {
     let fraction: Double      // 0...1
     let isFinished: Bool
     let lastUpdate: Double    // ms since 1970, for "recently listened" sorting
@@ -79,11 +79,11 @@ struct BookProgress: Equatable, Codable {
 
 // MARK: - Libraries
 
-struct LibrariesResponse: Decodable {
+nonisolated struct LibrariesResponse: Decodable {
     let libraries: [ABSLibrary]
 }
 
-struct ABSLibrary: Decodable, Identifiable {
+nonisolated struct ABSLibrary: Decodable, Identifiable {
     let id: String
     let name: String
     /// "book" | "podcast" — distinguishes audiobook from podcast libraries.
@@ -99,27 +99,27 @@ struct ABSLibrary: Decodable, Identifiable {
 // MARK: - Podcast management (folders, feed metadata)
 
 /// A library folder — target path for a newly created podcast subscription.
-struct ABSFolder: Decodable, Identifiable {
+nonisolated struct ABSFolder: Decodable, Identifiable {
     let id: String
     let fullPath: String?
 }
 
 /// `GET /api/libraries/{id}` returns the library object DIRECTLY (folders at
 /// the top level) — NOT wrapped in `{ library: … }`.
-struct LibraryWithFolders: Decodable {
+nonisolated struct LibraryWithFolders: Decodable {
     let folders: [ABSFolder]?
 }
 
 /// Response of POST /api/podcasts/feed — server-side parsed feed.
-struct PodcastFeedResponse: Decodable {
+nonisolated struct PodcastFeedResponse: Decodable {
     let podcast: PodcastFeedData
 }
 
-struct PodcastFeedData: Decodable {
+nonisolated struct PodcastFeedData: Decodable {
     let metadata: PodcastFeedMetadata
 }
 
-struct PodcastFeedMetadata: Decodable {
+nonisolated struct PodcastFeedMetadata: Decodable {
     let title: String?
     let author: String?
     let description: String?
@@ -129,7 +129,7 @@ struct PodcastFeedMetadata: Decodable {
 
 // MARK: - Book list (list endpoint)
 
-struct LibraryItemsResponse: Decodable {
+nonisolated struct LibraryItemsResponse: Decodable {
     let results: [LibraryItem]
     /// Total number of items in the library (server paging) — drives how many
     /// pages the progressive load still has to fetch.
@@ -139,12 +139,12 @@ struct LibraryItemsResponse: Decodable {
 /// A shelf of the ABS `personalized` view ("Continue Listening",
 /// "Recently Added", …) — used to fill exactly those two rows completely while
 /// the full list still loads progressively.
-struct PersonalizedShelf: Decodable {
+nonisolated struct PersonalizedShelf: Decodable {
     let id: String
     let entities: [LibraryItem]?
 }
 
-struct LibraryItem: Codable, Identifiable {
+nonisolated struct LibraryItem: Codable, Identifiable {
     let id: String
     let media: LibraryItemMedia?
     let addedAt: Double?
@@ -160,13 +160,13 @@ struct LibraryItem: Codable, Identifiable {
 
 // MARK: - Book details (expanded endpoint, for the player)
 
-struct LibraryItemDetail: Codable, Identifiable {
+nonisolated struct LibraryItemDetail: Codable, Identifiable {
     let id: String
     let media: LibraryItemMedia
     let userMediaProgress: MediaProgress?
 }
 
-struct LibraryItemMedia: Codable {
+nonisolated struct LibraryItemMedia: Codable {
     let metadata: LibraryItemMetadata?
     let duration: Double?
     let chapters: [ABSChapter]?
@@ -176,7 +176,7 @@ struct LibraryItemMedia: Codable {
     var episodes: [ABSPodcastEpisode]? = nil
 }
 
-struct LibraryItemMetadata: Codable {
+nonisolated struct LibraryItemMetadata: Codable {
     let title: String?
     let authorName: String?
     let narratorName: String?
@@ -191,7 +191,7 @@ struct LibraryItemMetadata: Codable {
 
 /// A podcast episode of an ABS show (`media.episodes[]` in the detail endpoint).
 /// `audioTrack` is the streamable track (contentUrl relative to the server).
-struct ABSPodcastEpisode: Codable, Identifiable {
+nonisolated struct ABSPodcastEpisode: Codable, Identifiable {
     let id: String
     let title: String?
     let subtitle: String?
@@ -211,14 +211,14 @@ struct ABSPodcastEpisode: Codable, Identifiable {
 }
 
 /// Enclosure of a feed episode (only the URL matters to us as a fallback key).
-struct ABSEnclosure: Codable {
+nonisolated struct ABSEnclosure: Codable {
     let url: String?
 }
 
 /// Some Audiobookshelf fields (e.g. publishedYear) return a string on some
 /// server versions and a number on others. This wrapper accepts both instead of
 /// failing the whole decode on a type mismatch.
-struct LenientString: Codable {
+nonisolated struct LenientString: Codable {
     let value: String
 
     init(from decoder: Decoder) throws {
@@ -240,14 +240,14 @@ struct LenientString: Codable {
     }
 }
 
-struct ABSChapter: Codable, Identifiable, Equatable {
+nonisolated struct ABSChapter: Codable, Identifiable, Equatable {
     let id: Int
     let start: Double
     let end: Double
     let title: String
 }
 
-struct ABSAudioTrack: Codable {
+nonisolated struct ABSAudioTrack: Codable {
     let index: Int?
     let startOffset: Double?
     let duration: Double?
@@ -257,13 +257,13 @@ struct ABSAudioTrack: Codable {
     let metadata: ABSFileMetadata?
 }
 
-struct ABSFileMetadata: Codable {
+nonisolated struct ABSFileMetadata: Codable {
     let size: Int64?
 }
 
 // MARK: - Progress
 
-struct MediaProgress: Codable {
+nonisolated struct MediaProgress: Codable {
     let currentTime: Double?
     let duration: Double?
     let progress: Double?

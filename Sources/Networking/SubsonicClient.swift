@@ -78,7 +78,11 @@ struct SubsonicClient {
         } catch {
             throw SubsonicError.network
         }
-        guard let env = try? JSONDecoder().decode(SubsonicEnvelope.self, from: data) else {
+        // Decode off-main — album catalogs are large and this used to run on
+        // the main actor (project default isolation). Same pattern as APIClient.
+        guard let env = try? await Task.detached(priority: .userInitiated, operation: {
+            try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+        }).value else {
             throw SubsonicError.decoding
         }
         let body = env.subsonicResponse
