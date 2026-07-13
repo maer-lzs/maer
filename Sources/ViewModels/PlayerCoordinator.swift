@@ -130,6 +130,12 @@ final class PlayerCoordinator: ObservableObject {
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
+        // Podcast episodes resolve through the subscriptions' episode index,
+        // which now loads asynchronously at startup — wait for it, otherwise a
+        // cold-start restore of a podcast episode races the disk load.
+        if lastId.hasPrefix("rss:") || lastId.hasPrefix("abspod:") {
+            await PodcastSubscriptions.shared.ensureLoaded()
+        }
         // The last played item can come from ANY source — podcast episodes are
         // NOT in the audiobook list, only in the RSS provider.
         guard let item = entries.first(where: { $0.id == lastId })?.item

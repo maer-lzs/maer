@@ -496,12 +496,12 @@ final class LibraryViewModel: ObservableObject {
             // Only treat real network unreachability as "offline" — another
             // error (e.g. server hang, broken format) must not wrongly show the
             // offline hint when there actually is a connection.
-            if NetworkStatus.isOfflineError(error), let cache = loadDiskCache() {
+            if NetworkStatus.isOfflineError(error), let cache = await loadDiskCache() {
                 isShowingOfflineCache = true
                 // Offline only what is really playable: downloaded books.
                 let downloaded = cache.items.filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
                 rebuild(items: downloaded, progress: cache.progress)
-            } else if let cache = loadDiskCache() {
+            } else if let cache = await loadDiskCache() {
                 // Another error, but a cache exists: keep showing the last known
                 // state silently, without a misleading offline hint.
                 rebuild(items: cache.items, progress: cache.progress)
@@ -645,9 +645,14 @@ final class LibraryViewModel: ObservableObject {
         }
     }
 
-    private func loadDiskCache() -> LibraryDiskCache? {
-        guard let data = try? Data(contentsOf: diskCacheURL) else { return nil }
-        return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
+    /// Full-library decode off-main — on an offline cold start this is the
+    /// whole library JSON and would otherwise block the main actor.
+    private func loadDiskCache() async -> LibraryDiskCache? {
+        let url = diskCacheURL
+        return await Task.detached(priority: .userInitiated) {
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            return try? JSONDecoder().decode(LibraryDiskCache.self, from: data)
+        }.value
     }
 
     /// Prefetches only the RELEVANT covers in the background (sequentially, easy

@@ -66,8 +66,47 @@ final class DownloadManager: ObservableObject {
     @Published private(set) var totalDownloadsSize: Int64 = 0
 
     private init() {
-        downloadedItemIds = Set(scanExistingDownloads())
-        recalculateTotalSize()
+        // The full filesystem walk (every download folder + every file's size)
+        // used to run synchronously here — on the main actor, BEFORE first
+        // paint, scaling with the number of downloads. Scan off-main instead
+        // and publish the result one tick later.
+        let downloadsDir = downloadsDirectory   // also creates the directories
+        let metaDir = metadataDirectory
+        Task { [weak self] in
+            let scan = await Task.detached(priority: .userInitiated) {
+                Self.scanDownloads(downloadsDir: downloadsDir, metaDir: metaDir)
+            }.value
+            guard let self else { return }
+            // Merge: a download finished while scanning must not be dropped.
+            self.downloadedItemIds.formUnion(scan.ids)
+            self.totalDownloadsSize = scan.totalSize
+        }
+    }
+
+    /// Off-main startup scan: completed download ids (meta file present) plus
+    /// their total size in one walk.
+    private nonisolated static func scanDownloads(downloadsDir: URL, metaDir: URL)
+        -> (ids: Set<String>, totalSize: Int64) {
+        guard let dirs = try? FileManager.default.contentsOfDirectory(
+            at: downloadsDir, includingPropertiesForKeys: [.isDirectoryKey]
+        ) else { return ([], 0) }
+        var ids = Set<String>()
+        var total: Int64 = 0
+        for dir in dirs
+        where (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true {
+            let itemId = dir.lastPathComponent
+            // The meta file is only written after a complete download — a folder
+            // without meta is an aborted remnant (kept for resume, not counted).
+            guard FileManager.default.fileExists(
+                atPath: metaDir.appendingPathComponent("\(itemId).json").path) else { continue }
+            ids.insert(itemId)
+            let files = (try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+            total += files.reduce(0) { sum, url in
+                sum + Int64((try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0)
+            }
+        }
+        return (ids, total)
     }
 
     private func recalculateTotalSize() {
@@ -104,24 +143,9 @@ final class DownloadManager: ObservableObject {
         return dir
     }
 
-    /// Each book lives in its own subfolder (named after the item id) —
-    /// Audiobookshelf book ids can contain underscores themselves, so one
-    /// subfolder per book avoids any ambiguity when mapping files to books.
-    private func scanExistingDownloads() -> [String] {
-        guard let dirs = try? FileManager.default.contentsOfDirectory(
-            at: downloadsDirectory, includingPropertiesForKeys: [.isDirectoryKey]
-        ) else { return [] }
-        return dirs
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
-            .map { $0.lastPathComponent }
-            .filter { itemId in
-                // The meta file is only written after a complete download —
-                // a folder without meta is an aborted remnant: don't count it as
-                // "done", but LEAVE IT (resume skips finished tracks).
-                let meta = metadataDirectory.appendingPathComponent("\(itemId).json")
-                return FileManager.default.fileExists(atPath: meta.path)
-            }
-    }
+    // (The startup scan lives in `scanDownloads` above — each book has its own
+    // subfolder named after the item id; Audiobookshelf ids can contain
+    // underscores, so folders avoid ambiguity when mapping files to books.)
 
     func isDownloaded(itemId: String) -> Bool {
         // Sources without download capability (local files) are always offline

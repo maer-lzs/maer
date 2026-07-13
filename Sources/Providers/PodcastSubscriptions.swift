@@ -90,10 +90,45 @@ final class PodcastSubscriptions: ObservableObject {
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("podcast_subscriptions.json")
 
+    /// Startup load. The full-store JSON decode used to run synchronously in
+    /// init — on the main actor, BEFORE first paint (the singleton is created
+    /// by the first observing view). The decode now runs off-main; the UI
+    /// starts empty and fills one tick later. Startup callers that need the
+    /// episode index (session restore, CarPlay) await `ensureLoaded()`.
+    private var bootstrapTask: Task<Void, Never>?
+
     private init() {
-        if let data = try? Data(contentsOf: fileURL),
-           let decoded = try? JSONDecoder().decode([PodcastShow].self, from: data) {
-            shows = migrated(decoded)
+        let url = fileURL
+        bootstrapTask = Task { [weak self] in
+            let decoded = await Task.detached(priority: .userInitiated) { () -> [PodcastShow] in
+                guard let data = try? Data(contentsOf: url) else { return [] }
+                return (try? JSONDecoder().decode([PodcastShow].self, from: data)) ?? []
+            }.value
+            guard let self, !decoded.isEmpty else { return }
+            self.shows = self.migrated(decoded)
+        }
+    }
+
+    /// Waits for the initial disk load (no-op once finished).
+    func ensureLoaded() async {
+        await bootstrapTask?.value
+    }
+
+    // MARK: - Serialized disk writes
+
+    /// All writes to the store file are CHAINED: encode+write run off-main, and
+    /// each write awaits the previous one — two overlapping detached writes
+    /// could otherwise interleave and corrupt the JSON. Writes take a value
+    /// snapshot, so later mutations of `shows` don't affect an in-flight write.
+    private var writeChain: Task<Void, Never>?
+
+    private func persist(_ snapshot: [PodcastShow]) {
+        let url = fileURL
+        let previous = writeChain
+        writeChain = Task.detached(priority: .utility) {
+            await previous?.value
+            guard let data = try? JSONEncoder().encode(snapshot) else { return }
+            try? data.write(to: url, options: .atomic)
         }
     }
 
@@ -162,10 +197,8 @@ final class PodcastSubscriptions: ObservableObject {
 
         let result = order.compactMap { byKey[$0] }
         if changed {
-            // Write back immediately so the cleanup is persistent.
-            if let data = try? JSONEncoder().encode(result) {
-                try? data.write(to: fileURL, options: .atomic)
-            }
+            // Write back (serialized, off-main) so the cleanup is persistent.
+            persist(result)
         }
         return result
     }
@@ -389,9 +422,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Persistenz
 
+    /// Persist the current store (serialized, off-main — see `persist`). The
+    /// old implementation encoded and wrote the whole JSON synchronously on the
+    /// main actor: a visible hitch on subscribe/refresh/import.
     private func save() {
-        guard let data = try? JSONEncoder().encode(shows) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        persist(shows)
     }
 
     private func normalizedFeedURL(_ raw: String) -> URL? {

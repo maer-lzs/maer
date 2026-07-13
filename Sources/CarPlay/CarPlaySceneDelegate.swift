@@ -28,6 +28,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func setupTemplates() async {
         let session = AppSession.shared
+        // Podcast subscriptions load asynchronously at app start — on a CarPlay
+        // cold start (car scene only, no UI) wait for them, or the podcast tab
+        // would silently be missing.
+        await PodcastSubscriptions.shared.ensureLoaded()
         if session.libraryViewModel.entries.isEmpty {
             await session.libraryViewModel.loadLibrary()
         }
