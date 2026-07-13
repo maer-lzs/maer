@@ -4,7 +4,7 @@ import UIKit
 
 /// A tile in "Recently updated" (Apple Podcasts style): show + time of the last
 /// update + number of new episodes since the last played one.
-struct RecentShowInfo: Identifiable {
+nonisolated struct RecentShowInfo: Identifiable {
     let show: PodcastShow
     let lastUpdated: Double   // ms epoch of the newest episode
     let newCount: Int
@@ -96,6 +96,10 @@ struct PodcastsView: View {
             }.value
         }
         .task {
+            // S3: let the tab-switch animation settle before kicking network
+            // work — the refresh burst used to stutter the transition.
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
             await absPodcast.refreshIfStale()                // ABS catalog (throttled)
             await GPodderSync.shared.autoReconcileIfNeeded()       // reconcile gpodder subscriptions
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
@@ -105,7 +109,7 @@ struct PodcastsView: View {
             // Hidden-but-mounted: skip; the token includes isActive, so the task
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
-            let sections = computeSections()
+            let sections = await computeSections()
             nextUp = sections.nextUp
             recentShows = sections.recentShows
             downloaded = sections.downloaded
@@ -118,20 +122,12 @@ struct PodcastsView: View {
         }
     }
 
-    /// One-pass section computation, extracted into `PodcastSections` (pure,
-    /// testable); this wires in the real state lookups.
-    private func computeSections() -> PodcastSectionsResult {
-        PodcastSections.compute(
-            shows: allShows,
-            downloadedIds: downloads.downloadedItemIds,
-            inboxOff: { AppStorageKeys.podcastInboxModeValue($0) == "off" },
-            playState: { podcastPlayState(for: $0) },
-            lastPlayed: { id in
-                let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double])?.last ?? 0
-                let absTs = ABSPodcastProvider.shared.episodeProgress[id]?.lastUpdate ?? 0
-                return max(localTs, absTs)
-            }
-        )
+    /// S2: collect the main-actor state as one snapshot (single UserDefaults
+    /// pass), then run the O(shows×episodes) computation off-main.
+    private func computeSections() async -> PodcastSectionsResult {
+        let shows = allShows
+        let snapshot = PodcastSections.snapshot(shows: shows)
+        return await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
     }
 
     // MARK: - Queue (user-managed)

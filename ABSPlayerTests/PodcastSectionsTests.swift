@@ -150,6 +150,46 @@ struct PodcastSectionsTests {
         #expect(result.downloaded.map(\.id) == ["s1e2", "s1e1"])
     }
 
+    @Test("S2: snapshot-based off-main compute equals the closure-based compute")
+    func snapshotComputeMatchesClosureCompute() async {
+        let shows = [
+            show("s1", episodes: [episode("s1e1", pubDate: 100), episode("s1e2", pubDate: 300),
+                                  episode("s1e3", pubDate: 200)]),
+            show("s2", episodes: [episode("s2e1", pubDate: 500)]),
+        ]
+        // Snapshot world: s1e1 played (sentinel), s1e3 in progress (position),
+        // s2e1 served-played via the ABS bridge.
+        let snapshot = PodcastSections.StateSnapshot(
+            positions: [
+                "s1e1": [PodcastProgressStore.playedSentinel, 1000],
+                "s1e3": [120, 2000],
+            ],
+            serverProgress: ["abspod:x:1": BookProgress(fraction: 1, isFinished: true, lastUpdate: 3000)],
+            equivalents: ["s2e1": ["s2e1", "abspod:x:1"]],
+            downloadedIds: ["s1e2"],
+            inboxOff: []
+        )
+        let detached = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
+        let direct = PodcastSections.compute(
+            shows: shows,
+            downloadedIds: snapshot.downloadedIds,
+            inboxOff: { snapshot.inboxOff.contains($0) },
+            playState: { PodcastSections.state(guid: $0.id, duration: $0.media?.duration ?? 0, snapshot: snapshot) },
+            lastPlayed: { PodcastSections.lastPlayed(id: $0, snapshot: snapshot) }
+        )
+        #expect(detached.nextUp.map(\.id) == direct.nextUp.map(\.id))
+        #expect(detached.recentShows.map(\.id) == direct.recentShows.map(\.id))
+        #expect(detached.recentShows.map(\.newCount) == direct.recentShows.map(\.newCount))
+        #expect(detached.downloaded.map(\.id) == direct.downloaded.map(\.id))
+        // Semantic spot checks on the snapshot state derivation itself.
+        #expect(PodcastSections.state(guid: "s1e1", duration: 600, snapshot: snapshot) == .played)
+        #expect(PodcastSections.state(guid: "s2e1", duration: 600, snapshot: snapshot) == .played)
+        if case .inProgress = PodcastSections.state(guid: "s1e3", duration: 600, snapshot: snapshot) {} else {
+            Issue.record("s1e3 must be in progress")
+        }
+        #expect(detached.nextUp.map(\.id) == ["s1e3"])
+    }
+
     @Test func nextUpCapsAtTen() {
         let episodes = (1...15).map { episode("e\($0)", pubDate: Double($0)) }
         let shows = [show("s", episodes: episodes)]

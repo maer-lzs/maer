@@ -4,7 +4,7 @@ import Combine
 /// Three states of an episode for the UI — unplayed, in progress (with remaining
 /// time) or fully played. Podcasts do NOT sync via the server; the basis is the
 /// local `localPosition` (which the player writes every 5 s).
-enum EpisodePlayState: Equatable {
+nonisolated enum EpisodePlayState: Equatable {
     case unplayed
     case inProgress(fraction: Double, remaining: Double)
     case played
@@ -33,7 +33,7 @@ final class PodcastProgressStore: ObservableObject {
     /// episode/audiobook, and small enough for the Int conversions in the
     /// gpodder push. Without it, "mark as played" was a silent no-op for
     /// duration-less episodes (state() could never reach `time >= duration - 1`).
-    static let playedSentinel: Double = 2_592_000
+    nonisolated static let playedSentinel: Double = 2_592_000
 
     /// State directly from guid + duration — without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
