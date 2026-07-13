@@ -52,6 +52,44 @@ struct AuditFixTests {
         #expect(c == a)
     }
 
+    @Test("K3 migration: old feedKey -> new feedKey moves progress, second run idempotent")
+    func identityQueryMigrationMovesProgress() {
+        // A stored show whose feedURL carries an identity param: under the OLD
+        // normalization (query fully stripped) its key/guids were derived
+        // without the token; the NEW normalization changes the key. migrate()
+        // derives keys fresh from the stored raw feedURL, so it must re-key the
+        // show + guids and report the progress moves.
+        let feedURL = "https://host.tld/feed?token=SECRET"
+        let newKey = PodcastSubscriptions.feedKey(feedURL)
+        // Old key = what the pre-fix normalization produced (query stripped).
+        let oldKey = PodcastSubscriptions.stableHash(
+            PodcastSubscriptions.normalizeFeedURL("https://host.tld/feed"))
+        #expect(oldKey != newKey, "identity param must change the key")
+
+        let legacy = [PodcastShow(
+            id: "feed:\(oldKey)", title: "T", author: nil, artworkURL: nil,
+            description: nil, feedURL: feedURL,
+            episodes: [PodcastEpisode(guid: "rss:\(oldKey):orig-1", title: "E",
+                                      audioURL: "https://x/1.mp3", pubDate: 1, duration: 60,
+                                      description: nil, imageURL: nil, chaptersURL: nil)]
+        )]
+
+        var moves: [String: String] = [:]
+        let (migrated, changed) = PodcastSubscriptions.migrate(legacy) { moves[$0] = $1 }
+        #expect(changed)
+        #expect(migrated[0].id == "feed:\(newKey)")
+        #expect(migrated[0].episodes[0].guid == "rss:\(newKey):orig-1")
+        // Progress travels along: old guid -> new guid.
+        #expect(moves == ["rss:\(oldKey):orig-1": "rss:\(newKey):orig-1"])
+
+        // Second run: nothing changes, no further moves.
+        var secondMoves = 0
+        let (again, changedAgain) = PodcastSubscriptions.migrate(migrated) { _, _ in secondMoves += 1 }
+        #expect(!changedAgain)
+        #expect(secondMoves == 0)
+        #expect(again[0].id == migrated[0].id)
+    }
+
     @Test("Feeds differing in identity params stay DISTINCT subscriptions")
     func identityQueryParamsKeepFeedsApart() {
         let tokenA = PodcastSubscriptions.normalizeFeedURL("https://host.tld/feed?token=AAA")

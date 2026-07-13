@@ -73,11 +73,17 @@ extension PlayerViewModel {
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
-            // Our own write moved the server's lastUpdate forward — record that
-            // (device-clock approximation), otherwise the next reconcile takes
-            // our own echo for a foreign device and jumps back to the older
-            // position after an offline stretch (see also isOwnServerEcho).
-            lastKnownServerUpdate = max(lastKnownServerUpdate, Date().timeIntervalSince1970 * 1000)
+            // Our own write moved the server's lastUpdate forward — adopt the
+            // SERVER's timestamp (not the device clock: the clocks differ),
+            // exactly like updateSyncStatusFromQueue does after a queue flush.
+            // Otherwise the next reconcile takes our own echo for a foreign
+            // device and jumps back after an offline stretch. Only meaningful
+            // (and affordable) for real progress-sync sources.
+            if provider.capabilities.contains(.progressSync),
+               let fresh = try? await provider.fetchItemDetail(itemId: item.id),
+               let ms = fresh.userMediaProgress?.lastUpdate {
+                lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
+            }
             SyncQueue.shared.remove(itemId: item.id)
             if let key = localPositionKey {
                 // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
