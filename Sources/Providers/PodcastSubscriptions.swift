@@ -19,14 +19,14 @@ nonisolated struct PodcastFunding: Codable, Hashable {
 /// visible offline). New metadata fields are optional (`= nil`) so existing
 /// saved feeds decode unchanged.
 nonisolated struct PodcastShow: Codable, Identifiable {
-    var id: String                 // stabile Feed-ID (aus der URL abgeleitet)
+    var id: String                 // stable feed id (derived from the URL)
     var title: String
     var author: String?
     var artworkURL: String?
     var description: String?
     var feedURL: String
     var episodes: [PodcastEpisode]
-    // Reiche Metadaten (RSS/Podcasting 2.0)
+    // Rich metadata (RSS/Podcasting 2.0)
     var categories: [String]? = nil
     var link: String? = nil        // Website
     var language: String? = nil
@@ -79,12 +79,18 @@ final class PodcastSubscriptions: ObservableObject {
 
     private func rebuildCaches() {
         cachedAllEpisodes = nil
-        var index: [String: (Int, Int)] = [:]
+        episodeIndex = Self.buildEpisodeIndex(shows)
+    }
+
+    /// guid → (show index, episode index). Pure + static so tests can verify the
+    /// index against fixtures.
+    nonisolated static func buildEpisodeIndex(_ shows: [PodcastShow]) -> [String: (show: Int, episode: Int)] {
+        var index: [String: (show: Int, episode: Int)] = [:]
         index.reserveCapacity(shows.reduce(0) { $0 + $1.episodes.count })
         for (s, show) in shows.enumerated() {
             for (e, ep) in show.episodes.enumerated() { index[ep.guid] = (s, e) }
         }
-        episodeIndex = index
+        return index
     }
 
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -116,25 +122,22 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Serialized disk writes
 
-    /// All writes to the store file are CHAINED: encode+write run off-main, and
-    /// each write awaits the previous one — two overlapping detached writes
-    /// could otherwise interleave and corrupt the JSON. Writes take a value
-    /// snapshot, so later mutations of `shows` don't affect an in-flight write.
-    private var writeChain: Task<Void, Never>?
+    /// All writes to the store file are CHAINED (see `SerializedWriteChain`):
+    /// encode+write run off-main, and each write awaits the previous one — two
+    /// overlapping detached writes could otherwise interleave and corrupt the
+    /// JSON. Writes take a value snapshot, so later mutations of `shows` don't
+    /// affect an in-flight write.
+    private let writeChain = SerializedWriteChain()
 
     private func persist(_ snapshot: [PodcastShow]) {
-        let url = fileURL
-        let previous = writeChain
-        writeChain = Task.detached(priority: .utility) {
-            await previous?.value
-            guard let data = try? JSONEncoder().encode(snapshot) else { return }
-            try? data.write(to: url, options: .atomic)
+        writeChain.write(to: fileURL) {
+            try? JSONEncoder().encode(snapshot)
         }
     }
 
     var hasSubscriptions: Bool { !shows.isEmpty }
 
-    // MARK: - Stabile ids + Dedup (Migration)
+    // MARK: - Stable ids + dedup (migration)
 
     /// Deterministic key of a feed (FNV-1a hex over the normalised URL).
     /// Replaces the previously used `String.hashValue`, which was re-seeded on
@@ -166,20 +169,34 @@ final class PodcastSubscriptions: ObservableObject {
     /// re-keying the guids the associated `localPosition` progress moves along
     /// (old→new) so the just-imported Apple progress is preserved.
     private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
+        let (result, changed) = Self.migrate(decoded, moveProgress: Self.migrateLocalPosition)
+        if changed {
+            // Write back (serialized, off-main) so the cleanup is persistent.
+            persist(result)
+        }
+        return result
+    }
+
+    /// Pure migration core (testable): re-key ids/guids, report every progress
+    /// move via `moveProgress(old, new)`, dedupe shows of the same feed.
+    nonisolated static func migrate(
+        _ decoded: [PodcastShow],
+        moveProgress: (String, String) -> Void
+    ) -> (shows: [PodcastShow], changed: Bool) {
         var byKey: [String: PodcastShow] = [:]
         var order: [String] = []
         var changed = false
 
         for show in decoded {
-            let key = Self.feedKey(show.feedURL)
+            let key = feedKey(show.feedURL)
             var rebuilt = show
             rebuilt.id = "feed:\(key)"
             if rebuilt.id != show.id { changed = true }
             rebuilt.episodes = show.episodes.map { ep in
                 var e = ep
-                let newGuid = "rss:\(key):\(Self.originalGuid(ep.guid))"
+                let newGuid = "rss:\(key):\(originalGuid(ep.guid))"
                 if newGuid != ep.guid {
-                    Self.migrateLocalPosition(from: ep.guid, to: newGuid)
+                    moveProgress(ep.guid, newGuid)
                     e.guid = newGuid
                     changed = true
                 }
@@ -187,7 +204,7 @@ final class PodcastSubscriptions: ObservableObject {
             }
 
             if let existing = byKey[key] {
-                byKey[key] = Self.merge(existing, rebuilt)
+                byKey[key] = merge(existing, rebuilt)
                 changed = true
             } else {
                 byKey[key] = rebuilt
@@ -195,12 +212,7 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
 
-        let result = order.compactMap { byKey[$0] }
-        if changed {
-            // Write back (serialized, off-main) so the cleanup is persistent.
-            persist(result)
-        }
-        return result
+        return (order.compactMap { byKey[$0] }, changed)
     }
 
     /// Extract the original guid from `rss:<hash>:<original>` (which may itself

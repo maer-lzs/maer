@@ -13,7 +13,9 @@ import Combine
 @MainActor
 final class BottomBarState: ObservableObject {
     static let shared = BottomBarState()
-    private init() {}
+    /// Internal (not private) so tests can exercise fresh instances; the app
+    /// itself only ever uses `shared`.
+    init() {}
 
     /// True while the bottom zone should show its compact row.
     @Published private(set) var collapsed = false

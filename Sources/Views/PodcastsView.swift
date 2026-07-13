@@ -86,7 +86,7 @@ struct PodcastsView: View {
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
         }
-        .reportsBottomBarScroll()   // einklappbare Bottom-Zone
+        .reportsBottomBarScroll()   // collapsible bottom zone
         .refreshable {
             await subs.refreshAll()
             await absPodcast.refresh()
@@ -114,64 +114,23 @@ struct PodcastsView: View {
         }
     }
 
-    private struct SectionData {
-        var nextUp: [LibraryItem] = []
-        var recentShows: [RecentShowInfo] = []
-        var downloaded: [LibraryItem] = []
-    }
-
-    /// All three sections in ONE pass over shows×episodes: one `LibraryItem` and
-    /// one `podcastPlayState` per episode (previously three separate passes ×
-    /// several state reads — thousands of redundant UserDefaults hits per
-    /// recompute on big subscription sets).
-    ///
-    /// - "Continue" (nextUp): only in-progress episodes, by last listening time.
-    /// - "Recently updated": shows by newest episode, with the count of unplayed
-    ///   episodes newer than the last played one (all unplayed without one).
-    /// - "Downloaded": episodes present on device, newest first.
-    private func computeSections() -> SectionData {
-        let downloadedIds = downloads.downloadedItemIds
-        var picks: [(item: LibraryItem, playedAt: Double)] = []
-        var infos: [RecentShowInfo] = []
-        var downloadedItems: [LibraryItem] = []
-
-        for show in allShows {
-            let inboxOff = AppStorageKeys.podcastInboxModeValue(show.id) == "off"
-            var newest = 0.0
-            var lastPlayedAdded: Double?
-            var unplayedAdded: [Double] = []
-
-            for ep in show.episodes {
-                let item = podcastLibraryItem(show: show, episode: ep)
-                newest = max(newest, ep.pubDate)
-                switch podcastPlayState(for: item) {
-                case .inProgress:
-                    let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
-                    let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
-                    picks.append((item, max(localTs, absTs)))
-                case .played:
-                    lastPlayedAdded = max(lastPlayedAdded ?? 0, item.addedAt ?? 0)
-                case .unplayed:
-                    unplayedAdded.append(item.addedAt ?? 0)
-                }
-                if downloadedIds.contains(item.id) { downloadedItems.append(item) }
+    /// One-pass section computation, extracted into `PodcastSections` (pure,
+    /// testable); this wires in the real state lookups.
+    private func computeSections() -> PodcastSectionsResult {
+        PodcastSections.compute(
+            shows: allShows,
+            downloadedIds: downloads.downloadedItemIds,
+            inboxOff: { AppStorageKeys.podcastInboxModeValue($0) == "off" },
+            playState: { podcastPlayState(for: $0) },
+            lastPlayed: { id in
+                let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double])?.last ?? 0
+                let absTs = ABSPodcastProvider.shared.episodeProgress[id]?.lastUpdate ?? 0
+                return max(localTs, absTs)
             }
-
-            if !inboxOff, newest > 0 {
-                let newCount = lastPlayedAdded.map { lp in unplayedAdded.filter { $0 > lp }.count }
-                    ?? unplayedAdded.count
-                infos.append(RecentShowInfo(show: show, lastUpdated: newest, newCount: newCount))
-            }
-        }
-
-        return SectionData(
-            nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map(\.item),
-            recentShows: infos.sorted { $0.lastUpdated > $1.lastUpdated },
-            downloaded: downloadedItems.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
         )
     }
 
-    // MARK: - Queue (nutzer-verwaltete Warteschlange)
+    // MARK: - Queue (user-managed)
 
     @ViewBuilder
     private var queueSection: some View {

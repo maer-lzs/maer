@@ -16,7 +16,7 @@ enum SortOption: String, CaseIterable, Identifiable {
     case zuletztGehoert = "Zuletzt gehört"
     var id: String { rawValue }
 
-    /// Anzeigename (lokalisiert) — rawValue bleibt stabiler Persistenz-Key.
+    /// Display name (localized) — the rawValue stays the stable persistence key.
     var label: String {
         switch self {
         case .titel: return String(localized: "Title")
@@ -44,7 +44,7 @@ enum FilterOption: String, CaseIterable, Identifiable {
     case heruntergeladen = "Heruntergeladen"
     var id: String { rawValue }
 
-    /// Anzeigename (lokalisiert) — rawValue bleibt stabiler Persistenz-Key.
+    /// Display name (localized) — the rawValue stays the stable persistence key.
     var label: String {
         switch self {
         case .alle: return String(localized: "All")
@@ -192,7 +192,9 @@ final class LibraryViewModel: ObservableObject {
         return value
     }
 
-    private func computeSortedFilteredEntries() -> [LibraryEntry] {
+    /// Internal (not private) so tests can compare the memoized accessor
+    /// against a fresh computation.
+    func computeSortedFilteredEntries() -> [LibraryEntry] {
         let filtered = entries.filter(matchesFilter)
 
         // Each case deliberately returns the ASCENDING order — the direction is
@@ -296,7 +298,8 @@ final class LibraryViewModel: ObservableObject {
         return value
     }
 
-    private func computeSeriesGroupedEntries() -> [GridEntry] {
+    /// Internal (not private) — see `computeSortedFilteredEntries`.
+    func computeSeriesGroupedEntries() -> [GridEntry] {
         var result: [GridEntry] = []
         var indexByName: [String: Int] = [:]
         // Group from the UNFILTERED (but series-sorted) list so stacks always
