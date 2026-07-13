@@ -28,7 +28,7 @@ struct PodcastShowView: View {
         if isServerShow { return absPodcast.shows.first { $0.id == show.id } ?? show }
         return subs.shows.first { $0.id == show.id } ?? show
     }
-    /// Sortierrichtung pro Show gemerkt (Default: neueste zuerst).
+    /// Sort direction remembered per show (default: newest first).
     @AppStorage private var newestFirst: Bool
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
@@ -46,6 +46,13 @@ struct PodcastShowView: View {
         }
     }
 
+    /// Bulk mark every episode of this show as played/unplayed.
+    private func markAllEpisodes(played: Bool) {
+        for item in sortedItems {
+            podcastSetPlayed(item, played)
+        }
+    }
+
     var body: some View {
         // `List` (instead of ScrollView) → swipe actions on the episode rows.
         List {
@@ -53,6 +60,19 @@ struct PodcastShowView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
+                // Force-touch the show header to bulk-update the played state.
+                .contextMenu {
+                    Button {
+                        markAllEpisodes(played: true)
+                    } label: {
+                        Label("Mark All as Played", systemImage: "checkmark.circle")
+                    }
+                    Button {
+                        markAllEpisodes(played: false)
+                    } label: {
+                        Label("Mark All as Unplayed", systemImage: "circle")
+                    }
+                }
             ForEach(sortedItems) { item in
                 PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
                     .listRowInsets(EdgeInsets())
