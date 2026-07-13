@@ -11,6 +11,7 @@ struct MusicViewModelTests {
     /// Switchable failure for the album load.
     final class Controls {
         var albumsError: Error?
+        var pageRequests: [Int] = []
     }
 
     private func album(_ id: String) -> LibraryItem {
@@ -29,14 +30,35 @@ struct MusicViewModelTests {
     private func makeVM(_ controls: Controls) -> MusicViewModel {
         let albums = [album("a1"), album("a2")]
         return MusicViewModel(source: MusicSource(
-            albums: {
+            albumsPage: { offset, _ in
                 if let error = controls.albumsError { throw error }
-                return albums
+                controls.pageRequests.append(offset)
+                return offset == 0 ? albums : []   // one partial page → done
             },
             shelf: { _, _ in [] },
             artists: { [] },
             playlists: { [] }
         ))
+    }
+
+    @Test("S5: pages the catalog until a partial page arrives")
+    func pagesUntilPartial() async {
+        let controls = Controls()
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { offset, size in
+                controls.pageRequests.append(offset)
+                // Two full pages, then a partial one ends the loop.
+                if offset < 200 { return (0..<size).map { self.album("p\(offset)-\($0)") } }
+                return [self.album("last")]
+            },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] }
+        ))
+        await vm.reload()
+        #expect(controls.pageRequests == [0, 100, 200])
+        #expect(vm.albums.count == 201)
+        #expect(vm.errorText == nil)
     }
 
     @Test("CancellationError: no errorText, albums stay, isLoading resets")
