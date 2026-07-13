@@ -531,7 +531,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         addTimeObserver()
         observeBookEnd(lastItem: items.last)
-        correctDurationFromAssetIfSingleTrack(items.first)
 
         if seekWithin > 0.5 {
             newPlayer.seek(to: CMTime(seconds: seekWithin, preferredTimescale: 1000))
@@ -540,25 +539,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
             newPlayer.rate = playbackRate
         }
         return true
-    }
-
-    /// For single-track items (podcasts) the feed-declared duration is often
-    /// wrong, rounded or missing — so playback runs past the shown time. The
-    /// asset's real duration is authoritative; load it asynchronously and correct
-    /// the total once known (guarded against a race with a newly opened item).
-    private func correctDurationFromAssetIfSingleTrack(_ firstItem: AVPlayerItem?) {
-        guard tracks.count == 1, let asset = firstItem?.asset as? AVURLAsset else { return }
-        let openedItemId = item?.id
-        Task { [weak self] in
-            guard let cmDuration = try? await asset.load(.duration) else { return }
-            let seconds = cmDuration.seconds
-            await MainActor.run { [weak self] in
-                guard let self, self.item?.id == openedItemId,
-                      seconds.isFinite, seconds > 0,
-                      abs(seconds - self.duration) > 1 else { return }
-                self.duration = seconds
-            }
-        }
     }
 
     /// Detects the BOOK end (last item finished): sync as finished immediately
@@ -802,6 +782,17 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // within this track.
                 let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
                 self.currentTime = newTime
+                // Single-track items (podcasts) often ship a wrong/rounded/missing
+                // feed duration, so playback ran past the shown time. Trust the
+                // real asset duration when known, and never let the total fall
+                // below the current position (no overshoot / negative remaining).
+                // Multi-track audiobooks keep their reliable summed duration.
+                if self.tracks.count == 1 {
+                    let assetSeconds = currentItem.duration.seconds
+                    let real = assetSeconds.isFinite && assetSeconds > 0 ? assetSeconds : self.duration
+                    let corrected = max(real, newTime)
+                    if abs(corrected - self.duration) > 0.5 { self.duration = corrected }
+                }
                 // Crash safety: keep the position locally — throttled to every
                 // 5s (UserDefaults writes aren't free). The loss window on crash
                 // is thus at most ~5s instead of 30s.
