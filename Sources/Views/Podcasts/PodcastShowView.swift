@@ -74,7 +74,7 @@ struct PodcastShowView: View {
                     }
                 }
             ForEach(sortedItems) { item in
-                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                PodcastEpisodeRow(item: item, tapToPlay: false, playerCoordinator: playerCoordinator)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
             }

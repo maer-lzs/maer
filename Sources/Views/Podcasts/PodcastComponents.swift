@@ -146,9 +146,14 @@ struct ShowTile: View {
 }
 
 /// Rich episode row: cover, show + title, date/remaining time, progress,
-/// play and download button. Tap plays.
+/// play and download button. Playing runs via the play button; whole-row
+/// tap-to-play is opt-in (`tapToPlay`) — the show page turns it off so only the
+/// button plays.
 struct PodcastEpisodeRow: View {
     let item: LibraryItem
+    /// Whether tapping anywhere on the row plays it (queue/inbox); off on the
+    /// show page, where only the play button plays.
+    var tapToPlay: Bool = true
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
@@ -158,7 +163,7 @@ struct PodcastEpisodeRow: View {
     private var isPlayed: Bool { state == .played }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
                 // Played episodes dimmed, as in Apple Podcasts.
                 .opacity(isPlayed ? 0.5 : 1)
@@ -193,15 +198,15 @@ struct PodcastEpisodeRow: View {
                     Spacer(minLength: 4)
                     infoButton
                     PodcastDownloadButton(item: item)
-                    playButton
                 }
                 .padding(.top, 1)
             }
+            playButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
-        .onTapGesture { Task { await playerCoordinator.open(item: item) } }
+        .onTapGesture { if tapToPlay { Task { await playerCoordinator.open(item: item) } } }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
         // Swipe actions apply in `List` contexts (show page, queue); in pure
         // `LazyVStack` previews the context menu remains.
@@ -253,13 +258,20 @@ struct PodcastEpisodeRow: View {
 
     private var playButton: some View {
         Button {
-            Task { await playerCoordinator.open(item: item) }
+            Task {
+                // A finished episode replays from the beginning and is set back to
+                // unplayed: marking it unplayed clears the saved position, so the
+                // following open() starts at 0.
+                if isPlayed { podcastSetPlayed(item, false) }
+                await playerCoordinator.open(item: item)
+            }
         } label: {
             Image(systemName: "play.circle.fill")
-                .font(.title2)
-                .foregroundStyle(AppTheme.accent)
+                .font(.system(size: 38))
+                .foregroundStyle(.primary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("Play"))
     }
 
     /// Opens the episode detail page (info) — value-based so the media tab can
