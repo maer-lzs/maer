@@ -13,13 +13,14 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case general, audiobooks, podcasts
+        case general, audiobooks, podcasts, music
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: return "General"
             case .audiobooks: return "Audiobooks"
             case .podcasts: return "Podcasts"
+            case .music: return "Music"
             }
         }
     }
@@ -70,6 +71,8 @@ struct SettingsView: View {
                     podcastSourcesSection
                     podcastNotificationSection
                     podcastSyncSection
+                case .music:
+                    musicSourcesSection
                 }
             }
             .bottomBarClearance()
@@ -345,6 +348,22 @@ struct SettingsView: View {
             } label: {
                 Label("Podcasts", systemImage: "mic")
             }
+        }
+    }
+
+    // MARK: - Music
+
+    private var musicSourcesSection: some View {
+        Section {
+            NavigationLink {
+                SubsonicSourceView()
+            } label: {
+                Label("Subsonic / Navidrome", systemImage: "music.note")
+            }
+        } header: {
+            Text("Sources")
+        } footer: {
+            Text("Stream music from your own Subsonic-compatible server (Navidrome, Gonic, Airsonic).")
         }
     }
 
