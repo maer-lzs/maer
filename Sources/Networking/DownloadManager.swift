@@ -72,6 +72,17 @@ final class DownloadManager: ObservableObject {
     /// scan per progress tick would be expensive.
     @Published private(set) var totalDownloadsSize: Int64 = 0
 
+    /// The startup filesystem scan — awaitable via `ensureScanned()` so
+    /// IMPERATIVE consumers of `downloadedItemIds` in the launch window
+    /// (offline path, CarPlay, maintenance) don't race the detached walk and
+    /// see an empty set (that produced an empty library despite downloads).
+    private var scanTask: Task<Void, Never>?
+
+    /// Waits until the startup download scan has been merged (no-op afterwards).
+    func ensureScanned() async {
+        await scanTask?.value
+    }
+
     private init() {
         // The full filesystem walk (every download folder + every file's size)
         // used to run synchronously here — on the main actor, BEFORE first
@@ -79,7 +90,7 @@ final class DownloadManager: ObservableObject {
         // and publish the result one tick later.
         let downloadsDir = downloadsDirectory   // also creates the directories
         let metaDir = metadataDirectory
-        Task { [weak self] in
+        scanTask = Task { [weak self] in
             let scan = await Task.detached(priority: .userInitiated) {
                 Self.scanDownloads(downloadsDir: downloadsDir, metaDir: metaDir)
             }.value
@@ -326,12 +337,17 @@ final class DownloadManager: ObservableObject {
     /// downloads are repaired right at completion, so this never re-runs.
     func performMaintenance() {
         guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadExtensionRepairDone) else { return }
-        let dirs = downloadedItemIds.map { itemDirectory($0) }
-        Task.detached(priority: .utility) {
-            for dir in dirs {
-                Self.repairFolder(dir)
+        Task { [weak self] in
+            // Launch window: the startup scan may still be running — an empty
+            // id set here would mark the one-time repair "done" without doing it.
+            await self?.ensureScanned()
+            guard let dirs = self?.downloadedItemIds.map({ self!.itemDirectory($0) }) else { return }
+            Task.detached(priority: .utility) {
+                for dir in dirs {
+                    Self.repairFolder(dir)
+                }
+                UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadExtensionRepairDone)
             }
-            UserDefaults.standard.set(true, forKey: AppStorageKeys.downloadExtensionRepairDone)
         }
     }
 
@@ -343,7 +359,14 @@ final class DownloadManager: ObservableObject {
     /// them the next time the book is opened.
     func performDeepValidation() {
         guard !UserDefaults.standard.bool(forKey: AppStorageKeys.downloadDeepValidationDone) else { return }
-        let dirs = downloadedItemIds.map { itemDirectory($0) }
+        Task { [weak self] in
+            await self?.ensureScanned()
+            guard let self else { return }
+            self.runDeepValidation(dirs: self.downloadedItemIds.map { self.itemDirectory($0) })
+        }
+    }
+
+    private func runDeepValidation(dirs: [URL]) {
         Task.detached(priority: .utility) {
             for dir in dirs {
                 let files = (try? FileManager.default.contentsOfDirectory(

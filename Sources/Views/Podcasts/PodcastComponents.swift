@@ -346,6 +346,7 @@ struct PodcastDownloadButton: View {
     /// Icon color — the default fits in lists; use `.white` on a colored/dark background.
     var tint: Color = .secondary
     @ObservedObject private var downloads = DownloadManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
@@ -368,6 +369,9 @@ struct PodcastDownloadButton: View {
                     .foregroundStyle(tint)
             }
             .buttonStyle(.plain)
+            // Offline a download can't start — disable instead of failing.
+            .disabled(!networkMonitor.isConnected)
+            .opacity(networkMonitor.isConnected ? 1 : 0.4)
             .accessibilityLabel(Text("Download"))
         }
     }

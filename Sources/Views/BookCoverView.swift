@@ -11,6 +11,15 @@ struct BookCoverView: View {
     var size: CGFloat = 56
 
     @ObservedObject private var downloadManager = DownloadManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+
+    /// B2: offline, a title that is not on the device is not playable — dim it
+    /// and mark it, instead of filtering it out of the library. Reactive on
+    /// BOTH sources: reconnecting or the finishing startup scan un-dims live.
+    private var isOfflineUnavailable: Bool {
+        guard let itemId, !networkMonitor.isConnected else { return false }
+        return !downloadManager.isDownloaded(itemId: itemId)
+    }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -32,12 +41,18 @@ struct BookCoverView: View {
             // Finished books are visually "ticked off" in addition to the
             // checkmark — desaturated and slightly dimmed.
             .saturation(progress?.isFinished == true ? 0 : 1)
-            .opacity(progress?.isFinished == true ? 0.55 : 1)
+            .opacity(progress?.isFinished == true ? 0.55 : (isOfflineUnavailable ? 0.5 : 1))
             .overlay(alignment: .topTrailing) {
                 if progress?.isFinished == true {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: size * 0.14))
                         .foregroundStyle(.white, AppTheme.accent)
+                        .padding(4)
+                } else if isOfflineUnavailable {
+                    // Not playable right now: offline and not on the device.
+                    Image(systemName: "wifi.slash")
+                        .font(.system(size: size * 0.14))
+                        .foregroundStyle(.white, .secondary)
                         .padding(4)
                 }
             }

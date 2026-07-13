@@ -662,7 +662,8 @@ struct BookDetailScreen: View {
                     .padding(.vertical, 10)
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                .disabled(detail == nil)
+                // Offline a download can't start — disable instead of failing.
+                .disabled(detail == nil || !NetworkMonitor.shared.isConnected)
             }
         }
         .frame(maxWidth: .infinity)

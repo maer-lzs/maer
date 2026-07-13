@@ -64,6 +64,21 @@ final class PlayerCoordinator: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
+        // Launch window: playing right after a cold start (session restore,
+        // CarPlay) must not race the startup download scan — an empty id set
+        // would make a downloaded book stream (or fail offline) instead of
+        // playing its local files. No-op once the scan has merged.
+        await DownloadManager.shared.ensureScanned()
+
+        // B2: offline, a title that is not on the device cannot play — say so
+        // clearly instead of failing with a generic network error.
+        if !NetworkMonitor.shared.isConnected,
+           !DownloadManager.shared.isDownloaded(itemId: item.id) {
+            loadError = String(localized: "Offline — this title is not downloaded.")
+            activeItem = nil
+            return
+        }
+
         // Determine the item's source (server vs. local files) — the injected
         // `provider` is the default source, local items are routed away.
         let itemProvider = AppSession.shared.provider(for: item.id)

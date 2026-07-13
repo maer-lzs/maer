@@ -506,10 +506,14 @@ final class LibraryViewModel: ObservableObject {
             // error (e.g. server hang, broken format) must not wrongly show the
             // offline hint when there actually is a connection.
             if NetworkStatus.isOfflineError(error), let cache = await loadDiskCache() {
+                // Don't race the startup download scan — playability/dimming of
+                // the offline view depends on a complete downloaded set.
+                await DownloadManager.shared.ensureScanned()
                 isShowingOfflineCache = true
-                // Offline only what is really playable: downloaded books.
-                let downloaded = cache.items.filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
-                await rebuild(items: downloaded, progress: cache.progress)
+                // B2 (user decision): offline shows the WHOLE library (last
+                // cached state) + banner; titles that aren't downloaded are
+                // dimmed reactively in the cells instead of being filtered out.
+                await rebuild(items: cache.items, progress: cache.progress)
             } else if let cache = await loadDiskCache() {
                 // Another error, but a cache exists: keep showing the last known
                 // state silently, without a misleading offline hint — including
