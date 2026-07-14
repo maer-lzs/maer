@@ -89,7 +89,9 @@ Multi-user support, metadata editing, and server/library administration.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0-or-later — see [LICENSE](LICENSE). Up to v2.1 Mär was offered under
+the MIT license; from this commit on GPL-3.0-or-later applies. LICENSE files
+in older history are historical artifacts.
 
 ---
 

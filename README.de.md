@@ -198,7 +198,9 @@ Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung.
 
 ## Lizenz
 
-MIT — siehe [LICENSE](LICENSE).
+GPL-3.0-or-later — siehe [LICENSE](LICENSE). Bis v2.1 wurde Mär unter der
+MIT-Lizenz angeboten; ab diesem Commit gilt GPL-3.0-or-later. LICENSE-Dateien
+in der älteren Historie sind historische Artefakte.
 
 ---
 
