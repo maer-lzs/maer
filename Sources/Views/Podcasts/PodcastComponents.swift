@@ -43,6 +43,8 @@ struct PodcastFeaturedCard: View {
         .frame(width: width)
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // Fixed-width eye-catcher card: cap the type size at AX4/AX5.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         .overlay(alignment: .bottomTrailing) {

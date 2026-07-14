@@ -35,6 +35,9 @@ struct BookFeaturedCard: View {
         .frame(width: width)
         .background(colorLoader.accent)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // Fixed-width eye-catcher card: cap the type size so AX4/AX5 stay
+        // legible instead of exploding (content surfaces scale fully).
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .task(id: entry.id) { await loadChapters() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
