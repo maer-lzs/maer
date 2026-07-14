@@ -46,7 +46,8 @@ extension View {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
-            } else {
+            } else if NetworkMonitor.shared.isConnected {
+                // A7: offline a download can't start — hide the entry.
                 Button {
                     Task {
                         let p = AppSession.shared.provider(for: item.id)

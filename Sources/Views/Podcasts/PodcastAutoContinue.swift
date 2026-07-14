@@ -25,9 +25,14 @@ enum PodcastAutoContinue {
     }
 
     static func next(after finishedItemId: String) -> LibraryItem? {
-        pick(
+        // A3: offline, only downloaded episodes are playable candidates — an
+        // undownloaded pick would run into the offline rejection mid-handoff
+        // (from inside the full player) and look like a crash.
+        let offline = !NetworkMonitor.shared.isConnected
+        return pick(
             shows: allShows(),
             finishedItemId: finishedItemId,
+            isPlayable: { id in !offline || DownloadManager.shared.isDownloaded(itemId: id) },
             equivalentIds: { ABSPodcastProvider.shared.equivalentIds($0) },
             playState: { podcastPlayState(for: $0) },
             lastPlayed: { id in
@@ -49,6 +54,7 @@ enum PodcastAutoContinue {
     static func pick(
         shows: [PodcastShow],
         finishedItemId: String,
+        isPlayable: (String) -> Bool = { _ in true },
         equivalentIds: (String) -> [String],
         playState: (LibraryItem) -> EpisodePlayState,
         lastPlayed: (String) -> Double
@@ -74,7 +80,7 @@ enum PodcastAutoContinue {
         if let show = finishedShow, let finished = finishedEpisode {
             let candidate = show.episodes
                 .filter {
-                    !isFinishedEpisode($0.guid)
+                    !isFinishedEpisode($0.guid) && isPlayable($0.guid)
                         && ($0.pubDate > finished.pubDate
                             || ($0.pubDate == finished.pubDate && $0.guid > finished.guid))
                 }
@@ -95,7 +101,7 @@ enum PodcastAutoContinue {
         var started: [(item: LibraryItem, ts: Double)] = []
         for show in shows {
             for ep in show.episodes {
-                guard !isFinishedEpisode(ep.guid) else { continue }
+                guard !isFinishedEpisode(ep.guid), isPlayable(ep.guid) else { continue }
                 let item = podcastLibraryItem(show: show, episode: ep)
                 if case .inProgress = playState(item) {
                     started.append((item, lastPlayed(item.id)))

@@ -87,13 +87,17 @@ struct PodcastsView: View {
             NavigationStack { PodcastSourceView() }
         }
         .reportsBottomBarScroll()   // collapsible bottom zone
-        // Own task: .refreshable cancels its task when the bounce settles — an
-        // early release must not silently abort the full refresh mid-way.
+        // A5: return promptly (stuck indicator otherwise) AND survive the
+        // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
+        // detail fetches) keeps running as a background task; the sections
+        // update reactively via the recompute token when it lands.
         .refreshable {
-            await Task {
+            let work = Task {
                 await subs.refreshAll()
                 await absPodcast.refresh()
-            }.value
+            }
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            _ = work
         }
         .task {
             // S3: let the tab-switch animation settle before kicking network

@@ -157,6 +157,9 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
             if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
             return
         }
+        // Retry queued played-writes first (failed offline) — the refresh is
+        // the natural reconnect point.
+        await flushPendingPlayedWrites()
         // Failed library fetch → KEEP the existing state, don't clear (this
         // refresh runs on every tab switch; a brief net hiccup would otherwise
         // empty the whole podcast tab).
@@ -265,8 +268,44 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
 
     /// Only re-pull the server progress (after playback/"mark as played").
     func refreshProgress() async {
-        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? [:]
+        // A1b: a failed request (offline!) must KEEP the cached server state —
+        // `?? [:]` wiped the progress of every episode right after a failed
+        // mark-played, with no automatic reload on reconnect.
+        episodeProgress = (try? await client.fetchPodcastEpisodeProgress()) ?? episodeProgress
         changeToken += 1
+    }
+
+    // MARK: - Pending played-writes (offline retry)
+
+    /// Server writes that failed (usually offline) — itemId → target state.
+    /// Persisted so the intent survives an app kill; flushed on the next
+    /// catalog refresh (tab entry / reconnect path).
+    private var pendingPlayedWrites: [String: Bool] {
+        get { (UserDefaults.standard.dictionary(forKey: AppStorageKeys.absPendingPlayedWrites) as? [String: Bool]) ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: AppStorageKeys.absPendingPlayedWrites) }
+    }
+
+    /// Retry queued played-writes; successful ones leave the queue.
+    func flushPendingPlayedWrites() async {
+        let pending = pendingPlayedWrites
+        guard !pending.isEmpty else { return }
+        var remaining = pending
+        for (itemId, played) in pending {
+            let (showId, episodeId) = Self.split(itemId)
+            guard let episodeId else { remaining[itemId] = nil; continue }
+            let duration = libraryItem(forEpisodeId: itemId)?.media?.duration ?? 0
+            do {
+                try await client.updateEpisodeProgress(
+                    libraryItemId: showId, episodeId: episodeId,
+                    currentTime: played ? duration : 0, duration: duration, isFinished: played
+                )
+                remaining[itemId] = nil
+            } catch {
+                // Still unreachable — keep it queued.
+            }
+        }
+        pendingPlayedWrites = remaining
+        if remaining.count != pending.count { await refreshProgress() }
     }
 
     // MARK: - Management (create / remove subscription)
@@ -402,10 +441,17 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         let (showId, episodeId) = Self.split(item.id)
         guard let episodeId else { return }
         let duration = item.media?.duration ?? 0
-        try? await client.updateEpisodeProgress(
-            libraryItemId: showId, episodeId: episodeId,
-            currentTime: played ? duration : 0, duration: duration, isFinished: played
-        )
+        do {
+            try await client.updateEpisodeProgress(
+                libraryItemId: showId, episodeId: episodeId,
+                currentTime: played ? duration : 0, duration: duration, isFinished: played
+            )
+            pendingPlayedWrites[item.id] = nil
+        } catch {
+            // Offline/server down: queue the intent — it is retried on the next
+            // refresh instead of silently disappearing (A1b).
+            pendingPlayedWrites[item.id] = played
+        }
         await refreshProgress()
     }
 

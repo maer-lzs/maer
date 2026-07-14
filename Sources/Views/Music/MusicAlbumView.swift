@@ -82,11 +82,15 @@ struct MusicAlbumView: View {
             } label: {
                 Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
             }
-        } else if downloadManager.isDownloading(itemId: item.id) {
+        } else if case .downloading(let fraction) = downloadManager.phase[item.id] {
+            // A8: show the actual progress (ring) instead of a bare stop icon;
+            // tapping still cancels.
             Button {
                 downloadManager.cancelDownload(itemId: item.id)
             } label: {
-                Image(systemName: "stop.circle")
+                ProgressView(value: fraction)
+                    .progressViewStyle(.circular)
+                    .scaleEffect(0.8)
             }
         } else if let detail {
             Button {

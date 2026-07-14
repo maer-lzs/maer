@@ -140,6 +140,8 @@ nonisolated enum AppStorageKeys {
     /// ABS server is primarily an audiobook server; it must not assume podcasts
     /// exist just because a podcast library is present.
     static let absPodcastsEnabled = "absPodcastsEnabled"
+    /// Queued ABS played-writes that failed offline (itemId → played).
+    static let absPendingPlayedWrites = "absPendingPlayedWrites"
     static var absPodcastsEnabledValue: Bool {
         get { UserDefaults.standard.bool(forKey: absPodcastsEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }

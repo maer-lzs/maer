@@ -33,10 +33,14 @@ struct MusicView: View {
             }
         }
         .task { await vm.loadIfNeeded() }
-        // Lift the work into its own task: .refreshable cancels ITS task when
-        // the bounce settles — that used to abort the request and surface a
-        // fake error page.
-        .refreshable { await Task { await vm.reload() }.value }
+        // A5: return promptly (stuck indicator otherwise) AND survive the
+        // gesture's cancellation — the staged reload continues as a background
+        // task and replaces content silently (stale beats empty).
+        .refreshable {
+            let work = Task { await vm.reload() }
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            _ = work
+        }
     }
 
     private var content: some View {

@@ -57,27 +57,29 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
 
-        viewModel?.stop()
-        viewModel = nil
-        activeItem = item
-        loadError = nil
-        isLoading = true
-        defer { isLoading = false }
-
         // Launch window: playing right after a cold start (session restore,
         // CarPlay) must not race the startup download scan — an empty id set
         // would make a downloaded book stream (or fail offline) instead of
         // playing its local files. No-op once the scan has merged.
         await DownloadManager.shared.ensureScanned()
 
-        // B2: offline, a title that is not on the device cannot play — say so
-        // clearly instead of failing with a generic network error.
+        // B2/A2: offline, a title that is not on the device cannot play — say
+        // so clearly, and BEFORE tearing anything down: the running session
+        // (mini player) must survive the rejected tap, otherwise it looks like
+        // a crash. The hint is rendered both in the player and as a banner in
+        // the library (the player screen may not be mounted).
         if !NetworkMonitor.shared.isConnected,
            !DownloadManager.shared.isDownloaded(itemId: item.id) {
             loadError = String(localized: "Offline — this title is not downloaded.")
-            activeItem = nil
             return
         }
+
+        viewModel?.stop()
+        viewModel = nil
+        activeItem = item
+        loadError = nil
+        isLoading = true
+        defer { isLoading = false }
 
         // Determine the item's source (server vs. local files) — the injected
         // `provider` is the default source, local items are routed away.
@@ -122,7 +124,13 @@ final class PlayerCoordinator: ObservableObject {
             // queue (the finished one was already removed on play); if empty, the
             // binge fallback (next unheard of the same show, then other subs).
             if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
+                // A3: offline, only downloaded episodes may auto-play — an
+                // undownloaded handoff would be rejected mid-transition and
+                // read like a crash. No candidate → stop cleanly (the player
+                // stays on the finished episode).
+                let offline = !NetworkMonitor.shared.isConnected
                 if let nextId = PodcastQueue.shared.first,
+                   !offline || DownloadManager.shared.isDownloaded(itemId: nextId),
                    let item = AppSession.shared.libraryItem(forId: nextId) {
                     Task { await self.open(item: item) }
                     return

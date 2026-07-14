@@ -6,6 +6,9 @@ import SwiftUI
 /// resumes directly (Apple style); detail via the info pill at the bottom left,
 /// more actions via long-press.
 struct BookFeaturedCard: View {
+    // Observed so the offline dimming reacts to reconnects/scan completion.
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloadManager = DownloadManager.shared
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
@@ -41,9 +44,47 @@ struct BookFeaturedCard: View {
         ))
     }
 
+    /// A6: same offline marking as BookCoverView — dim the cover and badge it
+    /// when the title cannot play right now (offline + not downloaded).
+    private var isOfflineUnavailable: Bool {
+        !NetworkMonitor.shared.isConnected && !DownloadManager.shared.isDownloaded(itemId: entry.id)
+    }
+
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+                .opacity(isOfflineUnavailable ? 0.5 : 1)
+                .overlay(alignment: .topTrailing) {
+                    if isOfflineUnavailable {
+                        Image(systemName: "wifi.slash")
+                            .font(.caption)
+                            .foregroundStyle(.white, .secondary)
+                            .padding(8)
+                    }
+                }
+                // A8: same install-style progress ring as the grid cells — the
+                // subtle bar alone was easy to miss on the big card.
+                .overlay {
+                    if let phase = downloadManager.phase[entry.id], let fraction = phase.progress {
+                        ZStack {
+                            Color.black.opacity(0.45)
+                            Circle()
+                                .stroke(Color.white.opacity(0.3), lineWidth: 4)
+                                .frame(width: width * 0.22, height: width * 0.22)
+                            Circle()
+                                .trim(from: 0, to: max(0.03, fraction))
+                                .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                                .frame(width: width * 0.22, height: width * 0.22)
+                            if case .paused = phase {
+                                Image(systemName: "pause.fill")
+                                    .font(.system(size: width * 0.07, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .animation(.linear(duration: 0.3), value: fraction)
+                    }
+                }
                 .overlay(alignment: .bottom) {
                     LinearGradient(colors: [.clear, colorLoader.accent],
                                    startPoint: .top, endPoint: .bottom)

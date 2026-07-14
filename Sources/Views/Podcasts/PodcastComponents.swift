@@ -170,8 +170,11 @@ struct PodcastEpisodeRow: View {
         let state = podcastPlayState(for: item)
         let isPlayed = state == .played
         HStack(alignment: .center, spacing: 10) {
+            // A4: no Spacer next to the max-width row body — two equally
+            // flexible siblings made SwiftUI split the width and pushed the
+            // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
-            Spacer(minLength: 6)
+                .layoutPriority(1)
             infoButton
             PodcastDownloadButton(item: item)
             playButton

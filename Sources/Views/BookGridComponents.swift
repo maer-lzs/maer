@@ -23,11 +23,18 @@ struct BookContextMenuItems: View {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
+    /// A7: offline, playing needs a download and starting a download is
+    /// impossible — gate the menu entries consistently with the detail page.
+    private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
+
     var body: some View {
-        Button {
-            Task { await playerCoordinator.open(item: entry.item) }
-        } label: {
-            Label("Play", systemImage: "play.fill")
+        // Play only when it can actually start (online, or downloaded).
+        if !isOffline || DownloadManager.shared.isDownloaded(itemId: entry.id) {
+            Button {
+                Task { await playerCoordinator.open(item: entry.item) }
+            } label: {
+                Label("Play", systemImage: "play.fill")
+            }
         }
 
         if DownloadManager.shared.isDownloaded(itemId: entry.id) {
@@ -64,10 +71,12 @@ struct BookContextMenuItems: View {
                     Label("Cancel Download", systemImage: "xmark.circle")
                 }
             case .failed, nil:
-                Button {
-                    Task { await quickDownload() }
-                } label: {
-                    Label("Save for Offline", systemImage: "arrow.down.circle")
+                if !isOffline {
+                    Button {
+                        Task { await quickDownload() }
+                    } label: {
+                        Label("Save for Offline", systemImage: "arrow.down.circle")
+                    }
                 }
             }
         }

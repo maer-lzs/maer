@@ -57,6 +57,10 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     }
 
     private func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
+        // A6: offline there is nothing to fetch — per-cell attempts (incl. the
+        // automatic retry) during scrolling just burn cycles and caused jitter
+        // over sections with uncached covers.
+        guard NetworkMonitor.shared.isConnected else { return nil }
         if let retryDelay {
             try? await Task.sleep(nanoseconds: retryDelay)
         }

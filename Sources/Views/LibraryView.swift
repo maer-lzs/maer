@@ -388,6 +388,21 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var banner: some View {
+        // A2: coordinator-level load errors ("Offline — not downloaded") appear
+        // HERE too — the player screen that also renders them may not be
+        // mounted when a tap on an unavailable title is rejected.
+        if let error = playerCoordinator.loadError {
+            Label(error, systemImage: "wifi.slash")
+                .font(.footnote)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                .task {
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    playerCoordinator.loadError = nil
+                }
+                .onTapGesture { playerCoordinator.loadError = nil }
+        }
         if let vm = playerCoordinator.viewModel, vm.sourceHint != nil {
             ResumeMessageBanner(viewModel: vm)
         }
@@ -588,7 +603,15 @@ struct LibraryView: View {
                 }
             )
         }
-        .refreshable { await viewModel.loadLibrary() }
+        // A5: the refreshable closure must return promptly or the indicator can
+        // stick — kick the full reload as a background task (its progressive UI
+        // shows the rest via the loading-more footer / silent replace) and only
+        // hold the spinner for a short, bounded moment.
+        .refreshable {
+            let work = Task { await viewModel.loadLibrary() }
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            _ = work   // keep running detached from the refresh gesture
+        }
         .reportsBottomBarScroll()   // scroll → collapse/expand the bottom zone
     }
 
