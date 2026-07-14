@@ -566,20 +566,7 @@ struct LibraryView: View {
                         continueFeaturedSection
                     }
                     if !viewModel.downloadedEntries.isEmpty {
-                        horizontalSection(
-                            title: String(localized: "Downloaded"),
-                            entries: viewModel.downloadedEntries,
-                            subtitle: ByteCountFormatter.string(
-                                fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file
-                            ),
-                            menu: {
-                                Button(role: .destructive) {
-                                    showDeleteAllDownloads = true
-                                } label: {
-                                    Label("Delete All Downloads", systemImage: "trash")
-                                }
-                            }
-                        )
+                        downloadedSection
                     }
                     if !viewModel.recentlyAdded.isEmpty {
                         recentlyAddedGrid
@@ -673,36 +660,32 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Horizontal section (compact)
+    // MARK: Downloaded (vertical list — mirrors the podcast Downloaded pendant)
 
-    private func horizontalSection(
-        title: String,
-        entries: [LibraryEntry],
-        subtitle: String? = nil,
-        @ViewBuilder menu: () -> some View = { EmptyView() }
-    ) -> some View {
-        // Cap the rendered cells (same 3/6 limits as the podcast Downloaded
-        // list) — at accessibility sizes the tall cells in a horizontal
-        // scroller jittered; bounding how many render at once is the fix, not
-        // just cosmetics.
+    /// Same layout/behaviour as the podcast Downloaded list: a vertical, capped
+    /// (3 iPhone / 6 iPad) list of `BookDownloadRow`s (shared `MediaRowContent`),
+    /// tap opens the detail page, with a storage/size menu and Show All toggle.
+    private var downloadedSection: some View {
+        let entries = viewModel.downloadedEntries
         let limit = horizontalSizeClass == .regular ? 6 : 3
         let shown = downloadedExpanded ? entries : Array(entries.prefix(limit))
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title)
-                    .font(.title3).bold()
-                if let subtitle {
-                    // Used storage; context menu via the ellipsis icon.
-                    Menu {
-                        menu()
+                Text("Downloaded").font(.title3).bold()
+                Menu {
+                    Button(role: .destructive) {
+                        showDeleteAllDownloads = true
                     } label: {
-                        HStack(spacing: 4) {
-                            Text(subtitle)
-                            Image(systemName: "ellipsis.circle")
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        Label("Delete All Downloads", systemImage: "trash")
                     }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(ByteCountFormatter.string(
+                            fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 if entries.count > limit {
@@ -717,46 +700,11 @@ struct LibraryView: View {
                 }
             }
             .padding(.horizontal)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 16) {
-                    ForEach(shown) { entry in
-                        // Value-based so a navigationPath reset (media tab) also
-                        // pops this row back to the root.
-                        NavigationLink(value: entry.id) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                BookCoverView(
-                                    url: AppSession.shared.coverURL(forItemId: entry.id),
-                                    progress: entry.progress,
-                                    itemId: entry.id,
-                                    size: 132
-                                )
-                                Text(entry.item.title)
-                                    .font(.caption)
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
-                                    .frame(width: 132, alignment: .leading)
-                                if let p = entry.progress, p.isStarted {
-                                    Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? p.fraction.formatted(.percent.precision(.fractionLength(0))))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .accessibilityElement(children: .combine)
-                        }
-                        .buttonStyle(.plain)
-                        .overlay(alignment: .top) {
-                            DownloadInstallRing(itemId: entry.id)
-                                .frame(width: 132, height: 132)
-                        }
-                        .modifier(BookCellContextMenu(
-                            entry: entry,
-                            playerCoordinator: playerCoordinator,
-                            libraryViewModel: viewModel
-                        ))
-                    }
+            LazyVStack(spacing: 0) {
+                ForEach(shown) { entry in
+                    BookDownloadRow(entry: entry, playerCoordinator: playerCoordinator,
+                                    libraryViewModel: viewModel)
                 }
-                .padding(.horizontal)
             }
         }
     }

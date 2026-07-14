@@ -318,3 +318,59 @@ struct BrowseBooksScreen: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
+
+/// Downloaded-audiobook row — mirrors the podcast episode row (same
+/// `MediaRowContent` layout + a large play button, tap opens the detail page)
+/// so the audiobook "Downloaded" section reads and behaves like the podcast
+/// pendant (Regel 2).
+struct BookDownloadRow: View {
+    let entry: LibraryEntry
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    let libraryViewModel: LibraryViewModel
+    @ObservedObject private var downloads = DownloadManager.shared
+
+    private var isCurrent: Bool { playerCoordinator.activeItem?.id == entry.id }
+    private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            // Row body opens the detail page. LazyVStack context → a
+            // NavigationLink draws no disclosure chevron (unlike a List).
+            NavigationLink(value: entry.id) {
+                MediaRowContent(
+                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                    eyebrow: entry.item.author,
+                    title: entry.item.title,
+                    downloadedBadge: downloads.isDownloaded(itemId: entry.id),
+                    progressFraction: (entry.progress?.isStarted == true) ? entry.progress?.fraction : nil,
+                    meta: entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) },
+                    placeholderSystemImage: "book.closed"
+                )
+            }
+            .buttonStyle(.plain)
+            .layoutPriority(1)
+            playButton
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+        .modifier(BookCellContextMenu(
+            entry: entry, playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel))
+    }
+
+    private var playButton: some View {
+        Button {
+            if isPlayingThis { playerCoordinator.viewModel?.pause() }
+            else if isCurrent { playerCoordinator.viewModel?.play() }
+            else { Task { await playerCoordinator.open(item: entry.item) } }
+        } label: {
+            Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")
+                .font(.system(size: 30))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
+    }
+}

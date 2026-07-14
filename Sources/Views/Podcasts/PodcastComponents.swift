@@ -271,59 +271,20 @@ struct PodcastEpisodeRow: View {
     }
 
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
-                // Played episodes dimmed, as in Apple Podcasts; offline the
-                // same dimming plus a badge marks episodes that cannot play.
-                .opacity(isPlayed || isOfflineUnavailable ? 0.5 : 1)
-                .overlay(alignment: .topTrailing) {
-                    if isOfflineUnavailable {
-                        Image(systemName: "wifi.slash")
-                            .font(.caption2)
-                            .foregroundStyle(.white, .secondary)
-                            .padding(3)
-                    }
-                }
-                // Downloaded lives on the artwork, like on the cards — the
-                // trailing cluster then only carries actionable controls.
-                .overlay(alignment: .bottomTrailing) {
-                    if downloads.isDownloaded(itemId: item.id) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, .green)
-                            .padding(2)
-                    }
-                }
-            VStack(alignment: .leading, spacing: 3) {
-                if let show = item.media?.metadata?.authorName {
-                    Text(show.uppercased())
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Text(item.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(isPlayed ? .secondary : .primary)
-                    .lineLimit(2)
-                if case .inProgress(let fraction, _) = state {
-                    ProgressView(value: fraction)
-                        .tint(AppTheme.accent)
-                        .padding(.top, 2)
-                }
-                HStack(spacing: 6) {
-                    if isPlayed {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(metaText(state: state)).font(.caption2).foregroundStyle(.secondary)
-                }
-                .padding(.top, 1)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
+        let inProgress: Double? = { if case .inProgress(let f, _) = state { return f } else { return nil } }()
+        return MediaRowContent(
+            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+            eyebrow: item.media?.metadata?.authorName,
+            title: item.title,
+            titleDimmed: isPlayed,
+            coverDimmed: isPlayed || isOfflineUnavailable,
+            offlineBadge: isOfflineUnavailable,
+            downloadedBadge: downloads.isDownloaded(itemId: item.id),
+            progressFraction: inProgress,
+            meta: metaText(state: state),
+            showsPlayedCheck: isPlayed,
+            placeholderSystemImage: "mic"
+        )
     }
 
     private var playButton: some View {
