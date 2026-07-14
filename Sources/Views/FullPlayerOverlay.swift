@@ -156,13 +156,11 @@ struct FullPlayerOverlay: View {
     /// .infinity)` the hit shape covers the whole screen and the
     /// minimumDistance-0 drag swallows every tap (player appears dead).
     private var topDismissZone: some View {
-        GeometryReader { proxy in
-            let fallback = topInset + 130
-            let strip = CGRect(x: 0, y: 0, width: proxy.size.width, height: fallback)
+        GeometryReader { _ in
             Color.clear
                 .contentShape(Rectangle())
-                .frame(height: PlayerDismissZones.zoneHeight(
-                    zoneRect: strip, controlsFrame: controlsFrame, fallback: fallback))
+                .frame(height: PlayerDismissZones.topZoneHeight(
+                    controlsFrame: controlsFrame, fallback: topInset + 130))
                 .frame(maxWidth: .infinity)
                 .highPriorityGesture(dismissGesture(minimumDistance: 0))
                 .frame(maxHeight: .infinity, alignment: .top)

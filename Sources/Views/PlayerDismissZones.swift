@@ -30,6 +30,14 @@ nonisolated enum PlayerDismissZones {
         }
         return max(0, min(fallback, controls.minY - controlsMargin))
     }
+
+    /// The top strip may take EVERYTHING above the controls — the cover has no
+    /// interactive elements, so pull-down works from the whole cover area. The
+    /// fallback only applies while the controls frame is unknown.
+    static func topZoneHeight(controlsFrame: CGRect?, fallback: CGFloat) -> CGFloat {
+        guard let controls = controlsFrame, controls.height > 0 else { return max(0, fallback) }
+        return max(0, controls.minY - controlsMargin)
+    }
 }
 
 /// Reports the frame of the player's controls column (chapter header, scrubber,

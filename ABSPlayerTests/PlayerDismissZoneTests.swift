@@ -52,6 +52,24 @@ struct PlayerDismissZoneTests {
         #expect(PlayerDismissZones.zoneHeight(zoneRect: strip, controlsFrame: .zero, fallback: 180) == 180)
     }
 
+    @Test func topStripCoversWholeCoverAreaInPortrait() {
+        // Portrait: the strip extends down to the controls edge (the cover has
+        // no interactive elements) instead of the old fixed 130pt band.
+        let controls = CGRect(x: 16, y: 430, width: 343, height: 350)
+        let h = PlayerDismissZones.topZoneHeight(controlsFrame: controls, fallback: 24 + 130)
+        #expect(h == 430 - PlayerDismissZones.controlsMargin)
+    }
+
+    @Test func topStripStaysAboveLandscapeScrubber() {
+        let controls = CGRect(x: 364, y: 60, width: 478, height: 300)
+        let h = PlayerDismissZones.topZoneHeight(controlsFrame: controls, fallback: 24 + 130)
+        #expect(h == 60 - PlayerDismissZones.controlsMargin)
+    }
+
+    @Test func topStripFallsBackWhileControlsUnknown() {
+        #expect(PlayerDismissZones.topZoneHeight(controlsFrame: nil, fallback: 154) == 154)
+    }
+
     @Test func zoneHeightNeverNegative() {
         let strip = CGRect(x: 0, y: 0, width: 375, height: 180)
         let controls = CGRect(x: 0, y: 4, width: 375, height: 600)
