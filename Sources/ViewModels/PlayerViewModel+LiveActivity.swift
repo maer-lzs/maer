@@ -1,4 +1,7 @@
-import ActivityKit
+// `@preconcurrency`: ActivityKit's `Activity` is not annotated `Sendable`, so
+// awaiting its nonisolated `update`/`end` from the main actor otherwise trips a
+// "sending non-Sendable value" race warning. Apple framework → sanctioned.
+@preconcurrency import ActivityKit
 import Foundation
 
 /// Live Activity (lock screen / Dynamic Island) ONLY during a sleep timer: a

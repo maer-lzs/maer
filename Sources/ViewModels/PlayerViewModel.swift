@@ -137,14 +137,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// calls (rate, pause, …) work unchanged, AVQueuePlayer is a subclass.
     var player: AVQueuePlayer?
     private var timeObserverToken: Any?
-    private var interruptionObserver: NSObjectProtocol?
-    private var routeChangeObserver: NSObjectProtocol?
-    private var mediaResetObserver: NSObjectProtocol?
+    // `nonisolated(unsafe)`: these opaque NotificationCenter tokens are assigned
+    // only on the main actor (setup) and read again on the main actor (stop) or
+    // in the nonisolated `deinit`, which runs after the last reference is gone —
+    // so there is never concurrent access. Lets `deinit` remove the observers
+    // without a non-Sendable data-race error.
+    nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var routeChangeObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var mediaResetObserver: NSObjectProtocol?
     /// True if playback was running when an interruption (Siri, navigation
     /// prompt, phone call) began — resume once it ends.
     private var resumeAfterInterruption = false
-    private var trackAdvanceObserver: NSObjectProtocol?
-    private var trackFailureObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
+    nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
     /// Track indices that already got their ONE automatic recovery attempt —
     /// guards against a rebuild loop on a persistently broken track.
     private var trackRetryAttempts: Set<Int> = []

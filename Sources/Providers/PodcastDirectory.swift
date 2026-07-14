@@ -102,7 +102,8 @@ struct PodcastIndexDirectory: PodcastDirectory {
 
     /// SHA1 hex of key+secret+date — the Authorization header. Extracted and
     /// unit-tested (signature errors would otherwise only surface at the server).
-    static func authHeader(key: String, secret: String, date: String) -> String {
+    /// `nonisolated`: pure hashing, callable from background/test contexts.
+    nonisolated static func authHeader(key: String, secret: String, date: String) -> String {
         let hash = Insecure.SHA1.hash(data: Data((key + secret + date).utf8))
         return hash.map { String(format: "%02x", $0) }.joined()
     }

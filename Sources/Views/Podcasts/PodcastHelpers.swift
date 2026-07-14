@@ -84,8 +84,9 @@ extension View {
 
 /// PodcastShow + episode → LibraryItem (source-agnostic). The namespace in the
 /// `guid`/`id` (`rss:`/`abspod:`) routes playback/cover/progress to the right
-/// source.
-func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
+/// source. `nonisolated`: pure mapping, used from the off-main podcast-sections
+/// compute.
+nonisolated func podcastLibraryItem(show: PodcastShow, episode: PodcastEpisode) -> LibraryItem {
     LibraryItem(
         id: episode.guid,
         media: LibraryItemMedia(

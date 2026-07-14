@@ -16,15 +16,24 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
     static let shared = FileDownloader()
 
     /// Set by AppDelegate; called after all background events are processed.
-    var backgroundCompletionHandler: (() -> Void)?
+    /// `nonisolated(unsafe)`: assigned by the app delegate on the main thread and
+    /// read/cleared again on the main queue (`urlSessionDidFinishEvents` hops via
+    /// `DispatchQueue.main.async`) — never touched concurrently. The rest of the
+    /// downloader's mutable state is serialized by `lock`.
+    nonisolated(unsafe) var backgroundCompletionHandler: (() -> Void)?
 
     private struct Handler {
         let onProgress: (Double) -> Void
         let continuation: CheckedContinuation<Void, Error>
     }
 
-    private var session: URLSession!
-    private var handlers: [Int: Handler] = [:]
+    // `nonisolated(unsafe)`: an implicitly-unwrapped `var` only because the
+    // delegate-`self` pattern forbids a `let` here (self isn't available before
+    // super.init); it is assigned exactly once in init and never mutated again.
+    nonisolated(unsafe) private var session: URLSession!
+    // `nonisolated(unsafe)`: mutated only under `lock` (download/takeHandler and
+    // the delegate callbacks all lock around it), which the compiler cannot see.
+    nonisolated(unsafe) private var handlers: [Int: Handler] = [:]
     private let lock = NSLock()
 
     /// taskIdentifier → destination path, persisted — for downloads finishing

@@ -178,7 +178,10 @@ final class LocalLibrary: ObservableObject {
         var artwork: Data?
     }
 
-    private nonisolated static func extractMetadata(dir: URL, files: [String]) async -> ExtractedMetadata {
+    // `@concurrent`: force off the caller's executor. Under the project's default
+    // MainActor isolation a plain `nonisolated async` would run the AVAsset load
+    // orchestration on the calling MainActor; @concurrent keeps it off-main.
+    @concurrent private nonisolated static func extractMetadata(dir: URL, files: [String]) async -> ExtractedMetadata {
         var totalDuration: Double = 0
         var title: String?
         var author: String?

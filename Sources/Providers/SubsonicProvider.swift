@@ -259,10 +259,11 @@ final class SubsonicProvider: AudioProvider {
 
     /// Map a page of albums OFF the main actor (per-album ISO8601 parsing adds
     /// up on big catalogs; the provider is MainActor by project default).
-    nonisolated private static func mapAlbums(_ albums: [SubsonicAlbum]) async -> [LibraryItem] {
-        await Task.detached(priority: .userInitiated) {
-            albums.map { libraryItem(from: $0) }
-        }.value
+    /// `@concurrent`: runs on the cooperative pool instead of the calling
+    /// MainActor (the previous inner `Task.detached` did the same job; @concurrent
+    /// expresses it directly and drops the extra hop).
+    @concurrent nonisolated private static func mapAlbums(_ albums: [SubsonicAlbum]) async -> [LibraryItem] {
+        albums.map { libraryItem(from: $0) }
     }
 
     nonisolated private static func libraryItem(from album: SubsonicAlbum) -> LibraryItem {
@@ -301,8 +302,11 @@ final class SubsonicProvider: AudioProvider {
 
     /// ISO-8601 `created` → epoch ms (matches ABS `addedAt`), for "Recently Added".
     /// Navidrome sends fractional seconds, which the default parser rejects — try
-    /// both.
-    nonisolated private static let iso8601Fractional: ISO8601DateFormatter = {
+    /// both. `nonisolated(unsafe)`: `ISO8601DateFormatter` is not `Sendable`, but
+    /// Foundation date formatters are documented thread-safe for parsing and this
+    /// instance is immutable after init — safe to share across the concurrent
+    /// `mapAlbums` work. (Not `@unchecked Sendable`; a per-declaration opt-out.)
+    nonisolated(unsafe) private static let iso8601Fractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f

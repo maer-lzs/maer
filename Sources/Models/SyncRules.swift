@@ -2,8 +2,10 @@ import Foundation
 
 /// Pure, stateless decision rules of the sync core — extracted here so they are
 /// unit-testable without player/network/file system. Behaviour is identical to
-/// the former inline versions in PlayerViewModel/SyncQueue.
-enum SyncRules {
+/// the former inline versions in PlayerViewModel/SyncQueue. `nonisolated`: pure
+/// Foundation logic, callable from background/test contexts under the project's
+/// default MainActor isolation.
+nonisolated enum SyncRules {
 
     /// Device reconcile: adopt the server state?
     /// With timestamp: newer entry + noticeable difference (also backwards).

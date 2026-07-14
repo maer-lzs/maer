@@ -58,8 +58,9 @@ final class ImageCache {
     }
 
     /// Auth/session query params that rotate per request and must NOT enter the
-    /// cache key (Subsonic sends a fresh salt+token every call).
-    private static let volatileQueryParams: Set<String> = ["t", "s", "u", "c", "v", "f", "p"]
+    /// cache key (Subsonic sends a fresh salt+token every call). `nonisolated`:
+    /// immutable Sendable set read from the nonisolated `key(for:)`.
+    nonisolated private static let volatileQueryParams: Set<String> = ["t", "s", "u", "c", "v", "f", "p"]
 
     /// Host + path + the STABLE query params (e.g. Subsonic `id`/`size`). Path
     /// alone collided every Subsonic cover onto one key — their identifying

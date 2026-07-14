@@ -40,8 +40,11 @@ struct LibrarySeed {
 /// `ProgressSyncAPI` (fetchAllProgress/updateProgress) is part of the contract;
 /// providers without the `.progressSync` capability return empty data or don't
 /// throw — the core queries the capability first.
+// `Sendable`: every conformer is a `@MainActor` reference type (thus already
+// Sendable); declaring it here lets `any AudioProvider` cross into the parallel
+// `async let` fetches in the view models. Calls still hop to the main actor.
 @MainActor
-protocol AudioProvider: AnyObject, ProgressSyncAPI {
+protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// Short, stable slug ("abs", "local", …) — also the id namespace.
     var providerId: String { get }
     /// Content type (tab) of this source — default: audiobooks.

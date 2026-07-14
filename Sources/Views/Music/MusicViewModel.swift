@@ -5,11 +5,16 @@ import OSLog
 /// Data source of the Music tab as injectable closures — the live wiring hits
 /// the Subsonic provider; tests inject failing/stubbed ones.
 struct MusicSource {
+    // `@MainActor @Sendable` closures → `MusicSource` is Sendable (so it can feed
+    // the parallel `async let` shelves/artists/playlists loads) while the closure
+    // bodies still run on the main actor. That matches reality — the live wiring
+    // only awaits the @MainActor Subsonic provider — and lets the injected test
+    // closures capture their @MainActor observation state without a data race.
     /// One page of the alphabetical album catalog (offset, size).
-    var albumsPage: (_ offset: Int, _ size: Int) async throws -> [LibraryItem]
-    var shelf: (_ type: String, _ size: Int) async throws -> [LibraryItem]
-    var artists: () async throws -> [SubsonicArtist]
-    var playlists: () async throws -> [SubsonicPlaylist]
+    var albumsPage: @MainActor @Sendable (_ offset: Int, _ size: Int) async throws -> [LibraryItem]
+    var shelf: @MainActor @Sendable (_ type: String, _ size: Int) async throws -> [LibraryItem]
+    var artists: @MainActor @Sendable () async throws -> [SubsonicArtist]
+    var playlists: @MainActor @Sendable () async throws -> [SubsonicPlaylist]
 
     static let live = MusicSource(
         albumsPage: { try await SubsonicProvider.shared.albumPage(offset: $0, size: $1) },

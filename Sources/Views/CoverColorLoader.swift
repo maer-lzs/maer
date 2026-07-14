@@ -49,8 +49,12 @@ final class CoverColorLoader: ObservableObject {
         }
     }
 
-    /// nonisolated + async → runs on the cooperative pool, not on main.
-    private nonisolated static func colors(from image: UIImage) async -> (accent: Color, top: Color, bottom: Color)? {
+    /// `@concurrent`: runs the CGContext color extraction on the cooperative
+    /// pool, not on main. NOTE: plain `nonisolated async` is NOT enough — under
+    /// the project's default MainActor isolation + NonisolatedNonsendingByDefault
+    /// it would inherit the caller's (MainActor) executor; `@concurrent` is what
+    /// actually moves this pixel work off the main thread.
+    @concurrent private nonisolated static func colors(from image: UIImage) async -> (accent: Color, top: Color, bottom: Color)? {
         guard let base = averageColor(of: image) else { return nil }
         let top = crop(image, toTop: 0.3).flatMap { averageColor(of: $0) } ?? base
         let bottom = crop(image, toBottom: 0.3).flatMap { averageColor(of: $0) } ?? base

@@ -2,8 +2,10 @@ import Foundation
 import Security
 
 /// Very simple keychain wrapper. Enough for a single-user app — no third-party
-/// dependency needed.
-enum KeychainStore {
+/// dependency needed. `nonisolated`: the Security-framework `SecItem*` calls are
+/// thread-safe, so credential access must be usable from background/nonisolated
+/// contexts (the project uses default MainActor isolation).
+nonisolated enum KeychainStore {
     // IMPORTANT: adjust to your actual bundle id (see README).
     private static let service = "com.example.absplayer"
 
@@ -45,7 +47,7 @@ enum KeychainStore {
     }
 }
 
-enum KeychainKey {
+nonisolated enum KeychainKey {
     static let serverURL = "serverURL"
     static let apiToken = "apiToken"
     static let podcastIndexSecret = "podcastIndexSecret"

@@ -496,7 +496,12 @@ final class PodcastSubscriptions: ObservableObject {
 
     // MARK: - Loading + Parsing
 
-    private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
+    // `@concurrent`: force this off the caller's executor. Under the project's
+    // default MainActor isolation + NonisolatedNonsendingByDefault a plain
+    // `nonisolated async` would run the network wait AND the XML parse on the
+    // calling MainActor (callers at :284/:436 are main-actor). The parse is CPU
+    // work that must not block the UI.
+    @concurrent private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
         // Private/premium feeds: send the Basic auth header if stored.
         var request = URLRequest(url: feedURL)
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
@@ -510,8 +515,9 @@ final class PodcastSubscriptions: ObservableObject {
 
 /// Minimal RSS/Atom parser based on `XMLParser`. Covers the iTunes podcast
 /// fields; unknown tags are ignored, broken items skipped. Internal (not
-/// private) — covered by unit tests.
-final class RSSFeedParser: NSObject, XMLParserDelegate {
+/// private) — covered by unit tests. `nonisolated`: pure CPU parsing, driven
+/// off the main actor from `fetchAndParse` (@concurrent) and from tests.
+nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private let feedURL: String
     /// Stable, deterministic feed key (NOT `String.hashValue`, which is
     /// re-seeded per app start) — basis for show id and guids.

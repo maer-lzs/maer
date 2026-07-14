@@ -1,5 +1,9 @@
 import SwiftUI
-import Combine
+// `@preconcurrency`: Combine's `ObservableObjectPublisher` is not `Sendable`;
+// the explicit `nonisolated let objectWillChange` (needed because the project's
+// MainActor default breaks @Published synthesis) would otherwise warn. Apple
+// framework, so the pre-concurrency import is the sanctioned suppression.
+@preconcurrency import Combine
 
 /// Three states of an episode for the UI — unplayed, in progress (with remaining
 /// time) or fully played. Podcasts do NOT sync via the server; the basis is the
