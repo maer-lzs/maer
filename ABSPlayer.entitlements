@@ -10,9 +10,23 @@
 		<string>group.de.lzs.ABSPlayer</string>
 	</array>
 	<!-- iCloud Key-Value-Storage fuer den geraeteuebergreifenden Podcast-
-	     Fortschritt (PodcastCloudSync). Bei automatischem Signing aktiviert
-	     Xcode die iCloud-Capability der App-ID daraufhin selbst. -->
+	     Fortschritt (PodcastCloudSync, NSUbiquitousKeyValueStore). Bei
+	     automatischem Signing aktiviert Xcode die iCloud-Capability der
+	     App-ID daraufhin selbst. UNVERAENDERT lassen — der aktive Sync. -->
 	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
 	<string>$(TeamIdentifierPrefix)$(CFBundleIdentifier)</string>
+	<!-- iCloud/CloudKit-Container. Aktuell NICHT vom Code genutzt (der Sync
+	     laeuft ueber KVS oben); provisioniert fuer kuenftige CloudKit-Nutzung
+	     und damit die iCloud-Capability der App-ID vollstaendig eingerichtet
+	     ist. Bei automatischem Signing legt Xcode den Container im (bezahlten)
+	     Dev-Account an. -->
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.de.lzs.ABSPlayer</string>
+	</array>
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
 </dict>
 </plist>
