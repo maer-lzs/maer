@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Mär app icon" width="128" height="128">
+</p>
+
 # Mär
 
 A lightweight, open-source iOS/iPadOS client for [Audiobookshelf](https://www.audiobookshelf.org/), **podcasts, and music**.

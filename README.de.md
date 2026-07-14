@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Mär App-Icon" width="128" height="128">
+</p>
+
 # Mär
 
 Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/), **Podcasts und Musik**.
