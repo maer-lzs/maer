@@ -52,6 +52,7 @@ struct PodcastsView: View {
     @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
     @State private var downloaded: [LibraryItem] = []
     @State private var showAddPodcasts = false
+    @State private var isRefreshing = false
 
     /// Recompute when subscriptions, downloads or progress change — and when the
     /// tab becomes visible again (isActive gates the actual work).
@@ -96,11 +97,16 @@ struct PodcastsView: View {
         // update reactively via the recompute token when it lands.
         .refreshable {
             let work = Task {
+                isRefreshing = true
+                defer { isRefreshing = false }
                 await subs.refreshAll()
                 await absPodcast.refresh()
             }
             try? await Task.sleep(nanoseconds: 600_000_000)
             _ = work
+        }
+        .overlay(alignment: .top) {
+            if isRefreshing { RefreshActivityPill() }
         }
         .task {
             // S3: let the tab-switch animation settle before kicking network

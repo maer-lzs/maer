@@ -440,6 +440,12 @@ final class LibraryViewModel: ObservableObject {
     /// Guards against overlapping loads (pull-to-refresh + foreground
     /// refresh + reconnect can fire together → double rebuilds, visible hitch).
     private var loadInFlight = false
+    /// A pull that arrives while a load runs must not vanish silently — it
+    /// queues exactly one follow-up pass.
+    private var reloadQueued = false
+    /// True for the whole background reload, even with content on screen —
+    /// drives the subtle toolbar/footer indicator.
+    @Published var isRefreshing = false
 
     /// K1 — cache-first (stale-while-revalidate): render the last persisted
     /// library state IMMEDIATELY at cold start, before any network round-trip;
@@ -456,9 +462,21 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func loadLibrary() async {
-        guard !loadInFlight else { return }
+        if loadInFlight {
+            reloadQueued = true
+            return
+        }
         loadInFlight = true
-        defer { loadInFlight = false }
+        isRefreshing = true
+        defer {
+            loadInFlight = false
+            isRefreshing = false
+            // A pull that arrived mid-load runs one follow-up pass.
+            if reloadQueued {
+                reloadQueued = false
+                Task { await self.loadLibrary() }
+            }
+        }
         // Spinner only when there is nothing on screen yet (first install /
         // no cache) — with the cache-first render the network load runs silently.
         isLoading = entries.isEmpty

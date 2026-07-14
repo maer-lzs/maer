@@ -41,6 +41,9 @@ struct MusicView: View {
             try? await Task.sleep(nanoseconds: 600_000_000)
             _ = work
         }
+        .overlay(alignment: .top) {
+            if vm.isLoading && !vm.albums.isEmpty { RefreshActivityPill() }
+        }
     }
 
     private var content: some View {

@@ -615,6 +615,13 @@ struct LibraryView: View {
             try? await Task.sleep(nanoseconds: 600_000_000)
             _ = work   // keep running detached from the refresh gesture
         }
+        // Subtle feedback while a background reload runs with content on
+        // screen — floats over the content, so no layout shift.
+        .overlay(alignment: .top) {
+            if viewModel.isRefreshing && !viewModel.entries.isEmpty {
+                RefreshActivityPill()
+            }
+        }
         .reportsBottomBarScroll()   // scroll → collapse/expand the bottom zone
     }
 
