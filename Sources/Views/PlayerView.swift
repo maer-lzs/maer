@@ -274,6 +274,11 @@ struct PlayerView: View {
                     }
                 }
             )
+            // Recreate the slider when the item changes: Slider does not
+            // reliably adopt a changed bounds range in place, which left the
+            // thumb mapped against the previous episode's duration after an
+            // auto-continue switch.
+            .id(viewModel.item?.id)
             .background(alignment: .leading) {
                 // Chapter marks: small ticks at the chapter boundaries. Purely
                 // visual, sit behind the slider track.
