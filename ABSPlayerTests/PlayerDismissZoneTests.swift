@@ -70,6 +70,24 @@ struct PlayerDismissZoneTests {
         #expect(PlayerDismissZones.topZoneHeight(controlsFrame: nil, fallback: 154) == 154)
     }
 
+    @Test func bottomZoneCoversSpaceBelowControls() {
+        let controls = CGRect(x: 16, y: 300, width: 343, height: 400)  // ends at 700
+        let zone = PlayerDismissZones.bottomZone(controlsFrame: controls, containerHeight: 900)
+        #expect(zone.top == 700 + PlayerDismissZones.controlsMargin)
+        #expect(zone.height == 900 - (700 + PlayerDismissZones.controlsMargin))
+    }
+
+    @Test func bottomZoneEmptyWhileControlsUnknown() {
+        let zone = PlayerDismissZones.bottomZone(controlsFrame: nil, containerHeight: 900)
+        #expect(zone.height == 0)
+    }
+
+    @Test func bottomZoneNeverNegativeWhenControlsFillScreen() {
+        let controls = CGRect(x: 0, y: 0, width: 375, height: 900)
+        let zone = PlayerDismissZones.bottomZone(controlsFrame: controls, containerHeight: 900)
+        #expect(zone.height == 0)
+    }
+
     @Test func zoneHeightNeverNegative() {
         let strip = CGRect(x: 0, y: 0, width: 375, height: 180)
         let controls = CGRect(x: 0, y: 4, width: 375, height: 600)

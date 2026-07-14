@@ -66,6 +66,7 @@ struct FullPlayerOverlay: View {
                 )
                 sideDismissZones
                 topDismissZone
+                bottomDismissZone
                 grabHandle
             }
             // Anchor for the controls-frame preference reported by PlayerView:
@@ -164,6 +165,22 @@ struct FullPlayerOverlay: View {
                 .frame(maxWidth: .infinity)
                 .highPriorityGesture(dismissGesture(minimumDistance: 0))
                 .frame(maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    /// Full-width strip across the free space BELOW the controls (F7) — no
+    /// interactive elements there, so pull-down works from that area too. Same
+    /// controls-frame mechanic as the top strip, anchored to the bottom edge.
+    private var bottomDismissZone: some View {
+        GeometryReader { proxy in
+            let zone = PlayerDismissZones.bottomZone(
+                controlsFrame: controlsFrame, containerHeight: proxy.size.height)
+            Color.clear
+                .frame(height: zone.height)
+                .contentShape(Rectangle())
+                .highPriorityGesture(dismissGesture(minimumDistance: 12))
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: .infinity, alignment: .bottom)
         }
     }
 

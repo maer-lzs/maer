@@ -38,6 +38,16 @@ nonisolated enum PlayerDismissZones {
         guard let controls = controlsFrame, controls.height > 0 else { return max(0, fallback) }
         return max(0, controls.minY - controlsMargin)
     }
+
+    /// A bottom dismiss strip covering the free space BELOW the controls (no
+    /// interactive elements down there). Returns the strip's top y and its
+    /// height within a container of `containerHeight`. Zero height while the
+    /// controls frame is unknown (no strip until we know where controls end).
+    static func bottomZone(controlsFrame: CGRect?, containerHeight: CGFloat) -> (top: CGFloat, height: CGFloat) {
+        guard let controls = controlsFrame, controls.height > 0 else { return (containerHeight, 0) }
+        let top = controls.maxY + controlsMargin
+        return (top, max(0, containerHeight - top))
+    }
 }
 
 /// Reports the frame of the player's controls column (chapter header, scrubber,
