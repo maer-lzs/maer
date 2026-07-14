@@ -129,9 +129,6 @@ struct LibraryView: View {
                     }
                 }
             }
-            // Buttons inside List rows push routes over this callback instead
-            // of NavigationLink (avoids the List disclosure chevron).
-            .environment(\.pushPodcastRoute) { navigationPath.append($0) }
             // Programmatic push from the search overlay (book tap): the overlay
             // slides down and puts the item id on the path.
             .navigationDestination(for: String.self) { itemId in
@@ -140,6 +137,12 @@ struct LibraryView: View {
                 }
             }
         }
+        // Buttons inside List rows push routes over this callback instead of a
+        // NavigationLink (which draws a disclosure chevron in a List). Set on
+        // the NavigationStack ITSELF, not its root content — pushed
+        // destinations (the show page's episode rows) inherit the environment
+        // only from here, not from a modifier on the root VStack.
+        .environment(\.pushPodcastRoute) { navigationPath.append($0) }
         // Bottom zone as an OVERLAY (reserves no space) — the free space is
         // provided by the scroll contents themselves via `bottomBarClearance()`,
         // which also covers pushed screens (detail, podcast show) cleanly.
