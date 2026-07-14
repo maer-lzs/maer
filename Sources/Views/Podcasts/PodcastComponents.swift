@@ -388,9 +388,16 @@ struct PodcastDownloadButton: View {
                 .frame(width: 44, height: 44)
                 .accessibilityLabel(Text("Downloaded"))
         } else if case .downloading(let f) = downloads.phase[item.id] {
-            ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
-                .frame(width: 44, height: 44)
-                .accessibilityLabel(Text("Downloading"))
+            // Tapping the running ring cancels, like the album download button.
+            Button {
+                DownloadManager.shared.cancelDownload(itemId: item.id)
+            } label: {
+                ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Cancel Download"))
         } else if networkMonitor.isConnected {
             // Offline a download can't start — hide the control entirely.
             Button {
