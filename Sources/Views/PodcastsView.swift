@@ -68,7 +68,7 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             if sectionsReady {
-                LazyVStack(alignment: .leading, spacing: 28) {
+                LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     nextUpSection
                     recommendationsSection
                     queueSection
@@ -76,7 +76,7 @@ struct PodcastsView: View {
                     downloadedShelf
                     recentlyUpdatedSection
                 }
-                .padding(.top, 8)
+                .padding(.top, TabContentLayout.topInset)
                 .bottomBarClearance()
                 .transition(.opacity)
             } else {

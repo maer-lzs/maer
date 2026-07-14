@@ -555,7 +555,7 @@ struct LibraryView: View {
 
     private var content: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 24) {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 if !viewModel.continueListening.isEmpty {
                         continueFeaturedSection
                     }
@@ -594,7 +594,7 @@ struct LibraryView: View {
             // its content instead of the actually available screen width, which
             // could lead to a circular reference with the grid inside.
             .frame(maxWidth: .infinity)
-            .padding(.vertical)
+            .padding(.top, TabContentLayout.topInset)
             // Free space as INNER padding: the ScrollView stays full-bleed,
             // content keeps scrolling behind the glass but rests above the bottom
             // zone (no black area behind the mini-player).

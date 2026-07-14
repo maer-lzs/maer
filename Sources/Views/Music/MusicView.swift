@@ -55,7 +55,7 @@ struct MusicView: View {
     }
 
     private var content: some View {
-        LazyVStack(alignment: .leading, spacing: 24) {
+        LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
             // Inline hint when a refresh failed but content is still shown.
             if let error = vm.errorText {
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -92,7 +92,7 @@ struct MusicView: View {
             }
             .padding(.horizontal)
         }
-        .padding(.top, 8)
+        .padding(.top, TabContentLayout.topInset)
     }
 
     private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem]) -> some View {
