@@ -25,6 +25,11 @@ struct PlayerView: View {
     @State private var showLyrics = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    /// D2/B2: at accessibility sizes the fixed-spacing control rows used to
+    /// overflow the screen horizontally — spacing shrinks and the secondary/
+    /// tertiary rows fall back to a two-column grid (ViewThatFits).
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private var isAccessibilitySize: Bool { dynamicTypeSize.isAccessibilitySize }
 
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
     private let sleepOptions: [Double] = [5, 15, 30, 45, 60]
@@ -292,6 +297,10 @@ struct PlayerView: View {
             }
             .monospacedDigit()
             .font(.caption)
+            // D2: long durations ("-4:50:22") clipped at the right edge at
+            // accessibility sizes — scale down instead of overflowing.
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .foregroundStyle(.white.opacity(0.8))
         }
         .padding(.horizontal)
@@ -299,7 +308,10 @@ struct PlayerView: View {
 
     private var transportControls: some View {
         let skip = Int(viewModel.skipInterval)
-        return HStack(spacing: 24) {
+        // D2: `.title`-scaled icons at AX sizes pushed the row past the screen
+        // edge — tighter spacing and a capped type size keep all five controls
+        // on screen (375pt worst case); the play glyph is fixed-size anyway.
+        return HStack(spacing: isAccessibilitySize ? 12 : 24) {
             // Previous chapter (or to the chapter start, see previousChapter).
             Button { viewModel.previousChapter() } label: {
                 Image(systemName: "backward.end.fill").font(.title3)
@@ -330,10 +342,38 @@ struct PlayerView: View {
             .opacity(viewModel.chapters.isEmpty ? 0.3 : 1)
             .accessibilityLabel(Text("Next chapter"))
         }
+        // Cap the icon growth at the first accessibility step — the buttons
+        // stay large, but five of them still fit a 375pt screen.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
+    /// D2: one horizontal row while it fits; at accessibility sizes the four
+    /// controls fall back to a leading-aligned two-column grid instead of
+    /// clipping past the screen edge.
     private var secondaryControls: some View {
-        HStack(spacing: 32) {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 32) {
+                speedControl
+                chaptersControl
+                skipIntervalControl
+                sleepControl
+            }
+            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
+                GridRow {
+                    speedControl
+                    chaptersControl
+                }
+                GridRow {
+                    skipIntervalControl
+                    sleepControl
+                }
+            }
+        }
+        .font(.footnote)
+        .padding(.top, 4)
+    }
+
+    private var speedControl: some View {
             Menu {
                 // Picker inside a Menu shows a checkmark on the active rate.
                 Picker("Speed", selection: Binding(
@@ -349,12 +389,16 @@ struct PlayerView: View {
                     // Non-default speed is visible at a glance.
                     .foregroundStyle(viewModel.playbackRate != 1.0 ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
             }
+    }
 
+    private var chaptersControl: some View {
             Button { showChapters = true } label: {
                 Label("Chapters", systemImage: "list.bullet")
             }
             .disabled(viewModel.chapters.isEmpty)
+    }
 
+    private var skipIntervalControl: some View {
             Menu {
                 ForEach([15.0, 30.0, 60.0], id: \.self) { seconds in
                     Button("\(Int(seconds)) s") { viewModel.setSkipInterval(seconds) }
@@ -362,7 +406,9 @@ struct PlayerView: View {
             } label: {
                 Label("\(Int(viewModel.skipInterval)) s", systemImage: "goforward")
             }
+    }
 
+    private var sleepControl: some View {
             Menu {
                 ForEach(sleepOptions, id: \.self) { minutes in
                     Button("\(Int(minutes)) min") {
@@ -394,46 +440,76 @@ struct PlayerView: View {
                 Label(sleepTimerLabel, systemImage: viewModel.sleepTimerRemaining != nil ? "moon.zzz.fill" : "moon.zzz")
                     .foregroundStyle(viewModel.sleepTimerRemaining != nil ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.white))
             }
+    }
+
+    /// D2: like secondaryControls — row while it fits, two-column grid at
+    /// accessibility sizes (up to four items with the lyrics button).
+    private var tertiaryControls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 36) {
+                tertiaryItems
+            }
+            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
+                GridRow {
+                    airPlayControl
+                    markFinishedControl
+                }
+                GridRow {
+                    lyricsControl
+                    bookmarksControl
+                }
+            }
         }
-        .font(.footnote)
         .padding(.top, 4)
     }
 
-    private var tertiaryControls: some View {
-        HStack(spacing: 36) {
-            // AirPlay selection.
-            AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
-                .frame(width: 44, height: 44)
+    @ViewBuilder
+    private var tertiaryItems: some View {
+        airPlayControl
+        lyricsControl
+        bookmarksControl
+        markFinishedControl
+    }
 
-            // M4: lyrics — music items only, and only when lyrics exist for the
-            // current song (server-first, LRCLIB fallback).
-            if songLyrics != nil {
-                Button { showLyrics = true } label: {
-                    Label("Lyrics", systemImage: "quote.bubble")
-                }
-                .font(.footnote)
-            }
+    private var airPlayControl: some View {
+        AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
+            .frame(width: 44, height: 44)
+    }
 
-            // Only for sources with the bookmark capability (ABS can do it;
-            // future sources like RSS maybe not).
-            if viewModel.provider.capabilities.contains(.bookmarks) {
-                Button { showBookmarks = true } label: {
-                    Label("Bookmarks", systemImage: "bookmark")
-                }
-                .font(.footnote)
-            }
-
-            Button {
-                Task { await viewModel.toggleFinished() }
-            } label: {
-                Label(
-                    viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
-                    systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle"
-                )
+    /// M4: lyrics — music items only, and only when lyrics exist for the
+    /// current song (server-first, LRCLIB fallback).
+    @ViewBuilder
+    private var lyricsControl: some View {
+        if songLyrics != nil {
+            Button { showLyrics = true } label: {
+                Label("Lyrics", systemImage: "quote.bubble")
             }
             .font(.footnote)
         }
-        .padding(.top, 4)
+    }
+
+    /// Only for sources with the bookmark capability (ABS can do it;
+    /// future sources like RSS maybe not).
+    @ViewBuilder
+    private var bookmarksControl: some View {
+        if viewModel.provider.capabilities.contains(.bookmarks) {
+            Button { showBookmarks = true } label: {
+                Label("Bookmarks", systemImage: "bookmark")
+            }
+            .font(.footnote)
+        }
+    }
+
+    private var markFinishedControl: some View {
+        Button {
+            Task { await viewModel.toggleFinished() }
+        } label: {
+            Label(
+                viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
+                systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle"
+            )
+        }
+        .font(.footnote)
     }
 
     // MARK: - Helfer
