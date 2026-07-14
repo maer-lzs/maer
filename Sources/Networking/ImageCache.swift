@@ -57,16 +57,36 @@ final class ImageCache {
         try? dir.setResourceValues(values)
     }
 
-    /// Only the URL path as the key — the token in the query would otherwise
-    /// change the key on token rotation.
-    private func key(for url: URL) -> String {
-        url.path.replacingOccurrences(of: "/", with: "_")
+    /// Auth/session query params that rotate per request and must NOT enter the
+    /// cache key (Subsonic sends a fresh salt+token every call).
+    private static let volatileQueryParams: Set<String> = ["t", "s", "u", "c", "v", "f", "p"]
+
+    /// Host + path + the STABLE query params (e.g. Subsonic `id`/`size`). Path
+    /// alone collided every Subsonic cover onto one key — their identifying
+    /// `id` lives in the query, so all albums shared a single cached file.
+    nonisolated private func key(for url: URL) -> String {
+        var parts = [url.host ?? "", url.path]
+        if let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems {
+            let stable = items
+                .filter { !Self.volatileQueryParams.contains($0.name) }
+                .sorted { $0.name < $1.name }
+                .map { "\($0.name)=\($0.value ?? "")" }
+            parts.append(contentsOf: stable)
+        }
+        return parts.joined(separator: "_")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
     }
 
     /// Must match the path of `APIClient.coverURL` (api/items/{id}/cover).
     private func key(forItemId itemId: String) -> String {
         "_api_items_\(itemId)_cover"
     }
+
+    #if DEBUG
+    /// Test seam for the pure key derivation.
+    nonisolated func testKey(for url: URL) -> String { key(for: url) }
+    #endif
 
     /// Decoded bytes as NSCache cost (pixels × 4).
     private func cost(of image: UIImage) -> Int {
@@ -185,6 +205,22 @@ final class ImageCache {
                     cost: ImageCache.shared.cost(of: stored.0)
                 )
             }
+        }
+    }
+
+    /// Drop every cached representation (memory, thumbnails, disk) of a cover
+    /// URL. Used when the server may have replaced the artwork behind an
+    /// UNCHANGED id (e.g. a Navidrome re-tag) — the URL then still matches the
+    /// old bytes, so a manual invalidation on refresh is the only way to pull
+    /// the new cover.
+    func invalidate(url: URL) {
+        let cacheKey = key(for: url)
+        memoryCache.removeObject(forKey: cacheKey as NSString)
+        // Thumbnails are keyed "<fileKey>@<size>" — clear all size variants.
+        thumbCache.removeAllObjects()
+        let target = diskDirectory.appendingPathComponent(cacheKey)
+        Task.detached(priority: .utility) {
+            try? FileManager.default.removeItem(at: target)
         }
     }
 

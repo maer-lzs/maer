@@ -37,6 +37,14 @@ struct MusicView: View {
         // gesture's cancellation — the staged reload continues as a background
         // task and replaces content silently (stale beats empty).
         .refreshable {
+            // Pull-to-refresh also pulls fresh artwork: a server-side re-tag
+            // keeps the cover id (and thus the URL key) unchanged, so without
+            // invalidation the cache would keep serving the old cover.
+            for item in vm.albums + vm.newest + vm.frequent {
+                if let url = AppSession.shared.coverURL(forItemId: item.id) {
+                    ImageCache.shared.invalidate(url: url)
+                }
+            }
             let work = Task { await vm.reload() }
             try? await Task.sleep(nanoseconds: 600_000_000)
             _ = work
