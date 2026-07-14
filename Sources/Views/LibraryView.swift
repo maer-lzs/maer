@@ -44,6 +44,9 @@ struct LibraryView: View {
     /// Active content-type tab. Today audiobooks only; the bottom tab bar only
     /// appears when a second source brings a different type.
     @State private var selectedMediaType: MediaType = .audiobooks
+    /// Downloaded shelf expanded past its capped count (F6/G19).
+    @State private var downloadedExpanded = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// Tabs that have been shown at least once — they stay mounted (hidden)
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
@@ -675,7 +678,13 @@ struct LibraryView: View {
         subtitle: String? = nil,
         @ViewBuilder menu: () -> some View = { EmptyView() }
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // Cap the rendered cells (same 3/6 limits as the podcast Downloaded
+        // list) — at accessibility sizes the tall cells in a horizontal
+        // scroller jittered; bounding how many render at once is the fix, not
+        // just cosmetics.
+        let limit = horizontalSizeClass == .regular ? 6 : 3
+        let shown = downloadedExpanded ? entries : Array(entries.prefix(limit))
+        return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(title)
                     .font(.title3).bold()
@@ -692,12 +701,23 @@ struct LibraryView: View {
                         .foregroundStyle(.secondary)
                     }
                 }
+                Spacer(minLength: 0)
+                if entries.count > limit {
+                    Button {
+                        withAnimation(.snappy(duration: 0.2)) { downloadedExpanded.toggle() }
+                    } label: {
+                        Text(downloadedExpanded
+                             ? String(localized: "Show Less")
+                             : String(localized: "Show All (\(entries.count))"))
+                            .font(.subheadline)
+                    }
+                }
             }
             .padding(.horizontal)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
-                    ForEach(entries) { entry in
+                    ForEach(shown) { entry in
                         // Value-based so a navigationPath reset (media tab) also
                         // pops this row back to the root.
                         NavigationLink(value: entry.id) {
