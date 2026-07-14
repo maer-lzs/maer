@@ -168,6 +168,7 @@ struct PodcastEpisodeRow: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @ObservedObject private var downloads = DownloadManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
     private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
@@ -260,11 +261,25 @@ struct PodcastEpisodeRow: View {
         }
     }
 
+    /// Offline and not downloaded: the row cannot start playback.
+    private var isOfflineUnavailable: Bool {
+        !networkMonitor.isConnected && !downloads.isDownloaded(itemId: item.id)
+    }
+
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
             podcastArtwork(url: AppSession.shared.coverURL(forItemId: item.id), size: 64, corner: 8)
-                // Played episodes dimmed, as in Apple Podcasts.
-                .opacity(isPlayed ? 0.5 : 1)
+                // Played episodes dimmed, as in Apple Podcasts; offline the
+                // same dimming plus a badge marks episodes that cannot play.
+                .opacity(isPlayed || isOfflineUnavailable ? 0.5 : 1)
+                .overlay(alignment: .topTrailing) {
+                    if isOfflineUnavailable {
+                        Image(systemName: "wifi.slash")
+                            .font(.caption2)
+                            .foregroundStyle(.white, .secondary)
+                            .padding(3)
+                    }
+                }
             VStack(alignment: .leading, spacing: 3) {
                 if let show = item.media?.metadata?.authorName {
                     Text(show.uppercased())
