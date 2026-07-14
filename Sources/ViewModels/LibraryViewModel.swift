@@ -581,7 +581,16 @@ final class LibraryViewModel: ObservableObject {
         isShowingOfflineCache = false
         var accumulated = first.items
         let total = first.total
-        await rebuild(items: accumulated, progress: progress)
+        // Render partial pages ONLY when nothing is on screen yet (fresh install
+        // / no cache) — there a fast first page beats a blank wait, and the grid
+        // only grows. With a cache already showing the full library, a partial
+        // page would SHRINK the grid (221 → 50 → …) and flash: skip the partial
+        // rebuilds and publish once at the end instead.
+        let renderPartialPages = entries.isEmpty
+        if renderPartialPages {
+            await rebuild(items: accumulated, progress: progress)
+            isLoadingMore = accumulated.count < total
+        }
         isLoading = false   // first view is ready — spinner off, rest loads quietly
 
         // Append the remaining pages (in the same load). A network drop
@@ -589,7 +598,6 @@ final class LibraryViewModel: ObservableObject {
         // offline fallback. Intermediate rebuilds are throttled (only every
         // 3rd page) — a guaranteed final rebuild afterwards keeps the result
         // identical but saves intermediate work.
-        isLoadingMore = accumulated.count < total
         var page = 1
         do {
             while accumulated.count < total {
@@ -598,7 +606,9 @@ final class LibraryViewModel: ObservableObject {
                 if next.items.isEmpty { break }
                 accumulated += next.items
                 page += 1
-                if page % 3 == 0 { await rebuild(items: accumulated, progress: progress) }
+                if renderPartialPages, page % 3 == 0 {
+                    await rebuild(items: accumulated, progress: progress)
+                }
             }
         } catch {
             // Abort while loading more: keep the loaded partial list.
