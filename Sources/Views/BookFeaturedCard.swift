@@ -40,6 +40,13 @@ struct BookFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .task(id: entry.id) { await loadChapters() }
+        // Sibling overlay (like the info pill) so a tap on the ring cancels
+        // instead of triggering the card's play action underneath. Aligned to
+        // the cover area (top), not the text block below it.
+        .overlay(alignment: .top) {
+            DownloadInstallRing(itemId: entry.id, diameterFraction: 0.22, lineWidth: 4)
+                .frame(width: width, height: width)
+        }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         .overlay(alignment: .bottomTrailing) {
             BookDownloadButton(entry: entry, provider: playerCoordinator.provider, tint: .white)
@@ -68,29 +75,6 @@ struct BookFeaturedCard: View {
                             .font(.caption)
                             .foregroundStyle(.white, .secondary)
                             .padding(8)
-                    }
-                }
-                // A8: same install-style progress ring as the grid cells — the
-                // subtle bar alone was easy to miss on the big card.
-                .overlay {
-                    if let phase = downloadManager.phase[entry.id], let fraction = phase.progress {
-                        ZStack {
-                            Color.black.opacity(0.45)
-                            Circle()
-                                .stroke(Color.white.opacity(0.3), lineWidth: 4)
-                                .frame(width: width * 0.22, height: width * 0.22)
-                            Circle()
-                                .trim(from: 0, to: fraction < 0 ? 1 : max(0.03, fraction))
-                                .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                                .frame(width: width * 0.22, height: width * 0.22)
-                            if case .paused = phase {
-                                Image(systemName: "pause.fill")
-                                    .font(.system(size: width * 0.07, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
-                        }
-                        .animation(.linear(duration: 0.3), value: fraction)
                     }
                 }
                 .overlay(alignment: .bottom) {
@@ -200,9 +184,12 @@ struct BookDownloadButton: View {
             Image(systemName: "checkmark.circle")
                 .font(.title3).foregroundStyle(tint)
                 .accessibilityLabel(Text("Downloaded"))
-        } else if case .downloading(let f) = downloads.phase[entry.id] {
-            ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
-                .accessibilityLabel(Text("Downloading"))
+        } else if case .downloading = downloads.phase[entry.id] {
+            // No indicator here while downloading — the install ring over the
+            // cover is the single progress + cancel control.
+            EmptyView()
+        } else if case .paused = downloads.phase[entry.id] {
+            EmptyView()
         } else {
             Button {
                 Task {

@@ -56,31 +56,10 @@ struct BookCoverView: View {
                         .padding(4)
                 }
             }
-            // App-Store-style install animation: dimmed cover with a
-            // centered progress ring while downloading/paused.
-            .overlay {
-                if let itemId, let phase = downloadManager.phase[itemId],
-                   let fraction = phase.progress {
-                    ZStack {
-                        Color.black.opacity(0.45)
-                        Circle()
-                            .stroke(Color.white.opacity(0.3), lineWidth: 3)
-                            .frame(width: size * 0.4, height: size * 0.4)
-                        Circle()
-                            .trim(from: 0, to: fraction < 0 ? 1 : max(0.03, fraction))
-                            .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
-                            .frame(width: size * 0.4, height: size * 0.4)
-                        if case .paused = phase {
-                            Image(systemName: "pause.fill")
-                                .font(.system(size: size * 0.14, weight: .bold))
-                                .foregroundStyle(.white)
-                        }
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .animation(.linear(duration: 0.3), value: fraction)
-                }
-            }
+            // Install ring is layered by the enclosing cell as a SIBLING of the
+            // NavigationLink (see BookGridCell), so a tap on the ring cancels
+            // instead of navigating — a ring nested in the link label here
+            // could not win the hit.
             .overlay(alignment: .bottomLeading) {
                 if let itemId, case .failed = downloadManager.phase[itemId] {
                     Image(systemName: "exclamationmark.circle.fill")

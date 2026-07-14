@@ -722,6 +722,10 @@ struct LibraryView: View {
                             .accessibilityElement(children: .combine)
                         }
                         .buttonStyle(.plain)
+                        .overlay(alignment: .top) {
+                            DownloadInstallRing(itemId: entry.id)
+                                .frame(width: 132, height: 132)
+                        }
                         .modifier(BookCellContextMenu(
                             entry: entry,
                             playerCoordinator: playerCoordinator,

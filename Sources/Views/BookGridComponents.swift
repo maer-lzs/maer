@@ -243,6 +243,12 @@ struct BookGridCell: View {
             .accessibilityElement(children: .combine)
         }
         .buttonStyle(.plain)
+        // Sibling overlay over the cover area so the ring's cancel button wins
+        // the hit over the navigation link underneath.
+        .overlay(alignment: .top) {
+            DownloadInstallRing(itemId: entry.id)
+                .frame(width: width, height: width)
+        }
         .modifier(BookCellContextMenu(
             entry: entry,
             playerCoordinator: playerCoordinator,
