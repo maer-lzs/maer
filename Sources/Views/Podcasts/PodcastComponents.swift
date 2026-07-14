@@ -163,9 +163,9 @@ enum PodcastRowTap { case play, detail, none }
 /// trailing cluster of consistent gray controls (info · download · play/pause).
 struct PodcastEpisodeRow: View {
     let item: LibraryItem
-    /// Tapping the row body: play it (queue/inbox), open its detail page
-    /// (downloads) or nothing (show page — only the play button plays).
-    var rowTap: PodcastRowTap = .play
+    /// Tapping the row body opens the episode page on every surface (show
+    /// list, downloads, queue); the large play button handles playback.
+    var rowTap: PodcastRowTap = .detail
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
@@ -187,12 +187,9 @@ struct PodcastEpisodeRow: View {
             // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
                 .layoutPriority(1)
-            // 44pt hit areas on the trailing controls; info and download share
-            // a column so the row carries at most two icon widths.
-            VStack(spacing: 0) {
-                infoButton
-                PodcastDownloadButton(item: item, showsDownloadedState: false)
-            }
+            // Trailing controls: download + the large play button. Info is
+            // gone — the whole row body opens the episode page instead.
+            PodcastDownloadButton(item: item, showsDownloadedState: false)
             playButton
         }
         .padding(.horizontal, 12)
@@ -354,22 +351,6 @@ struct PodcastEpisodeRow: View {
         } else {
             await playerCoordinator.open(item: item)
         }
-    }
-
-    /// Opens the episode detail page (info) — value-based so the media tab can
-    /// pop back to the library. Same icon size as the download control.
-    private var infoButton: some View {
-        Button {
-            pushRoute(.episode(itemId: item.id))
-        } label: {
-            Image(systemName: "info.circle")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text("Details"))
     }
 
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".

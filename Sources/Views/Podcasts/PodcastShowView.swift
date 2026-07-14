@@ -77,7 +77,7 @@ struct PodcastShowView: View {
                     }
                 }
             ForEach(sortedItems) { item in
-                PodcastEpisodeRow(item: item, rowTap: .none, playerCoordinator: playerCoordinator)
+                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
             }
@@ -162,7 +162,7 @@ struct PodcastShowView: View {
                 }
             }
             if let description = show.description, !description.isEmpty {
-                Text(description)
+                Text(podcastPlainText(description))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(descriptionExpanded ? nil : 3)

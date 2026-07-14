@@ -406,7 +406,7 @@ struct PodcastsView: View {
                 Text("Downloaded").font(.title3).bold().padding(.horizontal)
                 LazyVStack(spacing: 0) {
                     ForEach(shown) { item in
-                        PodcastEpisodeRow(item: item, rowTap: .detail, playerCoordinator: playerCoordinator)
+                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
                     }
                 }
                 if downloaded.count > limit {
