@@ -161,9 +161,40 @@ final class PlayerCoordinator: ObservableObject {
         }
         // The last played item can come from ANY source — podcast episodes are
         // NOT in the audiobook list, only in the RSS provider.
-        guard let item = entries.first(where: { $0.id == lastId })?.item
-            ?? AppSession.shared.libraryItem(forId: lastId) else { return }
-        await open(item: item, autoplay: false)
+        if let item = entries.first(where: { $0.id == lastId })?.item
+            ?? AppSession.shared.libraryItem(forId: lastId) {
+            await open(item: item, autoplay: false)
+            return
+        }
+        // N1 fallback 1: ids without a local index entry (sub: albums/songs)
+        // still resolve over their provider — restore from a light item built
+        // out of the fetched detail. A successful open() re-writes lastItemKey,
+        // healing the stale value for the next launch.
+        if let detail = try? await AppSession.shared.provider(for: lastId)
+            .fetchItemDetail(itemId: lastId) {
+            await open(item: LibraryItem(id: detail.id, media: detail.media, addedAt: nil),
+                       autoplay: false)
+            return
+        }
+        // N1 fallback 2: the episode fell out of its feed (rotating news
+        // feeds) — restore the SHOW context with its newest episode instead of
+        // silently showing no mini player at all.
+        if let showId = Self.showId(forEpisodeId: lastId),
+           let show = PodcastSubscriptions.shared.shows.first(where: { $0.id == showId }) {
+            let items = AppSession.shared.rssProvider.showItems(for: show)
+            if let newest = items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) }) {
+                await open(item: newest, autoplay: false)
+            }
+        }
+    }
+
+    /// "rss:<feedKey>:<originalGuid>" → the show id "feed:<feedKey>" used by
+    /// the subscriptions store. Original guids may contain ':' (URLs), so at
+    /// most the first two separators split.
+    nonisolated static func showId(forEpisodeId id: String) -> String? {
+        let parts = id.split(separator: ":", maxSplits: 2, omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0] == "rss", !parts[1].isEmpty, !parts[2].isEmpty else { return nil }
+        return "feed:\(parts[1])"
     }
 
     /// Stops playback completely (the mini bar disappears).
