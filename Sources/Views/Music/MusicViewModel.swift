@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import OSLog
 
 /// Data source of the Music tab as injectable closures — the live wiring hits
 /// the Subsonic provider; tests inject failing/stubbed ones.
@@ -48,6 +49,14 @@ final class MusicViewModel: ObservableObject {
         guard !loaded else { return }
         loaded = true
         await reload()
+        // One quiet retry before surfacing the error state on first entry —
+        // the sporadic failure resolves itself on immediate re-request.
+        if errorText != nil, albums.isEmpty {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled else { return }
+            Logger.music.info("first music load failed — retrying once")
+            await reload()
+        }
     }
 
     /// S5 — staged loading: the shelves (small, parallel) render first, the
@@ -91,6 +100,7 @@ final class MusicViewModel: ObservableObject {
             // (the view shows the full-screen error page only when empty).
             errorText = (error as? SubsonicClient.SubsonicError)?.errorDescription
                 ?? error.localizedDescription
+            Logger.music.error("album page load failed: \(String(describing: error), privacy: .public)")
             return
         }
 
