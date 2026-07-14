@@ -36,3 +36,17 @@ extension View {
         }
     }
 }
+
+/// Push callback for podcast routes — buttons deep inside List rows use this
+/// instead of NavigationLink: a link inside row content makes List draw a
+/// disclosure chevron on the whole row.
+nonisolated struct PushPodcastRouteKey: EnvironmentKey {
+    static let defaultValue: @MainActor (PodcastRoute) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var pushPodcastRoute: @MainActor (PodcastRoute) -> Void {
+        get { self[PushPodcastRouteKey.self] }
+        set { self[PushPodcastRouteKey.self] = newValue }
+    }
+}

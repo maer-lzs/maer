@@ -56,6 +56,8 @@ struct PodcastsView: View {
     /// Sections render only once the first complete snapshot exists — they
     /// used to pop in one by one across several recompute passes.
     @State private var sectionsReady = false
+    @State private var downloadedExpanded = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change — and when the
     /// tab becomes visible again (isActive gates the actual work).
@@ -397,14 +399,26 @@ struct PodcastsView: View {
     @ViewBuilder
     private var downloadedShelf: some View {
         if !downloaded.isEmpty {
+            // Collapsed by default so the section doesn't dominate the page.
+            let limit = horizontalSizeClass == .regular ? 6 : 3
+            let shown = downloadedExpanded ? downloaded : Array(downloaded.prefix(limit))
             VStack(alignment: .leading, spacing: 8) {
                 Text("Downloaded").font(.title3).bold().padding(.horizontal)
-                // Vertical list — grows downward with the page instead of scrolling
-                // sideways. Tapping a row opens its episode detail page.
                 LazyVStack(spacing: 0) {
-                    ForEach(downloaded) { item in
+                    ForEach(shown) { item in
                         PodcastEpisodeRow(item: item, rowTap: .detail, playerCoordinator: playerCoordinator)
                     }
+                }
+                if downloaded.count > limit {
+                    Button {
+                        withAnimation(.snappy(duration: 0.2)) { downloadedExpanded.toggle() }
+                    } label: {
+                        Text(downloadedExpanded
+                             ? String(localized: "Show Less")
+                             : String(localized: "Show All (\(downloaded.count))"))
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .padding(.horizontal)
                 }
             }
         }

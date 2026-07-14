@@ -169,6 +169,7 @@ struct PodcastEpisodeRow: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.pushPodcastRoute) private var pushRoute
 
     private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
     private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
@@ -184,10 +185,12 @@ struct PodcastEpisodeRow: View {
             // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
                 .layoutPriority(1)
-            // D8/B7: 44pt frames on the trailing controls (the icons keep their
-            // size, only the hit areas grow); tight spacing compensates.
-            infoButton
-            PodcastDownloadButton(item: item)
+            // 44pt hit areas on the trailing controls; info and download share
+            // a column so the row carries at most two icon widths.
+            VStack(spacing: 0) {
+                infoButton
+                PodcastDownloadButton(item: item, showsDownloadedState: false)
+            }
             playButton
         }
         .padding(.horizontal, 12)
@@ -252,7 +255,9 @@ struct PodcastEpisodeRow: View {
             }
             .buttonStyle(.plain)
         case .detail:
-            NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
+            Button {
+                pushRoute(.episode(itemId: item.id))
+            } label: {
                 rowContent(state: state, isPlayed: isPlayed)
             }
             .buttonStyle(.plain)
@@ -278,6 +283,17 @@ struct PodcastEpisodeRow: View {
                             .font(.caption2)
                             .foregroundStyle(.white, .secondary)
                             .padding(3)
+                    }
+                }
+                // Downloaded lives on the artwork, like on the cards — the
+                // trailing cluster then only carries actionable controls.
+                .overlay(alignment: .bottomTrailing) {
+                    if downloads.isDownloaded(itemId: item.id) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, .green)
+                            .padding(2)
                     }
                 }
             VStack(alignment: .leading, spacing: 3) {
@@ -341,7 +357,9 @@ struct PodcastEpisodeRow: View {
     /// Opens the episode detail page (info) — value-based so the media tab can
     /// pop back to the library. Same icon size as the download control.
     private var infoButton: some View {
-        NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
+        Button {
+            pushRoute(.episode(itemId: item.id))
+        } label: {
             Image(systemName: "info.circle")
                 .font(.title3)
                 .foregroundStyle(.secondary)
@@ -377,16 +395,21 @@ struct PodcastDownloadButton: View {
     let item: LibraryItem
     /// Icon color — the default fits in lists; use `.white` on a colored/dark background.
     var tint: Color = .secondary
+    /// Rows show the downloaded state on the artwork instead — they pass
+    /// false and this control collapses once the download finished.
+    var showsDownloadedState = true
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     var body: some View {
         if downloads.isDownloaded(itemId: item.id) {
-            Image(systemName: "checkmark.circle")
-                .font(.title3)
-                .foregroundStyle(tint)
-                .frame(width: 44, height: 44)
-                .accessibilityLabel(Text("Downloaded"))
+            if showsDownloadedState {
+                Image(systemName: "checkmark.circle")
+                    .font(.title3)
+                    .foregroundStyle(tint)
+                    .frame(width: 44, height: 44)
+                    .accessibilityLabel(Text("Downloaded"))
+            }
         } else if case .downloading(let f) = downloads.phase[item.id] {
             // Tapping the running ring cancels, like the album download button.
             Button {

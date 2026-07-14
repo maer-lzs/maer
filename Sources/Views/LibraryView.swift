@@ -126,6 +126,9 @@ struct LibraryView: View {
                     }
                 }
             }
+            // Buttons inside List rows push routes over this callback instead
+            // of NavigationLink (avoids the List disclosure chevron).
+            .environment(\.pushPodcastRoute) { navigationPath.append($0) }
             // Programmatic push from the search overlay (book tap): the overlay
             // slides down and puts the item id on the path.
             .navigationDestination(for: String.self) { itemId in
@@ -631,7 +634,9 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Recently Added").font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 16) {
+                // Eager HStack: the lazy variant froze the shelf height on the
+                // first measured cell and clipped taller cells' last text line.
+                HStack(alignment: .top, spacing: 16) {
                     ForEach(viewModel.recentlyAdded) { entry in
                         BookGridCell(entry: entry, width: 180,
                                      playerCoordinator: playerCoordinator, libraryViewModel: viewModel)

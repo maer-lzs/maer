@@ -93,13 +93,16 @@ struct MusicArtistView: View {
         if info?.largeImageUrl != nil || bio != nil {
             VStack(alignment: .leading, spacing: 10) {
                 if let urlString = info?.largeImageUrl, let url = URL(string: urlString) {
+                    // Sizing lives on the LOADED image: servers hand out image
+                    // URLs even for artists without pictures — an outer frame
+                    // held a 180pt hole open in that case.
                     CachedAsyncImage(url: url, useThumbnail: false) { image in
                         image.resizable().aspectRatio(contentMode: .fill)
-                    } placeholder: { Color.clear }
-                    .frame(height: 180)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
+                            .frame(height: 180)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal)
+                    } placeholder: { EmptyView() }
                 }
                 if let bio {
                     Text(bio)
