@@ -431,7 +431,11 @@ final class APIClient {
     private func decode<T: Decodable & Sendable>(_ type: T.Type, from data: Data) async throws -> T {
         do {
             return try await Task.detached(priority: .userInitiated) {
-                try JSONDecoder().decode(T.self, from: data)
+                // Regression guard: JSON decode stays off the main actor.
+                #if DEBUG
+                dispatchPrecondition(condition: .notOnQueue(.main))
+                #endif
+                return try JSONDecoder().decode(T.self, from: data)
             }.value
         } catch let DecodingError.keyNotFound(key, _) {
             throw APIError.decoding("Field '\(key.stringValue)' missing in the response")

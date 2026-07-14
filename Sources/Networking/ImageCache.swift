@@ -141,6 +141,10 @@ final class ImageCache {
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
         // Disk read + decode off the MainActor — this runs per visible cell.
         let thumb = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            // Regression guard: disk read + image decode stay off the main actor.
+            #if DEBUG
+            dispatchPrecondition(condition: .notOnQueue(.main))
+            #endif
             for file in candidates {
                 if let data = try? Data(contentsOf: file) {
                     return Self.decodedThumbnail(data, maxPixelSize: maxPixelSize)

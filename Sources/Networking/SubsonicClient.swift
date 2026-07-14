@@ -81,7 +81,11 @@ struct SubsonicClient {
         // Decode off-main — album catalogs are large and this used to run on
         // the main actor (project default isolation). Same pattern as APIClient.
         guard let env = try? await Task.detached(priority: .userInitiated, operation: {
-            try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+            // Regression guard: envelope decode stays off the main actor.
+            #if DEBUG
+            dispatchPrecondition(condition: .notOnQueue(.main))
+            #endif
+            return try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
         }).value else {
             throw SubsonicError.decoding
         }

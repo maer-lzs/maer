@@ -791,7 +791,12 @@ final class LibraryViewModel: ObservableObject {
             downloadedIds: DownloadManager.shared.downloadedItemIds
         )
         let output = await Task.detached(priority: .userInitiated) {
-            Self.computeRebuild(input)
+            // Regression guard: the library rebuild must stay off the main actor
+            // (it used to hitch scrolling). Fires if it ever drifts back.
+            #if DEBUG
+            dispatchPrecondition(condition: .notOnQueue(.main))
+            #endif
+            return Self.computeRebuild(input)
         }.value
         entries = output.entries   // didSet bumps entriesStamp
         continueListening = output.continueListening
