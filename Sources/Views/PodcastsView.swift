@@ -53,6 +53,9 @@ struct PodcastsView: View {
     @State private var downloaded: [LibraryItem] = []
     @State private var showAddPodcasts = false
     @State private var isRefreshing = false
+    /// Sections render only once the first complete snapshot exists — they
+    /// used to pop in one by one across several recompute passes.
+    @State private var sectionsReady = false
 
     /// Recompute when subscriptions, downloads or progress change — and when the
     /// tab becomes visible again (isActive gates the actual work).
@@ -62,16 +65,22 @@ struct PodcastsView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 28) {
-                nextUpSection
-                recommendationsSection
-                queueSection
-                premiumSection
-                downloadedShelf
-                recentlyUpdatedSection
+            if sectionsReady {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    nextUpSection
+                    recommendationsSection
+                    queueSection
+                    premiumSection
+                    downloadedShelf
+                    recentlyUpdatedSection
+                }
+                .padding(.top, 8)
+                .bottomBarClearance()
+                .transition(.opacity)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 280)
             }
-            .padding(.top, 8)
-            .bottomBarClearance()
         }
         .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
         // No subscription → instead of blank, an empty state with a path to add/import.
@@ -123,9 +132,12 @@ struct PodcastsView: View {
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
             let sections = await computeSections()
-            nextUp = sections.nextUp
-            recentShows = sections.recentShows
-            downloaded = sections.downloaded
+            withAnimation(sectionsReady ? nil : .easeOut(duration: 0.25)) {
+                nextUp = sections.nextUp
+                recentShows = sections.recentShows
+                downloaded = sections.downloaded
+                sectionsReady = true
+            }
             // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))
