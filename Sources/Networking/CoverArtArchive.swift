@@ -1,0 +1,50 @@
+import Foundation
+import UIKit
+
+/// M6: high-resolution covers from the Cover Art Archive (open, no key),
+/// keyed by the release MBID that OpenSubsonic servers expose. Policy-clean:
+/// a proper User-Agent, requests strictly serialized at ~1 req/s (MB rate
+/// limit), aggressively cached via ImageCache, fetched only ON DEMAND when a
+/// detail view opens — never as a sweep over the library.
+actor CoverArtArchive {
+    static let shared = CoverArtArchive()
+
+    private var lastRequestAt: Date = .distantPast
+    /// MBIDs known to have no front cover (negative cache for this session).
+    private var missing: Set<String> = []
+
+    nonisolated static func frontURL(mbid: String) -> URL? {
+        URL(string: "https://coverartarchive.org/release/\(mbid)/front-1200")
+    }
+
+    /// High-res front cover for a release MBID — nil when unavailable.
+    /// The image lands in the shared ImageCache under its CAA URL, so the
+    /// normal `CachedAsyncImage` path can render it afterwards.
+    func frontCover(mbid: String) async -> UIImage? {
+        guard await AppStorageKeys.musicHighResCoversValue else { return nil }
+        guard !missing.contains(mbid), let url = Self.frontURL(mbid: mbid) else { return nil }
+        if let cached = await ImageCache.shared.image(for: url) { return cached }
+        guard await NetworkMonitor.shared.isConnected else { return nil }
+
+        // Serialize: at most one request per second (MusicBrainz policy).
+        let elapsed = Date().timeIntervalSince(lastRequestAt)
+        if elapsed < 1.0 {
+            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
+        }
+        lastRequestAt = Date()
+
+        var request = URLRequest(url: url)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.maer.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let image = UIImage(data: data) else {
+            missing.insert(mbid)
+            return nil
+        }
+        await ImageCache.shared.set(image, data: data, for: url)
+        return image
+    }
+
+    /// MusicBrainz policy requires an identifying User-Agent.
+    nonisolated static let userAgent = "Maer/2.1 (https://codeberg.org/lzs/maer)"
+}

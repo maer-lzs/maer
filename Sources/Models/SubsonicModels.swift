@@ -20,6 +20,60 @@ nonisolated struct SubsonicBody: Decodable {
     let playlists: SubsonicPlaylists?
     let playlist: SubsonicPlaylist?     // getPlaylist (playlist with entries)
     let starred2: SubsonicStarred2?     // getStarred2
+    let artistInfo2: SubsonicArtistInfo?    // getArtistInfo2
+    let albumInfo: SubsonicAlbumInfo?       // getAlbumInfo2
+    let topSongs: SubsonicTopSongs?         // getTopSongs
+    let similarSongs2: SubsonicSimilarSongs?    // getSimilarSongs2
+    let lyricsList: SubsonicLyricsList?     // getLyricsBySongId (OpenSubsonic)
+    let song: SubsonicSong?                 // getSong
+}
+
+// MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL — a server
+// without configured agents returns nothing; UI sections appear only with
+// content, never as errors.
+
+nonisolated struct SubsonicArtistInfo: Decodable {
+    let biography: String?
+    let musicBrainzId: String?
+    let smallImageUrl: String?
+    let mediumImageUrl: String?
+    let largeImageUrl: String?
+    let similarArtist: [SubsonicArtist]?
+}
+
+nonisolated struct SubsonicAlbumInfo: Decodable {
+    let notes: String?
+    let musicBrainzId: String?
+    let smallImageUrl: String?
+    let mediumImageUrl: String?
+    let largeImageUrl: String?
+}
+
+nonisolated struct SubsonicTopSongs: Decodable {
+    let song: [SubsonicSong]?
+}
+
+nonisolated struct SubsonicSimilarSongs: Decodable {
+    let song: [SubsonicSong]?
+}
+
+/// OpenSubsonic structured lyrics: optionally time-synced lines.
+nonisolated struct SubsonicLyricsList: Decodable {
+    let structuredLyrics: [SubsonicStructuredLyrics]?
+}
+
+nonisolated struct SubsonicStructuredLyrics: Decodable {
+    let lang: String?
+    let synced: Bool?
+    let offset: Double?          // global offset in ms
+    let displayArtist: String?
+    let displayTitle: String?
+    let line: [SubsonicLyricsLine]?
+}
+
+nonisolated struct SubsonicLyricsLine: Decodable {
+    let start: Double?           // ms from song start (synced only)
+    let value: String
 }
 
 /// Starred (favorited) content — used for the album favorite state.
@@ -51,6 +105,8 @@ nonisolated struct SubsonicAlbum: Decodable, Identifiable {
     let year: Int?
     let genre: String?
     let created: String?
+    /// OpenSubsonic: release MBID — key into the Cover Art Archive (M6).
+    let musicBrainzId: String?
     let song: [SubsonicSong]?
 }
 

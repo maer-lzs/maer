@@ -1,0 +1,90 @@
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import ABSPlayer
+
+/// Block C (music metadata): the pure lyric/metadata cores.
+struct LyricsTests {
+
+    // MARK: - LRC parsing
+
+    @Test func parsesSyncedLRC() throws {
+        let lrc = """
+        [ar:Artist]
+        [00:12.30] First line
+        [00:15.00][01:20.50] Repeated line
+        [00:13.10] Out of order line
+        """
+        let lyrics = try #require(LyricsParser.parseLRC(lrc))
+        #expect(lyrics.synced)
+        // Sorted by time, metadata tag skipped, repeated stamps expanded.
+        #expect(lyrics.lines.map(\.text) == ["First line", "Out of order line", "Repeated line", "Repeated line"])
+        #expect(lyrics.lines.first?.start == 12.3)
+        #expect(lyrics.lines.last?.start == 80.5)
+    }
+
+    @Test func parsesUnsyncedText() throws {
+        let plain = "Line one\nLine two\n\nLine three"
+        let lyrics = try #require(LyricsParser.parseLRC(plain))
+        #expect(!lyrics.synced)
+        #expect(lyrics.lines.map(\.text) == ["Line one", "Line two", "Line three"])
+        #expect(lyrics.lines.allSatisfy { $0.start == nil })
+    }
+
+    @Test("Garbage/empty input yields nil, not a crash or empty lyrics")
+    func brokenInput() {
+        #expect(LyricsParser.parseLRC("") == nil)
+        #expect(LyricsParser.parseLRC("[ar:OnlyMeta]\n[ti:Title]") == nil)
+        // Malformed stamp falls back to unsynced text.
+        let odd = LyricsParser.parseLRC("[xx:yy] not a stamp")
+        #expect(odd?.synced == false)
+    }
+
+    // MARK: - OpenSubsonic structured lyrics
+
+    @Test func structuredSyncedWithOffset() throws {
+        let structured = [SubsonicStructuredLyrics(
+            lang: "en", synced: true, offset: -1000, displayArtist: nil, displayTitle: nil,
+            line: [SubsonicLyricsLine(start: 5000, value: "Five seconds"),
+                   SubsonicLyricsLine(start: 500, value: "Clamped to zero")]
+        )]
+        let lyrics = try #require(LyricsParser.fromStructured(structured))
+        #expect(lyrics.synced)
+        // 5000ms - 1000ms offset = 4s; 500ms - 1000ms clamps to 0.
+        #expect(lyrics.lines.map(\.start) == [4.0, 0.0])
+    }
+
+    @Test func structuredPrefersSyncedVariant() throws {
+        let structured = [
+            SubsonicStructuredLyrics(lang: "en", synced: false, offset: nil, displayArtist: nil,
+                                     displayTitle: nil, line: [SubsonicLyricsLine(start: nil, value: "plain")]),
+            SubsonicStructuredLyrics(lang: "en", synced: true, offset: nil, displayArtist: nil,
+                                     displayTitle: nil, line: [SubsonicLyricsLine(start: 1000, value: "synced")]),
+        ]
+        let lyrics = try #require(LyricsParser.fromStructured(structured))
+        #expect(lyrics.synced)
+        #expect(lyrics.lines.first?.text == "synced")
+    }
+
+    // MARK: - LRCLIB matching tolerance
+
+    @Test func lrclibDurationTolerance() {
+        // Both known and close → accept; clearly apart → reject.
+        #expect(LyricsParser.lrclibDurationAcceptable(result: 221.6, song: 224))
+        #expect(!LyricsParser.lrclibDurationAcceptable(result: 180, song: 224))
+        // Unknown on either side → accept (LRCLIB matched artist+title).
+        #expect(LyricsParser.lrclibDurationAcceptable(result: nil, song: 224))
+        #expect(LyricsParser.lrclibDurationAcceptable(result: 200, song: 0))
+    }
+
+    // MARK: - Cover Art Archive request builder (M6)
+
+    @Test func coverArtArchiveBuilder() {
+        let url = CoverArtArchive.frontURL(mbid: "abc-123")
+        #expect(url?.absoluteString == "https://coverartarchive.org/release/abc-123/front-1200")
+        // MusicBrainz policy: an identifying User-Agent is mandatory.
+        #expect(CoverArtArchive.userAgent.contains("Maer/"))
+        #expect(CoverArtArchive.userAgent.contains("http"))
+    }
+}
+#endif

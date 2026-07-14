@@ -26,28 +26,40 @@ struct MusicArtistsView: View {
     }
 }
 
-/// One artist's albums as a grid.
+/// One artist's page: header (image + expandable bio), albums grid, top songs
+/// (tap-to-play) and similar artists that exist in the OWN library (M2). All
+/// metadata sections are best-effort — servers without agents show none.
 struct MusicArtistView: View {
     let artist: SubsonicArtist
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var albums: [LibraryItem] = []
     @State private var loading = true
+    @State private var info: SubsonicArtistInfo?
+    @State private var topSongs: [(item: LibraryItem, song: SubsonicSong)] = []
+    @State private var similarInLibrary: [SubsonicArtist] = []
+    @State private var bioExpanded = false
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     var body: some View {
         ScrollView {
-            if loading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 160)
-            } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-                    ForEach(albums) { album in
-                        AlbumCell(item: album, playerCoordinator: playerCoordinator)
+            LazyVStack(alignment: .leading, spacing: 22) {
+                header
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                } else {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                        ForEach(albums) { album in
+                            AlbumCell(item: album, playerCoordinator: playerCoordinator)
+                        }
                     }
+                    .padding(.horizontal)
                 }
-                .padding()
+                topSongsSection
+                similarSection
             }
+            .padding(.vertical)
         }
         .navigationTitle(artist.name ?? String(localized: "Unknown Artist"))
         .navigationBarTitleDisplayMode(.inline)
@@ -55,6 +67,115 @@ struct MusicArtistView: View {
         .task(id: artist.id) {
             albums = (try? await SubsonicProvider.shared.artistAlbums(artistId: artist.id)) ?? []
             loading = false
+            info = await SubsonicProvider.shared.artistInfo(artistId: artist.id)
+            if let name = artist.name {
+                topSongs = await SubsonicProvider.shared.topSongs(artistName: name)
+            }
+            // Similar artists limited to those present in the own library —
+            // foreign names without library content would dead-end.
+            if let similar = info?.similarArtist, !similar.isEmpty {
+                let libraryNames = Dictionary(
+                    ((try? await SubsonicProvider.shared.allArtists()) ?? [])
+                        .compactMap { a in a.name.map { ($0.lowercased(), a) } },
+                    uniquingKeysWith: { a, _ in a })
+                similarInLibrary = similar.compactMap { s in
+                    s.name.flatMap { libraryNames[$0.lowercased()] }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        let bio = strippedBio
+        if info?.largeImageUrl != nil || bio != nil {
+            VStack(alignment: .leading, spacing: 10) {
+                if let urlString = info?.largeImageUrl, let url = URL(string: urlString) {
+                    CachedAsyncImage(url: url, useThumbnail: false) { image in
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } placeholder: { Color.clear }
+                    .frame(height: 180)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+                }
+                if let bio {
+                    Text(bio)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(bioExpanded ? nil : 3)
+                        .padding(.horizontal)
+                        .onTapGesture { withAnimation { bioExpanded.toggle() } }
+                }
+            }
+        }
+    }
+
+    /// Server bios often carry HTML fragments/attribution links — strip tags.
+    private var strippedBio: String? {
+        guard let raw = info?.biography, !raw.isEmpty else { return nil }
+        let text = raw.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+
+    @ViewBuilder
+    private var topSongsSection: some View {
+        if !topSongs.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Top Songs").font(.title3).bold().padding(.horizontal)
+                ForEach(Array(topSongs.enumerated()), id: \.element.item.id) { index, entry in
+                    Button {
+                        Task { await playerCoordinator.open(item: entry.item) }
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text("\(index + 1)")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .frame(width: 22, alignment: .trailing)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(entry.song.title ?? "–").lineLimit(1)
+                                if let album = entry.song.album {
+                                    Text(album).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                            }
+                            Spacer()
+                            Image(systemName: "play.circle")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 6)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var similarSection: some View {
+        if !similarInLibrary.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Similar Artists").font(.title3).bold().padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(similarInLibrary) { similar in
+                            NavigationLink {
+                                MusicArtistView(artist: similar, playerCoordinator: playerCoordinator)
+                            } label: {
+                                Text(similar.name ?? "–")
+                                    .font(.subheadline.weight(.medium))
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(.quaternary, in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
         }
     }
 }

@@ -221,6 +221,9 @@ nonisolated struct ABSEnclosure: Codable {
 nonisolated struct LenientString: Codable {
     let value: String
 
+    /// Direct construction (providers mapping non-ABS sources, e.g. album year).
+    init(_ value: String) { self.value = value }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let s = try? container.decode(String.self) {

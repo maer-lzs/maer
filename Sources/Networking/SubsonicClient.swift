@@ -160,6 +160,38 @@ struct SubsonicClient {
         try await get("getStarred2").starred2?.album ?? []
     }
 
+    // MARK: - OpenSubsonic metadata (M1) — all best-effort: servers without
+    // configured agents legitimately return empty objects.
+
+    /// Artist biography, image URLs and similar artists.
+    func artistInfo(id: String) async throws -> SubsonicArtistInfo? {
+        try await get("getArtistInfo2", ["id": id]).artistInfo2
+    }
+
+    /// Album notes/description.
+    func albumInfo(id: String) async throws -> SubsonicAlbumInfo? {
+        try await get("getAlbumInfo2", ["id": id]).albumInfo
+    }
+
+    /// The artist's most popular songs (agent-backed; by artist NAME).
+    func topSongs(artist: String, count: Int = 10) async throws -> [SubsonicSong] {
+        try await get("getTopSongs", ["artist": artist, "count": String(count)]).topSongs?.song ?? []
+    }
+
+    func similarSongs(id: String, count: Int = 20) async throws -> [SubsonicSong] {
+        try await get("getSimilarSongs2", ["id": id, "count": String(count)]).similarSongs2?.song ?? []
+    }
+
+    /// OpenSubsonic structured lyrics for one song (synced when available).
+    func lyrics(songId: String) async throws -> [SubsonicStructuredLyrics] {
+        try await get("getLyricsBySongId", ["id": songId]).lyricsList?.structuredLyrics ?? []
+    }
+
+    /// One song by id (used for tap-to-play on top songs).
+    func song(id: String) async throws -> SubsonicSong? {
+        try await get("getSong", ["id": id]).song
+    }
+
     // MARK: - Helpers
 
     private static func randomSalt() -> String {

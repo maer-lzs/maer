@@ -9,6 +9,8 @@ struct SubsonicSourceView: View {
     @State private var username = AppStorageKeys.subsonicUsernameValue
     @State private var password = AppStorageKeys.subsonicPasswordValue
     @State private var enabled = AppStorageKeys.subsonicEnabledValue
+    @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
+    @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
 
     @State private var isTesting = false
     @State private var statusMessage: String?
@@ -38,6 +40,15 @@ struct SubsonicSourceView: View {
                 Toggle("Show Music tab", isOn: $enabled)
             } footer: {
                 Text("When on, your albums, artists and playlists appear in a Music tab in the library.")
+            }
+
+            Section {
+                Toggle("Look up lyrics online", isOn: $lyricsOnline)
+                Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
+            } header: {
+                Text("Metadata")
+            } footer: {
+                Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
             }
 
             Section {

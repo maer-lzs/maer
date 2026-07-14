@@ -487,6 +487,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Cumulative start time (absolute seconds in the whole book) for a track
     /// index. Uses `startOffset` from the server if present, otherwise sums the
     /// individual durations itself.
+    /// M4: the Subsonic song currently playing (`sub:` items only) — id, its
+    /// absolute start within the album item, and lookup metadata for lyrics.
+    var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
+        guard item?.id.hasPrefix("sub:") == true,
+              tracks.indices.contains(currentTrackIndex) else { return nil }
+        let track = tracks[currentTrackIndex]
+        return (track.contentUrl,
+                trackAbsoluteStart(currentTrackIndex),
+                currentChapter?.title,
+                item?.media.metadata?.authorName,
+                track.duration ?? 0)
+    }
+
     private func trackAbsoluteStart(_ index: Int) -> Double {
         TrackMath.trackStart(index: index, tracks: tracks, bookDuration: duration)
     }

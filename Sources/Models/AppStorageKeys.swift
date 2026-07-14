@@ -132,6 +132,20 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.subsonicPassword) }
     }
 
+    /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
+    static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
+    static var musicLyricsOnlineLookupValue: Bool {
+        get { UserDefaults.standard.object(forKey: musicLyricsOnlineLookup) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: musicLyricsOnlineLookup) }
+    }
+
+    /// M6: high-res covers from the Cover Art Archive (opt-out).
+    static let musicHighResCovers = "musicHighResCovers"
+    static var musicHighResCoversValue: Bool {
+        get { UserDefaults.standard.object(forKey: musicHighResCovers) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: musicHighResCovers) }
+    }
+
     static var subsonicConfigured: Bool {
         !subsonicServerURLValue.isEmpty && !subsonicUsernameValue.isEmpty && !subsonicPasswordValue.isEmpty
     }

@@ -74,11 +74,17 @@ final class SubsonicProvider: AudioProvider {
         let title: String?
         let artist: String?
         let genre: String?
+        var year: Int?
         if let albumId = Self.id(itemId, kind: "album"), let album = try await client.album(id: albumId) {
             songs = album.song ?? []; title = album.name; artist = album.artist; genre = album.genre
+            year = album.year
         } else if let playlistId = Self.id(itemId, kind: "playlist"),
                   let pl = try await client.playlist(id: playlistId) {
             songs = pl.entry ?? []; title = pl.name; artist = nil; genre = nil
+        } else if let songId = Self.id(itemId, kind: "song"),
+                  let song = try await client.song(id: songId) {
+            // Single song (top-songs tap-to-play): a one-track item.
+            songs = [song]; title = song.title; artist = song.artist; genre = nil
         } else {
             throw SubsonicClient.SubsonicError.decoding
         }
@@ -89,7 +95,8 @@ final class SubsonicProvider: AudioProvider {
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: title, authorName: artist, narratorName: nil,
-                seriesName: nil, genres: genre.map { [$0] }, publishedYear: nil,
+                seriesName: nil, genres: genre.map { [$0] },
+                publishedYear: year.map { LenientString(String($0)) },
                 description: nil
             ),
             duration: total,
@@ -151,6 +158,40 @@ final class SubsonicProvider: AudioProvider {
     func allPlaylists() async throws -> [SubsonicPlaylist] {
         guard let client else { return [] }
         return try await client.playlists()
+    }
+
+    // MARK: - OpenSubsonic metadata (M1) — best-effort; empty is normal.
+
+    func artistInfo(artistId: String) async -> SubsonicArtistInfo? {
+        guard let client else { return nil }
+        return try? await client.artistInfo(id: artistId)
+    }
+
+    func albumInfo(itemId: String) async -> SubsonicAlbumInfo? {
+        guard let client, let albumId = Self.id(itemId, kind: "album") else { return nil }
+        return try? await client.albumInfo(id: albumId)
+    }
+
+    /// Top songs of an artist as playable one-song items.
+    func topSongs(artistName: String, count: Int = 10) async -> [(item: LibraryItem, song: SubsonicSong)] {
+        guard let client, let songs = try? await client.topSongs(artist: artistName, count: count) else { return [] }
+        return songs.map { song in
+            (LibraryItem(
+                id: "sub:song:\(song.id)",
+                media: LibraryItemMedia(
+                    metadata: LibraryItemMetadata(
+                        title: song.title, authorName: song.artist, narratorName: nil,
+                        seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                    duration: song.duration.map(Double.init), chapters: nil, tracks: nil),
+                addedAt: nil
+            ), song)
+        }
+    }
+
+    /// OpenSubsonic lyrics for a song id (structured, possibly synced).
+    func lyrics(songId: String) async -> [SubsonicStructuredLyrics] {
+        guard let client else { return [] }
+        return (try? await client.lyrics(songId: songId)) ?? []
     }
 
     // MARK: - Favorites (star)

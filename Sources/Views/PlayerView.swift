@@ -20,6 +20,9 @@ struct PlayerView: View {
     @State private var scrubValue: Double = 0
     @State private var showChapters = false
     @State private var showBookmarks = false
+    /// M4: lyrics of the CURRENT song (nil = none/still loading) + panel state.
+    @State private var songLyrics: SongLyrics?
+    @State private var showLyrics = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -93,6 +96,17 @@ struct PlayerView: View {
         .foregroundStyle(.white)
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
+        // M4: fetch lyrics per song change (cached; nil hides the button).
+        .task(id: viewModel.currentMusicSong?.id) {
+            guard let song = viewModel.currentMusicSong else { songLyrics = nil; return }
+            songLyrics = await LyricsService.shared.lyrics(
+                songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
+        }
+        .sheet(isPresented: $showLyrics) {
+            if let songLyrics, let song = viewModel.currentMusicSong {
+                LyricsPanel(lyrics: songLyrics, songStart: song.start, viewModel: viewModel)
+            }
+        }
         .sheet(isPresented: $showBookmarks) {
             BookmarksSheet(viewModel: viewModel)
         }
@@ -378,9 +392,18 @@ struct PlayerView: View {
 
     private var tertiaryControls: some View {
         HStack(spacing: 36) {
-            // AirPlay-Auswahl.
+            // AirPlay selection.
             AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
                 .frame(width: 44, height: 44)
+
+            // M4: lyrics — music items only, and only when lyrics exist for the
+            // current song (server-first, LRCLIB fallback).
+            if songLyrics != nil {
+                Button { showLyrics = true } label: {
+                    Label("Lyrics", systemImage: "quote.bubble")
+                }
+                .font(.footnote)
+            }
 
             // Only for sources with the bookmark capability (ABS can do it;
             // future sources like RSS maybe not).
