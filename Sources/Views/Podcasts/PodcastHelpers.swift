@@ -26,15 +26,21 @@ extension View {
     @ViewBuilder
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
         contextMenu {
-            Button {
-                Task { await playerCoordinator.open(item: item) }
-            } label: { Label("Play", systemImage: "play.fill") }
-            Button {
-                PodcastQueue.shared.playNext(item.id)
-            } label: { Label("Play Next", systemImage: "text.insert") }
-            Button {
-                PodcastQueue.shared.playLast(item.id)
-            } label: { Label("Play Last", systemImage: "text.append") }
+            // Offline, an episode without a download cannot start — hide the
+            // play entries entirely instead of leaving them visible but dead.
+            let isPlayable = NetworkMonitor.shared.isConnected
+                || DownloadManager.shared.isDownloaded(itemId: item.id)
+            if isPlayable {
+                Button {
+                    Task { await playerCoordinator.open(item: item) }
+                } label: { Label("Play", systemImage: "play.fill") }
+                Button {
+                    PodcastQueue.shared.playNext(item.id)
+                } label: { Label("Play Next", systemImage: "text.insert") }
+                Button {
+                    PodcastQueue.shared.playLast(item.id)
+                } label: { Label("Play Last", systemImage: "text.append") }
+            }
             let played = podcastPlayState(for: item) == .played
             Button {
                 podcastSetPlayed(item, !played)

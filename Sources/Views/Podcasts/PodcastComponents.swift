@@ -376,7 +376,8 @@ struct PodcastDownloadButton: View {
             ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
                 .frame(width: 44, height: 44)
                 .accessibilityLabel(Text("Downloading"))
-        } else {
+        } else if networkMonitor.isConnected {
+            // Offline a download can't start — hide the control entirely.
             Button {
                 Task {
                     guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
@@ -390,9 +391,6 @@ struct PodcastDownloadButton: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            // Offline a download can't start — disable instead of failing.
-            .disabled(!networkMonitor.isConnected)
-            .opacity(networkMonitor.isConnected ? 1 : 0.4)
             .accessibilityLabel(Text("Download"))
         }
     }
