@@ -415,7 +415,7 @@ struct PodcastDownloadButton: View {
             Button {
                 DownloadManager.shared.cancelDownload(itemId: item.id)
             } label: {
-                ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
+                DownloadRing(fraction: f)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }

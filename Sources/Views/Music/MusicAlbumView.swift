@@ -123,9 +123,7 @@ struct MusicAlbumView: View {
             Button {
                 downloadManager.cancelDownload(itemId: item.id)
             } label: {
-                ProgressView(value: fraction)
-                    .progressViewStyle(.circular)
-                    .scaleEffect(0.8)
+                DownloadRing(fraction: fraction)
             }
         } else if let detail {
             Button {

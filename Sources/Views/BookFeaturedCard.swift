@@ -77,7 +77,7 @@ struct BookFeaturedCard: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 4)
                                 .frame(width: width * 0.22, height: width * 0.22)
                             Circle()
-                                .trim(from: 0, to: max(0.03, fraction))
+                                .trim(from: 0, to: fraction < 0 ? 1 : max(0.03, fraction))
                                 .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                                 .rotationEffect(.degrees(-90))
                                 .frame(width: width * 0.22, height: width * 0.22)

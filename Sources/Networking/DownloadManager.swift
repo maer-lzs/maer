@@ -63,6 +63,13 @@ final class DownloadManager: ObservableObject {
     /// downloads from dozens per second to at most ~100 per download.
     private func publishProgress(itemId: String, fraction: Double) {
         guard case .downloading = phase[itemId] else { return }
+        // -1 = indeterminate (server sent no size); publish once so the ring
+        // switches to a spinner instead of sitting empty at 0.
+        if fraction < 0 {
+            if case .downloading(let current) = phase[itemId], current < 0 { return }
+            phase[itemId] = .downloading(-1)
+            return
+        }
         let last = lastPublishedFraction[itemId] ?? -1
         guard fraction - last >= 0.01 || fraction >= 1 else { return }
         lastPublishedFraction[itemId] = fraction
@@ -497,8 +504,10 @@ final class DownloadManager: ObservableObject {
                     resumeData: resumeData,
                     onProgress: { fraction in
                         Task { @MainActor in
-                            DownloadManager.shared.publishProgress(
-                                itemId: itemId, fraction: baseProgress + fraction * perTrackWeight)
+                            // -1 = indeterminate (no server size); pass the
+                            // sentinel through instead of scaling it.
+                            let value = fraction < 0 ? -1 : baseProgress + fraction * perTrackWeight
+                            DownloadManager.shared.publishProgress(itemId: itemId, fraction: value)
                         }
                     },
                     onTask: { task in

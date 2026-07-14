@@ -599,13 +599,21 @@ struct BookDetailScreen: View {
                 switch phase {
                 case .downloading(let progress):
                     HStack(spacing: 8) {
-                        ProgressView(value: progress)
-                            .tint(AppTheme.accent)
-                        Text(progress, format: .percent.precision(.fractionLength(0)))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 36, alignment: .trailing)
+                        // Unknown total (server without Content-Length) → an
+                        // indeterminate bar and no percentage instead of a
+                        // bar frozen at 0%.
+                        if progress < 0 {
+                            ProgressView().tint(AppTheme.accent)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ProgressView(value: progress)
+                                .tint(AppTheme.accent)
+                            Text(progress, format: .percent.precision(.fractionLength(0)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                                .frame(width: 36, alignment: .trailing)
+                        }
                         Button { downloadManager.pauseDownload(itemId: entry.id) } label: {
                             Image(systemName: "pause.circle")
                                 .foregroundStyle(.primary)

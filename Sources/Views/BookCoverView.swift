@@ -67,7 +67,7 @@ struct BookCoverView: View {
                             .stroke(Color.white.opacity(0.3), lineWidth: 3)
                             .frame(width: size * 0.4, height: size * 0.4)
                         Circle()
-                            .trim(from: 0, to: max(0.03, fraction))
+                            .trim(from: 0, to: fraction < 0 ? 1 : max(0.03, fraction))
                             .stroke(Color.white, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                             .frame(width: size * 0.4, height: size * 0.4)

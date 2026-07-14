@@ -101,11 +101,18 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate {
         totalBytesWritten: Int64,
         totalBytesExpectedToWrite: Int64
     ) {
-        guard totalBytesExpectedToWrite > 0 else { return }
         lock.lock()
         let handler = handlers[downloadTask.taskIdentifier]
         lock.unlock()
-        handler?.onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
+        // Servers without a Content-Length (chunked transfer — common for
+        // podcast CDNs and transcoded streams) report an unknown total: signal
+        // an indeterminate download (-1) instead of never reporting, which left
+        // the progress ring stuck empty at 0.
+        if totalBytesExpectedToWrite > 0 {
+            handler?.onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
+        } else {
+            handler?.onProgress(-1)
+        }
     }
 
     func urlSession(
