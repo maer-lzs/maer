@@ -101,6 +101,8 @@ struct GPodderSettingsView: View {
 
     private func syncSummary(_ r: GPodderSync.Report) -> String {
         if let error = r.error { return error }
+        // Surface the mass-delete guard prominently instead of "in sync".
+        if let warning = r.warning { return warning }
         var parts: [String] = []
         if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }
         if r.pushedToServer > 0 { parts.append(String(localized: "\(r.pushedToServer) pushed to server")) }

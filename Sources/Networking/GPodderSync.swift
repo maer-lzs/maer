@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Reconciles podcast subscriptions (and later the listening history) with a
 /// gpodder-compatible server (oPodSync, Nextcloud GPodder, gpodder.net) — on par
@@ -15,6 +16,8 @@ final class GPodderSync {
         var historyPulled = 0       // episode positions pulled from the server
         var historyPushed = 0       // episode positions pushed to the server
         var error: String?
+        /// Set when the mass-delete guard skipped implausible removes.
+        var warning: String?
     }
 
     private var isRunning = false
@@ -90,30 +93,31 @@ final class GPodderSync {
         let local = Set(localByNorm.keys)
         let server = Set(serverByNorm.keys)
 
-        // Genuine adds (only one side, not in the prior state) → to the other side.
-        let addToServer = local.subtracting(server).subtracting(prev)
-        let addLocally = server.subtracting(local).subtracting(prev)
-        // Genuine removes (was synced, now only one side) → unsubscribe.
-        let removeFromServer = prev.intersection(server).subtracting(local)
-        let removeLocally = prev.intersection(local).subtracting(server)
+        // Pure 3-way merge WITH mass-delete guard — an implausible server
+        // answer must not wipe the local subscription list.
+        let merge = GPodderSubscriptionMerge.compute(local: local, server: server, prev: prev)
+        if let warning = merge.warning {
+            report.warning = warning
+            Logger.gpodder.warning("subscription sync guard: \(warning, privacy: .public)")
+        }
 
         // Server side: add + remove in one request.
-        if !addToServer.isEmpty || !removeFromServer.isEmpty {
+        if !merge.addToServer.isEmpty || !merge.removeFromServer.isEmpty {
             try await client.uploadSubscriptions(
-                add: addToServer.compactMap { localByNorm[$0] },
-                remove: removeFromServer.compactMap { serverByNorm[$0] }
+                add: merge.addToServer.compactMap { localByNorm[$0] },
+                remove: merge.removeFromServer.compactMap { serverByNorm[$0] }
             )
-            report.pushedToServer = addToServer.count
+            report.pushedToServer = merge.addToServer.count
         }
         // Local side: subscribe to new feeds, remove unsubscribed ones.
         var addedLocallyNorms = Set<String>()
-        for norm in addLocally {
+        for norm in merge.addLocally {
             if let raw = serverByNorm[norm], await subs.subscribe(urlString: raw) {
                 report.addedLocally += 1
                 addedLocallyNorms.insert(norm)
             }
         }
-        for norm in removeLocally {
+        for norm in merge.removeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
                 subs.unsubscribe(id: show.id)
             }
@@ -121,9 +125,13 @@ final class GPodderSync {
 
         // Converged state = present in both + additions on either side. Only
         // SUCCESSFULLY locally subscribed feeds count → failed ones are retried
-        // on the next run (instead of being treated as "synced" forever).
-        let converged = local.intersection(server).union(addToServer).union(addedLocallyNorms)
-        defaults.set(Array(converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
+        // on the next run. When the guard fired, the prior state stays UNTOUCHED
+        // (updating it would re-push the survivors as "newly subscribed" and
+        // hide the incident).
+        if merge.mayUpdatePrevState {
+            let converged = local.intersection(server).union(merge.addToServer).union(addedLocallyNorms)
+            defaults.set(Array(converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
+        }
         return report
     }
 
