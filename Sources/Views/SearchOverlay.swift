@@ -168,6 +168,9 @@ struct SearchOverlay: View {
                         Label(drilldown.name, systemImage: "chevron.left")
                             .font(.headline)
                             .lineLimit(1)
+                            // D10/B9: cap the chip so a long author/series name
+                            // cannot squeeze the search field to zero width.
+                            .frame(maxWidth: 180)
                             .padding(.horizontal, 12)
                             .frame(height: 44)
                             .background(Capsule().fill(controlFill))

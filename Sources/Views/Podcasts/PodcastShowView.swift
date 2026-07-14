@@ -258,6 +258,9 @@ struct PodcastShowView: View {
                                     downloadAvailable(ep)
                                 } label: {
                                     Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(.secondary)
+                                        // D8/B7: 44pt hit area.
+                                        .frame(width: 44, height: 44)
+                                        .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
                             }

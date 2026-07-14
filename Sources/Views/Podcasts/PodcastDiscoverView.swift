@@ -12,6 +12,8 @@ struct PodcastDiscoverView: View {
     @State private var subscribing: Set<String> = []
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+    /// D4/B3: more tile text lines at accessibility sizes.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         ScrollView {
@@ -52,7 +54,9 @@ struct PodcastDiscoverView: View {
                 podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 108, corner: 12)
                 subscribeControl(r).padding(6)
             }
-            Text(r.title).font(.caption).lineLimit(2).frame(width: 108, alignment: .leading)
+            Text(r.title).font(.caption)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                .frame(width: 108, alignment: .leading)
         }
     }
 

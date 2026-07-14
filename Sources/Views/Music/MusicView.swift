@@ -118,6 +118,8 @@ struct AlbumCell: View {
     let item: LibraryItem
     var width: CGFloat? = nil
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// D4/B3: single-line titles truncate to fragments at accessibility sizes.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         NavigationLink {
@@ -138,9 +140,11 @@ struct AlbumCell: View {
                 .frame(width: width)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
-                Text(item.title).font(.subheadline).lineLimit(1)
+                Text(item.title).font(.subheadline)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 if let artist = item.author {
-                    Text(artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(artist).font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                 }
             }
             .frame(width: width, alignment: .leading)

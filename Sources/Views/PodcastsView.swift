@@ -30,6 +30,8 @@ struct PodcastsView: View {
     @ObservedObject private var queue = PodcastQueue.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @State private var subscribingRec: Set<String> = []
+    /// D4/B3: more tile text lines at accessibility sizes.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Shows of all podcast sources (RSS + ABS), deduplicated by the normalised
     /// feed URL — on a duplicate the ABS show (synced) is preferred.
@@ -205,7 +207,9 @@ struct PodcastsView: View {
                 podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 132, corner: 14)
                 subscribeControl(r).padding(6)
             }
-            Text(r.title).font(.caption).lineLimit(2).frame(width: 132, alignment: .leading)
+            Text(r.title).font(.caption)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                .frame(width: 132, alignment: .leading)
         }
         .contextMenu {
             Button {
@@ -259,8 +263,10 @@ struct PodcastsView: View {
         if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Recently Updated").font(.title3).bold().padding(.horizontal)
+                // D6/B5: adaptive columns instead of a fixed pair — on iPads the
+                // two flexible columns blew the tiles up to ~500pt covers.
                 LazyVGrid(
-                    columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)],
+                    columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
                     alignment: .leading, spacing: 18
                 ) {
                     ForEach(recentShows) { info in

@@ -13,6 +13,10 @@ struct MediaTabBar: View {
     /// (a tap "did nothing").
     let onSelect: (MediaType) -> Void
 
+    /// D7/B6: at accessibility sizes the caption labels truncated anyway —
+    /// icons only, the label lives on as the accessibility label.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(types) { type in
@@ -22,10 +26,12 @@ struct MediaTabBar: View {
                     VStack(spacing: 2) {
                         Image(systemName: type.systemImage)
                             .font(.system(size: 17, weight: .semibold))
-                        Text(type.label)
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Text(type.label)
+                                .font(.caption2)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
                     }
                     .foregroundStyle(selected == type ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.primary))
                     .frame(maxWidth: .infinity)
@@ -33,6 +39,7 @@ struct MediaTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(Text(type.label))
             }
         }
         .padding(.horizontal, 6)

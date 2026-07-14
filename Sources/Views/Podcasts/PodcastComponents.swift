@@ -13,6 +13,11 @@ struct PodcastFeaturedCard: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     private let width: CGFloat = 235
+    // D5/B4: the overlay pill and the fixed line heights scale with Dynamic
+    // Type — at AX sizes the pill used to grow into the text block.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var showMinHeight: CGFloat = 20
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     private var isPlayed: Bool { podcastPlayState(for: item) == .played }
@@ -89,13 +94,13 @@ struct PodcastFeaturedCard: View {
                 // otherwise a card with more text gets taller than its neighbours.
                 Text(item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
                 Text(item.media?.metadata?.authorName ?? " ")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                    .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: showMinHeight, alignment: .topLeading)
             }
             .padding(14)
-            .padding(.bottom, 40)   // room for the overlay pill/download
+            .padding(.bottom, pillReserve)   // room for the overlay pill/download
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -132,6 +137,9 @@ struct PodcastFeaturedCard: View {
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
+    // D4/B3: the fixed tile width stays, but accessibility sizes get more
+    // lines so titles remain readable instead of truncating to a fragment.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let size: CGFloat = 110
 
     var body: some View {
@@ -139,7 +147,7 @@ struct ShowTile: View {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
             Text(show.title)
                 .font(.caption)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 .frame(width: size, alignment: .leading)
         }
     }
@@ -169,17 +177,19 @@ struct PodcastEpisodeRow: View {
         // and the row used to read it 3-4 times per body evaluation.
         let state = podcastPlayState(for: item)
         let isPlayed = state == .played
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 2) {
             // A4: no Spacer next to the max-width row body — two equally
             // flexible siblings made SwiftUI split the width and pushed the
             // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
                 .layoutPriority(1)
+            // D8/B7: 44pt frames on the trailing controls (the icons keep their
+            // size, only the hit areas grow); tight spacing compensates.
             infoButton
             PodcastDownloadButton(item: item)
             playButton
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
@@ -291,6 +301,8 @@ struct PodcastEpisodeRow: View {
             Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")
                 .font(.system(size: 30))
                 .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
@@ -318,6 +330,8 @@ struct PodcastEpisodeRow: View {
             Image(systemName: "info.circle")
                 .font(.title3)
                 .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("Details"))
@@ -356,9 +370,11 @@ struct PodcastDownloadButton: View {
             Image(systemName: "checkmark.circle")
                 .font(.title3)
                 .foregroundStyle(tint)
+                .frame(width: 44, height: 44)
                 .accessibilityLabel(Text("Downloaded"))
         } else if case .downloading(let f) = downloads.phase[item.id] {
             ProgressView(value: f).progressViewStyle(.circular).scaleEffect(0.7)
+                .frame(width: 44, height: 44)
                 .accessibilityLabel(Text("Downloading"))
         } else {
             Button {
@@ -370,6 +386,8 @@ struct PodcastDownloadButton: View {
                 Image(systemName: "arrow.down.circle")
                     .font(.title3)
                     .foregroundStyle(tint)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             // Offline a download can't start — disable instead of failing.

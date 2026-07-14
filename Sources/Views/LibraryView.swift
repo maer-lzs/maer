@@ -23,6 +23,9 @@ struct LibraryView: View {
     /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var systemColorScheme
+    /// D4/B3: fixed-width carousel tiles get extra text lines at accessibility
+    /// sizes instead of truncating titles to fragments.
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Cover accent of the ACTIVE book — shared with every glass element in
     /// the bottom bar (mini player, search button, pill) via environment.
     @StateObject private var bottomColorLoader = CoverColorLoader()
@@ -696,7 +699,7 @@ struct LibraryView: View {
                                 Text(entry.item.title)
                                     .font(.caption)
                                     .foregroundStyle(.primary)
-                                    .lineLimit(2)
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                                     .frame(width: 132, alignment: .leading)
                                 if let p = entry.progress, p.isStarted {
                                     Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? p.fraction.formatted(.percent.precision(.fractionLength(0))))

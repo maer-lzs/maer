@@ -21,7 +21,9 @@ struct ResumeMessageBanner: View {
                 Label(hint.label, systemImage: hint.icon)
                     .font(.subheadline).bold()
                     .lineLimit(1)
-                    .fixedSize()
+                    // D9/B8: no fixedSize — the pill must never grow past the
+                    // screen; long hints scale down instead of clipping.
+                    .minimumScaleFactor(0.7)
                     .foregroundStyle(.primary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)

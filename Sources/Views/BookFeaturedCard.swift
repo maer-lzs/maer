@@ -17,6 +17,11 @@ struct BookFeaturedCard: View {
     /// "minified" and contains no chapters (see currentChapter).
     @State private var loadedChapters: [ABSChapter]?
     private let width: CGFloat = 235
+    // D5/B4: pill reserve and line heights scale with Dynamic Type — at AX
+    // sizes the overlay pill used to grow into the text block.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 22
+    @ScaledMetric(relativeTo: .subheadline) private var authorMinHeight: CGFloat = 20
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: entry.id) }
 
@@ -101,16 +106,16 @@ struct BookFeaturedCard: View {
                 // neighbours and the row looks uneven.
                 Text(entry.item.title)
                     .font(.headline).foregroundStyle(.white).lineLimit(1)
-                    .frame(maxWidth: .infinity, minHeight: 22, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
                 Text(entry.item.author ?? " ")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
-                    .frame(maxWidth: .infinity, minHeight: 20, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: authorMinHeight, alignment: .topLeading)
                 Text(currentChapter ?? " ")
                     .font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: 6, alignment: .topLeading)
             }
             .padding(14)
-            .padding(.bottom, 40)   // room for the overlay pill
+            .padding(.bottom, pillReserve)   // room for the overlay pill
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }

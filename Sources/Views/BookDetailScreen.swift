@@ -21,6 +21,9 @@ struct BookDetailScreen: View {
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
     @StateObject private var colorLoader = CoverColorLoader()
+    /// D13/B12: label column scales with Dynamic Type — 90pt fixed broke
+    /// "Erzähler/Erschienen" mid-word at AX sizes.
+    @ScaledMetric(relativeTo: .caption) private var infoLabelWidth: CGFloat = 90
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.colorScheme) private var systemColorScheme
@@ -438,7 +441,7 @@ struct BookDetailScreen: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
-                .frame(width: 90, alignment: .leading)
+                .frame(width: infoLabelWidth, alignment: .leading)
             Text(value)
                 .font(.subheadline)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
@@ -568,22 +571,28 @@ struct BookDetailScreen: View {
                     Spacer()
                     // Re-check the download: fetches exactly the tracks that
                     // are missing or were stored corrupted (tiny error pages).
+                    // D8/B7: 44pt hit areas; the capsule keeps its height via
+                    // reduced vertical padding.
                     Button {
                         Task { await startDownloadWithWiFiCheck() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     Button {
                         downloadManager.deleteDownload(itemId: entry.id)
                     } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.secondary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("Available Offline"))
-                .padding(.vertical, 10)
+                .padding(.vertical, 2)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
             } else if let phase = downloadManager.phase[entry.id] {
