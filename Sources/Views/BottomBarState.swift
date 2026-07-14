@@ -22,13 +22,23 @@ final class BottomBarState: ObservableObject {
 
     /// Raw state, deliberately NOT published (changes every frame).
     private var scrollY: CGFloat = 0
-    /// A home tap expands again; the next scroll re-enables collapsing.
+    /// A home tap expands again; the next USER drag re-enables collapsing.
+    /// Deceleration frames keep reporting offsets after the tap — clearing on
+    /// any report made the expand snap back instantly while the list was
+    /// still rolling out.
     private var forceExpanded = false
+    private var userDragging = false
 
     func report(_ y: CGFloat) {
         scrollY = y
-        if forceExpanded { forceExpanded = false }
+        if forceExpanded, userDragging { forceExpanded = false }
         applyCollapsed()
+    }
+
+    /// Scroll-phase channel: true while the user's finger drives the scroll.
+    func setUserDragging(_ dragging: Bool) {
+        userDragging = dragging
+        if forceExpanded, dragging { forceExpanded = false; applyCollapsed() }
     }
 
     func expand() {
@@ -55,6 +65,9 @@ extension View {
     func reportsBottomBarScroll() -> some View {
         onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
             BottomBarState.shared.report(y)
+        }
+        .onScrollPhaseChange { _, newPhase in
+            BottomBarState.shared.setUserDragging(newPhase == .tracking || newPhase == .interacting)
         }
     }
 }

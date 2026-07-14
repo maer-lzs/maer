@@ -50,15 +50,21 @@ struct BottomBarStateTests {
         #expect(crossDown == 1)
     }
 
-    @Test("expand() opens the bar even while scrolled down; the next scroll collapses again")
+    @Test("expand() opens the bar even while scrolled down; the next USER drag collapses again")
     func expandAndRecollapse() {
         let state = BottomBarState()
+        state.setUserDragging(true)
         state.report(200)
         #expect(state.collapsed)
+        state.setUserDragging(false)
         state.expand()
         #expect(!state.collapsed)
-        // Any further scroll report clears the force-expand.
+        // Deceleration keeps reporting after the tap — the expand must hold.
         state.report(210)
+        state.report(240)
+        #expect(!state.collapsed)
+        // A new user drag re-enables collapsing.
+        state.setUserDragging(true)
         #expect(state.collapsed)
     }
 
