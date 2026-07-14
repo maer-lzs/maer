@@ -11,6 +11,8 @@ struct PodcastEpisodeDetailView: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
+    /// D11/B10: timestamp column ("1:23:45") scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     /// Source-aware show: ABS episode → from the ABS store, otherwise RSS.
@@ -180,7 +182,7 @@ struct PodcastEpisodeDetailView: View {
                             Text(chapterTimestamp(chapter.start))
                                 .font(.footnote.monospacedDigit())
                                 .foregroundStyle(.white.opacity(0.6))
-                                .frame(width: 52, alignment: .leading)
+                                .frame(width: timestampWidth, alignment: .leading)
                             Text(chapter.title)
                                 .font(.subheadline)
                                 .foregroundStyle(.white)

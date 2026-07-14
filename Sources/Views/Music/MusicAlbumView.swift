@@ -16,6 +16,8 @@ struct MusicAlbumView: View {
     @State private var notesExpanded = false
     /// M6: high-res front cover from the Cover Art Archive (via release MBID).
     @State private var highResCover: UIImage?
+    /// D12/B11: track-number column scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
     /// Albums can be starred; playlists cannot.
@@ -38,7 +40,7 @@ struct MusicAlbumView: View {
                                 Text("\(index + 1)")
                                     .font(.subheadline.monospacedDigit())
                                     .foregroundStyle(.secondary)
-                                    .frame(width: 24, alignment: .trailing)
+                                    .frame(width: trackNumberWidth, alignment: .trailing)
                                 Text(track.title).lineLimit(1)
                                 Spacer()
                                 Text(Self.duration(track.end - track.start))

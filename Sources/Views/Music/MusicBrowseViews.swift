@@ -39,6 +39,8 @@ struct MusicArtistView: View {
     @State private var topSongs: [(item: LibraryItem, song: SubsonicSong)] = []
     @State private var similarInLibrary: [SubsonicArtist] = []
     @State private var bioExpanded = false
+    /// D12/B11: rank column scales with Dynamic Type.
+    @ScaledMetric(relativeTo: .subheadline) private var rankWidth: CGFloat = 22
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
@@ -132,7 +134,7 @@ struct MusicArtistView: View {
                             Text("\(index + 1)")
                                 .font(.subheadline.monospacedDigit())
                                 .foregroundStyle(.secondary)
-                                .frame(width: 22, alignment: .trailing)
+                                .frame(width: rankWidth, alignment: .trailing)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(entry.song.title ?? "–").lineLimit(1)
                                 if let album = entry.song.album {

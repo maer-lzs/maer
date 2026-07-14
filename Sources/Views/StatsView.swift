@@ -6,6 +6,8 @@ import SwiftUI
 struct StatsView: View {
     @ObservedObject private var stats = ListeningStatsStore.shared
     var libraryViewModel: LibraryViewModel?
+    /// D14/B13: chart height follows the (now scaling) day labels.
+    @ScaledMetric(relativeTo: .caption2) private var chartHeight: CGFloat = 120
 
     var body: some View {
         Form {
@@ -17,7 +19,7 @@ struct StatsView: View {
 
             Section("Last 14 Days") {
                 barChart
-                    .frame(height: 120)
+                    .frame(height: chartHeight)
                     .padding(.vertical, 4)
             }
 
@@ -51,7 +53,9 @@ struct StatsView: View {
                         .frame(height: max(4, CGFloat(day.seconds) / CGFloat(maxSeconds) * 90))
                         .frame(maxHeight: 90, alignment: .bottom)
                     Text(index % 2 == 0 ? day.date.formatted(.dateTime.day()) : " ")
-                        .font(.system(size: 9))
+                        // D14/B13: fixed 9pt ignored Dynamic Type entirely.
+                        .font(.caption2)
+                        .minimumScaleFactor(0.6)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
