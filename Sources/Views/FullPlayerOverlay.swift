@@ -170,13 +170,17 @@ struct FullPlayerOverlay: View {
     }
 
     private func dismissZone(width: CGFloat, height: CGFloat) -> some View {
+        // ORDER MATTERS (same trap as in topDismissZone): contentShape + gesture
+        // must attach to the SMALL frame BEFORE the expanding frame — otherwise
+        // the hit shape covers the rail's full height again and swallows the
+        // controls underneath.
         Color.clear
             .frame(width: width, height: height)
-            .frame(maxHeight: .infinity, alignment: .top)
             .contentShape(Rectangle())
             // minimumDistance > 0: a resting finger on the rail no longer
             // "grabs" the sheet; only an actual drag does.
             .highPriorityGesture(dismissGesture(minimumDistance: 12))
+            .frame(maxHeight: .infinity, alignment: .top)
     }
 
     /// Measured globally (offset container).
