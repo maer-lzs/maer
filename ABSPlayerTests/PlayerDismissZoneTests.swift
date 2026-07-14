@@ -1,3 +1,4 @@
+#if canImport(Testing)
 import Testing
 import CoreGraphics
 @testable import ABSPlayer
@@ -57,3 +58,4 @@ struct PlayerDismissZoneTests {
         #expect(PlayerDismissZones.zoneHeight(zoneRect: strip, controlsFrame: controls, fallback: 180) == 0)
     }
 }
+#endif

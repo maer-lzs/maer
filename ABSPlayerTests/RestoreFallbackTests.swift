@@ -1,3 +1,4 @@
+#if canImport(Testing)
 import Testing
 @testable import ABSPlayer
 
@@ -25,3 +26,4 @@ struct RestoreFallbackTests {
         #expect(PlayerCoordinator.showId(forEpisodeId: "93717f06-plain-book-id") == nil)
     }
 }
+#endif

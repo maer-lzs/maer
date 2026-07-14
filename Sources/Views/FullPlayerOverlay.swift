@@ -120,7 +120,7 @@ struct FullPlayerOverlay: View {
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .highPriorityGesture(dismissGesture)
+            .highPriorityGesture(dismissGesture(minimumDistance: 0))
             .accessibilityLabel(Text("Close player"))
             .accessibilityAddTraits(.isButton)
     }
