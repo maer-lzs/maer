@@ -64,6 +64,15 @@ struct PlayerView: View {
                 layout {
                     cover
                     VStack(spacing: 20) { controlsColumn }
+                        // Report the interactive controls' frame to the overlay:
+                        // its dismiss zones are capped against it (D1) so the
+                        // chapter buttons and the scrubber stay tappable.
+                        .background(GeometryReader { controls in
+                            Color.clear.preference(
+                                key: PlayerControlsFramePreferenceKey.self,
+                                value: controls.frame(in: .named(CoordinateSpace.fullPlayerOverlayName))
+                            )
+                        })
                 }
                 .padding()
                 .padding(.top, 8)

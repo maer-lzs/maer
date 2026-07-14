@@ -17,6 +17,10 @@ struct FullPlayerOverlay: View {
     /// Carries slide-in, release handover, snap-back AND slide-out — a single,
     /// interruptible offset source instead of view transitions.
     @State private var releaseOffset: CGFloat
+    /// Frame of the player's controls column (reported by PlayerView) — the
+    /// dismiss zones are capped against it so they never cover the chapter
+    /// buttons or the scrubber (D1/B1).
+    @State private var controlsFrame: CGRect?
     private let dismissThreshold: CGFloat = 180
 
     init(
@@ -64,6 +68,10 @@ struct FullPlayerOverlay: View {
                 topDismissZone
                 grabHandle
             }
+            // Anchor for the controls-frame preference reported by PlayerView:
+            // local frames stay stable while the whole sheet moves (offset).
+            .coordinateSpace(name: CoordinateSpace.fullPlayerOverlayName)
+            .onPreferenceChange(PlayerControlsFramePreferenceKey.self) { controlsFrame = $0 }
             .background { containerGlass(corner: corner) }
             .offset(y: offset)
             // VoiceOver: two-finger scrub (standard escape) closes the
@@ -117,48 +125,63 @@ struct FullPlayerOverlay: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    /// Side swipe zones; the bottom is left out (scrubber/controls). The width
+    /// Side swipe zones; capped against the reported controls frame so chapter
+    /// buttons and the scrubber stay tappable (D1) — previously a fixed
+    /// 220pt bottom inset that the controls outgrew on narrow phones. The width
     /// grows with the screen: everything outside the max 500pt wide content
     /// column (iPad/landscape), at least 56pt.
     private var sideDismissZones: some View {
         GeometryReader { proxy in
-            let zoneWidth = max(56, (proxy.size.width - 520) / 2)
+            let zoneWidth = PlayerDismissZones.sideZoneWidth(containerWidth: proxy.size.width)
+            let fallback = proxy.size.height - 220
+            let leftRect = CGRect(x: 0, y: 0, width: zoneWidth, height: fallback)
+            let rightRect = CGRect(x: proxy.size.width - zoneWidth, y: 0, width: zoneWidth, height: fallback)
             HStack {
-                dismissZone(width: zoneWidth)
+                dismissZone(width: zoneWidth, height: PlayerDismissZones.zoneHeight(
+                    zoneRect: leftRect, controlsFrame: controlsFrame, fallback: fallback))
                 Spacer()
-                dismissZone(width: zoneWidth)
+                dismissZone(width: zoneWidth, height: PlayerDismissZones.zoneHeight(
+                    zoneRect: rightRect, controlsFrame: controlsFrame, fallback: fallback))
             }
-            .padding(.bottom, 220)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 
     /// Full-width strip across the top (cover area) — pull-down can start
     /// anywhere up there, not just on the thin grab handle or the side rails.
+    /// Capped against the controls frame: in iPhone landscape the side-by-side
+    /// layout puts the scrubber INSIDE the former fixed-height strip (D1).
     /// ORDER MATTERS: contentShape + gesture must attach to the SMALL strip
     /// BEFORE expanding the frame — applied after `.frame(maxHeight:
     /// .infinity)` the hit shape covers the whole screen and the
     /// minimumDistance-0 drag swallows every tap (player appears dead).
     private var topDismissZone: some View {
+        GeometryReader { proxy in
+            let fallback = topInset + 130
+            let strip = CGRect(x: 0, y: 0, width: proxy.size.width, height: fallback)
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(height: PlayerDismissZones.zoneHeight(
+                    zoneRect: strip, controlsFrame: controlsFrame, fallback: fallback))
+                .frame(maxWidth: .infinity)
+                .highPriorityGesture(dismissGesture(minimumDistance: 0))
+                .frame(maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private func dismissZone(width: CGFloat, height: CGFloat) -> some View {
         Color.clear
-            .contentShape(Rectangle())
-            .frame(height: topInset + 130)
-            .frame(maxWidth: .infinity)
-            .highPriorityGesture(dismissGesture)
+            .frame(width: width, height: height)
             .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private func dismissZone(width: CGFloat) -> some View {
-        Color.clear
-            .frame(width: width)
-            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
-            .highPriorityGesture(dismissGesture)
+            // minimumDistance > 0: a resting finger on the rail no longer
+            // "grabs" the sheet; only an actual drag does.
+            .highPriorityGesture(dismissGesture(minimumDistance: 12))
     }
 
-    /// Measured globally (offset container), minimumDistance 0.
-    private var dismissGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+    /// Measured globally (offset container).
+    private func dismissGesture(minimumDistance: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: minimumDistance, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
                 state = max(0, value.translation.height)
             }
