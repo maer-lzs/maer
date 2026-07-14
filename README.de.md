@@ -1,6 +1,6 @@
 # Mär
 
-Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/) **und Podcasts**.
+Ein schlanker, quelloffener iOS-/iPad-Client für [Audiobookshelf](https://www.audiobookshelf.org/), **Podcasts und Musik**.
 Sein Fundament: **verlässlicher Fortschritts-Sync** über mehrere
 Geräte hinweg, ohne dass ein Buch versehentlich auf 0 zurückgesetzt wird —
 auch komplett offline.
@@ -11,7 +11,7 @@ auch komplett offline.
 
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel
 regelmäßig den Hörfortschritt verlor. Inzwischen ist daraus ein universeller
-Client für selbst gehostete Audioquellen geworden — **Hörbücher und Podcasts**,
+Client für selbst gehostete Audioquellen geworden — **Hörbücher, Podcasts und Musik**,
 auf einer Provider-Architektur —, dabei bewusst fokussiert: kein Multi-User,
 keine Server-Verwaltung, nur hören und den Stand verlässlich synchronisieren,
 online wie offline.
@@ -21,9 +21,9 @@ online wie offline.
 
 ## Screenshots
 
-| Bibliothek | Player | Buchseite |
+| Bibliothek | Player | Musik |
 |---|---|---|
-| ![Bibliothek](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Buchseite](screenshots/iphone_detail.png) |
+| ![Bibliothek](screenshots/iphone_library.png) | ![Player](screenshots/iphone_player.png) | ![Musik](screenshots/iphone_music.png) |
 
 | Bibliothek (iPad) | Buchseite (iPad) |
 |---|---|
@@ -60,8 +60,7 @@ online wie offline.
   Detailseite aus, mit einem Play/Pause-Button, der eine bereits laufende
   Session korrekt anzeigt und steuert
 - Persistente, schwebende Mini-Player-Leiste im Look von Apples Liquid-Glass-
-  Design (iOS 26, mit sicherem Material-Rückfallnetz auf älteren Versionen),
-  mit kreisförmigem Fortschrittsring ums Cover; zusätzliche Transport-Buttons
+  Design (iOS 26), mit kreisförmigem Fortschrittsring ums Cover; zusätzliche Transport-Buttons
   (Vor-/Zurückspulen, AirPlay) erscheinen nur auf dem iPad oder im
   Querformat, damit auf dem iPhone im Hochformat mehr Platz für den Titel
   bleibt; stellt die zuletzt gehörte Session auch nach einem kompletten
@@ -138,6 +137,12 @@ online wie offline.
   statt des vollen Covers — flüssiges Scrollen und deutlich weniger
   Speicher bei großen Bibliotheken; die Bücherliste kommt im minified-
   Format vom Server
+- **Barrierefreiheit**: volle Dynamic-Type-Unterstützung bis zu den
+  Accessibility-Textgrößen — Bedien-Reihen brechen in ein Zwei-Spalten-Raster
+  um, feste Kacheln bekommen Zeilen, hartkodierte Maße skalieren über
+  `@ScaledMetric`; VoiceOver-Labels auf allen Bedienelementen und
+  44-pt-Trefferflächen; über Gerätegrößen von der 375-pt-Klasse bis iPad und
+  in beiden Ausrichtungen geprüft
 - Härtung: Speicherplatz-Check vor Downloads, Magic-Byte-Container-
   Erkennung mit automatischer Endungs-Reparatur (unit-getestet),
   automatische Erholung bei mitten in der Wiedergabe kaputten Tracks statt
@@ -156,6 +161,17 @@ Version 2.0 macht Mär neben Hörbüchern zu einem vollwertigen **Podcast-Client
 - **Reiche Metadaten** aus RSS / Podcasting 2.0 und der PodcastIndex-API: Staffeln, Folgentyp, Explicit, Gäste/Personen, Transkripte, Funding-Links, Kategorien
 - **Background-Refresh** (`BGAppRefreshTask`) mit gebündelten Benachrichtigungen je Sendung, Offline-Downloads, Queue, Kapitel, hochauflösende Feed-Cover, CarPlay und ein „Als Nächstes"-Home-Widget
 - Hör-History-Brücke zwischen RSS- und ABS-Podcast-Folgen (geteilter Fortschritt, optionaler Server-Push)
+
+## Musik
+
+Version 2.1 ergänzt **Musik** als dritten Medientyp, für **Subsonic-/OpenSubsonic**-kompatible Server (Navidrome, Gonic, Airsonic). Wie Podcasts liegt sie hinter demselben Provider-Protokoll — Hörbuch- und Podcast-Wiedergabe bleiben unberührt; ein Musik-Tab erscheint, sobald unter Einstellungen → Musik ein Server eingerichtet ist.
+
+- **Medientyp-eigenes Browsen** (nicht das Hörbuch-Grid): Reihen für „Kürzlich hinzugefügt" und „Häufig gespielt", Browse-Zeilen für Künstler und Playlists sowie das volle Album-Raster, im Hintergrund seitenweise nachgeladen. Ein Album ist ein mehrspuriges Item — ein Tap auf einen Track spielt das ganze Album ab dieser Stelle, über denselben Player wie alles andere.
+- **Künstler-Seiten** (OpenSubsonic): Künstlerbild und Biografie, Top-Songs (Tap spielt), ähnliche Künstler begrenzt auf die, die es in deiner eigenen Bibliothek tatsächlich gibt. Alles best-effort — ein Server ohne Metadaten-Agent zeigt einfach weniger Sektionen.
+- **Album-Detail**: Notes, Jahr · Genre, ein Favoriten-Umschalter (Herz) und Offline-Download des ganzen Albums. Ein hochauflösendes Front-Cover kommt vom **Cover Art Archive**, wenn das Album eine MusicBrainz-ID trägt (unter Beachtung von User-Agent und der 1-Anfrage-pro-Sekunde-Regel).
+- **Songtexte im Player**: zuerst vom Server (`getLyricsBySongId`), mit dem offenen Dienst **LRCLIB** als Fallback (ein ±5-s-Dauer-Check sichert dessen unscharfes Matching ab); synchrone Texte heben die aktuelle Zeile hervor und folgen der Wiedergabe (Tap zum Springen), unsynchrone erscheinen als statischer Text. Ergebnisse — auch Negativtreffer — werden auf der Festplatte gecacht, damit Button und Panel sofort reagieren und offline funktionieren.
+- **Favoriten** (Herz an/aus) und **Scrobbeln beim Abspielen**: die Server-eigenen Playcounts, und Last.fm / ListenBrainz, wenn der Server Scrobbles weiterleitet.
+- Bewusst kein serverseitiger Positions-Sync für Musik (braucht keinen); Wiedergabe, Downloads und ein CarPlay-Musik-Tab nutzen den geteilten Kern. Die Metadaten-Endpunkte sind, wo vorhanden, gegen die OpenSubsonic-Erweiterungen verifiziert.
 
 ## Die Sync-Kernregel
 
@@ -186,13 +202,17 @@ Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung.
 
 ## Voraussetzungen
 
-- Xcode mit verfügbarem iOS-26-SDK (zwingend zum Bauen, da Mini-Player und
-  Such-Button Apples Liquid-Glass-API hinter einer Verfügbarkeitsprüfung
-  nutzen), Swift 5.9+
-- Deployment-Ziel weiterhin iOS/iPadOS 17+ — die App läuft zur Laufzeit auch
-  auf älteren iOS-Versionen, dort greift dann automatisch ein einfaches,
-  durchscheinendes Material statt Liquid Glass
-- Ein laufender Audiobookshelf-Server und deine Zugangsdaten oder ein API-Token
+- Xcode mit verfügbarem iOS-26-SDK (zwingend zum Bauen, da die App Apples
+  Liquid-Glass-API nutzt)
+- Deployment-Ziel **iOS/iPadOS 26.5** (Mindest-Laufzeitversion)
+- Mindestens ein selbst gehosteter Server:
+  - **Audiobookshelf** für Hörbücher und Podcasts — mit deinen Zugangsdaten
+    oder einem API-Token
+  - und/oder ein **Subsonic-/OpenSubsonic**-kompatibler Musik-Server
+    (Navidrome, Gonic, Airsonic) für den Musik-Tab
+  - Podcast-Abos können zusätzlich über einen selbst gehosteten
+    **gpodder-/oPodSync**-Server synchronisieren (optional; iCloud und
+    Audiobookshelf sind die anderen Backends)
 - Eine Apple-ID zum Signieren (kostenlos genügt; siehe Hinweis zur 7-Tage-
   Signatur unten)
 
@@ -270,6 +290,7 @@ Sources/
 │   ├── ABSProvider.swift           Audiobookshelf als erster Provider
 │   ├── LocalProvider.swift         Importierte lokale Audiodateien (kein Server)
 │   ├── LocalLibrary.swift          Lokaler Datei-Index + AVAsset-Metadaten
+│   ├── SubsonicProvider.swift      Subsonic/OpenSubsonic-Musik (Navidrome, Gonic, Airsonic)
 │   ├── RSSProvider.swift           Podcasts: RSS-Episoden als Library-Items
 │   ├── ABSPodcastProvider.swift    Audiobookshelf-Podcast-Libraries (opt-in-Quelle)
 │   ├── PodcastSubscriptions.swift  Feed-Store + RSS/Podcasting-2.0-Parser (XMLParser)
@@ -282,6 +303,7 @@ Sources/
 │   └── CarPlaySceneDelegate.swift  CarPlay-Tabs (Weiter hören/Downloads/Bibliothek) + Now Playing
 ├── Models/
 │   ├── AudiobookshelfModels.swift  Codable-Structs für die Audiobookshelf-API
+│   ├── SubsonicModels.swift        Codable-Structs für die Subsonic/OpenSubsonic-API
 │   ├── SyncRules.swift             Reine, getestete Sync-Entscheidungsregeln + Multi-Track-Zeitrechnung
 │   ├── PlaybackActivityAttributes.swift  Gemeinsamer Live-Activity-Vertrag (App + Widget-Extension)
 │   └── AppStorageKeys.swift        Zentrale UserDefaults-Keys inkl. Aufräumen der pro-Buch-Keys
@@ -291,6 +313,8 @@ Sources/
 │   ├── DownloadManager.swift       Mehrteilige Offline-Downloads + deren Metadaten-Cache
 │   ├── FileDownloader.swift        Geteilte Background-URLSession mit Fortschrittsanzeige
 │   ├── ImageCache.swift            Cover-Cache: Speicher + purgebarer Cache + persistenter Ordner für Downloads
+│   ├── SubsonicClient.swift        Subsonic/OpenSubsonic-API (Token+Salt-Auth, Streaming, Lyrics)
+│   ├── CoverArtArchive.swift       Hochauflösende Album-Cover per MusicBrainz-ID (ratenbegrenzt)
 │   ├── NetworkMonitor.swift        Fortlaufende Netzwerk-Beobachtung (Auto-Reconnect)
 │   ├── NetworkStatus.swift         Einmaliger WLAN-Check + geteilte Offline-Fehler-Erkennung
 │   ├── BookmarkQueue.swift         Offline-Warteschlange + Cache für Lesezeichen
@@ -337,10 +361,12 @@ Sources/
     ├── CoverColorLoader.swift      Extrahiert Akzentfarbe aus dem Cover
     ├── ChapterListView.swift       Kapitelliste als Sheet
     ├── Haptics.swift               Kleiner Helfer für haptisches Feedback
-    ├── MediaTabBar.swift           Medientyp-Umschalter Hörbücher/Podcasts
+    ├── MediaTabBar.swift           Medientyp-Umschalter Hörbücher/Podcasts/Musik
+    ├── MediaRowContent.swift       Geteiltes Listen-Zeilen-Layout (Podcast-Folgen, geladene Bücher)
     ├── PodcastsView.swift          Podcast-Home (Fortsetzen, Empfehlungen, Queue, Reihen)
     ├── PodcastSourceView.swift     Podcasts hinzufügen/importieren, Abo-Quellen wählen
-    └── Podcasts/                   Sendung, Folge, Queue, Discover, Pro-Sendung-Einstellungen, Karten
+    ├── Podcasts/                   Sendung, Folge, Queue, Discover, Pro-Sendung-Einstellungen, Karten
+    └── Music/                      Musik-Home, Album, Künstler, Playlists, Songtext-Panel
 ```
 
 **Architektur-Hinweis Mini-Player:** Der `PlayerCoordinator` lebt in
@@ -365,6 +391,8 @@ Verwendete API-Endpunkte:
 | gpodder/mygpo-Sync | `POST /api/2/auth/{user}/login.json`, `GET/POST /api/2/subscriptions/{user}/{device}.json`, `GET/POST /api/2/episodes/{user}.json` |
 
 Podcasts sprechen zusätzlich mit externen **RSS-Feeds**, der **PodcastIndex**-API (Entdecken/Metadaten, optionaler Key) und deinem selbst gehosteten **gpodder/mygpo**-Server.
+
+Musik spricht mit deinem **Subsonic/OpenSubsonic**-Server (`ping`, `getAlbumList2`, `getAlbum`, `getArtists`, `getArtist`, `getArtistInfo2`, `getAlbumInfo2`, `getTopSongs`, `search3`, `getPlaylists`, `getLyricsBySongId`, `stream`, `getCoverArt`, `scrobble`, `star`), dem **Cover Art Archive** (hochauflösende Cover per MusicBrainz-ID) und **LRCLIB** (offener Songtext-Fallback).
 
 ## Über dieses Projekt
 Mär ist mit Unterstützung von KI entwickelt.
