@@ -4,8 +4,8 @@ import SwiftUI
 /// server-bound apps). Fill in with a hosted demo server before submitting; as
 /// long as both values are nil, none of it appears in the app.
 enum DemoAccess {
-    static let serverURL: String? = nil
-    static let apiToken: String? = nil
+    static let serverURL: String? = "https://demo.maer.fm"
+    static let apiToken: String? = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyMTdhYjNhNC1mYWNkLTRmNzctYTdmMC1iMWQzZTAxZjQzNTQiLCJ1c2VybmFtZSI6ImRlbW8iLCJpYXQiOjE3ODQwNjk3Mjl9.DWjbaz_Z-t3xSEzGRv75UKIkqcOj0NM3Lt7GjYIeTME"
 
     static var isAvailable: Bool { serverURL != nil && apiToken != nil }
 }
