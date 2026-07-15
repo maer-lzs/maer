@@ -50,6 +50,22 @@ struct MusicAlbumView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        // S18: song long-press — play from here + album download
+                        // (music downloads are per album).
+                        .contextMenu {
+                            Button {
+                                Task { await play(fromTrackAt: track.start) }
+                            } label: { Label("Play from Here", systemImage: "play.fill") }
+                            if downloadManager.isDownloaded(itemId: item.id) {
+                                Button(role: .destructive) {
+                                    downloadManager.deleteDownload(itemId: item.id)
+                                } label: { Label("Delete Download", systemImage: "trash") }
+                            } else if let detail, NetworkMonitor.shared.isConnected {
+                                Button {
+                                    Task { await downloadManager.download(item: detail, provider: AppSession.shared.subsonicProvider) }
+                                } label: { Label("Download Album", systemImage: "arrow.down.circle") }
+                            }
+                        }
                     }
                 }
             } else if loadFailed {

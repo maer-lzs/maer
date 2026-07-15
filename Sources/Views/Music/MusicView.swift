@@ -166,5 +166,38 @@ struct AlbumCell: View {
             .frame(width: width, alignment: .leading)
         }
         .buttonStyle(.plain)
+        .musicItemMenu(item: item, playerCoordinator: playerCoordinator)
+    }
+}
+
+extension View {
+    /// S18: context menu for a music album/song — mirrors the podcast/book
+    /// menus (Regel 2). Play + download/delete. The "Play Next/Last" queue
+    /// actions plug in here once the global Up-Next queue lands (music has none
+    /// yet), so the shape already matches the other tabs.
+    func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
+        contextMenu {
+            let isPlayable = NetworkMonitor.shared.isConnected
+                || DownloadManager.shared.isDownloaded(itemId: item.id)
+            if isPlayable {
+                Button {
+                    Task { await playerCoordinator.open(item: item) }
+                } label: { Label("Play", systemImage: "play.fill") }
+            }
+            if DownloadManager.shared.isDownloaded(itemId: item.id) {
+                Button(role: .destructive) {
+                    DownloadManager.shared.deleteDownload(itemId: item.id)
+                } label: { Label("Delete Download", systemImage: "trash") }
+            } else if NetworkMonitor.shared.isConnected {
+                Button {
+                    Task {
+                        let p = AppSession.shared.provider(for: item.id)
+                        if let d = try? await p.fetchItemDetail(itemId: item.id) {
+                            await DownloadManager.shared.download(item: d, provider: p)
+                        }
+                    }
+                } label: { Label("Download", systemImage: "arrow.down.circle") }
+            }
+        }
     }
 }
