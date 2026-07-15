@@ -30,6 +30,11 @@ struct MusicView: View {
             } else {
                 ScrollView { content }
                     .bottomBarClearance()
+                    // S17: bind the Music tab to the shared BottomBarState like
+                    // the other tabs — without this its scroll never reported, so
+                    // the bar stayed expanded (heavy/opaque look) and never
+                    // collapsed. One binding, both symptoms.
+                    .reportsBottomBarScroll()
             }
         }
         .task { await vm.loadIfNeeded() }
