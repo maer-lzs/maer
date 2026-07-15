@@ -1,6 +1,7 @@
 import ActivityKit
 import SwiftUI
 import WidgetKit
+import UIKit   // S15b: adaptive system colors for the activity background tint
 
 /// Widget bundle of the extension. This file belongs ONLY to the widget
 /// extension target (see ANLEITUNG.md) — the target also needs
@@ -21,9 +22,12 @@ struct MaerWidgetBundle: WidgetBundle {
 struct PlaybackLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlaybackActivityAttributes.self) { context in
-            // System default background (adaptive light/dark) instead of the app
-            // look: Live Activities should adapt to iOS.
+            // S15b: Apple media-activity look — an ADAPTIVE system material
+            // background (light in light mode, dark in dark) with adaptive
+            // foreground, instead of leaning on the dark-looking default.
             LockScreenView(context: context)
+                .activityBackgroundTint(Color(uiColor: .secondarySystemBackground))
+                .activitySystemActionForegroundColor(Color(uiColor: .label))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
