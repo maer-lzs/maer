@@ -27,8 +27,8 @@ struct PlaybackLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    StatusIcon(state: context.state)
-                        .font(.title2)
+                    // Apple media convention: artwork in the expanded island.
+                    CoverThumb(state: context.state, size: 40)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     CountdownText(state: context.state)
@@ -66,20 +66,25 @@ struct PlaybackLiveActivity: Widget {
     }
 }
 
-/// Sperrbildschirm: bewusst EIN schmaler Streifen unter Apples Player.
+/// Lock screen: Apple media-activity layout — leading artwork (with the sleep/
+/// play status as a corner badge), title + chapter, trailing countdown.
 private struct LockScreenView: View {
     let context: ActivityViewContext<PlaybackActivityAttributes>
 
     var body: some View {
         HStack(spacing: 12) {
-            StatusIcon(state: context.state)
-                .font(.title3)
-            VStack(alignment: .leading, spacing: 1) {
+            CoverThumb(state: context.state, size: 44)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(context.attributes.bookTitle)
                     .font(.footnote.bold())
                     .lineLimit(1)
                 if let chapter = context.state.chapterName {
                     Text(chapter)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                } else if let author = context.attributes.author {
+                    Text(author)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -93,6 +98,44 @@ private struct LockScreenView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+}
+
+/// Book/album cover from the shared app-group container (same PNG the home-
+/// screen widgets use), with the sleep/play status glyph as a corner badge.
+private struct CoverThumb: View {
+    let state: PlaybackActivityAttributes.ContentState
+    var size: CGFloat
+
+    var body: some View {
+        Group {
+            if let cover = Self.cover {
+                Image(uiImage: cover)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
+                    .fill(.secondary.opacity(0.2))
+                    .overlay(Image(systemName: "headphones").foregroundStyle(.secondary))
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.18, style: .continuous))
+        .overlay(alignment: .bottomTrailing) {
+            StatusIcon(state: state)
+                .font(.system(size: size * 0.28))
+                .foregroundStyle(.white)
+                .padding(size * 0.09)
+                .background(.black.opacity(0.55), in: Circle())
+                .padding(2)
+        }
+    }
+
+    /// Small PNG, read on demand (Live Activity views re-render on state change,
+    /// not per frame). Same source as `ContinueListeningWidget`.
+    static var cover: UIImage? {
+        guard let url = WidgetSnapshot.coverURL, let data = try? Data(contentsOf: url) else { return nil }
+        return UIImage(data: data)
     }
 }
 
