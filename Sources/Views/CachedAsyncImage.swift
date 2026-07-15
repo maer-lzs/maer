@@ -19,8 +19,12 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     var body: some View {
         Group {
-            if let uiImage {
-                content(Image(uiImage: uiImage))
+            // S16: prefer the loaded image; otherwise a synchronous warm-cache
+            // peek so a re-entering cell renders its (display-ready) thumbnail on
+            // frame 1 — no placeholder flash, no async round-trip in the scroll
+            // path. Cold cells fall back to the placeholder + async `load()`.
+            if let img = uiImage ?? warmThumbnail {
+                content(Image(uiImage: img))
             } else {
                 placeholder()
             }
@@ -28,6 +32,12 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         .task(id: url) {
             await load()
         }
+    }
+
+    /// Synchronous hit against the in-memory thumbnail cache (thumbnail cells only).
+    private var warmThumbnail: UIImage? {
+        guard uiImage == nil, useThumbnail, let url else { return nil }
+        return ImageCache.shared.cachedThumbnail(for: url, maxPixelSize: thumbnailMaxPixel)
     }
 
     private func load() async {

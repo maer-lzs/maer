@@ -1,5 +1,6 @@
 import UIKit
 import ImageIO
+import OSLog
 
 /// Two-tier cache for cover images: memory + disk. Disk in TWO tiers:
 /// - `Caches/CoverCache`: normal library — iOS may purge it under memory pressure.
@@ -129,6 +130,15 @@ final class ImageCache {
         await thumbnail(for: url, maxPixelSize: thumbPixelSize)
     }
 
+    /// S16: synchronous memory-cache peek (no disk, no decode). Lets a cell show
+    /// a WARM, already display-ready thumbnail on its very first frame instead of
+    /// flashing the placeholder and awaiting a round-trip each time it re-enters
+    /// the viewport — takes the warm-cover cost fully out of the scroll path.
+    func cachedThumbnail(for url: URL, maxPixelSize: CGFloat? = nil) -> UIImage? {
+        let cacheKey = "\(key(for: url))@\(Int(maxPixelSize ?? thumbPixelSize))" as NSString
+        return thumbCache.object(forKey: cacheKey)
+    }
+
     /// As above, but with a freely chosen target size (e.g. 800 px for the large
     /// "Up Next" cards). The cache is size-aware keyed so 400- and 800-px
     /// variants of the same cover do not overwrite each other.
@@ -136,6 +146,9 @@ final class ImageCache {
         let fileKey = key(for: url)
         let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
         if let cached = thumbCache.object(forKey: cacheKey) {
+            // S16: a warm hit returns a display-ready image (see decodedThumbnail)
+            // — no main-thread decode at draw time.
+            PerfSignpost.cover.emitEvent("thumb-hit")
             return cached
         }
         let candidates = [persistentDirectory, diskDirectory].map { $0.appendingPathComponent(fileKey) }
@@ -160,6 +173,8 @@ final class ImageCache {
     /// Pure decode-to-size without the re-encode `downsampled` does — thumbs
     /// never touch the disk.
     private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {
+        let sp = PerfSignpost.cover.beginInterval("decode")
+        defer { PerfSignpost.cover.endInterval("decode", sp) }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -167,7 +182,13 @@ final class ImageCache {
             kCGImageSourceCreateThumbnailWithTransform: true
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
-        return UIImage(cgImage: cg)
+        // S16: force the pixel decode NOW, off the main actor, into a
+        // display-ready bitmap. `CGImageSourceCreateThumbnailAtIndex` returns a
+        // lazily-decoded image; without this the render server decodes it on the
+        // MAIN thread at first draw — the exact hitch when the Downloaded rows
+        // (and any thumbnail cell) enter the viewport and rebuild. Runs here
+        // inside the detached decode task, so it stays off the main thread.
+        return UIImage(cgImage: cg).preparingForDisplay() ?? UIImage(cgImage: cg)
     }
 
     /// Full-size cached image. Memory-cache hits return immediately; the disk
