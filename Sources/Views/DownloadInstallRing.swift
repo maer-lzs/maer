@@ -1,18 +1,20 @@
 import SwiftUI
 
 /// Download indicator shown over a cover while a download runs or is paused.
-/// The ring itself is a cancel button with its own bounded hit area, so a tap on
-/// the ring cancels the download instead of triggering the card/cell action
-/// underneath; taps outside the ring pass through to that parent.
+/// It is a cancel button with its own bounded hit area, so a tap cancels the
+/// download instead of triggering the card/cell action underneath; taps outside
+/// pass through to that parent.
 ///
-/// S11: the ring/spinner is the shared `UnifiedDownloadRing` — a determinate
-/// ring for a known size, an indeterminate spinner for the `-1` sentinel
-/// (server without a size), identical to the podcast/music controls. Over the
-/// cover it keeps the dim backdrop and a ✕ / pause affordance in the middle.
-/// Renders nothing when the item is not downloading.
+/// S11b: DISCREET podcast-spinner look (was a big App-Store ring with a
+/// full-cover dim + ✕). A small centered badge — dark disc + the shared
+/// `UnifiedDownloadRing` (determinate ring for a known size, indeterminate
+/// spinner for the `-1` sentinel) — so the book grid/card read like the podcast
+/// and music download controls. A pause glyph replaces nothing extra when
+/// paused. Renders nothing when the item is not downloading.
 struct DownloadInstallRing: View {
     let itemId: String
-    /// Ring diameter relative to the smaller container edge.
+    /// Kept for source-compatibility with the existing call sites; the badge is
+    /// now a fixed discreet size, so the cover-relative diameter is unused.
     var diameterFraction: CGFloat = 0.4
     var lineWidth: CGFloat = 3
 
@@ -20,41 +22,28 @@ struct DownloadInstallRing: View {
 
     var body: some View {
         if let phase = downloads.phase[itemId], let fraction = phase.progress {
-            GeometryReader { geo in
-                let d = min(geo.size.width, geo.size.height) * diameterFraction
-                let paused: Bool = { if case .paused = phase { return true } else { return false } }()
+            let paused: Bool = { if case .paused = phase { return true } else { return false } }()
+            Button {
+                downloads.cancelDownload(itemId: itemId)
+            } label: {
                 ZStack {
-                    Color.black.opacity(0.45)
-                    Button {
-                        downloads.cancelDownload(itemId: itemId)
-                    } label: {
-                        ZStack {
-                            UnifiedDownloadRing(fraction: fraction, lineWidth: lineWidth, tint: .white)
-                                .frame(width: d, height: d)
-                            // Cancel/pause glyph in the middle. The indeterminate
-                            // spinner is its own affordance (tap still cancels),
-                            // so no ✕ is layered on top of it.
-                            if paused {
-                                glyph("pause.fill", d: d)
-                            } else if fraction >= 0 {
-                                glyph("xmark", d: d)
-                            }
-                        }
-                        // 44pt minimum hit target even on small grid covers.
-                        .frame(width: max(44, d), height: max(44, d))
-                        .contentShape(Circle())
+                    Circle().fill(.black.opacity(0.4))
+                        .frame(width: 40, height: 40)
+                    UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
+                        .frame(width: 22, height: 22)
+                    if paused {
+                        Image(systemName: "pause.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Cancel Download"))
                 }
-                .frame(width: geo.size.width, height: geo.size.height)
+                .frame(width: 44, height: 44)   // 44pt hit target
+                .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Cancel Download"))
+            // Center the discreet badge over the cover area handed to us.
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-    }
-
-    private func glyph(_ name: String, d: CGFloat) -> some View {
-        Image(systemName: name)
-            .font(.system(size: d * 0.34, weight: .bold))
-            .foregroundStyle(.white)
     }
 }
