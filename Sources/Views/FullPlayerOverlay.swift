@@ -169,7 +169,10 @@ struct FullPlayerOverlay: View {
                 .frame(height: PlayerDismissZones.topZoneHeight(
                     controlsFrame: controlsFrame, fallback: topInset + 130))
                 .frame(maxWidth: .infinity)
-                .highPriorityGesture(dismissGesture(minimumDistance: 0))
+                // S9b: direction-arbitrating gesture (vertical → dismiss,
+                // horizontal → chapter/track) so the cover-swipe works in portrait
+                // where this strip covers the cover.
+                .highPriorityGesture(coverAreaGesture())
                 .frame(maxHeight: .infinity, alignment: .top)
         }
     }
@@ -196,24 +199,52 @@ struct FullPlayerOverlay: View {
             .updating($dragOffset) { value, state, _ in
                 state = max(0, value.translation.height)
             }
-            .onEnded { value in
-                let end = max(0, value.translation.height)
-                let shouldDismiss = end > dismissThreshold
-                    || value.predictedEndTranslation.height > dismissThreshold * 2
-                // Take over the offset seamlessly (GestureState resets instantly).
-                releaseOffset = end
-                if shouldDismiss {
-                    // Slide out first, then tear down (no transition hitch).
-                    withAnimation(.easeOut(duration: 0.45)) {
-                        releaseOffset = presentHeight
-                    } completion: {
-                        onDismiss()
-                    }
-                } else {
-                    withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) {
-                        releaseOffset = 0
-                    }
+            .onEnded { value in handleDismissEnd(value) }
+    }
+
+    /// S9b: the top strip lies OVER the cover, so with `minimumDistance 0` its
+    /// pull-down swallowed the horizontal cover-swipe (S9) before it could act.
+    /// This variant arbitrates by direction: a vertical-dominant drag follows the
+    /// sheet and can dismiss; a clearly horizontal fling navigates chapters
+    /// (music: tracks) and leaves the sheet put. Used ONLY on the top/cover strip
+    /// — the rails and the bottom strip keep the plain pull-down.
+    private func coverAreaGesture() -> some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
+            .updating($dragOffset) { value, state, _ in
+                // Follow the sheet only while the drag is vertical-dominant.
+                if abs(value.translation.height) >= abs(value.translation.width) {
+                    state = max(0, value.translation.height)
                 }
             }
+            .onEnded { value in
+                let dx = value.translation.width, dy = value.translation.height
+                if abs(dx) > abs(dy), abs(dx) > 50 {
+                    if dx < 0 { coordinator.viewModel?.nextChapter() }
+                    else { coordinator.viewModel?.previousChapter() }
+                    withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) { releaseOffset = 0 }
+                    return
+                }
+                handleDismissEnd(value)
+            }
+    }
+
+    private func handleDismissEnd(_ value: DragGesture.Value) {
+        let end = max(0, value.translation.height)
+        let shouldDismiss = end > dismissThreshold
+            || value.predictedEndTranslation.height > dismissThreshold * 2
+        // Take over the offset seamlessly (GestureState resets instantly).
+        releaseOffset = end
+        if shouldDismiss {
+            // Slide out first, then tear down (no transition hitch).
+            withAnimation(.easeOut(duration: 0.45)) {
+                releaseOffset = presentHeight
+            } completion: {
+                onDismiss()
+            }
+        } else {
+            withAnimation(.snappy(duration: 0.32, extraBounce: 0.06)) {
+                releaseOffset = 0
+            }
+        }
     }
 }
