@@ -108,6 +108,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
+    /// S19b: true when `chapters` is a track/rest fallback (the server's chapters
+    /// didn't cover the book) — the selector shows a discreet hint.
+    @Published var chaptersAreFallback = false
     @Published var playbackRate: Float = 1.0
     /// When the current pause started — basis for Smart Rewind on resume.
     private var pausedAt: Date?
@@ -366,10 +369,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   every source, not just feeds without server progress.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
         self.item = item
-        // S19: drop broken chapters (overlapping/out-of-range/zero-length) up
-        // front so both the player display and the selector use the same clean
-        // list — no nonsense chapter labels / negative "min left".
-        chapters = ChapterModel.validated(item.media.chapters ?? [], duration: item.media.duration ?? 0)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
             // index is missing/equal — Swift's sort is not stability-guaranteed,
@@ -380,6 +379,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }.map(\.element)
         tracks = sortedTracks
         duration = item.media.duration ?? sortedTracks.reduce(0) { $0 + ($1.duration ?? 0) }
+
+        // S19/S19b: resolve the chapter list once — validated chapters if they
+        // cover the book, otherwise a track/rest fallback (ABS ships items with
+        // chapters covering only part of the duration). Selector, player display
+        // and the S9b chapter-swipe all use THIS list.
+        let resolvedChapters = ChapterModel.resolved(
+            chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration)
+        chapters = resolvedChapters.chapters
+        chaptersAreFallback = resolvedChapters.isFallback
 
         guard !sortedTracks.isEmpty else {
             errorMessage = String(localized: "No playable track found.")

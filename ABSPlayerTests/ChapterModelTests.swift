@@ -67,5 +67,61 @@ struct ChapterModelTests {
         #expect(v.map(\.id) == [0, 2])
         #expect(ChapterModel.current(at: 150, in: v) == nil)
     }
+
+    // MARK: - S19b coverage + track fallback
+
+    private func trk(_ i: Int, _ start: Double, _ dur: Double) -> ABSAudioTrack {
+        ABSAudioTrack(index: i, startOffset: start, duration: dur, contentUrl: "f\(i)", metadata: nil)
+    }
+
+    @Test("coversBook: reliable at >=90%, unreliable below / empty")
+    func coverage() {
+        #expect(ChapterModel.coversBook([ch(0, 0, 100), ch(1, 900, 1000)], duration: 1000) == true)
+        #expect(ChapterModel.coversBook([ch(0, 0, 100), ch(1, 800, 850)], duration: 1000) == false)
+        #expect(ChapterModel.coversBook([], duration: 1000) == false)
+    }
+
+    @Test("resolved: chapters that cover the book are kept (not a fallback)")
+    func resolvedReliable() {
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 500), ch(1, 500, 1000)], tracks: [], duration: 1000)
+        #expect(r.isFallback == false)
+        #expect(r.chapters.map(\.id) == [0, 1])
+    }
+
+    @Test("resolved: partial chapters + multi-track -> one chapter per track (mp3 case)")
+    func resolvedMultiTrack() {
+        let tracks = [trk(0, 0, 300), trk(1, 300, 300), trk(2, 600, 400)]
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: tracks, duration: 1000)
+        #expect(r.isFallback == true)
+        #expect(r.chapters.map(\.start) == [0, 300, 600])
+        #expect(r.chapters.last?.end == 1000)
+    }
+
+    @Test("resolved: partial chapters + single file -> chapters + remaining (m4b case)")
+    func resolvedSingleFile() {
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 100), ch(1, 100, 200)],
+                                      tracks: [trk(0, 0, 1000)], duration: 1000)
+        #expect(r.isFallback == true)
+        #expect(r.chapters.count == 3)               // 2 chapters + "remaining"
+        #expect(r.chapters.last?.start == 200)
+        #expect(r.chapters.last?.end == 1000)
+    }
+
+    @Test("resolved: 90% coverage (last chapter END) is the cutoff")
+    func resolvedBoundary() {
+        let tracks = [trk(0, 0, 500), trk(1, 500, 500)]
+        // last END at 900 (90%) → reliable; at 890 (89%) → fallback.
+        #expect(ChapterModel.resolved(chapters: [ch(0, 0, 100), ch(1, 100, 900)],
+                                      tracks: tracks, duration: 1000).isFallback == false)
+        #expect(ChapterModel.resolved(chapters: [ch(0, 0, 100), ch(1, 100, 890)],
+                                      tracks: tracks, duration: 1000).isFallback == true)
+    }
+
+    @Test("resolved: empty chapters + multi-track -> track fallback")
+    func resolvedEmptyMultiTrack() {
+        let r = ChapterModel.resolved(chapters: [], tracks: [trk(0, 0, 300), trk(1, 300, 300)], duration: 600)
+        #expect(r.isFallback == true)
+        #expect(r.chapters.count == 2)
+    }
 }
 #endif

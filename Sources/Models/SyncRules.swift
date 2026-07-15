@@ -73,7 +73,9 @@ nonisolated enum SyncRules {
 
 /// Multi-file time math: absolute book time ↔ track index. Pure and
 /// unit-testable; PlayerViewModel delegates here.
-enum TrackMath {
+/// `nonisolated`: pure track-offset math, callable from background/nonisolated
+/// contexts (e.g. ChapterModel's track fallback).
+nonisolated enum TrackMath {
 
     /// Cumulative start time of a track: startOffset from the server, else the
     /// sum of the individual durations. Out of range: book duration.

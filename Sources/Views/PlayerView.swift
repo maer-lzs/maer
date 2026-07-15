@@ -127,7 +127,8 @@ struct PlayerView: View {
         .sheet(isPresented: $showChapters) {
             ChapterListView(
                 chapters: viewModel.chapters,
-                currentChapter: viewModel.currentChapter
+                currentChapter: viewModel.currentChapter,
+                isFallback: viewModel.chaptersAreFallback
             ) { chapter in
                 viewModel.jumpToChapter(chapter)
                 showChapters = false
