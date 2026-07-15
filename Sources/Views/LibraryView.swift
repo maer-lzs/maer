@@ -96,7 +96,8 @@ struct LibraryView: View {
                             .tabVisibility(selectedMediaType == .podcasts)
                     }
                     if isTabMounted(.music) {
-                        MusicView(playerCoordinator: playerCoordinator)
+                        MusicView(playerCoordinator: playerCoordinator,
+                                  isActive: selectedMediaType == .music)
                             .tabVisibility(selectedMediaType == .music)
                     }
                 }
@@ -621,7 +622,9 @@ struct LibraryView: View {
                 RefreshActivityPill()
             }
         }
-        .reportsBottomBarScroll()   // scroll → collapse/expand the bottom zone
+        // Only the visible tab reports — hidden-but-mounted tabs must not feed
+        // the shared BottomBarState (see reportsBottomBarScroll(active:)).
+        .reportsBottomBarScroll(active: selectedMediaType == .audiobooks)
     }
 
     // MARK: "Recently Added" (large tiles, side-scrolling)

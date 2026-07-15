@@ -67,10 +67,15 @@ final class BottomBarState: ObservableObject {
     }
 
     /// On a tab switch: expand (avoid the stale offset of the other surface).
+    /// Also clears `userDragging` — the outgoing surface stops reporting the
+    /// moment it goes inactive (see `reportsBottomBarScroll(active:)`), so its
+    /// final `.tracking → .idle` phase change may never arrive; leaving the flag
+    /// set would strand the auto-expand.
     func reset() {
         idleExpandTask?.cancel()
         scrollY = 0
         forceExpanded = false
+        userDragging = false
         applyCollapsed()
     }
 
@@ -83,11 +88,24 @@ final class BottomBarState: ObservableObject {
 
 extension View {
     /// Attach to EVERY scrolled surface — reports the offset to the bottom zone.
-    func reportsBottomBarScroll() -> some View {
+    ///
+    /// `active`: only the CURRENTLY VISIBLE tab may report. Hidden tabs stay
+    /// mounted (see `tabVisibility`) and their scroll views keep emitting
+    /// geometry/phase events; if they all fed the shared `BottomBarState`, a tab
+    /// switch left the outgoing tab (still at its old offset) fighting the
+    /// incoming one over `collapsed`. That oscillation restarted the bar's
+    /// collapse spring + matchedGeometry morph every flip, and the morph
+    /// perturbed scroll geometry into more reports — a runaway loop that froze
+    /// the UI (see s16b-hitch-status). Gating reporting to the visible tab breaks
+    /// it at the root. Pushed detail pages keep the default (they live in the
+    /// active tab's stack, never a second competing root).
+    func reportsBottomBarScroll(active: Bool = true) -> some View {
         onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
+            guard active else { return }
             BottomBarState.shared.report(y)
         }
         .onScrollPhaseChange { _, newPhase in
+            guard active else { return }
             BottomBarState.shared.setUserDragging(newPhase == .tracking || newPhase == .interacting)
             // S10: fully at rest → schedule the auto-expand.
             if newPhase == .idle { BottomBarState.shared.scrollDidRest() }

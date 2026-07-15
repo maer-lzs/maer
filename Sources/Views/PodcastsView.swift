@@ -101,7 +101,7 @@ struct PodcastsView: View {
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
         }
-        .reportsBottomBarScroll()   // collapsible bottom zone
+        .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
         // detail fetches) keeps running as a background task; the sections

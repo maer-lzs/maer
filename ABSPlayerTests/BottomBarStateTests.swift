@@ -79,5 +79,27 @@ struct BottomBarStateTests {
         state.report(30)
         #expect(!state.collapsed)
     }
+
+    /// s16b: the freeze fix gates reporting to the visible tab, so the outgoing
+    /// tab's final `.tracking → .idle` phase change may never arrive. `reset()`
+    /// must therefore clear `userDragging` itself — otherwise the flag stays
+    /// stranded from the old tab and a subsequent expand is undone the moment a
+    /// high offset is reported (deceleration/geometry frames), snapping the bar
+    /// collapsed on the fresh tab. Fails without the `userDragging = false` in
+    /// reset().
+    @Test("reset() clears the drag flag so a post-switch expand is not undone")
+    func resetClearsDragFlag() {
+        let state = BottomBarState()
+        state.setUserDragging(true)   // outgoing tab was being dragged
+        state.report(300)
+        #expect(state.collapsed)
+        state.reset()                 // tab switch: expand + clear drag
+        state.expand()                // new tab opens the bar (e.g. auto-expand)
+        #expect(!state.collapsed)
+        // A high offset arrives without an active drag. With a stranded drag
+        // flag this would clear forceExpanded and collapse; it must hold open.
+        state.report(300)
+        #expect(!state.collapsed)
+    }
 }
 #endif

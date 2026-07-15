@@ -6,6 +6,9 @@ import SwiftUI
 /// track list; playback runs through the shared player.
 struct MusicView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
+    /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
+    var isActive: Bool = true
     @StateObject private var vm = MusicViewModel()
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -34,7 +37,7 @@ struct MusicView: View {
                     // the other tabs — without this its scroll never reported, so
                     // the bar stayed expanded (heavy/opaque look) and never
                     // collapsed. One binding, both symptoms.
-                    .reportsBottomBarScroll()
+                    .reportsBottomBarScroll(active: isActive)
             }
         }
         .task { await vm.loadIfNeeded() }
