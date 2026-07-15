@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OSLog
 
 /// A book with (optional) progress — the unit the views display.
 nonisolated struct LibraryEntry: Identifiable {
@@ -186,6 +187,14 @@ final class LibraryViewModel: ObservableObject {
     private var sortedCache: [LibraryEntry] = []
     private var groupedCacheKey: DerivedKey?
     private var groupedCache: [GridEntry] = []
+    /// S16b: cache key for `downloadedEntries` — only the library revision and
+    /// the downloaded-set identity affect it. Without this the Downloaded
+    /// section filtered+sorted the WHOLE library on every render/section mount
+    /// (LibraryView observes DownloadManager, so it re-renders often) — an
+    /// O(library size) cost in the scroll path that hitched on large libraries.
+    private struct DownloadedKey: Equatable { var stamp: Int; var downloadsHash: Int }
+    private var downloadedCacheKey: DownloadedKey?
+    private var downloadedCache: [LibraryEntry] = []
 
     /// The "All Books" list, prepared by the current sort, direction and filter.
     var sortedFilteredEntries: [LibraryEntry] {
@@ -432,9 +441,20 @@ final class LibraryViewModel: ObservableObject {
     /// All downloaded books, alphabetically — its own section for a quick
     /// overview of "what can I listen to offline right now".
     var downloadedEntries: [LibraryEntry] {
-        entries
+        let key = DownloadedKey(stamp: entriesStamp,
+                                downloadsHash: DownloadManager.shared.downloadedItemIds.hashValue)
+        if key == downloadedCacheKey { return downloadedCache }
+        // S16b: signpost the (now rare) recompute so its cost + frequency are
+        // visible in Instruments — this is the main-thread work that used to run
+        // on every section mount/render.
+        let sp = PerfSignpost.library.beginInterval("downloadedEntries-recompute")
+        let value = entries
             .filter { DownloadManager.shared.isDownloaded(itemId: $0.id) }
             .sorted { $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending }
+        PerfSignpost.library.endInterval("downloadedEntries-recompute", sp)
+        downloadedCacheKey = key
+        downloadedCache = value
+        return value
     }
 
     /// Guards against overlapping loads (pull-to-refresh + foreground
