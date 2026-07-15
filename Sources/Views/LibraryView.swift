@@ -158,7 +158,10 @@ struct LibraryView: View {
             // otherwise play/pause & co. would appear twice.
             if !isShowingFullPlayer {
                 bottomBarContent
-                .animation(.spring(response: 0.5, dampingFraction: 0.88), value: barCollapsed)
+                // S10: slightly crisper collapse/expand spring (less floaty) —
+                // the mini-player keeps its matchedGeometry morph across it, the
+                // extra rows cross-fade.
+                .animation(.spring(response: 0.42, dampingFraction: 0.85), value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
                 // Measure the height → pass it as free space to the scroll

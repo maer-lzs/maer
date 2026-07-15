@@ -28,6 +28,11 @@ final class BottomBarState: ObservableObject {
     /// still rolling out.
     private var forceExpanded = false
     private var userDragging = false
+    /// S10: after the scroll comes fully to rest, re-expand the bar so the
+    /// mini-player returns without a tab switch. Cancelled the moment scrolling
+    /// resumes. Tunable idle delay.
+    private var idleExpandTask: Task<Void, Never>?
+    private let idleExpandDelay: Duration = .seconds(1.5)
 
     func report(_ y: CGFloat) {
         scrollY = y
@@ -38,7 +43,22 @@ final class BottomBarState: ObservableObject {
     /// Scroll-phase channel: true while the user's finger drives the scroll.
     func setUserDragging(_ dragging: Bool) {
         userDragging = dragging
-        if forceExpanded, dragging { forceExpanded = false; applyCollapsed() }
+        if dragging {
+            idleExpandTask?.cancel()   // active scroll → drop any pending expand
+            if forceExpanded { forceExpanded = false; applyCollapsed() }
+        }
+    }
+
+    /// S10: the scroll view reached `.idle` (finger up AND deceleration done).
+    /// Schedule the auto-expand; a fresh drag cancels it via `setUserDragging`.
+    func scrollDidRest() {
+        idleExpandTask?.cancel()
+        guard collapsed else { return }
+        idleExpandTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: self?.idleExpandDelay ?? .seconds(1.5))
+            guard let self, !Task.isCancelled, !self.userDragging else { return }
+            self.expand()
+        }
     }
 
     func expand() {
@@ -48,6 +68,7 @@ final class BottomBarState: ObservableObject {
 
     /// On a tab switch: expand (avoid the stale offset of the other surface).
     func reset() {
+        idleExpandTask?.cancel()
         scrollY = 0
         forceExpanded = false
         applyCollapsed()
@@ -68,6 +89,8 @@ extension View {
         }
         .onScrollPhaseChange { _, newPhase in
             BottomBarState.shared.setUserDragging(newPhase == .tracking || newPhase == .interacting)
+            // S10: fully at rest → schedule the auto-expand.
+            if newPhase == .idle { BottomBarState.shared.scrollDidRest() }
         }
     }
 }
