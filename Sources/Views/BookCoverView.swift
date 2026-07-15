@@ -52,7 +52,7 @@ struct BookCoverView: View {
                     // Not playable right now: offline and not on the device.
                     Image(systemName: "wifi.slash")
                         .font(.system(size: size * 0.14))
-                        .foregroundStyle(.white, .secondary)
+                        .foregroundStyle(.white)   // S14b: full symbol white
                         .padding(4)
                 }
             }

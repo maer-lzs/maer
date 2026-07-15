@@ -73,7 +73,7 @@ struct BookFeaturedCard: View {
                     if isOfflineUnavailable {
                         Image(systemName: "wifi.slash")
                             .font(.caption)
-                            .foregroundStyle(.white, .secondary)
+                            .foregroundStyle(.white)   // S14b: full symbol white
                             .padding(8)
                     }
                 }

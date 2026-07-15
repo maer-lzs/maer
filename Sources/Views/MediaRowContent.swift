@@ -78,7 +78,7 @@ struct MediaRowContent: View {
             if offlineBadge {
                 Image(systemName: "wifi.slash")
                     .font(.caption2)
-                    .foregroundStyle(.white, .secondary)
+                    .foregroundStyle(.white)   // S14b: full symbol white
                     .padding(3)
             }
         }
