@@ -628,8 +628,14 @@ struct BookDetailScreen: View {
                     .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 case .paused(let progress):
                     HStack(spacing: 8) {
-                        ProgressView(value: progress)
-                            .tint(.secondary)
+                        // Unknown total → no bar frozen at 0%, just the label.
+                        if progress < 0 {
+                            Text("Paused").font(.subheadline).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            ProgressView(value: progress)
+                                .tint(.secondary)
+                        }
                         Button { downloadManager.resumeDownload(itemId: entry.id) } label: {
                             Label("Resume", systemImage: "play.circle")
                                 .font(.subheadline)

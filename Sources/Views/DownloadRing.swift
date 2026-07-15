@@ -1,20 +1,46 @@
 import SwiftUI
 
-/// Small circular download indicator that copes with an unknown total size:
-/// a determinate ring for a real fraction, an indeterminate spinner for the
-/// sentinel -1 (server sent no Content-Length). Used by the download controls
-/// so a size-less transfer no longer shows a permanently empty ring.
-struct DownloadRing: View {
+/// S11: THE single download-progress indicator for every media type (books,
+/// podcasts, music). A subtle determinate ring when the total size is known,
+/// an indeterminate spinner for the `-1` sentinel (server sent no
+/// Content-Length). Ring/spinner only — tap-to-cancel is supplied by the
+/// enclosing control (`DownloadRing` button, `DownloadInstallRing` overlay).
+/// The determinate case uses a custom trim arc rather than
+/// `ProgressView(value:).circular`, which does not render determinately on iOS.
+struct UnifiedDownloadRing: View {
     let fraction: Double
+    var lineWidth: CGFloat = 3
+    var tint: Color = .secondary
 
     var body: some View {
-        Group {
-            if fraction < 0 {
-                ProgressView()
-            } else {
-                ProgressView(value: fraction).progressViewStyle(.circular)
+        if fraction < 0 {
+            // Unknown size → indeterminate spinner.
+            ProgressView()
+                .tint(tint)
+        } else {
+            ZStack {
+                Circle()
+                    .stroke(tint.opacity(0.3), lineWidth: lineWidth)
+                Circle()
+                    .trim(from: 0, to: max(0.03, fraction))
+                    .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
             }
+            .animation(.linear(duration: 0.3), value: fraction)
         }
-        .scaleEffect(0.7)
+    }
+}
+
+/// Small inline download indicator for the control clusters (podcast row/card,
+/// music album). Thin wrapper around `UnifiedDownloadRing` so every surface
+/// shares the same look and the same determinate/indeterminate behaviour.
+struct DownloadRing: View {
+    let fraction: Double
+    var tint: Color = .secondary
+
+    var body: some View {
+        UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: tint)
+            // Matches the former ProgressView footprint in the 44pt controls.
+            .frame(width: 22, height: 22)
     }
 }
