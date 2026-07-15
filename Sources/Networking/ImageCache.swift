@@ -262,7 +262,7 @@ final class ImageCache {
             return
         }
         guard let coverURL,
-              let (data, _) = try? await URLSession.shared.data(from: coverURL) else { return }
+              let (data, _) = try? await URLSession.coverImage.data(from: coverURL) else { return }
         let maxSize = maxPixelSize
         // Downsampling + write in the background, await completion (the caller
         // relies on the cover being persistent afterwards).
@@ -383,7 +383,7 @@ final class ImageCache {
         guard !isCached(url), !inFlight.contains(url) else { return }
         inFlight.insert(url)
         defer { inFlight.remove(url) }
-        guard let (data, _) = try? await URLSession.maer.data(from: url),
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
               let image = UIImage(data: data) else { return }
         set(image, data: data, for: url)
     }

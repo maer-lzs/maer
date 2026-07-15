@@ -74,7 +74,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         if let retryDelay {
             try? await Task.sleep(nanoseconds: retryDelay)
         }
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
               let image = UIImage(data: data) else { return nil }
         ImageCache.shared.set(image, data: data, for: url)
         return image

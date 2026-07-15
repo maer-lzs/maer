@@ -273,6 +273,12 @@ struct LibraryView: View {
             if newPhase == .background {
                 PodcastCloudSync.shared.reconcile()   // push the local state to iCloud
                 updateQuickActions()
+                // S24: re-run the cover-cache cap on backgrounding, not only at
+                // launch — otherwise a long session's cover growth stays uncapped
+                // until the next cold start.
+                ImageCache.shared.performMaintenance(
+                    activeDownloadIds: DownloadManager.shared.downloadedItemIds
+                )
             }
         }
         .onOpenURL { url in
