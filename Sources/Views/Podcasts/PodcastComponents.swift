@@ -11,6 +11,8 @@ struct PodcastFeaturedCard: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @ObservedObject private var downloads = DownloadManager.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @StateObject private var colorLoader = CoverColorLoader()
     private let width: CGFloat = 235
     // D5/B4: the overlay pill and the fixed line heights scale with Dynamic
@@ -21,6 +23,12 @@ struct PodcastFeaturedCard: View {
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     private var isPlayed: Bool { podcastPlayState(for: item) == .played }
+
+    /// S14/A6: offline and not downloaded → the episode can't start. Dim the
+    /// cover and mark it, exactly like the book cards (BookCoverView).
+    private var isOfflineUnavailable: Bool {
+        !networkMonitor.isConnected && !downloads.isDownloaded(itemId: item.id)
+    }
 
     /// Show the show cover as a badge only when it differs from the episode
     /// cover (otherwise it would be redundant).
@@ -73,12 +81,21 @@ struct PodcastFeaturedCard: View {
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
-                .opacity(isPlayed ? 0.5 : 1)
+                .opacity(isPlayed || isOfflineUnavailable ? 0.5 : 1)
                 // The image fades softly into the color area (the "blurry" seam).
                 .overlay(alignment: .bottom) {
                     LinearGradient(colors: [.clear, colorLoader.accent],
                                    startPoint: .top, endPoint: .bottom)
                         .frame(height: width * 0.3)
+                }
+                // S14: offline-unavailable marker, identical to BookFeaturedCard.
+                .overlay(alignment: .topTrailing) {
+                    if isOfflineUnavailable {
+                        Image(systemName: "wifi.slash")
+                            .font(.caption)
+                            .foregroundStyle(.white, .secondary)
+                            .padding(8)
+                    }
                 }
                 .overlay(alignment: .bottomLeading) { showBadge }
 
