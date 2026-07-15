@@ -208,6 +208,12 @@ struct PlayerView: View {
         .frame(maxWidth: 300)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(radius: 12, y: 6)
+        // S9: horizontal swipe on the cover = previous/next chapter. For music
+        // each song is a chapter, so this is prev/next track. `simultaneous` so
+        // it never blocks vertical scroll or the drag-to-dismiss; only a clearly
+        // horizontal fling acts. No-op when the item has no chapters (guarded in
+        // previous/nextChapter). Same behaviour as the chapter buttons.
+        .simultaneousGesture(chapterSwipeGesture)
         .overlay {
             if viewModel.isBuffering {
                 ZStack {
@@ -220,6 +226,19 @@ struct PlayerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
         }
+    }
+
+    /// S9: cover swipe → chapter/track navigation. Only a clearly horizontal
+    /// fling (dominant x, past a threshold) acts, so vertical scroll and the
+    /// drag-to-dismiss stay untouched. Left = next, right = previous.
+    private var chapterSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let dx = value.translation.width
+                let dy = value.translation.height
+                guard abs(dx) > abs(dy), abs(dx) > 50 else { return }
+                if dx < 0 { viewModel.nextChapter() } else { viewModel.previousChapter() }
+            }
     }
 
     private var chapterHeader: some View {
