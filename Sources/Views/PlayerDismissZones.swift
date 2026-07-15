@@ -11,6 +11,12 @@ nonisolated enum PlayerDismissZones {
     /// Gap kept between a zone's bottom edge and the controls' top edge.
     static let controlsMargin: CGFloat = 8
 
+    /// S13: width of the continuous full-height swipe strip along each screen
+    /// edge. Kept narrow so the interactive controls (scrubber, chapter
+    /// buttons) stay clear of it — the scrubber is inset a touch more than this
+    /// so its thumb at position 0/1 is never under the strip (D1).
+    static let sideStripWidth: CGFloat = 20
+
     /// Width of each side rail: everything outside the max 500pt content
     /// column (incl. its margin), at least 56pt on narrow phones. On iPads the
     /// rails therefore sit entirely OUTSIDE the content column — their

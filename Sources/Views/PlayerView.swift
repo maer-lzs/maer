@@ -327,7 +327,11 @@ struct PlayerView: View {
             .minimumScaleFactor(0.5)
             .foregroundStyle(.white.opacity(0.8))
         }
-        .padding(.horizontal)
+        // S13: extra horizontal inset (16 → 24, on top of the content's 16) so
+        // the slider track — and the thumb at position 0/1 — sits clear of the
+        // 20pt full-height edge dismiss strips. The transport/chapter buttons are
+        // centered and already well inside; only the full-width slider needed it.
+        .padding(.horizontal, 24)
     }
 
     private var transportControls: some View {

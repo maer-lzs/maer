@@ -126,26 +126,32 @@ struct FullPlayerOverlay: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    /// Side swipe zones; capped against the reported controls frame so chapter
-    /// buttons and the scrubber stay tappable (D1) — previously a fixed
-    /// 220pt bottom inset that the controls outgrew on narrow phones. The width
-    /// grows with the screen: everything outside the max 500pt wide content
-    /// column (iPad/landscape), at least 56pt.
+    /// S13: a continuous full-height swipe strip along EACH screen edge, so
+    /// drag-to-dismiss works from anywhere on the sides — symmetric left/right.
+    /// The strips are narrow (`sideStripWidth`) and the scrubber is inset past
+    /// them (PlayerView), so they sit entirely in the outer margin, spatially
+    /// clear of every control's hit target — no controls-frame height cap needed
+    /// (D1 holds by separation instead of capping). Verified via the harness
+    /// (scrubber thumb at 0/1, outermost chapter buttons) on 375/402/440pt.
     private var sideDismissZones: some View {
-        GeometryReader { proxy in
-            let zoneWidth = PlayerDismissZones.sideZoneWidth(containerWidth: proxy.size.width)
-            let fallback = proxy.size.height - 220
-            let leftRect = CGRect(x: 0, y: 0, width: zoneWidth, height: fallback)
-            let rightRect = CGRect(x: proxy.size.width - zoneWidth, y: 0, width: zoneWidth, height: fallback)
-            HStack {
-                dismissZone(width: zoneWidth, height: PlayerDismissZones.zoneHeight(
-                    zoneRect: leftRect, controlsFrame: controlsFrame, fallback: fallback))
-                Spacer()
-                dismissZone(width: zoneWidth, height: PlayerDismissZones.zoneHeight(
-                    zoneRect: rightRect, controlsFrame: controlsFrame, fallback: fallback))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        let w = PlayerDismissZones.sideStripWidth
+        return HStack(spacing: 0) {
+            edgeStrip(width: w)
+            Spacer(minLength: 0)
+            edgeStrip(width: w)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Full-height edge strip. contentShape is applied AFTER the height expands
+    /// (unlike the top/bottom strips) because here the full height IS the
+    /// intended hit area — the narrow fixed width keeps it off the controls.
+    private func edgeStrip(width: CGFloat) -> some View {
+        Color.clear
+            .frame(width: width)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .highPriorityGesture(dismissGesture(minimumDistance: 12))
     }
 
     /// Full-width strip across the top (cover area) — pull-down can start
@@ -182,20 +188,6 @@ struct FullPlayerOverlay: View {
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity, alignment: .bottom)
         }
-    }
-
-    private func dismissZone(width: CGFloat, height: CGFloat) -> some View {
-        // ORDER MATTERS (same trap as in topDismissZone): contentShape + gesture
-        // must attach to the SMALL frame BEFORE the expanding frame — otherwise
-        // the hit shape covers the rail's full height again and swallows the
-        // controls underneath.
-        Color.clear
-            .frame(width: width, height: height)
-            .contentShape(Rectangle())
-            // minimumDistance > 0: a resting finger on the rail no longer
-            // "grabs" the sheet; only an actual drag does.
-            .highPriorityGesture(dismissGesture(minimumDistance: 12))
-            .frame(maxHeight: .infinity, alignment: .top)
     }
 
     /// Measured globally (offset container).
