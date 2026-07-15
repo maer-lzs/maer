@@ -6,17 +6,13 @@ import SwiftUI
 /// versions.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// The active player. Passed in but deliberately NOT observed here: this
-    /// outer view carries the Liquid Glass background, and observing the player
-    /// would re-evaluate the whole bar — and re-composite the glass (expensive
-    /// SDFLayer work, measured on device) — on every `currentTime` tick (~2-4x/s
-    /// during playback). The frequently-updating content lives in
-    /// `MiniPlayerContent`, which observes the player directly; only it re-runs
-    /// per tick, while the glassed outer stays put.
-    /// `coordinator` IS observed so the bar still re-evaluates when the player is
-    /// completely re-SET (a new book) — coordinator notifies only on that swap,
-    /// not on values WITHIN the player, so it costs nothing per tick.
-    let viewModel: PlayerViewModel
+    /// The active player, observed directly instead of only via
+    /// `coordinator.viewModel` — otherwise SwiftUI does not reliably notice
+    /// changes to its own @Published values (isPlaying, currentTime, …), because
+    /// `coordinator` itself only notifies when `viewModel` is completely re-SET,
+    /// not when values WITHIN it change. That was why play/pause did not always
+    /// toggle immediately.
+    @ObservedObject var viewModel: PlayerViewModel
     let item: LibraryItem
     /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
     var compact: Bool = false
@@ -50,44 +46,6 @@ struct MiniPlayerBar: View {
     private var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
     }
-
-    var body: some View {
-        MiniPlayerContent(
-            viewModel: viewModel,
-            item: item,
-            compact: compact,
-            showExtendedControls: showExtendedControls,
-            isCompactPortrait: isCompactPortrait,
-            onOpenPlayer: onOpenPlayer
-        )
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .modifier(AdaptiveGlassBackground(shape: shape))
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { measuredWidth = geo.size.width }
-                    .onChange(of: geo.size.width) { _, newWidth in
-                        measuredWidth = newWidth
-                    }
-            }
-        )
-    }
-}
-
-/// The frequently-updating inner content of the mini player: progress ring,
-/// chapter/time text, and the transport buttons. Split out from `MiniPlayerBar`
-/// so it — and NOT the outer bar carrying the Liquid Glass background —
-/// re-evaluates on every playback tick. It observes the player directly, which
-/// is what keeps play/pause responsive (the reason the bar observed the player
-/// in the first place); the observation just moved down one level.
-private struct MiniPlayerContent: View {
-    @ObservedObject var viewModel: PlayerViewModel
-    let item: LibraryItem
-    let compact: Bool
-    let showExtendedControls: Bool
-    let isCompactPortrait: Bool
-    let onOpenPlayer: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -186,6 +144,18 @@ private struct MiniPlayerContent: View {
             .buttonStyle(.plain)
             .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .modifier(AdaptiveGlassBackground(shape: shape))
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { measuredWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, newWidth in
+                        measuredWidth = newWidth
+                    }
+            }
+        )
     }
 
     /// Cover with a thin circular progress ring — sits at the edge AROUND the
