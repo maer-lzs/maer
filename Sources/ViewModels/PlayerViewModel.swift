@@ -366,7 +366,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   every source, not just feeds without server progress.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
         self.item = item
-        chapters = item.media.chapters ?? []
+        // S19: drop broken chapters (overlapping/out-of-range/zero-length) up
+        // front so both the player display and the selector use the same clean
+        // list — no nonsense chapter labels / negative "min left".
+        chapters = ChapterModel.validated(item.media.chapters ?? [], duration: item.media.duration ?? 0)
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
             // index is missing/equal — Swift's sort is not stability-guaranteed,
@@ -931,7 +934,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func updateCurrentChapter() {
-        let newChapter = chapters.last(where: { currentTime >= $0.start })
+        // S19: only a chapter that actually CONTAINS the current time (validated
+        // list) — nil in a gap/past the end → the player omits the chapter line.
+        let newChapter = ChapterModel.current(at: currentTime, in: chapters)
         guard newChapter != currentChapter else { return }
         currentChapter = newChapter
         // Keep the chapter name fresh IF a sleep-timer activity is showing;
