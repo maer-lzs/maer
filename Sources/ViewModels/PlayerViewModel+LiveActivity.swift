@@ -37,7 +37,9 @@ extension PlayerViewModel {
         let state = PlaybackActivityAttributes.ContentState(
             capturedAt: now,
             isPlaying: isPlaying,
-            chapterName: currentChapter?.title,
+            // T9c: real chapter only — never a fallback marker (shared derivation).
+            chapterName: NowPlayingPresentation.subtitle(
+                chapterTitle: currentChapter?.title, author: nil, isFallback: chaptersAreFallback),
             chapterEndDate: chapterEnd,
             sleepEndDate: sleepEnd
         )

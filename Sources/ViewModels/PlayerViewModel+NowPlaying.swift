@@ -50,20 +50,13 @@ extension PlayerViewModel {
     func updateNowPlayingInfo() {
         var info: [String: Any] = [:]
         let bookTitle = item?.media.metadata?.title ?? String(localized: "Audiobook")
-        // Chapter as title, book as album — so the lock screen shows both.
-        // T9b: a FALLBACK marker ("Track N" / "Rest from X") is not a real
-        // chapter title — show the book/episode title as the title instead and
-        // demote the marker to the album line.
-        if let chapter = currentChapter, !chaptersAreFallback {
-            info[MPMediaItemPropertyTitle] = chapter.title
-            info[MPMediaItemPropertyAlbumTitle] = bookTitle
-        } else if let chapter = currentChapter {
-            info[MPMediaItemPropertyTitle] = bookTitle
-            info[MPMediaItemPropertyAlbumTitle] = chapter.title
-        } else {
-            info[MPMediaItemPropertyTitle] = bookTitle
-        }
-        info[MPMediaItemPropertyArtist] = item?.media.metadata?.authorName ?? ""
+        let author = item?.media.metadata?.authorName
+        // T9c: the TITLE is ALWAYS the work; the current chapter (a REAL chapter,
+        // never a fallback marker) + author form the subtitle. One derivation,
+        // shared with CarPlay (same info centre) and the Live Activity.
+        info[MPMediaItemPropertyTitle] = bookTitle
+        info[MPMediaItemPropertyArtist] = NowPlayingPresentation.subtitle(
+            chapterTitle: currentChapter?.title, author: author, isFallback: chaptersAreFallback) ?? ""
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0
