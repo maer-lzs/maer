@@ -166,21 +166,24 @@ struct ChapterModelTests {
         #expect(ChapterModel.current(at: 150, in: validated)?.id == 1)
     }
 
+    // NOTE: these assert LOCALE-INDEPENDENT facts (positions, times, counts) —
+    // the marker titles are localized ("from"→"ab", "Part N of M"→"Teil N von M").
+
     @Test("T9d: single-file tail marks are labelled by their start time")
     func timeMarkLabelledByPosition() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)
         #expect(r.isFallback == true)
-        // timeLabel(100) == "1:40" → "from 1:40" (T9d time mark).
+        // timeLabel(100) == "1:40" — the time is format, not localized.
         #expect(r.chapters.last?.title.contains("1:40") == true)
-        #expect(r.chapters.last?.title.contains("from") == true)
     }
 
-    @Test("T9d: track fallback is named 'Part N of M' (not 'Chapter'/'Track')")
+    @Test("T9d: track fallback is one entry per track, named (not empty)")
     func trackFallbackNaming() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)],
                                       tracks: [trk(0, 0, 500), trk(1, 500, 500)], duration: 1000)
         #expect(r.isFallback == true)
-        #expect(r.chapters.first?.title.contains("Part 1 of 2") == true)
+        #expect(r.chapters.count == 2)                       // one per track
+        #expect(r.chapters.first?.title.isEmpty == false)    // named "Part 1 of 2"/"Teil 1 von 2"
     }
 
     @Test("T9d: a large m4b tail gets 15-minute jump marks, not one lump")
@@ -189,10 +192,10 @@ struct ChapterModelTests {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 300), ch(1, 300, 600)],
                                       tracks: [trk(0, 0, 3600)], duration: 3600)
         #expect(r.isFallback == true)
-        let marks = Array(r.chapters.dropFirst(2))   // after the 2 real chapters
-        #expect(marks.count >= 3)                     // 3000s / 900s ≈ 3–4 marks
-        #expect(marks.allSatisfy { $0.title.contains("from") })
-        #expect(marks.first?.start == 600)            // starts at the coverage end
+        let marks = Array(r.chapters.dropFirst(2))           // after the 2 real chapters
+        #expect(marks.count >= 3)                            // 3000s / 900s ≈ 3–4 marks
+        #expect(marks.first?.start == 600)                   // starts at the coverage end
+        #expect(marks.first?.title.contains("10:00") == true) // timeLabel(600) == "10:00"
     }
 }
 #endif

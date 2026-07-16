@@ -1215,7 +1215,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heruntergeladen"
+            "value" : "Geladen"
           }
         }
       }
@@ -2934,7 +2934,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neu hinzugefügt"
+            "value" : "Zuletzt hinzugefügt"
           }
         }
       }
@@ -4141,7 +4141,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit Downloads"
+            "value" : "Geladen"
           }
         }
       }
@@ -4151,7 +4151,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mit ungespielten Folgen"
+            "value" : "Ungespielt"
           }
         }
       }
@@ -4284,6 +4284,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fang an zu hören — deine Bücher, Podcasts und Musik erscheinen hier."
+          }
+        }
+      }
+    },
+    "from %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ab %@"
+          }
+        }
+      }
+    },
+    "Part %lld of %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teil %lld von %lld"
           }
         }
       }
