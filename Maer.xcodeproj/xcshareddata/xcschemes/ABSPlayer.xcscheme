@@ -41,6 +41,17 @@
                ReferencedContainer = "container:Maer.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AAE1000000000000000000A1"
+               BuildableName = "ABSPlayerUITests.xctest"
+               BlueprintName = "ABSPlayerUITests"
+               ReferencedContainer = "container:Maer.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

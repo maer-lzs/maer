@@ -13,6 +13,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		AAE1000000000000000000AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CF1170F22FF99D9D00DA1AC5;
+			remoteInfo = ABSPlayer;
+		};
 		CF68E65E3002599B00C97B74 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
@@ -44,6 +51,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ABSPlayer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MaerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -62,6 +70,7 @@
 				LiveActivityWidget/PodcastUpNextWidget.swift,
 				MaerWidgets/Assets.xcassets,
 				MaerWidgets/Info.plist,
+				ABSPlayerUITests/MaerUITests.swift,
 			);
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
 		};
@@ -87,6 +96,11 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		AAE1000000000000000000A3 /* ABSPlayerUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ABSPlayerUITests;
+			sourceTree = "<group>";
+		};
 		CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -112,6 +126,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		AAE1000000000000000000A5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CF1170F02FF99D9D00DA1AC5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -142,6 +163,8 @@
 			isa = PBXGroup;
 			children = (
 				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
+				AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */,
+				AAE1000000000000000000A3 /* ABSPlayerUITests */,
 				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
 				CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */,
 				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
@@ -168,6 +191,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		AAE1000000000000000000A1 /* ABSPlayerUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "ABSPlayerUITests" */;
+			buildPhases = (
+				AAE1000000000000000000A4 /* Sources */,
+				AAE1000000000000000000A5 /* Frameworks */,
+				AAE1000000000000000000A6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AAE1000000000000000000AB /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				AAE1000000000000000000A3 /* ABSPlayerUITests */,
+			);
+			name = ABSPlayerUITests;
+			packageProductDependencies = (
+			);
+			productName = ABSPlayerUITests;
+			productReference = AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = CF1170FE2FF99D9E00DA1AC5 /* Build configuration list for PBXNativeTarget "ABSPlayer" */;
@@ -282,12 +328,20 @@
 			targets = (
 				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,
 				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
+				AAE1000000000000000000A1 /* ABSPlayerUITests */,
 				CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		AAE1000000000000000000A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CF1170F12FF99D9D00DA1AC5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -312,6 +366,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		AAE1000000000000000000A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CF1170EF2FF99D9D00DA1AC5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -336,6 +397,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		AAE1000000000000000000AB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
+			targetProxy = AAE1000000000000000000AA /* PBXContainerItemProxy */;
+		};
 		CF68E65F3002599B00C97B74 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
@@ -349,6 +415,44 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		AAE1000000000000000000A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.3;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ABSPlayer;
+			};
+			name = Debug;
+		};
+		AAE1000000000000000000A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 9;
+				DEVELOPMENT_TEAM = WA68UQ6KAH;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 2.3;
+				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ABSPlayer;
+			};
+			name = Release;
+		};
 		CF1170FC2FF99D9E00DA1AC5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -663,6 +767,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "ABSPlayerUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AAE1000000000000000000A8 /* Debug */,
+				AAE1000000000000000000A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		CF1170EE2FF99D9D00DA1AC5 /* Build configuration list for PBXProject "Maer" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
