@@ -30,7 +30,7 @@ struct MusicViewModelTests {
     private func makeVM(_ controls: Controls) -> MusicViewModel {
         let albums = [album("a1"), album("a2")]
         return MusicViewModel(source: MusicSource(
-            albumsPage: { offset, _ in
+            albumsPage: { _, offset, _ in
                 if let error = controls.albumsError { throw error }
                 controls.pageRequests.append(offset)
                 return offset == 0 ? albums : []   // one partial page → done
@@ -45,7 +45,7 @@ struct MusicViewModelTests {
     func pagesUntilPartial() async {
         let controls = Controls()
         let vm = MusicViewModel(source: MusicSource(
-            albumsPage: { offset, size in
+            albumsPage: { _, offset, size in
                 controls.pageRequests.append(offset)
                 // Two full pages, then a partial one ends the loop.
                 if offset < 200 { return (0..<size).map { self.album("p\(offset)-\($0)") } }
@@ -107,6 +107,41 @@ struct MusicViewModelTests {
         await vm.reload()
         #expect(vm.errorText != nil)
         #expect(vm.albums.isEmpty)
+    }
+
+    // MARK: - Teil 2: server-side sort
+
+    final class SortRec { var calls: [(sort: MusicSortOption, offset: Int)] = [] }
+
+    @Test("Teil 2: switching the album sort re-queries from offset 0 with the new sort")
+    func sortResetsPaging() async {
+        let rec = SortRec()
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { sort, offset, _ in
+                rec.calls.append((sort, offset))
+                return offset == 0 ? [self.album("x")] : []   // one partial page
+            },
+            shelf: { _, _ in [] }, artists: { [] }, playlists: { [] }
+        ))
+        vm.sort = .nameAZ
+        await vm.loadIfNeeded()
+        #expect(rec.calls.contains { $0.sort == .nameAZ && $0.offset == 0 })
+        // Switching sort re-queries from the FIRST page with the new sort.
+        await vm.setSort(.meistgespielt)
+        #expect(rec.calls.contains { $0.sort == .meistgespielt && $0.offset == 0 })
+        // Same sort again → no-op, no extra query.
+        let before = rec.calls.count
+        await vm.setSort(.meistgespielt)
+        #expect(rec.calls.count == before)
+    }
+
+    @Test("Teil 2: the sort maps to the expected getAlbumList2 type")
+    func sortTypeMapping() {
+        #expect(MusicSortOption.nameAZ.subsonicType == "alphabeticalByName")
+        #expect(MusicSortOption.kuenstler.subsonicType == "alphabeticalByArtist")
+        #expect(MusicSortOption.neu.subsonicType == "newest")
+        #expect(MusicSortOption.zuletztGespielt.subsonicType == "recent")
+        #expect(MusicSortOption.meistgespielt.subsonicType == "frequent")
     }
 }
 #endif

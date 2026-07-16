@@ -10,6 +10,9 @@ struct MusicView: View {
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
     var isActive: Bool = true
     @StateObject private var vm = MusicViewModel()
+    // Teil 2: server-side album sort, persisted; shared with the toolbar menu in
+    // LibraryView via the same AppStorage key.
+    @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
@@ -40,7 +43,13 @@ struct MusicView: View {
                     .reportsBottomBarScroll(active: isActive)
             }
         }
-        .task { await vm.loadIfNeeded() }
+        .task {
+            vm.sort = musicSort   // honour the persisted sort on the first load
+            await vm.loadIfNeeded()
+        }
+        .onChange(of: musicSort) { _, newSort in
+            Task { await vm.setSort(newSort) }
+        }
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the staged reload continues as a background
         // task and replaces content silently (stale beats empty).

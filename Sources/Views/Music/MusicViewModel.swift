@@ -10,14 +10,17 @@ struct MusicSource {
     // bodies still run on the main actor. That matches reality — the live wiring
     // only awaits the @MainActor Subsonic provider — and lets the injected test
     // closures capture their @MainActor observation state without a data race.
-    /// One page of the alphabetical album catalog (offset, size).
-    var albumsPage: @MainActor @Sendable (_ offset: Int, _ size: Int) async throws -> [LibraryItem]
+    /// One page of the album catalog for a given SORT (offset, size). The live
+    /// wiring maps the semantic MusicSortOption to the Subsonic getAlbumList2
+    /// type here (provider-level mapping — a future provider translates or
+    /// reports a case unavailable). Teil 2.
+    var albumsPage: @MainActor @Sendable (_ sort: MusicSortOption, _ offset: Int, _ size: Int) async throws -> [LibraryItem]
     var shelf: @MainActor @Sendable (_ type: String, _ size: Int) async throws -> [LibraryItem]
     var artists: @MainActor @Sendable () async throws -> [SubsonicArtist]
     var playlists: @MainActor @Sendable () async throws -> [SubsonicPlaylist]
 
     static let live = MusicSource(
-        albumsPage: { try await SubsonicProvider.shared.albumPage(offset: $0, size: $1) },
+        albumsPage: { try await SubsonicProvider.shared.albumPage(type: $0.subsonicType, offset: $1, size: $2) },
         shelf: { try await SubsonicProvider.shared.albumShelf(type: $0, size: $1) },
         artists: { try await SubsonicProvider.shared.allArtists() },
         playlists: { try await SubsonicProvider.shared.allPlaylists() }
@@ -45,9 +48,19 @@ final class MusicViewModel: ObservableObject {
 
     private let source: MusicSource
     private var loaded = false
+    /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
+    var sort: MusicSortOption = .nameAZ
 
     init(source: MusicSource = .live) {
         self.source = source
+    }
+
+    /// Switch the album sort and re-query from the first page. Paging reset is
+    /// inherent — `reload()` always starts at offset 0.
+    func setSort(_ newSort: MusicSortOption) async {
+        guard newSort != sort else { return }
+        sort = newSort
+        await reload()
     }
 
     func loadIfNeeded() async {
@@ -83,14 +96,14 @@ final class MusicViewModel: ObservableObject {
 
         let pageSize = 100
         do {
-            let first = try await source.albumsPage(0, pageSize)
+            let first = try await source.albumsPage(sort, 0, pageSize)
             albums = first
             isLoading = false   // grid is on screen — the rest arrives silently
             // Remaining pages: append quietly; an abort keeps the partial list.
             var offset = first.count
             var lastCount = first.count
             while lastCount == pageSize {
-                guard let next = try? await source.albumsPage(offset, pageSize), !next.isEmpty else { break }
+                guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
                 albums += next
                 offset += next.count
                 lastCount = next.count

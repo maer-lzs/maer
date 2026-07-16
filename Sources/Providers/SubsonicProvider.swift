@@ -138,10 +138,10 @@ final class SubsonicProvider: AudioProvider {
 
     /// One page of the alphabetical album catalog (S5: staged loading — the
     /// grid pages in 100s instead of one 500-album request).
-    func albumPage(offset: Int, size: Int = 100) async throws -> [LibraryItem] {
+    func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
         guard let client else { return [] }
         return await Self.mapAlbums(
-            try await client.albumList2(type: "alphabeticalByName", size: size, offset: offset))
+            try await client.albumList2(type: type, size: size, offset: offset))
     }
 
     func allArtists() async throws -> [SubsonicArtist] {
