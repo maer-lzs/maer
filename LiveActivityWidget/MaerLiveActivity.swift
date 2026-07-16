@@ -22,15 +22,12 @@ struct MaerWidgetBundle: WidgetBundle {
 struct PlaybackLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PlaybackActivityAttributes.self) { context in
-            // S15d: match the system Now-Playing activity — the PRIMARY adaptive
-            // system background (near-white in light, near-black in dark) rather
-            // than the grey secondary fill, which read too dark/heavy next to the
-            // light system player. `.activityBackgroundTint` only accepts a Color,
-            // so this adaptive system color is the closest to the system material;
-            // foreground stays adaptive (.label).
+            // S15e: NO fixed background tint or foreground color. the owner runs the
+            // iOS Glass design (system "Transparent"/"Tinted") — a fixed tint (the
+            // earlier S15b–d attempts) overrode the system Glass and fought its
+            // light/dark rendering. Without a tint the activity respects the
+            // system Glass + appearance environment, matching the system player.
             LockScreenView(context: context)
-                .activityBackgroundTint(Color(uiColor: .systemBackground))
-                .activitySystemActionForegroundColor(Color(uiColor: .label))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
