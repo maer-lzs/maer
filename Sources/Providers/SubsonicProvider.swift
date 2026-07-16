@@ -86,6 +86,12 @@ final class SubsonicProvider: AudioProvider {
         itemsById[itemId]
     }
 
+    #if DEBUG
+    /// UI-test seeding only (see UITestSeed) — makes items resolvable without a
+    /// server so a queued album renders in the Up-Next UI.
+    func _seedForUITest(_ items: [LibraryItem]) { for item in items { itemsById[item.id] = item } }
+    #endif
+
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         guard let client else { throw SubsonicClient.SubsonicError.network }
         // Album or playlist — both become a multi-track item.

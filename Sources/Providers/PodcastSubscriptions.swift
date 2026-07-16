@@ -137,6 +137,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     var hasSubscriptions: Bool { !shows.isEmpty }
 
+    #if DEBUG
+    /// UI-test seeding only (see UITestSeed) — injects deterministic shows.
+    func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
+    #endif
+
     // MARK: - Stable ids + dedup (migration)
 
     /// Deterministic key of a feed (FNV-1a hex over the normalised URL).

@@ -85,6 +85,14 @@ struct ABSPlayerApp: App {
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @Environment(\.scenePhase) private var scenePhase
 
+    init() {
+        #if DEBUG
+        // UI-test harness only (compiles out of Release, no-op without -uitest):
+        // bypass login + seed deterministic content BEFORE the first render.
+        UITestSeed.applyIfRequested()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
