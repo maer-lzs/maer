@@ -132,3 +132,17 @@ final class PlayQueue: ObservableObject {
         WidgetCenter.shared.reloadTimelines(ofKind: "PodcastUpNext")
     }
 }
+
+/// Pure cross-media auto-continue rule (testable core of
+/// `PlayerCoordinator.nextPlayableQueueItem`). Returns the first queued id that
+/// can start now — scanning in order, regardless of media type, so a book,
+/// episode or album plays next as the queue dictates. Offline only downloaded
+/// items are playable (A3); ids that no longer resolve to a library item are
+/// skipped rather than handed to the player.
+nonisolated enum QueueContinuation {
+    static func nextPlayable(ids: [String],
+                             isPlayable: (String) -> Bool,
+                             resolves: (String) -> Bool) -> String? {
+        ids.first { isPlayable($0) && resolves($0) }
+    }
+}

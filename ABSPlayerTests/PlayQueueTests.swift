@@ -86,5 +86,29 @@ struct PlayQueueTests {
         q.clear()
         #expect(q.isEmpty)
     }
+
+    // MARK: - Cross-media auto-continue (Teil-1 core journey)
+
+    /// Proves the core journey "enqueue mixed types → auto-continue across the
+    /// media boundary" deterministically: a book, an album and an episode share
+    /// one queue; continuation scans in order, honours the offline filter and
+    /// skips orphans — crossing type boundaries as the queue dictates.
+    @Test("cross-media continuation picks the first playable across type boundaries")
+    func crossMediaContinuation() {
+        let ids = ["book1", "sub:album:2", "rss:3", "book4"]
+        // Online, everything resolves → the very first entry (a book).
+        #expect(QueueContinuation.nextPlayable(ids: ids, isPlayable: { _ in true },
+                                               resolves: { _ in true }) == "book1")
+        // Offline, only the music album is downloaded → skip the book, cross the
+        // boundary to music.
+        #expect(QueueContinuation.nextPlayable(ids: ids, isPlayable: { $0 == "sub:album:2" },
+                                               resolves: { _ in true }) == "sub:album:2")
+        // The first entry no longer resolves (removed from library) → skip it.
+        #expect(QueueContinuation.nextPlayable(ids: ids, isPlayable: { _ in true },
+                                               resolves: { $0 != "book1" }) == "sub:album:2")
+        // Nothing playable (offline, none downloaded) → nil, player stays put.
+        #expect(QueueContinuation.nextPlayable(ids: ids, isPlayable: { _ in false },
+                                               resolves: { _ in true }) == nil)
+    }
 }
 #endif

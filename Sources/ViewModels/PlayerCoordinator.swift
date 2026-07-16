@@ -154,11 +154,12 @@ final class PlayerCoordinator: ObservableObject {
     /// longer resolve to a library item are skipped.
     private func nextPlayableQueueItem() -> LibraryItem? {
         let offline = !NetworkMonitor.shared.isConnected
-        for id in PlayQueue.shared.ids {
-            guard !offline || DownloadManager.shared.isDownloaded(itemId: id) else { continue }
-            if let item = AppSession.shared.libraryItem(forId: id) { return item }
-        }
-        return nil
+        guard let id = QueueContinuation.nextPlayable(
+            ids: PlayQueue.shared.ids,
+            isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
+            resolves: { AppSession.shared.libraryItem(forId: $0) != nil }
+        ) else { return nil }
+        return AppSession.shared.libraryItem(forId: id)
     }
 
     /// Restores the last played session on app start — paused, so nothing plays
