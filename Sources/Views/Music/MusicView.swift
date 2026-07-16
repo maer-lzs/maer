@@ -9,7 +9,11 @@ struct MusicView: View {
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
     var isActive: Bool = true
+    #if DEBUG
+    @StateObject private var vm = MusicViewModel(source: .uitestOrLive)
+    #else
     @StateObject private var vm = MusicViewModel()
+    #endif
     // Teil 2: server-side album sort, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage key.
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
@@ -34,8 +38,12 @@ struct MusicView: View {
             } else if vm.albums.isEmpty {
                 ContentUnavailableView("No music", systemImage: "music.note")
             } else {
-                ScrollView { content }
-                    .bottomBarClearance()
+                // S17b: `bottomBarClearance()` must sit INSIDE the ScrollView (on
+                // the content) — like the podcast + audiobook tabs — so the scroll
+                // stays full-bleed and the content scrolls UNDER the glass bar.
+                // Applied OUTSIDE it inset the ScrollView, exposing the dark
+                // background behind the bar (the "residual background").
+                ScrollView { content.bottomBarClearance() }
                     // S17: bind the Music tab to the shared BottomBarState like
                     // the other tabs — without this its scroll never reported, so
                     // the bar stayed expanded (heavy/opaque look) and never
