@@ -35,10 +35,14 @@ enum UITestSeed {
             ])
         PodcastSubscriptions.shared._seedForUITest([show])
 
-        // Music album — resolvable in the queue without a Subsonic server.
-        SubsonicProvider.shared._seedForUITest([
-            musicAlbum(id: "sub:album:seed-1", title: "Seed Album", artist: "The Seeds"),
-        ])
+        // Music: make the tab AVAILABLE (fake config → a non-nil client) and
+        // seed resolvable albums. MusicView's grid content comes from the seeded
+        // MusicSource (see MusicSource.uitestSeed); these back the queue + resolver.
+        AppStorageKeys.subsonicServerURLValue = "https://seed.example"
+        AppStorageKeys.subsonicUsernameValue = "seed"
+        AppStorageKeys.subsonicEnabledValue = true
+        SubsonicProvider.shared.reloadConfig()
+        SubsonicProvider.shared._seedForUITest(seedAlbums)
 
         // Mixed Up-Next queue: a book, an album and an episode.
         let queue = PlayQueue.shared
@@ -49,6 +53,15 @@ enum UITestSeed {
     }
 
     // MARK: - Fixtures
+
+    /// Fake albums for the Music tab + queue/resolver. The first backs the mixed
+    /// queue entry "sub:album:seed-1".
+    static let seedAlbums: [LibraryItem] = [
+        musicAlbum(id: "sub:album:seed-1", title: "Seed Album", artist: "The Seeds"),
+        musicAlbum(id: "sub:album:seed-2", title: "Second Seed", artist: "Sprout"),
+        musicAlbum(id: "sub:album:seed-3", title: "Third Seed", artist: "Bloom"),
+        musicAlbum(id: "sub:album:seed-4", title: "Fourth Seed", artist: "Petal"),
+    ]
 
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?) -> LibraryEntry {
         LibraryEntry(item: LibraryItem(

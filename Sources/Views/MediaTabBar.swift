@@ -40,6 +40,8 @@ struct MediaTabBar: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(type.label))
+                // Locale-independent handle for the UI-test harness.
+                .accessibilityIdentifier("tab-\(type.rawValue)")
             }
         }
         .padding(.horizontal, 6)

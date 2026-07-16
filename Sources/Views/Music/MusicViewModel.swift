@@ -27,6 +27,22 @@ struct MusicSource {
     )
 }
 
+#if DEBUG
+extension MusicSource {
+    /// UI-test wiring: the seeded source under `-uitest`, else the live one.
+    static var uitestOrLive: MusicSource { UITestSeed.isActive ? .uitestSeed : .live }
+
+    /// Serves the seeded albums without a server (see UITestSeed), so the Music
+    /// tab (and S17b's background) are harness-visible.
+    static let uitestSeed = MusicSource(
+        albumsPage: { _, offset, _ in offset == 0 ? UITestSeed.seedAlbums : [] },
+        shelf: { _, _ in Array(UITestSeed.seedAlbums.prefix(3)) },
+        artists: { [] },
+        playlists: { [] }
+    )
+}
+#endif
+
 /// Loads the Music tab from the Subsonic provider: two shelves (recently added,
 /// most played), the full alphabetical album list, plus artists and playlists
 /// for browsing. Album loading is critical (drives the error state); the rest is

@@ -58,7 +58,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "home")
 
         // Switch to the Podcasts tab → seeded show.
-        let podcasts = app.buttons["Podcasts"].firstMatch
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 10))
         podcasts.tap()
         XCTAssertTrue(app.staticTexts["Seed Show"].waitForExistence(timeout: 15)
@@ -66,8 +66,22 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "podcast-tab")
 
         // Back to Home.
-        let home = app.buttons["Home"].firstMatch
+        let home = app.buttons["tab-home"].firstMatch
         if home.waitForExistence(timeout: 10) { home.tap() }
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))
+    }
+
+    /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
+    func testMusicTab() {
+        let app = launchSeeded()
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15))
+        music.tap()
+        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 15))
+        snap(app, "music-tab")
+        // Reference: the audiobook tab bottom bar.
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        if books.waitForExistence(timeout: 10) { books.tap() }
+        snap(app, "audiobooks-tab")
     }
 }
