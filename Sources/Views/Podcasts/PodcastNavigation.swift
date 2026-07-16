@@ -31,7 +31,7 @@ extension View {
                     ContentUnavailableView("Episode unavailable", systemImage: "mic")
                 }
             case .queue:
-                PodcastQueueView(playerCoordinator: playerCoordinator)
+                PlayQueueView(playerCoordinator: playerCoordinator)
             }
         }
     }

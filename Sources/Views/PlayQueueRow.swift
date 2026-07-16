@@ -1,0 +1,33 @@
+import SwiftUI
+
+/// One row of the GLOBAL Up-Next queue. Renders any media type — audiobook,
+/// podcast episode, music album/song — uniformly through the shared
+/// `MediaRowContent` (Regel 2: one parametrised component, used by both the
+/// Up-Next section and the reorderable queue page). Tapping plays the item,
+/// which removes it from the queue via the coordinator ("start = flies out").
+struct PlayQueueRow: View {
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        Button {
+            Task { await playerCoordinator.open(item: item) }
+        } label: {
+            MediaRowContent(
+                coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                eyebrow: item.media?.metadata?.authorName ?? item.author,
+                title: item.title,
+                placeholderSystemImage: placeholderSystemImage
+            )
+        }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
+    }
+
+    /// Cover-less placeholder glyph by media type.
+    private var placeholderSystemImage: String {
+        if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") { return "mic" }
+        if item.id.hasPrefix("sub:") { return "music.note" }
+        return "book.closed"
+    }
+}

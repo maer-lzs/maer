@@ -1,9 +1,10 @@
 import SwiftUI
 import Combine
 
-/// Reorderable "queue" page: reorder (`.onMove`/EditButton), swipe to remove,
-/// tap a row to play it (and remove it from the queue).
-struct PodcastQueueView: View {
+/// Reorderable global "Up Next" page across ALL media types: reorder
+/// (`.onMove`/EditButton), swipe to remove, tap a row to play it (and remove it
+/// from the queue). Rows render uniformly via `PlayQueueRow`.
+struct PlayQueueView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var queue = PlayQueue.shared
 
@@ -11,7 +12,7 @@ struct PodcastQueueView: View {
         List {
             ForEach(queue.ids, id: \.self) { id in
                 if let item = AppSession.shared.libraryItem(forId: id) {
-                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                    PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
                 }
             }

@@ -176,7 +176,8 @@ struct PodcastsView: View {
                 .padding(.horizontal)
                 LazyVStack(spacing: 0) {
                     ForEach(items.prefix(5)) { item in
-                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                        PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
+                            .padding(.horizontal)
                         Divider().padding(.leading, 88)
                     }
                 }
