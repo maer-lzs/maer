@@ -35,10 +35,10 @@ extension View {
                     Task { await playerCoordinator.open(item: item) }
                 } label: { Label("Play", systemImage: "play.fill") }
                 Button {
-                    PodcastQueue.shared.playNext(item.id)
+                    PlayQueue.shared.playNext(item.id)
                 } label: { Label("Play Next", systemImage: "text.insert") }
                 Button {
-                    PodcastQueue.shared.playLast(item.id)
+                    PlayQueue.shared.playLast(item.id)
                 } label: { Label("Play Last", systemImage: "text.append") }
             }
             let played = podcastPlayState(for: item) == .played

@@ -5,7 +5,7 @@ import Combine
 /// tap a row to play it (and remove it from the queue).
 struct PodcastQueueView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var queue = PodcastQueue.shared
+    @ObservedObject private var queue = PlayQueue.shared
 
     var body: some View {
         List {

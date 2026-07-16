@@ -28,7 +28,7 @@ struct PodcastsView: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    @ObservedObject private var queue = PodcastQueue.shared
+    @ObservedObject private var queue = PlayQueue.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @State private var subscribingRec: Set<String> = []
     /// D4/B3: more tile text lines at accessibility sizes.

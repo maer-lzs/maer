@@ -43,7 +43,7 @@ nonisolated struct WidgetSnapshot: Codable {
 }
 
 /// Preview of the podcast "Up Next" queue for the home-screen widget. The app
-/// writes on every queue change (see `PodcastQueue.save`), the widget reads —
+/// writes on every queue change (see `PlayQueue.save`), the widget reads —
 /// via the App Group container, since it is a separate process.
 nonisolated struct PodcastQueueSnapshot: Codable {
     struct Item: Codable {

@@ -217,13 +217,13 @@ struct PodcastEpisodeRow: View {
         // `LazyVStack` previews the context menu remains.
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             Button {
-                PodcastQueue.shared.playNext(item.id)
+                PlayQueue.shared.playNext(item.id)
             } label: {
                 Label("Play Next", systemImage: "text.insert")
             }
             .tint(AppTheme.accent)
             Button {
-                PodcastQueue.shared.playLast(item.id)
+                PlayQueue.shared.playLast(item.id)
             } label: {
                 Label("Play Last", systemImage: "text.append")
             }

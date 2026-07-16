@@ -82,7 +82,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let shows = dedupedPodcastShows()
         guard !shows.isEmpty else { return nil }
 
-        let queue = PodcastQueue.shared.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        let queue = PlayQueue.shared.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
 
         var continueItems: [(item: LibraryItem, date: Double)] = []
         for show in shows {

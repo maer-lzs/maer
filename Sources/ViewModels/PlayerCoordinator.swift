@@ -48,7 +48,7 @@ final class PlayerCoordinator: ObservableObject {
         // A podcast episode you play no longer belongs in the "Up Next" queue
         // (the currently playing episode is never in it).
         if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
-            PodcastQueue.shared.remove(item.id)
+            PlayQueue.shared.remove(item.id)
         }
         // A restart must reload (start at 0) even if it's the active item — don't
         // take the "already open, just resume" shortcut.
@@ -129,7 +129,7 @@ final class PlayerCoordinator: ObservableObject {
                 // read like a crash. No candidate → stop cleanly (the player
                 // stays on the finished episode).
                 let offline = !NetworkMonitor.shared.isConnected
-                if let nextId = PodcastQueue.shared.first,
+                if let nextId = PlayQueue.shared.first,
                    !offline || DownloadManager.shared.isDownloaded(itemId: nextId),
                    let item = AppSession.shared.libraryItem(forId: nextId) {
                     Task { await self.open(item: item) }
