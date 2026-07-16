@@ -169,8 +169,16 @@ struct BookDetailScreen: View {
     /// landscape layouts.
     @ViewBuilder
     private func trailingSections(isHero: Bool) -> some View {
-        if let chapters = detail?.media.chapters, !chapters.isEmpty {
-            chapterLink(chapters, isHero: isHero)
+        // V6: use the SAME validated/resolved chapter list the player uses, never
+        // the raw server chapters — otherwise a coverage-fallback book shows a
+        // different (broken) chapter list here than in the player.
+        if let media = detail?.media {
+            let resolved = ChapterModel.resolved(
+                chapters: media.chapters ?? [], tracks: media.tracks ?? [],
+                duration: media.duration ?? 0).chapters
+            if !resolved.isEmpty {
+                chapterLink(resolved, isHero: isHero)
+            }
         }
 
         if let errorMessage {

@@ -150,6 +150,22 @@ struct ChapterModelTests {
         #expect(r.chapters.isEmpty)
     }
 
+    /// V6: displays must derive the current chapter from the VALIDATED list, not
+    /// the raw server chapters. "Letzte Flotte" shape: chapters cover only the
+    /// first ~30% of the book; past that, the raw `last(where: t >= start)` names
+    /// a phantom chapter, while validated `current` correctly returns nil.
+    @Test("V6: raw chapters name a phantom chapter past coverage; validated does not")
+    func v6CoverageFallbackChapterLabel() {
+        let raw = [ch(0, 0, 100), ch(1, 100, 300)]   // covers 30% of a 1000s book
+        // The V6 bug (raw): position 500 → last chapter whose start <= 500 = C1.
+        #expect(raw.last(where: { 500 >= $0.start })?.id == 1)
+        // The fix (validated + current): 500 is past the last end → nil.
+        let validated = ChapterModel.validated(raw, duration: 1000)
+        #expect(ChapterModel.current(at: 500, in: validated) == nil)
+        // Inside a real chapter it still resolves correctly.
+        #expect(ChapterModel.current(at: 150, in: validated)?.id == 1)
+    }
+
     @Test("T9b: the book rest marker is labelled by its start position")
     func restMarkerLabelledByPosition() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)

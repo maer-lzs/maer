@@ -138,9 +138,14 @@ struct BookFeaturedCard: View {
     /// Current chapter — from the (lazily loaded) chapters, otherwise from the
     /// possibly already-present item data.
     private var currentChapter: String? {
-        guard let chapters = loadedChapters ?? entry.item.media?.chapters,
-              !chapters.isEmpty, let t = entry.progress?.currentTime else { return nil }
-        return chapters.last(where: { t >= $0.start })?.title
+        guard let raw = loadedChapters ?? entry.item.media?.chapters,
+              !raw.isEmpty, let t = entry.progress?.currentTime else { return nil }
+        // V6: derive the current chapter from the VALIDATED list (never the raw
+        // server chapters). `last(where: t >= start)` on raw chapters names a
+        // phantom chapter for a coverage-fallback book once the position is past
+        // the last real chapter; `current` returns nil there → no wrong label.
+        let validated = ChapterModel.validated(raw, duration: entry.item.media?.duration ?? 0)
+        return ChapterModel.current(at: t, in: validated)?.title
     }
 
     /// Fetch the book's chapters once from the detail (the list is "minified",
