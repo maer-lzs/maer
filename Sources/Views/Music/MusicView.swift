@@ -102,7 +102,7 @@ struct MusicView: View {
             }
 
             Text("Albums").font(.title3).bold().padding(.horizontal)
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+            CoverGrid(columns: columns) {
                 ForEach(vm.albums) { album in
                     AlbumCell(item: album, playerCoordinator: playerCoordinator)
                 }

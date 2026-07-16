@@ -51,7 +51,7 @@ struct MusicArtistView: View {
                 if loading {
                     ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                 } else {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                    CoverGrid(columns: columns) {
                         ForEach(albums) { album in
                             AlbumCell(item: album, playerCoordinator: playerCoordinator)
                         }

@@ -36,7 +36,7 @@ struct PodcastDiscoverView: View {
                 )
                 .padding(.top, 40)
             } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                CoverGrid(columns: columns) {
                     ForEach(results) { tile($0) }
                 }
                 .padding()

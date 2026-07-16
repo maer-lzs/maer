@@ -301,10 +301,8 @@ struct BrowseBooksScreen: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount),
-                alignment: .leading,
-                spacing: 20
+            CoverGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
             ) {
                 ForEach(entries) { entry in
                     BookGridCell(
