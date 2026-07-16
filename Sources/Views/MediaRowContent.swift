@@ -20,6 +20,9 @@ struct MediaRowContent: View {
     var showsPlayedCheck = false
     /// Placeholder glyph when there is no cover (mic for podcasts, book for books).
     var placeholderSystemImage = "mic"
+    /// V7: cover edge length. Default 64; the Up-Next queue rows pass a larger
+    /// value to set themselves apart from the compact Downloaded list.
+    var coverSize: CGFloat = 64
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -71,7 +74,7 @@ struct MediaRowContent: View {
                     .overlay(Image(systemName: placeholderSystemImage).font(.title3).foregroundStyle(.secondary))
             }
         }
-        .frame(width: 64, height: 64)
+        .frame(width: coverSize, height: coverSize)
         .clipShape(shape)
         .opacity(coverDimmed ? 0.5 : 1)
         .overlay(alignment: .topTrailing) {
