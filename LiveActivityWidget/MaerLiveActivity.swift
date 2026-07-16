@@ -126,11 +126,14 @@ private struct CoverThumb: View {
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.18, style: .continuous))
         .overlay(alignment: .bottomTrailing) {
+            // S15c: system-neutral badge instead of a hard black disc — a
+            // frosted material with an adaptive glyph, readable over any cover
+            // in both light and dark, matching the app's other status chips.
             StatusIcon(state: state)
                 .font(.system(size: size * 0.28))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(size * 0.09)
-                .background(.black.opacity(0.55), in: Circle())
+                .background(.ultraThinMaterial, in: Circle())
                 .padding(2)
         }
     }
