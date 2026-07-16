@@ -28,45 +28,46 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertGreaterThan(app.windows.count, 0)
     }
 
-    /// T3/T5 proof: the global Up-Next queue renders ALL media types together —
-    /// a book, a music album and a podcast episode in one list. Before the fix
-    /// the book + album were dropped (resolver only knew podcasts).
+    private func snap(_ app: XCUIApplication, _ name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+
+    /// T3/T5 proof + Home: the app opens on the Home tab, whose "Up Next" section
+    /// renders the global queue with ALL media types together — a book, a music
+    /// album and a podcast episode. Before the fix the book + album were dropped.
     func testMixedQueueRendersAllTypes() {
         let app = launchSeeded()
-        // The seeded mixed queue surfaces in the podcast tab's "Up Next" section.
-        let podcasts = app.buttons["Podcasts"].firstMatch
-        if podcasts.waitForExistence(timeout: 15) { podcasts.tap() }
-
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 15),
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20),
                       "queued audiobook must render (T3/T5)")
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
                       "queued music album must render (T3/T5)")
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.exists,
                       "queued podcast episode must render")
-
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "mixed-queue-all-types"
-        shot.lifetime = .keepAlways
-        add(shot)
+        snap(app, "mixed-queue-all-types")
     }
 
-    /// Tab/bar behaviour: switching between the audiobook and podcast tabs swaps
-    /// the content (and exercises the shared bottom bar's active-gate).
-    func testTabSwitching() {
+    /// Home journey: the Home tab is the start tab and aggregates sections; a
+    /// jump/tab switch reaches the podcast library and back.
+    func testHomeAndTabSwitching() {
         let app = launchSeeded()
-        // Audiobook tab shows the seeded books.
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 15))
+        // Home is the start tab — its Up Next section shows the seeded queue.
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        snap(app, "home")
 
+        // Switch to the Podcasts tab → seeded show.
         let podcasts = app.buttons["Podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 10))
         podcasts.tap()
-        // Podcast tab shows the seeded show.
         XCTAssertTrue(app.staticTexts["Seed Show"].waitForExistence(timeout: 15)
                       || app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 5))
+        snap(app, "podcast-tab")
 
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "podcast-tab"
-        shot.lifetime = .keepAlways
-        add(shot)
+        // Back to Home.
+        let home = app.buttons["Home"].firstMatch
+        if home.waitForExistence(timeout: 10) { home.tap() }
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))
     }
 }

@@ -4,6 +4,7 @@ import Foundation
 /// Tabs group by type, not source: several sources of the same type
 /// (e.g. Audiobookshelf + local files) share one tab.
 enum MediaType: String, CaseIterable, Identifiable {
+    case home          // aggregation tab (not a source); always first + default
     case audiobooks
     case podcasts
     case music
@@ -13,6 +14,7 @@ enum MediaType: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
+        case .home: return String(localized: "Home")
         case .audiobooks: return String(localized: "Audiobooks")
         case .podcasts: return String(localized: "Podcasts")
         case .music: return String(localized: "Music")
@@ -22,6 +24,7 @@ enum MediaType: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .home: return "house"
         case .audiobooks: return "book.closed"
         case .podcasts: return "mic"
         case .music: return "music.note"

@@ -43,7 +43,7 @@ struct LibraryView: View {
     @State private var showSettings = false
     /// Active content-type tab. Today audiobooks only; the bottom tab bar only
     /// appears when a second source brings a different type.
-    @State private var selectedMediaType: MediaType = .audiobooks
+    @State private var selectedMediaType: MediaType = .home
     // Teil 2: per-tab sort/filter, shared with the tab content via the same
     // AppStorage keys (audiobooks keep using LibraryViewModel's own state).
     @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
@@ -55,7 +55,7 @@ struct LibraryView: View {
     /// Tabs that have been shown at least once — they stay mounted (hidden)
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
-    @State private var mountedTabs: Set<MediaType> = [.audiobooks]
+    @State private var mountedTabs: Set<MediaType> = [.home]
 
     private func isTabMounted(_ type: MediaType) -> Bool {
         mountedTabs.contains(type) || selectedMediaType == type
@@ -65,7 +65,8 @@ struct LibraryView: View {
     /// order). Today `[.audiobooks]`.
     private var availableMediaTypes: [MediaType] {
         let present = Set(AppSession.shared.allProviders.filter(\.isAvailable).map(\.mediaType))
-        return MediaType.allCases.filter { present.contains($0) }
+        // Home is an aggregation tab (no source) — always first.
+        return [.home] + MediaType.allCases.filter { $0 != .home && present.contains($0) }
     }
 
     let provider: any AudioProvider
@@ -91,6 +92,17 @@ struct LibraryView: View {
                 // old tab, so every return re-ran the tab's full load chain
                 // (that was the tab-switch sluggishness).
                 ZStack {
+                    if isTabMounted(.home) {
+                        HomeView(playerCoordinator: playerCoordinator,
+                                 isActive: selectedMediaType == .home,
+                                 libraryViewModel: viewModel,
+                                 jumpTargets: availableMediaTypes.filter { $0 != .home },
+                                 onJump: { type in
+                                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = type }
+                                     mountedTabs.insert(type)
+                                 })
+                            .tabVisibility(selectedMediaType == .home)
+                    }
                     if isTabMounted(.audiobooks) {
                         audiobooksContent
                             .tabVisibility(selectedMediaType == .audiobooks)
@@ -471,7 +483,9 @@ struct LibraryView: View {
                 bottomBar.expand()
             }
         } label: {
-            Image(systemName: "house.fill")
+            // Collapsed bar shows the ACTIVE tab's symbol; tapping only expands
+            // the bar (never switches tab). Symbol changes with the tab.
+            Image(systemName: selectedMediaType.systemImage)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(.primary)
                 .frame(width: 56, height: 56)
@@ -480,7 +494,7 @@ struct LibraryView: View {
         .buttonStyle(.plain)
         .modifier(AdaptiveGlassBackground(shape: Circle()))
         .matchedGeometryEffect(id: "media", in: barNS)
-        .accessibilityLabel(Text("Home"))
+        .accessibilityLabel(selectedMediaType.label)
         .accessibilityHint(Text("Expands the bar"))
     }
 
@@ -845,7 +859,7 @@ struct LibraryView: View {
             case .audiobooks: audiobookSortMenu
             case .podcasts: podcastSortMenu
             case .music: musicSortMenu
-            case .radio: EmptyView()   // no sortable library
+            case .home, .radio: EmptyView()   // no sortable library
             }
         } label: {
             toolbarGlassIcon("line.3.horizontal.decrease")
