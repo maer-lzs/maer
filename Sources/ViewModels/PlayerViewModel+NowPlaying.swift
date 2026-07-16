@@ -51,9 +51,15 @@ extension PlayerViewModel {
         var info: [String: Any] = [:]
         let bookTitle = item?.media.metadata?.title ?? String(localized: "Audiobook")
         // Chapter as title, book as album — so the lock screen shows both.
-        if let chapter = currentChapter {
+        // T9b: a FALLBACK marker ("Track N" / "Rest from X") is not a real
+        // chapter title — show the book/episode title as the title instead and
+        // demote the marker to the album line.
+        if let chapter = currentChapter, !chaptersAreFallback {
             info[MPMediaItemPropertyTitle] = chapter.title
             info[MPMediaItemPropertyAlbumTitle] = bookTitle
+        } else if let chapter = currentChapter {
+            info[MPMediaItemPropertyTitle] = bookTitle
+            info[MPMediaItemPropertyAlbumTitle] = chapter.title
         } else {
             info[MPMediaItemPropertyTitle] = bookTitle
         }

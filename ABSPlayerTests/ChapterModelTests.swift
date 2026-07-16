@@ -123,5 +123,40 @@ struct ChapterModelTests {
         #expect(r.isFallback == true)
         #expect(r.chapters.count == 2)
     }
+
+    // MARK: - T9b: media-type-aware coverage (book vs podcast fixtures)
+
+    /// The SAME partial-coverage chapters: a BOOK gets the fallback/rest marker,
+    /// a PODCAST keeps them as-is (segment markers are legitimate there).
+    @Test("T9b: partial coverage — book falls back, podcast is kept as-is")
+    func partialCoverageByMediaType() {
+        let raw = [ch(0, 0, 100), ch(1, 100, 300)]   // ends at 300 of 1000 = 30%
+        let book = ChapterModel.resolved(chapters: raw, tracks: [trk(0, 0, 1000)], duration: 1000,
+                                         isPodcast: false)
+        #expect(book.isFallback == true)              // book → fallback (rest marker)
+        #expect(book.chapters.count == 3)
+
+        let podcast = ChapterModel.resolved(chapters: raw, tracks: [trk(0, 0, 1000)], duration: 1000,
+                                            isPodcast: true)
+        #expect(podcast.isFallback == false)          // podcast → as-is
+        #expect(podcast.chapters.map(\.id) == [0, 1]) // NO rest marker appended
+    }
+
+    @Test("T9b: podcast with NO chapters stays empty (no track fallback)")
+    func podcastNoChapters() {
+        let r = ChapterModel.resolved(chapters: [], tracks: [trk(0, 0, 500), trk(1, 500, 500)],
+                                      duration: 1000, isPodcast: true)
+        #expect(r.isFallback == false)
+        #expect(r.chapters.isEmpty)
+    }
+
+    @Test("T9b: the book rest marker is labelled by its start position")
+    func restMarkerLabelledByPosition() {
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)
+        #expect(r.isFallback == true)
+        // timeLabel(100) == "1:40" → "Rest from 1:40" (not the old "Remaining").
+        #expect(r.chapters.last?.title.contains("1:40") == true)
+        #expect(r.chapters.last?.title.contains("Rest") == true)
+    }
 }
 #endif

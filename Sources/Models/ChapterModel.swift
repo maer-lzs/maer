@@ -48,9 +48,16 @@ nonisolated enum ChapterModel {
     /// - reliable chapters → use them.
     /// - multi-track otherwise → one chapter per track (track offsets are correct).
     /// - single file otherwise → the valid chapters + a "remaining" marker.
-    static func resolved(chapters raw: [ABSChapter], tracks: [ABSAudioTrack], duration: Double)
+    /// - Parameter isPodcast: podcast episodes legitimately ship PARTIAL chapter
+    ///   coverage (segment markers) — the < 90 % coverage heuristic must NOT
+    ///   apply. Show the valid chapters as-is: no rest marker, no track fallback;
+    ///   past the last chapter the player simply shows no chapter line. The
+    ///   coverage fallback stays audiobook-only (T9b).
+    static func resolved(chapters raw: [ABSChapter], tracks: [ABSAudioTrack], duration: Double,
+                         isPodcast: Bool = false)
         -> (chapters: [ABSChapter], isFallback: Bool) {
         let valid = validated(raw, duration: duration)
+        if isPodcast { return (valid, false) }
         if coversBook(valid, duration: duration) { return (valid, false) }
         if tracks.count > 1 { return (trackChapters(tracks, duration: duration), true) }
         return (withRestMarker(valid, duration: duration), true)
@@ -74,8 +81,16 @@ nonisolated enum ChapterModel {
     static func withRestMarker(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
         let lastEnd = valid.last?.end ?? 0
         guard duration > lastEnd + 1 else { return valid }
+        // T9b: name the marker by where the un-chaptered tail starts ("Rest from
+        // 1:23:45") so it reads as a position, not a phantom chapter.
         let rest = ABSChapter(id: (valid.last?.id ?? -1) + 1, start: lastEnd, end: duration,
-                              title: String(localized: "Remaining"))
+                              title: String(localized: "Rest from \(timeLabel(lastEnd))"))
         return valid + [rest]
+    }
+
+    /// Compact h:mm:ss / m:ss label for a position in seconds.
+    static func timeLabel(_ seconds: Double) -> String {
+        let t = Int(max(0, seconds)); let h = t / 3600; let m = (t % 3600) / 60; let s = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 }

@@ -384,8 +384,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // cover the book, otherwise a track/rest fallback (ABS ships items with
         // chapters covering only part of the duration). Selector, player display
         // and the S9b chapter-swipe all use THIS list.
+        // T9b: podcasts keep partial chapter coverage (segment markers) — the
+        // coverage fallback is audiobook-only.
+        let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
         let resolvedChapters = ChapterModel.resolved(
-            chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration)
+            chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
+            isPodcast: isPodcast)
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 
