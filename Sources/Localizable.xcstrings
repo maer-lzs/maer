@@ -2844,7 +2844,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kürzlich hinzugefügt"
+            "value" : "Neu hinzugefügt"
           }
         }
       }
@@ -4092,7 +4092,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Name A–Z"
+            "value" : "Name"
           }
         }
       }
@@ -4102,7 +4102,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Meiste ungespielte"
+            "value" : "Ungespielte Folgen"
           }
         }
       }
@@ -4112,7 +4112,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur mit Downloads"
+            "value" : "Mit Downloads"
           }
         }
       }
@@ -4122,7 +4122,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nur mit Ungespielten"
+            "value" : "Mit ungespielten Folgen"
           }
         }
       }
@@ -4152,7 +4152,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letzter Sync"
+            "value" : "Zuletzt synchronisiert"
           }
         }
       }
@@ -4162,7 +4162,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Letzter Sync"
+            "value" : "Letzte Synchronisierung"
           }
         }
       }
@@ -4233,6 +4233,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kapitel unvollständig — Titel-Navigation"
+          }
+        }
+      }
+    },
+    "Rest from %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest ab %@"
           }
         }
       }
