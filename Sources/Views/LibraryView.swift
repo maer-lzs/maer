@@ -44,6 +44,11 @@ struct LibraryView: View {
     /// Active content-type tab. Today audiobooks only; the bottom tab bar only
     /// appears when a second source brings a different type.
     @State private var selectedMediaType: MediaType = .audiobooks
+    // Teil 2: per-tab sort/filter, shared with the tab content via the same
+    // AppStorage keys (audiobooks keep using LibraryViewModel's own state).
+    @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
+    @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
+    @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
     /// Downloaded shelf expanded past its capped count (F6/G19).
     @State private var downloadedExpanded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -834,24 +839,13 @@ struct LibraryView: View {
 
     private var sortFilterMenu: some View {
         Menu {
-            Picker("Sort By", selection: $viewModel.sortOption) {
-                ForEach(SortOption.allCases) { option in
-                    Text(option.label).tag(option)
-                }
-            }
-            Button {
-                viewModel.sortAscending.toggle()
-            } label: {
-                Label(
-                    viewModel.sortAscending ? String(localized: "Ascending") : String(localized: "Descending"),
-                    systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
-                )
-            }
-            Divider()
-            Picker("Filter", selection: $viewModel.filterOption) {
-                ForEach(FilterOption.allCases) { option in
-                    Text(option.label).tag(option)
-                }
+            // Teil 2: each tab gets its OWN sort/filter menu + persisted state.
+            // The button (position/glass styling) stays identical across tabs.
+            switch selectedMediaType {
+            case .audiobooks: audiobookSortMenu
+            case .podcasts: podcastSortMenu
+            case .music: musicSortMenu
+            case .radio: EmptyView()   // no sortable library
             }
         } label: {
             toolbarGlassIcon("line.3.horizontal.decrease")
@@ -863,6 +857,58 @@ struct LibraryView: View {
         // without this the icon renders in the app accent (orange) instead
         // of behaving like the other toolbar buttons.
         .tint(.primary)
+    }
+
+    /// Audiobooks — the reference menu, unchanged (LibraryViewModel state).
+    @ViewBuilder private var audiobookSortMenu: some View {
+        Picker("Sort By", selection: $viewModel.sortOption) {
+            ForEach(SortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        Button {
+            viewModel.sortAscending.toggle()
+        } label: {
+            Label(
+                viewModel.sortAscending ? String(localized: "Ascending") : String(localized: "Descending"),
+                systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
+            )
+        }
+        Divider()
+        Picker("Filter", selection: $viewModel.filterOption) {
+            ForEach(FilterOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+    }
+
+    /// Podcasts — sort + filter the "Recently updated" show grid.
+    @ViewBuilder private var podcastSortMenu: some View {
+        Picker("Sort By", selection: $podcastSort) {
+            ForEach(PodcastSortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        Divider()
+        Picker("Filter", selection: $podcastFilter) {
+            ForEach(PodcastFilterOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+    }
+
+    /// Music — server-side album sort (no direction toggle). Offline the sort is
+    /// disabled with a hint instead of a silent no-op (it needs the server).
+    @ViewBuilder private var musicSortMenu: some View {
+        Picker("Sort By", selection: $musicSort) {
+            ForEach(MusicSortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        .disabled(!networkMonitor.isConnected)
+        if !networkMonitor.isConnected {
+            Text("Sorting needs a connection")
+        }
     }
 
     private var settingsLink: some View {
