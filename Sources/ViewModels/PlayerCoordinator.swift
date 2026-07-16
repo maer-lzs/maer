@@ -45,11 +45,10 @@ final class PlayerCoordinator: ObservableObject {
     ///   playback right after loading), false on a silent restore after app
     ///   start (stays paused).
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
-        // A podcast episode you play no longer belongs in the "Up Next" queue
-        // (the currently playing episode is never in it).
-        if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
-            PlayQueue.shared.remove(item.id)
-        }
+        // Whatever you START playing leaves the global "Up Next" queue — the
+        // currently playing item is never in it ("launchpad, not playlist").
+        // Covers audiobooks, podcasts and music alike.
+        PlayQueue.shared.remove(item.id)
         // A restart must reload (start at 0) even if it's the active item — don't
         // take the "already open, just resume" shortcut.
         if !restart, activeItem?.id == item.id, viewModel != nil {
@@ -115,36 +114,51 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
-    /// Auto-play next in series (settings toggle, default OFF): when a book
-    /// plays to its end, open the next unfinished book of the same series.
+    /// Auto-continue when an item plays to its end. Order:
+    /// 1. The global "Up Next" queue, CROSS-MEDIA and in order (a queued book,
+    ///    episode or album plays next regardless of what just finished).
+    /// 2. Queue empty → type-specific fallback: podcasts binge on (next unheard
+    ///    of the same show, then other subs); audiobooks continue the series
+    ///    (only if the setting is on).
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
         viewModel.onBookFinished = { [weak self] finishedItemId in
             guard let self else { return }
-            // Podcast: after the end, start the next episode. First the "Up Next"
-            // queue (the finished one was already removed on play); if empty, the
-            // binge fallback (next unheard of the same show, then other subs).
+            // Invariant "heard = flies out": the finished item leaves the queue.
+            // It was already removed when it started, but a restored-session item
+            // (never opened via `open`) would otherwise linger.
+            PlayQueue.shared.markedPlayed(finishedItemId)
+
+            // 1. Cross-media queue: the next PLAYABLE entry, any type.
+            if let next = self.nextPlayableQueueItem() {
+                Task { await self.open(item: next) }
+                return
+            }
+
+            // 2a. Podcast binge fallback.
             if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
-                // A3: offline, only downloaded episodes may auto-play — an
-                // undownloaded handoff would be rejected mid-transition and
-                // read like a crash. No candidate → stop cleanly (the player
-                // stays on the finished episode).
-                let offline = !NetworkMonitor.shared.isConnected
-                if let nextId = PlayQueue.shared.first,
-                   !offline || DownloadManager.shared.isDownloaded(itemId: nextId),
-                   let item = AppSession.shared.libraryItem(forId: nextId) {
-                    Task { await self.open(item: item) }
-                    return
-                }
                 if let next = PodcastAutoContinue.next(after: finishedItemId) {
                     Task { await self.open(item: next) }
                 }
                 return
             }
-            // Audiobooks: next book in the series (only if the setting is on).
+            // 2b. Audiobooks: next book in the series (only if the setting is on).
             guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
                   let next = self.nextInSeriesProvider?(finishedItemId) else { return }
             Task { await self.open(item: next) }
         }
+    }
+
+    /// First queue entry that can actually start now, scanning in order. A3:
+    /// offline only downloaded items are candidates — an undownloaded handoff
+    /// would be rejected mid-transition and read like a crash. Entries that no
+    /// longer resolve to a library item are skipped.
+    private func nextPlayableQueueItem() -> LibraryItem? {
+        let offline = !NetworkMonitor.shared.isConnected
+        for id in PlayQueue.shared.ids {
+            guard !offline || DownloadManager.shared.isDownloaded(itemId: id) else { continue }
+            if let item = AppSession.shared.libraryItem(forId: id) { return item }
+        }
+        return nil
     }
 
     /// Restores the last played session on app start — paused, so nothing plays
