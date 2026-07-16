@@ -29,19 +29,30 @@ extension PlayerViewModel {
 
         // Copy the cover only on a book change (the thumbnail tier is plenty for
         // the widget).
-        if Self.lastWidgetCoverItemId != item.id {
+        if Self.coverNeedsRewrite(previous: Self.lastWidgetCoverItemId, current: item.id) {
             Self.lastWidgetCoverItemId = item.id
             let coverURL = provider.coverURL(forItemId: item.id)
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let coverURL,
                       let thumb = await ImageCache.shared.thumbnail(for: coverURL),
                       let data = thumb.pngData(),
                       let target = WidgetSnapshot.coverURL else { return }
                 try? data.write(to: target, options: .atomic)
                 WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
+                // V8: the Live Activity reads the SAME shared cover file. The
+                // fetch+write above is async, so on an item change the activity
+                // had already re-rendered the NEW title next to the OLD cover.
+                // Refresh it now that the new cover is on disk.
+                self?.updateLiveActivity()
             }
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
+    }
+
+    /// V8 (testable): the shared cover file must be rewritten exactly when the
+    /// item changes (incl. the first item) — never for the same item.
+    static func coverNeedsRewrite(previous: String?, current: String) -> Bool {
+        previous != current
     }
 
     /// Uses the existing catalog keys ("%lld hr %lld min left").
