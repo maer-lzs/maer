@@ -35,6 +35,29 @@ enum PodcastImport {
     nonisolated struct AppleLibrary: Sendable {
         let feedURLs: [String]
         let progress: [AppleProgress]
+        /// S21: subscribed shows that cannot be imported because they expose no
+        /// public RSS feed (paid/Apple-exclusive subscriptions). Surfaced as a
+        /// hint instead of being swallowed silently.
+        var unimportablePaidCount = 0
+    }
+
+    /// One Apple Podcasts show as far as import selection cares (S21).
+    nonisolated struct AppleShow: Sendable, Equatable {
+        let feedURL: String?
+        let isSubscribed: Bool
+    }
+
+    /// Pure import selection (S21, testable): only ACTIVE (subscribed/followed)
+    /// shows are taken; a subscribed show WITHOUT a public feed URL is a
+    /// paid/exclusive one that can't be imported and is counted for a hint.
+    /// Unsubscribed historical shows are ignored entirely.
+    nonisolated static func selectImportable(_ shows: [AppleShow]) -> (feeds: [String], paidUnimportable: Int) {
+        var feeds: [String] = []
+        var paid = 0
+        for show in shows where show.isSubscribed {
+            if let feed = show.feedURL, !feed.isEmpty { feeds.append(feed) } else { paid += 1 }
+        }
+        return (feeds, paid)
     }
 
     /// Reads the Apple Podcasts database read-only. `nil` on open error. Missing
@@ -57,13 +80,27 @@ enum PodcastImport {
         let podcastCols = columns(db, table: "ZMTPODCAST")
         let episodeCols = columns(db, table: "ZMTEPISODE")
 
-        // Feeds: all shows with a feed URL (the subscription flag is not always
-        // set → we take every show that has a feed URL).
+        // Feeds: only ACTIVE (subscribed/followed) shows (S21) — not the whole
+        // historical list. A subscribed show without a public feed URL is a
+        // paid/Apple-exclusive one: counted for a hint, not imported. Older
+        // schemas without a follow flag fall back to taking every show with a
+        // feed URL (the paid count is then unreliable → suppressed).
         var feedURLs: [String] = []
+        var paidCount = 0
         if podcastCols.contains("ZFEEDURL") {
-            for row in query(db, "SELECT ZFEEDURL FROM ZMTPODCAST WHERE ZFEEDURL IS NOT NULL") {
-                if let feed = row[0] { feedURLs.append(feed) }
+            let subCol = firstPresent(
+                ["ZSUBSCRIBED", "ZISSUBSCRIBED", "ZFOLLOWING", "ZISFOLLOWED", "ZFOLLOWED"],
+                in: podcastCols)
+            let selectCols = subCol.map { "ZFEEDURL, \($0)" } ?? "ZFEEDURL"
+            var shows: [AppleShow] = []
+            for row in query(db, "SELECT \(selectCols) FROM ZMTPODCAST") {
+                // No follow column (old schema) → treat all as subscribed (prior behaviour).
+                let subscribed = subCol == nil ? true : (Double(row[1] ?? "") ?? 0) > 0
+                shows.append(AppleShow(feedURL: row[0], isSubscribed: subscribed))
             }
+            let selected = selectImportable(shows)
+            feedURLs = selected.feeds
+            paidCount = subCol != nil ? selected.paidUnimportable : 0
         }
 
         // Progress/played per episode via the enclosure URL.
@@ -101,7 +138,7 @@ enum PodcastImport {
             }
         }
 
-        return AppleLibrary(feedURLs: feedURLs, progress: progress)
+        return AppleLibrary(feedURLs: feedURLs, progress: progress, unimportablePaidCount: paidCount)
     }
 
     // MARK: - SQLite helpers (defensive, no third-party dependency)

@@ -407,6 +407,11 @@ struct PodcastSourceView: View {
         if r.failed > 0 {
             lines.append(String(localized: "\(r.failed) feeds could not be loaded"))
         }
+        // S21: paid/exclusive subscriptions have no public feed — say so instead
+        // of dropping them silently.
+        if r.paidSkipped > 0 {
+            lines.append(String(localized: "\(r.paidSkipped) paid subscriptions can't be imported — use the provider's subscriber feed"))
+        }
         return lines.joined(separator: "\n")
     }
 

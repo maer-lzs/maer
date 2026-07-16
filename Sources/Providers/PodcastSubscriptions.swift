@@ -338,6 +338,7 @@ final class PodcastSubscriptions: ObservableObject {
         var subscribed = 0        // newly/refreshed subscribed
         var failed = 0            // feed not loadable
         var progressApplied = 0   // episodes with applied progress/played
+        var paidSkipped = 0       // S21: paid/exclusive subs without a public feed
     }
 
     /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
@@ -362,6 +363,7 @@ final class PodcastSubscriptions: ObservableObject {
             if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
         }
         result.progressApplied = applyAppleProgress(library.progress)
+        result.paidSkipped = library.unimportablePaidCount
         return result
     }
 
