@@ -8,6 +8,10 @@ nonisolated struct RecentShowInfo: Identifiable {
     let show: PodcastShow
     let lastUpdated: Double   // ms epoch of the newest episode
     let newCount: Int
+    /// Teil 2: the show has at least one downloaded episode.
+    var hasDownloads: Bool = false
+    /// Teil 2: total unplayed episodes (drives "Most Unplayed" sort + filter).
+    var unplayedCount: Int = 0
     var id: String { show.id }
 }
 
@@ -31,6 +35,10 @@ struct PodcastsView: View {
     @ObservedObject private var queue = PlayQueue.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @State private var subscribingRec: Set<String> = []
+    // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
+    // LibraryView via the same AppStorage keys.
+    @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
+    @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
     /// D4/B3: more tile text lines at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -62,7 +70,7 @@ struct PodcastsView: View {
     /// Recompute when subscriptions, downloads or progress change — and when the
     /// tab becomes visible again (isActive gates the actual work).
     private var recomputeToken: String {
-        "\(isActive)-\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)"
+        "\(isActive)-\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)"
     }
 
     var body: some View {
@@ -154,7 +162,9 @@ struct PodcastsView: View {
     private func computeSections() async -> PodcastSectionsResult {
         let shows = allShows
         let snapshot = PodcastSections.snapshot(shows: shows)
-        return await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
+        return await PodcastSections.computeDetached(
+            shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
+        )
     }
 
     // MARK: - Queue (user-managed)
@@ -284,7 +294,9 @@ struct PodcastsView: View {
     private var recentlyUpdatedSection: some View {
         if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Recently Updated").font(.title3).bold().padding(.horizontal)
+                // Heading reflects the active grid sort (Teil 2); default sort's
+                // label is "Recently Updated", so the default look is unchanged.
+                Text(podcastSort.label).font(.title3).bold().padding(.horizontal)
                 // D6/B5: adaptive columns instead of a fixed pair — on iPads the
                 // two flexible columns blew the tiles up to ~500pt covers.
                 LazyVGrid(

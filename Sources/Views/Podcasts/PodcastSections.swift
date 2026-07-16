@@ -104,7 +104,9 @@ enum PodcastSections {
     /// Off-main section computation over the snapshot; the main actor only
     /// collects the snapshot and assigns the result.
     nonisolated static func computeDetached(
-        shows: [PodcastShow], snapshot: StateSnapshot
+        shows: [PodcastShow], snapshot: StateSnapshot,
+        sort: PodcastSortOption = .zuletztAktualisiert,
+        filter: PodcastFilterOption = .alle
     ) async -> PodcastSectionsResult {
         await Task.detached(priority: .userInitiated) {
             compute(
@@ -112,7 +114,8 @@ enum PodcastSections {
                 downloadedIds: snapshot.downloadedIds,
                 inboxOff: { snapshot.inboxOff.contains($0) },
                 playState: { state(guid: $0.id, duration: $0.media?.duration ?? 0, snapshot: snapshot) },
-                lastPlayed: { lastPlayed(id: $0, snapshot: snapshot) }
+                lastPlayed: { lastPlayed(id: $0, snapshot: snapshot) },
+                sort: sort, filter: filter
             )
         }.value
     }
@@ -122,7 +125,9 @@ enum PodcastSections {
         downloadedIds: Set<String>,
         inboxOff: (String) -> Bool,
         playState: (LibraryItem) -> EpisodePlayState,
-        lastPlayed: (String) -> Double
+        lastPlayed: (String) -> Double,
+        sort: PodcastSortOption = .zuletztAktualisiert,
+        filter: PodcastFilterOption = .alle
     ) -> PodcastSectionsResult {
         var picks: [(item: LibraryItem, playedAt: Double)] = []
         var infos: [RecentShowInfo] = []
@@ -133,6 +138,7 @@ enum PodcastSections {
             var newest = 0.0
             var lastPlayedAdded: Double?
             var unplayedAdded: [Double] = []
+            var showHasDownloads = false
 
             for ep in show.episodes {
                 let item = podcastLibraryItem(show: show, episode: ep)
@@ -145,20 +151,57 @@ enum PodcastSections {
                 case .unplayed:
                     unplayedAdded.append(item.addedAt ?? 0)
                 }
-                if downloadedIds.contains(item.id) { downloadedItems.append(item) }
+                if downloadedIds.contains(item.id) {
+                    downloadedItems.append(item)
+                    showHasDownloads = true
+                }
             }
 
             if !hideFromInbox, newest > 0 {
                 let newCount = lastPlayedAdded.map { lp in unplayedAdded.filter { $0 > lp }.count }
                     ?? unplayedAdded.count
-                infos.append(RecentShowInfo(show: show, lastUpdated: newest, newCount: newCount))
+                infos.append(RecentShowInfo(
+                    show: show, lastUpdated: newest, newCount: newCount,
+                    hasDownloads: showHasDownloads, unplayedCount: unplayedAdded.count
+                ))
             }
         }
 
         return PodcastSectionsResult(
             nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map(\.item),
-            recentShows: infos.sorted { $0.lastUpdated > $1.lastUpdated },
+            recentShows: arrange(infos, sort: sort, filter: filter),
             downloaded: downloadedItems.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
         )
+    }
+
+    /// Pure filter + sort of the show grid (Teil 2, testable). "Recently
+    /// updated" = newest episode first (default); "Name A–Z" alphabetical;
+    /// "Most unplayed" by unplayed count. Filter drops shows without downloads /
+    /// without unplayed episodes.
+    nonisolated static func arrange(
+        _ infos: [RecentShowInfo], sort: PodcastSortOption, filter: PodcastFilterOption
+    ) -> [RecentShowInfo] {
+        let filtered = infos.filter { info in
+            switch filter {
+            case .alle: return true
+            case .mitDownloads: return info.hasDownloads
+            case .mitUngespielten: return info.unplayedCount > 0
+            }
+        }
+        switch sort {
+        case .zuletztAktualisiert:
+            return filtered.sorted { $0.lastUpdated > $1.lastUpdated }
+        case .nameAZ:
+            return filtered.sorted {
+                $0.show.title.localizedCaseInsensitiveCompare($1.show.title) == .orderedAscending
+            }
+        case .meisteUngespielte:
+            // Stable tiebreak by recency so equal counts keep a sensible order.
+            return filtered.sorted {
+                $0.unplayedCount != $1.unplayedCount
+                    ? $0.unplayedCount > $1.unplayedCount
+                    : $0.lastUpdated > $1.lastUpdated
+            }
+        }
     }
 }

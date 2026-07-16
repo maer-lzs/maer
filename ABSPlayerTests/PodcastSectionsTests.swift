@@ -204,5 +204,50 @@ struct PodcastSectionsTests {
         #expect(result.nextUp.first?.id == "e15")
         expectEqual(result, referenceSections(shows: shows, world: world))
     }
+
+    // MARK: - Teil 2: grid sort + filter
+
+    @Test("Teil 2: arrange sorts by recency / name / unplayed and filters")
+    func arrangeSortsAndFilters() {
+        // Titles are "Show a/b/c" (fixture); ids are a/b/c.
+        let a = RecentShowInfo(show: show("a", episodes: []), lastUpdated: 100, newCount: 1,
+                               hasDownloads: true, unplayedCount: 5)
+        let b = RecentShowInfo(show: show("b", episodes: []), lastUpdated: 300, newCount: 0,
+                               hasDownloads: false, unplayedCount: 0)
+        let c = RecentShowInfo(show: show("c", episodes: []), lastUpdated: 200, newCount: 2,
+                               hasDownloads: true, unplayedCount: 2)
+        let infos = [a, b, c]
+        // Recently updated (default): lastUpdated desc → b, c, a.
+        #expect(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .alle).map(\.id) == ["b", "c", "a"])
+        // Name A–Z: "Show a/b/c" → a, b, c.
+        #expect(PodcastSections.arrange(infos, sort: .nameAZ, filter: .alle).map(\.id) == ["a", "b", "c"])
+        // Most unplayed: 5, 2, 0 → a, c, b.
+        #expect(PodcastSections.arrange(infos, sort: .meisteUngespielte, filter: .alle).map(\.id) == ["a", "c", "b"])
+        // Filter with downloads → a, c (b has none).
+        #expect(Set(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .mitDownloads).map(\.id)) == ["a", "c"])
+        // Filter with unplayed → a, c (b has 0).
+        #expect(Set(PodcastSections.arrange(infos, sort: .zuletztAktualisiert, filter: .mitUngespielten).map(\.id)) == ["a", "c"])
+    }
+
+    @Test("Teil 2: compute derives unplayedCount from the play-state snapshot")
+    func computeDerivesUnplayedCount() {
+        // show a: 2 episodes both unplayed; show b: 1 played.
+        let shows = [
+            show("a", episodes: [episode("a1", pubDate: 100), episode("a2", pubDate: 200)]),
+            show("b", episodes: [episode("b1", pubDate: 300)]),
+        ]
+        var world = World()
+        world.states = ["b1": .played]   // a1/a2 default .unplayed
+        let result = PodcastSections.compute(
+            shows: shows, downloadedIds: world.downloaded,
+            inboxOff: { world.inboxOff.contains($0) },
+            playState: { world.state($0) }, lastPlayed: { world.ts($0) },
+            sort: .meisteUngespielte, filter: .alle
+        )
+        // a (2 unplayed) sorts before b (0 unplayed).
+        #expect(result.recentShows.map(\.id) == ["a", "b"])
+        #expect(result.recentShows.first { $0.id == "a" }?.unplayedCount == 2)
+        #expect(result.recentShows.first { $0.id == "b" }?.unplayedCount == 0)
+    }
 }
 #endif
