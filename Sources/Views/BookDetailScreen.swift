@@ -512,6 +512,8 @@ struct BookDetailScreen: View {
 
             let target = !isFinished
             let writeTime = target ? duration : currentTime
+            // Invariant "heard = flies out": marking finished drops it from Up Next.
+            if target { PlayQueue.shared.markedPlayed(entry.id) }
             do {
                 try await coordinator.provider.updateProgress(
                     itemId: entry.id, currentTime: writeTime, duration: duration, isFinished: target

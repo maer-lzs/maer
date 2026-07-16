@@ -231,6 +231,9 @@ extension PlayerViewModel {
         // Marking as finished sets the progress explicitly to the book end;
         // undoing keeps the current state and only flips the flag.
         let writeTime = target ? duration : currentTime
+        // Invariant "heard = flies out": marking finished drops it from the
+        // global Up-Next queue, whether the server write succeeds now or queues.
+        if target { PlayQueue.shared.markedPlayed(item.id) }
         do {
             try await provider.updateProgress(
                 itemId: item.id,

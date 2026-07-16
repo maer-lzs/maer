@@ -116,6 +116,10 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true) {
     PodcastProgressStore.shared.setPlayed(item, played)
+    // Invariant "heard = flies out": marking an episode played drops it (and its
+    // rss/abspod twin) from the global Up-Next queue. Covers the episode menu,
+    // swipe action, detail page and "mark all" — they all route through here.
+    if played { PlayQueue.shared.markedPlayed(item.id) }
     // Mirror on the server too: the abspod: copy is self (abspod item) or the
     // server episode bridged via the feed guid (rss item).
     let absId = item.id.hasPrefix("abspod:")

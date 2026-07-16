@@ -35,6 +35,17 @@ struct BookContextMenuItems: View {
             } label: {
                 Label("Play", systemImage: "play.fill")
             }
+            // Global Up-Next queue — same actions as the podcast/music menus.
+            Button {
+                PlayQueue.shared.playNext(entry.id)
+            } label: {
+                Label("Play Next", systemImage: "text.insert")
+            }
+            Button {
+                PlayQueue.shared.playLast(entry.id)
+            } label: {
+                Label("Play Last", systemImage: "text.append")
+            }
         }
 
         if DownloadManager.shared.isDownloaded(itemId: entry.id) {
@@ -106,6 +117,8 @@ struct BookContextMenuItems: View {
     private func quickToggleFinished() async {
         let provider = playerCoordinator.provider
         let newIsFinished = !(entry.progress?.isFinished ?? false)
+        // Invariant "heard = flies out": marking finished drops it from Up Next.
+        if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
         let duration: Double
         let currentTime: Double
         if let fresh = try? await provider.fetchItemDetail(itemId: entry.id) {
