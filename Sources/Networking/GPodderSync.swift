@@ -10,7 +10,7 @@ final class GPodderSync {
     static let shared = GPodderSync()
     private init() {}
 
-    struct Report: Equatable {
+    struct Report: Equatable, Codable {
         var addedLocally = 0        // newly subscribed from the server
         var pushedToServer = 0      // local subscriptions pushed to the server
         var historyPulled = 0       // episode positions pulled from the server
@@ -20,8 +20,41 @@ final class GPodderSync {
         var warning: String?
     }
 
+    /// S20: the last sync outcome, persisted so the settings screen can show it
+    /// after an app restart. The mass-delete guard `warning` is STICKY — it
+    /// survives until a later CLEAN sync (no warning, no error) clears it, so a
+    /// one-off guard trip is not lost the moment the tab is reopened.
+    struct StoredReport: Equatable, Codable {
+        var date: Date
+        var report: Report
+        var warning: String?        // sticky guard warning (independent of report.warning)
+        var warningDate: Date?
+    }
+
+    /// The persisted last sync outcome (loaded once at launch).
+    private(set) var storedReport: StoredReport? = StoredReport.load()
+
     private var isRunning = false
     private static var didAutoReconcile = false
+
+    /// Pure sticky-warning decision (testable): a new warning replaces the old;
+    /// a clean sync (no warning, no error) clears it; a failed sync (error, no
+    /// warning) keeps the previous warning rather than pretending it's resolved.
+    static func stickyWarning(new: Report, previous: StoredReport?, now: Date = Date())
+        -> (warning: String?, date: Date?) {
+        if let w = new.warning { return (w, now) }
+        if new.error == nil { return (nil, nil) }              // clean sync clears it
+        return (previous?.warning, previous?.warningDate)      // failed sync keeps it
+    }
+
+    /// Persist the outcome of a sync that actually ran.
+    private func persist(_ report: Report) {
+        let sticky = Self.stickyWarning(new: report, previous: storedReport)
+        let stored = StoredReport(date: Date(), report: report,
+                                  warning: sticky.warning, warningDate: sticky.date)
+        storedReport = stored
+        stored.save()
+    }
 
     /// Build the config from the stored credentials (nil if incomplete).
     private var config: GPodderConfig? {
@@ -62,6 +95,7 @@ final class GPodderSync {
         } catch {
             report.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+        persist(report)   // S20: survive an app restart + keep a guard warning sticky
         return report
     }
 
@@ -283,5 +317,19 @@ final class GPodderSync {
 
     private static func isoTimestamp(_ ms: Double) -> String {
         iso.string(from: Date(timeIntervalSince1970: ms / 1000))
+    }
+}
+
+extension GPodderSync.StoredReport {
+    private static let key = "gpodderLastReport"
+
+    static func load() -> GPodderSync.StoredReport? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(GPodderSync.StoredReport.self, from: data)
+    }
+
+    func save() {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: Self.key)
     }
 }

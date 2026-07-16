@@ -14,6 +14,8 @@ struct GPodderSettingsView: View {
     @State private var isSyncing = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
+    // S20: last sync outcome, persisted across restarts (sticky guard warning).
+    @State private var storedReport = GPodderSync.shared.storedReport
 
     var body: some View {
         Form {
@@ -62,6 +64,7 @@ struct GPodderSettingsView: View {
                     Task {
                         let r = await GPodderSync.shared.reconcile()
                         setStatus(syncSummary(r), isError: r.error != nil)
+                        storedReport = GPodderSync.shared.storedReport
                         isSyncing = false
                     }
                 } label: {
@@ -76,6 +79,34 @@ struct GPodderSettingsView: View {
                     Text(statusMessage)
                         .font(.footnote)
                         .foregroundStyle(statusIsError ? .red : .secondary)
+                }
+            }
+
+            // S20: persisted last-sync outcome — survives an app restart, and
+            // the mass-delete guard warning stays until the next clean sync.
+            if let stored = storedReport {
+                Section {
+                    LabeledContent("Last sync",
+                                   value: stored.date.formatted(date: .abbreviated, time: .shortened))
+                    if let warning = stored.warning {
+                        Label(warning, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .font(.footnote)
+                    }
+                    if let error = stored.report.error {
+                        Label(error, systemImage: "xmark.octagon")
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                    Text(countsSummary(stored.report))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } header: {
+                    Text("Last Sync")
+                } footer: {
+                    if stored.warning != nil {
+                        Text("The subscription guard blocked an implausible mass removal. This warning stays until the next clean sync.")
+                    }
                 }
             }
         }
@@ -103,6 +134,16 @@ struct GPodderSettingsView: View {
         if let error = r.error { return error }
         // Surface the mass-delete guard prominently instead of "in sync".
         if let warning = r.warning { return warning }
+        var parts: [String] = []
+        if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }
+        if r.pushedToServer > 0 { parts.append(String(localized: "\(r.pushedToServer) pushed to server")) }
+        if r.historyPulled > 0 { parts.append(String(localized: "\(r.historyPulled) positions in")) }
+        if r.historyPushed > 0 { parts.append(String(localized: "\(r.historyPushed) positions out")) }
+        return parts.isEmpty ? String(localized: "Already in sync.") : parts.joined(separator: " · ")
+    }
+
+    /// Counts only (no warning/error) — for the persisted last-sync section.
+    private func countsSummary(_ r: GPodderSync.Report) -> String {
         var parts: [String] = []
         if r.addedLocally > 0 { parts.append(String(localized: "\(r.addedLocally) added from server")) }
         if r.pushedToServer > 0 { parts.append(String(localized: "\(r.pushedToServer) pushed to server")) }
