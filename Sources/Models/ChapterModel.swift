@@ -60,32 +60,44 @@ nonisolated enum ChapterModel {
         if isPodcast { return (valid, false) }
         if coversBook(valid, duration: duration) { return (valid, false) }
         if tracks.count > 1 { return (trackChapters(tracks, duration: duration), true) }
-        return (withRestMarker(valid, duration: duration), true)
+        return (withTimeMarks(valid, duration: duration), true)
     }
 
     /// One chapter per track, using the correct per-track offsets (TrackMath).
+    /// T9d: real coverage is often only a fraction (the operator: Schattensaat 24 %,
+    /// Kriegswirren 36 %), so these are NOT chapters — name them "Part N of M"
+    /// so they don't masquerade as a book's real chapters.
     static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double) -> [ABSChapter] {
-        tracks.indices.map { i in
+        let count = tracks.count
+        return tracks.indices.map { i in
             let start = TrackMath.trackStart(index: i, tracks: tracks, bookDuration: duration)
             let end = i + 1 < tracks.count
                 ? TrackMath.trackStart(index: i + 1, tracks: tracks, bookDuration: duration)
                 : duration
             return ABSChapter(id: i, start: start, end: max(end, start + 1),
-                              title: String(localized: "Track \(i + 1)"))
+                              title: String(localized: "Part \(i + 1) of \(count)"))
         }
     }
 
-    /// Keep the valid chapters and append a "remaining" marker from the last end
-    /// to the book end, so a single-file book with partial chapters still lets
-    /// you jump into the un-chaptered tail.
-    static func withRestMarker(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
+    /// Single-file m4b with partial chapters: keep the real chapters, then cover
+    /// the un-chaptered tail with jump marks every 15 minutes, named by their
+    /// start time ("from 3:15", "from 3:30" …). T9d: better than one 5–6 h
+    /// "remaining" lump when coverage stops early.
+    static func withTimeMarks(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
         let lastEnd = valid.last?.end ?? 0
         guard duration > lastEnd + 1 else { return valid }
-        // T9b: name the marker by where the un-chaptered tail starts ("Rest from
-        // 1:23:45") so it reads as a position, not a phantom chapter.
-        let rest = ABSChapter(id: (valid.last?.id ?? -1) + 1, start: lastEnd, end: duration,
-                              title: String(localized: "Rest from \(timeLabel(lastEnd))"))
-        return valid + [rest]
+        let step = 900.0   // 15 minutes
+        var marks: [ABSChapter] = []
+        var start = lastEnd
+        var id = (valid.last?.id ?? -1) + 1
+        while start < duration - 1 {
+            let end = min(start + step, duration)
+            marks.append(ABSChapter(id: id, start: start, end: end,
+                                    title: String(localized: "from \(timeLabel(start))")))
+            start = end
+            id += 1
+        }
+        return valid + marks
     }
 
     /// Compact h:mm:ss / m:ss label for a position in seconds.

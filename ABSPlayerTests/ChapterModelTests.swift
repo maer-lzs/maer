@@ -166,13 +166,33 @@ struct ChapterModelTests {
         #expect(ChapterModel.current(at: 150, in: validated)?.id == 1)
     }
 
-    @Test("T9b: the book rest marker is labelled by its start position")
-    func restMarkerLabelledByPosition() {
+    @Test("T9d: single-file tail marks are labelled by their start time")
+    func timeMarkLabelledByPosition() {
         let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)], tracks: [trk(0, 0, 1000)], duration: 1000)
         #expect(r.isFallback == true)
-        // timeLabel(100) == "1:40" → "Rest from 1:40" (not the old "Remaining").
+        // timeLabel(100) == "1:40" → "from 1:40" (T9d time mark).
         #expect(r.chapters.last?.title.contains("1:40") == true)
-        #expect(r.chapters.last?.title.contains("Rest") == true)
+        #expect(r.chapters.last?.title.contains("from") == true)
+    }
+
+    @Test("T9d: track fallback is named 'Part N of M' (not 'Chapter'/'Track')")
+    func trackFallbackNaming() {
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 100)],
+                                      tracks: [trk(0, 0, 500), trk(1, 500, 500)], duration: 1000)
+        #expect(r.isFallback == true)
+        #expect(r.chapters.first?.title.contains("Part 1 of 2") == true)
+    }
+
+    @Test("T9d: a large m4b tail gets 15-minute jump marks, not one lump")
+    func timeMarksForLargeTail() {
+        // Real chapters cover 0..600 of a 3600s book; the 50-min tail gets marks.
+        let r = ChapterModel.resolved(chapters: [ch(0, 0, 300), ch(1, 300, 600)],
+                                      tracks: [trk(0, 0, 3600)], duration: 3600)
+        #expect(r.isFallback == true)
+        let marks = Array(r.chapters.dropFirst(2))   // after the 2 real chapters
+        #expect(marks.count >= 3)                     // 3000s / 900s ≈ 3–4 marks
+        #expect(marks.allSatisfy { $0.title.contains("from") })
+        #expect(marks.first?.start == 600)            // starts at the coverage end
     }
 }
 #endif
