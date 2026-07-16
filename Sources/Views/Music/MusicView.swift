@@ -175,9 +175,8 @@ struct AlbumCell: View {
 
 extension View {
     /// S18: context menu for a music album/song — mirrors the podcast/book
-    /// menus (Regel 2). Play + download/delete. The "Play Next/Last" queue
-    /// actions plug in here once the global Up-Next queue lands (music has none
-    /// yet), so the shape already matches the other tabs.
+    /// menus (Regel 2). Play + Play Next/Last (global Up-Next queue) +
+    /// download/delete.
     func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
         contextMenu {
             let isPlayable = NetworkMonitor.shared.isConnected
@@ -186,7 +185,17 @@ extension View {
                 Button {
                     Task { await playerCoordinator.open(item: item) }
                 } label: { Label("Play", systemImage: "play.fill") }
+                // Global Up-Next queue. An album is one multi-track item, so
+                // queuing it enqueues the whole album as a single entry that
+                // plays its songs as a group (same actions as book/podcast).
+                Button {
+                    PlayQueue.shared.playNext(item.id)
+                } label: { Label("Play Next", systemImage: "text.insert") }
+                Button {
+                    PlayQueue.shared.playLast(item.id)
+                } label: { Label("Play Last", systemImage: "text.append") }
             }
+
             if DownloadManager.shared.isDownloaded(itemId: item.id) {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
