@@ -13,6 +13,10 @@ struct MiniPlayerBar: View {
     /// not when values WITHIN it change. That was why play/pause did not always
     /// toggle immediately.
     @ObservedObject var viewModel: PlayerViewModel
+    /// Etappe 5: reduce the bar's Liquid Glass to a cheap material during active
+    /// scrolling. `isScrolling` flips only at scroll start/stop, so this observes
+    /// a boundary signal — NOT a per-frame one.
+    @ObservedObject private var bottomBar = BottomBarState.shared
     let item: LibraryItem
     /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
     var compact: Bool = false
@@ -146,7 +150,7 @@ struct MiniPlayerBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .modifier(AdaptiveGlassBackground(shape: shape))
+        .modifier(AdaptiveGlassBackground(shape: shape, reduced: bottomBar.isScrolling))
         .background(
             GeometryReader { geo in
                 Color.clear

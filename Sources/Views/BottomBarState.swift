@@ -20,6 +20,17 @@ final class BottomBarState: ObservableObject {
     /// True while the bottom zone should show its compact row.
     @Published private(set) var collapsed = false
 
+    /// Etappe 5: true while a scroll is in flight (finger drag OR deceleration).
+    /// The bottom bar reduces its expensive Liquid-Glass to a cheap material then,
+    /// cutting the scroll hitch (the glass re-samples the scrolling cover-rich
+    /// backdrop every frame). Published ONLY at scroll START/STOP boundaries, not
+    /// per frame, so it does not reintroduce per-frame re-renders.
+    @Published private(set) var isScrolling = false
+
+    func setScrolling(_ scrolling: Bool) {
+        if isScrolling != scrolling { isScrolling = scrolling }
+    }
+
     /// Raw state, deliberately NOT published (changes every frame).
     private var scrollY: CGFloat = 0
     /// A home tap expands again; the next USER drag re-enables collapsing.
@@ -76,6 +87,7 @@ final class BottomBarState: ObservableObject {
         scrollY = 0
         forceExpanded = false
         userDragging = false
+        isScrolling = false
         applyCollapsed()
     }
 
@@ -107,6 +119,8 @@ extension View {
         .onScrollPhaseChange { _, newPhase in
             guard active else { return }
             BottomBarState.shared.setUserDragging(newPhase == .tracking || newPhase == .interacting)
+            // Etappe 5: scroll in flight (drag OR deceleration) → reduce bar glass.
+            BottomBarState.shared.setScrolling(newPhase != .idle)
             // S10: fully at rest → schedule the auto-expand.
             if newPhase == .idle { BottomBarState.shared.scrollDidRest() }
         }
