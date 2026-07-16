@@ -51,10 +51,12 @@ final class AppSession {
         provider(for: itemId).coverURL(forItemId: itemId)
     }
 
-    /// Finds the `LibraryItem` for an id across sources — for resume/restore
-    /// when the item is NOT in the audiobook list (podcast episodes live only in
-    /// the RSS provider, for example). Audiobooks/local titles come from the
-    /// caller's library list and are not looked up here.
+    /// Finds the `LibraryItem` for an id across ALL sources — for the global
+    /// Up-Next queue (render + cross-media auto-continue), resume/restore, the
+    /// widget and CarPlay. Type-complete (T3/T5): podcast episodes from their
+    /// provider, music from the Subsonic item cache, audiobooks/local titles
+    /// from the loaded library list. Best-effort — an id never seen yet is nil,
+    /// which every caller already tolerates.
     func libraryItem(forId itemId: String) -> LibraryItem? {
         if itemId.hasPrefix("rss:") {
             return rssProvider.libraryItem(forEpisodeId: itemId)   // O(1) via the guid index
@@ -62,7 +64,11 @@ final class AppSession {
         if itemId.hasPrefix("abspod:") {
             return absPodcastProvider.libraryItem(forEpisodeId: itemId)
         }
-        return nil
+        if itemId.hasPrefix("sub:") {
+            return subsonicProvider.libraryItem(forId: itemId)
+        }
+        // Audiobooks / local titles from the loaded library list.
+        return libraryViewModel.libraryItem(forId: itemId)
     }
 
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)

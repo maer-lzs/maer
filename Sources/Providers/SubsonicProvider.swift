@@ -18,6 +18,10 @@ final class SubsonicProvider: AudioProvider {
     /// album's detail also calls `fetchItemDetail` and must not clobber the song
     /// map of a different item that is actually playing.
     private var songsByItemId: [String: [(id: String, start: Double)]] = [:]
+    /// T3/T5: id → last-seen album/song item, so `AppSession.libraryItem(forId:)`
+    /// can resolve a queued music item for the Up-Next UI + auto-continue.
+    /// Populated whenever albums are mapped or an item detail is fetched.
+    private var itemsById: [String: LibraryItem] = [:]
     private var lastScrobbledSong: [String: String] = [:]
 
     /// Albums the user starred (favorites), loaded lazily from the server.
@@ -64,7 +68,22 @@ final class SubsonicProvider: AudioProvider {
         // Alphabetical is the stable "browse all" order; the Music tab (later)
         // requests newest/frequent separately for its shelves.
         let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
-        return await Self.mapAlbums(albums)
+        return remember(await Self.mapAlbums(albums))
+    }
+
+    /// Cache the items by id (for `AppSession.libraryItem(forId:)`) and pass them
+    /// through unchanged.
+    @discardableResult
+    private func remember(_ items: [LibraryItem]) -> [LibraryItem] {
+        for item in items { itemsById[item.id] = item }
+        return items
+    }
+
+    /// T3/T5: resolve a music item by id for the Up-Next UI + cross-media
+    /// auto-continue. Best-effort — an item never seen (browsed/played) yet is
+    /// nil, which the callers already tolerate.
+    func libraryItem(forId itemId: String) -> LibraryItem? {
+        itemsById[itemId]
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -103,6 +122,9 @@ final class SubsonicProvider: AudioProvider {
             chapters: chapters,
             tracks: tracks
         )
+        // T3/T5: remember this item too, so a song played from an artist page
+        // (never in the album grid) still resolves in the Up-Next queue.
+        itemsById[itemId] = LibraryItem(id: itemId, media: media, addedAt: nil)
         return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)
     }
 
@@ -133,15 +155,15 @@ final class SubsonicProvider: AudioProvider {
     /// A shelf of albums as library items. `type`: newest | frequent | recent | …
     func albumShelf(type: String, size: Int = 20) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return await Self.mapAlbums(try await client.albumList2(type: type, size: size))
+        return remember(await Self.mapAlbums(try await client.albumList2(type: type, size: size)))
     }
 
     /// One page of the alphabetical album catalog (S5: staged loading — the
     /// grid pages in 100s instead of one 500-album request).
     func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return await Self.mapAlbums(
-            try await client.albumList2(type: type, size: size, offset: offset))
+        return remember(await Self.mapAlbums(
+            try await client.albumList2(type: type, size: size, offset: offset)))
     }
 
     func allArtists() async throws -> [SubsonicArtist] {

@@ -83,6 +83,17 @@ final class LibraryViewModel: ObservableObject {
     /// (immediately visible) page — drives the "Loading more…" footer.
     @Published var isLoadingMore = false
 
+    /// T3/T5: resolve a loaded audiobook/local item by id — for the global
+    /// Up-Next queue (render + cross-media auto-continue) and session restore.
+    /// The shelves are checked too, so an item that is only on a shelf still
+    /// resolves before the full grid has paged in.
+    func libraryItem(forId itemId: String) -> LibraryItem? {
+        for list in [entries, continueListening, recentlyAdded] {
+            if let hit = list.first(where: { $0.id == itemId }) { return hit.item }
+        }
+        return nil
+    }
+
     /// Sort/filter are remembered in UserDefaults — so they persist across app
     /// restarts. When the user changes the sort type, the direction jumps to its
     /// sensible default (see `SortOption.defaultAscending`); the direction itself
