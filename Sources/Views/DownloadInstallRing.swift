@@ -13,9 +13,9 @@ import SwiftUI
 /// paused. Renders nothing when the item is not downloading.
 struct DownloadInstallRing: View {
     let itemId: String
-    /// Kept for source-compatibility with the existing call sites; the badge is
-    /// now a fixed discreet size, so the cover-relative diameter is unused.
-    var diameterFraction: CGFloat = 0.4
+    /// S11c: cover/tile width — the badge sizes to it via CoverBadge (22 %,
+    /// [18,44]). Default keeps old call sites source-compatible.
+    var tileWidth: CGFloat = 180
     var lineWidth: CGFloat = 3
 
     @ObservedObject private var downloads = DownloadManager.shared
@@ -23,27 +23,30 @@ struct DownloadInstallRing: View {
     var body: some View {
         if let phase = downloads.phase[itemId], let fraction = phase.progress {
             let paused: Bool = { if case .paused = phase { return true } else { return false } }()
+            let badge = CoverBadge.size(tileWidth: tileWidth)
+            let hit = max(44, badge)   // keep a comfortable tap target
             Button {
                 downloads.cancelDownload(itemId: itemId)
             } label: {
                 ZStack {
                     Circle().fill(.black.opacity(0.4))
-                        .frame(width: 40, height: 40)
+                        .frame(width: badge, height: badge)
                     UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
-                        .frame(width: 22, height: 22)
+                        .frame(width: badge * 0.55, height: badge * 0.55)
                     if paused {
                         Image(systemName: "pause.fill")
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: badge * 0.3, weight: .bold))
                             .foregroundStyle(.white)
                     }
                 }
-                .frame(width: 44, height: 44)   // 44pt hit target
+                .frame(width: hit, height: hit)
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
-            // Center the discreet badge over the cover area handed to us.
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // S11c: bottom-right of the cover (badge family), with a small inset.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(4)
         }
     }
 }

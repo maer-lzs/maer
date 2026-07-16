@@ -48,11 +48,19 @@ struct BookCoverView: View {
                         .font(.system(size: size * 0.14))
                         .foregroundStyle(.white, AppTheme.accent)
                         .padding(4)
-                } else if isOfflineUnavailable {
-                    // Not playable right now: offline and not on the device.
+                }
+            }
+            // S14c: offline (not-downloaded) badge — part of the badge family with
+            // the download ring: BOTTOM-RIGHT, sized via CoverBadge (22 % of the
+            // tile, [18,44]), same disc as the ring so the family reads uniform.
+            .overlay(alignment: .bottomTrailing) {
+                if isOfflineUnavailable {
+                    let badge = CoverBadge.size(tileWidth: size)
                     Image(systemName: "wifi.slash")
-                        .font(.system(size: size * 0.14))
-                        .foregroundStyle(.white)   // S14b: full symbol white
+                        .font(.system(size: badge * 0.5, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: badge, height: badge)
+                        .background(.black.opacity(0.4), in: Circle())
                         .padding(4)
                 }
             }

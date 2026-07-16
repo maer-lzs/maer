@@ -44,7 +44,7 @@ struct BookFeaturedCard: View {
         // instead of triggering the card's play action underneath. Aligned to
         // the cover area (top), not the text block below it.
         .overlay(alignment: .top) {
-            DownloadInstallRing(itemId: entry.id, diameterFraction: 0.22, lineWidth: 4)
+            DownloadInstallRing(itemId: entry.id, tileWidth: width, lineWidth: 4)
                 .frame(width: width, height: width)
         }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }

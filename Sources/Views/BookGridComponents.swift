@@ -259,7 +259,7 @@ struct BookGridCell: View {
         // Sibling overlay over the cover area so the ring's cancel button wins
         // the hit over the navigation link underneath.
         .overlay(alignment: .top) {
-            DownloadInstallRing(itemId: entry.id)
+            DownloadInstallRing(itemId: entry.id, tileWidth: width)
                 .frame(width: width, height: width)
         }
         .modifier(BookCellContextMenu(
