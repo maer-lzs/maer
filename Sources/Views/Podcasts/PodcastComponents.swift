@@ -55,8 +55,14 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
+        // X6b: the SHARED download/offline badge family at the card corner —
+        // identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
-            PodcastDownloadButton(item: item, tint: .white).padding(14)
+            CardDownloadBadge(itemId: item.id, cardWidth: width, startDownload: {
+                guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
+                await DownloadManager.shared.download(item: detail, provider: AppSession.shared.rssProvider)
+            })
+            .padding(12)
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
     }
@@ -81,21 +87,14 @@ struct PodcastFeaturedCard: View {
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+                // X6b: cover still dims when played/offline; the wifi.slash marker
+                // now lives in the card-corner badge (CardDownloadBadge).
                 .opacity(isPlayed || isOfflineUnavailable ? 0.5 : 1)
                 // The image fades softly into the color area (the "blurry" seam).
                 .overlay(alignment: .bottom) {
                     LinearGradient(colors: [.clear, colorLoader.accent],
                                    startPoint: .top, endPoint: .bottom)
                         .frame(height: width * 0.3)
-                }
-                // S14: offline-unavailable marker, identical to BookFeaturedCard.
-                .overlay(alignment: .topTrailing) {
-                    if isOfflineUnavailable {
-                        Image(systemName: "wifi.slash")
-                            .font(.caption)
-                            .foregroundStyle(.white)   // S14b: full symbol white
-                            .padding(8)
-                    }
                 }
                 .overlay(alignment: .bottomLeading) { showBadge }
 
