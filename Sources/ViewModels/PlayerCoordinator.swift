@@ -185,30 +185,52 @@ final class PlayerCoordinator: ObservableObject {
     ///    (only if the setting is on).
     private func attachBookEndHandler(to viewModel: PlayerViewModel) {
         viewModel.onBookFinished = { [weak self] finishedItemId in
-            guard let self else { return }
-            // Invariant "heard = flies out": the finished item leaves the queue.
-            // It was already removed when it started, but a restored-session item
-            // (never opened via `open`) would otherwise linger.
-            PlayQueue.shared.markedPlayed(finishedItemId)
-
-            // 1. Cross-media queue: the next PLAYABLE entry, any type.
-            if let next = self.nextPlayableQueueItem() {
-                Task { await self.open(item: next) }
-                return
-            }
-
-            // 2a. Podcast binge fallback.
-            if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
-                if let next = PodcastAutoContinue.next(after: finishedItemId) {
-                    Task { await self.open(item: next) }
-                }
-                return
-            }
-            // 2b. Audiobooks: next book in the series (only if the setting is on).
-            guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
-                  let next = self.nextInSeriesProvider?(finishedItemId) else { return }
-            Task { await self.open(item: next) }
+            self?.advanceAfterFinish(finishedItemId: finishedItemId)
         }
+    }
+
+    /// The natural-end advance, shared by the real end-of-item handler and the
+    /// manual "mark as played" (X16c). The finished item leaves the queue, then
+    /// the next playable item starts.
+    private func advanceAfterFinish(finishedItemId: String) {
+        // Invariant "heard = flies out": the finished item leaves the queue.
+        // It was already removed when it started, but a restored-session item
+        // (never opened via `open`) would otherwise linger.
+        PlayQueue.shared.markedPlayed(finishedItemId)
+
+        // 1. Cross-media queue: the next PLAYABLE entry, any type.
+        if let next = nextPlayableQueueItem() {
+            Task { await self.open(item: next) }
+            return
+        }
+
+        // 2a. Podcast binge fallback.
+        if finishedItemId.hasPrefix("rss:") || finishedItemId.hasPrefix("abspod:") {
+            if let next = PodcastAutoContinue.next(after: finishedItemId) {
+                Task { await self.open(item: next) }
+            }
+            return
+        }
+        // 2b. Audiobooks: next book in the series (only if the setting is on).
+        guard UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries),
+              let next = nextInSeriesProvider?(finishedItemId) else { return }
+        Task { await self.open(item: next) }
+    }
+
+    /// X16c: mark an item as played AS IF it ended naturally. When it is the
+    /// active session, playback stops — its progress is finalized as finished so
+    /// the stop's final sync writes "finished", not the current position — and the
+    /// auto-continue logic advances to the next item (or the session just ends if
+    /// there is none). When it is not the active item, this only runs the queue/
+    /// advance bookkeeping. The caller writes the played state (server + local).
+    func markPlayedAndAdvance(itemId: String) {
+        if activeItem?.id == itemId, let vm = viewModel {
+            vm.finalizeAsFinished()
+            vm.stop()
+            viewModel = nil
+            activeItem = nil
+        }
+        advanceAfterFinish(finishedItemId: itemId)
     }
 
     /// First queue entry that can actually start now, scanning in order. A3:

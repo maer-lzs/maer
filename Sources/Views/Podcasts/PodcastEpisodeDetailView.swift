@@ -249,7 +249,12 @@ struct PodcastEpisodeDetailView: View {
 
     private var markPlayedButton: some View {
         Button {
-            podcastSetPlayed(item, !isPlayed)
+            let nowPlayed = !isPlayed
+            podcastSetPlayed(item, nowPlayed)
+            // X16c: marking played behaves like a natural end — if this episode
+            // is the active session, playback stops and auto-continue advances
+            // (parity with the audiobook detail page).
+            if nowPlayed { playerCoordinator.markPlayedAndAdvance(itemId: item.id) }
         } label: {
             Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.title2)

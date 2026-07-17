@@ -544,6 +544,9 @@ struct BookDetailScreen: View {
             // (percentage instead of checkmark) until the app next comes to the
             // foreground.
             await libraryViewModel.refreshProgress()
+            // X16c: marking finished behaves like a natural end — if this is the
+            // active session, playback stops and auto-continue advances.
+            if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
         } catch {
             if NetworkStatus.isOfflineError(error) {
                 // Even the fresh fetch failed (offline): queue with locally known
@@ -558,6 +561,7 @@ struct BookDetailScreen: View {
                     isFinished: target
                 )
                 isFinishedOverride = target
+                if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }   // X16c
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }

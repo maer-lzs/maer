@@ -623,6 +623,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// X16c: finalize the current item as finished — set the position to the end
+    /// and the finished flag, so a following `stop()` (and its final sync) writes
+    /// "finished" rather than the current position. Used when the user marks the
+    /// ACTIVE item as played, mirroring a natural end.
+    func finalizeAsFinished() {
+        currentTime = duration
+        isFinished = true
+    }
+
     // MARK: - Playback
 
     func play() {
