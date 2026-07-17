@@ -64,6 +64,14 @@ final class PlayerCoordinator: ObservableObject {
     /// - Parameter autoplay: true on a deliberate open by the user (starts
     ///   playback right after loading), false on a silent restore after app
     ///   start (stays paused).
+    /// X16: whether opening a title starts from the beginning. An explicit
+    /// restart always does; a finished title does when it is a deliberate play
+    /// (autoplay) — there is nothing to resume; a silent restore never does (it
+    /// must not reset a finished book's position just by relaunching).
+    nonisolated static func resolvesToRestart(explicitRestart: Bool, autoplay: Bool, isFinished: Bool) -> Bool {
+        explicitRestart || (autoplay && isFinished)
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
         // Whatever you START playing leaves the global "Up Next" queue — the
         // currently playing item is never in it ("launchpad, not playlist").
@@ -106,7 +114,14 @@ final class PlayerCoordinator: ObservableObject {
         do {
             let detail = try await itemProvider.fetchItemDetail(itemId: item.id)
             let newViewModel = PlayerViewModel(provider: itemProvider)
-            await newViewModel.load(item: detail, restart: restart)
+            // X16: a finished title has nothing left to resume — its saved
+            // position is the end. A deliberate play (autoplay) therefore restarts
+            // from the beginning via the existing restart mechanic; a silent
+            // restore (autoplay == false) leaves it untouched.
+            let effectiveRestart = Self.resolvesToRestart(
+                explicitRestart: restart, autoplay: autoplay,
+                isFinished: detail.userMediaProgress?.isFinished == true)
+            await newViewModel.load(item: detail, restart: effectiveRestart)
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
             UserDefaults.standard.set(item.id, forKey: lastItemKey)
@@ -120,7 +135,10 @@ final class PlayerCoordinator: ObservableObject {
             // book would need a working server connection just to open.
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
                 let newViewModel = PlayerViewModel(provider: itemProvider)
-                await newViewModel.load(item: cached, isOfflineFallback: true)
+                let effectiveRestart = Self.resolvesToRestart(
+                    explicitRestart: restart, autoplay: autoplay,
+                    isFinished: cached.userMediaProgress?.isFinished == true)
+                await newViewModel.load(item: cached, isOfflineFallback: true, restart: effectiveRestart)
                 attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel
                 UserDefaults.standard.set(item.id, forKey: lastItemKey)
