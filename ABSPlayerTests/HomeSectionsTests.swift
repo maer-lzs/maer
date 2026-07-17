@@ -25,5 +25,31 @@ struct HomeSectionsTests {
         #expect(HomeSections.byRecency([], limit: 5).isEmpty)
         #expect(HomeSections.byRecency([[]], limit: 5).isEmpty)
     }
+
+    // MARK: - X1a: fair interleave (both libraries stay present)
+
+    @Test("interleave alternates sources so neither starves")
+    func interleaveFair() {
+        let books = ["b1", "b2"]
+        let albums = ["a1", "a2", "a3", "a4"]
+        // Round-robin: b1, a1, b2, a2, then albums continue alone.
+        #expect(HomeSections.interleave([books, albums], limit: 10) == ["b1", "a1", "b2", "a2", "a3", "a4"])
+    }
+
+    @Test("interleave keeps a short source represented within the cap")
+    func interleaveNoStarvation() {
+        let books = ["b1"]
+        let albums = (0..<20).map { "a\($0)" }
+        let r = HomeSections.interleave([books, albums], limit: 6)
+        #expect(r.contains("b1"))          // the lone book is not buried
+        #expect(r.first == "b1")           // it leads the first round
+        #expect(r.count == 6)
+    }
+
+    @Test("interleave on empty sources is empty")
+    func interleaveEmpty() {
+        #expect(HomeSections.interleave([], limit: 5).isEmpty)
+        #expect(HomeSections.interleave([[], []], limit: 5).isEmpty)
+    }
 }
 #endif

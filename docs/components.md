@@ -55,7 +55,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 | `ChapterModel` | PlayerViewModel (`resolved`, `current`) · BookDetailScreen (`resolved`) · BookFeaturedCard (`validated`, `current`) | Chapter validation + coverage/track/time-mark fallback; `isPodcast`-aware |
 | `NowPlayingPresentation` | PlayerViewModel+NowPlaying (lock screen + CarPlay) · PlayerViewModel+LiveActivity | `title(isMusic,songTitle,workTitle,fallback)` (work; song for music; never empty) · `subtitle(chapterTitle,author,isFallback)` (real chapter only) |
 | `PodcastSections` | PodcastsView (`computeSections`) · HomeView (`compute`) | `snapshot` + `computeDetached` → `nextUp / recentShows / downloaded`; off-main |
-| `HomeSections` | HomeView | `byRecency([[id,ts]], limit)` newest-first, de-duplicated |
+| `HomeSections` | HomeView | `byRecency([[id,ts]], limit)` newest-first, de-duplicated · `interleave([[id]], limit)` fair round-robin (Recently Added books+albums, neither starves) |
 
 ## State & chrome
 

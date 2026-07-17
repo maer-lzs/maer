@@ -194,16 +194,19 @@ struct HomeView: View {
         }
         let episodeIds = HomeSections.byRecency([newEpisodes], limit: 8)
 
-        // W2 "Recently Added": newly added books + newly added albums (the "newest"
-        // shelf, best-effort — empty without a music server), merged by added time
-        // so the shelf mirrors each tab's own "Recently Added".
+        // W2/X1a "Recently Added": newly added books + newly added albums (the
+        // "newest" shelf, best-effort — empty without a music server). Both inputs
+        // are already recency-ordered; a FAIR interleave keeps both libraries
+        // present (a pure time sort let the music library's fresher timestamps take
+        // every slot, so books vanished).
+        let bookItems = libraryViewModel.recentlyAdded.map(\.item)
         let newAlbums = (try? await SubsonicProvider.shared.albumShelf(type: "newest", size: 12)) ?? []
-        let mergedRecent = (libraryViewModel.recentlyAdded.map(\.item) + newAlbums)
-            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+        let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
         continueIds = rankedContinue
         newEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
-        recentlyAddedItems = Array(mergedRecent.prefix(12))
+        recentlyAddedItems = mergedIds.compactMap { byId[$0] }
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }
 

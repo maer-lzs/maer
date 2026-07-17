@@ -21,4 +21,25 @@ nonisolated enum HomeSections {
         .prefix(limit)
         .map(\.key)
     }
+
+    /// Fair round-robin merge of several already-ordered id lists, capped. Each
+    /// source keeps its order and the sources alternate, so no single source
+    /// starves the others — a pure recency sort let a music library with fresher
+    /// timestamps take every slot ("Recently Added" showed only music). Used for
+    /// "Recently Added" (books + albums).
+    static func interleave(_ sources: [[String]], limit: Int) -> [String] {
+        var result: [String] = []
+        var index = 0
+        var progressed = true
+        while progressed && result.count < limit {
+            progressed = false
+            for source in sources where index < source.count {
+                result.append(source[index])
+                progressed = true
+                if result.count >= limit { break }
+            }
+            index += 1
+        }
+        return result
+    }
 }
