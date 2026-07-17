@@ -72,6 +72,16 @@ final class PlayerCoordinator: ObservableObject {
         explicitRestart || (autoplay && isFinished)
     }
 
+    /// X19: a running FIXED-minutes sleep timer carries across an item change
+    /// (auto-continue / manual open) — it means "stop after X min of listening",
+    /// independent of the title. A position-based mode (until chapter/track end)
+    /// is bound to the current item and does not carry (it fires at that boundary).
+    nonisolated static func carriedSleepRemaining(remaining: TimeInterval?, untilChapterEnd: Bool,
+                                                  untilTrackEnd: Bool) -> TimeInterval? {
+        guard let remaining, remaining > 0, !untilChapterEnd, !untilTrackEnd else { return nil }
+        return remaining
+    }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
         // Whatever you START playing leaves the global "Up Next" queue — the
         // currently playing item is never in it ("launchpad, not playlist").
@@ -101,6 +111,13 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
 
+        // X19: capture a running fixed-minutes sleep timer BEFORE tearing down the
+        // old session, so it can continue on the next title.
+        let carriedSleep = Self.carriedSleepRemaining(
+            remaining: viewModel?.sleepTimerRemaining,
+            untilChapterEnd: viewModel?.sleepUntilChapterEnd ?? false,
+            untilTrackEnd: viewModel?.sleepUntilTrackEnd ?? false)
+
         viewModel?.stop()
         viewModel = nil
         activeItem = item
@@ -125,6 +142,7 @@ final class PlayerCoordinator: ObservableObject {
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
             UserDefaults.standard.set(item.id, forKey: lastItemKey)
+            if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
             if autoplay {
                 await newViewModel.playWithServerCheck()
             }
@@ -142,6 +160,7 @@ final class PlayerCoordinator: ObservableObject {
                 attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel
                 UserDefaults.standard.set(item.id, forKey: lastItemKey)
+                if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
                 if autoplay {
                     await newViewModel.playWithServerCheck()
                 }

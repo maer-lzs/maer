@@ -26,5 +26,24 @@ struct CompletedResumeTests {
     func explicitRestartWins() {
         #expect(PlayerCoordinator.resolvesToRestart(explicitRestart: true, autoplay: false, isFinished: false))
     }
+
+    // MARK: - X19: a fixed-minutes sleep timer carries across item changes
+
+    @Test("a running fixed-minutes timer carries to the next title")
+    func fixedTimerCarries() {
+        #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 600, untilChapterEnd: false, untilTrackEnd: false) == 600)
+    }
+
+    @Test("no timer / zero does not carry")
+    func noTimerNoCarry() {
+        #expect(PlayerCoordinator.carriedSleepRemaining(remaining: nil, untilChapterEnd: false, untilTrackEnd: false) == nil)
+        #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 0, untilChapterEnd: false, untilTrackEnd: false) == nil)
+    }
+
+    @Test("a position-based timer (chapter/track end) does NOT carry — it is bound to the item")
+    func positionTimerDoesNotCarry() {
+        #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 120, untilChapterEnd: true, untilTrackEnd: false) == nil)
+        #expect(PlayerCoordinator.carriedSleepRemaining(remaining: 120, untilChapterEnd: false, untilTrackEnd: true) == nil)
+    }
 }
 #endif
