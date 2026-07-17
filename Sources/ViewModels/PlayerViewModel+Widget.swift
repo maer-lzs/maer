@@ -55,6 +55,31 @@ extension PlayerViewModel {
         previous != current
     }
 
+    /// X9/V8: write a small cover PNG (from the reliably-loaded lock-screen
+    /// artwork) into the shared app-group file the Live Activity + home widget
+    /// read, then refresh both. Dependable across item changes, unlike the
+    /// ImageCache-thumbnail path which is often empty right after a switch.
+    func refreshSharedCover(from image: UIImage) {
+        guard let target = WidgetSnapshot.coverURL else { return }
+        Self.lastWidgetCoverItemId = item?.id
+        let thumb = Self.downscaled(image, maxPixel: 300)
+        guard let data = thumb.pngData() else { return }
+        try? data.write(to: target, options: .atomic)
+        WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
+        updateLiveActivity()
+    }
+
+    /// Aspect-preserving downscale so the shared cover PNG stays small.
+    nonisolated static func downscaled(_ image: UIImage, maxPixel: CGFloat) -> UIImage {
+        let maxSide = max(image.size.width, image.size.height)
+        guard maxSide > maxPixel, maxSide > 0 else { return image }
+        let scale = maxPixel / maxSide
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        return UIGraphicsImageRenderer(size: newSize).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
+
     /// Uses the existing catalog keys ("%lld hr %lld min left").
     private static func widgetRemainingText(_ seconds: Double) -> String {
         let hours = Int(seconds) / 3600

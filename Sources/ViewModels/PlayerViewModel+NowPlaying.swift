@@ -114,6 +114,13 @@ extension PlayerViewModel {
             await MainActor.run {
                 self?.artworkImage = image
                 self?.updateNowPlayingInfo()
+                // X9/V8: write the RELIABLY-loaded cover to the shared app-group
+                // file the Live Activity + home widget read, then refresh them.
+                // The old path wrote only from ImageCache.thumbnail, which is
+                // typically still empty right after an item change (auto-continue)
+                // — so the activity re-rendered the new title next to the stale
+                // cover. Loading here already retries, so this is dependable.
+                self?.refreshSharedCover(from: image)
             }
         }
     }
