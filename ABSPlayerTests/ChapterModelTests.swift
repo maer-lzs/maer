@@ -88,6 +88,52 @@ struct ChapterModelTests {
         #expect(r.chapters.map(\.id) == [0, 1])
     }
 
+    // MARK: - X20: parts (file navigation) vs real chapters
+
+    @Test("chaptersMirrorTracks: one aligned chapter per track mirrors the files")
+    func mirrorTrue() {
+        let tracks = [trk(0, 0, 100), trk(1, 100, 100), trk(2, 200, 100)]
+        let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
+        #expect(ChapterModel.chaptersMirrorTracks(chapters, tracks: tracks, duration: 300))
+    }
+
+    @Test("chaptersMirrorTracks: a different count does NOT mirror (real chapters)")
+    func mirrorFalseCount() {
+        let tracks = [trk(0, 0, 150), trk(1, 150, 150)]
+        let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]   // 3 ≠ 2 tracks
+        #expect(!ChapterModel.chaptersMirrorTracks(chapters, tracks: tracks, duration: 300))
+    }
+
+    @Test("resolved: multi-file whose chapters mirror the files → parts (Teil), fallback")
+    func resolvedMirrorIsParts() {
+        let tracks = [trk(0, 0, 100), trk(1, 100, 100), trk(2, 200, 100)]
+        // A covering, file-aligned server chapter list — must still read as parts.
+        let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
+        let r = ChapterModel.resolved(chapters: chapters, tracks: tracks, duration: 300)
+        #expect(r.isFallback == true)
+        #expect(r.chapters.count == 3)
+    }
+
+    @Test("resolved: multi-file with genuine cross-file chapters stays real (Kapitel)")
+    func resolvedGenuineMultiFileChapters() {
+        let tracks = [trk(0, 0, 150), trk(1, 150, 150)]   // 2 files
+        let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]   // 3 real chapters, cover
+        let r = ChapterModel.resolved(chapters: chapters, tracks: tracks, duration: 300)
+        #expect(r.isFallback == false)
+        #expect(r.chapters.count == 3)
+    }
+
+    @Test("resolved: music song-chapters mirror tracks but are kept (not parts)")
+    func resolvedMusicKeepsSongs() {
+        // Each song is one track; its chapters mirror the tracks — for music that
+        // must stay real (song titles), never relabel to 'Part N'.
+        let tracks = [trk(0, 0, 100), trk(1, 100, 100), trk(2, 200, 100)]
+        let chapters = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
+        let r = ChapterModel.resolved(chapters: chapters, tracks: tracks, duration: 300, isMusic: true)
+        #expect(r.isFallback == false)
+        #expect(r.chapters.count == 3)
+    }
+
     @Test("resolved: partial chapters + multi-track -> one chapter per track (mp3 case)")
     func resolvedMultiTrack() {
         let tracks = [trk(0, 0, 300), trk(1, 300, 300), trk(2, 600, 400)]

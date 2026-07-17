@@ -54,13 +54,36 @@ nonisolated enum ChapterModel {
     ///   past the last chapter the player simply shows no chapter line. The
     ///   coverage fallback stays audiobook-only (T9b).
     static func resolved(chapters raw: [ABSChapter], tracks: [ABSAudioTrack], duration: Double,
-                         isPodcast: Bool = false)
+                         isPodcast: Bool = false, isMusic: Bool = false)
         -> (chapters: [ABSChapter], isFallback: Bool) {
         let valid = validated(raw, duration: duration)
-        if isPodcast { return (valid, false) }
+        // Music: a song IS the navigation unit and its chapters (one per song)
+        // legitimately mirror the tracks — they must keep the song titles, never
+        // become "Part N". Podcasts keep partial coverage as-is. Neither takes the
+        // audiobook track/rest fallback.
+        if isPodcast || isMusic { return (valid, false) }
+        // X20: a multi-file book navigates by FILE. When its chapter list merely
+        // MIRRORS the file structure (one per track, aligned to track starts) it
+        // is file navigation, not real chapters — relabel as "Part N" so it reads
+        // "Teil", not "Kapitel", even though it covers the book. Real "Kapitel"
+        // stays reserved for chapters that do NOT map 1:1 onto the files.
+        if tracks.count > 1, chaptersMirrorTracks(valid, tracks: tracks, duration: duration) {
+            return (trackChapters(tracks, duration: duration), true)
+        }
         if coversBook(valid, duration: duration) { return (valid, false) }
         if tracks.count > 1 { return (trackChapters(tracks, duration: duration), true) }
         return (withTimeMarks(valid, duration: duration), true)
+    }
+
+    /// X20: do the chapters merely mirror the file/track structure — one chapter
+    /// per track, each starting at a track boundary (within tolerance)? Then they
+    /// are file navigation ("parts"), not real embedded chapters.
+    static func chaptersMirrorTracks(_ chapters: [ABSChapter], tracks: [ABSAudioTrack], duration: Double) -> Bool {
+        guard tracks.count > 1, chapters.count == tracks.count else { return false }
+        let tolerance = 2.0
+        return tracks.indices.allSatisfy { i in
+            abs(chapters[i].start - TrackMath.trackStart(index: i, tracks: tracks, bookDuration: duration)) <= tolerance
+        }
     }
 
     /// One chapter per track, using the correct per-track offsets (TrackMath).

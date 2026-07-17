@@ -389,7 +389,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
         let resolvedChapters = ChapterModel.resolved(
             chapters: item.media.chapters ?? [], tracks: sortedTracks, duration: duration,
-            isPodcast: isPodcast)
+            isPodcast: isPodcast, isMusic: item.id.hasPrefix("sub:"))
         chapters = resolvedChapters.chapters
         chaptersAreFallback = resolvedChapters.isFallback
 
