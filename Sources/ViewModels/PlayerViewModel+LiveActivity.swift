@@ -49,6 +49,12 @@ extension PlayerViewModel {
             Task { await liveActivity.update(content) }
             return
         }
+        // X14: the Live Activity's PERSISTENT title is the stable work
+        // (book / episode / album) — attributes are fixed for the activity's
+        // lifetime, so it must NOT use `nowPlayingTitle` (which is the current
+        // SONG for music and would go stale on track change). The per-track
+        // title updates through `chapterName` above. Lock screen + full player
+        // (per-track, live) use the shared `nowPlayingTitle`.
         let attributes = PlaybackActivityAttributes(
             bookTitle: item.media.metadata?.title ?? "",
             author: item.media.metadata?.authorName,

@@ -6,6 +6,19 @@ import Foundation
 /// (book / episode / song); the current chapter appears only in the subtitle,
 /// and a FALLBACK marker ("Part N of M", "from 3:15") NEVER does.
 nonisolated enum NowPlayingPresentation {
+    /// X14: the LARGE now-playing title — the WORK. For music the SONG title (a
+    /// song is the work being played, not its album); otherwise the book /
+    /// episode title. NEVER empty: it falls back to a generic label so the
+    /// player's title line can never go blank. (Regression guard: the T9d
+    /// chapter cleanup once left the full player's title empty because the work
+    /// title had only ever lived INSIDE the raw chapter names, e.g. "Kapitel 71
+    /// – Armageddon …"; the player had no title line of its own.) Shared by the
+    /// full player, the lock screen / CarPlay and the Live Activity.
+    static func title(isMusic: Bool, songTitle: String?, workTitle: String?, fallback: String) -> String {
+        if isMusic, let song = nonEmpty(songTitle) { return song }
+        return nonEmpty(workTitle) ?? fallback
+    }
+
     /// Subtitle line, e.g. "Chapter 2 · Andrea Wulf". The chapter is included
     /// only when it is a REAL chapter (not a fallback marker); author is appended
     /// when present. nil when there is nothing to show.

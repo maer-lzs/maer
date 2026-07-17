@@ -29,5 +29,51 @@ struct NowPlayingPresentationTests {
         #expect(NowPlayingPresentation.subtitle(chapterTitle: nil, author: nil, isFallback: false) == nil)
         #expect(NowPlayingPresentation.subtitle(chapterTitle: "", author: "  ", isFallback: false) == nil)
     }
+
+    // MARK: - X14: the large title is always the work, never empty
+
+    @Test("book: the work title is the book, not the chapter")
+    func bookTitle() {
+        #expect(NowPlayingPresentation.title(isMusic: false, songTitle: nil,
+                                             workTitle: "Die Letzte Flotte", fallback: "Audiobook")
+                == "Die Letzte Flotte")
+    }
+
+    @Test("episode: the work title is the episode title")
+    func episodeTitle() {
+        #expect(NowPlayingPresentation.title(isMusic: false, songTitle: nil,
+                                             workTitle: "Folge 42", fallback: "Audiobook")
+                == "Folge 42")
+    }
+
+    @Test("song: the work title is the SONG, not the album")
+    func songTitle() {
+        // Music: the song is the work; the album is passed as workTitle and must
+        // NOT win.
+        #expect(NowPlayingPresentation.title(isMusic: true, songTitle: "Bohemian Rhapsody",
+                                             workTitle: "A Night at the Opera", fallback: "Audiobook")
+                == "Bohemian Rhapsody")
+    }
+
+    @Test("fallback-chapter book: the title is STILL the work, never the cleaned chapter or empty")
+    func fallbackChapterBookKeepsWorkTitle() {
+        // The X14 regression: with T9d's cleaned chapters ("Teil 12"), the work
+        // title must come from the work itself, not the chapter — and never blank.
+        let title = NowPlayingPresentation.title(isMusic: false, songTitle: nil,
+                                                 workTitle: "Armageddon", fallback: "Audiobook")
+        #expect(title == "Armageddon")
+        #expect(!title.isEmpty)
+    }
+
+    @Test("title never blank — missing/whitespace work title falls back to the generic label")
+    func titleNeverEmpty() {
+        #expect(NowPlayingPresentation.title(isMusic: false, songTitle: nil,
+                                             workTitle: nil, fallback: "Audiobook") == "Audiobook")
+        #expect(NowPlayingPresentation.title(isMusic: false, songTitle: nil,
+                                             workTitle: "   ", fallback: "Audiobook") == "Audiobook")
+        // Music with a blank song title falls back to the album, then the label.
+        #expect(NowPlayingPresentation.title(isMusic: true, songTitle: "  ",
+                                             workTitle: "The Album", fallback: "Audiobook") == "The Album")
+    }
 }
 #endif

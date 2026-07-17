@@ -38,6 +38,26 @@ final class PlayerCoordinator: ObservableObject {
         self.provider = provider
     }
 
+    #if DEBUG
+    /// UI-test only (X14): install a PRESENTATION-ONLY session — a view model
+    /// with item/chapters set but no AVPlayer — so the harness can open the full
+    /// player and screenshot its title/chapter layout without a real audio
+    /// stream. Must live here because `viewModel`/`activeItem` are `private(set)`.
+    func _seedActivePlayerForUITest(item: LibraryItem, detail: LibraryItemDetail,
+                                    chapters: [ABSChapter], currentChapterIndex: Int,
+                                    isFallback: Bool) {
+        let vm = PlayerViewModel(provider: provider)
+        vm.item = detail
+        vm.chapters = chapters
+        vm.currentChapter = chapters.indices.contains(currentChapterIndex) ? chapters[currentChapterIndex] : nil
+        vm.chaptersAreFallback = isFallback
+        vm.duration = detail.media.duration ?? 0
+        vm.currentTime = vm.currentChapter?.start ?? 0
+        viewModel = vm
+        activeItem = item
+    }
+    #endif
+
     /// Opens a book. If it is already active, nothing happens except possibly
     /// resuming playback. If another book is active, its session is cleanly ended
     /// (incl. a final sync) before the new one is loaded.

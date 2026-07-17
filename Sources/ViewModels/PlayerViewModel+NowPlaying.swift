@@ -7,6 +7,34 @@ import UIKit
 /// Lockscreen/Dynamic Island: RemoteCommands, NowPlaying-Info, Artwork.
 extension PlayerViewModel {
 
+    // MARK: - Shared now-playing title/subtitle (Regel 2 — one source, four surfaces)
+
+    /// True for a Subsonic music item (`sub:`) — its playing "work" is the song,
+    /// not the album.
+    var isMusicItem: Bool { item?.id.hasPrefix("sub:") == true }
+
+    /// X14: the large title = the work (book/episode title; the SONG title for
+    /// music). One derivation for the full player, lock screen, CarPlay and the
+    /// Live Activity — never empty.
+    var nowPlayingTitle: String {
+        NowPlayingPresentation.title(
+            isMusic: isMusicItem,
+            songTitle: currentMusicSong?.title,
+            workTitle: item?.media.metadata?.title,
+            fallback: String(localized: "Audiobook"))
+    }
+
+    /// Subtitle for the lock screen / CarPlay / Live Activity: for music the
+    /// artist (the song is already the title); otherwise the REAL chapter +
+    /// author (a fallback marker is never a chapter name → suppressed). The full
+    /// player uses its own richer line (it also surfaces the fallback marker).
+    var nowPlayingSubtitle: String? {
+        let author = item?.media.metadata?.authorName
+        if isMusicItem { return author }
+        return NowPlayingPresentation.subtitle(
+            chapterTitle: currentChapter?.title, author: author, isFallback: chaptersAreFallback)
+    }
+
     // MARK: - Lockscreen / Now Playing
 
     func setupRemoteCommandCenter() {
@@ -49,14 +77,12 @@ extension PlayerViewModel {
 
     func updateNowPlayingInfo() {
         var info: [String: Any] = [:]
-        let bookTitle = item?.media.metadata?.title ?? String(localized: "Audiobook")
-        let author = item?.media.metadata?.authorName
-        // T9c: the TITLE is ALWAYS the work; the current chapter (a REAL chapter,
-        // never a fallback marker) + author form the subtitle. One derivation,
-        // shared with CarPlay (same info centre) and the Live Activity.
-        info[MPMediaItemPropertyTitle] = bookTitle
-        info[MPMediaItemPropertyArtist] = NowPlayingPresentation.subtitle(
-            chapterTitle: currentChapter?.title, author: author, isFallback: chaptersAreFallback) ?? ""
+        // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for
+        // music), the subtitle is the real chapter + author. Shared derivation —
+        // identical on the full player, CarPlay (same info centre) and the Live
+        // Activity.
+        info[MPMediaItemPropertyTitle] = nowPlayingTitle
+        info[MPMediaItemPropertyArtist] = nowPlayingSubtitle ?? ""
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0

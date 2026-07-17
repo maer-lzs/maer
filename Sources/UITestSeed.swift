@@ -50,6 +50,24 @@ enum UITestSeed {
         queue.playLast("seed-book-1")
         queue.playLast("sub:album:seed-1")
         queue.playLast("rss:seed:ep-1")
+
+        // X14: a presentation-only active player (no audio) so the harness can
+        // open the full player. A book with FALLBACK chapters ("Teil N von M") —
+        // the exact case where the cleaned chapter names had hidden the work
+        // title. A distinct id keeps it out of the queue seed above.
+        let npChapters = [
+            chapter(0, 0, 600, "Teil 1 von 3"),
+            chapter(1, 600, 1200, "Teil 2 von 3"),
+            chapter(2, 1200, 1800, "Teil 3 von 3"),
+        ]
+        let npMedia = LibraryItemMedia(
+            metadata: LibraryItemMetadata(title: "Now Playing Book", authorName: "Ada Author", narratorName: nil,
+                                          seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+            duration: 1800, chapters: npChapters, tracks: nil)
+        session.playerCoordinator._seedActivePlayerForUITest(
+            item: LibraryItem(id: "seed-nowplaying", media: npMedia, addedAt: 0),
+            detail: LibraryItemDetail(id: "seed-nowplaying", media: npMedia, userMediaProgress: nil),
+            chapters: npChapters, currentChapterIndex: 1, isFallback: true)
     }
 
     // MARK: - Fixtures

@@ -244,12 +244,26 @@ struct PlayerView: View {
 
     private var chapterHeader: some View {
         VStack(spacing: 4) {
-            if let chapter = viewModel.currentChapter {
-                Text(chapter.title)
-                    .font(.headline)
+            // X14: the WORK is the large title (shared derivation — book/episode
+            // title, the song title for music). It had silently vanished from the
+            // player once T9d stopped baking the work title into the chapter
+            // names ("Kapitel 71 – Armageddon …"); the player never had its own
+            // title line, so only the cleaned chapter ("Teil 12") was left.
+            Text(viewModel.nowPlayingTitle)
+                .font(.title3).bold()
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+            // Chapter / part line (T9c): a real chapter · author, the fallback
+            // marker ("Teil 12 von 39" / "ab 3:15"), or the artist for music.
+            if let subtitle = chapterSubtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
             }
-            if !viewModel.chapters.isEmpty {
+            // "N of M" only for REAL chapters — a fallback marker already carries
+            // its position in the line above.
+            if !viewModel.chaptersAreFallback, !viewModel.chapters.isEmpty {
                 Text(chapterCounterText)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
@@ -263,6 +277,15 @@ struct PlayerView: View {
             }
         }
         .padding(.horizontal)
+    }
+
+    /// X14: the line under the work title in the full player. For music the
+    /// artist (the song is the title); for a fallback book the part/time marker
+    /// (which the lock screen deliberately hides); otherwise "chapter · author".
+    private var chapterSubtitle: String? {
+        if viewModel.isMusicItem { return viewModel.nowPlayingSubtitle }
+        if viewModel.chaptersAreFallback { return viewModel.currentChapter?.title }
+        return viewModel.nowPlayingSubtitle
     }
 
     private func chapterRemainingMinutes(_ chapter: ABSChapter) -> Int {

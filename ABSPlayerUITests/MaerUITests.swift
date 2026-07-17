@@ -89,6 +89,24 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "music-ax3")
     }
 
+    /// X14: the full player must show the WORK title as the largest text, with
+    /// the chapter/part line below it — the reported bug showed only the cleaned
+    /// chapter ("Teil 12"). The seed installs a presentation-only book with
+    /// fallback chapters; opening the full player must surface both.
+    func testFullPlayerShowsWorkTitle() {
+        let app = launchSeeded()
+        // The seeded active player shows in the mini bar (label = work title).
+        let miniPlayer = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20), "mini player must show the active work")
+        miniPlayer.tap()
+        // Full player: the work is the large title; the fallback part marker below.
+        XCTAssertTrue(app.staticTexts["Now Playing Book"].waitForExistence(timeout: 15),
+                      "full player must show the work title (X14)")
+        XCTAssertTrue(app.staticTexts["Teil 2 von 3"].firstMatch.exists,
+                      "the chapter/part line sits below the work title")
+        snap(app, "full-player-book")
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()
