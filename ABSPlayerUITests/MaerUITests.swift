@@ -71,6 +71,24 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))
     }
 
+    /// Etappe 6 matrix: the changed surfaces at an ACCESSIBILITY text size (AX3)
+    /// — Home (mixed queue, 128pt covers, sections) and the Music tab (badges,
+    /// CoverGrid). Screenshots for the size matrix.
+    func testAccessibilitySizeAX3() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest",
+                                "-UIPreferredContentSizeCategoryName",
+                                "UICTContentSizeCategoryAccessibilityExtraLarge"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        snap(app, "home-ax3")
+        let music = app.buttons["tab-music"].firstMatch
+        if music.waitForExistence(timeout: 10) { music.tap() }
+        _ = app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10)
+        snap(app, "music-ax3")
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()
