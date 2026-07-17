@@ -14,7 +14,10 @@ struct HomeView: View {
     let jumpTargets: [MediaType]
     let onJump: (MediaType) -> Void
 
-    @State private var continueItems: [LibraryItem] = []
+    /// Recency-ordered ids of in-progress books + episodes — resolved to the
+    /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
+    /// as the library tabs, no Home-specific component).
+    @State private var continueIds: [String] = []
     @State private var newItems: [LibraryItem] = []
     @State private var recentAlbums: [LibraryItem] = []
     @State private var ready = false
@@ -27,7 +30,7 @@ struct HomeView: View {
         ScrollView {
             if ready {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                    itemSection("Continue", continueItems)
+                    continueSection
                     upNextSection
                     itemSection("New", newItems)
                     albumsSection
@@ -51,10 +54,46 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool {
-        continueItems.isEmpty && queue.isEmpty && newItems.isEmpty && recentAlbums.isEmpty
+        continueIds.isEmpty && queue.isEmpty && newItems.isEmpty && recentAlbums.isEmpty
     }
 
     // MARK: - Sections (reused components only)
+
+    /// W1 "Continue": in-progress books + episodes as the SAME large FeaturedCards
+    /// the library tabs use — BookFeaturedCard for books, PodcastFeaturedCard for
+    /// episodes — mixed in one horizontal carousel, ranked by last played. Cards
+    /// mean "started"; the rows below (Up Next) mean "planned". No new component.
+    @ViewBuilder
+    private var continueSection: some View {
+        if !continueIds.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Continue").font(.title2).bold().padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(continueIds, id: \.self) { id in
+                            continueCard(id)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.viewAligned)
+            }
+        }
+    }
+
+    /// Resolve a continue id to the matching card: a library book → the book
+    /// card, anything else (a podcast episode) → the podcast card.
+    @ViewBuilder
+    private func continueCard(_ id: String) -> some View {
+        if let entry = libraryViewModel.entries.first(where: { $0.id == id }) {
+            BookFeaturedCard(entry: entry,
+                             playerCoordinator: playerCoordinator,
+                             libraryViewModel: libraryViewModel)
+        } else if let item = AppSession.shared.libraryItem(forId: id) {
+            PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
 
     @ViewBuilder
     private func itemSection(_ title: LocalizedStringKey, _ items: [LibraryItem]) -> some View {
@@ -156,7 +195,7 @@ struct HomeView: View {
             (id: $0.id, ts: $0.progress?.lastUpdate ?? 0)
         }
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
-        let continueIds = HomeSections.byRecency([books, episodes], limit: 8)
+        let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
 
         // Neu: newly added books + newest episodes of each show.
         let newBooks = libraryViewModel.recentlyAdded.map {
@@ -172,7 +211,7 @@ struct HomeView: View {
         // a music server).
         let albums = (try? await SubsonicProvider.shared.albumShelf(type: "recent", size: 12)) ?? []
 
-        continueItems = continueIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        continueIds = rankedContinue
         newItems = newIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentAlbums = albums
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }

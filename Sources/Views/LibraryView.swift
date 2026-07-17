@@ -154,6 +154,12 @@ struct LibraryView: View {
                     BookDetailScreen(entry: entry, coordinator: playerCoordinator, libraryViewModel: viewModel)
                 }
             }
+            // Podcast routes registered on the stack ROOT (not the podcast tab):
+            // the Home tab now shows PodcastFeaturedCards whose info pill pushes a
+            // PodcastRoute. Since the podcast tab may not be mounted yet, its
+            // registration wasn't guaranteed to be in the hierarchy — a root-level
+            // registration is always present and stays the single one for the type.
+            .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
         }
         // Buttons inside List rows push routes over this callback instead of a
         // NavigationLink (which draws a disclosure chevron in a List). Set on

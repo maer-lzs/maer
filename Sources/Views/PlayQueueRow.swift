@@ -17,8 +17,7 @@ struct PlayQueueRow: View {
                 coverURL: AppSession.shared.coverURL(forItemId: item.id),
                 eyebrow: item.media?.metadata?.authorName ?? item.author,
                 title: item.title,
-                placeholderSystemImage: placeholderSystemImage,
-                coverSize: 128   // V7: larger cover sets Up-Next apart from lists
+                placeholderSystemImage: placeholderSystemImage
             )
         }
         .buttonStyle(.plain)

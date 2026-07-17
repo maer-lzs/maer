@@ -92,7 +92,8 @@ struct PodcastsView: View {
                     .frame(maxWidth: .infinity, minHeight: 280)
             }
         }
-        .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
+        // Podcast routes are registered once on the NavigationStack root in
+        // LibraryView (the Home tab pushes them too) — not here.
         // No subscription → instead of blank, an empty state with a path to add/import.
         .overlay {
             if allShows.isEmpty && downloaded.isEmpty && queue.isEmpty {
