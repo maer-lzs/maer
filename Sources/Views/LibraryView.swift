@@ -155,6 +155,11 @@ struct LibraryView: View {
             // registration wasn't guaranteed to be in the hierarchy — a root-level
             // registration is always present and stays the single one for the type.
             .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
+            // X15: music routes on the same stack root — music pushes must go
+            // through `navigationPath` too (value-based), so a media-tab tap pops
+            // album/artist pages back to the library. (Home shows album tiles as
+            // well, so the registration belongs on the root, not the music tab.)
+            .musicNavigationDestinations(playerCoordinator: playerCoordinator)
         }
         // Buttons inside List rows push routes over this callback instead of a
         // NavigationLink (which draws a disclosure chevron in a List). Set on

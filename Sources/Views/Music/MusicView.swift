@@ -94,15 +94,11 @@ struct MusicView: View {
             if !vm.artists.isEmpty || !vm.playlists.isEmpty {
                 VStack(spacing: 0) {
                     if !vm.artists.isEmpty {
-                        browseRow("Artists", systemImage: "music.mic") {
-                            MusicArtistsView(artists: vm.artists, playerCoordinator: playerCoordinator)
-                        }
+                        browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
                     }
                     if !vm.playlists.isEmpty {
                         Divider().padding(.leading, 52)
-                        browseRow("Playlists", systemImage: "music.note.list") {
-                            MusicPlaylistsView(playlists: vm.playlists, playerCoordinator: playerCoordinator)
-                        }
+                        browseRow("Playlists", systemImage: "music.note.list", route: .playlists(vm.playlists))
                     }
                 }
                 .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
@@ -134,11 +130,12 @@ struct MusicView: View {
         }
     }
 
-    private func browseRow<Destination: View>(
-        _ title: LocalizedStringKey, systemImage: String,
-        @ViewBuilder destination: () -> Destination
+    private func browseRow(
+        _ title: LocalizedStringKey, systemImage: String, route: MusicRoute
     ) -> some View {
-        NavigationLink(destination: destination()) {
+        // X15: value-based push so a media-tab tap (which empties navigationPath)
+        // pops the artist/playlist list back to the library.
+        NavigationLink(value: route) {
             Label(title, systemImage: systemImage)
                 .padding(.vertical, 12)
                 .padding(.horizontal)
@@ -146,6 +143,7 @@ struct MusicView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(route.accessibilityId)
     }
 }
 
@@ -158,9 +156,9 @@ struct AlbumCell: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        NavigationLink {
-            MusicAlbumView(item: item, playerCoordinator: playerCoordinator)
-        } label: {
+        // X15: value-based push (MusicRoute) so the tab bar can switch library
+        // from the album page — plain destination links stayed on the stack.
+        NavigationLink(value: MusicRoute.album(item)) {
             VStack(alignment: .leading, spacing: 6) {
                 CachedAsyncImage(
                     url: AppSession.shared.coverURL(forItemId: item.id),

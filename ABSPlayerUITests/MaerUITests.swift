@@ -11,9 +11,12 @@ import XCTest
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    private func launchSeeded() -> XCUIApplication {
+    private func launchSeeded(withActivePlayer: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-uitest"]
+        // Opt-in: only the full-player journey wants an active player; other
+        // journeys stay free of the ever-present, tappable mini player.
+        if withActivePlayer { app.launchArguments += ["-uitest-player"] }
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         return app
@@ -94,7 +97,7 @@ nonisolated final class MaerUITests: XCTestCase {
     /// chapter ("Teil 12"). The seed installs a presentation-only book with
     /// fallback chapters; opening the full player must surface both.
     func testFullPlayerShowsWorkTitle() {
-        let app = launchSeeded()
+        let app = launchSeeded(withActivePlayer: true)
         // The seeded active player shows in the mini bar (label = work title).
         let miniPlayer = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20), "mini player must show the active work")
@@ -105,6 +108,44 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Teil 2 von 3"].firstMatch.exists,
                       "the chapter/part line sits below the work title")
         snap(app, "full-player-book")
+    }
+
+    /// X15: from a music SUB-page (album detail, artist detail) the media tab bar
+    /// must switch library — music pushes used plain destination links that stayed
+    /// on the stack, so the tab tap looked dead. Both entry points are covered.
+    func testMusicSubpagesTabBarSwitchesLibrary() {
+        let app = launchSeeded()
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15))
+        music.tap()
+
+        // Album detail → switch to the audiobook library via the tab.
+        let album = app.staticTexts["Seed Album"].firstMatch
+        XCTAssertTrue(album.waitForExistence(timeout: 15))
+        album.tap()
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 10))
+        books.tap()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10),
+                      "tab bar must switch to the audiobook library from the album page (X15)")
+        snap(app, "x15-from-album")
+
+        // Artist detail → switch to the podcast library via the tab. The browse
+        // row label is localized ("Künstler") — use its locale-independent id.
+        music.tap()
+        let artistsRow = app.buttons["music-route-artists"].firstMatch
+        XCTAssertTrue(artistsRow.waitForExistence(timeout: 10))
+        artistsRow.tap()
+        let artist = app.staticTexts["Seed Artist"].firstMatch
+        XCTAssertTrue(artist.waitForExistence(timeout: 10))
+        artist.tap()
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 10))
+        podcasts.tap()
+        XCTAssertTrue(app.staticTexts["Seed Show"].waitForExistence(timeout: 10)
+                      || app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 5),
+                      "tab bar must switch to the podcast library from the artist page (X15)")
+        snap(app, "x15-from-artist")
     }
 
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.

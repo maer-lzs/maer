@@ -7,9 +7,7 @@ struct MusicArtistsView: View {
 
     var body: some View {
         List(artists) { artist in
-            NavigationLink {
-                MusicArtistView(artist: artist, playerCoordinator: playerCoordinator)
-            } label: {
+            NavigationLink(value: MusicRoute.artist(artist)) {
                 HStack {
                     Text(artist.name ?? String(localized: "Unknown Artist"))
                     Spacer()
@@ -166,9 +164,7 @@ struct MusicArtistView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(similarInLibrary) { similar in
-                            NavigationLink {
-                                MusicArtistView(artist: similar, playerCoordinator: playerCoordinator)
-                            } label: {
+                            NavigationLink(value: MusicRoute.artist(similar)) {
                                 Text(similar.name ?? "–")
                                     .font(.subheadline.weight(.medium))
                                     .padding(.horizontal, 14)
@@ -193,9 +189,7 @@ struct MusicPlaylistsView: View {
 
     var body: some View {
         List(playlists) { playlist in
-            NavigationLink {
-                MusicAlbumView(item: Self.item(for: playlist), playerCoordinator: playerCoordinator)
-            } label: {
+            NavigationLink(value: MusicRoute.album(Self.item(for: playlist))) {
                 HStack {
                     Text(playlist.name ?? String(localized: "Playlist"))
                     Spacer()

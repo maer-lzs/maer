@@ -37,8 +37,8 @@ extension MusicSource {
     static let uitestSeed = MusicSource(
         albumsPage: { _, offset, _ in offset == 0 ? UITestSeed.seedAlbums : [] },
         shelf: { _, _ in Array(UITestSeed.seedAlbums.prefix(3)) },
-        artists: { [] },
-        playlists: { [] }
+        artists: { UITestSeed.seedArtists },
+        playlists: { UITestSeed.seedPlaylists }
     )
 }
 #endif

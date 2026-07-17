@@ -10,6 +10,11 @@ import Foundation
 @MainActor
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
+    /// Opt-in: also install a presentation-only active player (mini + full
+    /// player). Off by default so multi-tab navigation journeys aren't disturbed
+    /// by an ever-present, tappable mini player; only the full-player journey
+    /// requests it.
+    static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
 
     static func applyIfRequested() {
         guard isActive else { return }
@@ -54,7 +59,10 @@ enum UITestSeed {
         // X14: a presentation-only active player (no audio) so the harness can
         // open the full player. A book with FALLBACK chapters ("Teil N von M") —
         // the exact case where the cleaned chapter names had hidden the work
-        // title. A distinct id keeps it out of the queue seed above.
+        // title. Opt-in (`-uitest-player`) so it doesn't disturb navigation
+        // journeys with an ever-present mini player. A distinct id keeps it out
+        // of the queue seed above.
+        guard seedsActivePlayer else { return }
         let npChapters = [
             chapter(0, 0, 600, "Teil 1 von 3"),
             chapter(1, 600, 1200, "Teil 2 von 3"),
@@ -79,6 +87,17 @@ enum UITestSeed {
         musicAlbum(id: "sub:album:seed-2", title: "Second Seed", artist: "Sprout"),
         musicAlbum(id: "sub:album:seed-3", title: "Third Seed", artist: "Bloom"),
         musicAlbum(id: "sub:album:seed-4", title: "Fourth Seed", artist: "Petal"),
+    ]
+
+    /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
+    /// rows — the harness navigates through them to reach the artist page and
+    /// verify the tab bar can switch library from there (X15).
+    static let seedArtists: [SubsonicArtist] = [
+        SubsonicArtist(id: "seed-artist-1", name: "Seed Artist", coverArt: nil, albumCount: 2, album: nil),
+    ]
+    static let seedPlaylists: [SubsonicPlaylist] = [
+        SubsonicPlaylist(id: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
+                         duration: 600, coverArt: nil, owner: nil, entry: nil),
     ]
 
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?) -> LibraryEntry {
