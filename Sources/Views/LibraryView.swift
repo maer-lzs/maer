@@ -95,12 +95,7 @@ struct LibraryView: View {
                     if isTabMounted(.home) {
                         HomeView(playerCoordinator: playerCoordinator,
                                  isActive: selectedMediaType == .home,
-                                 libraryViewModel: viewModel,
-                                 jumpTargets: availableMediaTypes.filter { $0 != .home },
-                                 onJump: { type in
-                                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = type }
-                                     mountedTabs.insert(type)
-                                 })
+                                 libraryViewModel: viewModel)
                             .tabVisibility(selectedMediaType == .home)
                     }
                     if isTabMounted(.audiobooks) {

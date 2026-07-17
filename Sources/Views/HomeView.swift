@@ -10,9 +10,6 @@ struct HomeView: View {
     var isActive: Bool = true
     @ObservedObject var libraryViewModel: LibraryViewModel
     @ObservedObject private var queue = PlayQueue.shared
-    /// Available library tabs (for the jump points), excluding home itself.
-    let jumpTargets: [MediaType]
-    let onJump: (MediaType) -> Void
 
     /// Recency-ordered ids of in-progress books + episodes — resolved to the
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
@@ -37,7 +34,6 @@ struct HomeView: View {
                     upNextSection
                     latestEpisodesSection
                     recentlyAddedSection
-                    jumpSection
                     if isEmpty { emptyState }
                 }
                 .padding(.top, TabContentLayout.topInset)
@@ -165,34 +161,6 @@ struct HomeView: View {
                          playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
         } else {
             AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
-        }
-    }
-
-    @ViewBuilder
-    private var jumpSection: some View {
-        if !jumpTargets.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Libraries").font(.title3).bold().padding(.horizontal)
-                VStack(spacing: 0) {
-                    ForEach(jumpTargets) { type in
-                        Button { onJump(type) } label: {
-                            HStack(spacing: 14) {
-                                Image(systemName: type.systemImage)
-                                    .frame(width: 28)
-                                    .foregroundStyle(AppTheme.accent)
-                                Text(type.label).foregroundStyle(.primary)
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 12)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if type != jumpTargets.last { Divider().padding(.leading, 52) }
-                    }
-                }
-                .padding(.horizontal)
-            }
         }
     }
 
