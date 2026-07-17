@@ -63,7 +63,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 |---|---|---|
 | `BottomBarState.shared` + `reportsBottomBarScroll(active:)` | Reported by every tab root (LibraryView audiobooks · MusicView · PodcastsView · HomeView) and pushed pages (BookDetailScreen · PodcastShowView/EpisodeDetail/Queue); read by LibraryView (`collapsed`) + MiniPlayerBar (`isScrolling`) | `report/setUserDragging/setScrolling/scrollDidRest/expand/reset`; `@Published collapsed, isScrolling`; only the visible tab reports (`active`) |
 | `MediaType.tint` | MediaTabBar (selected tab) | Per-type colour: audiobooks orange · podcasts purple · music red · home `.primary` (neutral) · radio teal |
-| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; selected tab in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
+| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect, reduced=false`; a matchedGeometry capsule glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
 
 ## Test infrastructure
 
