@@ -18,8 +18,11 @@ struct HomeView: View {
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
     /// as the library tabs, no Home-specific component).
     @State private var continueIds: [String] = []
-    @State private var newItems: [LibraryItem] = []
-    @State private var recentAlbums: [LibraryItem] = []
+    /// W2 "Latest Episodes": newest podcast episodes, rendered like the podcast tab.
+    @State private var newEpisodeItems: [LibraryItem] = []
+    /// W2 "Recently Added": newly added books + albums, mixed by added time —
+    /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
+    @State private var recentlyAddedItems: [LibraryItem] = []
     @State private var ready = false
 
     private var recomputeToken: String {
@@ -32,8 +35,8 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     upNextSection
-                    itemSection("New", newItems)
-                    albumsSection
+                    latestEpisodesSection
+                    recentlyAddedSection
                     jumpSection
                     if isEmpty { emptyState }
                 }
@@ -54,7 +57,7 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool {
-        continueIds.isEmpty && queue.isEmpty && newItems.isEmpty && recentAlbums.isEmpty
+        continueIds.isEmpty && queue.isEmpty && newEpisodeItems.isEmpty && recentlyAddedItems.isEmpty
     }
 
     // MARK: - Sections (reused components only)
@@ -95,22 +98,6 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
-    private func itemSection(_ title: LocalizedStringKey, _ items: [LibraryItem]) -> some View {
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(title).font(.title3).bold().padding(.horizontal)
-                LazyVStack(spacing: 0) {
-                    ForEach(items.prefix(6)) { item in
-                        PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
-                            .padding(.horizontal)
-                        Divider().padding(.leading, 88)
-                    }
-                }
-            }
-        }
-    }
-
     /// "Up Next" — the global PlayQueue, same row component as the queue page.
     @ViewBuilder
     private var upNextSection: some View {
@@ -129,20 +116,55 @@ struct HomeView: View {
         }
     }
 
+    /// W2 "Latest Episodes": the newest podcast episodes as a vertical list of
+    /// PodcastEpisodeRows — exactly the podcast tab's episode row (tap opens the
+    /// episode page, swipe/menu actions, download control), no Home special case.
     @ViewBuilder
-    private var albumsSection: some View {
-        if !recentAlbums.isEmpty {
+    private var latestEpisodesSection: some View {
+        if !newEpisodeItems.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Recently Played Albums").font(.title3).bold().padding(.horizontal)
+                Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
+                LazyVStack(spacing: 0) {
+                    ForEach(newEpisodeItems.prefix(6)) { item in
+                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                    }
+                }
+            }
+        }
+    }
+
+    /// W2 "Recently Added": newly added books AND albums in one horizontal shelf,
+    /// ranked by added time. Each tile is its own tab's component — BookGridCell
+    /// for a book, AlbumCell for an album — at one shared width so the mixed row
+    /// stays even (Regel 2: no Home-specific tile).
+    @ViewBuilder
+    private var recentlyAddedSection: some View {
+        if !recentlyAddedItems.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Recently Added").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
+                    // Eager HStack (like the library tab's shelf): the lazy variant
+                    // froze the shelf height on the first cell and clipped taller ones.
                     HStack(alignment: .top, spacing: 16) {
-                        ForEach(recentAlbums.prefix(10)) { album in
-                            AlbumCell(item: album, width: 140, playerCoordinator: playerCoordinator)
+                        ForEach(recentlyAddedItems) { item in
+                            recentlyAddedTile(item)
                         }
                     }
                     .padding(.horizontal)
                 }
             }
+        }
+    }
+
+    /// A recently-added id resolves to a library book → the book grid cell,
+    /// otherwise (an album) → the album cell.
+    @ViewBuilder
+    private func recentlyAddedTile(_ item: LibraryItem) -> some View {
+        if let entry = libraryViewModel.entries.first(where: { $0.id == item.id }) {
+            BookGridCell(entry: entry, width: 150,
+                         playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
+        } else {
+            AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
         }
     }
 
@@ -197,23 +219,23 @@ struct HomeView: View {
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
 
-        // Neu: newly added books + newest episodes of each show.
-        let newBooks = libraryViewModel.recentlyAdded.map {
-            (id: $0.id, ts: Double($0.item.addedAt ?? 0))
-        }
+        // W2 "Latest Episodes": the newest episode of each show, newest first.
         let newEpisodes = shows.compactMap { show -> (id: String, ts: Double)? in
             guard let ep = show.episodes.max(by: { $0.pubDate < $1.pubDate }) else { return nil }
             return (ep.guid, ep.pubDate)
         }
-        let newIds = HomeSections.byRecency([newBooks, newEpisodes], limit: 8)
+        let episodeIds = HomeSections.byRecency([newEpisodes], limit: 8)
 
-        // Music (dosed): recently played albums shelf — best-effort (empty without
-        // a music server).
-        let albums = (try? await SubsonicProvider.shared.albumShelf(type: "recent", size: 12)) ?? []
+        // W2 "Recently Added": newly added books + newly added albums (the "newest"
+        // shelf, best-effort — empty without a music server), merged by added time
+        // so the shelf mirrors each tab's own "Recently Added".
+        let newAlbums = (try? await SubsonicProvider.shared.albumShelf(type: "newest", size: 12)) ?? []
+        let mergedRecent = (libraryViewModel.recentlyAdded.map(\.item) + newAlbums)
+            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
 
         continueIds = rankedContinue
-        newItems = newIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
-        recentAlbums = albums
+        newEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        recentlyAddedItems = Array(mergedRecent.prefix(12))
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }
 
