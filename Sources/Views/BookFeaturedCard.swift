@@ -40,17 +40,16 @@ struct BookFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .task(id: entry.id) { await loadChapters() }
-        // Sibling overlay (like the info pill) so a tap on the ring cancels
-        // instead of triggering the card's play action underneath. Aligned to
-        // the cover area (top), not the text block below it.
-        .overlay(alignment: .top) {
-            DownloadInstallRing(itemId: entry.id, tileWidth: width, lineWidth: 4)
-                .frame(width: width, height: width)
-        }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
+        // X6a: the unified download/offline badge (family) at the CARD's
+        // bottom-right corner — a tap cancels/downloads instead of triggering the
+        // card's play action underneath.
         .overlay(alignment: .bottomTrailing) {
-            BookDownloadButton(entry: entry, provider: playerCoordinator.provider, tint: .white)
-                .padding(14)
+            CardDownloadBadge(itemId: entry.id, cardWidth: width, startDownload: {
+                guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
+                await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
+            })
+            .padding(12)
         }
         .modifier(BookCellContextMenu(
             entry: entry,
@@ -68,15 +67,9 @@ struct BookFeaturedCard: View {
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+                // X6a: the cover still dims when offline-unavailable; the
+                // wifi.slash marker itself now lives in the card-corner badge.
                 .opacity(isOfflineUnavailable ? 0.5 : 1)
-                .overlay(alignment: .topTrailing) {
-                    if isOfflineUnavailable {
-                        Image(systemName: "wifi.slash")
-                            .font(.caption)
-                            .foregroundStyle(.white)   // S14b: full symbol white
-                            .padding(8)
-                    }
-                }
                 .overlay(alignment: .bottom) {
                     LinearGradient(colors: [.clear, colorLoader.accent],
                                    startPoint: .top, endPoint: .bottom)
@@ -173,39 +166,4 @@ final class FeaturedChapterCache {
     private var cache: [String: [ABSChapter]] = [:]
     func chapters(for id: String) -> [ABSChapter]? { cache[id] }
     func store(_ chapters: [ABSChapter], for id: String) { cache[id] = chapters }
-}
-
-/// Download control for an audiobook (state from the DownloadManager) —
-/// visually identical to the podcast card: arrow → ring while loading →
-/// checkmark when downloaded.
-struct BookDownloadButton: View {
-    let entry: LibraryEntry
-    let provider: any AudioProvider
-    var tint: Color = .secondary
-    @ObservedObject private var downloads = DownloadManager.shared
-
-    var body: some View {
-        if downloads.isDownloaded(itemId: entry.id) {
-            Image(systemName: "checkmark.circle")
-                .font(.title3).foregroundStyle(tint)
-                .accessibilityLabel(Text("Downloaded"))
-        } else if case .downloading = downloads.phase[entry.id] {
-            // No indicator here while downloading — the install ring over the
-            // cover is the single progress + cancel control.
-            EmptyView()
-        } else if case .paused = downloads.phase[entry.id] {
-            EmptyView()
-        } else {
-            Button {
-                Task {
-                    guard let detail = try? await provider.fetchItemDetail(itemId: entry.id) else { return }
-                    await DownloadManager.shared.download(item: detail, provider: provider)
-                }
-            } label: {
-                Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(tint)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(Text("Download"))
-        }
-    }
 }
