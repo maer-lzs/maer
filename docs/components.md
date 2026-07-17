@@ -37,7 +37,7 @@ components rather than forking them.
 | `DownloadInstallRing` | BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover (grid tiles) |
 | `CardDownloadBadge` | BookFeaturedCard · PodcastFeaturedCard | `itemId, cardWidth=235, startDownload`; unified download/offline badge at the CARD's bottom-right (family: offline wifi.slash / progress ring+cancel / checkmark / download arrow) |
 | `CoverBadge` | `DownloadInstallRing` (disc size) · `BookCoverView` (wifi.slash + downloaded check) | `size(tileWidth) -> CGFloat` = 22 % of tile, clamped 18…44 |
-| `AdaptiveGlassBackground` | MiniPlayerBar · MediaTabBar · LibraryView (search/home/toolbar/banner) · FloatingSearchButton · RefreshActivityPill · ResumeMessageBanner · BookDetailScreen (buttons/pills) · BookGridComponents (featured card) | `shape`; `forceDark=false`; `lightAccent=nil`; `reduced=false` (drops Liquid Glass → material while scrolling); iOS 26 `.glassEffect`, material fallback below. **All bottom-bar elements** (mini player, home, search, tab bar) share one `reduced` source (`BottomBarState.isScrolling`) so the row never mixes clear glass and reduced material |
+| `AdaptiveGlassBackground` | MiniPlayerBar · MediaTabBar · LibraryView (search/home/toolbar/banner) · FloatingSearchButton · RefreshActivityPill · ResumeMessageBanner · BookDetailScreen (buttons/pills) · BookGridComponents (featured card) | `shape`; `forceDark=false`; `lightAccent=nil`; iOS 26 `.glassEffect`, material fallback below. The bottom bar shows the same clear glass in every state (rest/scroll/collapsed/expanded) — no scroll-time material swap |
 
 ## Navigation
 
@@ -65,7 +65,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 |---|---|---|
 | `BottomBarState.shared` + `reportsBottomBarScroll(active:)` | Reported by every tab root (LibraryView audiobooks · MusicView · PodcastsView · HomeView) and pushed pages (BookDetailScreen · PodcastShowView/EpisodeDetail/Queue); read by LibraryView (`collapsed`) + MiniPlayerBar (`isScrolling`) | `report/setUserDragging/setScrolling/scrollDidRest/expand/reset`; `@Published collapsed, isScrolling`; only the visible tab reports (`active`) |
 | `MediaType.tint` | MediaTabBar (selected tab) | Per-type colour: audiobooks orange · podcasts purple · music red · home `.primary` (neutral) · radio teal |
-| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect, reduced=false`; a matchedGeometry capsule glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
+| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry capsule glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
 
 ## Test infrastructure
 

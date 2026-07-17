@@ -30,10 +30,6 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     /// stays distinguishable on white backgrounds. Near-white accents
     /// (mostly white covers) are clamped to a neutral gray via luminance.
     var lightAccent: Color? = nil
-    /// Etappe 5: while true, drop the expensive Liquid Glass to the cheap
-    /// material path (used by the bottom bar during active scrolling to cut the
-    /// glass-re-composite hitch). Switches only at scroll start/stop.
-    var reduced: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.glassAccent) private var environmentAccent
@@ -61,7 +57,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
 
     func body(content: Content) -> some View {
         Group {
-            if #available(iOS 26.0, *), !reduced {
+            if #available(iOS 26.0, *) {
                 content.glassEffect(
                     .regular.tint(isDark ? Color.black.opacity(0.3) : lightTint),
                     in: shape
