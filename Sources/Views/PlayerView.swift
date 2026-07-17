@@ -270,7 +270,10 @@ struct PlayerView: View {
             }
             if let chapter = viewModel.currentChapter {
                 // Chapter remaining + estimated finish time at current speed.
-                Text("\(chapterRemainingMinutes(chapter)) min left in chapter · ends \(estimatedFinishTime())")
+                // X18: music has no "chapters" — drop the "in chapter" phrasing.
+                Text(viewModel.isMusicItem
+                     ? "\(chapterRemainingMinutes(chapter)) min left · ends \(estimatedFinishTime())"
+                     : "\(chapterRemainingMinutes(chapter)) min left in chapter · ends \(estimatedFinishTime())")
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.55))
                     .monospacedDigit()
@@ -445,7 +448,8 @@ struct PlayerView: View {
 
     private var chaptersControl: some View {
             Button { showChapters = true } label: {
-                Label("Chapters", systemImage: "list.bullet")
+                // X18: for music the list is the album's tracks, not chapters.
+                Label(viewModel.isMusicItem ? "Tracks" : "Chapters", systemImage: "list.bullet")
             }
             .disabled(viewModel.chapters.isEmpty)
     }
@@ -467,7 +471,9 @@ struct PlayerView: View {
                         viewModel.startSleepTimer(minutes: minutes)
                     }
                 }
-                if !viewModel.chapters.isEmpty {
+                // X18: music has no "chapter" boundary — "Until End of Track"
+                // (below) is the song boundary, so skip the chapter option.
+                if !viewModel.chapters.isEmpty && !viewModel.isMusicItem {
                     Button("Until End of Chapter") {
                         viewModel.startSleepTimerUntilChapterEnd()
                     }
@@ -569,7 +575,11 @@ struct PlayerView: View {
     private var chapterCounterText: String {
         guard let current = viewModel.currentChapter,
               let idx = viewModel.chapters.firstIndex(of: current) else { return "" }
-        return String(localized: "Chapter \(idx + 1) of \(viewModel.chapters.count)")
+        let count = viewModel.chapters.count
+        // X18: music counts tracks, not chapters.
+        return viewModel.isMusicItem
+            ? String(localized: "Track \(idx + 1) of \(count)")
+            : String(localized: "Chapter \(idx + 1) of \(count)")
     }
 
     private var sleepTimerLabel: String {
