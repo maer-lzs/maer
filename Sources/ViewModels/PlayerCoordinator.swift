@@ -30,6 +30,10 @@ final class PlayerCoordinator: ObservableObject {
     /// next setting when a book finishes.
     var nextInSeriesProvider: ((String) -> LibraryItem?)?
 
+    /// X16b: set by the library screen — called when an item is (re)started from
+    /// the beginning so the library can clear its local 'finished' flag.
+    var onItemRestarted: ((String) -> Void)?
+
     /// Remembers the last played item id across app restarts so the book is
     /// ready in the mini-player right away on the next launch.
     private let lastItemKey = AppStorageKeys.lastPlayedItemId
@@ -139,6 +143,7 @@ final class PlayerCoordinator: ObservableObject {
                 explicitRestart: restart, autoplay: autoplay,
                 isFinished: detail.userMediaProgress?.isFinished == true)
             await newViewModel.load(item: detail, restart: effectiveRestart)
+            if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
             attachBookEndHandler(to: newViewModel)
             viewModel = newViewModel
             UserDefaults.standard.set(item.id, forKey: lastItemKey)
@@ -157,6 +162,7 @@ final class PlayerCoordinator: ObservableObject {
                     explicitRestart: restart, autoplay: autoplay,
                     isFinished: cached.userMediaProgress?.isFinished == true)
                 await newViewModel.load(item: cached, isOfflineFallback: true, restart: effectiveRestart)
+                if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
                 attachBookEndHandler(to: newViewModel)
                 viewModel = newViewModel
                 UserDefaults.standard.set(item.id, forKey: lastItemKey)

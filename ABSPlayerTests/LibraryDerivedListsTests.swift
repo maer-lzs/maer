@@ -76,6 +76,28 @@ struct LibraryDerivedListsTests {
         #expect(signature(vm.seriesGroupedEntries) == signature(vm.computeSeriesGroupedEntries()), comment)
     }
 
+    // MARK: - X16b: a restart clears the local finished flag
+
+    @Test("markUnfinishedLocally clears the finished flag across the library lists")
+    func markUnfinishedLocallyClears() {
+        withCleanSortDefaults { vm in
+            let done = entry(id: "b2", title: "Done", finished: true, lastUpdate: 200)
+            vm.entries = [done]
+            vm.continueListening = [done]
+            vm.recentlyAdded = [done]
+            #expect(vm.entries[0].progress?.isFinished == true)
+
+            vm.markUnfinishedLocally(itemId: "b2")
+            #expect(vm.entries[0].progress?.isFinished == false)
+            #expect(vm.entries[0].progress?.fraction == 0)
+            #expect(vm.continueListening[0].progress?.isFinished == false)
+            #expect(vm.recentlyAdded[0].progress?.isFinished == false)
+
+            // An unknown / not-finished item is a safe no-op.
+            vm.markUnfinishedLocally(itemId: "nope")
+        }
+    }
+
     // MARK: - T1b: memoization stays fresh across every mutation
 
     @Test func memoMatchesFreshComputationAcrossMutations() {

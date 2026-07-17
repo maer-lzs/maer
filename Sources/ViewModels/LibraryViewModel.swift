@@ -663,6 +663,24 @@ final class LibraryViewModel: ObservableObject {
     /// Silently refreshes only the progress data (bars, "Continue"), without
     /// reloading the whole book list or showing a spinner. Called e.g. when the
     /// app returns to the foreground.
+    /// X16b: after a restart-from-the-beginning, clear the 'finished' flag in the
+    /// LOCAL library state so the grid + detail page stop showing 'gehört'
+    /// immediately (the server was already cleared via the player's progress
+    /// sync). Progress resumes normally from 0.
+    func markUnfinishedLocally(itemId: String) {
+        let fresh = BookProgress(fraction: 0, isFinished: false,
+                                 lastUpdate: Date().timeIntervalSince1970 * 1000, currentTime: 0)
+        func clear(_ list: inout [LibraryEntry]) {
+            if let i = list.firstIndex(where: { $0.id == itemId }),
+               list[i].progress?.isFinished == true {
+                list[i] = LibraryEntry(item: list[i].item, progress: fresh)
+            }
+        }
+        clear(&entries)
+        clear(&continueListening)
+        clear(&recentlyAdded)
+    }
+
     func refreshProgress() async {
         guard !cachedItems.isEmpty, !loadInFlight else { return }
         guard let progress = try? await provider.fetchAllProgress() else {

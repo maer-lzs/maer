@@ -248,6 +248,10 @@ struct LibraryView: View {
             playerCoordinator.nextInSeriesProvider = { [weak viewModel] itemId in
                 viewModel?.nextInSeries(after: itemId)?.item
             }
+            // X16b: a restart-from-0 clears the library's local 'finished' flag.
+            playerCoordinator.onItemRestarted = { [weak viewModel] itemId in
+                viewModel?.markUnfinishedLocally(itemId: itemId)
+            }
             // Cover maintenance (TTL, size limit, orphaned persistent covers).
             ImageCache.shared.performMaintenance(
                 activeDownloadIds: DownloadManager.shared.downloadedItemIds

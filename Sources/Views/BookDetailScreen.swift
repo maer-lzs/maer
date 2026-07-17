@@ -52,7 +52,7 @@ struct BookDetailScreen: View {
             .clipped()
             // Progress bar sitting ON the cover's bottom edge, edge to edge.
             .overlay(alignment: .bottom) {
-                if let p = entry.progress, p.isStarted, !isFinished {
+                if let p = currentProgress, p.isStarted, !isFinished {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Rectangle().fill(Color.black.opacity(0.35))
@@ -94,7 +94,7 @@ struct BookDetailScreen: View {
                     .font(.subheadline)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
             }
-            if let p = entry.progress, p.isStarted, !isFinished {
+            if let p = currentProgress, p.isStarted, !isFinished {
                 Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
@@ -128,7 +128,7 @@ struct BookDetailScreen: View {
                             .overlay(Color.black.opacity(systemColorScheme == .dark ? 0.3 : 0.1))
                         BookCoverView(
                             url: AppSession.shared.coverURL(forItemId: entry.id),
-                            progress: entry.progress,
+                            progress: currentProgress,
                             itemId: entry.id,
                             size: 320
                         )
@@ -311,7 +311,7 @@ struct BookDetailScreen: View {
     private func playArea(withPadding: Bool) -> some View {
         VStack(spacing: 8) {
             playButton(withPadding: withPadding)
-            if entry.progress?.isStarted == true || isFinished {
+            if currentProgress?.isStarted == true || isFinished {
                 Button("Start from Beginning") {
                     Task { await restartFromBeginning() }
                 }
@@ -486,8 +486,15 @@ struct BookDetailScreen: View {
 
     // MARK: - Mark as played
 
+    /// X16b: read the CURRENT library entry, not the navigation-time snapshot, so
+    /// a restart that cleared the finished flag (markUnfinishedLocally) is
+    /// reflected here immediately — otherwise the page kept showing 'gehört'.
+    private var currentProgress: BookProgress? {
+        libraryViewModel.entries.first(where: { $0.id == entry.id })?.progress ?? entry.progress
+    }
+
     private var isFinished: Bool {
-        isFinishedOverride ?? (entry.progress?.isFinished ?? false)
+        isFinishedOverride ?? (currentProgress?.isFinished ?? false)
     }
 
     private var markAsFinishedButton: some View {
@@ -718,7 +725,7 @@ struct BookDetailScreen: View {
     }
 
     private var playButtonLabel: String {
-        if let p = entry.progress, p.isStarted { return String(localized: "Continue Listening") }
+        if let p = currentProgress, p.isStarted { return String(localized: "Continue Listening") }
         return String(localized: "Play")
     }
 
