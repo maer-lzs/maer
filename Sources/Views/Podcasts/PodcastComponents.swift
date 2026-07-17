@@ -153,6 +153,66 @@ struct PodcastFeaturedCard: View {
     }
 }
 
+/// Recently-updated show tile: cover with a new-episode count badge, the show
+/// title and the relative update time. Shared by the podcast tab's "Recently
+/// Updated" grid and Home's "Latest Episodes" shelf (Regel 2). Tapping is the
+/// caller's NavigationLink → the show page.
+struct RecentShowTile: View {
+    let info: RecentShowInfo
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloads = DownloadManager.shared
+
+    /// A show is unusable offline when none of its episodes is downloaded — same
+    /// dimming convention as the featured cards.
+    private var isOfflineUnavailable: Bool {
+        guard !networkMonitor.isConnected else { return false }
+        return !info.show.episodes.contains { downloads.isDownloaded(itemId: $0.guid) }
+    }
+
+    var body: some View {
+        let unavailable = isOfflineUnavailable
+        return VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Rectangle().fill(.quaternary)
+                        .overlay(Image(systemName: "mic").foregroundStyle(.secondary))
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .opacity(unavailable ? 0.5 : 1)
+                .overlay(alignment: .topLeading) {
+                    if unavailable {
+                        Image(systemName: "wifi.slash")
+                            .font(.caption)
+                            .foregroundStyle(.white, .secondary)
+                            .padding(8)
+                    }
+                }
+
+                if info.newCount > 0 {
+                    Text("\(info.newCount)")
+                        .font(.caption2.bold()).foregroundStyle(.white)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Capsule().fill(.red))
+                        .padding(7)
+                }
+            }
+            Text(info.show.title)
+                .font(.subheadline.bold())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Text(Date(timeIntervalSince1970: info.lastUpdated / 1000)
+                    .formatted(.relative(presentation: .named)))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+}
+
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow

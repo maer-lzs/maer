@@ -306,7 +306,7 @@ struct PodcastsView: View {
                 ) {
                     ForEach(recentShows) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                            recentTile(info)
+                            RecentShowTile(info: info)
                         }
                         .buttonStyle(.plain)
                         .podcastShowMenu(info.show)
@@ -314,56 +314,6 @@ struct PodcastsView: View {
                 }
                 .padding(.horizontal)
             }
-        }
-    }
-
-    /// A show is unusable offline when none of its episodes is downloaded —
-    /// same dimming convention as the featured cards.
-    private func isOfflineUnavailable(_ show: PodcastShow) -> Bool {
-        guard !networkMonitor.isConnected else { return false }
-        return !show.episodes.contains { DownloadManager.shared.isDownloaded(itemId: $0.guid) }
-    }
-
-    private func recentTile(_ info: RecentShowInfo) -> some View {
-        let unavailable = isOfflineUnavailable(info.show)
-        return VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topTrailing) {
-                CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    Rectangle().fill(.quaternary)
-                        .overlay(Image(systemName: "mic").foregroundStyle(.secondary))
-                }
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .opacity(unavailable ? 0.5 : 1)
-                .overlay(alignment: .topLeading) {
-                    if unavailable {
-                        Image(systemName: "wifi.slash")
-                            .font(.caption)
-                            .foregroundStyle(.white, .secondary)
-                            .padding(8)
-                    }
-                }
-
-                if info.newCount > 0 {
-                    Text("\(info.newCount)")
-                        .font(.caption2.bold()).foregroundStyle(.white)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Capsule().fill(.red))
-                        .padding(7)
-                }
-            }
-            Text(info.show.title)
-                .font(.subheadline.bold())
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-            Text(Date(timeIntervalSince1970: info.lastUpdated / 1000)
-                    .formatted(.relative(presentation: .named)))
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
     }
 

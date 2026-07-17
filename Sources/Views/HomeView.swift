@@ -15,8 +15,8 @@ struct HomeView: View {
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
     /// as the library tabs, no Home-specific component).
     @State private var continueIds: [String] = []
-    /// W2 "Latest Episodes": newest podcast episodes, rendered like the podcast tab.
-    @State private var newEpisodeItems: [LibraryItem] = []
+    /// X1b "Latest Episodes": recently-updated shows, shown as cover tiles.
+    @State private var recentShowInfos: [RecentShowInfo] = []
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
@@ -53,7 +53,7 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool {
-        continueIds.isEmpty && queue.isEmpty && newEpisodeItems.isEmpty && recentlyAddedItems.isEmpty
+        continueIds.isEmpty && queue.isEmpty && recentShowInfos.isEmpty && recentlyAddedItems.isEmpty
     }
 
     // MARK: - Sections (reused components only)
@@ -112,18 +112,26 @@ struct HomeView: View {
         }
     }
 
-    /// W2 "Latest Episodes": the newest podcast episodes as a vertical list of
-    /// PodcastEpisodeRows — exactly the podcast tab's episode row (tap opens the
-    /// episode page, swipe/menu actions, download control), no Home special case.
+    /// X1b "Latest Episodes": recently-updated shows as cover tiles (the same
+    /// RecentShowTile the podcast tab's "Recently Updated" uses, Regel 2), in a
+    /// horizontal shelf. Tapping a tile opens the SHOW page (conservative — not
+    /// the newest episode directly).
     @ViewBuilder
     private var latestEpisodesSection: some View {
-        if !newEpisodeItems.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+        if !recentShowInfos.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
                 Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
-                LazyVStack(spacing: 0) {
-                    ForEach(newEpisodeItems.prefix(6)) { item in
-                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(recentShowInfos.prefix(10)) { info in
+                            NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
+                                RecentShowTile(info: info).frame(width: 150)
+                            }
+                            .buttonStyle(.plain)
+                            .podcastShowMenu(info.show)
+                        }
                     }
+                    .padding(.horizontal)
                 }
             }
         }
@@ -187,13 +195,6 @@ struct HomeView: View {
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
 
-        // W2 "Latest Episodes": the newest episode of each show, newest first.
-        let newEpisodes = shows.compactMap { show -> (id: String, ts: Double)? in
-            guard let ep = show.episodes.max(by: { $0.pubDate < $1.pubDate }) else { return nil }
-            return (ep.guid, ep.pubDate)
-        }
-        let episodeIds = HomeSections.byRecency([newEpisodes], limit: 8)
-
         // W2/X1a "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort — empty without a music server). Both inputs
         // are already recency-ordered; a FAIR interleave keeps both libraries
@@ -205,7 +206,9 @@ struct HomeView: View {
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
         continueIds = rankedContinue
-        newEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        // X1b "Latest Episodes": the same recently-updated shows the podcast tab
+        // shows, as tiles.
+        recentShowInfos = sections.recentShows
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }

@@ -21,7 +21,8 @@ components rather than forking them.
 |---|---|---|
 | `MediaRowContent` | `PlayQueueRow` · `BookDownloadRow` (BookGridComponents) · `PodcastEpisodeRow` (PodcastComponents) | `coverURL, title`; opt. `eyebrow, meta, progressFraction`; flags `titleDimmed/coverDimmed/offlineBadge/downloadedBadge/showsPlayedCheck`; `placeholderSystemImage`; `coverSize=64` |
 | `PlayQueueRow` | HomeView (Up Next) · PodcastsView (Up Next) · PodcastQueueView (queue page) | `item, playerCoordinator`; wraps `MediaRowContent` at default cover size; tap plays (leaves queue) |
-| `PodcastEpisodeRow` | PodcastsView (Downloaded shelf) · HomeView (Latest Episodes) · PodcastShowView (episode list) | `item, playerCoordinator`; `rowTap = .detail` (`.play`/`.detail`/`.none`); swipe/menu actions; wraps `MediaRowContent` |
+| `PodcastEpisodeRow` | PodcastsView (Downloaded shelf) · PodcastShowView (episode list) | `item, playerCoordinator`; `rowTap = .detail` (`.play`/`.detail`/`.none`); swipe/menu actions; wraps `MediaRowContent` |
+| `RecentShowTile` | PodcastsView (Recently Updated grid) · HomeView (Latest Episodes shelf) | `info: RecentShowInfo`; cover + new-episode count badge + title + relative update time; offline dimming; caller wraps in `NavigationLink(value: .show)` |
 | `BookFeaturedCard` | HomeView (Continue) · LibraryView (Continue) | `entry, playerCoordinator, libraryViewModel`; fixed width 235; tap resumes, info pill → detail |
 | `PodcastFeaturedCard` | HomeView (Continue) · PodcastsView (Continue) | `item, playerCoordinator`; fixed width 235; tap resumes, info pill → episode |
 | `BookGridCell` | HomeView (Recently Added, w=150) · LibraryView (Recently Added w=180 · series · all-books grid) · BookGridComponents (author/genre browse grid) | `entry, width, playerCoordinator, libraryViewModel`; `NavigationLink(value: entry.id)` (String route) |
