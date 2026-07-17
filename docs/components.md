@@ -35,7 +35,7 @@ components rather than forking them.
 | `CoverGrid` | MusicView (albums) · MusicBrowseViews (artist albums) · PodcastDiscoverView (discover) · BookGridComponents (browse grid) | `columns, @ViewBuilder content`; `LazyVGrid` leading, spacing 20 |
 | `DownloadInstallRing` | BookFeaturedCard (card cover) · BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover |
 | `CoverBadge` | `DownloadInstallRing` (disc size) · `BookCoverView` (wifi.slash + downloaded check) | `size(tileWidth) -> CGFloat` = 22 % of tile, clamped 18…44 |
-| `AdaptiveGlassBackground` | MiniPlayerBar · MediaTabBar · LibraryView (search/home/toolbar/banner) · FloatingSearchButton · RefreshActivityPill · ResumeMessageBanner · BookDetailScreen (buttons/pills) · BookGridComponents (featured card) | `shape`; `forceDark=false`; `lightAccent=nil`; `reduced=false` (drops Liquid Glass → material while scrolling); iOS 26 `.glassEffect`, material fallback below |
+| `AdaptiveGlassBackground` | MiniPlayerBar · MediaTabBar · LibraryView (search/home/toolbar/banner) · FloatingSearchButton · RefreshActivityPill · ResumeMessageBanner · BookDetailScreen (buttons/pills) · BookGridComponents (featured card) | `shape`; `forceDark=false`; `lightAccent=nil`; `reduced=false` (drops Liquid Glass → material while scrolling); iOS 26 `.glassEffect`, material fallback below. **All bottom-bar elements** (mini player, home, search, tab bar) share one `reduced` source (`BottomBarState.isScrolling`) so the row never mixes clear glass and reduced material |
 
 ## Navigation
 

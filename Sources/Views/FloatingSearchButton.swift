@@ -6,6 +6,10 @@ import SwiftUI
 /// a field itself.
 struct FloatingSearchButton: View {
     let action: () -> Void
+    /// X17: reduce the glass in lock-step with the other bottom-bar elements
+    /// (shared BottomBarState.isScrolling) so the row never mixes clear glass and
+    /// the reduced material.
+    var reduced: Bool = false
 
     var body: some View {
         Button(action: action) {
@@ -16,7 +20,7 @@ struct FloatingSearchButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .modifier(AdaptiveGlassBackground(shape: Circle(), reduced: reduced))
         .accessibilityLabel(Text("Search"))
     }
 }

@@ -14,6 +14,9 @@ struct MediaTabBar: View {
     /// (resetting the navigation path) that were unreliable in a binding setter
     /// (a tap "did nothing").
     let onSelect: (MediaType) -> Void
+    /// X17: reduce the glass with the rest of the bottom bar (shared
+    /// BottomBarState.isScrolling) so all bar elements match in every state.
+    var reduced: Bool = false
 
     /// D7/B6: at accessibility sizes the caption labels truncated anyway —
     /// icons only, the label lives on as the accessibility label.
@@ -49,6 +52,6 @@ struct MediaTabBar: View {
             }
         }
         .padding(.horizontal, 6)
-        .modifier(AdaptiveGlassBackground(shape: Capsule()))
+        .modifier(AdaptiveGlassBackground(shape: Capsule(), reduced: reduced))
     }
 }

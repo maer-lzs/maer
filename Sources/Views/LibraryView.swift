@@ -469,11 +469,11 @@ struct LibraryView: View {
     @ViewBuilder
     private var mediaBar: some View {
         if availableMediaTypes.count > 1 {
-            MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
+            MediaTabBar(types: availableMediaTypes, selected: selectedMediaType, onSelect: { newValue in
                 navigationPath = NavigationPath()
                 bottomBar.reset()   // switching tabs expands the bar
                 withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
-            }
+            }, reduced: bottomBar.isScrolling)
             .matchedGeometryEffect(id: "media", in: barNS)
         }
     }
@@ -498,16 +498,16 @@ struct LibraryView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .modifier(AdaptiveGlassBackground(shape: Circle(), reduced: bottomBar.isScrolling))
         .matchedGeometryEffect(id: "media", in: barNS)
         .accessibilityLabel(selectedMediaType.label)
         .accessibilityHint(Text("Expands the bar"))
     }
 
     private var searchButton: some View {
-        FloatingSearchButton {
+        FloatingSearchButton(action: {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
-        }
+        }, reduced: bottomBar.isScrolling)
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
     }
