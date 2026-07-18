@@ -51,8 +51,10 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
             return Color(white: 0.82).opacity(0.48)
         }
         // 35% accent over white → pastel, dark text stays readable.
+        // X25: opacity 0.5 → 0.4 (trial, device-judged); the accentless
+        // white 0.3 above stays.
         func mix(_ v: CGFloat) -> CGFloat { v * 0.35 + 0.65 }
-        return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.5)
+        return Color(red: mix(r), green: mix(g), blue: mix(b)).opacity(0.4)
     }
 
     func body(content: Content) -> some View {
