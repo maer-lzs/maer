@@ -75,6 +75,17 @@ nonisolated enum ChapterModel {
         return (withTimeMarks(valid, duration: duration), true)
     }
 
+    /// X23: ONE label for every chapter-selector surface (player list button,
+    /// selector sheet title, detail-page selector row) — media-type aware:
+    /// music navigates tracks, a fallback book navigates parts ("Teile"), only
+    /// real chapters read "Chapters". Keeps the selector wording in lockstep
+    /// with the chapter names themselves (X18/X20 family).
+    static func selectorLabel(isMusic: Bool, isFallback: Bool) -> String {
+        if isMusic { return String(localized: "Tracks") }
+        if isFallback { return String(localized: "Parts") }
+        return String(localized: "Chapters")
+    }
+
     /// X20: do the chapters merely mirror the file/track structure — one chapter
     /// per track, each starting at a track boundary (within tolerance)? Then they
     /// are file navigation ("parts"), not real embedded chapters.

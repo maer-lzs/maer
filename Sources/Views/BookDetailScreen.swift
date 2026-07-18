@@ -175,9 +175,9 @@ struct BookDetailScreen: View {
         if let media = detail?.media {
             let resolved = ChapterModel.resolved(
                 chapters: media.chapters ?? [], tracks: media.tracks ?? [],
-                duration: media.duration ?? 0).chapters
-            if !resolved.isEmpty {
-                chapterLink(resolved, isHero: isHero)
+                duration: media.duration ?? 0)
+            if !resolved.chapters.isEmpty {
+                chapterLink(resolved.chapters, isFallback: resolved.isFallback, isHero: isHero)
             }
         }
 
@@ -335,7 +335,7 @@ struct BookDetailScreen: View {
 
     // MARK: - Chapters
 
-    private func chapterLink(_ chapters: [ABSChapter], isHero: Bool) -> some View {
+    private func chapterLink(_ chapters: [ABSChapter], isFallback: Bool, isHero: Bool) -> some View {
         NavigationLink {
             DetailChapterList(
                 bookTitle: entry.item.title,
@@ -345,7 +345,10 @@ struct BookDetailScreen: View {
             )
         } label: {
             HStack {
-                Label("Chapters", systemImage: "list.bullet")
+                // X23: a fallback book navigates PARTS — the row must not
+                // promise chapters the selector then calls "Teil N".
+                Label(ChapterModel.selectorLabel(isMusic: false, isFallback: isFallback),
+                      systemImage: "list.bullet")
                     .font(.subheadline)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                 Spacer()

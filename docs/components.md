@@ -55,7 +55,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 
 | Component | Used by | Surface |
 |---|---|---|
-| `ChapterModel` | PlayerViewModel (`resolved`, `current`) · BookDetailScreen (`resolved`) · BookFeaturedCard (`validated`, `current`) | Chapter validation + coverage/track/time-mark fallback; `isPodcast`-aware; file-mirroring chapters → parts (Teil) vs real chapters (Kapitel) |
+| `ChapterModel` | PlayerViewModel (`resolved`, `current`) · BookDetailScreen (`resolved`, `selectorLabel`) · BookFeaturedCard (`validated`, `current`) · PlayerView + ChapterListView (`selectorLabel`) | Chapter validation + coverage/track/time-mark fallback; `isPodcast`-aware; file-mirroring chapters → parts (Teil) vs real chapters (Kapitel); `selectorLabel(isMusic,isFallback)` = one wording (Tracks/Parts/Chapters) for every selector surface |
 | `NowPlayingPresentation` | PlayerViewModel+NowPlaying (lock screen + CarPlay) | `title(isMusic,songTitle,workTitle,fallback)` (work; song for music; never empty) · `subtitle(chapterTitle,author,isFallback)` (real chapter only) |
 | `PodcastSections` | PodcastsView (`computeSections`) · HomeView (`compute`) | `snapshot` + `computeDetached` → `nextUp / recentShows / downloaded`; off-main |
 | `HomeSections` | HomeView | `byRecency([[id,ts]], limit)` newest-first, de-duplicated · `interleave([[id]], limit)` fair round-robin (Recently Added books+albums, neither starves) |

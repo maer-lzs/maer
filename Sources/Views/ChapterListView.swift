@@ -6,6 +6,8 @@ struct ChapterListView: View {
     /// S19b: the list is a track/rest fallback (server chapters didn't cover the
     /// book) — show a discreet hint.
     var isFallback = false
+    /// X23: music titles the sheet "Tracks" (the list is the album's tracks).
+    var isMusic = false
     let onSelect: (ABSChapter) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -41,7 +43,9 @@ struct ChapterListView: View {
                         .id(chapter.id)
                     }
                 }
-                .navigationTitle("Chapters")
+                // X23: shared selector label — "Tracks" for music, "Parts" for
+                // a fallback book, "Chapters" only for real chapters.
+                .navigationTitle(ChapterModel.selectorLabel(isMusic: isMusic, isFallback: isFallback))
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Done") { dismiss() }

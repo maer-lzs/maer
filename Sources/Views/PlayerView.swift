@@ -128,7 +128,8 @@ struct PlayerView: View {
             ChapterListView(
                 chapters: viewModel.chapters,
                 currentChapter: viewModel.currentChapter,
-                isFallback: viewModel.chaptersAreFallback
+                isFallback: viewModel.chaptersAreFallback,
+                isMusic: viewModel.isMusicItem
             ) { chapter in
                 viewModel.jumpToChapter(chapter)
                 showChapters = false
@@ -448,8 +449,11 @@ struct PlayerView: View {
 
     private var chaptersControl: some View {
             Button { showChapters = true } label: {
-                // X18: for music the list is the album's tracks, not chapters.
-                Label(viewModel.isMusicItem ? "Tracks" : "Chapters", systemImage: "list.bullet")
+                // X18/X23: shared selector label — tracks for music, parts for a
+                // fallback book, chapters otherwise.
+                Label(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
+                                                 isFallback: viewModel.chaptersAreFallback),
+                      systemImage: "list.bullet")
             }
             .disabled(viewModel.chapters.isEmpty)
     }

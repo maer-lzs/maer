@@ -243,5 +243,18 @@ struct ChapterModelTests {
         #expect(marks.first?.start == 600)                   // starts at the coverage end
         #expect(marks.first?.title.contains("10:00") == true) // timeLabel(600) == "10:00"
     }
+
+    @Test("X23: one selector label — tracks for music, parts for fallback, chapters otherwise")
+    func selectorLabel() {
+        // Keys, not localized values — locale-independent.
+        #expect(ChapterModel.selectorLabel(isMusic: true, isFallback: false)
+                == String(localized: "Tracks"))
+        #expect(ChapterModel.selectorLabel(isMusic: true, isFallback: true)
+                == String(localized: "Tracks"))          // music wins over fallback
+        #expect(ChapterModel.selectorLabel(isMusic: false, isFallback: true)
+                == String(localized: "Parts"))
+        #expect(ChapterModel.selectorLabel(isMusic: false, isFallback: false)
+                == String(localized: "Chapters"))
+    }
 }
 #endif
