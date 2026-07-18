@@ -184,7 +184,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Seconds before the timer end over which the volume fades gently — no hard
     /// stop mid-sentence.
-    let sleepFadeDuration: Double = 8
+    /// Y12: seconds of volume fade before the sleep timer pauses — a named
+    /// knob for tuning; 8 s felt too abrupt, doubled to 16 s.
+    let sleepFadeDuration: Double = 16
 
     /// Last value successfully written to the server.
     var lastSyncedTime: Double = 0
