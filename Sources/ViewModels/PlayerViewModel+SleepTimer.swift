@@ -22,7 +22,6 @@ extension PlayerViewModel {
         sleepTimerRemaining = nil
         sleepUntilChapterEnd = false
         sleepUntilTrackEnd = false
-        endLiveActivity()
     }
 
     func startSleepTimer(minutes: Double) {
@@ -31,7 +30,6 @@ extension PlayerViewModel {
         sleepUntilChapterEnd = false
         sleepUntilTrackEnd = false
         sleepTimerRemaining = minutes * 60
-        updateLiveActivity()
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -58,7 +56,6 @@ extension PlayerViewModel {
         sleepTimerRemaining = nil
         sleepUntilChapterEnd = false
         sleepUntilTrackEnd = false
-        endLiveActivity()
     }
 
     /// Extends the running timer by the given minutes. End-of-chapter/track
@@ -80,7 +77,6 @@ extension PlayerViewModel {
         sleepUntilTrackEnd = true
         player?.volume = 1
         sleepTimerRemaining = max(end - currentTime, 0)
-        updateLiveActivity()
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -109,7 +105,6 @@ extension PlayerViewModel {
         player?.volume = 1
         let end = chapter.end
         sleepTimerRemaining = max(end - currentTime, 0)
-        updateLiveActivity()
         sleepTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)

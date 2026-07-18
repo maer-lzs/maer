@@ -65,12 +65,12 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"ABSPlayer-Info.plist",
+				ABSPlayerUITests/MaerUITests.swift,
 				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/MaerLiveActivity.swift,
+				LiveActivityWidget/MaerWidgetBundle.swift,
 				LiveActivityWidget/PodcastUpNextWidget.swift,
 				MaerWidgets/Assets.xcassets,
 				MaerWidgets/Info.plist,
-				ABSPlayerUITests/MaerUITests.swift,
 			);
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
 		};
@@ -85,10 +85,9 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/MaerLiveActivity.swift,
+				LiveActivityWidget/MaerWidgetBundle.swift,
 				LiveActivityWidget/PodcastUpNextWidget.swift,
 				Sources/Localizable.xcstrings,
-				Sources/Models/PlaybackActivityAttributes.swift,
 				Sources/Models/WidgetShared.swift,
 			);
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;

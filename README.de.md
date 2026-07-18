@@ -121,12 +121,6 @@ online wie offline.
 - **Siri & Kurzbefehle**: „Weiterhören in Mär" und „Spiele *Buch* in
   Mär" (Buchnamen kommen aus dem Offline-Bibliothekscache), plus
   Home-Screen-Schnellaktion für das zuletzt gehörte Buch
-- **Live Activity / Dynamic Island** für den Schlaf-Timer: Läuft ein Timer,
-  zeigt ein Mond-Countdown auf Sperrbildschirm und in der Dynamic Island
-  (friert im „bis Kapitelende"-Modus bei Pause ein) — bewusst nicht mehr,
-  Apples eigenes „Now Playing" deckt die Wiedergabe auf dem Sperrbildschirm
-  bereits ab; Widget-Extension-Target einmalig anlegen, siehe
-  `LiveActivityWidget/ANLEITUNG.md`
 - **CarPlay**: drei Tabs (Weiter hören / Heruntergeladen / Bibliothek) mit
   Cover-Thumbnails und dem System-Now-Playing, teilt sich die Wiedergabe-
   Session mit dem Telefon — funktioniert auch beim Kaltstart im Auto
@@ -263,7 +257,7 @@ Das Repository enthält das komplette Xcode-Projekt — nichts muss zusammengeba
 3. iPhone anschließen, als Ziel wählen (Background-Audio testet sich auf echten Geräten deutlich verlässlicher als im Simulator), ▶ drücken.
 4. Auf dem iPhone ggf. einmalig unter **Einstellungen → Allgemein → VPN & Geräteverwaltung** der Apple-ID vertrauen.
 
-Background Audio, das Live-Activity-Widget-Target, die CarPlay-Szene und iPhone-/iPad-Unterstützung sind im Projekt bereits konfiguriert.
+Background Audio, das Widget-Extension-Target, die CarPlay-Szene und iPhone-/iPad-Unterstützung sind im Projekt bereits konfiguriert.
 
 **Kostenlose Apple-ID ohne Developer Program:** Die App läuft 7 Tage pro Installation, danach einmal über Xcode neu bauen. **CarPlay im echten Auto** braucht zusätzlich Apples CarPlay-Audio-Entitlement (developer.apple.com/contact/carplay, bezahlter Account) — der CarPlay-Simulator (`I/O → External Displays → CarPlay`) funktioniert ohne.
 
@@ -309,7 +303,6 @@ Sources/
 │   ├── AudiobookshelfModels.swift  Codable-Structs für die Audiobookshelf-API
 │   ├── SubsonicModels.swift        Codable-Structs für die Subsonic/OpenSubsonic-API
 │   ├── SyncRules.swift             Reine, getestete Sync-Entscheidungsregeln + Multi-Track-Zeitrechnung
-│   ├── PlaybackActivityAttributes.swift  Gemeinsamer Live-Activity-Vertrag (App + Widget-Extension)
 │   └── AppStorageKeys.swift        Zentrale UserDefaults-Keys inkl. Aufräumen der pro-Buch-Keys
 ├── Networking/
 │   ├── APIClient.swift             Alle HTTP-Calls
@@ -341,7 +334,6 @@ Sources/
 │   ├── PlayerViewModel.swift       AVQueuePlayer, Multi-Track-Queue, Seek/Skip, Kapitel
 │   ├── PlayerViewModel+Sync.swift  Sync-Politik: Timer, Reentrancy-Guard, Konflikte, Abgleich
 │   ├── PlayerViewModel+SleepTimer.swift   Sleep-Timer inkl. Lautstärke-Fade
-│   ├── PlayerViewModel+LiveActivity.swift Live Activity starten/aktualisieren/beenden
 │   └── PlayerViewModel+NowPlaying.swift   Lockscreen-Befehle, NowPlaying-Info, Artwork
 └── Views/
     ├── SetupView.swift             Server + Passwort- oder Token-Anmeldung

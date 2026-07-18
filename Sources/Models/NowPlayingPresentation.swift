@@ -13,7 +13,7 @@ nonisolated enum NowPlayingPresentation {
     /// chapter cleanup once left the full player's title empty because the work
     /// title had only ever lived INSIDE the raw chapter names, e.g. "Kapitel 71
     /// – Armageddon …"; the player had no title line of its own.) Shared by the
-    /// full player, the lock screen / CarPlay and the Live Activity.
+    /// full player and the lock screen / CarPlay.
     static func title(isMusic: Bool, songTitle: String?, workTitle: String?, fallback: String) -> String {
         if isMusic, let song = nonEmpty(songTitle) { return song }
         return nonEmpty(workTitle) ?? fallback

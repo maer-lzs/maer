@@ -62,7 +62,7 @@ Konto-/Portal-Arbeit.
 - [ ] Xcode: Gerät „Any iOS Device" → **Product → Archive** → Organizer →
       **Distribute App** → App Store Connect.
 - [ ] TestFlight-Runde auf dem eigenen Gerät (installiert das Store-Binary,
-      prüft Push-freie Funktionen, Widget, Live Activity, Siri).
+      prüft Push-freie Funktionen, Widget, Siri).
 - [ ] Einreichen; bei Ablehnung: Review-Antworten sachlich, Demo-Zugang
       erneut hervorheben — das ist bei Server-Client-Apps der häufigste
       Ablehnungsgrund.

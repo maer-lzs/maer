@@ -7,15 +7,15 @@ import UIKit
 /// Lockscreen/Dynamic Island: RemoteCommands, NowPlaying-Info, Artwork.
 extension PlayerViewModel {
 
-    // MARK: - Shared now-playing title/subtitle (Regel 2 — one source, four surfaces)
+    // MARK: - Shared now-playing title/subtitle (Regel 2 — one source, three surfaces)
 
     /// True for a Subsonic music item (`sub:`) — its playing "work" is the song,
     /// not the album.
     var isMusicItem: Bool { item?.id.hasPrefix("sub:") == true }
 
     /// X14: the large title = the work (book/episode title; the SONG title for
-    /// music). One derivation for the full player, lock screen, CarPlay and the
-    /// Live Activity — never empty.
+    /// music). One derivation for the full player, lock screen and CarPlay —
+    /// never empty.
     var nowPlayingTitle: String {
         NowPlayingPresentation.title(
             isMusic: isMusicItem,
@@ -24,7 +24,7 @@ extension PlayerViewModel {
             fallback: String(localized: "Audiobook"))
     }
 
-    /// Subtitle for the lock screen / CarPlay / Live Activity: for music the
+    /// Subtitle for the lock screen / CarPlay: for music the
     /// artist (the song is already the title); otherwise the REAL chapter +
     /// author (a fallback marker is never a chapter name → suppressed). The full
     /// player uses its own richer line (it also surfaces the fallback marker).
@@ -115,11 +115,11 @@ extension PlayerViewModel {
                 self?.artworkImage = image
                 self?.updateNowPlayingInfo()
                 // X9/V8: write the RELIABLY-loaded cover to the shared app-group
-                // file the Live Activity + home widget read, then refresh them.
-                // The old path wrote only from ImageCache.thumbnail, which is
-                // typically still empty right after an item change (auto-continue)
-                // — so the activity re-rendered the new title next to the stale
-                // cover. Loading here already retries, so this is dependable.
+                // file the home widget reads, then refresh it. The old path wrote
+                // only from ImageCache.thumbnail, which is typically still empty
+                // right after an item change (auto-continue) — so the widget
+                // showed the new title next to the stale cover. Loading here
+                // already retries, so this is dependable.
                 self?.refreshSharedCover(from: image)
             }
         }
@@ -147,7 +147,7 @@ extension PlayerViewModel {
         // X9c: use the SAME session the player's cover views use
         // (URLSession.coverImage — no shared urlCache, ignores local cache).
         // `URLSession.shared` failed to fetch some Subsonic music covers, so the
-        // app-group artwork file was never written and the Live Activity showed a
+        // app-group artwork file was never written and the widgets showed a
         // gray placeholder for music tracks.
         guard let (data, _) = try? await URLSession.coverImage.data(from: url),
               let image = UIImage(data: data) else { return nil }

@@ -2,7 +2,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// T9c: one derivation for lock-screen NowPlaying, CarPlay and the Live Activity.
+/// T9c: one derivation for lock-screen NowPlaying and CarPlay.
 /// Title is always the work (tested at the call sites); the chapter shows in the
 /// subtitle only when it's a REAL chapter — never a fallback marker.
 struct NowPlayingPresentationTests {

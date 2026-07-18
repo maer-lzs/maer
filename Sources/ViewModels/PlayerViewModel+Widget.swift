@@ -32,18 +32,13 @@ extension PlayerViewModel {
         if Self.coverNeedsRewrite(previous: Self.lastWidgetCoverItemId, current: item.id) {
             Self.lastWidgetCoverItemId = item.id
             let coverURL = provider.coverURL(forItemId: item.id)
-            Task { @MainActor [weak self] in
+            Task { @MainActor in
                 guard let coverURL,
                       let thumb = await ImageCache.shared.thumbnail(for: coverURL),
                       let data = thumb.pngData(),
                       let target = WidgetSnapshot.coverURL else { return }
                 try? data.write(to: target, options: .atomic)
                 WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
-                // V8: the Live Activity reads the SAME shared cover file. The
-                // fetch+write above is async, so on an item change the activity
-                // had already re-rendered the NEW title next to the OLD cover.
-                // Refresh it now that the new cover is on disk.
-                self?.updateLiveActivity()
             }
         }
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
@@ -56,8 +51,8 @@ extension PlayerViewModel {
     }
 
     /// X9/V8: write a small cover PNG (from the reliably-loaded lock-screen
-    /// artwork) into the shared app-group file the Live Activity + home widget
-    /// read, then refresh both. Dependable across item changes, unlike the
+    /// artwork) into the shared app-group file the home widget reads, then
+    /// refresh it. Dependable across item changes, unlike the
     /// ImageCache-thumbnail path which is often empty right after a switch.
     func refreshSharedCover(from image: UIImage) {
         guard let target = WidgetSnapshot.coverURL else { return }
@@ -66,7 +61,6 @@ extension PlayerViewModel {
         guard let data = thumb.pngData() else { return }
         try? data.write(to: target, options: .atomic)
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
-        updateLiveActivity()
     }
 
     /// Aspect-preserving downscale so the shared cover PNG stays small.

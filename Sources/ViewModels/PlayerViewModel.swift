@@ -3,7 +3,6 @@ import Combine
 import AVFoundation
 import MediaPlayer
 import UIKit
-import ActivityKit
 
 @MainActor
 final class PlayerViewModel: NSObject, ObservableObject {
@@ -114,8 +113,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var playbackRate: Float = 1.0
     /// When the current pause started — basis for Smart Rewind on resume.
     private var pausedAt: Date?
-    /// Running Live Activity (lock screen / Dynamic Island), see extension.
-    var liveActivity: Activity<PlaybackActivityAttributes>?
     /// Skip interval in seconds (15/30/60), remembered app-wide.
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
@@ -278,7 +275,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
                     seekWithin: max(0, position - self.trackAbsoluteStart(index))
                 )
                 self.updateNowPlayingInfo()
-                self.refreshLiveActivityIfActive()
             }
         }
     }
@@ -311,9 +307,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
             if isPlaying {
                 resumeAfterInterruption = true
                 // Same bookkeeping as pause(), minus player.pause() (the
-                // system already halted the audio): Smart-Rewind anchor, a
-                // prompt sync while we still have CPU, and a Live-Activity
-                // refresh so the island stops showing a ticking countdown.
+                // system already halted the audio): Smart-Rewind anchor and a
+                // prompt sync while we still have CPU.
                 pausedAt = Date()
                 Task { await syncProgress(force: true) }
             }
@@ -321,7 +316,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // button showing the wrong icon).
             isPlaying = false
             updateNowPlayingInfo()
-            refreshLiveActivityIfActive()
         } else {
             if resumeAfterInterruption, shouldResume {
                 play()
@@ -613,7 +607,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // otherwise the UI shows the wrong state after a fully played book.
                 self.isFinished = true
                 self.updateNowPlayingInfo()
-                self.endLiveActivity()
                 self.updateWidgetSnapshot(force: true)
                 await self.syncProgress(force: true)
                 if let finishedId = self.item?.id {
@@ -642,7 +635,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.rate = playbackRate
         isPlaying = true
         updateNowPlayingInfo()
-        updateLiveActivity()
         updateWidgetSnapshot(force: true)
         Haptics.tap()
     }
@@ -692,7 +684,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         isPlaying = false
         pausedAt = Date()
         updateNowPlayingInfo()
-        refreshLiveActivityIfActive()
         updateWidgetSnapshot(force: true)
         ListeningStatsStore.shared.flush()
         Haptics.tap()
@@ -727,7 +718,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = clamped
         updateCurrentChapter()
         updateNowPlayingInfo()
-        refreshLiveActivityIfActive()
         if userInitiated {
             // A DELIBERATE jump picks a new position — Smart Rewind must not
             // pull away from it when playback resumes after a long pause.
@@ -960,15 +950,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let newChapter = ChapterModel.current(at: currentTime, in: chapters)
         guard newChapter != currentChapter else { return }
         currentChapter = newChapter
-        // Keep the chapter name fresh IF a sleep-timer activity is showing;
-        // never starts one on its own.
-        refreshLiveActivityIfActive()
     }
 
     // MARK: - Cleanup
 
     func stop() {
-        endLiveActivity()
         ListeningStatsStore.shared.flush()
         Task { await syncProgress(force: true) }
         player?.pause()

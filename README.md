@@ -52,7 +52,6 @@ Mär started as a private replacement for a client that regularly lost playback 
 - **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing — bookmarks created or deleted without a connection are sent automatically once it returns
 - Settings screen: skip interval, default playback speed for new books, **Smart Rewind** (resume a little earlier after longer pauses), **auto-play the next unfinished book of a series**, appearance override (system/light/dark), Wi-Fi download warning toggle, storage management, sync status with a “Sync Now” button, a library picker for servers with several libraries, and the app version
 - **Siri & Shortcuts**: “Continue listening in Mär” and “Play *book* in Mär” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
-- **Live Activity / Dynamic Island** for the sleep timer: while a timer runs, a moon countdown shows on the lock screen and in the Dynamic Island (frozen while paused in end-of-chapter mode) — deliberately nothing more, since Apple's own Now Playing already covers playback on the lock screen; requires adding the widget extension target once, see `LiveActivityWidget/ANLEITUNG.md`
 - **CarPlay**: three tabs (Continue Listening / Downloaded / Library) with cover thumbnails and the system Now Playing screen, sharing the phone's playback session — works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
 - Adaptive light and dark design: the Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
 - Performance: grid cells decode a small derived thumbnail instead of the full cover — smooth scrolling and far less memory with large libraries; the book list is fetched in Audiobookshelf’s minified format
@@ -141,7 +140,7 @@ The repository ships the complete Xcode project — nothing needs to be assemble
 3. Connect your iPhone, select it as the run destination (background audio is far more reliable to test on a real device than in the simulator), press ▶.
 4. On the iPhone, trust your Apple ID once under **Settings → General → VPN & Device Management** if asked.
 
-Background audio, the Live-Activity widget target, the CarPlay scene, and iPhone/iPad support are already configured in the project.
+Background audio, the widget extension target, the CarPlay scene, and iPhone/iPad support are already configured in the project.
 
 **Free Apple ID without the Developer Program:** the app runs for 7 days per install, then rebuild once via Xcode. **CarPlay in a real car** additionally needs Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay, paid account) — the CarPlay simulator (`I/O → External Displays → CarPlay`) works without it.
 
@@ -182,7 +181,6 @@ Sources/
 │   ├── AudiobookshelfModels.swift  Codable structs for the Audiobookshelf API
 │   ├── SubsonicModels.swift        Codable structs for the Subsonic/OpenSubsonic API
 │   ├── SyncRules.swift             Pure, unit-tested sync decision rules + multi-track time math
-│   ├── PlaybackActivityAttributes.swift  Shared Live-Activity contract (app + widget extension)
 │   └── AppStorageKeys.swift        Central UserDefaults keys incl. per-book key cleanup
 ├── Networking/
 │   ├── APIClient.swift             All HTTP calls
@@ -214,7 +212,6 @@ Sources/
 │   ├── PlayerViewModel.swift       AVQueuePlayer, multi-track queue, seek/skip, chapters
 │   ├── PlayerViewModel+Sync.swift  Sync policy: timer, reentrancy guard, conflicts, reconcile
 │   ├── PlayerViewModel+SleepTimer.swift   Sleep timer incl. volume fade
-│   ├── PlayerViewModel+LiveActivity.swift Live Activity start/update/end
 │   └── PlayerViewModel+NowPlaying.swift   Lock screen commands, NowPlaying info, artwork
 └── Views/
     ├── SetupView.swift             Server + password or token sign-in

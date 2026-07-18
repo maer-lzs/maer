@@ -17,8 +17,6 @@
 	<array>
 		<string>de.lzs.ABSPlayer.podcastRefresh</string>
 	</array>
-	<key>NSSupportsLiveActivities</key>
-	<true/>
 	<!-- Deep Link des Home-Screen-Widgets (maer://resume → Weiterhören). -->
 	<key>CFBundleURLTypes</key>
 	<array>
