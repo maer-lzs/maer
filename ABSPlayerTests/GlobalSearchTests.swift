@@ -42,6 +42,38 @@ struct SearchRankingTests {
         #expect(showHit.first?.kind == .show)
     }
 
+    @Test("Y15 chips: toggles never go empty; library falls back as the start state")
+    func chipToggles() {
+        var chips = SearchChipFilter.start
+        #expect(chips == [.library])
+        chips = SearchChipFilter.toggled(chips, tapping: .podcasts)
+        #expect(chips == [.library, .podcasts])
+        chips = SearchChipFilter.toggled(chips, tapping: .library)
+        #expect(chips == [.podcasts])
+        chips = SearchChipFilter.toggled(chips, tapping: .podcasts)   // last chip off
+        #expect(chips == SearchChipFilter.start)                      // falls back
+    }
+
+    @Test("Y15 chips: visibility matrix incl. the catalog rule")
+    func chipVisibility() {
+        // Library only: all own kinds, never the catalog.
+        let lib = SearchChipFilter.visible(chips: [.library])
+        #expect(lib.kinds == Set(SearchResult.Kind.allCases).subtracting([.catalogShow]))
+        #expect(!lib.includesCatalog)
+        // Podcasts alone: its sections INCLUDING the catalog.
+        let pod = SearchChipFilter.visible(chips: [.podcasts])
+        #expect(pod.kinds == [.show, .episode])
+        #expect(pod.includesCatalog)
+        // Library + podcasts: own podcast content only, no catalog.
+        let both = SearchChipFilter.visible(chips: [.library, .podcasts])
+        #expect(both.kinds == [.show, .episode])
+        #expect(!both.includesCatalog)
+        // Two type chips union.
+        let types = SearchChipFilter.visible(chips: [.audiobooks, .music])
+        #expect(types.kinds == [.book, .author, .series, .album, .artist, .song])
+        #expect(!types.includesCatalog)
+    }
+
     @Test("the search timeout returns the fast result and nil for the slow one")
     func timeout() async {
         let fast = await withSearchTimeout(.milliseconds(500)) { 42 }
