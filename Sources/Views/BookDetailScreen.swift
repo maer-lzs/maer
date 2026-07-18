@@ -515,8 +515,9 @@ struct BookDetailScreen: View {
             )
             .font(.subheadline)
             .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            // X22b: same height source as the download capsule next to it.
+            .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
+            .padding(.vertical, 2)
         }
         .modifier(AdaptiveGlassBackground(shape: Capsule()))
     }
@@ -622,6 +623,10 @@ struct BookDetailScreen: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("Available Offline"))
+                // X22b: ONE height source for the whole action row — every
+                // capsule is min. the 44 pt control height + 2 pt padding, so
+                // the offline and mark-played capsules always line up.
+                .frame(minHeight: CoverBadge.detailControl)
                 .padding(.vertical, 2)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
@@ -656,7 +661,8 @@ struct BookDetailScreen: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .padding(.vertical, 10)
+                    .frame(minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
                     .padding(.horizontal, 14)
                     .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 case .paused(let progress):
@@ -679,7 +685,8 @@ struct BookDetailScreen: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .padding(.vertical, 10)
+                    .frame(minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
                     .padding(.horizontal, 14)
                     .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 case .failed(let message):
@@ -714,8 +721,8 @@ struct BookDetailScreen: View {
                     )
                     .font(.subheadline)
                     .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, minHeight: CoverBadge.detailControl)
+                    .padding(.vertical, 2)
                 }
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 // Offline a download can't start — disable instead of failing.
