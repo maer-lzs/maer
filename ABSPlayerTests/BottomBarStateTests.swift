@@ -125,17 +125,61 @@ struct BottomBarStateTests {
     @Test("shouldCollapse: below threshold / force-expanded / within the delay do NOT collapse")
     func collapseDelayDecision() {
         // Past threshold and past the delay → collapse.
-        #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false,
+        #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: false,
                                               elapsedSinceScrollStart: 0.5, collapseDelay: 0.4))
         // Past threshold but still WITHIN the delay → not yet.
-        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false,
+        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: false,
                                                elapsedSinceScrollStart: 0.1, collapseDelay: 0.4))
         // Below the threshold → never.
-        #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false,
+        #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false, alreadyCollapsed: false,
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
         // Force-expanded wins even past the delay.
-        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true,
+        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true, alreadyCollapsed: false,
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
+    }
+
+    /// X21b: the delay gates ONLY expanded→collapsed. An already collapsed bar
+    /// must stay collapsed inside the delay window (a fresh gesture resets the
+    /// scroll-start clock — without hysteresis the bar fluttered open and shut
+    /// on every touch), and still expand immediately below the threshold.
+    @Test("shouldCollapse hysteresis: a collapsed bar ignores the delay window")
+    func collapseHysteresis() {
+        // Collapsed + past threshold + WITHIN the delay → stays collapsed.
+        #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: true,
+                                              elapsedSinceScrollStart: 0.0, collapseDelay: 0.4))
+        // Collapsed + back under the threshold → expands regardless of the delay.
+        #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false, alreadyCollapsed: true,
+                                               elapsedSinceScrollStart: 0.0, collapseDelay: 0.4))
+        // Collapsed + force-expand → expands.
+        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true, alreadyCollapsed: true,
+                                               elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
+    }
+
+    /// X21b (stateful): collapsed bar + a NEW gesture at scrollY > threshold —
+    /// the bar must stay collapsed through the entire delay window instead of
+    /// briefly expanding (the flutter regression).
+    @Test("a new gesture on a collapsed bar does not re-expand it")
+    func newGestureKeepsCollapsed() {
+        let state = BottomBarState()
+        state.collapseDelaySeconds = 0
+        state.setUserDragging(true)
+        state.report(200)
+        #expect(state.collapsed)
+        state.setUserDragging(false)
+        // New gesture with an effectively infinite delay window: without
+        // hysteresis every report below would read "expand".
+        state.collapseDelaySeconds = 3600
+        state.setUserDragging(true)   // resets the scroll-start clock
+        let publishes = publishCount(of: state) {
+            state.report(210)
+            state.report(260)
+            state.report(320)
+        }
+        #expect(state.collapsed)
+        #expect(publishes == 0)       // no flutter: not a single flip published
+        // Scrolling back under the threshold still expands immediately.
+        state.report(10)
+        #expect(!state.collapsed)
     }
 }
 #endif

@@ -52,8 +52,8 @@ final class BottomBarState: ObservableObject {
     /// signpost below).
     private var scrollStartedAt: Date = .distantPast
     /// X21: how long after scroll-start the bar may collapse. Internal so tests
-    /// can zero it out; app default 0.4 s.
-    var collapseDelaySeconds: TimeInterval = 0.4
+    /// can zero it out; app default 0.2 s (X21c: 0.4 s felt sluggish).
+    var collapseDelaySeconds: TimeInterval = 0.2
 
     /// X21: signpost each `collapsed` flip so a device Instruments trace can
     /// correlate the collapse/expand morphs with scroll hitches.
@@ -111,6 +111,7 @@ final class BottomBarState: ObservableObject {
     private func applyCollapsed() {
         let elapsed = Date().timeIntervalSince(scrollStartedAt)
         let newValue = Self.shouldCollapse(scrollY: scrollY, forceExpanded: forceExpanded,
+                                           alreadyCollapsed: collapsed,
                                            elapsedSinceScrollStart: elapsed,
                                            collapseDelay: collapseDelaySeconds)
         guard newValue != collapsed else { return }
@@ -123,9 +124,16 @@ final class BottomBarState: ObservableObject {
     /// not force-expanded, AND at least `collapseDelay` past scroll start.
     /// Expanding (scrolled back up / force-expanded) is immediate — only the
     /// collapse is delayed, to move its morph off the scroll-start moment.
-    static func shouldCollapse(scrollY: CGFloat, forceExpanded: Bool,
+    /// X21b hysteresis: the delay gates ONLY the expanded→collapsed transition.
+    /// An already collapsed bar stays collapsed while past the threshold — a
+    /// fresh gesture resets the scroll-start clock, and without this the delay
+    /// window briefly read as "expand", making the bar flutter open and shut on
+    /// every touch. Expanding happens only by scrolling back under the
+    /// threshold, force-expand, or the idle auto-expand.
+    static func shouldCollapse(scrollY: CGFloat, forceExpanded: Bool, alreadyCollapsed: Bool,
                                elapsedSinceScrollStart: TimeInterval, collapseDelay: TimeInterval) -> Bool {
-        scrollY > 60 && !forceExpanded && elapsedSinceScrollStart >= collapseDelay
+        guard scrollY > 60, !forceExpanded else { return false }
+        return alreadyCollapsed || elapsedSinceScrollStart >= collapseDelay
     }
 }
 
