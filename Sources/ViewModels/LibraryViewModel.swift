@@ -430,6 +430,13 @@ final class LibraryViewModel: ObservableObject {
     /// Next unfinished book of the same series, sorted by sequence — basis
     /// for the auto-play-next setting when a book ends. nil for standalone
     /// books, unknown items, or when the series is finished.
+    /// F3 (pure, tested): the author-portrait tap filters the library only
+    /// when the author has MORE than one work here; a single work stays a
+    /// plain image without a tap.
+    nonisolated static func authorFilterEnabled(workCount: Int) -> Bool {
+        workCount > 1
+    }
+
     func nextInSeries(after itemId: String) -> LibraryEntry? {
         guard let current = entries.first(where: { $0.id == itemId }),
               let base = Self.baseSeriesName(current.item.media?.metadata?.seriesName) else { return nil }

@@ -90,9 +90,18 @@ struct BookDetailScreen: View {
                 .multilineTextAlignment(isHero ? .center : .leading)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             if let author = entry.item.author {
-                Text(author)
-                    .font(.subheadline)
-                    .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
+                // F3: round author portrait next to the author line — ONLY when
+                // the server ships an image (no placeholder, no initials; the
+                // row looks like before otherwise, same rule as music artists
+                // without a picture). Tapping filters the library to this
+                // author — the image is function, not decoration — and is only
+                // active when the author has MORE than one work here.
+                HStack(spacing: 8) {
+                    authorPortrait
+                    Text(author)
+                        .font(.subheadline)
+                        .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
+                }
             }
             if let p = currentProgress, p.isStarted, !isFinished {
                 Text(p.remainingText(bookDuration: entry.item.media?.duration) ?? String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened"))
@@ -102,6 +111,49 @@ struct BookDetailScreen: View {
                 Text("Completed")
                     .font(.caption)
                     .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.6)) : AnyShapeStyle(.secondary))
+            }
+        }
+    }
+
+    /// F3: portrait URL — only for ABS books whose expanded payload carries an
+    /// author id; the request itself only renders when the image loads.
+    private var authorImageURL: URL? {
+        guard let authorId = detail?.media.metadata?.authors?.first?.id else { return nil }
+        return (coordinator.provider as? APIClient)?.authorImageURL(authorId: authorId)
+    }
+
+    /// F3: the author's works in the library — the tap filter is only active
+    /// for more than one work (pure rule, tested).
+    private var authorWorks: [LibraryEntry] {
+        guard let author = entry.item.author else { return [] }
+        return libraryViewModel.entries.filter { $0.item.author == author }
+    }
+
+    @ViewBuilder
+    private var authorPortrait: some View {
+        if let url = authorImageURL {
+            let works = authorWorks
+            // Frame INSIDE the success branch: while loading (and when the
+            // server has no image) nothing renders and nothing reserves space —
+            // the row looks exactly like today.
+            let portrait = CachedAsyncImage(url: url, useThumbnail: true) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
+            } placeholder: {
+                EmptyView()
+            }
+            if LibraryViewModel.authorFilterEnabled(workCount: works.count),
+               let author = entry.item.author {
+                NavigationLink {
+                    BrowseBooksScreen(title: author, entries: works,
+                                      playerCoordinator: coordinator,
+                                      libraryViewModel: libraryViewModel)
+                } label: { portrait }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("All books by \(author)"))
+            } else {
+                portrait
             }
         }
     }

@@ -410,6 +410,16 @@
         }
       }
     },
+    "All books by %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Bücher von %@"
+          }
+        }
+      }
+    },
     "All downloaded audiobooks will be removed from this device. Listening progress is kept." : {
       "localizations" : {
         "de" : {

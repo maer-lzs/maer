@@ -360,6 +360,22 @@ final class APIClient {
     /// via query parameter but via the Authorization header (see PlayerViewModel);
     /// that is the more robust, officially supported way for AVPlayer
     /// (AVURLAssetHTTPHeaderFieldsKey).
+    /// F3: the server's author image (only some authors have one) — same
+    /// token-in-query auth as the covers, cached through the shared cover
+    /// infrastructure (ImageCache), no cache path of its own.
+    func authorImageURL(authorId: String) -> URL? {
+        guard var components = URLComponents(
+            url: baseURL.appendingPathComponent("api/authors/\(authorId)/image"),
+            resolvingAgainstBaseURL: false
+        ) else { return nil }
+        var items = components.queryItems ?? []
+        if let token, !token.isEmpty {
+            items.append(URLQueryItem(name: "token", value: token))
+        }
+        components.queryItems = items
+        return components.url
+    }
+
     func streamURL(forContentPath contentPath: String) -> URL? {
         // Some server configurations already return absolute URLs.
         if contentPath.hasPrefix("http://") || contentPath.hasPrefix("https://") {

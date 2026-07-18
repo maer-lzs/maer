@@ -105,4 +105,15 @@ struct DiscoverFilterTests {
         #expect(out.map(\.title) == ["A", "C"])
     }
 }
+
+/// F3: the author portrait's tap rule — several works ⇒ tappable filter, a
+/// single work ⇒ plain image.
+struct AuthorPortraitRuleTests {
+    @Test func tapRule() {
+        #expect(!LibraryViewModel.authorFilterEnabled(workCount: 0))
+        #expect(!LibraryViewModel.authorFilterEnabled(workCount: 1))
+        #expect(LibraryViewModel.authorFilterEnabled(workCount: 2))
+        #expect(LibraryViewModel.authorFilterEnabled(workCount: 12))
+    }
+}
 #endif
