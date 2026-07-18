@@ -589,7 +589,8 @@ struct BookDetailScreen: View {
                     .font(.subheadline)
                     .foregroundStyle(.primary)
                     .lineLimit(1)
-                    Spacer()
+                    .fixedSize(horizontal: true, vertical: false)
+                    Spacer(minLength: 8)
                     // Re-check the download: fetches exactly the tracks that
                     // are missing or were stored corrupted (tiny error pages).
                     // D8/B7: 44pt hit areas; the capsule keeps its height via
@@ -616,6 +617,9 @@ struct BookDetailScreen: View {
                 .padding(.vertical, 2)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
+                // X22: hug the natural width so the size text never truncates —
+                // the mark-played capsule takes the remaining row width instead.
+                .fixedSize(horizontal: true, vertical: false)
             } else if let phase = downloadManager.phase[entry.id] {
                 switch phase {
                 case .downloading(let progress):
@@ -710,7 +714,6 @@ struct BookDetailScreen: View {
                 .disabled(detail == nil || !NetworkMonitor.shared.isConnected)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 
     private func startDownloadWithWiFiCheck() async {
