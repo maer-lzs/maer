@@ -9,6 +9,9 @@ nonisolated enum AppStorageKeys {
     /// X24: last bottom-bar cover accent (RGBA components) — restored at launch
     /// so the bar never falls back to neutral once an item has ever played.
     static let bottomBarAccent = "bottomBarAccent"
+    /// Teil 5: ONE opt-out for the Home recommendation sections (Rediscover +
+    /// Discover); default on.
+    static let homeRecommendations = "homeRecommendations"
     /// Speed for books that have no per-book rate saved yet.
     static let defaultPlaybackRate = "defaultPlaybackRate"
     /// Resume slightly earlier after a longer pause (default ON).

@@ -21,6 +21,9 @@ struct HomeView: View {
     /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
     /// volume) — empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
+    /// Teil 5: ONE opt-out for both recommendation sections (Rediscover +
+    /// Discover); the library-fact sections stay untouched.
+    @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @Environment(\.pushPodcastRoute) private var pushRoute
@@ -33,18 +36,20 @@ struct HomeView: View {
     @State private var ready = false
 
     private var recomputeToken: String {
-        "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)"
+        "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)"
     }
 
     var body: some View {
         ScrollView {
             if ready {
+                // Teil 5 order: Continue (+ its planned Up Next) → Discover →
+                // Latest Episodes → Rediscover → Recently Added.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     upNextSection
-                    discoverSection
+                    if recommendationsEnabled { discoverSection }
                     latestEpisodesSection
-                    rediscoverSection
+                    if recommendationsEnabled { rediscoverSection }
                     recentlyAddedSection
                     if isEmpty { emptyState }
                 }
@@ -377,9 +382,13 @@ struct HomeView: View {
         continueIds = rankedContinue
         recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
-        rediscoverPicks = computeRediscover(
-            bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
-        await recommendations.refreshIfNeeded()
+        if recommendationsEnabled {
+            rediscoverPicks = computeRediscover(
+                bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
+            await recommendations.refreshIfNeeded()
+        } else {
+            rediscoverPicks = []
+        }
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }
 

@@ -37,6 +37,7 @@ struct SettingsView: View {
     @State private var autoPlayNext: Bool =
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
+    @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
@@ -58,6 +59,7 @@ struct SettingsView: View {
                 switch tab {
                 case .general:
                     appearanceSection
+                    recommendationsSection
                     storageSection
                     aboutSection
                 case .audiobooks:
@@ -299,6 +301,20 @@ struct SettingsView: View {
             Text("Playback")
         } footer: {
             Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
+        }
+    }
+
+    /// Teil 5: ONE opt-out for both Home recommendation sections (Rediscover +
+    /// Discover) — same convention as the other metadata toggles (default on).
+    private var recommendationsSection: some View {
+        Section {
+            Toggle(isOn: $homeRecommendations) {
+                Label("Recommendations", systemImage: "sparkles")
+            }
+        } header: {
+            Text("Home")
+        } footer: {
+            Text("Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it.")
         }
     }
 

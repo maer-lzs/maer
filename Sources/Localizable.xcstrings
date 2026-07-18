@@ -3084,6 +3084,16 @@
         }
       }
     },
+    "Recommendations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfehlungen"
+          }
+        }
+      }
+    },
     "Recommended" : {
       "localizations" : {
         "de" : {
@@ -3465,6 +3475,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendungen"
+          }
+        }
+      }
+    },
+    "Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt die Sektionen „Wiederentdecken“ und „Entdecken“ auf der Startseite. Vorschläge werden auf diesem Gerät berechnet; kein Hörprofil verlässt es."
           }
         }
       }
