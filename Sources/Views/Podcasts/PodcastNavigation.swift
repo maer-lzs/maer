@@ -9,6 +9,8 @@ enum PodcastRoute: Hashable {
     case show(feedURL: String)
     case episode(itemId: String)
     case queue
+    /// Teil 4: the Discover grid — Home's Discover row taps into the SAME flow.
+    case discover
 }
 
 extension View {
@@ -32,6 +34,8 @@ extension View {
                 }
             case .queue:
                 PlayQueueView(playerCoordinator: playerCoordinator)
+            case .discover:
+                PodcastDiscoverView()
             }
         }
     }

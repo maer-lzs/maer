@@ -463,3 +463,58 @@ struct PodcastDownloadButton: View {
 }
 
 // MARK: - Playback state
+
+// MARK: - Inline subscribe control (Discover)
+
+/// Shared inline subscribe control (Regel 2: the podcast tab's Discover grid
+/// and the Home Discover row use the SAME flow): a green check when already
+/// subscribed, a spinner while subscribing, otherwise a "+" that subscribes on
+/// the ABS server when ABS podcasts are active, else locally + gpodder push.
+struct PodcastSubscribeBadge: View {
+    let feedURL: String
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @State private var subscribing = false
+
+    var body: some View {
+        if Self.isSubscribed(feedURL) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.white, .green)
+                .background(Circle().fill(.black.opacity(0.25)))
+        } else if subscribing {
+            ProgressView().controlSize(.small)
+                .padding(4).background(Circle().fill(.black.opacity(0.35)))
+        } else {
+            Button {
+                subscribing = true
+                Task {
+                    await Self.subscribe(feedURL)
+                    subscribing = false
+                }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.white, AppTheme.accent)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Subscribe"))
+        }
+    }
+
+    /// Already subscribed (locally OR on the server) — normalized feed URL.
+    static func isSubscribed(_ feedURL: String) -> Bool {
+        let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
+        return PodcastSubscriptions.shared.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+            || ABSPodcastProvider.shared.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+    }
+
+    static func subscribe(_ feedURL: String) async {
+        if AppStorageKeys.absPodcastsEnabledValue, ABSPodcastProvider.shared.hasPodcasts {
+            _ = await ABSPodcastProvider.shared.subscribeOnServer(feedURL: feedURL)
+        } else {
+            _ = await PodcastSubscriptions.shared.subscribe(urlString: feedURL)
+            await GPodderSync.shared.reconcile()   // push the new subscription to the server
+        }
+        PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
+    }
+}

@@ -35,6 +35,7 @@ components rather than forking them.
 | Component | Used by (file · context) | Parameters / variants |
 |---|---|---|
 | `CoverGrid` | MusicView (albums) · MusicBrowseViews (artist albums) · PodcastDiscoverView (discover) · BookGridComponents (browse grid) | `columns, @ViewBuilder content`; `LazyVGrid` leading, spacing 20 |
+| `PodcastSubscribeBadge` | PodcastDiscoverView (grid) · HomeView (Discover row, via `MediaTile` corner slot) | `feedURL`; check when subscribed / spinner / "+" subscribes (ABS server when active, else local + gpodder push) and drops the feed from the recommendations pool |
 | `DownloadInstallRing` | BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover (grid tiles) |
 | `CardDownloadBadge` | BookFeaturedCard · PodcastFeaturedCard | `itemId, startDownload`; unified download/offline badge at the CARD's bottom-right, matching the card's own "Details" info pill BY CONSTRUCTION: capsule around subheadline-metric content (hidden text template) + the pill's 7 pt vertical padding ⇒ height-identical at every type size; solid `.white.opacity(0.22)` fill, NO glass/blur (info-pill performance note); 44 pt tap frame anchored bottom-trailing ⇒ same 12 pt corner distance as the pill; icons: offline wifi.slash / progress ring+cancel / checkmark / download arrow |
 | `CoverBadge` | `DownloadInstallRing` (disc size) · `BookCoverView` (wifi.slash + downloaded check) · `CardDownloadBadge` (tap frame) · BookDetailScreen (download-section buttons + X22b action-row min height) · `PodcastDownloadButton` (PodcastComponents, episode detail) | `detailControl = 44` — the family's HIT-TARGET constant: the detail pages' control buttons and `CardDownloadBadge`'s tap frame use it, and `size(tileWidth, cap=detailControl)` (= 22 % of tile, clamped 18…`cap`) caps at it; the card badge's visible size follows the card's info pill instead |
@@ -44,7 +45,7 @@ components rather than forking them.
 
 | Component | Registered / pushed from | Cases / variants |
 |---|---|---|
-| `PodcastRoute` | Registered on stack root (LibraryView) via `podcastNavigationDestinations`; pushed from PodcastsView · PodcastEpisodeDetailView · PodcastComponents (card/row) via `NavigationLink(value:)` / `pushPodcastRoute` env | `.show(feedURL)` · `.episode(itemId)` · `.queue` |
+| `PodcastRoute` | Registered on stack root (LibraryView) via `podcastNavigationDestinations`; pushed from PodcastsView · PodcastEpisodeDetailView · PodcastComponents (card/row) · HomeView via `NavigationLink(value:)` / `pushPodcastRoute` env | `.show(feedURL)` · `.episode(itemId)` · `.queue` · `.discover` (the Discover grid; Home's Discover tiles tap into it). Book pushes from Home go through the `pushBookDetail` env (String route) the same way |
 | `MusicRoute` | Registered on stack root (LibraryView) via `musicNavigationDestinations`; pushed from MusicView (album · browse rows) · MusicBrowseViews (artist · similar · playlist) | `.album(LibraryItem)` · `.artist(SubsonicArtist)` · `.artists([…])` · `.playlists([…])`; `Hashable` by id; `accessibilityId` per case |
 
 Both push through the library's `navigationPath`, so a media-tab tap (which

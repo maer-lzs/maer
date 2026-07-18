@@ -15,6 +15,32 @@ final class PodcastRecommendationsStore: ObservableObject {
     private var loadedAt: Date?
     private var isLoading = false
 
+    /// Home "Discover" (Teil 4): where a recommendation came from — the honest
+    /// subtitle reason. Derived ONLY from local signals against the public
+    /// catalog; no profile leaves the device.
+    enum Reason: Equatable {
+        /// From an author/publisher you already listen to.
+        case sameAuthor(String)
+        /// Its categories match your locally weighted top categories.
+        case genre(String)
+        /// From the catalog's trending/top charts.
+        case popular
+    }
+    /// Provenance per normalized feed URL, recorded while building the pool.
+    private var authorProvenance: [String: String] = [:]
+    /// Top categories of the LAST refresh — for the genre reason.
+    private var lastTopCategories: [String] = []
+
+    /// The honest recommendation reason for a result (author > genre > popular).
+    func reason(for result: PodcastSearchResult) -> Reason {
+        let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+        if let author = authorProvenance[n] { return .sameAuthor(author) }
+        if let cat = (result.categories ?? []).first(where: { lastTopCategories.contains($0) }) {
+            return .genre(cat)
+        }
+        return .popular
+    }
+
     /// Sehr breite Kategorien tragen wenig Signal → runtergewichtet.
     private static let broadCategories: Set<String> = [
         "society & culture", "news", "arts", "business", "education", "leisure",
@@ -43,13 +69,17 @@ final class PodcastRecommendationsStore: ObservableObject {
         var authorHits = Set<String>()   // normalized feed URLs from author expansion
 
         // 1. Same author/publisher: fetch their other shows via search.
+        authorProvenance = [:]
         for author in topAuthors.prefix(3) {
             guard let found = try? await directory.search(author) else { continue }
             for r in found where authorMatches(r, author) {
                 pool.append(r)
-                authorHits.insert(PodcastSubscriptions.normalizeFeedURL(r.feedURL))
+                let n = PodcastSubscriptions.normalizeFeedURL(r.feedURL)
+                authorHits.insert(n)
+                authorProvenance[n] = author
             }
         }
+        lastTopCategories = Array(topCats.prefix(6))
 
         // 2. Thematically similar: trending by specific categories + language
         //    (or iTunes top charts without a key).
@@ -182,10 +212,20 @@ final class PodcastRecommendationsStore: ObservableObject {
             (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows)
                 .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }
         )
+        return Self.excludingSubscribed(list, subscribedNormalizedFeeds: subscribed)
+    }
+
+    /// Pure (tested): drop already-subscribed feeds + duplicates, order kept.
+    /// A subscribed show must never appear as a recommendation — the Home
+    /// Discover row filters through this too (subscriptions can happen after
+    /// the pool was built).
+    nonisolated static func excludingSubscribed(
+        _ list: [PodcastSearchResult], subscribedNormalizedFeeds: Set<String>
+    ) -> [PodcastSearchResult] {
         var seen = Set<String>()
         return list.filter {
             let n = PodcastSubscriptions.normalizeFeedURL($0.feedURL)
-            return !subscribed.contains(n) && seen.insert(n).inserted
+            return !subscribedNormalizedFeeds.contains(n) && seen.insert(n).inserted
         }
     }
 }

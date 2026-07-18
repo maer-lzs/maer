@@ -21,6 +21,8 @@ struct HomeView: View {
     /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
     /// volume) — empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
+    @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+    @ObservedObject private var subs = PodcastSubscriptions.shared
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
@@ -40,6 +42,7 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     upNextSection
+                    discoverSection
                     latestEpisodesSection
                     rediscoverSection
                     recentlyAddedSection
@@ -190,6 +193,50 @@ struct HomeView: View {
         return nil
     }
 
+    /// Teil 4 "Discover" (stage 1: podcast shows): one row from the existing
+    /// RecommendationsStore (PodcastIndex/charts, same as the podcast tab),
+    /// with an HONEST reason as the subtitle — derived locally only. Already
+    /// subscribed shows never appear (filtered again at render time, the pool
+    /// may predate a subscription). The corner control is the SAME subscribe
+    /// flow as the podcast tab's Discover grid; the tile tap opens that grid.
+    @ViewBuilder
+    private var discoverSection: some View {
+        let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
+            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        let shown = Array(PodcastRecommendationsStore.excludingSubscribed(
+            recommendations.results, subscribedNormalizedFeeds: subscribed
+        ).prefix(episodeColumns))
+        if !shown.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Discover").font(.title3).bold().padding(.horizontal)
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: episodeColumns),
+                    alignment: .leading, spacing: 14
+                ) {
+                    ForEach(shown) { result in
+                        MediaTile(
+                            title: result.title,
+                            subtitle: reasonText(recommendations.reason(for: result)),
+                            coverURL: result.artworkURL.flatMap { URL(string: $0) },
+                            onTap: { pushRoute(.discover) }
+                        ) {
+                            PodcastSubscribeBadge(feedURL: result.feedURL)
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    private func reasonText(_ reason: PodcastRecommendationsStore.Reason) -> String {
+        switch reason {
+        case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
+        case .genre(let genre): return String(localized: "Because you listen to \(genre)")
+        case .popular: return String(localized: "Popular")
+        }
+    }
+
     /// Teil 3 "Rediscover": one row of daily-rotated local picks. Hidden when
     /// there are no candidates.
     @ViewBuilder
@@ -332,6 +379,7 @@ struct HomeView: View {
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
         rediscoverPicks = computeRediscover(
             bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
+        await recommendations.refreshIfNeeded()
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }
 

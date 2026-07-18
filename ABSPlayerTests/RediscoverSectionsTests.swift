@@ -88,4 +88,21 @@ struct RediscoverSectionsTests {
         #expect(RediscoverSections.daySeed(for: d2, calendar: cal) != RediscoverSections.daySeed(for: d3, calendar: cal))
     }
 }
+
+/// Teil 4: a subscribed show must never appear as a recommendation.
+@MainActor
+struct DiscoverFilterTests {
+    @Test("subscribed feeds and duplicates are dropped, order kept")
+    func excludesSubscribed() {
+        let results = [
+            PodcastSearchResult(title: "A", author: nil, artworkURL: nil, feedURL: "https://a.example/feed"),
+            PodcastSearchResult(title: "B", author: nil, artworkURL: nil, feedURL: "https://b.example/feed"),
+            PodcastSearchResult(title: "A dup", author: nil, artworkURL: nil, feedURL: "https://a.example/feed"),
+            PodcastSearchResult(title: "C", author: nil, artworkURL: nil, feedURL: "https://c.example/feed"),
+        ]
+        let subscribed: Set<String> = [PodcastSubscriptions.normalizeFeedURL("https://b.example/feed")]
+        let out = PodcastRecommendationsStore.excludingSubscribed(results, subscribedNormalizedFeeds: subscribed)
+        #expect(out.map(\.title) == ["A", "C"])
+    }
+}
 #endif
