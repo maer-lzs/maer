@@ -217,19 +217,18 @@ final class PlayerCoordinator: ObservableObject {
         Task { await self.open(item: next) }
     }
 
-    /// X16c: mark an item as played AS IF it ended naturally. When it is the
-    /// active session, playback stops — its progress is finalized as finished so
-    /// the stop's final sync writes "finished", not the current position — and the
-    /// auto-continue logic advances to the next item (or the session just ends if
-    /// there is none). When it is not the active item, this only runs the queue/
-    /// advance bookkeeping. The caller writes the played state (server + local).
+    /// X16c/X16d: mark the ACTIVE item as played AS IF it ended naturally —
+    /// playback stops (its progress is finalized as finished so the stop's final
+    /// sync writes "finished", not the current position) and the auto-continue
+    /// logic advances to the next item (or the session just ends if there is
+    /// none). A NON-active item is a no-op here: the callers already drop it from
+    /// the queue themselves, and advancing would interrupt whatever is playing.
     func markPlayedAndAdvance(itemId: String) {
-        if activeItem?.id == itemId, let vm = viewModel {
-            vm.finalizeAsFinished()
-            vm.stop()
-            viewModel = nil
-            activeItem = nil
-        }
+        guard activeItem?.id == itemId, let vm = viewModel else { return }
+        vm.finalizeAsFinished()
+        vm.stop()
+        viewModel = nil
+        activeItem = nil
         advanceAfterFinish(finishedItemId: itemId)
     }
 
