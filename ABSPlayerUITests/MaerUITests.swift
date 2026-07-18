@@ -202,17 +202,24 @@ nonisolated final class MaerUITests: XCTestCase {
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap()
+        // Y17: the field sits in the bottom bar now.
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText("Seed")
+        // Library scope (default chip): own hits of every type.
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
                       "search must find the seeded episode")
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
                       "search must find the seeded album")
-        XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.exists,
-                      "the New Shows catalog section must appear")
-        snap(app, "global-search")
+        snap(app, "global-search-library")
+        // Y15: the catalog sits behind the explicit catalog row.
+        let catalogRow = app.buttons["search-catalog-row"].firstMatch
+        XCTAssertTrue(catalogRow.waitForExistence(timeout: 5), "catalog row must close the library results")
+        catalogRow.tap()
+        XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.waitForExistence(timeout: 10),
+                      "the catalog view must show the seeded catalog show")
+        snap(app, "global-search-catalog")
     }
 
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.

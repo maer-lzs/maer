@@ -11,6 +11,10 @@ struct LibraryView: View {
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
     @State private var isShowingSearch = false
+    /// Y17: the search field lives in the BOTTOM bar; bar and results overlay
+    /// share this model (the overlay renders, the bar types).
+    @StateObject private var searchModel = GlobalSearchModel.production()
+    @FocusState private var searchFieldFocused: Bool
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
@@ -176,6 +180,28 @@ struct LibraryView: View {
         .environment(\.pushPodcastRoute) { navigationPath.append($0) }
         // Home tiles push book detail pages (String route) the same way.
         .environment(\.pushBookDetail) { navigationPath.append($0) }
+        // Y17: search results sheet UNDER the bottom bar (the bar carries the
+        // search field in search mode and must stay on top); the full player
+        // overlay further down still covers everything.
+        .overlay {
+            if isShowingSearch {
+                GeometryReader { proxy in
+                    SearchOverlay(
+                        libraryViewModel: viewModel,
+                        model: searchModel,
+                        activeTab: selectedMediaType,
+                        topInset: proxy.safeAreaInsets.top,
+                        presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
+                        onOpen: { result in
+                            closeSearch()
+                            openSearchResult(result)
+                        },
+                        onDismiss: { closeSearch() }
+                    )
+                }
+                .transition(.identity)
+            }
+        }
         // Bottom zone as an OVERLAY (reserves no space) — the free space is
         // provided by the scroll contents themselves via `bottomBarClearance()`,
         // which also covers pushed screens (detail, podcast show) cleanly.
@@ -371,26 +397,6 @@ struct LibraryView: View {
         .onDisappear {
             playerCoordinator.viewModel?.stop()
         }
-        // Search overlay as a glass sheet over the library — BELOW the full
-        // player (this .overlay comes earlier in the chain).
-        .overlay {
-            if isShowingSearch {
-                GeometryReader { proxy in
-                    SearchOverlay(
-                        libraryViewModel: viewModel,
-                        activeTab: selectedMediaType,
-                        topInset: proxy.safeAreaInsets.top,
-                        presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
-                        onOpen: { result in
-                            isShowingSearch = false
-                            openSearchResult(result)
-                        },
-                        onDismiss: { isShowingSearch = false }
-                    )
-                }
-                .transition(.identity)
-            }
-        }
         // Settings modal — its own NavigationStack, bottom zone set to 0 (no
         // mini-player in the sheet → no free-space reservation needed).
         .sheet(isPresented: $showSettings) {
@@ -437,6 +443,24 @@ struct LibraryView: View {
     /// now removes fewer views than the old full-branch swap.
     private var bottomBarContent: some View {
         VStack(spacing: 8) {
+            // Y17 search mode: the field sits where the tab pill was, the tab
+            // bar yields to the round home button (like the collapsed state).
+            // Focused: mini player + home button step aside, only the search
+            // pill stays above the keyboard, trailing where the magnifier sat.
+            if isShowingSearch {
+                // ONE structural slot for the field across the focus flip —
+                // a branch swap would tear the focused TextField down and drop
+                // the keyboard (the N2 identity lesson).
+                if !searchFieldFocused { miniPlayer }
+                HStack(spacing: 8) {
+                    if !searchFieldFocused {
+                        homeButton
+                    } else {
+                        Spacer(minLength: 44)
+                    }
+                    bottomSearchField
+                }
+            } else {
             if !barCollapsed { banner }
             HStack(spacing: 8) {
                 if barCollapsed { homeButton }
@@ -449,6 +473,7 @@ struct LibraryView: View {
                     Spacer(minLength: 0)
                     searchButton
                 }
+            }
             }
         }
     }
@@ -505,7 +530,12 @@ struct LibraryView: View {
     private var homeButton: some View {
         Button {
             // Home = back to the library root (pops any pushed detail page) AND
-            // expand the bar again.
+            // expand the bar again. Y17: in search mode it also closes the
+            // search and returns to the Home tab.
+            if isShowingSearch {
+                closeSearch()
+                withAnimation(.snappy(duration: 0.2)) { selectedMediaType = .home }
+            }
             navigationPath = NavigationPath()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
                 bottomBar.expand()
@@ -571,8 +601,48 @@ struct LibraryView: View {
         playerCoordinator.loadError = String(localized: "This result is no longer available.")
     }
 
+    /// Y17: the bottom search field (iOS 26 pattern) — morphs from the
+    /// magnifier (same matchedGeometry id).
+    private var bottomSearchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("", text: $searchModel.query, prompt: Text("Search everything"))
+                .focused($searchFieldFocused)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+            if searchFieldFocused || !searchModel.query.isEmpty {
+                Button {
+                    searchModel.query = ""
+                    searchFieldFocused = false
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Clear search"))
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 56)
+        .frame(maxWidth: searchFieldFocused ? 320 : .infinity)
+        .modifier(AdaptiveGlassBackground(shape: Capsule()))
+        .matchedGeometryEffect(id: "search", in: barNS)
+        .accessibilityIdentifier("global-search-field")
+    }
+
+    private func closeSearch() {
+        searchFieldFocused = false
+        searchModel.query = ""
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = false }
+    }
+
     private var searchButton: some View {
         FloatingSearchButton {
+            searchModel.query = ""
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
         }
         .matchedGeometryEffect(id: "search", in: barNS)
