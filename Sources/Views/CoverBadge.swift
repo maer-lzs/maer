@@ -6,12 +6,10 @@ import SwiftUI
 /// to [18, 44] pt — so every cover (grid cell, featured card, row, music) reads
 /// the same. Use `CoverBadge.size(tileWidth:)` for the edge length.
 enum CoverBadge {
-    /// X6d: size REFERENCE of the whole family — the detail pages' status/
-    /// download controls (glass-capsule buttons, 44 pt hit areas on both the
-    /// book and the podcast-episode page) use it directly, and no cover badge
-    /// grows past it. X6e: the card badges (`CardDownloadBadge`) take this
-    /// height AND the detail pill's glass-capsule look verbatim. One source
-    /// across all media tabs.
+    /// X6d/X6f: the family's HIT-TARGET constant (44 pt) — the detail pages'
+    /// status/download controls size their buttons with it, `CardDownloadBadge`
+    /// uses it for its tap frame, and `size(tileWidth:)` caps at it. The card
+    /// badge's VISIBLE size follows the card's info pill instead (X6f).
     static let detailControl: CGFloat = 44
 
     /// Badge edge length for a given cover/tile width: 22 % of the width (the
