@@ -34,6 +34,9 @@ struct HomeView: View {
     /// X1b: measured content width → adaptive column count for the episode grid.
     @State private var contentWidth: CGFloat = 0
     @State private var ready = false
+    /// Y3a: Latest Episodes expanded to up to 6 rows — deliberately NOT
+    /// persisted (tab switch/restart returns to 2 rows).
+    @State private var episodesExpanded = false
 
     private var recomputeToken: String {
         "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)"
@@ -154,7 +157,10 @@ struct HomeView: View {
     private var latestEpisodesSection: some View {
         if !recentEpisodeItems.isEmpty {
             let cols = episodeColumns
-            let shown = Array(recentEpisodeItems.prefix(cols * 2))   // always 2 rows
+            // Y3a: 2 rows collapsed, up to 6 rows expanded (iPhone: 18
+            // episodes) — inline, not persisted.
+            let rows = episodesExpanded ? 6 : 2
+            let shown = Array(recentEpisodeItems.prefix(cols * rows))
             VStack(alignment: .leading, spacing: 10) {
                 Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
                 LazyVGrid(
@@ -166,6 +172,19 @@ struct HomeView: View {
                     }
                 }
                 .padding(.horizontal)
+                if recentEpisodeItems.count > cols * 2 {
+                    Button {
+                        withAnimation(.snappy(duration: 0.25)) { episodesExpanded.toggle() }
+                    } label: {
+                        Label(episodesExpanded ? String(localized: "Show Less")
+                                               : String(localized: "Show More"),
+                              systemImage: episodesExpanded ? "chevron.up" : "chevron.down")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.horizontal)
+                }
             }
         }
     }
