@@ -169,6 +169,30 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "post-scroll")
     }
 
+    /// Teil 7 (brand-accent trial, decision prep): Start / audiobook library /
+    /// full player per candidate — 0 orange (today), 1 Mär blue, 2 anthracite.
+    func testBrandAccentTrialScreenshots() {
+        for (tag, name) in [(0, "orange"), (1, "maerblau"), (2, "anthrazit")] {
+            let app = XCUIApplication()
+            app.launchArguments += ["-uitest", "-uitest-player", "-brandAccentTrial", "\(tag)"]
+            app.launch()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+            XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+            snap(app, "accent-\(name)-home")
+            let books = app.buttons["tab-audiobooks"].firstMatch
+            if books.waitForExistence(timeout: 10) { books.tap() }
+            _ = app.staticTexts["Seed Book One"].waitForExistence(timeout: 10)
+            snap(app, "accent-\(name)-library")
+            let mini = app.buttons["Now Playing Book"].firstMatch
+            if mini.waitForExistence(timeout: 10) {
+                mini.tap()
+                _ = app.staticTexts["Now Playing Book"].waitForExistence(timeout: 10)
+                snap(app, "accent-\(name)-player")
+            }
+            app.terminate()
+        }
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()

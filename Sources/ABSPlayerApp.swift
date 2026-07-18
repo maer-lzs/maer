@@ -119,5 +119,22 @@ struct ABSPlayerApp: App {
 /// Central place for app-wide colors. To change the accent color, adjust it
 /// here.
 enum AppTheme {
+    #if DEBUG
+    /// Teil 7 (decision prep only): DEBUG-only brand-accent trial so the
+    /// candidates can be compared live on device — 0 = orange (today),
+    /// 1 = Mär blue candidate, 2 = anthracite candidate. The productive value
+    /// stays orange until the brand decision; the selector tab tints are
+    /// untouched either way.
+    static var accent: Color {
+        switch UserDefaults.standard.integer(forKey: "brandAccentTrial") {
+        case 1: return maerBlue
+        case 2: return anthracite
+        default: return .orange
+        }
+    }
+    static let maerBlue = Color(red: 0.20, green: 0.36, blue: 0.66)
+    static let anthracite = Color(red: 0.24, green: 0.26, blue: 0.29)
+    #else
     static let accent = Color.orange
+    #endif
 }

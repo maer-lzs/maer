@@ -58,6 +58,11 @@ struct LibraryView: View {
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
+    #if DEBUG
+    /// Teil 7: re-render everything when the DEBUG accent trial switches, so
+    /// the candidate is visible live without a relaunch.
+    @AppStorage("brandAccentTrial") private var brandAccentTrial = 0
+    #endif
 
     private func isTabMounted(_ type: MediaType) -> Bool {
         mountedTabs.contains(type) || selectedMediaType == type
@@ -252,6 +257,10 @@ struct LibraryView: View {
         // Pass the free-space height to ALL contents (also pushed screens); 0 on
         // the full player (it covers everything).
         .environment(\.bottomBarInset, isShowingFullPlayer ? 0 : bottomBarHeight)
+        #if DEBUG
+        // Teil 7: hard refresh on accent-trial switch (DEBUG only).
+        .id(brandAccentTrial)
+        #endif
         .task {
             // Series data lives here — hand the coordinator a lookup for the
             // auto-play-next-in-series setting.
