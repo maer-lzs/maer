@@ -58,7 +58,7 @@ struct PodcastFeaturedCard: View {
         // X6b: the SHARED download/offline badge family at the card corner —
         // identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
-            CardDownloadBadge(itemId: item.id, cardWidth: width, startDownload: {
+            CardDownloadBadge(itemId: item.id, startDownload: {
                 guard let detail = try? await AppSession.shared.rssProvider.fetchItemDetail(itemId: item.id) else { return }
                 await DownloadManager.shared.download(item: detail, provider: AppSession.shared.rssProvider)
             })

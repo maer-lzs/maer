@@ -45,7 +45,7 @@ struct BookFeaturedCard: View {
         // bottom-right corner — a tap cancels/downloads instead of triggering the
         // card's play action underneath.
         .overlay(alignment: .bottomTrailing) {
-            CardDownloadBadge(itemId: entry.id, cardWidth: width, startDownload: {
+            CardDownloadBadge(itemId: entry.id, startDownload: {
                 guard let detail = try? await playerCoordinator.provider.fetchItemDetail(itemId: entry.id) else { return }
                 await DownloadManager.shared.download(item: detail, provider: playerCoordinator.provider)
             })

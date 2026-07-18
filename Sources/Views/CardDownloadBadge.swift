@@ -2,16 +2,16 @@ import SwiftUI
 
 /// Unified download/offline status badge for the FeaturedCards, pinned to the
 /// card's bottom-right corner (X6a/X6b). One component for the book AND podcast
-/// cards so every card reads identically — the same badge family the grid tiles
-/// use (dark disc + glyph, sized via CoverBadge):
+/// cards so every card reads identically. X6e: the badge shares the DETAIL
+/// pages' status-pill look and height — a glass capsule sized by
+/// `CoverBadge.detailControl` — so card badge and detail pill read as one
+/// family. Iconography:
 /// - offline & not downloaded → wifi.slash
 /// - downloading / paused → progress ring (tap cancels)
 /// - downloaded → checkmark
 /// - otherwise online → download arrow (tap runs the provider-specific start)
 struct CardDownloadBadge: View {
     let itemId: String
-    /// Card width — the badge sizes to it via CoverBadge (same as the grid tiles).
-    var cardWidth: CGFloat = 235
     /// Provider-specific download start (the book vs podcast fetch differ).
     let startDownload: () async -> Void
 
@@ -22,30 +22,31 @@ struct CardDownloadBadge: View {
         !networkMonitor.isConnected && !downloads.isDownloaded(itemId: itemId)
     }
 
+    /// One edge length for frame, hit target and glyph scaling — the detail
+    /// pages' control size.
+    private var side: CGFloat { CoverBadge.detailControl }
+
     var body: some View {
-        // X6c: cards get a smaller cap (~32) than the grid's 44 — the 22 % rule
-        // ran a 235 pt card's badge into the 44 pt cap, which looked too fat.
-        let disc = CoverBadge.size(tileWidth: cardWidth, cap: 32)
-        content(disc: disc)
-            .frame(width: max(44, disc), height: max(44, disc))
+        content
+            .frame(width: side, height: side)
             .contentShape(Circle())
     }
 
     @ViewBuilder
-    private func content(disc: CGFloat) -> some View {
+    private var content: some View {
         if isOfflineUnavailable {
-            badge(disc) {
-                Image(systemName: "wifi.slash").font(.system(size: disc * 0.42, weight: .semibold))
+            badge {
+                Image(systemName: "wifi.slash").font(.system(size: side * 0.38, weight: .semibold))
             }
         } else if let fraction = downloads.phase[itemId]?.progress {
             let paused: Bool = { if case .paused = downloads.phase[itemId] { return true } else { return false } }()
             Button { downloads.cancelDownload(itemId: itemId) } label: {
-                badge(disc) {
+                badge {
                     ZStack {
-                        UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
-                            .frame(width: disc * 0.55, height: disc * 0.55)
+                        UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: AppTheme.accent)
+                            .frame(width: side * 0.5, height: side * 0.5)
                         if paused {
-                            Image(systemName: "pause.fill").font(.system(size: disc * 0.3, weight: .bold))
+                            Image(systemName: "pause.fill").font(.system(size: side * 0.26, weight: .bold))
                         }
                     }
                 }
@@ -53,14 +54,14 @@ struct CardDownloadBadge: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
         } else if downloads.isDownloaded(itemId: itemId) {
-            badge(disc) {
-                Image(systemName: "checkmark").font(.system(size: disc * 0.42, weight: .bold))
+            badge {
+                Image(systemName: "checkmark").font(.system(size: side * 0.38, weight: .bold))
             }
             .accessibilityLabel(Text("Downloaded"))
         } else if networkMonitor.isConnected {
             Button { Task { await startDownload() } } label: {
-                badge(disc) {
-                    Image(systemName: "arrow.down").font(.system(size: disc * 0.42, weight: .bold))
+                badge {
+                    Image(systemName: "arrow.down").font(.system(size: side * 0.38, weight: .bold))
                 }
             }
             .buttonStyle(.plain)
@@ -68,10 +69,13 @@ struct CardDownloadBadge: View {
         }
     }
 
-    private func badge<Content: View>(_ size: CGFloat, @ViewBuilder _ glyph: () -> Content) -> some View {
-        ZStack {
-            Circle().fill(.black.opacity(0.4)).frame(width: size, height: size)
-            glyph().foregroundStyle(.white)
-        }
+    /// The detail pill's glass-capsule look at the detail-control size (an
+    /// equal-sided capsule renders as a disc, but material, stroke and primary
+    /// glyph match the detail pages' controls — not the old dark disc).
+    private func badge<Content: View>(@ViewBuilder _ glyph: () -> Content) -> some View {
+        glyph()
+            .foregroundStyle(.primary)
+            .frame(width: side, height: side)
+            .modifier(AdaptiveGlassBackground(shape: Capsule()))
     }
 }

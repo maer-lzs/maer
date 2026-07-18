@@ -9,14 +9,14 @@ enum CoverBadge {
     /// X6d: size REFERENCE of the whole family — the detail pages' status/
     /// download controls (glass-capsule buttons, 44 pt hit areas on both the
     /// book and the podcast-episode page) use it directly, and no cover badge
-    /// grows past it. One source across all media tabs.
+    /// grows past it. X6e: the card badges (`CardDownloadBadge`) take this
+    /// height AND the detail pill's glass-capsule look verbatim. One source
+    /// across all media tabs.
     static let detailControl: CGFloat = 44
 
     /// Badge edge length for a given cover/tile width: 22 % of the width (the
     /// small-tile scaling), clamped to a legible-but-not-huge [18, `cap`] pt.
-    /// `cap` defaults to the detail-control reference (grid tiles); the wide
-    /// FeaturedCards pass a smaller cap (X6c) — 22 % of a 235 pt card is ~52 pt
-    /// and hit the 44 pt cap, which read as too fat.
+    /// `cap` defaults to the detail-control reference.
     static func size(tileWidth: CGFloat, cap: CGFloat = detailControl) -> CGFloat {
         min(max(tileWidth * 0.22, 18), cap)
     }
