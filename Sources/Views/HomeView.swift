@@ -15,11 +15,14 @@ struct HomeView: View {
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
     /// as the library tabs, no Home-specific component).
     @State private var continueIds: [String] = []
-    /// X1b "Latest Episodes": recently-updated shows, shown as cover tiles.
-    @State private var recentShowInfos: [RecentShowInfo] = []
+    /// X1b "Latest Episodes": newest episode of each recently-active show, shown
+    /// as episode tiles in a 2-row adaptive grid.
+    @State private var recentEpisodeItems: [LibraryItem] = []
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
+    /// X1b: measured content width → adaptive column count for the episode grid.
+    @State private var contentWidth: CGFloat = 0
     @State private var ready = false
 
     private var recomputeToken: String {
@@ -38,6 +41,13 @@ struct HomeView: View {
                 }
                 .padding(.top, TabContentLayout.topInset)
                 .bottomBarClearance()
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .onAppear { contentWidth = geo.size.width }
+                            .onChange(of: geo.size.width) { _, w in contentWidth = w }
+                    }
+                )
                 .transition(.opacity)
             } else {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 280)
@@ -53,7 +63,15 @@ struct HomeView: View {
     }
 
     private var isEmpty: Bool {
-        continueIds.isEmpty && queue.isEmpty && recentShowInfos.isEmpty && recentlyAddedItems.isEmpty
+        continueIds.isEmpty && queue.isEmpty && recentEpisodeItems.isEmpty && recentlyAddedItems.isEmpty
+    }
+
+    /// X1b: adaptive column count — iPhone 2, small iPad 3, large iPad 4.
+    private var episodeColumns: Int {
+        guard contentWidth > 0 else { return 2 }
+        if contentWidth >= 1000 { return 4 }
+        if contentWidth >= 640 { return 3 }
+        return 2
     }
 
     // MARK: - Sections (reused components only)
@@ -112,27 +130,27 @@ struct HomeView: View {
         }
     }
 
-    /// X1b "Latest Episodes": recently-updated shows as cover tiles (the same
-    /// RecentShowTile the podcast tab's "Recently Updated" uses, Regel 2), in a
-    /// horizontal shelf. Tapping a tile opens the SHOW page (conservative — not
-    /// the newest episode directly).
+    /// X1b "Latest Episodes": the newest episode of each recently-active show as
+    /// EpisodeTiles in a vertical grid — capped at ALWAYS 2 rows, with a column
+    /// count adaptive to the width (iPhone 2, small iPad 3, large iPad 4 → 4/6/8
+    /// tiles). Tapping a tile opens the episode page; its play badge plays
+    /// directly. More episodes live in the podcast tab.
     @ViewBuilder
     private var latestEpisodesSection: some View {
-        if !recentShowInfos.isEmpty {
+        if !recentEpisodeItems.isEmpty {
+            let cols = episodeColumns
+            let shown = Array(recentEpisodeItems.prefix(cols * 2))   // always 2 rows
             VStack(alignment: .leading, spacing: 10) {
                 Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 16) {
-                        ForEach(recentShowInfos.prefix(10)) { info in
-                            NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
-                                RecentShowTile(info: info).frame(width: 150)
-                            }
-                            .buttonStyle(.plain)
-                            .podcastShowMenu(info.show)
-                        }
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: cols),
+                    alignment: .leading, spacing: 14
+                ) {
+                    ForEach(shown) { item in
+                        EpisodeTile(item: item, playerCoordinator: playerCoordinator)
                     }
-                    .padding(.horizontal)
                 }
+                .padding(.horizontal)
             }
         }
     }
@@ -195,6 +213,15 @@ struct HomeView: View {
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
 
+        // X1b "Latest Episodes": the newest episode of each show, newest first —
+        // one per show so a daily show doesn't dominate. Capped generously; the
+        // section itself shows only 2 rows.
+        let newestEpisodeIds = shows.compactMap { show -> (id: String, ts: Double)? in
+            guard let ep = show.episodes.max(by: { $0.pubDate < $1.pubDate }) else { return nil }
+            return (ep.guid, ep.pubDate)
+        }
+        let episodeIds = HomeSections.byRecency([newestEpisodeIds], limit: 8)
+
         // W2/X1a "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort — empty without a music server). Both inputs
         // are already recency-ordered; a FAIR interleave keeps both libraries
@@ -206,9 +233,7 @@ struct HomeView: View {
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
         continueIds = rankedContinue
-        // X1b "Latest Episodes": the same recently-updated shows the podcast tab
-        // shows, as tiles.
-        recentShowInfos = sections.recentShows
+        recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
     }

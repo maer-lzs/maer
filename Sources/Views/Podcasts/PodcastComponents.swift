@@ -212,6 +212,62 @@ struct RecentShowTile: View {
     }
 }
 
+/// Episode cover tile (X1b): square cover with a small play badge, a two-line
+/// episode title and a one-line show name. Tapping the tile opens the episode
+/// page; the play badge starts playback directly. Used by Home's "Latest
+/// Episodes" grid.
+struct EpisodeTile: View {
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.pushPodcastRoute) private var pushRoute
+
+    var body: some View {
+        Button {
+            pushRoute(.episode(itemId: item.id))
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: item.id), useThumbnail: true) { image in
+                    image.resizable().aspectRatio(1, contentMode: .fill)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(.quaternary)
+                        .overlay(Image(systemName: "mic").foregroundStyle(.secondary))
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text(item.title)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+                Text(item.media?.metadata?.authorName ?? " ")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .buttonStyle(.plain)
+        // Sibling overlay (like the featured card's controls) so a tap on the
+        // badge plays instead of triggering the tile's navigation underneath.
+        .overlay(alignment: .topTrailing) {
+            Button {
+                Task { await playerCoordinator.open(item: item) }
+            } label: {
+                Image(systemName: "play.circle.fill")
+                    .font(.title3)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, .black.opacity(0.45))
+                    .padding(6)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Play"))
+        }
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+    }
+}
+
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
