@@ -503,8 +503,10 @@ struct LibraryView: View {
         } label: {
             // Collapsed bar shows the ACTIVE tab's symbol; tapping only expands
             // the bar (never switches tab). Symbol changes with the tab.
+            // N3: only THIS changing glyph is larger — circle, magnifier and
+            // every other glyph keep their sizes.
             Image(systemName: selectedMediaType.systemImage)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 21, weight: .semibold))
                 .foregroundStyle(.primary)
                 .frame(width: 56, height: 56)
                 .contentShape(Circle())
