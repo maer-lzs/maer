@@ -18,6 +18,7 @@ struct HomeView: View {
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
+    @Environment(\.pushPodcastRoute) private var pushRoute
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
@@ -66,12 +67,12 @@ struct HomeView: View {
         continueIds.isEmpty && queue.isEmpty && recentEpisodeItems.isEmpty && recentlyAddedItems.isEmpty
     }
 
-    /// X1b: adaptive column count — iPhone 2, small iPad 3, large iPad 4.
+    /// Teil 2: adaptive column count — iPhone 3, small iPad 4, large iPad 5.
     private var episodeColumns: Int {
-        guard contentWidth > 0 else { return 2 }
-        if contentWidth >= 1000 { return 4 }
-        if contentWidth >= 640 { return 3 }
-        return 2
+        guard contentWidth > 0 else { return 3 }
+        if contentWidth >= 1000 { return 5 }
+        if contentWidth >= 640 { return 4 }
+        return 3
     }
 
     // MARK: - Sections (reused components only)
@@ -130,11 +131,12 @@ struct HomeView: View {
         }
     }
 
-    /// X1b "Latest Episodes": the newest episode of each recently-active show as
-    /// EpisodeTiles in a vertical grid — capped at ALWAYS 2 rows, with a column
-    /// count adaptive to the width (iPhone 2, small iPad 3, large iPad 4 → 4/6/8
-    /// tiles). Tapping a tile opens the episode page; its play badge plays
-    /// directly. More episodes live in the podcast tab.
+    /// X1b/Teil 2 "Latest Episodes": the newest episode of each recently-active
+    /// show as MediaTiles in a vertical grid — capped at ALWAYS 2 rows, columns
+    /// adaptive (iPhone 3, small iPad 4, large iPad 5 → 6/8/10 tiles). Image =
+    /// the episode's own artwork when the feed ships one (the provider already
+    /// prefers it), with the show cover as the corner badge ONLY when it
+    /// differs (nothing doubled). Tap → episode page; play badge plays.
     @ViewBuilder
     private var latestEpisodesSection: some View {
         if !recentEpisodeItems.isEmpty {
@@ -147,12 +149,40 @@ struct HomeView: View {
                     alignment: .leading, spacing: 14
                 ) {
                     ForEach(shown) { item in
-                        EpisodeTile(item: item, playerCoordinator: playerCoordinator)
+                        episodeTile(item)
                     }
                 }
                 .padding(.horizontal)
             }
         }
+    }
+
+    private func episodeTile(_ item: LibraryItem) -> some View {
+        MediaTile(
+            title: item.title,
+            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+            cornerBadgeURL: showBadgeURL(for: item),
+            progress: episodeProgress(item),
+            onTap: { pushRoute(.episode(itemId: item.id)) }
+        ) {
+            MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+        }
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+    }
+
+    /// The show cover as a corner badge only when the tile image is the
+    /// episode's OWN artwork (feed-provided) — never double the show cover.
+    private func showBadgeURL(for item: LibraryItem) -> URL? {
+        guard let show = AppSession.shared.rssProvider.show(forEpisodeId: item.id),
+              let raw = show.artworkURL, let url = URL(string: raw),
+              url != AppSession.shared.coverURL(forItemId: item.id)
+        else { return nil }
+        return url
+    }
+
+    private func episodeProgress(_ item: LibraryItem) -> Double? {
+        if case .inProgress(let fraction, _) = podcastPlayState(for: item) { return fraction }
+        return nil
     }
 
     /// W2 "Recently Added": newly added books AND albums in one horizontal shelf,
