@@ -1,50 +1,30 @@
 import SwiftUI
 
-/// Full-screen search overlay in the glass look of the large player: slides up
-/// from the bottom (library shows through), search field with auto-focus and
-/// real-time filtering, scope chips (All/Author/Genre/Series) and result ROWS
-/// with small cover thumbnails instead of a grid. Group scopes open their books
-/// as a drill-down IN the overlay; a book tap closes the overlay and pushes the
-/// detail page.
+/// F6: THE one global search — the magnifier behaves identically on every
+/// surface (tab parity). Full-screen glass sheet (slides up, library shows
+/// through) with a search field; results come from EVERY searchable provider
+/// plus the "New Shows" catalog source, in typed sections whose order follows
+/// the active tab (context ranking), catalog always last. One shared result
+/// row (MediaRowContent family). Author/series hits drill down IN the overlay
+/// (the former library-search behaviour, absorbed here); everything else
+/// navigates value-based through `onOpen`.
 struct SearchOverlay: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
-    let provider: any AudioProvider
-    /// Context: audiobooks = library search, podcasts = directory search
-    /// (Apple/PodcastIndex) to subscribe. The magnifier follows the active tab.
-    let mediaType: MediaType
+    /// Context ranking: the active tab's sections lead.
+    let activeTab: MediaType
     let topInset: CGFloat
     let presentHeight: CGFloat
-    /// Book selected: the caller closes the overlay and pushes the detail page.
-    let onSelect: (LibraryEntry) -> Void
+    /// A result was chosen: the caller closes the overlay and navigates.
+    let onOpen: (SearchResult) -> Void
     let onDismiss: () -> Void
 
-    @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
-    private enum PodcastSource: Hashable { case apple, podcastIndex }
-    @State private var podcastSource: PodcastSource = .apple
-    @State private var podcastResults: [PodcastSearchResult] = []
-    @State private var isSearchingPodcasts = false
-    @State private var subscribingFeeds: Set<String> = []
-
-    enum Scope: CaseIterable {
-        case all, author, genre, series
-
-        var label: String {
-            switch self {
-            case .all: return String(localized: "All")
-            case .author: return String(localized: "Author")
-            case .genre: return String(localized: "Genre")
-            case .series: return String(localized: "Series")
-            }
-        }
-    }
+    @StateObject private var model = GlobalSearchModel.production()
 
     private struct Drilldown {
         let name: String
         let entries: [LibraryEntry]
     }
 
-    @State private var searchText = ""
-    @State private var scope: Scope = .all
     @State private var drilldown: Drilldown?
     /// Ignore the keyboard safe area while closing: its simultaneous
     /// disappearance would re-layout the sheet mid-descent (visible stutter).
@@ -58,23 +38,20 @@ struct SearchOverlay: View {
 
     /// Fill for field/chips/buttons on the always-dark glass.
     private let controlFill = Color.white.opacity(0.12)
-    private let selectedFill = Color.white.opacity(0.2)
 
     init(
         libraryViewModel: LibraryViewModel,
-        provider: any AudioProvider,
-        mediaType: MediaType,
+        activeTab: MediaType,
         topInset: CGFloat,
         presentHeight: CGFloat,
-        onSelect: @escaping (LibraryEntry) -> Void,
+        onOpen: @escaping (SearchResult) -> Void,
         onDismiss: @escaping () -> Void
     ) {
         self.libraryViewModel = libraryViewModel
-        self.provider = provider
-        self.mediaType = mediaType
+        self.activeTab = activeTab
         self.topInset = topInset
         self.presentHeight = presentHeight
-        self.onSelect = onSelect
+        self.onOpen = onOpen
         self.onDismiss = onDismiss
         _releaseOffset = State(initialValue: presentHeight)
     }
@@ -110,22 +87,10 @@ struct SearchOverlay: View {
     private var searchSheet: some View {
         VStack(spacing: 12) {
             header
-            if mediaType == .podcasts {
-                if AppStorageKeys.podcastIndexConfigured { podcastSourcePicker }
-                podcastResultsList
-            } else {
-                if drilldown == nil { scopeChips }
-                resultsList
-            }
+            resultsList
         }
-        // The podcast directory is searched with a debounce (podcast mode only).
-        .task(id: searchText) {
-            guard mediaType == .podcasts else { return }
-            let term = searchText.trimmingCharacters(in: .whitespaces)
-            guard term.count >= 2 else { podcastResults = []; return }
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            guard !Task.isCancelled else { return }
-            await runPodcastSearch(term)
+        .task(id: model.query) {
+            model.queryChanged(activeTab: activeTab)
         }
         .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -161,7 +126,7 @@ struct SearchOverlay: View {
                 .gesture(dismissDrag)
 
             HStack(spacing: 8) {
-                if mediaType != .podcasts, let drilldown {
+                if let drilldown {
                     Button {
                         withAnimation(.snappy(duration: 0.2)) { self.drilldown = nil }
                     } label: {
@@ -184,19 +149,19 @@ struct SearchOverlay: View {
                         .foregroundStyle(.secondary)
                     TextField(
                         "",
-                        text: $searchText,
+                        text: $model.query,
                         // Own prompt instead of the system color: the default
                         // placeholder gray drowns on the translucent glass.
-                        prompt: Text(mediaType == .podcasts ? "Search Podcasts" : "Title, author, series")
+                        prompt: Text("Search everything")
                             .foregroundStyle(Color.white.opacity(0.65))
                     )
                     .focused($searchFocused)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
-                    if !searchText.isEmpty {
+                    if !model.query.isEmpty {
                         Button {
-                            searchText = ""
+                            model.query = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
@@ -225,152 +190,45 @@ struct SearchOverlay: View {
         }
     }
 
-    /// Sufficiently large chips (44 pt), local state → instant reaction.
-    private var scopeChips: some View {
-        HStack(spacing: 8) {
-            ForEach(Scope.allCases, id: \.self) { s in
-                Button {
-                    withAnimation(.snappy(duration: 0.18)) { scope = s }
-                } label: {
-                    Text(s.label)
-                        .font(.subheadline.weight(scope == s ? .semibold : .regular))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .foregroundStyle(scope == s ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.primary))
-                        .padding(.horizontal, 16)
-                        .frame(height: 44)
-                        .background(Capsule().fill(scope == s ? selectedFill : controlFill))
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Podcast directory
-
-    private var podcastSourcePicker: some View {
-        Picker("Search source", selection: $podcastSource) {
-            Text("Apple").tag(PodcastSource.apple)
-            Text("PodcastIndex").tag(PodcastSource.podcastIndex)
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .onChange(of: podcastSource) { _, _ in
-            let term = searchText.trimmingCharacters(in: .whitespaces)
-            if term.count >= 2 { Task { await runPodcastSearch(term) } }
-        }
-    }
-
-    @ViewBuilder
-    private var podcastResultsList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                if isSearchingPodcasts {
-                    HStack { ProgressView().tint(.white); Text("Searching…").foregroundStyle(.white.opacity(0.7)) }
-                        .padding(.top, 24).frame(maxWidth: .infinity)
-                } else if searchText.trimmingCharacters(in: .whitespaces).count < 2 {
-                    Text("Search for a podcast to subscribe.")
-                        .foregroundStyle(.white.opacity(0.6)).padding(.top, 32).frame(maxWidth: .infinity)
-                } else if podcastResults.isEmpty {
-                    emptyHint
-                } else {
-                    ForEach(podcastResults) { result in
-                        podcastRow(result)
-                        Divider().overlay(Color.white.opacity(0.1)).padding(.leading, 84)
-                    }
-                }
-            }
-            .padding(.bottom, 24)
-        }
-        .scrollDismissesKeyboard(.immediately)
-    }
-
-    private func podcastRow(_ result: PodcastSearchResult) -> some View {
-        HStack(spacing: 12) {
-            thumbnail(for: result.artworkURL.flatMap { URL(string: $0) })
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.title).font(.subheadline.weight(.medium)).lineLimit(1)
-                if let author = result.author {
-                    Text(author).font(.caption).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
-                }
-            }
-            Spacer(minLength: 8)
-            podcastSubscribeButton(result)
-        }
-        .padding(.horizontal, 20)
-        .frame(minHeight: 64)
-        .contextMenu {
-            if !podcastSubs.shows.contains(where: { $0.feedURL == result.feedURL }) {
-                Button {
-                    subscribingFeeds.insert(result.feedURL)
-                    Task {
-                        _ = await podcastSubs.subscribe(urlString: result.feedURL)
-                        subscribingFeeds.remove(result.feedURL)
-                    }
-                } label: { Label("Subscribe", systemImage: "plus.circle") }
-            }
-            Button {
-                UIPasteboard.general.string = result.feedURL
-            } label: { Label("Copy Feed URL", systemImage: "doc.on.doc") }
-        }
-    }
-
-    @ViewBuilder
-    private func podcastSubscribeButton(_ result: PodcastSearchResult) -> some View {
-        if podcastSubs.shows.contains(where: { $0.feedURL == result.feedURL }) {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        } else if subscribingFeeds.contains(result.feedURL) {
-            ProgressView().tint(.white)
-        } else {
-            Button("Subscribe") {
-                subscribingFeeds.insert(result.feedURL)
-                Task {
-                    _ = await podcastSubs.subscribe(urlString: result.feedURL)
-                    subscribingFeeds.remove(result.feedURL)
-                }
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(AppTheme.accent)
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func runPodcastSearch(_ term: String) async {
-        isSearchingPodcasts = true
-        let directory: PodcastDirectory
-        if podcastSource == .podcastIndex, AppStorageKeys.podcastIndexConfigured {
-            directory = PodcastIndexDirectory(
-                key: AppStorageKeys.podcastIndexKeyValue,
-                secret: AppStorageKeys.podcastIndexSecretValue
-            )
-        } else {
-            directory = ITunesDirectory()
-        }
-        podcastResults = (try? await directory.search(term)) ?? []
-        isSearchingPodcasts = false
-    }
-
     // MARK: - Results
 
     @ViewBuilder
     private var resultsList: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 if let drilldown {
-                    rows(for: filteredBooks(drilldown.entries))
+                    ForEach(drilldown.entries) { entry in
+                        bookEntryRow(entry)
+                    }
+                } else if model.query.trimmingCharacters(in: .whitespaces).count < GlobalSearchModel.minServerChars {
+                    // Browse feel with an empty field: all books alphabetically
+                    // (the pre-F6 default, kept).
+                    ForEach(allBooksSorted) { entry in
+                        bookEntryRow(entry)
+                    }
+                } else if model.allSourcesFailed {
+                    ContentUnavailableView(
+                        "Search unavailable",
+                        systemImage: "wifi.exclamationmark",
+                        description: Text("No source answered. Check your connection.")
+                    )
+                    .padding(.top, 24)
+                } else if model.sections.isEmpty && !model.isSearching {
+                    Text("No results.")
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 32)
+                        .frame(maxWidth: .infinity)
                 } else {
-                    switch scope {
-                    case .all:
-                        rows(for: filteredBooks(allBooksSorted))
-                    case .author:
-                        groupRows(filteredGroups(libraryViewModel.authorGroups))
-                    case .genre:
-                        groupRows(filteredGroups(libraryViewModel.genreGroups))
-                    case .series:
-                        groupRows(filteredGroups(seriesGroups))
+                    ForEach(model.sections) { section in
+                        sectionView(section)
+                    }
+                    if model.isSearching {
+                        HStack {
+                            ProgressView().tint(.white)
+                            Text("Searching…").foregroundStyle(.white.opacity(0.7))
+                        }
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
                     }
                 }
             }
@@ -380,192 +238,109 @@ struct SearchOverlay: View {
     }
 
     @ViewBuilder
-    private func rows(for books: [LibraryEntry]) -> some View {
-        if books.isEmpty {
-            emptyHint
-        }
-        ForEach(books) { entry in
-            bookRow(entry)
-            Divider()
-                .overlay(Color.primary.opacity(0.12))
-                .padding(.leading, 84)
+    private func sectionView(_ section: GlobalSearchModel.Section) -> some View {
+        Text(Self.sectionTitle(section.kind))
+            .font(.headline)
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
+            .padding(.bottom, 4)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        ForEach(section.results) { result in
+            resultRow(result)
         }
     }
 
-    @ViewBuilder
-    private func groupRows(_ groups: [(name: String, entries: [LibraryEntry])]) -> some View {
-        if groups.isEmpty {
-            emptyHint
-        }
-        ForEach(groups, id: \.name) { group in
-            Button {
-                withAnimation(.snappy(duration: 0.2)) {
-                    drilldown = Drilldown(name: group.name, entries: group.entries)
-                    searchText = ""
+    /// ONE shared result row over the MediaRowContent family (Regel 2) —
+    /// author/series drill down in the overlay, everything else goes out
+    /// through `onOpen`.
+    private func resultRow(_ result: SearchResult) -> some View {
+        Button {
+            switch result.kind {
+            case .author:
+                openDrilldown(name: result.title) { $0.item.author == result.title }
+            case .series:
+                openDrilldown(name: result.title) {
+                    LibraryViewModel.baseSeriesName($0.item.media?.metadata?.seriesName) == result.title
                 }
-            } label: {
-                HStack(spacing: 12) {
-                    thumbnail(for: group.entries.first)
-                    Text(group.name)
-                        .font(.subheadline.weight(.medium))
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    Text("\(group.entries.count)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+            default:
+                select(result)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                MediaRowContent(
+                    coverURL: result.coverURL,
+                    eyebrow: result.subtitle,
+                    title: result.title,
+                    titleDimmed: !result.isPlayableNow,
+                    coverDimmed: !result.isPlayableNow,
+                    offlineBadge: !result.isPlayableNow,
+                    placeholderSystemImage: Self.placeholder(result.kind)
+                )
+                if result.kind == .author || result.kind == .series {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-                .padding(.horizontal, 20)
-                .frame(minHeight: 64)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            Divider()
-                .overlay(Color.primary.opacity(0.12))
-                .padding(.leading, 84)
-        }
-    }
-
-    private func bookRow(_ entry: LibraryEntry) -> some View {
-        Button {
-            select(entry)
-        } label: {
-            HStack(spacing: 12) {
-                thumbnail(for: entry)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.item.title)
-                        .font(.subheadline.weight(.medium))
-                        .lineLimit(1)
-                    if let author = entry.item.author {
-                        Text(author)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 8)
-                if let p = entry.progress {
-                    Text(bookStatusText(p, duration: entry.item.media?.duration))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
             }
             .padding(.horizontal, 20)
-            .frame(minHeight: 64)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private func thumbnail(for entry: LibraryEntry?) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
-        Group {
-            if let entry, let url = AppSession.shared.coverURL(forItemId: entry.id) {
-                CachedAsyncImage(url: url, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    shape.fill(Color.primary.opacity(0.08))
-                }
-            } else {
-                shape.fill(Color.primary.opacity(0.08))
-                    .overlay(Image(systemName: "book.closed").foregroundStyle(.tertiary))
-            }
+    private func bookEntryRow(_ entry: LibraryEntry) -> some View {
+        Button {
+            select(SearchResult(id: entry.id, kind: .book, title: entry.item.title))
+        } label: {
+            MediaRowContent(
+                coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                eyebrow: entry.item.author,
+                title: entry.item.title,
+                placeholderSystemImage: "book.closed"
+            )
+            .padding(.horizontal, 20)
+            .contentShape(Rectangle())
         }
-        .frame(width: 52, height: 52)
-        .clipShape(shape)
+        .buttonStyle(.plain)
     }
 
-    /// Cover thumbnail directly from a URL (podcast directory result).
-    private func thumbnail(for url: URL?) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
-        return Group {
-            if let url {
-                CachedAsyncImage(url: url, useThumbnail: true) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: {
-                    shape.fill(Color.primary.opacity(0.08))
-                }
-            } else {
-                shape.fill(Color.primary.opacity(0.08))
-                    .overlay(Image(systemName: "mic").foregroundStyle(.tertiary))
-            }
+    private func openDrilldown(name: String, matches: (LibraryEntry) -> Bool) {
+        withAnimation(.snappy(duration: 0.2)) {
+            drilldown = Drilldown(name: name, entries: libraryViewModel.entries.filter(matches))
         }
-        .frame(width: 52, height: 52)
-        .clipShape(shape)
     }
 
-    private var emptyHint: some View {
-        Text("No results.")
-            .foregroundStyle(.secondary)
-            .padding(.top, 32)
-            .frame(maxWidth: .infinity)
+    static func sectionTitle(_ kind: SearchResult.Kind) -> String {
+        switch kind {
+        case .book: return String(localized: "Books")
+        case .author: return String(localized: "Authors")
+        case .series: return String(localized: "Series")
+        case .show: return String(localized: "Shows")
+        case .episode: return String(localized: "Episodes")
+        case .album: return String(localized: "Albums")
+        case .artist: return String(localized: "Artists")
+        case .song: return String(localized: "Songs")
+        case .catalogShow: return String(localized: "New Shows")
+        }
+    }
+
+    static func placeholder(_ kind: SearchResult.Kind) -> String {
+        switch kind {
+        case .book, .series: return "book.closed"
+        case .author: return "person"
+        case .show, .episode, .catalogShow: return "mic"
+        case .album, .song: return "music.note"
+        case .artist: return "music.mic"
+        }
     }
 
     // MARK: - Data
-
-    private var trimmedQuery: String {
-        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 
     /// Empty field = all books alphabetically (browse feel).
     private var allBooksSorted: [LibraryEntry] {
         libraryViewModel.entries.sorted {
             $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
         }
-    }
-
-    /// Real-time filter over title, author, narrator and series.
-    private func filteredBooks(_ books: [LibraryEntry]) -> [LibraryEntry] {
-        let query = trimmedQuery
-        guard !query.isEmpty else { return books }
-        return books.filter { entry in
-            let meta = entry.item.media?.metadata
-            let fields = [entry.item.title, meta?.authorName, meta?.narratorName, meta?.seriesName]
-            return fields.contains { field in
-                field?.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-            }
-        }
-    }
-
-    private func filteredGroups(
-        _ groups: [(name: String, entries: [LibraryEntry])]
-    ) -> [(name: String, entries: [LibraryEntry])] {
-        let query = trimmedQuery
-        guard !query.isEmpty else { return groups }
-        return groups.filter {
-            $0.name.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
-        }
-    }
-
-    /// Series as (name, volumes) groups from the UNFILTERED library — search
-    /// always searches everything. (`seriesGroupedEntries` applies the library
-    /// filter: with the "Unfinished" filter all fully-played series would be
-    /// missing here otherwise.) Grouping like the stacks (baseSeriesName,
-    /// case-insensitive), volumes in series order, single-book series too.
-    private var seriesGroups: [(name: String, entries: [LibraryEntry])] {
-        var indexByKey: [String: Int] = [:]
-        var groups: [(name: String, entries: [LibraryEntry])] = []
-        // Full series name carries "#…" — localizedStandard sorts volumes
-        // numerically, grouping then keeps that order per series.
-        let sorted = libraryViewModel.entries.sorted {
-            ($0.item.media?.metadata?.seriesName ?? "")
-                .localizedStandardCompare($1.item.media?.metadata?.seriesName ?? "") == .orderedAscending
-        }
-        for entry in sorted {
-            guard let name = LibraryViewModel.baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
-            let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            if let idx = indexByKey[key] {
-                groups[idx].entries.append(entry)
-            } else {
-                indexByKey[key] = groups.count
-                groups.append((name: name, entries: [entry]))
-            }
-        }
-        return groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
     // MARK: - Dismiss
@@ -598,13 +373,13 @@ struct SearchOverlay: View {
             }
     }
 
-    private func select(_ entry: LibraryEntry) {
+    private func select(_ result: SearchResult) {
         isDismissing = true
         searchFocused = false
         withAnimation(.easeOut(duration: 0.3)) {
             releaseOffset = presentHeight
         } completion: {
-            onSelect(entry)
+            onOpen(result)
         }
     }
 

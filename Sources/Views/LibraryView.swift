@@ -378,13 +378,12 @@ struct LibraryView: View {
                 GeometryReader { proxy in
                     SearchOverlay(
                         libraryViewModel: viewModel,
-                        provider: provider,
-                        mediaType: selectedMediaType,
+                        activeTab: selectedMediaType,
                         topInset: proxy.safeAreaInsets.top,
                         presentHeight: proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom,
-                        onSelect: { entry in
+                        onOpen: { result in
                             isShowingSearch = false
-                            navigationPath.append(entry.id)
+                            openSearchResult(result)
                         },
                         onDismiss: { isShowingSearch = false }
                     )
@@ -529,12 +528,44 @@ struct LibraryView: View {
         .accessibilityHint(Text("Expands the bar"))
     }
 
+    /// F6: value-based navigation per result type (X15 discipline) — every
+    /// push goes through `navigationPath`.
+    private func openSearchResult(_ result: SearchResult) {
+        switch result.kind {
+        case .book:
+            navigationPath.append(result.id)
+        case .episode:
+            navigationPath.append(PodcastRoute.episode(itemId: result.id))
+        case .show:
+            navigationPath.append(PodcastRoute.show(feedURL: result.id))
+        case .catalogShow:
+            navigationPath.append(PodcastRoute.showPreview(feedURL: result.id))
+        case .album:
+            if let item = AppSession.shared.libraryItem(forId: result.id) {
+                navigationPath.append(MusicRoute.album(item))
+            }
+        case .artist:
+            let rawId = String(result.id.dropFirst("sub:artist:".count))
+            if let artist = SubsonicProvider.shared.artist(forId: rawId) {
+                navigationPath.append(MusicRoute.artist(artist))
+            }
+        case .song:
+            if let item = AppSession.shared.libraryItem(forId: result.id) {
+                Task { await playerCoordinator.open(item: item) }
+            }
+        case .author, .series:
+            break   // drill down inside the overlay, never routed out
+        }
+    }
+
     private var searchButton: some View {
         FloatingSearchButton {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
         }
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
+        // Locale-independent handle for the UI-test harness.
+        .accessibilityIdentifier("global-search")
     }
 
     // MARK: - Suchleiste
