@@ -104,3 +104,13 @@ extension AudioProvider {
     /// Default: always available; podcasts e.g. only with a subscription.
     var isAvailable: Bool { true }
 }
+
+/// F6: search is a PROVIDER CAPABILITY, not a feature island — every provider
+/// that can search conforms and returns only what it has. Implementations are
+/// offline-first: without a network they search their cached/downloaded stock
+/// (the same protocol, no separate path).
+/// `Sendable`: the conformers are @MainActor classes (implicitly Sendable), and
+/// the aggregator fans out over the existential in a TaskGroup.
+nonisolated protocol SearchableProvider: Sendable {
+    func search(query: String) async throws -> [SearchResult]
+}
