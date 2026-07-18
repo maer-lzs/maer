@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// F6: THE one global search — the magnifier behaves identically on every
-/// surface (tab parity). Full-screen glass sheet (slides up, library shows
-/// through) with a search field; results come from EVERY searchable provider
-/// plus the "New Shows" catalog source, in typed sections whose order follows
-/// the active tab (context ranking), catalog always last. One shared result
-/// row (MediaRowContent family). Author/series hits drill down IN the overlay
-/// (the former library-search behaviour, absorbed here); everything else
-/// navigates value-based through `onOpen`.
+/// F6/Y17: THE one global search — results sheet only; the search FIELD lives
+/// in the bottom bar (LibraryView), which floats above this sheet. Typed
+/// sections in context order with the Y15 filter chips on top, the Y16 catalog
+/// card clearly set apart, Y18 section caps, and Y13 tab-dependent browse for
+/// the empty field. One shared result row (MediaRowContent family);
+/// author/series drill down in the overlay, everything else navigates
+/// value-based through `onOpen`.
 struct SearchOverlay: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
-    /// Context ranking: the active tab's sections lead.
+    /// Owned by LibraryView (Y17: the bar types, the overlay renders).
+    @ObservedObject var model: GlobalSearchModel
+    /// Context ranking + Y13 browse: the tab the magnifier was opened from.
     let activeTab: MediaType
     let topInset: CGFloat
     let presentHeight: CGFloat
@@ -18,29 +19,31 @@ struct SearchOverlay: View {
     let onOpen: (SearchResult) -> Void
     let onDismiss: () -> Void
 
-    @StateObject private var model = GlobalSearchModel.production()
-
     private struct Drilldown {
         let name: String
         let entries: [LibraryEntry]
     }
 
+    /// Y15: chip state — starts at "Library" for every fresh search.
+    @State private var chips = SearchChipFilter.start
+    /// Y15: explicit catalog view (via the trailing catalog-search row).
+    @State private var showCatalog = false
+    /// Y18: sections the user expanded past the cap.
+    @State private var expandedSections: Set<SearchResult.Kind> = []
     @State private var drilldown: Drilldown?
-    /// Ignore the keyboard safe area while closing: its simultaneous
-    /// disappearance would re-layout the sheet mid-descent (visible stutter).
     @State private var isDismissing = false
-    /// Offset channels as in FullPlayerOverlay: @GestureState follows the finger
-    /// without delay (and resets instantly), releaseOffset drives show/hide and
-    /// takes over seamlessly on release.
     @GestureState private var dragOffset: CGFloat = 0
     @State private var releaseOffset: CGFloat
-    @FocusState private var searchFocused: Bool
 
-    /// Fill for field/chips/buttons on the always-dark glass.
+    /// Y18: a section shows at most this many hits until expanded.
+    static let sectionCap = 4
+
     private let controlFill = Color.white.opacity(0.12)
+    private let selectedFill = Color.white.opacity(0.22)
 
     init(
         libraryViewModel: LibraryViewModel,
+        model: GlobalSearchModel,
         activeTab: MediaType,
         topInset: CGFloat,
         presentHeight: CGFloat,
@@ -48,6 +51,7 @@ struct SearchOverlay: View {
         onDismiss: @escaping () -> Void
     ) {
         self.libraryViewModel = libraryViewModel
+        self.model = model
         self.activeTab = activeTab
         self.topInset = topInset
         self.presentHeight = presentHeight
@@ -56,27 +60,27 @@ struct SearchOverlay: View {
         _releaseOffset = State(initialValue: presentHeight)
     }
 
-    /// 0 (bottom) … 1 (fully presented) — controls the dim behind the sheet.
     private var presentProgress: CGFloat {
         guard presentHeight > 0 else { return 1 }
         let visibleOffset = max(0, releaseOffset + dragOffset)
         return max(0, min(1, 1 - visibleOffset / presentHeight))
     }
 
+    private var trimmedQuery: String {
+        model.query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var isQueryActive: Bool {
+        trimmedQuery.count >= GlobalSearchModel.minServerChars
+    }
+
     var body: some View {
         ZStack {
-            // Light dim between library and glass sheet — follows the
-            // presentation (so pulling down brings the library back gradually)
-            // and swallows touches underneath.
             Color.black.opacity(0.35 * presentProgress)
                 .ignoresSafeArea()
-
             searchSheet
         }
         .onAppear {
-            // DELIBERATELY no auto-focus: the overlay opens as a browse view
-            // (lists are usable without the keyboard) — the keyboard comes only
-            // when the user taps the field themselves.
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 releaseOffset = 0
             }
@@ -86,155 +90,291 @@ struct SearchOverlay: View {
 
     private var searchSheet: some View {
         VStack(spacing: 12) {
-            header
-            resultsList
+            dragHandle
+            if drilldown == nil, isQueryActive {
+                chipsRow
+            }
+            drilldownChip
+            content
         }
         .task(id: model.query) {
             model.queryChanged(activeTab: activeTab)
+            // A new query resets the per-query view state.
+            showCatalog = false
+            expandedSections = []
         }
         .padding(.top, topInset + 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background { containerGlass }
-        // The WHOLE area catches touches: without this, taps/scrolls in empty
-        // areas pass THROUGH to the library (and bottom bar). Tapping empty space
-        // also dismisses the keyboard; buttons and the list in the overlay keep
-        // priority (child gestures win).
         .contentShape(Rectangle())
-        .onTapGesture { searchFocused = false }
         .offset(y: max(0, releaseOffset + dragOffset))
-        // Ignore container edges, but the KEYBOARD only while the sheet stands —
-        // on close it is ignored too, otherwise its simultaneous disappearance
-        // stutters into the descent.
         .ignoresSafeArea(isDismissing ? .all : .container)
         // Like the large player ALWAYS dark — "full-screen glass sheet = dark"
-        // is the established design language; light text on dark glass stays
-        // readable in every system scheme.
+        // is the established design language.
         .environment(\.colorScheme, .dark)
     }
 
-    // MARK: - Header
+    private var dragHandle: some View {
+        Capsule()
+            .fill(Color.primary.opacity(0.4))
+            .frame(width: 40, height: 5)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .contentShape(Rectangle())
+            .gesture(dismissDrag)
+    }
 
-    private var header: some View {
-        VStack(spacing: 10) {
-            Capsule()
-                .fill(Color.primary.opacity(0.4))
-                .frame(width: 40, height: 5)
-                // Generous grab zone: the 5-pt capsule itself would be
-                // practically unhittable.
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .contentShape(Rectangle())
-                .gesture(dismissDrag)
+    // MARK: - Y15 chips
 
-            HStack(spacing: 8) {
-                if let drilldown {
-                    Button {
-                        withAnimation(.snappy(duration: 0.2)) { self.drilldown = nil }
-                    } label: {
-                        Label(drilldown.name, systemImage: "chevron.left")
-                            .font(.headline)
-                            .lineLimit(1)
-                            // D10/B9: cap the chip so a long author/series name
-                            // cannot squeeze the search field to zero width.
-                            .frame(maxWidth: 180)
-                            .padding(.horizontal, 12)
-                            .frame(height: 44)
-                            .background(Capsule().fill(controlFill))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                HStack(spacing: 6) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField(
-                        "",
-                        text: $model.query,
-                        // Own prompt instead of the system color: the default
-                        // placeholder gray drowns on the translucent glass.
-                        prompt: Text("Search everything")
-                            .foregroundStyle(Color.white.opacity(0.65))
-                    )
-                    .focused($searchFocused)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .submitLabel(.search)
-                    if !model.query.isEmpty {
-                        Button {
-                            model.query = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 32, height: 44)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 14)
-                .frame(height: 44)
-                .background(Capsule().fill(controlFill))
-
+    private var chipsRow: some View {
+        HStack(spacing: 8) {
+            ForEach(SearchChip.allCases) { chip in
                 Button {
-                    dismiss()
+                    withAnimation(.snappy(duration: 0.18)) {
+                        chips = SearchChipFilter.toggled(chips, tapping: chip)
+                        showCatalog = false
+                    }
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.body.weight(.semibold))
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(controlFill))
-                        .contentShape(Circle())
+                    Text(Self.chipLabel(chip))
+                        .font(.subheadline.weight(chips.contains(chip) ? .semibold : .regular))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(chips.contains(chip) ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.primary))
+                        .padding(.horizontal, 14)
+                        .frame(height: 40)
+                        .background(Capsule().fill(chips.contains(chip) ? selectedFill : controlFill))
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("chip-\(chip.rawValue)")
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private var drilldownChip: some View {
+        if let drilldown {
+            HStack {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { self.drilldown = nil }
+                } label: {
+                    Label(drilldown.name, systemImage: "chevron.left")
+                        .font(.headline)
+                        .lineLimit(1)
+                        .frame(maxWidth: 220, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .frame(height: 44)
+                        .background(Capsule().fill(controlFill))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                Spacer()
             }
             .padding(.horizontal, 16)
         }
     }
 
-    // MARK: - Results
+    static func chipLabel(_ chip: SearchChip) -> String {
+        switch chip {
+        case .library: return String(localized: "Library")
+        case .audiobooks: return String(localized: "Audiobooks")
+        case .podcasts: return String(localized: "Podcasts")
+        case .music: return String(localized: "Music")
+        }
+    }
+
+    // MARK: - Content
 
     @ViewBuilder
-    private var resultsList: some View {
+    private var content: some View {
         ScrollView {
+            // Y14: calm arrival — sections animate in with a soft fade instead
+            // of the list jumping on every source landing; section positions
+            // are stable (fixed ranking order, kind-keyed identity).
             LazyVStack(alignment: .leading, spacing: 0) {
                 if let drilldown {
                     ForEach(drilldown.entries) { entry in
                         bookEntryRow(entry)
                     }
-                } else if model.query.trimmingCharacters(in: .whitespaces).count < GlobalSearchModel.minServerChars {
-                    // Browse feel with an empty field: all books alphabetically
-                    // (the pre-F6 default, kept).
-                    ForEach(allBooksSorted) { entry in
-                        bookEntryRow(entry)
-                    }
-                } else if model.allSourcesFailed {
-                    ContentUnavailableView(
-                        "Search unavailable",
-                        systemImage: "wifi.exclamationmark",
-                        description: Text("No source answered. Check your connection.")
-                    )
-                    .padding(.top, 24)
-                } else if model.sections.isEmpty && !model.isSearching {
-                    Text("No results.")
-                        .foregroundStyle(.secondary)
-                        .padding(.top, 32)
-                        .frame(maxWidth: .infinity)
+                } else if !isQueryActive {
+                    browseContent
                 } else {
-                    ForEach(model.sections) { section in
-                        sectionView(section)
-                    }
-                    if model.isSearching {
-                        HStack {
-                            ProgressView().tint(.white)
-                            Text("Searching…").foregroundStyle(.white.opacity(0.7))
-                        }
-                        .padding(.vertical, 16)
-                        .frame(maxWidth: .infinity)
-                    }
+                    resultsContent
                 }
             }
             .padding(.bottom, 24)
+            .animation(.easeOut(duration: 0.25), value: model.sections)
         }
         .scrollDismissesKeyboard(.immediately)
+    }
+
+    @ViewBuilder
+    private var resultsContent: some View {
+        let visible = SearchChipFilter.visible(chips: chips)
+        let own = model.sections.filter { $0.kind != .catalogShow && visible.kinds.contains($0.kind) }
+        let catalog = model.sections.first { $0.kind == .catalogShow }
+        let autoCatalog = own.isEmpty && !model.isSearching && !model.allSourcesFailed
+
+        if model.allSourcesFailed {
+            ContentUnavailableView(
+                "Search unavailable",
+                systemImage: "wifi.exclamationmark",
+                description: Text("No source answered. Check your connection.")
+            )
+            .padding(.top, 24)
+        } else if showCatalog || autoCatalog {
+            // Y15: explicit catalog view (row tap) or automatic on zero own
+            // hits — clearly labeled either way.
+            if autoCatalog && !showCatalog {
+                Text("No matches in your library.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            catalogCard(catalog)
+            if model.isSearching { searchingFooter }
+        } else {
+            ForEach(own) { section in
+                sectionView(section)
+            }
+            if visible.includesCatalog {
+                catalogCard(catalog)
+            } else {
+                catalogSearchRow
+            }
+            if model.isSearching { searchingFooter }
+        }
+    }
+
+    private var searchingFooter: some View {
+        HStack {
+            ProgressView().tint(.white)
+            Text("Searching…").foregroundStyle(.white.opacity(0.7))
+        }
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Y15: always the last row of the library results — jumps to the catalog.
+    private var catalogSearchRow: some View {
+        Button {
+            withAnimation(.snappy(duration: 0.2)) { showCatalog = true }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkle.magnifyingglass")
+                    .foregroundStyle(AppTheme.accent)
+                Text("Search the catalog for “\(trimmedQuery)”")
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 20)
+            .frame(minHeight: 56)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("search-catalog-row")
+    }
+
+    /// Y16: the catalog clearly set apart — its own grouped card, an explicit
+    /// header + caption, and EVERY row carries the subscribe plus.
+    @ViewBuilder
+    private func catalogCard(_ section: GlobalSearchModel.Section?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("New Shows — from the catalog")
+                .font(.headline)
+            Text("Not in your library yet")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let section, !section.results.isEmpty {
+                ForEach(cappedResults(section)) { result in
+                    resultRow(result)
+                        .padding(.horizontal, -20)   // rows bring their own padding
+                }
+                expandButton(section)
+            } else if !model.isSearching {
+                Text("No results.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.07))
+        )
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+    }
+
+    // MARK: - Y13 browse (empty field, per opening tab)
+
+    @ViewBuilder
+    private var browseContent: some View {
+        switch activeTab {
+        case .audiobooks:
+            ForEach(allBooksSorted) { entry in
+                bookEntryRow(entry)
+            }
+        case .podcasts:
+            ForEach(subscribedShowResults) { result in
+                resultRow(result)
+            }
+        case .music:
+            let albums = cachedAlbumResults
+            if albums.isEmpty {
+                Text("Browse your music tab once — its albums then show up here.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 32)
+                    .frame(maxWidth: .infinity)
+            } else {
+                ForEach(albums) { result in
+                    resultRow(result)
+                }
+            }
+        default:
+            // Home: deliberately empty ("recently searched" is a later idea).
+            Text("Search everything")
+                .foregroundStyle(.secondary)
+                .padding(.top, 40)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    // MARK: - Sections (Y18 cap)
+
+    private func cappedResults(_ section: GlobalSearchModel.Section) -> [SearchResult] {
+        expandedSections.contains(section.kind)
+            ? section.results
+            : Array(section.results.prefix(Self.sectionCap))
+    }
+
+    @ViewBuilder
+    private func expandButton(_ section: GlobalSearchModel.Section) -> some View {
+        if section.results.count > Self.sectionCap, !expandedSections.contains(section.kind) {
+            Button {
+                withAnimation(.snappy(duration: 0.2)) {
+                    _ = expandedSections.insert(section.kind)
+                }
+            } label: {
+                Text("Show All (\(section.results.count))")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(AppTheme.accent)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     @ViewBuilder
@@ -245,14 +385,15 @@ struct SearchOverlay: View {
             .padding(.top, 14)
             .padding(.bottom, 4)
             .frame(maxWidth: .infinity, alignment: .leading)
-        ForEach(section.results) { result in
+        ForEach(cappedResults(section)) { result in
             resultRow(result)
+                .transition(.opacity)
         }
+        expandButton(section)
     }
 
-    /// ONE shared result row over the MediaRowContent family (Regel 2) —
-    /// author/series drill down in the overlay, everything else goes out
-    /// through `onOpen`.
+    // MARK: - Rows
+
     private func resultRow(_ result: SearchResult) -> some View {
         Button {
             switch result.kind {
@@ -280,6 +421,11 @@ struct SearchOverlay: View {
                     Image(systemName: "chevron.right")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
+                }
+                // Y16: catalog rows carry the subscribe plus — function AND
+                // marker; own results carry nothing there.
+                if result.kind == .catalogShow {
+                    PodcastSubscribeBadge(feedURL: result.id)
                 }
             }
             .padding(.horizontal, 20)
@@ -336,17 +482,37 @@ struct SearchOverlay: View {
 
     // MARK: - Data
 
-    /// Empty field = all books alphabetically (browse feel).
+    /// Y13: audiobooks browse — all books alphabetically (the pre-F6 default).
     private var allBooksSorted: [LibraryEntry] {
         libraryViewModel.entries.sorted {
             $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
         }
     }
 
+    /// Y13: podcasts browse — the subscribed shows.
+    private var subscribedShowResults: [SearchResult] {
+        PodcastAutoContinue.allShows()
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .map { show in
+                SearchResult(id: show.feedURL, kind: .show, title: show.title,
+                             coverURL: show.artworkURL.flatMap { URL(string: $0) })
+            }
+    }
+
+    /// Y13: music browse — the album stock this session has cached.
+    private var cachedAlbumResults: [SearchResult] {
+        SubsonicProvider.shared.itemsById.values
+            .filter { $0.id.hasPrefix("sub:album:") }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            .map { item in
+                SearchResult(id: item.id, kind: .album, title: item.title,
+                             subtitle: item.author,
+                             coverURL: AppSession.shared.coverURL(forItemId: item.id))
+            }
+    }
+
     // MARK: - Dismiss
 
-    /// Measured GLOBALLY — local coordinates of a moving layer couple back onto
-    /// themselves (the stutter of the player saga).
     private var dismissDrag: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .global)
             .updating($dragOffset) { value, state, _ in
@@ -355,11 +521,9 @@ struct SearchOverlay: View {
             .onEnded { value in
                 let end = max(0, value.translation.height)
                 let shouldDismiss = end > 120 || value.predictedEndTranslation.height > 240
-                // Take over the offset seamlessly (GestureState resets instantly).
                 releaseOffset = end
                 if shouldDismiss {
                     isDismissing = true
-                    searchFocused = false
                     withAnimation(.easeOut(duration: 0.35)) {
                         releaseOffset = presentHeight
                     } completion: {
@@ -375,7 +539,6 @@ struct SearchOverlay: View {
 
     private func select(_ result: SearchResult) {
         isDismissing = true
-        searchFocused = false
         withAnimation(.easeOut(duration: 0.3)) {
             releaseOffset = presentHeight
         } completion: {
@@ -385,7 +548,6 @@ struct SearchOverlay: View {
 
     private func dismiss() {
         isDismissing = true
-        searchFocused = false
         withAnimation(.easeOut(duration: 0.35)) {
             releaseOffset = presentHeight
         } completion: {
@@ -393,10 +555,8 @@ struct SearchOverlay: View {
         }
     }
 
-    /// Static glass like the large player: always dark-tinted, strong enough for
-    /// readable lists — the library only shows through faintly. Neutral without a
-    /// cover accent: search belongs to the whole library, not the currently
-    /// playing book.
+    /// Static glass like the large player: always dark-tinted, neutral without
+    /// a cover accent — search belongs to the whole library.
     @ViewBuilder
     private var containerGlass: some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)

@@ -795,6 +795,16 @@
         }
       }
     },
+    "Browse your music tab once — its albums then show up here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffne einmal deinen Musik-Tab — seine Alben erscheinen dann hier."
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "de" : {
@@ -909,6 +919,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cover-Cache leeren"
+          }
+        }
+      }
+    },
+    "Clear search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche leeren"
           }
         }
       }
@@ -2185,6 +2205,16 @@
         }
       }
     },
+    "New Shows — from the catalog" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Shows — aus dem Katalog"
+          }
+        }
+      }
+    },
     "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically." : {
       "localizations" : {
         "de" : {
@@ -2372,6 +2402,16 @@
         }
       }
     },
+    "No matches in your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Treffer in deiner Bibliothek."
+          }
+        }
+      }
+    },
     "No music" : {
       "localizations" : {
         "de" : {
@@ -2448,6 +2488,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht genug freier Speicher für diesen Download."
+          }
+        }
+      }
+    },
+    "Not in your library yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht in deiner Bibliothek"
           }
         }
       }
@@ -3371,6 +3421,16 @@
         }
       }
     },
+    "Search the catalog for “%@”" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Katalog nach „%@“ suchen"
+          }
+        }
+      }
+    },
     "Search unavailable" : {
       "localizations" : {
         "de" : {
@@ -3554,6 +3614,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "In Neue Folgen zeigen"
+          }
+        }
+      }
+    },
+    "Show All (%lld)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle anzeigen (%lld)"
           }
         }
       }
