@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import OSLog
 
 /// F9: narrow storage seam for the sync history — stage 2 (iCloud mirror) and
 /// the Android long-term goal swap the implementation behind this protocol;
@@ -32,8 +33,12 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
 
     func append(_ entry: SyncHistoryEntry) {
         entries = SyncHistory.trimmed([entry] + entries)
-        if let data = try? JSONEncoder().encode(entries) {
-            try? data.write(to: fileURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            // The in-memory list still shows the run; only persistence failed.
+            Logger.library.error("sync history write failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
