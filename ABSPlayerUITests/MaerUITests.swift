@@ -148,6 +148,27 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "x15-from-artist")
     }
 
+    /// N1d: the active tab pill sits concentric to the bar capsule — screenshots
+    /// of the states the gap/rounding relation must hold in: at rest and right
+    /// after a tab tap (mid-glide, best effort — the snap races the 0.3 s
+    /// animation). The seeded lists are too short to scroll past the collapse
+    /// threshold, so the collapse morph itself stays a device check; the swipes
+    /// still exercise the scroll-reporting path under the new pill.
+    func testTabPillConcentricStates() {
+        let app = launchSeeded()
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 15))
+        books.tap()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 15))
+        snap(app, "pill-at-rest")
+        // Mid-glide: snap immediately after the tap, no waits in between.
+        app.buttons["tab-podcasts"].firstMatch.tap()
+        snap(app, "pill-glide")
+        _ = app.staticTexts["Seed Show"].waitForExistence(timeout: 15)
+        app.swipeUp(velocity: .fast)
+        snap(app, "post-scroll")
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()

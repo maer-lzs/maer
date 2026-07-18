@@ -21,6 +21,18 @@ struct MediaTabBar: View {
     /// N1: shared namespace so the active pill glides between tabs.
     @Namespace private var pillNS
 
+    /// N1d: THE one gap between the pill's edge and the bar's edge — the bar's
+    /// horizontal end padding and the pill's vertical inset are the same value.
+    /// Because the bar is a capsule, a capsule pill inset uniformly by this gap
+    /// IS the concentric shape in closed form: pill radius = pill height / 2 =
+    /// (bar height − 2·gap) / 2 = bar radius − gap, at every bar height — so
+    /// the relation holds at rest, while gliding and through the collapse
+    /// morph, with no radius constant of its own. (iOS 26's ConcentricRectangle
+    /// was tried and is NOT usable here: resolving it inside the bar broke the
+    /// bottom bar reproducibly — the capsule identity above makes it
+    /// unnecessary anyway.)
+    private static let pillGap: CGFloat = 6
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(types) { type in
@@ -43,18 +55,18 @@ struct MediaTabBar: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background {
-                        // N1/N1b/N1c: the sliding pill behind the active tab — a
+                        // N1/N1d: the sliding pill behind the active tab — a
                         // wash of the type tint (neutral at Home), no glass
-                        // (backward-compatible). matchedGeometry glides the single
-                        // instance on a tab switch. Capsule (proportional
-                        // rounding — a fixed corner radius read as a box); inset
-                        // vertically so it does NOT fill the full bar height.
+                        // (backward-compatible). matchedGeometry glides the
+                        // single instance on a tab switch. Capsule inset by the
+                        // ONE pill gap → concentric to the bar capsule (see
+                        // `pillGap`); no horizontal inset within the cell, the
+                        // bar's end padding provides the same gap at the ends.
                         if selected == type {
                             Capsule()
                                 .fill(type.tint.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabPill", in: pillNS)
-                                .padding(.horizontal, 3)
-                                .padding(.vertical, 4)
+                                .padding(.vertical, Self.pillGap)
                         }
                     }
                     .contentShape(Rectangle())
@@ -66,7 +78,9 @@ struct MediaTabBar: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: selected)
-        .padding(.horizontal, 6)
+        // N1d: the end padding IS the pill gap — the pill's horizontal distance
+        // to the bar's rounded ends equals its vertical inset everywhere.
+        .padding(.horizontal, Self.pillGap)
         .modifier(AdaptiveGlassBackground(shape: Capsule()))
     }
 }
