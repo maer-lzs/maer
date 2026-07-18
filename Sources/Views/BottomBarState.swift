@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import os
 
 /// Shared state of the collapsible bottom zone. Every scrolled surface of the
 /// app (library, podcast home, detail pages) reports its scroll offset via
@@ -41,9 +42,22 @@ final class BottomBarState: ObservableObject {
     private var userDragging = false
     /// S10: after the scroll comes fully to rest, re-expand the bar so the
     /// mini-player returns without a tab switch. Cancelled the moment scrolling
-    /// resumes. Tunable idle delay.
+    /// resumes. X21: shortened from 1.5 s → 0.9 s so the bar returns sooner.
     private var idleExpandTask: Task<Void, Never>?
-    private let idleExpandDelay: Duration = .seconds(1.5)
+    private let idleExpandDelay: Duration = .milliseconds(900)
+
+    /// X21: instant the current scroll gesture began — the collapse morph is held
+    /// back until `collapseDelaySeconds` past this, so it does not fire right at
+    /// scroll-start (a suspected scroll-hitch source, being diagnosed via the
+    /// signpost below).
+    private var scrollStartedAt: Date = .distantPast
+    /// X21: how long after scroll-start the bar may collapse. Internal so tests
+    /// can zero it out; app default 0.4 s.
+    var collapseDelaySeconds: TimeInterval = 0.4
+
+    /// X21: signpost each `collapsed` flip so a device Instruments trace can
+    /// correlate the collapse/expand morphs with scroll hitches.
+    private static let signpostLog = OSLog(subsystem: "de.lzs.ABSPlayer", category: "BottomBar")
 
     func report(_ y: CGFloat) {
         scrollY = y
@@ -53,8 +67,10 @@ final class BottomBarState: ObservableObject {
 
     /// Scroll-phase channel: true while the user's finger drives the scroll.
     func setUserDragging(_ dragging: Bool) {
+        let started = dragging && !userDragging   // idle → dragging = a new scroll
         userDragging = dragging
         if dragging {
+            if started { scrollStartedAt = Date() }   // X21: reset the collapse delay
             idleExpandTask?.cancel()   // active scroll → drop any pending expand
             if forceExpanded { forceExpanded = false; applyCollapsed() }
         }
@@ -93,8 +109,23 @@ final class BottomBarState: ObservableObject {
 
     /// Threshold gate: publish only on an actual flip.
     private func applyCollapsed() {
-        let newValue = scrollY > 60 && !forceExpanded
-        if newValue != collapsed { collapsed = newValue }
+        let elapsed = Date().timeIntervalSince(scrollStartedAt)
+        let newValue = Self.shouldCollapse(scrollY: scrollY, forceExpanded: forceExpanded,
+                                           elapsedSinceScrollStart: elapsed,
+                                           collapseDelay: collapseDelaySeconds)
+        guard newValue != collapsed else { return }
+        collapsed = newValue
+        os_signpost(.event, log: Self.signpostLog, name: "barCollapsedFlip",
+                    "%{public}s", newValue ? "collapse" : "expand")
+    }
+
+    /// X21 (pure/testable): the bar collapses when scrolled past the threshold,
+    /// not force-expanded, AND at least `collapseDelay` past scroll start.
+    /// Expanding (scrolled back up / force-expanded) is immediate — only the
+    /// collapse is delayed, to move its morph off the scroll-start moment.
+    static func shouldCollapse(scrollY: CGFloat, forceExpanded: Bool,
+                               elapsedSinceScrollStart: TimeInterval, collapseDelay: TimeInterval) -> Bool {
+        scrollY > 60 && !forceExpanded && elapsedSinceScrollStart >= collapseDelay
     }
 }
 

@@ -53,6 +53,7 @@ struct BottomBarStateTests {
     @Test("expand() opens the bar even while scrolled down; the next USER drag collapses again")
     func expandAndRecollapse() {
         let state = BottomBarState()
+        state.collapseDelaySeconds = 0   // X21: test the threshold, not the delay
         state.setUserDragging(true)
         state.report(200)
         #expect(state.collapsed)
@@ -90,6 +91,7 @@ struct BottomBarStateTests {
     @Test("reset() clears the drag flag so a post-switch expand is not undone")
     func resetClearsDragFlag() {
         let state = BottomBarState()
+        state.collapseDelaySeconds = 0   // X21: test the threshold, not the delay
         state.setUserDragging(true)   // outgoing tab was being dragged
         state.report(300)
         #expect(state.collapsed)
@@ -116,6 +118,24 @@ struct BottomBarStateTests {
         }
         #expect(!state.isScrolling)
         #expect(publishes == 2)         // exactly the two boundaries
+    }
+
+    /// X21: the collapse is held back until the delay past scroll start; expanding
+    /// is never delayed.
+    @Test("shouldCollapse: below threshold / force-expanded / within the delay do NOT collapse")
+    func collapseDelayDecision() {
+        // Past threshold and past the delay → collapse.
+        #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false,
+                                              elapsedSinceScrollStart: 0.5, collapseDelay: 0.4))
+        // Past threshold but still WITHIN the delay → not yet.
+        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false,
+                                               elapsedSinceScrollStart: 0.1, collapseDelay: 0.4))
+        // Below the threshold → never.
+        #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false,
+                                               elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
+        // Force-expanded wins even past the delay.
+        #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true,
+                                               elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
     }
 }
 #endif
