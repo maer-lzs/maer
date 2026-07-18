@@ -37,9 +37,14 @@ extension PlayerViewModel {
         let state = PlaybackActivityAttributes.ContentState(
             capturedAt: now,
             isPlaying: isPlaying,
-            // T9c: real chapter only — never a fallback marker (shared derivation).
-            chapterName: NowPlayingPresentation.subtitle(
-                chapterTitle: currentChapter?.title, author: nil, isFallback: chaptersAreFallback),
+            // LA subtitle: music → the ARTIST (same derivation as the player via
+            // nowPlayingSubtitle) — otherwise a single song, whose item title IS
+            // the song, showed the track name twice (title == subtitle). Books/
+            // podcasts keep the real chapter (never a fallback marker, T9c).
+            chapterName: isMusicItem
+                ? nowPlayingSubtitle
+                : NowPlayingPresentation.subtitle(
+                    chapterTitle: currentChapter?.title, author: nil, isFallback: chaptersAreFallback),
             chapterEndDate: chapterEnd,
             sleepEndDate: sleepEnd
         )
