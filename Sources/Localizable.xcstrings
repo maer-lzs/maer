@@ -217,6 +217,16 @@
         }
       }
     },
+    "%lld positions down" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Positionen runter"
+          }
+        }
+      }
+    },
     "%lld positions in" : {
       "localizations" : {
         "de" : {
@@ -233,6 +243,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Positionen raus"
+          }
+        }
+      }
+    },
+    "%lld positions up" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Positionen hoch"
           }
         }
       }
@@ -271,6 +291,16 @@
         }
       }
     },
+    "%lld subscriptions down" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Abos runter"
+          }
+        }
+      }
+    },
     "%lld subscriptions imported" : {
       "localizations" : {
         "de" : {
@@ -287,6 +317,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Abos auf den Server gespiegelt"
+          }
+        }
+      }
+    },
+    "%lld subscriptions up" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Abos hoch"
           }
         }
       }
@@ -2351,6 +2391,16 @@
         }
       }
     },
+    "No sync runs yet" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Sync-Läufe"
+          }
+        }
+      }
+    },
     "Not enough free storage for this download." : {
       "localizations" : {
         "de" : {
@@ -3848,6 +3898,16 @@
         }
       }
     },
+    "Sync History" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync-Verlauf"
+          }
+        }
+      }
+    },
     "Sync Now" : {
       "localizations" : {
         "de" : {
@@ -3874,6 +3934,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcasts über gpodder synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync runs appear here as they happen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync-Läufe erscheinen hier, sobald sie stattfinden."
           }
         }
       }

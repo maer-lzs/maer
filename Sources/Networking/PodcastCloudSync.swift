@@ -90,6 +90,16 @@ final class PodcastCloudSync {
             // Have the UI/sections and ABS provider display re-evaluate.
             PodcastProgressStore.shared.reload()
         }
+        // F9: record full-scan merges that moved anything (single-key writes
+        // stay out — they would flood the ring buffer).
+        if !outcome.toLocal.isEmpty || !outcome.toCloud.isEmpty {
+            SyncHistoryStore.shared.append(SyncHistory.entry(
+                service: .iCloud, direction: .both,
+                counters: [.init(key: .positionsDown, value: outcome.toLocal.count),
+                           .init(key: .positionsUp, value: outcome.toCloud.count)],
+                duration: 0,
+                deviceId: SyncHistoryStore.deviceId))
+        }
     }
 
     /// Pure newest-wins merge (testable): per id the newer `updatedAtMs` wins;

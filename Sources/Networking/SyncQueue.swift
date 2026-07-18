@@ -126,6 +126,8 @@ final class SyncQueue {
 
         let pending = loadAll()
         guard !pending.isEmpty else { return }
+        let flushStarted = Date()
+        var sent = 0
 
         // Fetch the current server state of all books once before writing, to
         // detect stale offline updates. If this fetch fails (e.g. still
@@ -165,9 +167,20 @@ final class SyncQueue {
                     isFinished: update.isFinished
                 )
                 remove(itemId: itemId)
+                sent += 1
             } catch {
                 // Still offline or another error — keep it in the queue, the
                 // next attempt comes automatically.
+            }
+        }
+        // F9: record the flush when it actually wrote something.
+        if sent > 0 {
+            await MainActor.run {
+                SyncHistoryStore.shared.append(SyncHistory.entry(
+                    service: .absProgress, direction: .up,
+                    counters: [.init(key: .positionsUp, value: sent)],
+                    duration: Date().timeIntervalSince(flushStarted),
+                    deviceId: SyncHistoryStore.deviceId, startedAt: flushStarted))
             }
         }
     }

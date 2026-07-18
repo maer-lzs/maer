@@ -84,6 +84,7 @@ final class GPodderSync {
         guard AppStorageKeys.gpodderEnabledValue, let config else { return report }
         isRunning = true
         defer { isRunning = false }
+        let syncStarted = Date()
 
         let client = GPodderClient(config: config)
         do {
@@ -96,6 +97,17 @@ final class GPodderSync {
             report.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
         persist(report)   // S20: survive an app restart + keep a guard warning sticky
+        // F9: every run that actually happened lands in the history; a tripped
+        // guard becomes a PERMANENT marked entry (not just the sticky warning).
+        SyncHistoryStore.shared.append(SyncHistory.entry(
+            service: .gpodder, direction: .both,
+            counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
+                       .init(key: .subscriptionsUp, value: report.pushedToServer),
+                       .init(key: .positionsDown, value: report.historyPulled),
+                       .init(key: .positionsUp, value: report.historyPushed)],
+            duration: Date().timeIntervalSince(syncStarted),
+            error: report.error, guardNote: report.warning,
+            deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted))
         return report
     }
 

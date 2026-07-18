@@ -61,6 +61,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 | `NowPlayingPresentation` | PlayerViewModel+NowPlaying (lock screen + CarPlay) | `title(isMusic,songTitle,workTitle,fallback)` (work; song for music; never empty) · `subtitle(chapterTitle,author,isFallback)` (real chapter only) |
 | `PodcastSections` | PodcastsView (`computeSections`) · HomeView (`compute`) | `snapshot` + `computeDetached` → `nextUp / recentShows / downloaded`; off-main |
 | `HomeSections` | HomeView | `byRecency([[id,ts]], limit)` newest-first, de-duplicated · `interleave([[id]], limit)` fair round-robin (Recently Added books+albums, neither starves) |
+| `SyncHistory` + `SyncHistoryStore` (`SyncHistoryStoring`) | GPodderSync (reconcile) · SyncQueue (flush) · PodcastCloudSync (full reconcile) · SyncHistoryView (Settings → Sync → Sync History) | Pure `entry(...)` (drops zero counters) + `trimmed` ring buffer (last 50); entries carry stable id + device id (stage 2 iCloud mirror / Android store behind the narrow protocol — not built); guard events (mass-delete veto) are PERMANENT marked entries (S20 final form) |
 | `RediscoverSections` | HomeView (Rediscover row) | `picks(paused:unheard:seriesNext:now:daySeed:limit)` — three prioritized local sources (paused > 3 weeks · unheard > 30 days · next volume after a finished predecessor; both thresholds named constants), seeded daily rotation (`daySeed(for:)`), round-robin mix; `volume(fromSeriesName:)` parses the ABS "#N" convention; no candidates ⇒ empty ⇒ section hidden |
 
 ## State & chrome

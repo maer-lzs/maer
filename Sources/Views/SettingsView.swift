@@ -224,6 +224,12 @@ struct SettingsView: View {
                 }
             }
             .disabled(pendingSyncCount == 0 || isSyncing)
+            // F9: the persisted history of sync runs (all services).
+            NavigationLink {
+                SyncHistoryView()
+            } label: {
+                Label("Sync History", systemImage: "clock.arrow.circlepath")
+            }
         } header: {
             Text("Sync")
         } footer: {
