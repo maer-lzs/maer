@@ -2,11 +2,13 @@ import SwiftUI
 
 /// Unified download/offline status badge for the FeaturedCards, pinned to the
 /// card's bottom-right corner (X6a/X6b) — one component for the book AND
-/// podcast cards so every card reads identically. X6f: the badge matches the
-/// card's OWN "Details" pill (the info pill in the same card row): its height
-/// and its solid, semi-transparent capsule fill. Deliberately NO glass/blur —
-/// the info pill's performance note applies here too (blur is expensive per
-/// frame during horizontal scrolling). Iconography:
+/// podcast cards so every card reads identically. X6f/X6g: the badge matches
+/// the card's OWN "Details" pill (the info pill in the same card row) BY
+/// CONSTRUCTION — a capsule around subheadline-metric content with the pill's
+/// 7 pt vertical padding, so both are always the same height, at every Dynamic
+/// Type size. Solid semi-transparent fill, deliberately NO glass/blur (the
+/// info pill's performance note applies: blur is expensive per frame during
+/// horizontal scrolling). Iconography:
 /// - offline & not downloaded → wifi.slash
 /// - downloading / paused → progress ring (tap cancels)
 /// - downloaded → checkmark
@@ -19,26 +21,18 @@ struct CardDownloadBadge: View {
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
+    /// Ring diameter for the downloading state — scaled relative to the
+    /// subheadline metric so it tracks the pill height at accessibility sizes.
+    @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
+
     private var isOfflineUnavailable: Bool {
         !networkMonitor.isConnected && !downloads.isDownloaded(itemId: itemId)
     }
 
-    /// Visible badge size = the info pill's capsule height (subheadline text +
-    /// 7 pt vertical padding ≈ 32) — badge and Details pill sit on one line at
-    /// the same height. The TAP target stays `CoverBadge.detailControl` (44).
-    private let side: CGFloat = 32
-
     var body: some View {
-        content
-            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
-            .contentShape(Circle())
-    }
-
-    @ViewBuilder
-    private var content: some View {
         if isOfflineUnavailable {
             badge {
-                Image(systemName: "wifi.slash").font(.system(size: side * 0.44, weight: .semibold))
+                Image(systemName: "wifi.slash").font(.subheadline.weight(.semibold))
             }
         } else if let fraction = downloads.phase[itemId]?.progress {
             let paused: Bool = { if case .paused = downloads.phase[itemId] { return true } else { return false } }()
@@ -46,9 +40,10 @@ struct CardDownloadBadge: View {
                 badge {
                     ZStack {
                         UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
-                            .frame(width: side * 0.55, height: side * 0.55)
+                            .frame(width: ringSize, height: ringSize)
                         if paused {
-                            Image(systemName: "pause.fill").font(.system(size: side * 0.3, weight: .bold))
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: ringSize * 0.55, weight: .bold))
                         }
                     }
                 }
@@ -57,13 +52,13 @@ struct CardDownloadBadge: View {
             .accessibilityLabel(Text("Cancel Download"))
         } else if downloads.isDownloaded(itemId: itemId) {
             badge {
-                Image(systemName: "checkmark").font(.system(size: side * 0.44, weight: .bold))
+                Image(systemName: "checkmark").font(.subheadline.weight(.bold))
             }
             .accessibilityLabel(Text("Downloaded"))
         } else if networkMonitor.isConnected {
             Button { Task { await startDownload() } } label: {
                 badge {
-                    Image(systemName: "arrow.down").font(.system(size: side * 0.44, weight: .bold))
+                    Image(systemName: "arrow.down").font(.subheadline.weight(.bold))
                 }
             }
             .buttonStyle(.plain)
@@ -71,13 +66,24 @@ struct CardDownloadBadge: View {
         }
     }
 
-    /// The info pill's look: solid semi-transparent capsule, white glyph (the
-    /// cards' bottom area is always cover/gradient — matches the pill's white
-    /// text on `.white.opacity(0.22)`).
+    /// The info pill's construction: a capsule around subheadline-metric
+    /// content with 7 pt vertical padding — a hidden subheadline text template
+    /// gives the EXACT text line height the pill has, so badge and pill are
+    /// height-identical by construction. The 44 pt tap frame (X6d hit-target
+    /// constant) is anchored BOTTOM-TRAILING so the visible capsule sits at the
+    /// same 12 pt corner distance as the pill (a centered hit frame floated the
+    /// badge 6 pt above the pill's baseline).
     private func badge<Content: View>(@ViewBuilder _ glyph: () -> Content) -> some View {
-        glyph()
-            .foregroundStyle(.white)
-            .frame(width: side, height: side)
-            .background(Capsule().fill(.white.opacity(0.22)))
+        ZStack {
+            Text(verbatim: "X").font(.subheadline.weight(.medium)).hidden()
+            glyph()
+        }
+        .foregroundStyle(.white)
+        .padding(.vertical, 7)
+        .padding(.horizontal, 9)
+        .background(Capsule().fill(.white.opacity(0.22)))
+        .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl,
+               alignment: .bottomTrailing)
+        .contentShape(Rectangle())
     }
 }
