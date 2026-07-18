@@ -17,6 +17,10 @@
 	<array>
 		<string>de.lzs.ABSPlayer.podcastRefresh</string>
 	</array>
+	<!-- Self-hosted servers usually live on private IPs/.local — iOS asks for
+	     local-network permission; localized in InfoPlist.xcstrings. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Mär connects to your self-hosted audio servers, which are often only reachable on your home network.</string>
 	<!-- Deep Link des Home-Screen-Widgets (maer://resume → Weiterhören). -->
 	<key>CFBundleURLTypes</key>
 	<array>
