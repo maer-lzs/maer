@@ -483,7 +483,7 @@ struct PodcastDownloadButton: View {
                 Image(systemName: "checkmark.circle")
                     .font(.title3)
                     .foregroundStyle(tint)
-                    .frame(width: 44, height: 44)
+                    .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
                     .accessibilityLabel(Text("Downloaded"))
             }
         } else if case .downloading(let f) = downloads.phase[item.id] {
@@ -492,7 +492,7 @@ struct PodcastDownloadButton: View {
                 DownloadManager.shared.cancelDownload(itemId: item.id)
             } label: {
                 DownloadRing(fraction: f)
-                    .frame(width: 44, height: 44)
+                    .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -508,7 +508,7 @@ struct PodcastDownloadButton: View {
                 Image(systemName: "arrow.down.circle")
                     .font(.title3)
                     .foregroundStyle(tint)
-                    .frame(width: 44, height: 44)
+                    .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

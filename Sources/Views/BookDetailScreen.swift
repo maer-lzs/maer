@@ -599,7 +599,7 @@ struct BookDetailScreen: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .foregroundStyle(.secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
                             .contentShape(Rectangle())
                     }
                     Button {
@@ -607,7 +607,7 @@ struct BookDetailScreen: View {
                     } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(.secondary)
-                            .frame(width: 44, height: 44)
+                            .frame(width: CoverBadge.detailControl, height: CoverBadge.detailControl)
                             .contentShape(Rectangle())
                     }
                 }
