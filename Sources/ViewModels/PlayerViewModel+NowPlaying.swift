@@ -144,7 +144,12 @@ extension PlayerViewModel {
     }
 
     private static func fetchImage(_ url: URL) async -> (UIImage, Data)? {
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
+        // X9c: use the SAME session the player's cover views use
+        // (URLSession.coverImage — no shared urlCache, ignores local cache).
+        // `URLSession.shared` failed to fetch some Subsonic music covers, so the
+        // app-group artwork file was never written and the Live Activity showed a
+        // gray placeholder for music tracks.
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
               let image = UIImage(data: data) else { return nil }
         return (image, data)
     }
