@@ -363,6 +363,12 @@ struct HomeView: View {
     // MARK: - Snapshot compute (off the body)
 
     private func compute() async {
+        // Y10: the episode pool must not depend on the podcast tab having been
+        // visited — Home kicks the SAME loading chain itself (tab parity).
+        // Both calls are idempotent/throttled, so no double load happens when
+        // the podcast tab already ran them.
+        await PodcastSubscriptions.shared.ensureLoaded()
+        await ABSPodcastProvider.shared.refreshIfStale()
         let shows = PodcastAutoContinue.allShows()
         let snapshot = PodcastSections.snapshot(shows: shows)
         let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
