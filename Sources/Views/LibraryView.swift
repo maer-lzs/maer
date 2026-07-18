@@ -28,7 +28,9 @@ struct LibraryView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Cover accent of the ACTIVE book — shared with every glass element in
     /// the bottom bar (mini player, search button, pill) via environment.
-    @StateObject private var bottomColorLoader = CoverColorLoader()
+    // X24: the bar accent persists across sessions — it only ever changes
+    // cover-to-cover (see the environment wiring below).
+    @StateObject private var bottomColorLoader = CoverColorLoader(persistenceKey: AppStorageKeys.bottomBarAccent)
     /// Book-switch swap animation of the mini player (pushed below the
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
@@ -238,7 +240,13 @@ struct LibraryView: View {
         // Hoisted OUTSIDE the bottom row so the toolbar buttons (sort,
         // settings) inherit the same cover accent as the glass elements in
         // the bottom row. The detail page overrides it with its own loader.
-        .environment(\.glassAccent, playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil)
+        // X24 rule: the accent only ever changes COVER TO COVER. On an item
+        // switch the old accent stands until the new one finished loading;
+        // session end / pause / restore never reset it (hasAccent stays true,
+        // and persists across restarts); neutral is only the first-run state
+        // before anything ever played. The bar follows the SYSTEM appearance,
+        // never the page (bar = app chrome; no page-driven forceDark).
+        .environment(\.glassAccent, bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil)
         // Pass the free-space height to ALL contents (also pushed screens); 0 on
         // the full player (it covers everything).
         .environment(\.bottomBarInset, isShowingFullPlayer ? 0 : bottomBarHeight)
@@ -959,7 +967,7 @@ struct LibraryView: View {
             .frame(width: 40, height: 40)
             .modifier(AdaptiveGlassBackground(
                 shape: Circle(),
-                lightAccent: playerCoordinator.activeItem != nil ? bottomColorLoader.accent : nil
+                lightAccent: bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil
             ))
             .environment(\.colorScheme, systemColorScheme)
             // Menu renders its label via tint (ignoring foregroundStyle).

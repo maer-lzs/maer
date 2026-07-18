@@ -282,6 +282,11 @@ struct BookDetailScreen: View {
             }
         }
         // All glass buttons on this page share the book's cover accent.
+        // X24: deliberately a PAGE-LOCAL loader (this book's cover), separate
+        // from the bar's persistent loader (active item's cover) — both read
+        // the same CoverColorLoader.colorCache, so the same cover always
+        // yields the same accent. The bar itself lives outside this page and
+        // keeps its own accent + the system appearance.
         .environment(\.glassAccent, colorLoader.accent)
         } // GeometryReader
         .navigationTitle("")

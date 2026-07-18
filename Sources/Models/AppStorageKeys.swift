@@ -6,6 +6,9 @@ import Foundation
 // (the project uses default MainActor isolation).
 nonisolated enum AppStorageKeys {
     static let skipInterval = "skipInterval"
+    /// X24: last bottom-bar cover accent (RGBA components) — restored at launch
+    /// so the bar never falls back to neutral once an item has ever played.
+    static let bottomBarAccent = "bottomBarAccent"
     /// Speed for books that have no per-book rate saved yet.
     static let defaultPlaybackRate = "defaultPlaybackRate"
     /// Resume slightly earlier after a longer pause (default ON).

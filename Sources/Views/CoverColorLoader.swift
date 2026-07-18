@@ -13,6 +13,24 @@ final class CoverColorLoader: ObservableObject {
     @Published var accent: Color = .gray
     @Published var topAccent: Color = .gray
     @Published var bottomAccent: Color = .gray
+    /// X24: true once a real cover accent has ever been loaded (or restored
+    /// from disk). Consumers use it to distinguish "accent available" from the
+    /// neutral first-run state — the accent itself never resets to neutral.
+    @Published private(set) var hasAccent = false
+
+    /// UserDefaults key under which `accent` survives restarts; nil = no
+    /// persistence (page-local loaders).
+    private let persistenceKey: String?
+
+    init(persistenceKey: String? = nil) {
+        self.persistenceKey = persistenceKey
+        if let persistenceKey,
+           let stored = UserDefaults.standard.array(forKey: persistenceKey) as? [Double],
+           let restored = Self.color(fromComponents: stored) {
+            accent = restored
+            hasAccent = true
+        }
+    }
 
     /// Ready-made colors per cover URL — computed once, then instantly available.
     /// Takes the color work out of scrolling (cards that reappear hit the cache
@@ -26,7 +44,23 @@ final class CoverColorLoader: ObservableObject {
             accent = cached.accent
             topAccent = cached.top
             bottomAccent = cached.bottom
+            hasAccent = true
+            if let persistenceKey {
+                UserDefaults.standard.set(Self.components(of: cached.accent), forKey: persistenceKey)
+            }
         }
+    }
+
+    /// X24 (pure, tested): RGBA round-trip for persisting the accent.
+    nonisolated static func components(of color: Color) -> [Double] {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(color).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return [Double(r), Double(g), Double(b), Double(a)]
+    }
+
+    nonisolated static func color(fromComponents c: [Double]) -> Color? {
+        guard c.count == 4 else { return nil }
+        return Color(red: c[0], green: c[1], blue: c[2], opacity: c[3])
     }
 
     /// Precompute and cache colors for a cover URL — e.g. already when loading
