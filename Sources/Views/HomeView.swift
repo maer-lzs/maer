@@ -42,12 +42,12 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             if ready {
-                // Teil 5 order: Continue (+ its planned Up Next) → Discover →
-                // Latest Episodes → Rediscover → Recently Added.
+                // Y1 order: Continue → Discover → Up Next → Latest Episodes →
+                // Rediscover → Recently Added.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
-                    upNextSection
                     if recommendationsEnabled { discoverSection }
+                    upNextSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
                     recentlyAddedSection
