@@ -410,22 +410,22 @@ struct LibraryView: View {
 
     /// Expanded: banner · mini-player (full) · [media pill | search].
     /// Compact: one row [home button · mini-player centered, smaller · search].
-    /// Player and search glide via matchedGeometry; the media pill morphs into
-    /// the home button.
-    @ViewBuilder
+    /// N2: ONE container for both states, with the mini-player in the SAME
+    /// structural slot — collapsing animates its real frame (the bar visibly
+    /// travels into the compact row) instead of the crossfade a branch swap
+    /// (`if collapsed { HStack } else { VStack }`) produced. The media pill
+    /// morphs into the home button and the search button glides via
+    /// matchedGeometry as before. No extra work at scroll start: the collapse
+    /// now removes fewer views than the old full-branch swap.
     private var bottomBarContent: some View {
-        if barCollapsed {
-            // One row: home left, mini-player centered (unchanged, just without
-            // AirPlay), magnifier right — tight spacing.
+        VStack(spacing: 8) {
+            if !barCollapsed { banner }
             HStack(spacing: 8) {
-                homeButton
+                if barCollapsed { homeButton }
                 miniPlayer
-                searchButton
+                if barCollapsed { searchButton }
             }
-        } else {
-            VStack(spacing: 8) {
-                banner
-                miniPlayer
+            if !barCollapsed {
                 HStack(spacing: 10) {
                     mediaBar
                     Spacer(minLength: 0)
