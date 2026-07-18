@@ -543,19 +543,32 @@ struct LibraryView: View {
         case .album:
             if let item = AppSession.shared.libraryItem(forId: result.id) {
                 navigationPath.append(MusicRoute.album(item))
+            } else {
+                searchResultUnavailable()
             }
         case .artist:
             let rawId = String(result.id.dropFirst("sub:artist:".count))
             if let artist = SubsonicProvider.shared.artist(forId: rawId) {
                 navigationPath.append(MusicRoute.artist(artist))
+            } else {
+                searchResultUnavailable()
             }
         case .song:
             if let item = AppSession.shared.libraryItem(forId: result.id) {
                 Task { await playerCoordinator.open(item: item) }
+            } else {
+                searchResultUnavailable()
             }
         case .author, .series:
             break   // drill down inside the overlay, never routed out
         }
+    }
+
+    /// F6 follow-up (Regel 3): a music hit that no longer resolves must not
+    /// die silently — brief haptic + the existing transient banner.
+    private func searchResultUnavailable() {
+        Haptics.tap()
+        playerCoordinator.loadError = String(localized: "This result is no longer available.")
     }
 
     private var searchButton: some View {
