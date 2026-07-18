@@ -43,15 +43,14 @@ struct MediaTabBar: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background {
-                        // N1/N1b: the sliding pill behind the active tab — a wash
-                        // of the type tint (neutral at Home), no glass
+                        // N1/N1b/N1c: the sliding pill behind the active tab — a
+                        // wash of the type tint (neutral at Home), no glass
                         // (backward-compatible). matchedGeometry glides the single
-                        // instance on a tab switch. Shape from the mini-player
-                        // radius family (continuous rounded rect, not a bare
-                        // capsule); inset vertically so it does NOT fill the full
-                        // bar height.
+                        // instance on a tab switch. Capsule (proportional
+                        // rounding — a fixed corner radius read as a box); inset
+                        // vertically so it does NOT fill the full bar height.
                         if selected == type {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            Capsule()
                                 .fill(type.tint.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabPill", in: pillNS)
                                 .padding(.horizontal, 3)

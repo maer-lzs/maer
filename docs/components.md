@@ -66,7 +66,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 |---|---|---|
 | `BottomBarState.shared` + `reportsBottomBarScroll(active:)` | Reported by every tab root (LibraryView audiobooks · MusicView · PodcastsView · HomeView) and pushed pages (BookDetailScreen · PodcastShowView/EpisodeDetail/Queue); `collapsed` read by LibraryView | `report/setUserDragging/setScrolling/scrollDidRest/expand/reset`; `@Published collapsed, isScrolling`; only the visible tab reports (`active`). `isScrolling` is a published placeholder — no reader since X17b. X21/X21b/X21c: collapse held `collapseDelaySeconds` (0.2 s) past scroll-start (pure `shouldCollapse`, with hysteresis — the delay gates only expanded→collapsed, a collapsed bar stays collapsed above the threshold), auto-expand idle 0.9 s, each flip emits a `barCollapsedFlip` os_signpost |
 | `MediaType.tint` | MediaTabBar (selected tab) | Per-type colour: audiobooks orange · podcasts purple · music red · home `.primary` (neutral) · radio teal |
-| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry rounded pill (continuous corner from the mini-player radius family, inset so it does not fill the bar height) glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
+| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry capsule pill (proportional rounding, inset so it does not fill the bar height) glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
 
 ## Test infrastructure
 
