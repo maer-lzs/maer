@@ -102,13 +102,13 @@ private struct LockScreenView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        // S15f: give the system an ADAPTIVE container background (as the home
-        // widgets already do). Without it the lock-screen activity had no
-        // background to render, so the system's "Transparent" style fell back to
-        // dark while "Tinted" happened to look right. With an adaptive background
-        // the system renders BOTH styles correctly (tinted → tint, transparent →
-        // translucent over the wallpaper).
-        .containerBackground(for: .widget) { Color(.systemBackground) }
+        // S15f: iOS 26 applies its Liquid Glass to the Live Activity ONLY when no
+        // activityBackgroundTint is set (S15e removed those). A container
+        // background is still required, but it must be CLEAR — an opaque one
+        // (the earlier `Color(.systemBackground)`) fills the base and renders the
+        // "Transparent" appearance dark. A clear base lets the system draw its own
+        // glass in BOTH appearances (tinted → tint, transparent → wallpaper glass).
+        .containerBackground(for: .widget) { Color.clear }
     }
 }
 
