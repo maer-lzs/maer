@@ -181,9 +181,10 @@ struct BookContextPreview: View {
         }
         .frame(width: 240)
         .padding(20)
-        .modifier(AdaptiveGlassBackground(shape: RoundedRectangle(cornerRadius: 28, style: .continuous)))
-        .environment(\.glassAccent, nil)
-        // Room for the glass shadow — the preview is snapshotted at its bounds.
+        // X26: solid adaptive surface instead of glass — the preview is
+        // snapshotted over arbitrary backdrops, where glass sampled noise.
+        .background(Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 28, style: .continuous))
         .padding(12)
     }
 }

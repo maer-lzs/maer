@@ -379,6 +379,10 @@ struct HomeView: View {
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
+        // X26: precompute the continue-card accents before they render.
+        for id in rankedContinue {
+            await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: id))
+        }
         continueIds = rankedContinue
         recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }

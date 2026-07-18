@@ -720,6 +720,13 @@ struct LibraryView: View {
             }
             .scrollTargetBehavior(.viewAligned)
         }
+        // X26: precompute the card accents (same pattern as the podcast tab) —
+        // cards color on first render instead of flashing the neutral base.
+        .task(id: viewModel.continueListening.map(\.id).joined()) {
+            for entry in viewModel.continueListening {
+                await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: entry.id))
+            }
+        }
     }
 
     // MARK: Downloaded (vertical list — mirrors the podcast Downloaded pendant)
