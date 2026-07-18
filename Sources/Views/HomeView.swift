@@ -257,23 +257,22 @@ struct HomeView: View {
         }
     }
 
-    /// Teil 3 "Rediscover": one row of daily-rotated local picks. Hidden when
-    /// there are no candidates.
+    /// Teil 3/Y4a "Rediscover": daily-rotated local picks, horizontally
+    /// scrollable with the full candidate pool. Hidden without candidates.
     @ViewBuilder
     private var rediscoverSection: some View {
-        let shown = Array(rediscoverPicks.prefix(episodeColumns))
-        if !shown.isEmpty {
+        if !rediscoverPicks.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Rediscover").font(.title3).bold().padding(.horizontal)
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: episodeColumns),
-                    alignment: .leading, spacing: 14
-                ) {
-                    ForEach(shown, id: \.id) { pick in
-                        rediscoverTile(pick)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(rediscoverPicks, id: \.id) { pick in
+                            rediscoverTile(pick)
+                                .frame(width: 140)
+                        }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
             }
         }
     }
@@ -442,8 +441,11 @@ struct HomeView: View {
         return RediscoverSections.picks(
             paused: paused, unheard: unheard, seriesNext: seriesNext,
             now: now, daySeed: RediscoverSections.daySeed(for: now),
-            limit: episodeColumns)
+            limit: Self.rediscoverPoolLimit)
     }
+
+    /// Y4a: the horizontal row carries the full pool, capped sanely.
+    private static let rediscoverPoolLimit = 24
 
     /// ABS timestamps are milliseconds since 1970 — normalize to seconds.
     private static func seconds(_ ts: Double) -> Double {
