@@ -473,3 +473,82 @@ final class APIClient {
         }
     }
 }
+
+// MARK: - F6 global search (SearchableProvider)
+
+/// Lenient decode of `GET api/libraries/{id}/search` — only what the results
+/// need.
+nonisolated private struct ABSSearchResponse: Decodable {
+    struct BookHit: Decodable { let libraryItem: LibraryItem? }
+    struct AuthorHit: Decodable { let id: String?; let name: String? }
+    struct SeriesHit: Decodable {
+        struct Series: Decodable { let id: String?; let name: String? }
+        let series: Series?
+    }
+    let book: [BookHit]?
+    let authors: [AuthorHit]?
+    let series: [SeriesHit]?
+}
+
+extension APIClient: SearchableProvider {
+    @MainActor
+    func search(query: String) async throws -> [SearchResult] {
+        #if DEBUG
+        if UITestSeed.isActive { return offlineSearch(query) }   // seeded stock, no server
+        #endif
+        guard NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
+        guard let libraryId = resolvedLibraryId() else { return offlineSearch(query) }
+        let data = try await get(
+            path: "api/libraries/\(libraryId)/search",
+            query: [URLQueryItem(name: "q", value: query),
+                    URLQueryItem(name: "limit", value: "10")]
+        )
+        let response = try await decode(ABSSearchResponse.self, from: data)
+        var out: [SearchResult] = []
+        for hit in response.book ?? [] {
+            guard let item = hit.libraryItem else { continue }
+            out.append(SearchResult(
+                id: item.id, kind: .book, title: item.title,
+                subtitle: item.author, coverURL: coverURL(forItemId: item.id)))
+        }
+        for hit in response.authors ?? [] {
+            guard let name = hit.name, !name.isEmpty else { continue }
+            out.append(SearchResult(id: "author:\(name)", kind: .author, title: name))
+        }
+        for hit in response.series ?? [] {
+            guard let name = hit.series?.name, !name.isEmpty else { continue }
+            out.append(SearchResult(id: "series:\(name)", kind: .series, title: name))
+        }
+        return out
+    }
+
+    /// The stored library id (settings picker), else the last id the library
+    /// actually loaded — nil only before any library ever loaded.
+    private func resolvedLibraryId() -> String? {
+        let stored = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
+        return (stored?.isEmpty == false) ? stored : LibraryViewModel.lastKnownLibraryId
+    }
+
+    /// Offline: search the cached library stock (the entries the offline cache
+    /// serves) — books plus matching author/series groups.
+    private func offlineSearch(_ query: String) -> [SearchResult] {
+        let entries = AppSession.shared.libraryViewModel.entries
+        var out: [SearchResult] = []
+        for entry in entries {
+            let meta = entry.item.media?.metadata
+            let fields = [entry.item.title, meta?.authorName, meta?.narratorName, meta?.seriesName]
+            guard fields.contains(where: { $0.map { PodcastLocalSearch.matches($0, query) } ?? false })
+            else { continue }
+            out.append(SearchResult(
+                id: entry.id, kind: .book, title: entry.item.title,
+                subtitle: entry.item.author, coverURL: coverURL(forItemId: entry.id),
+                isPlayableNow: DownloadManager.shared.isDownloaded(itemId: entry.id)))
+        }
+        let authors = Set(entries.compactMap(\.item.author)).filter { PodcastLocalSearch.matches($0, query) }
+        out += authors.sorted().map { SearchResult(id: "author:\($0)", kind: .author, title: $0) }
+        let series = Set(entries.compactMap { LibraryViewModel.baseSeriesName($0.item.media?.metadata?.seriesName) })
+            .filter { PodcastLocalSearch.matches($0, query) }
+        out += series.sorted().map { SearchResult(id: "series:\($0)", kind: .series, title: $0) }
+        return out
+    }
+}

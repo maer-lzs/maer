@@ -592,12 +592,17 @@ final class LibraryViewModel: ObservableObject {
         try await loadContent(libraryId: library.id)
     }
 
+    /// F6: the last library id that actually loaded — the search endpoint's
+    /// fallback when no explicit settings choice is stored.
+    static var lastKnownLibraryId: String?
+
     /// Full progressive content load of one library: progress + seed in
     /// parallel, first page immediately, remaining pages quietly, disk cache and
     /// key cleanup only when complete. Extracted so the K2 fast path (stored
     /// library id, no prior fetchLibraries round-trip) shares one implementation
     /// with the resolve path.
     private func loadContent(libraryId id: String) async throws {
+        Self.lastKnownLibraryId = id
         async let progressTask = provider.fetchAllProgress()
         // Prebuilt "Continue"/"Recently Added" rows from the server (one small
         // request) — so the top rows are complete IMMEDIATELY, regardless of

@@ -21,7 +21,9 @@ final class SubsonicProvider: AudioProvider {
     /// T3/T5: id → last-seen album/song item, so `AppSession.libraryItem(forId:)`
     /// can resolve a queued music item for the Up-Next UI + auto-continue.
     /// Populated whenever albums are mapped or an item detail is fetched.
-    private var itemsById: [String: LibraryItem] = [:]
+    var itemsById: [String: LibraryItem] = [:]
+    /// F6: artists surfaced by search, kept for the artist route.
+    var searchedArtistsById: [String: SubsonicArtist] = [:]
     private var lastScrobbledSong: [String: String] = [:]
 
     /// Albums the user starred (favorites), loaded lazily from the server.
@@ -343,5 +345,74 @@ final class SubsonicProvider: AudioProvider {
         guard let raw else { return nil }
         let date = iso8601Fractional.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
         return date.map { $0.timeIntervalSince1970 * 1000 }
+    }
+}
+
+// MARK: - F6 global search (SearchableProvider)
+
+extension SubsonicProvider {
+    /// Artists seen through search — the artist route needs the full DTO.
+    func artist(forId id: String) -> SubsonicArtist? {
+        searchedArtistsById[id]
+    }
+}
+
+extension SubsonicProvider: SearchableProvider {
+    @MainActor
+    func search(query: String) async throws -> [SearchResult] {
+        #if DEBUG
+        if UITestSeed.isActive { return offlineSearch(query) }   // seeded stock, no server
+        #endif
+        guard let client, NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
+        let hits = try await client.search3(query: query)
+        var out: [SearchResult] = []
+        for artist in hits.artist ?? [] {
+            guard let name = artist.name else { continue }
+            searchedArtistsById[artist.id] = artist
+            out.append(SearchResult(
+                id: "sub:artist:\(artist.id)", kind: .artist, title: name,
+                coverURL: coverURL(forItemId: "sub:artist:\(artist.id)")))
+        }
+        for album in hits.album ?? [] {
+            let item = Self.libraryItem(from: album)
+            itemsById[item.id] = item   // resolvable for the album route + play
+            out.append(SearchResult(
+                id: item.id, kind: .album, title: item.title,
+                subtitle: album.artist, coverURL: coverURL(forItemId: item.id)))
+        }
+        for song in hits.song ?? [] {
+            guard let title = song.title else { continue }
+            let id = "sub:song:\(song.id)"
+            // Minimal item so a tap-to-play resolves; open() fetches the detail.
+            if itemsById[id] == nil {
+                itemsById[id] = LibraryItem(
+                    id: id,
+                    media: LibraryItemMedia(
+                        metadata: LibraryItemMetadata(
+                            title: title, authorName: song.artist, narratorName: nil,
+                            seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                        duration: nil, chapters: nil, tracks: nil),
+                    addedAt: nil)
+            }
+            out.append(SearchResult(
+                id: id, kind: .song, title: title, subtitle: song.artist,
+                coverURL: coverURL(forItemId: id)))
+        }
+        return out
+    }
+
+    /// Offline: the cached album/song stock this session has seen; playable
+    /// only when downloaded.
+    private func offlineSearch(_ query: String) -> [SearchResult] {
+        itemsById.values.compactMap { item in
+            guard PodcastLocalSearch.matches(item.title, query)
+                || (item.author.map { PodcastLocalSearch.matches($0, query) } ?? false)
+            else { return nil }
+            let kind: SearchResult.Kind = item.id.hasPrefix("sub:song:") ? .song : .album
+            return SearchResult(
+                id: item.id, kind: kind, title: item.title,
+                subtitle: item.author, coverURL: coverURL(forItemId: item.id),
+                isPlayableNow: DownloadManager.shared.isDownloaded(itemId: item.id))
+        }
     }
 }
