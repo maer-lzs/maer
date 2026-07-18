@@ -16,6 +16,19 @@ enum UITestSeed {
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
 
+    /// F6: seeded "New Shows" catalog for the search journey — real directory
+    /// requests would leave the harness. Active only in seed mode.
+    static var catalogSearchOverride: (@MainActor (String) -> [SearchResult])? {
+        guard isActive else { return nil }
+        return { query in
+            guard PodcastLocalSearch.matches("Seed Catalog Show", query) || query.count >= 2 else { return [] }
+            return [SearchResult(id: "https://catalog.example/seed-feed",
+                                 kind: .catalogShow,
+                                 title: "Seed Catalog Show",
+                                 subtitle: "Catalog Author")]
+        }
+    }
+
     static func applyIfRequested() {
         guard isActive else { return }
         let session = AppSession.shared
