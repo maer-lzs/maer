@@ -34,7 +34,6 @@ struct PodcastsView: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @ObservedObject private var queue = PlayQueue.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
-    @State private var subscribingRec: Set<String> = []
     // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage keys.
     @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
@@ -234,59 +233,10 @@ struct PodcastsView: View {
         }
     }
 
+    /// Y2a: the SAME tile as Home's Discover row (RecommendationTile) — tap
+    /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topTrailing) {
-                podcastArtwork(url: r.artworkURL.flatMap { URL(string: $0) }, size: 132, corner: 14)
-                subscribeControl(r).padding(6)
-            }
-            Text(r.title).font(.caption)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
-                .frame(width: 132, alignment: .leading)
-        }
-        .contextMenu {
-            Button {
-                subscribingRec.insert(r.feedURL)
-                Task {
-                    await subscribeRecommendation(r.feedURL)
-                    recommendations.remove(feedURL: r.feedURL)
-                    subscribingRec.remove(r.feedURL)
-                }
-            } label: { Label("Subscribe", systemImage: "plus.circle") }
-            Button {
-                UIPasteboard.general.string = r.feedURL
-            } label: { Label("Copy Feed URL", systemImage: "doc.on.doc") }
-        }
-    }
-
-    @ViewBuilder
-    private func subscribeControl(_ r: PodcastSearchResult) -> some View {
-        if subscribingRec.contains(r.feedURL) {
-            ProgressView().controlSize(.small)
-                .padding(4).background(Circle().fill(.black.opacity(0.35)))
-        } else {
-            Button {
-                subscribingRec.insert(r.feedURL)
-                Task {
-                    await subscribeRecommendation(r.feedURL)
-                    recommendations.remove(feedURL: r.feedURL)
-                    subscribingRec.remove(r.feedURL)
-                }
-            } label: {
-                Image(systemName: "plus.circle.fill")
-                    .font(.title3).foregroundStyle(.white, AppTheme.accent)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func subscribeRecommendation(_ feedURL: String) async {
-        if AppStorageKeys.absPodcastsEnabledValue, absPodcast.hasPodcasts {
-            _ = await absPodcast.subscribeOnServer(feedURL: feedURL)
-        } else {
-            _ = await subs.subscribe(urlString: feedURL)
-            await GPodderSync.shared.reconcile()
-        }
+        RecommendationTile(result: r, width: 132)
     }
 
     // MARK: - Recently updated (show grid, 2 columns)

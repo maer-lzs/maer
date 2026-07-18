@@ -518,3 +518,71 @@ struct PodcastSubscribeBadge: View {
         PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
     }
 }
+
+/// Y2b: the subscribe badge's big sibling for the show preview — same family,
+/// same statics, capsule form with a label.
+struct PodcastSubscribeButton: View {
+    let feedURL: String
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    @State private var subscribing = false
+
+    var body: some View {
+        if PodcastSubscribeBadge.isSubscribed(feedURL) {
+            Label("Subscribed", systemImage: "checkmark.circle.fill")
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Capsule().fill(.quaternary))
+        } else {
+            Button {
+                subscribing = true
+                Task {
+                    await PodcastSubscribeBadge.subscribe(feedURL)
+                    subscribing = false
+                }
+            } label: {
+                Group {
+                    if subscribing {
+                        ProgressView().tint(.white)
+                    } else {
+                        Label("Subscribe", systemImage: "plus.circle.fill").font(.headline)
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(Capsule().fill(AppTheme.accent))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+/// Y2a: ONE recommendation tile for Home's Discover row AND the podcast tab's
+/// Recommended row (Regel 2) — a MediaTile with the subscribe corner control;
+/// the tile tap opens the temporary show preview.
+struct RecommendationTile: View {
+    let result: PodcastSearchResult
+    var subtitle: String? = nil
+    var width: CGFloat = 140
+    @Environment(\.pushPodcastRoute) private var pushRoute
+
+    var body: some View {
+        MediaTile(
+            title: result.title,
+            subtitle: subtitle,
+            coverURL: result.artworkURL.flatMap { URL(string: $0) },
+            onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
+        ) {
+            PodcastSubscribeBadge(feedURL: result.feedURL)
+        }
+        .frame(width: width)
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = result.feedURL
+            } label: { Label("Copy Feed URL", systemImage: "doc.on.doc") }
+        }
+    }
+}

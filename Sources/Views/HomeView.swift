@@ -208,28 +208,24 @@ struct HomeView: View {
     private var discoverSection: some View {
         let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
             .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let shown = Array(PodcastRecommendationsStore.excludingSubscribed(
-            recommendations.results, subscribedNormalizedFeeds: subscribed
-        ).prefix(episodeColumns))
+        let shown = PodcastRecommendationsStore.excludingSubscribed(
+            recommendations.results, subscribedNormalizedFeeds: subscribed)
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Discover").font(.title3).bold().padding(.horizontal)
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: episodeColumns),
-                    alignment: .leading, spacing: 14
-                ) {
-                    ForEach(shown) { result in
-                        MediaTile(
-                            title: result.title,
-                            subtitle: reasonText(recommendations.reason(for: result)),
-                            coverURL: result.artworkURL.flatMap { URL(string: $0) },
-                            onTap: { pushRoute(.discover) }
-                        ) {
-                            PodcastSubscribeBadge(feedURL: result.feedURL)
+                // Y2a: horizontally scrollable, the FULL recommendation pool —
+                // one shared tile with the podcast tab (RecommendationTile);
+                // its tap opens the temporary show preview.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(shown) { result in
+                            RecommendationTile(
+                                result: result,
+                                subtitle: reasonText(recommendations.reason(for: result)))
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
             }
         }
     }

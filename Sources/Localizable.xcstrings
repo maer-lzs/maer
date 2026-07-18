@@ -3743,6 +3743,16 @@
         }
       }
     },
+    "Subscribed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abonniert"
+          }
+        }
+      }
+    },
     "Subscriptions" : {
       "localizations" : {
         "de" : {
@@ -3904,6 +3914,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbindung testen"
+          }
+        }
+      }
+    },
+    "The feed could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Feed konnte nicht geladen werden."
           }
         }
       }

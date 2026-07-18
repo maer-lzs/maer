@@ -508,7 +508,9 @@ final class PodcastSubscriptions: ObservableObject {
     // `nonisolated async` would run the network wait AND the XML parse on the
     // calling MainActor (callers at :284/:436 are main-actor). The parse is CPU
     // work that must not block the UI.
-    @concurrent private nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
+    /// Y2b: fetch + parse a feed WITHOUT persisting anything — the temporary
+    /// show preview uses this; `subscribe` persists the result.
+    @concurrent nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
         // Private/premium feeds: send the Basic auth header if stored.
         var request = URLRequest(url: feedURL)
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
