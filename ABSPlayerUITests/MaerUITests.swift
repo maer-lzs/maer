@@ -193,6 +193,28 @@ nonisolated final class MaerUITests: XCTestCase {
         }
     }
 
+    /// F6: ONE query in the global search finds the seeded book, episode and
+    /// album, and the "New Shows" catalog section appears (seeded directory —
+    /// no real catalog request leaves the harness).
+    func testGlobalSearchFindsAllTypes() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let search = app.buttons["global-search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("Seed")
+        XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
+                      "search must find the seeded episode")
+        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
+                      "search must find the seeded album")
+        XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.exists,
+                      "the New Shows catalog section must appear")
+        snap(app, "global-search")
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()
