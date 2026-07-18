@@ -28,6 +28,7 @@ struct SetupView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .keyboardType(.URL)
+                        .textContentType(.URL)   // F7: password-manager AutoFill
                 } header: {
                     Text("Server")
                 }
