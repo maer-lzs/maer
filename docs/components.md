@@ -36,7 +36,7 @@ components rather than forking them.
 | `CoverGrid` | MusicView (albums) · MusicBrowseViews (artist albums) · PodcastDiscoverView (discover) · BookGridComponents (browse grid) | `columns, @ViewBuilder content`; `LazyVGrid` leading, spacing 20 |
 | `DownloadInstallRing` | BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover (grid tiles) |
 | `CardDownloadBadge` | BookFeaturedCard · PodcastFeaturedCard | `itemId, cardWidth=235, startDownload`; unified download/offline badge at the CARD's bottom-right (family: offline wifi.slash / progress ring+cancel / checkmark / download arrow) |
-| `CoverBadge` | `DownloadInstallRing` (disc size) · `BookCoverView` (wifi.slash + downloaded check) | `size(tileWidth) -> CGFloat` = 22 % of tile, clamped 18…44 |
+| `CoverBadge` | `DownloadInstallRing` (disc size) · `BookCoverView` (wifi.slash + downloaded check) · `CardDownloadBadge` (`cap: 32`) | `size(tileWidth, cap=44) -> CGFloat` = 22 % of tile, clamped 18…`cap`; grid tiles use 44, wide cards a smaller 32 |
 | `AdaptiveGlassBackground` | MiniPlayerBar · MediaTabBar · LibraryView (search/home/toolbar/banner) · FloatingSearchButton · RefreshActivityPill · ResumeMessageBanner · BookDetailScreen (buttons/pills) · BookGridComponents (featured card) | `shape`; `forceDark=false`; `lightAccent=nil`; iOS 26 `.glassEffect`, material fallback below. The bottom bar shows the same clear glass in every state (rest/scroll/collapsed/expanded) — no scroll-time material swap |
 
 ## Navigation
@@ -65,7 +65,7 @@ plain `NavigationLink { destination }` would stay on the stack.
 |---|---|---|
 | `BottomBarState.shared` + `reportsBottomBarScroll(active:)` | Reported by every tab root (LibraryView audiobooks · MusicView · PodcastsView · HomeView) and pushed pages (BookDetailScreen · PodcastShowView/EpisodeDetail/Queue); `collapsed` read by LibraryView | `report/setUserDragging/setScrolling/scrollDidRest/expand/reset`; `@Published collapsed, isScrolling`; only the visible tab reports (`active`). `isScrolling` is a published placeholder — no reader since X17b removed the scroll-time material swap |
 | `MediaType.tint` | MediaTabBar (selected tab) | Per-type colour: audiobooks orange · podcasts purple · music red · home `.primary` (neutral) · radio teal |
-| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry capsule glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
+| `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry rounded pill (continuous corner from the mini-player radius family, inset so it does not fill the bar height) glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id |
 
 ## Test infrastructure
 

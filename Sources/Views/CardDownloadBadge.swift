@@ -23,7 +23,9 @@ struct CardDownloadBadge: View {
     }
 
     var body: some View {
-        let disc = CoverBadge.size(tileWidth: cardWidth)
+        // X6c: cards get a smaller cap (~32) than the grid's 44 — the 22 % rule
+        // ran a 235 pt card's badge into the 44 pt cap, which looked too fat.
+        let disc = CoverBadge.size(tileWidth: cardWidth, cap: 32)
         content(disc: disc)
             .frame(width: max(44, disc), height: max(44, disc))
             .contentShape(Circle())
