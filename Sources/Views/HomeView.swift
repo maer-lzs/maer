@@ -18,7 +18,11 @@ struct HomeView: View {
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
+    /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
+    /// volume) — empty hides the section.
+    @State private var rediscoverPicks: [RediscoverSections.Pick] = []
     @Environment(\.pushPodcastRoute) private var pushRoute
+    @Environment(\.pushBookDetail) private var pushBook
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
@@ -37,6 +41,7 @@ struct HomeView: View {
                     continueSection
                     upNextSection
                     latestEpisodesSection
+                    rediscoverSection
                     recentlyAddedSection
                     if isEmpty { emptyState }
                 }
@@ -185,6 +190,66 @@ struct HomeView: View {
         return nil
     }
 
+    /// Teil 3 "Rediscover": one row of daily-rotated local picks. Hidden when
+    /// there are no candidates.
+    @ViewBuilder
+    private var rediscoverSection: some View {
+        let shown = Array(rediscoverPicks.prefix(episodeColumns))
+        if !shown.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Rediscover").font(.title3).bold().padding(.horizontal)
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: episodeColumns),
+                    alignment: .leading, spacing: 14
+                ) {
+                    ForEach(shown, id: \.id) { pick in
+                        rediscoverTile(pick)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rediscoverTile(_ pick: RediscoverSections.Pick) -> some View {
+        if let entry = libraryViewModel.entries.first(where: { $0.id == pick.id }) {
+            MediaTile(
+                title: entry.item.title,
+                subtitle: rediscoverSubtitle(pick.reason),
+                coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                placeholderSystemImage: "book.closed",
+                progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
+                onTap: { pushBook(entry.id) }
+            ) {
+                MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
+            }
+        } else if let item = AppSession.shared.libraryItem(forId: pick.id) {
+            MediaTile(
+                title: item.title,
+                subtitle: rediscoverSubtitle(pick.reason),
+                coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                progress: episodeProgress(item),
+                onTap: { pushRoute(.episode(itemId: item.id)) }
+            ) {
+                MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+            }
+        }
+    }
+
+    private func rediscoverSubtitle(_ reason: RediscoverSections.Reason) -> String {
+        switch reason {
+        case .paused(let weeks):
+            return String(localized: "Paused for \(weeks) weeks")
+        case .unheardSince(let added):
+            return String(localized: "Unheard since \(added.formatted(.dateTime.month(.wide).year()))")
+        case .nextInSeries(let volume):
+            return volume > 0
+                ? String(localized: "Volume \(volume) of your series")
+                : String(localized: "Next volume of your series")
+        }
+    }
+
     /// W2 "Recently Added": newly added books AND albums in one horizontal shelf,
     /// ranked by added time. Each tile is its own tab's component — BookGridCell
     /// for a book, AlbumCell for an album — at one shared width so the mixed row
@@ -265,7 +330,48 @@ struct HomeView: View {
         continueIds = rankedContinue
         recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
+        rediscoverPicks = computeRediscover(
+            bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
         withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
+    }
+
+    /// Teil 3: assemble the three candidate sources (mixed media types) and let
+    /// the pure logic pick — timestamps normalized to seconds.
+    private func computeRediscover(
+        bookContinue: [(id: String, ts: Double)],
+        episodeContinue: [(id: String, ts: Double)],
+        visibleContinue: Set<String>
+    ) -> [RediscoverSections.Pick] {
+        // (a) paused: started books + episodes, EXCLUDING what the Continue
+        // carousel already shows (no doubles on one page).
+        let paused = (bookContinue + episodeContinue)
+            .filter { !visibleContinue.contains($0.id) }
+            .map { (id: $0.id, lastPlayed: Self.seconds($0.ts)) }
+        // (b) unheard additions (books; albums have no reliable local addedAt).
+        let unheard = libraryViewModel.entries
+            .filter { !($0.progress?.isStarted ?? false) && !($0.progress?.isFinished ?? false) }
+            .compactMap { entry -> (id: String, addedAt: Double)? in
+                guard let added = entry.item.addedAt else { return nil }
+                return (entry.id, Self.seconds(added))
+            }
+        // (c) the next UNSTARTED volume after a finished predecessor.
+        let seriesNext = libraryViewModel.entries
+            .filter { $0.progress?.isFinished ?? false }
+            .compactMap { finished -> (id: String, volume: Int)? in
+                guard let next = libraryViewModel.nextInSeries(after: finished.id),
+                      !(next.progress?.isStarted ?? false) else { return nil }
+                return (next.id, RediscoverSections.volume(fromSeriesName: next.item.media?.metadata?.seriesName) ?? 0)
+            }
+        let now = Date()
+        return RediscoverSections.picks(
+            paused: paused, unheard: unheard, seriesNext: seriesNext,
+            now: now, daySeed: RediscoverSections.daySeed(for: now),
+            limit: episodeColumns)
+    }
+
+    /// ABS timestamps are milliseconds since 1970 — normalize to seconds.
+    private static func seconds(_ ts: Double) -> Double {
+        ts > 4_000_000_000 ? ts / 1000 : ts
     }
 
     /// Last-played timestamp of an item from the local position store (same

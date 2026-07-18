@@ -50,3 +50,17 @@ extension EnvironmentValues {
         set { self[PushPodcastRouteKey.self] = newValue }
     }
 }
+
+/// Push callback for a BOOK detail page (String route registered in
+/// LibraryView) — Home tiles push through this so book taps land in the
+/// library's `navigationPath` like every other value route.
+nonisolated struct PushBookDetailKey: EnvironmentKey {
+    static let defaultValue: @MainActor (String) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var pushBookDetail: @MainActor (String) -> Void {
+        get { self[PushBookDetailKey.self] }
+        set { self[PushBookDetailKey.self] = newValue }
+    }
+}

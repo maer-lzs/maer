@@ -169,6 +169,8 @@ struct LibraryView: View {
         // destinations (the show page's episode rows) inherit the environment
         // only from here, not from a modifier on the root VStack.
         .environment(\.pushPodcastRoute) { navigationPath.append($0) }
+        // Home tiles push book detail pages (String route) the same way.
+        .environment(\.pushBookDetail) { navigationPath.append($0) }
         // Bottom zone as an OVERLAY (reserves no space) — the free space is
         // provided by the scroll contents themselves via `bottomBarClearance()`,
         // which also covers pushed screens (detail, podcast show) cleanly.
