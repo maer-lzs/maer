@@ -15,6 +15,10 @@ nonisolated struct RadioStation: Codable, Identifiable, Equatable, Sendable {
     var homepage: String? = nil
     var countryCode: String? = nil
     var tags: [String] = []
+    /// Y57: stream quality — drives which codec/bitrate variant survives the
+    /// name-based collapse (per-variant selection comes later).
+    var bitrate: Int? = nil
+    var codec: String? = nil
 
     var isManual: Bool { id.hasPrefix("radio:manual:") }
 }
@@ -31,16 +35,19 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let homepage: String?
     let countrycode: String?
     let tags: String?
+    let bitrate: Int?
+    let codec: String?
 
     enum CodingKeys: String, CodingKey {
-        case stationuuid, name, url, favicon, homepage, countrycode, tags
+        case stationuuid, name, url, favicon, homepage, countrycode, tags, bitrate, codec
         case urlResolved = "url_resolved"
     }
 }
 
 nonisolated enum RadioMapping {
-    /// Map + de-dupe (mirror double-serves) + drop unusable entries (empty
-    /// name/url). Order preserved (the API ranks by votes/clicks).
+    /// Map + de-dupe (mirror double-serves by stationuuid) + drop unusable
+    /// entries (empty name/url), then fold codec/bitrate variants (Y57). Order
+    /// preserved (the API ranks by votes/clicks).
     static func stations(from raw: [RadioBrowserStation]) -> [RadioStation] {
         var seen = Set<String>()
         var result: [RadioStation] = []
@@ -57,9 +64,59 @@ nonisolated enum RadioMapping {
                 faviconURL: s.favicon?.isEmpty == false ? s.favicon : nil,
                 homepage: s.homepage?.isEmpty == false ? s.homepage : nil,
                 countryCode: s.countrycode?.isEmpty == false ? s.countrycode : nil,
-                tags: (s.tags ?? "").split(separator: ",").map(String.init).filter { !$0.isEmpty }))
+                tags: (s.tags ?? "").split(separator: ",").map(String.init).filter { !$0.isEmpty },
+                bitrate: (s.bitrate ?? 0) > 0 ? s.bitrate : nil,
+                codec: s.codec?.isEmpty == false ? s.codec : nil))
         }
-        return result
+        return collapseVariants(result)
+    }
+
+    /// Y57: fold codec/bitrate VARIANTS of the same station (same normalized
+    /// name + country) into ONE hit. The variants carry distinct stationuuids,
+    /// so they pass the uuid de-dupe legitimately; here they collapse to the
+    /// highest-bitrate variant (tie-break: prefer MP3), so the default plays the
+    /// best stream. Per-variant selection comes later. First-appearance order
+    /// (i.e. the highest-voted variant's position) is preserved.
+    static func collapseVariants(_ stations: [RadioStation]) -> [RadioStation] {
+        var order: [String] = []
+        var best: [String: RadioStation] = [:]
+        for station in stations {
+            let key = variantKey(for: station)
+            if let existing = best[key] {
+                if prefers(station, over: existing) { best[key] = station }
+            } else {
+                best[key] = station
+                order.append(key)
+            }
+        }
+        return order.compactMap { best[$0] }
+    }
+
+    private static func variantKey(for station: RadioStation) -> String {
+        "\(normalizedStationName(station.name))|\(station.countryCode?.lowercased() ?? "")"
+    }
+
+    /// Strip codec/bitrate decorations and separators so variants of a station
+    /// share a grouping key ("Deutschlandfunk | DLF | MP3 128k" →
+    /// "deutschlandfunk dlf").
+    static func normalizedStationName(_ name: String) -> String {
+        var s = name.lowercased()
+        for pattern in ["\\b(mp3|aac\\+?|he-?aac|opus|ogg|vorbis|flac|wma)\\b",
+                        "\\b\\d{2,3}\\s?k(bps)?\\b"] {
+            s = s.replacingOccurrences(of: pattern, with: " ", options: .regularExpression)
+        }
+        s = s.replacingOccurrences(of: "[|/•\\-–—]+", with: " ", options: .regularExpression)
+        s = s.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    private static func prefers(_ a: RadioStation, over b: RadioStation) -> Bool {
+        let ba = a.bitrate ?? 0, bb = b.bitrate ?? 0
+        if ba != bb { return ba > bb }
+        // Equal/unknown bitrate → prefer an MP3 stream (widest compatibility).
+        let aMP3 = a.codec?.lowercased().contains("mp3") == true
+        let bMP3 = b.codec?.lowercased().contains("mp3") == true
+        return aMP3 && !bMP3
     }
 
     /// A user-entered stream (name + URL) — nil when the URL is unusable.
