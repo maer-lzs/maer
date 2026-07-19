@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import OSLog
 
 /// AudioProvider for Subsonic-compatible music servers (Navidrome & co.). A new
@@ -72,6 +73,11 @@ final class SubsonicProvider: AudioProvider {
         catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
     }
 
+    /// Y35: fires after a SUCCESSFUL library sync — the live Music tab
+    /// re-runs its existing load path on this signal (the sync itself only
+    /// fills the provider cache, which a mounted view model never re-reads).
+    let librarySynced = PassthroughSubject<Void, Never>()
+
     /// F9 seam (Y36): injectable history store so the sync core is testable.
     var historyStore: any SyncHistoryStoring = SyncHistoryStore.shared
 
@@ -105,6 +111,7 @@ final class SubsonicProvider: AudioProvider {
                 duration: Date().timeIntervalSince(started),
                 deviceId: SyncHistoryStore.deviceId, startedAt: started))
             Logger.music.info("music sync ok: \(albums.count) albums, \(songs) songs — history entry appended")
+            librarySynced.send()
             return nil
         } catch {
             let message = (error as? SubsonicClient.SubsonicError)?.errorDescription

@@ -58,6 +58,12 @@ struct MusicView: View {
         .onChange(of: musicSort) { _, newSort in
             Task { await vm.setSort(newSort) }
         }
+        // Y35: "Sync Now" (settings) refreshed only the provider cache — a
+        // MOUNTED tab (tabs stay alive once visited) never re-read it. The
+        // sync signal re-runs the EXISTING load path into this live model.
+        .onReceive(SubsonicProvider.shared.librarySynced) { _ in
+            Task { await vm.reload() }
+        }
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the staged reload continues as a background
         // task and replaces content silently (stale beats empty).

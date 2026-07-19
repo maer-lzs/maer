@@ -1,10 +1,13 @@
 #if canImport(Testing)
 import Testing
+import Combine
 import Foundation
 @testable import ABSPlayer
 
-/// Y36: the music sync core — a successful run records exactly one `.music`
-/// history entry (correct counters); a failed run records an error entry.
+/// Y35/Y36: the music sync core — a successful run records exactly one
+/// `.music` history entry (correct counters) and fires the `librarySynced`
+/// signal (the live Music tab reloads on it); a failed run records an error
+/// entry and stays silent.
 @MainActor
 struct SubsonicSyncTests {
     private final class MockHistoryStore: SyncHistoryStoring {
@@ -18,18 +21,22 @@ struct SubsonicSyncTests {
                       genre: nil, created: nil, musicBrainzId: nil, song: nil)
     }
 
-    @Test("success: one .music entry with album/song counters")
+    @Test("success: one .music entry with album/song counters, signal fired")
     func successRecordsAndSignals() async {
         let provider = SubsonicProvider.shared
         let mock = MockHistoryStore()
         provider.historyStore = mock
         defer { provider.historyStore = SyncHistoryStore.shared }
+        var signals = 0
+        let sub = provider.librarySynced.sink { signals += 1 }
+        defer { sub.cancel() }
 
         let result = await provider.runLibrarySync {
             [self.album(id: "a1", songs: 10), self.album(id: "a2", songs: 5)]
         }
 
         #expect(result == nil)
+        #expect(signals == 1)
         #expect(mock.entries.count == 1)
         let entry = mock.entries.first
         #expect(entry?.service == .music)
@@ -50,18 +57,22 @@ struct SubsonicSyncTests {
         #expect(provider.isAvailable == false)
     }
 
-    @Test("failure: error entry recorded")
+    @Test("failure: error entry recorded, no signal")
     func failureRecordsErrorSilently() async {
         let provider = SubsonicProvider.shared
         let mock = MockHistoryStore()
         provider.historyStore = mock
         defer { provider.historyStore = SyncHistoryStore.shared }
+        var signals = 0
+        let sub = provider.librarySynced.sink { signals += 1 }
+        defer { sub.cancel() }
 
         let result = await provider.runLibrarySync {
             throw URLError(.notConnectedToInternet)
         }
 
         #expect(result != nil)
+        #expect(signals == 0)
         #expect(mock.entries.count == 1)
         #expect(mock.entries.first?.service == .music)
         #expect(mock.entries.first?.error != nil)
