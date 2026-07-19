@@ -93,6 +93,7 @@ final class GlobalSearchModel: ObservableObject {
     }
 
     private func run(query: String, activeTab: MediaType) async {
+        RecentSearches.record(query)   // Y30: an executed search is a recent one
         isSearching = true
         allSourcesFailed = false
         sections = []
