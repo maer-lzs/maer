@@ -9,6 +9,8 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
         case gpodder
         case absProgress
         case iCloud
+        /// Y27: the music library refresh is a visible sync operation too.
+        case music
     }
 
     enum Direction: String, Codable {
@@ -20,6 +22,7 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     struct Counter: Codable, Equatable {
         enum Key: String, Codable {
             case subscriptionsUp, subscriptionsDown, positionsUp, positionsDown
+            case albumsUpdated, songsUpdated
         }
         let key: Key
         let value: Int

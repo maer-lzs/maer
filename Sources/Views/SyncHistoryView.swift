@@ -63,6 +63,7 @@ struct SyncHistoryView: View {
         case .gpodder: return "gpodder"
         case .absProgress: return "Audiobookshelf"
         case .iCloud: return "iCloud"
+        case .music: return String(localized: "Music")
         }
     }
 
@@ -71,6 +72,7 @@ struct SyncHistoryView: View {
         case .gpodder: return "antenna.radiowaves.left.and.right"
         case .absProgress: return "externaldrive.connected.to.line.below"
         case .iCloud: return "icloud"
+        case .music: return "music.note"
         }
     }
 
@@ -86,6 +88,10 @@ struct SyncHistoryView: View {
                 return String(localized: "\(counter.value) positions up")
             case .positionsDown:
                 return String(localized: "\(counter.value) positions down")
+            case .albumsUpdated:
+                return String(localized: "\(counter.value) albums updated")
+            case .songsUpdated:
+                return String(localized: "\(counter.value) songs updated")
             }
         }.joined(separator: ", ")
     }

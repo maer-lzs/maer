@@ -46,6 +46,16 @@
         }
       }
     },
+    "%lld albums updated" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Alben aktualisiert"
+          }
+        }
+      }
+    },
     "%lld already synced" : {
       "localizations" : {
         "de" : {
@@ -287,6 +297,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld Sekunden"
+          }
+        }
+      }
+    },
+    "%lld songs updated" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Songs aktualisiert"
           }
         }
       }
@@ -2148,6 +2168,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Musik-Server"
+          }
+        }
+      }
+    },
+    "Music library synced." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Bibliothek synchronisiert."
           }
         }
       }
