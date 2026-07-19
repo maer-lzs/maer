@@ -14,14 +14,39 @@ enum PodcastRefreshService {
 
     /// Register the handler — MUST run before app launch finishes (AppDelegate).
     static func registerBackgroundTask() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { task in
+        // Y32: iOS invokes this handler on the BGTaskScheduler queue. Under the
+        // project's MainActor default the closure inherited main isolation and
+        // the Swift 6 isolation check trapped (EXC_BREAKPOINT) on EVERY
+        // background launch — the nightly refresh never actually ran.
+        // `@Sendable` makes the closure nonisolated (same contract as the
+        // MediaPlayer artwork handler); the work hops to the main actor
+        // explicitly, expiration semantics unchanged.
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: taskId, using: nil) { @Sendable task in
             let bg = task as? BGAppRefreshTask
-            let work = Task { @MainActor in
-                await run()
-                schedule()
-                bg?.setTaskCompleted(success: true)
-            }
-            bg?.expirationHandler = { work.cancel() }
+            // BGTask's completion/expiration API is documented thread-safe;
+            // the reference itself is not Sendable.
+            nonisolated(unsafe) let bgTask = bg
+            let work = launchWork(
+                run: {
+                    await run()
+                    schedule()
+                },
+                complete: { success in bgTask?.setTaskCompleted(success: success) })
+            bg?.expirationHandler = { @Sendable in work.cancel() }
+        }
+    }
+
+    /// Y32 (testable core): callable from ANY executor — the scheduler queue in
+    /// production, a background task in the test — and hops the refresh work to
+    /// the main actor. Always completes (also after a cancel: the work inside
+    /// responds cooperatively, the task itself must still report).
+    nonisolated static func launchWork(
+        run: @escaping @MainActor () async -> Void,
+        complete: @escaping @Sendable (Bool) -> Void
+    ) -> Task<Void, Never> {
+        Task { @MainActor in
+            await run()
+            complete(true)
         }
     }
 
