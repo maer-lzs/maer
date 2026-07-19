@@ -159,52 +159,13 @@ struct BookDetailScreen: View {
             // server has no image) nothing renders and nothing reserves space —
             // the row looks exactly like today.
             let portrait = CachedAsyncImage(url: url, useThumbnail: true) { image in
+                // Y56: a clean round portrait in the established form language —
+                // the show-cover corner badge's look (crisp image + thin white
+                // rim), only ROUND. No smear, no dissolve, no grayscale.
                 image.resizable().aspectRatio(contentMode: .fill)
                     .frame(width: Self.portraitSize, height: Self.portraitSize)
-                    // Y6b: downward SMEAR (not a gaussian blur) over the lower
-                    // part — stacked copies dragged downward approximate a
-                    // directional motion smear, softened a touch and faded in
-                    // via the gradient mask.
-                    .overlay {
-                        ZStack {
-                            ForEach(1..<5) { step in
-                                image.resizable().aspectRatio(contentMode: .fill)
-                                    .frame(width: Self.portraitSize, height: Self.portraitSize)
-                                    .offset(y: CGFloat(step) * 3)
-                                    .opacity(0.22)
-                            }
-                        }
-                        .blur(radius: 2.2)
-                        .mask(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .clear, location: 0.30),
-                                    .init(color: .black, location: 0.75)
-                                ],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                    }
-                    // Y6b/Y46: crisp circle on top, DISSOLVING bottom — the mask
-                    // is the circle filled with a vertical fade, so the lower part
-                    // blends into the gradient behind it. Y46: the fade begins
-                    // earlier (0.40) and runs softly over a longer distance so the
-                    // lower half dissolves noticeably more into the background.
-                    .mask(
-                        Circle().fill(
-                            LinearGradient(
-                                stops: [
-                                    .init(color: .black, location: 0.40),
-                                    .init(color: .black.opacity(0.5), location: 0.7),
-                                    .init(color: .clear, location: 1.0)
-                                ],
-                                startPoint: .top, endPoint: .bottom
-                            )
-                        )
-                    )
-                    // Y6b: monochrome for now (design trial) — keeps the mixed
-                    // press-photo colors from fighting the cover gradient.
-                    .grayscale(1)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 2))
             } placeholder: {
                 // Y6 root cause: an `EmptyView` placeholder never "appears",
                 // so CachedAsyncImage's `.task(id:)` never fired and the load
