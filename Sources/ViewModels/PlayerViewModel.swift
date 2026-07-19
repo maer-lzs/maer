@@ -1058,12 +1058,25 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
     private let onValue: @Sendable (String) -> Void
     init(onValue: @escaping @Sendable (String) -> Void) { self.onValue = onValue }
 
+    /// Hands the metadata items into the async load. `@unchecked Sendable`
+    /// (Rule 5 exception, justified): `AVMetadataItem` is a reference type, but
+    /// the items are transferred ONCE off the delegate's serial queue and never
+    /// touched again there, and `load(_:)` is AVFoundation's designated async
+    /// accessor — so there is no concurrent access.
+    private struct ItemHandoff: @unchecked Sendable { let items: [AVMetadataItem] }
+
     func metadataOutput(_ output: AVPlayerItemMetadataOutput,
                         didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup],
                         from track: AVPlayerItemTrack?) {
-        for group in groups {
-            for item in group.items {
-                if let value = item.stringValue, !value.isEmpty {
+        let handoff = ItemHandoff(items: groups.flatMap(\.items))
+        guard !handoff.items.isEmpty else { return }
+        // Y53: `stringValue` is synchronous and iOS-16-deprecated — load it
+        // asynchronously. The delegate runs on our serial queue; the Task hops
+        // off it, the value reaches the main actor through `onValue`.
+        let onValue = self.onValue
+        Task {
+            for item in handoff.items {
+                if let value = try? await item.load(.stringValue), !value.isEmpty {
                     onValue(value)
                     return
                 }
