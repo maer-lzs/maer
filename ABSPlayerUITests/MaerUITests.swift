@@ -324,6 +324,32 @@ nonisolated final class MaerUITests: XCTestCase {
                       "switching the source on must restore the tab live")
     }
 
+    /// F4/F5: the radio tab appears with the source switched on (seeded
+    /// favorites), lists the stations, and the live search finds them under
+    /// the radio scope. No real catalog/stream leaves the harness.
+    func testRadioTabAndSearch() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let radio = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radio.waitForExistence(timeout: 10), "enabled radio source must surface the tab")
+        radio.tap()
+        XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10),
+                      "favorites must list the seeded station")
+        // Radio scope in the global search (only visible with the source on).
+        app.buttons["global-search"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["scope-radio"].firstMatch.waitForExistence(timeout: 10),
+                      "the radio scope must appear while the source is active")
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("Seed Radio")
+        XCTAssertTrue(app.staticTexts["Seed Radio Two"].firstMatch.waitForExistence(timeout: 10),
+                      "search must find the seeded stations")
+        app.terminate()
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()

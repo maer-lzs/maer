@@ -75,6 +75,14 @@ enum UITestSeed {
         SubsonicProvider.shared.reloadConfig()
         SubsonicProvider.shared._seedForUITest(seedAlbums)
 
+        // F5: radio fixtures — favorites + catalog stations, only when the
+        // journey switches the source on (`-radioEnabled 1` launch arg).
+        if AppStorageKeys.radioEnabledValue {
+            for station in seedRadioStations where !RadioStore.isFavorite(station.id) {
+                RadioStore.toggleFavorite(station)
+            }
+        }
+
         // Mixed Up-Next queue: a book, an album and an episode.
         let queue = PlayQueue.shared
         queue.clear()
@@ -142,6 +150,14 @@ enum UITestSeed {
                                           seriesName: nil, genres: nil, publishedYear: nil, description: nil),
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
+
+    /// F5: seeded stations (manual namespace — resolvable without a catalog).
+    static let seedRadioStations = [
+        RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
+                     streamURL: "https://seed.example/one.mp3"),
+        RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
+                     streamURL: "https://seed.example/two.mp3"),
+    ]
 
     private static func chapter(_ id: Int, _ start: Double, _ end: Double, _ title: String) -> ABSChapter {
         ABSChapter(id: id, start: start, end: end, title: title)

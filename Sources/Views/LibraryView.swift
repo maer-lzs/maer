@@ -132,6 +132,11 @@ struct LibraryView: View {
                                       isActive: selectedMediaType == .music)
                                 .tabVisibility(selectedMediaType == .music)
                         }
+                        if isTabMounted(.radio) {
+                            RadioView(playerCoordinator: playerCoordinator,
+                                      isActive: selectedMediaType == .radio)
+                                .tabVisibility(selectedMediaType == .radio)
+                        }
                     }
                     // Y23 (Regel 6): the search page fully covers the active
                     // tab — covered content must not stay reachable for
@@ -622,6 +627,14 @@ struct LibraryView: View {
                 searchResultUnavailable()
             }
         case .song:
+            if let item = AppSession.shared.libraryItem(forId: result.id) {
+                Task { await playerCoordinator.open(item: item) }
+            } else {
+                searchResultUnavailable()
+            }
+        case .radioStation:
+            // F3: play replaces the active playback — stations never route
+            // into a detail page or the queue.
             if let item = AppSession.shared.libraryItem(forId: result.id) {
                 Task { await playerCoordinator.open(item: item) }
             } else {

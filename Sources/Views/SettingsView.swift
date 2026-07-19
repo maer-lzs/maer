@@ -210,6 +210,12 @@ struct SettingsView: View {
             // Locale-independent handle for the UI-test harness.
             .accessibilityIdentifier("settings-music-source")
             NavigationLink {
+                RadioSourceView()
+            } label: {
+                Label("Radio", systemImage: "dot.radiowaves.left.and.right")
+            }
+            .accessibilityIdentifier("settings-radio-source")
+            NavigationLink {
                 LocalFilesView(onImported: {
                     Task { await libraryViewModel?.refreshAfterLocalChange() }
                 })

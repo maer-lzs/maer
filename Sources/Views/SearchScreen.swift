@@ -52,6 +52,7 @@ struct SearchScreen: View {
         case .audiobooks: return .audiobooks
         case .podcasts: return .podcasts
         case .music: return .music
+        case .radio: return .radio
         case .library: return .home
         }
     }
@@ -114,9 +115,15 @@ struct SearchScreen: View {
     /// IS the concentric shape inside the bar capsule.
     private static let scopePillGap: CGFloat = 6
 
+    /// F4: the radio scope appears only while the source is active — the
+    /// Y37 isAvailable pattern, re-evaluated per render.
+    private var visibleScopes: [SearchScope] {
+        SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
+    }
+
     private var scopeBar: some View {
         HStack(spacing: 4) {
-            ForEach(SearchScope.allCases) { candidate in
+            ForEach(visibleScopes) { candidate in
                 Button {
                     scope = candidate
                 } label: {
@@ -153,6 +160,7 @@ struct SearchScreen: View {
         case .audiobooks: return String(localized: "Audiobooks")
         case .podcasts: return String(localized: "Podcasts")
         case .music: return String(localized: "Music")
+        case .radio: return String(localized: "Radio")
         }
     }
 
@@ -502,7 +510,7 @@ struct SearchScreen: View {
             audiobookTier
         case .music:
             artistTierRow
-        case .podcasts:
+        case .podcasts, .radio:
             EmptyView()
         case .library:
             audiobookTier
@@ -580,6 +588,8 @@ struct SearchScreen: View {
             showRaster
         case .music:
             albumRaster
+        case .radio:
+            EmptyView()   // radio browses on its own tab; search is the catalog
         case .library:
             EmptyView()   // the mixed tier IS the library deck
         }
@@ -742,6 +752,7 @@ struct SearchScreen: View {
         case .artist: return String(localized: "Artists")
         case .song: return String(localized: "Songs")
         case .catalogShow: return String(localized: "New Shows")
+        case .radioStation: return String(localized: "Radio Stations")
         }
     }
 
@@ -752,6 +763,7 @@ struct SearchScreen: View {
         case .show, .episode, .catalogShow: return "mic"
         case .album, .song: return "music.note"
         case .artist: return "music.mic"
+        case .radioStation: return "dot.radiowaves.left.and.right"
         }
     }
 }
