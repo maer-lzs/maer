@@ -44,8 +44,9 @@ struct LatestEpisodesGrid: View {
             // Y45: bind the animation to `expanded` on the grid itself (not a
             // withAnimation wrapper around the toggle) so the row add/remove
             // runs with the SAME curve in BOTH directions — collapse no longer
-            // reads more abruptly than the reference expand.
-            .animation(.snappy(duration: 0.25), value: expanded)
+            // reads more abruptly than the reference expand. Y55: 0.35 — a touch
+            // slower, moderate not sluggish.
+            .animation(.snappy(duration: 0.35), value: expanded)
             if items.count > cols * 2 {
                 Button {
                     expanded.toggle()
