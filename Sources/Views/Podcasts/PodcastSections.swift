@@ -93,6 +93,19 @@ enum PodcastSections {
         return .unplayed
     }
 
+    /// X1c (pure): the newest episode of each show, newest first — ONE per
+    /// show so a daily show doesn't dominate the grid. Generous cap: the grid
+    /// itself shows 2 rows collapsed / up to 6 expanded (max 5 columns → 30).
+    nonisolated static func newestPerShow(shows: [PodcastShow], limit: Int = 30) -> [String] {
+        shows.compactMap { show -> (id: String, ts: Double)? in
+            guard let ep = show.episodes.max(by: { $0.pubDate < $1.pubDate }) else { return nil }
+            return (ep.guid, ep.pubDate)
+        }
+        .sorted { $0.ts > $1.ts }
+        .prefix(limit)
+        .map(\.id)
+    }
+
     nonisolated static func lastPlayed(id: String, snapshot: StateSnapshot) -> Double {
         (snapshot.equivalents[id] ?? [id]).reduce(0.0) { best, eqId in
             let localTs = snapshot.positions[eqId]?.last ?? 0

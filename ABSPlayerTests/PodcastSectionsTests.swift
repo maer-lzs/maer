@@ -249,5 +249,20 @@ struct PodcastSectionsTests {
         #expect(result.recentShows.first { $0.id == "a" }?.unplayedCount == 2)
         #expect(result.recentShows.first { $0.id == "b" }?.unplayedCount == 0)
     }
+
+    /// X1c: newest episode of EACH show (one per show — a daily show never
+    /// dominates), newest first, capped.
+    @Test("newestPerShow picks one per show, newest first, capped")
+    func newestPerShow() {
+        let shows = [
+            show("daily", episodes: [episode("d1", pubDate: 100), episode("d2", pubDate: 400),
+                                     episode("d3", pubDate: 300)]),
+            show("weekly", episodes: [episode("w1", pubDate: 200)]),
+            show("empty", episodes: []),
+            show("old", episodes: [episode("o1", pubDate: 50)]),
+        ]
+        #expect(PodcastSections.newestPerShow(shows: shows) == ["d2", "w1", "o1"])
+        #expect(PodcastSections.newestPerShow(shows: shows, limit: 2) == ["d2", "w1"])
+    }
 }
 #endif

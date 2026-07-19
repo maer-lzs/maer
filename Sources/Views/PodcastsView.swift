@@ -58,6 +58,9 @@ struct PodcastsView: View {
     @State private var nextUp: [LibraryItem] = []           // "Continue" (large cards)
     @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
     @State private var downloaded: [LibraryItem] = []
+    /// X1c: newest episode per show for the SHARED latest-episodes grid
+    /// (same derivation and tile as Home).
+    @State private var latestItems: [LibraryItem] = []
     @State private var showAddPodcasts = false
     @State private var isRefreshing = false
     /// Sections render only once the first complete snapshot exists — they
@@ -79,6 +82,7 @@ struct PodcastsView: View {
                     nextUpSection
                     recommendationsSection
                     queueSection
+                    latestEpisodesSection
                     premiumSection
                     downloadedShelf
                     recentlyUpdatedSection
@@ -146,6 +150,8 @@ struct PodcastsView: View {
                 nextUp = sections.nextUp
                 recentShows = sections.recentShows
                 downloaded = sections.downloaded
+                latestItems = PodcastSections.newestPerShow(shows: allShows)
+                    .compactMap { AppSession.shared.libraryItem(forId: $0) }
                 sectionsReady = true
             }
             // Precompute card colors → nothing happens while scrolling.
@@ -237,6 +243,15 @@ struct PodcastsView: View {
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
         RecommendationTile(result: r, width: 132)
+    }
+
+    // MARK: - Latest episodes (X1c: the SHARED grid, identical on Home)
+
+    @ViewBuilder
+    private var latestEpisodesSection: some View {
+        if !latestItems.isEmpty {
+            LatestEpisodesGrid(items: latestItems, playerCoordinator: playerCoordinator)
+        }
     }
 
     // MARK: - Recently updated (show grid, 2 columns)

@@ -35,12 +35,7 @@ struct HomeView: View {
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
-    /// X1b: measured content width → adaptive column count for the episode grid.
-    @State private var contentWidth: CGFloat = 0
     @State private var ready = false
-    /// Y3a: Latest Episodes expanded to up to 6 rows — deliberately NOT
-    /// persisted (tab switch/restart returns to 2 rows).
-    @State private var episodesExpanded = false
 
     private var recomputeToken: String {
         "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)"
@@ -62,13 +57,6 @@ struct HomeView: View {
                 }
                 .padding(.top, TabContentLayout.topInset)
                 .bottomBarClearance()
-                .background(
-                    GeometryReader { geo in
-                        Color.clear
-                            .onAppear { contentWidth = geo.size.width }
-                            .onChange(of: geo.size.width) { _, w in contentWidth = w }
-                    }
-                )
                 .transition(.opacity)
             } else {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 280)
@@ -85,14 +73,6 @@ struct HomeView: View {
 
     private var isEmpty: Bool {
         continueIds.isEmpty && queue.isEmpty && recentEpisodeItems.isEmpty && recentlyAddedItems.isEmpty
-    }
-
-    /// Teil 2: adaptive column count — iPhone 3, small iPad 4, large iPad 5.
-    private var episodeColumns: Int {
-        guard contentWidth > 0 else { return 3 }
-        if contentWidth >= 1000 { return 5 }
-        if contentWidth >= 640 { return 4 }
-        return 3
     }
 
     // MARK: - Sections (reused components only)
@@ -151,75 +131,19 @@ struct HomeView: View {
         }
     }
 
-    /// X1b/Teil 2 "Latest Episodes": the newest episode of each recently-active
-    /// show as MediaTiles in a vertical grid — capped at ALWAYS 2 rows, columns
-    /// adaptive (iPhone 3, small iPad 4, large iPad 5 → 6/8/10 tiles). Image =
-    /// the episode's own artwork when the feed ships one (the provider already
-    /// prefers it), with the show cover as the corner badge ONLY when it
-    /// differs (nothing doubled). Tap → episode page; play badge plays.
+    /// X1b/X1c "Latest Episodes" — see `LatestEpisodesGrid` (shared with the
+    /// podcast tab).
     @ViewBuilder
     private var latestEpisodesSection: some View {
         if !recentEpisodeItems.isEmpty {
-            let cols = episodeColumns
-            // Y3a: 2 rows collapsed, up to 6 rows expanded (iPhone: 18
-            // episodes) — inline, not persisted.
-            let rows = episodesExpanded ? 6 : 2
-            let shown = Array(recentEpisodeItems.prefix(cols * rows))
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: cols),
-                    alignment: .leading, spacing: 14
-                ) {
-                    ForEach(shown) { item in
-                        episodeTile(item)
-                    }
-                }
-                .padding(.horizontal)
-                if recentEpisodeItems.count > cols * 2 {
-                    Button {
-                        withAnimation(.snappy(duration: 0.25)) { episodesExpanded.toggle() }
-                    } label: {
-                        Label(episodesExpanded ? String(localized: "Show Less")
-                                               : String(localized: "Show More"),
-                              systemImage: episodesExpanded ? "chevron.up" : "chevron.down")
-                            .font(.subheadline.weight(.medium))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(AppTheme.accent)
-                    .padding(.horizontal)
-                }
-            }
+            // X1c: the SHARED grid — identical on the podcast tab (Regel 2).
+            LatestEpisodesGrid(items: recentEpisodeItems, playerCoordinator: playerCoordinator)
         }
     }
 
     /// A3: an episode is unavailable offline unless downloaded.
     private func isUnavailable(_ item: LibraryItem) -> Bool {
         !networkMonitor.isConnected && !downloadManager.isDownloaded(itemId: item.id)
-    }
-
-    private func episodeTile(_ item: LibraryItem) -> some View {
-        MediaTile(
-            title: item.title,
-            coverURL: AppSession.shared.coverURL(forItemId: item.id),
-            cornerBadgeURL: showBadgeURL(for: item),
-            progress: episodeProgress(item),
-            unavailable: isUnavailable(item),
-            onTap: { pushRoute(.episode(itemId: item.id)) }
-        ) {
-            MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
-        }
-        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
-    }
-
-    /// The show cover as a corner badge only when the tile image is the
-    /// episode's OWN artwork (feed-provided) — never double the show cover.
-    private func showBadgeURL(for item: LibraryItem) -> URL? {
-        guard let show = AppSession.shared.rssProvider.show(forEpisodeId: item.id),
-              let raw = show.artworkURL, let url = URL(string: raw),
-              url != AppSession.shared.coverURL(forItemId: item.id)
-        else { return nil }
-        return url
     }
 
     private func episodeProgress(_ item: LibraryItem) -> Double? {
@@ -392,14 +316,10 @@ struct HomeView: View {
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
 
-        // X1b "Latest Episodes": the newest episode of each show, newest first —
-        // one per show so a daily show doesn't dominate. Capped generously; the
-        // section itself shows only 2 rows.
-        let newestEpisodeIds = shows.compactMap { show -> (id: String, ts: Double)? in
-            guard let ep = show.episodes.max(by: { $0.pubDate < $1.pubDate }) else { return nil }
-            return (ep.guid, ep.pubDate)
-        }
-        let episodeIds = HomeSections.byRecency([newestEpisodeIds], limit: 8)
+        // X1b/X1c "Latest Episodes": the newest episode of each show, newest
+        // first — the shared pure derivation (cap 30 so the Y3a six-row
+        // expansion actually has content; the old 8-cap starved it).
+        let episodeIds = PodcastSections.newestPerShow(shows: shows)
 
         // W2/X1a "Recently Added": newly added books + newly added albums (the
         // "newest" shelf, best-effort — empty without a music server). Both inputs
