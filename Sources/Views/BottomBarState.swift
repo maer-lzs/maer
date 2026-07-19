@@ -51,6 +51,11 @@ final class BottomBarState: ObservableObject {
     /// scroll-start (a suspected scroll-hitch source, being diagnosed via the
     /// signpost below).
     private var scrollStartedAt: Date = .distantPast
+    /// Y31: true once a USER gesture drove the current surface's scrolling —
+    /// cleared on reset(). Collapsing requires it: pushed pages emit large
+    /// layout-driven offsets while populating (the album page reported ~1400 pt
+    /// without any touch), and those must never collapse the bar.
+    private var hasUserScrolled = false
     /// X21: how long after scroll-start the bar may collapse. Internal so tests
     /// can zero it out; app default 0.2 s (X21c: 0.4 s felt sluggish).
     var collapseDelaySeconds: TimeInterval = 0.2
@@ -70,6 +75,7 @@ final class BottomBarState: ObservableObject {
         let started = dragging && !userDragging   // idle → dragging = a new scroll
         userDragging = dragging
         if dragging {
+            hasUserScrolled = true                    // Y31: a real gesture happened
             if started { scrollStartedAt = Date() }   // X21: reset the collapse delay
             idleExpandTask?.cancel()   // active scroll → drop any pending expand
             if forceExpanded { forceExpanded = false; applyCollapsed() }
@@ -103,6 +109,7 @@ final class BottomBarState: ObservableObject {
         scrollY = 0
         forceExpanded = false
         userDragging = false
+        hasUserScrolled = false   // Y31: the fresh surface starts gesture-less
         isScrolling = false
         applyCollapsed()
     }
@@ -112,6 +119,7 @@ final class BottomBarState: ObservableObject {
         let elapsed = Date().timeIntervalSince(scrollStartedAt)
         let newValue = Self.shouldCollapse(scrollY: scrollY, forceExpanded: forceExpanded,
                                            alreadyCollapsed: collapsed,
+                                           hasUserScrolled: hasUserScrolled,
                                            elapsedSinceScrollStart: elapsed,
                                            collapseDelay: collapseDelaySeconds)
         guard newValue != collapsed else { return }
@@ -130,9 +138,13 @@ final class BottomBarState: ObservableObject {
     /// window briefly read as "expand", making the bar flutter open and shut on
     /// every touch. Expanding happens only by scrolling back under the
     /// threshold, force-expand, or the idle auto-expand.
+    /// Y31: collapsing additionally requires that a USER gesture drove the
+    /// scrolling — programmatic/layout offsets (pushed pages populating) never
+    /// collapse; expanding stays immediate as before.
     static func shouldCollapse(scrollY: CGFloat, forceExpanded: Bool, alreadyCollapsed: Bool,
+                               hasUserScrolled: Bool,
                                elapsedSinceScrollStart: TimeInterval, collapseDelay: TimeInterval) -> Bool {
-        guard scrollY > 60, !forceExpanded else { return false }
+        guard scrollY > 60, !forceExpanded, hasUserScrolled else { return false }
         return alreadyCollapsed || elapsedSinceScrollStart >= collapseDelay
     }
 }

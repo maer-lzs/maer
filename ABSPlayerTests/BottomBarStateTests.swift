@@ -21,6 +21,8 @@ struct BottomBarStateTests {
 
     @Test func collapsesExactlyAboveThreshold() {
         let state = BottomBarState()
+        state.collapseDelaySeconds = 0
+        state.setUserDragging(true)   // Y31: only user scrolling may collapse
         state.report(60)
         #expect(!state.collapsed)   // 60 is not > 60
         state.report(61)
@@ -32,6 +34,8 @@ struct BottomBarStateTests {
     @Test("Scroll frames without a state flip publish NOTHING")
     func publishesOnlyOnFlip() {
         let state = BottomBarState()
+        state.collapseDelaySeconds = 0
+        state.setUserDragging(true)   // Y31 gesture gate
         // Many below-threshold frames: zero publishes.
         let below = publishCount(of: state) {
             for y in stride(from: 0.0, to: 60.0, by: 5) { state.report(y) }
@@ -72,6 +76,8 @@ struct BottomBarStateTests {
     @Test("reset() (tab switch) expands and clears the stale offset")
     func resetExpands() {
         let state = BottomBarState()
+        state.collapseDelaySeconds = 0
+        state.setUserDragging(true)
         state.report(500)
         #expect(state.collapsed)
         state.reset()
@@ -126,15 +132,19 @@ struct BottomBarStateTests {
     func collapseDelayDecision() {
         // Past threshold and past the delay → collapse.
         #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: false,
+                                              hasUserScrolled: true,
                                               elapsedSinceScrollStart: 0.5, collapseDelay: 0.4))
         // Past threshold but still WITHIN the delay → not yet.
         #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: false,
+                                               hasUserScrolled: true,
                                                elapsedSinceScrollStart: 0.1, collapseDelay: 0.4))
         // Below the threshold → never.
         #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false, alreadyCollapsed: false,
+                                               hasUserScrolled: true,
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
         // Force-expanded wins even past the delay.
         #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true, alreadyCollapsed: false,
+                                               hasUserScrolled: true,
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
     }
 
@@ -146,13 +156,40 @@ struct BottomBarStateTests {
     func collapseHysteresis() {
         // Collapsed + past threshold + WITHIN the delay → stays collapsed.
         #expect(BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: false, alreadyCollapsed: true,
+                                              hasUserScrolled: true,
                                               elapsedSinceScrollStart: 0.0, collapseDelay: 0.4))
         // Collapsed + back under the threshold → expands regardless of the delay.
         #expect(!BottomBarState.shouldCollapse(scrollY: 40, forceExpanded: false, alreadyCollapsed: true,
+                                               hasUserScrolled: true,
                                                elapsedSinceScrollStart: 0.0, collapseDelay: 0.4))
         // Collapsed + force-expand → expands.
         #expect(!BottomBarState.shouldCollapse(scrollY: 100, forceExpanded: true, alreadyCollapsed: true,
+                                               hasUserScrolled: true,
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
+    }
+
+    /// Y31: layout/programmatic offsets (a pushed page populating) must NEVER
+    /// collapse the bar — only user scrolling may. The album page reported
+    /// ~1400 pt without any touch and stranded the bar collapsed (the isolated
+    /// harness failure).
+    @Test("offsets without a user gesture never collapse; a gesture then does")
+    func layoutOffsetsDoNotCollapse() {
+        let state = BottomBarState()
+        state.collapseDelaySeconds = 0
+        state.report(1400)               // populating layout, no gesture
+        #expect(!state.collapsed)
+        state.report(300)
+        #expect(!state.collapsed)
+        state.setUserDragging(true)      // now a real scroll
+        state.report(301)
+        #expect(state.collapsed)
+        // reset() (tab switch / new surface) clears the gesture flag again.
+        state.reset()
+        state.report(900)
+        #expect(!state.collapsed)
+        #expect(BottomBarState.shouldCollapse(scrollY: 900, forceExpanded: false,
+                                              alreadyCollapsed: false, hasUserScrolled: false,
+                                              elapsedSinceScrollStart: 99, collapseDelay: 0.2) == false)
     }
 
     /// X21b (stateful): collapsed bar + a NEW gesture at scrollY > threshold —
