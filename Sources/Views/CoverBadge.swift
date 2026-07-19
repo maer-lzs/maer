@@ -19,3 +19,31 @@ enum CoverBadge {
         min(max(tileWidth * 0.22, 18), cap)
     }
 }
+
+extension View {
+    /// A3 (rule): gray/dimming is NEVER the only state carrier — unavailable
+    /// content dims AND carries the white wifi.slash badge (the S14c family
+    /// look: bottom-right disc, 22 % of the tile). ONE modifier so every
+    /// surface (tiles, album cells, covers) reads identically; sizes itself
+    /// from the decorated view.
+    @ViewBuilder
+    func offlineUnavailableBadge(_ active: Bool) -> some View {
+        if active {
+            self.opacity(0.5)
+                .overlay {
+                    GeometryReader { geo in
+                        let badge = CoverBadge.size(tileWidth: geo.size.width)
+                        Image(systemName: "wifi.slash")
+                            .font(.system(size: badge * 0.5, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: badge, height: badge)
+                            .background(.black.opacity(0.4), in: Circle())
+                            .padding(4)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    }
+                }
+        } else {
+            self
+        }
+    }
+}

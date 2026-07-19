@@ -568,12 +568,16 @@ struct RecommendationTile: View {
     var subtitle: String? = nil
     var width: CGFloat = 140
     @Environment(\.pushPodcastRoute) private var pushRoute
+    /// A3: catalog tiles need the net (preview + subscribe) — offline they dim
+    /// and carry the badge instead of failing silently on tap.
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     var body: some View {
         MediaTile(
             title: result.title,
             subtitle: subtitle,
             coverURL: result.artworkURL.flatMap { URL(string: $0) },
+            unavailable: !networkMonitor.isConnected,
             onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
         ) {
             PodcastSubscribeBadge(feedURL: result.feedURL)

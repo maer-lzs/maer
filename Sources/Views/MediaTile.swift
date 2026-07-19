@@ -22,6 +22,9 @@ struct MediaTile<Corner: View>: View {
     var cornerBadgeURL: URL? = nil
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
+    /// A3: unavailable content (offline, not downloaded) dims AND carries the
+    /// white wifi.slash badge — dimming alone never carries the state.
+    var unavailable: Bool = false
     let onTap: () -> Void
     @ViewBuilder let corner: () -> Corner
 
@@ -68,6 +71,9 @@ struct MediaTile<Corner: View>: View {
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) { progressBar }
         .clipShape(Self.imageShape)
+        // A3: the corner control stays crisp ON TOP (sibling overlay in body);
+        // only the image dims and carries the badge.
+        .offlineUnavailableBadge(unavailable)
     }
 
     /// Thin bar along the image's bottom edge — only for started items.
@@ -104,11 +110,12 @@ struct MediaTile<Corner: View>: View {
 extension MediaTile where Corner == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, progress: Double? = nil, onTap: @escaping () -> Void) {
+         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, onTap: onTap) { EmptyView() }
+                  progress: progress, unavailable: unavailable, onTap: onTap) { EmptyView() }
     }
 }
 

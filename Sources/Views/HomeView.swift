@@ -26,6 +26,10 @@ struct HomeView: View {
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
+    /// A3: tiles dim + badge when unavailable — connectivity/download flips
+    /// must re-render (same per-surface observation as BookCoverView).
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloadManager = DownloadManager.shared
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
@@ -189,12 +193,18 @@ struct HomeView: View {
         }
     }
 
+    /// A3: an episode is unavailable offline unless downloaded.
+    private func isUnavailable(_ item: LibraryItem) -> Bool {
+        !networkMonitor.isConnected && !downloadManager.isDownloaded(itemId: item.id)
+    }
+
     private func episodeTile(_ item: LibraryItem) -> some View {
         MediaTile(
             title: item.title,
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             cornerBadgeURL: showBadgeURL(for: item),
             progress: episodeProgress(item),
+            unavailable: isUnavailable(item),
             onTap: { pushRoute(.episode(itemId: item.id)) }
         ) {
             MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
@@ -286,6 +296,7 @@ struct HomeView: View {
                 coverURL: AppSession.shared.coverURL(forItemId: entry.id),
                 placeholderSystemImage: "book.closed",
                 progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
+                unavailable: isUnavailable(entry.item),
                 onTap: { pushBook(entry.id) }
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
@@ -296,6 +307,7 @@ struct HomeView: View {
                 subtitle: rediscoverSubtitle(pick.reason),
                 coverURL: AppSession.shared.coverURL(forItemId: item.id),
                 progress: episodeProgress(item),
+                unavailable: isUnavailable(item),
                 onTap: { pushRoute(.episode(itemId: item.id)) }
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
