@@ -932,6 +932,16 @@
         }
       }
     },
+    "Checks your podcast subscriptions in the background and notifies you when new episodes are published. Requires notification permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüft deine Podcast-Abos im Hintergrund und benachrichtigt dich, wenn neue Folgen erscheinen. Benötigt die Mitteilungs-Erlaubnis."
+          }
+        }
+      }
+    },
     "Checks your subscriptions in the background and notifies you when new episodes are published. Requires notification permission." : {
       "localizations" : {
         "de" : {
@@ -1940,6 +1950,16 @@
         }
       }
     },
+    "Listening statistics come from Audiobookshelf." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörstatistiken stammen aus Audiobookshelf."
+          }
+        }
+      }
+    },
     "Listening Time" : {
       "localizations" : {
         "de" : {
@@ -2670,6 +2690,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht genug freier Speicher für diesen Download."
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen"
           }
         }
       }

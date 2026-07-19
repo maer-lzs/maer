@@ -15,13 +15,15 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case general, audiobooks, podcasts
+        // E6: the Podcasts pill is gone — its only setting (new-episode
+        // notifications) moved to the tab-independent Notifications section
+        // under General. Audiobooks keeps its playback specifics.
+        case general, audiobooks
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: return "General"
             case .audiobooks: return "Audiobooks"
-            case .podcasts: return "Podcasts"
             }
         }
     }
@@ -59,15 +61,14 @@ struct SettingsView: View {
                 case .general:
                     sourcesSection
                     globalSyncSection
+                    notificationsSection
                     appearanceSection
                     recommendationsSection
+                    statsSection
                     storageSection
                     aboutSection
                 case .audiobooks:
                     playbackSection
-                    statsSection
-                case .podcasts:
-                    podcastNotificationSection
                 }
             }
             .bottomBarClearance()
@@ -326,6 +327,8 @@ struct SettingsView: View {
 
 
 
+    /// E7: statistics moved from the Audiobooks pill to General — labelled with
+    /// their source (today only Audiobookshelf listening data).
     private var statsSection: some View {
         Section {
             NavigationLink {
@@ -333,16 +336,15 @@ struct SettingsView: View {
             } label: {
                 Label("Statistics", systemImage: "chart.bar.fill")
             }
+        } footer: {
+            Text("Listening statistics come from Audiobookshelf.")
         }
     }
 
-    // MARK: - Podcasts
-
-
-    // MARK: - Music
-
-
-    private var podcastNotificationSection: some View {
+    /// E6: tab-independent Notifications section (moved off the removed Podcasts
+    /// pill) — the podcast new-episode toggle lives here, future notification
+    /// settings join it.
+    private var notificationsSection: some View {
         Section {
             Toggle(isOn: $newEpisodeNotifications) {
                 Label("Notify About New Episodes", systemImage: "bell")
@@ -355,8 +357,10 @@ struct SettingsView: View {
                     else { PodcastRefreshService.schedule() }
                 }
             }
+        } header: {
+            Text("Notifications")
         } footer: {
-            Text("Checks your subscriptions in the background and notifies you when new episodes are published. Requires notification permission.")
+            Text("Checks your podcast subscriptions in the background and notifies you when new episodes are published. Requires notification permission.")
         }
     }
 
