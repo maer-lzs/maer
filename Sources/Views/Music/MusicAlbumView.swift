@@ -187,18 +187,43 @@ struct MusicAlbumView: View {
                 }
             }
 
-            Button {
-                Task { await playerCoordinator.open(item: item) }
-            } label: {
-                Label("Play", systemImage: "play.fill")
-                    .frame(maxWidth: 240)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(tracks.isEmpty)
+            playButton
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
+    }
+
+    /// Y40/Y47: matches the primary-play family — a WHITE control glyph on the
+    /// accent capsule (not `.borderedProminent`, whose tint reads gray now), and
+    /// it flips Play↔Pause while THIS album is the active session. Like the book
+    /// detail button (see `ActivePlayButton`) the active case lives in a subview
+    /// that observes the view model directly, since the coordinator only
+    /// republishes when `viewModel` is re-set, not on play/pause within it.
+    @ViewBuilder
+    private var playButton: some View {
+        if let vm = playerCoordinator.viewModel, playerCoordinator.activeItem?.id == item.id {
+            ActiveAlbumPlayButton(viewModel: vm)
+                .disabled(tracks.isEmpty)
+        } else {
+            Button {
+                Task { await playerCoordinator.open(item: item) }
+            } label: {
+                Self.playCapsule(title: String(localized: "Play"), systemImage: "play.fill")
+            }
+            .buttonStyle(.plain)
+            .disabled(tracks.isEmpty)
+        }
+    }
+
+    /// The shared capsule look for the album header's play control — white glyph
+    /// and label on the accent fill.
+    static func playCapsule(title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(.white)
+            .frame(maxWidth: 240)
+            .padding(.vertical, 12)
+            .background(AppTheme.accent, in: Capsule())
     }
 
     private func loadDetail() async {
@@ -220,5 +245,22 @@ struct MusicAlbumView: View {
         guard seconds > 0 else { return "" }
         let s = Int(seconds.rounded())
         return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/// Header play control while THIS album is the active session — observes the
+/// view model directly so it flips Play↔Pause reactively (Y47).
+private struct ActiveAlbumPlayButton: View {
+    @ObservedObject var viewModel: PlayerViewModel
+
+    var body: some View {
+        Button {
+            viewModel.togglePlayPause()
+        } label: {
+            MusicAlbumView.playCapsule(
+                title: viewModel.isPlaying ? String(localized: "Pause") : String(localized: "Play"),
+                systemImage: viewModel.isPlaying ? "pause.fill" : "play.fill")
+        }
+        .buttonStyle(.plain)
     }
 }

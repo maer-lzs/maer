@@ -248,7 +248,7 @@ struct PodcastShowView: View {
                         // item, progress local+iCloud); arrow = save on the server.
                         let item = feedEpisodePlayItem(show: liveShow, feed: ep)
                         HStack(spacing: 12) {
-                            Image(systemName: "play.circle").font(.title2).foregroundStyle(AppTheme.accent)
+                            Image(systemName: "play.circle").font(.title2).foregroundStyle(.secondary)
                             Text(ep.title).font(.subheadline).lineLimit(2)
                             Spacer(minLength: 8)
                             if downloading.contains(ep.id) {
