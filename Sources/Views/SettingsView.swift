@@ -39,9 +39,6 @@ struct SettingsView: View {
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
-    #if DEBUG
-    @AppStorage("brandAccentTrial") private var brandAccentTrial = 0
-    #endif
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
@@ -66,9 +63,6 @@ struct SettingsView: View {
                     recommendationsSection
                     storageSection
                     aboutSection
-                    #if DEBUG
-                    brandAccentTrialSection
-                    #endif
                 case .audiobooks:
                     playbackSection
                     statsSection
@@ -315,21 +309,6 @@ struct SettingsView: View {
             Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
         }
     }
-
-    #if DEBUG
-    /// A1: DEBUG-only GRAY-tone trial — the brand decision (dark gray) is
-    /// final, this picks the exact shade on device; afterwards the tone is
-    /// hard-set and the alternatives removed.
-    private var brandAccentTrialSection: some View {
-        Section("DEBUG: Gray-tone trial") {
-            Picker("Shade", selection: $brandAccentTrial) {
-                Text(verbatim: "Anthrazit (Standard)").tag(0)
-                Text(verbatim: "Schiefer (dunkler)").tag(1)
-                Text(verbatim: "Graphit (heller)").tag(2)
-            }
-        }
-    }
-    #endif
 
     /// Teil 5: ONE opt-out for both Home recommendation sections (Rediscover +
     /// Discover) — same convention as the other metadata toggles (default on).

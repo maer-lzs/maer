@@ -132,25 +132,10 @@ enum AppTheme {
 
     /// A1 (brand decision, final): the accent is DARK GRAY/anthracite — orange
     /// lives on ONLY as the audiobook TYPE color at the tab selector
-    /// (`MediaType.tint`).
-    static let anthraciteShade: GrayShade = ((0.24, 0.26, 0.29), (0.78, 0.80, 0.83))
-    #if DEBUG
-    /// A1 tone trial (DEBUG): two more gray shades behind the existing
-    /// switch — the owner picks on device, then the tone is hard-set and the
-    /// alternatives go. 1 = slate (darker), 2 = graphite (lighter).
-    static let slateShade: GrayShade = ((0.17, 0.19, 0.22), (0.68, 0.71, 0.75))
-    static let graphiteShade: GrayShade = ((0.33, 0.36, 0.39), (0.86, 0.88, 0.90))
-
-    private static var currentShade: GrayShade {
-        switch UserDefaults.standard.integer(forKey: "brandAccentTrial") {
-        case 1: return slateShade
-        case 2: return graphiteShade
-        default: return anthraciteShade
-        }
-    }
-    #else
-    private static var currentShade: GrayShade { anthraciteShade }
-    #endif
+    /// (`MediaType.tint`). Adaptive by design (a fixed dark gray would vanish
+    /// on the always-dark player/hero surfaces); the tone is hard-set after the
+    /// on-device trial.
+    private static let currentShade: GrayShade = ((0.24, 0.26, 0.29), (0.78, 0.80, 0.83))
 
     static var accent: Color { Color(accentUIColor) }
 
