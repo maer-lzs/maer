@@ -68,7 +68,7 @@ struct GPodderSettingsView: View {
                         isSyncing = false
                     }
                 } label: {
-                    Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Sync Now", systemImage: "arrow.clockwise")
                 }
                 .disabled(isSyncing || !enabled || serverURL.isEmpty)
 
