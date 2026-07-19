@@ -90,6 +90,7 @@ struct ABSPlayerApp: App {
         // UI-test harness only (compiles out of Release, no-op without -uitest):
         // bypass login + seed deterministic content BEFORE the first render.
         UITestSeed.applyIfRequested()
+        UITestSeed.applySetupProbeIfRequested()
         #endif
     }
 

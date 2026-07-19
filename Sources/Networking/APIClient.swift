@@ -56,6 +56,11 @@ final class APIClient {
     /// showing an error in the middle of the library.
     var onUnauthorized: (() -> Void)?
 
+    /// F10: ABS is a SOURCE like the others — without a signed-in server it
+    /// is simply unavailable (tab hidden, search fan-out skips it) instead of
+    /// a forced empty library.
+    var isAvailable: Bool { token?.isEmpty == false }
+
     init(baseURL: URL, token: String? = nil) {
         self.baseURL = baseURL
         self.token = token
@@ -67,6 +72,11 @@ final class APIClient {
 
     func updateToken(_ token: String) {
         self.token = token
+    }
+
+    /// F10: logout empties the client — `isAvailable` flips with it.
+    func clearToken() {
+        self.token = nil
     }
 
     // MARK: Login

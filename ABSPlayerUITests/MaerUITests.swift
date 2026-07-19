@@ -265,6 +265,23 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the X on an empty field must close the search")
     }
 
+    /// F10: the serverless path — the setup offers the equal "start without a
+    /// server" button; tapping it lands in the app (settings reachable, no
+    /// audiobooks tab without a book source).
+    func testServerlessOnboarding() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest-setup"]
+        app.launch()
+        let start = app.buttons["start-serverless"].firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 15), "setup must offer the serverless path")
+        start.tap()
+        XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 15),
+                      "serverless start must land in the app")
+        XCTAssertFalse(app.buttons["tab-audiobooks"].firstMatch.exists,
+                       "no book source → no audiobooks tab")
+        app.terminate()
+    }
+
     /// Y37: the source toggle drives the tab bar LIVE in both directions —
     /// switching the music source off removes the Music tab without a restart,
     /// switching it back on restores it.

@@ -500,6 +500,9 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func loadLibrary() async {
+        // F10: no signed-in book source (serverless start) — nothing to load,
+        // and no fake offline/error state on the aggregation surfaces.
+        guard provider.isAvailable else { return }
         if loadInFlight {
             reloadQueued = true
             return

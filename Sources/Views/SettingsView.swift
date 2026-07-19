@@ -51,6 +51,9 @@ struct SettingsView: View {
     @State private var isSyncing = false
     @State private var showDeleteAllDownloads = false
     @State private var showLogoutConfirm = false
+    /// F10: attach Audiobookshelf from serverless mode (Setup as a sheet).
+    @State private var showABSSetup = false
+    @ObservedObject private var authViewModel = AppSession.shared.authViewModel
 
     /// Same speed steps as the full player's speed menu.
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
@@ -93,6 +96,14 @@ struct SettingsView: View {
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("settings-done")
             }
+        }
+        // F10: the ABS login as a sheet from serverless mode; a successful
+        // connect closes it (RootView's normal switch takes over otherwise).
+        .sheet(isPresented: $showABSSetup) {
+            SetupView(viewModel: authViewModel)
+        }
+        .onChange(of: authViewModel.isLoggedIn) { _, loggedIn in
+            if loggedIn { showABSSetup = false }
         }
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
@@ -243,17 +254,26 @@ struct SettingsView: View {
 
     private var serverSection: some View {
         Section("Server") {
-            LabeledContent {
-                Text(AppSession.shared.apiClient.baseURL.absoluteString)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            } label: {
-                Label("Address", systemImage: "server.rack")
-            }
-            Button(role: .destructive) {
-                showLogoutConfirm = true
-            } label: {
-                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+            if authViewModel.isLoggedIn {
+                LabeledContent {
+                    Text(AppSession.shared.apiClient.baseURL.absoluteString)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                } label: {
+                    Label("Address", systemImage: "server.rack")
+                }
+                Button(role: .destructive) {
+                    showLogoutConfirm = true
+                } label: {
+                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            } else {
+                // F10: serverless mode — Audiobookshelf attaches HERE, anytime.
+                Button {
+                    showABSSetup = true
+                } label: {
+                    Label("Connect to Audiobookshelf", systemImage: "server.rack")
+                }
             }
         }
     }

@@ -15,6 +15,16 @@ enum UITestSeed {
     /// by an ever-present, tappable mini player; only the full-player journey
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
+    /// F10 journey: force the SETUP screen (no login, no serverless flag) —
+    /// independent of the seeded mode.
+    static var forcesSetup: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-setup") }
+
+    static func applySetupProbeIfRequested() {
+        guard forcesSetup else { return }
+        AppStorageKeys.serverlessModeValue = false
+        AppSession.shared.apiClient.clearToken()
+        AppSession.shared.authViewModel.isLoggedIn = false
+    }
 
     /// F6: seeded "New Shows" catalog for the search journey — real directory
     /// requests would leave the harness. Active only in seed mode.
@@ -33,6 +43,9 @@ enum UITestSeed {
         guard isActive else { return }
         let session = AppSession.shared
         session.authViewModel.isLoggedIn = true
+        // F10: `isAvailable` is token-driven now — the harness needs one so
+        // the audiobooks tab (and the ABS search path) stay seeded-visible.
+        session.apiClient.updateToken("uitest-token")
 
         // Audiobooks — one with chapters, one without.
         let books = [

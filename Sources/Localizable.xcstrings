@@ -1025,6 +1025,16 @@
         }
       }
     },
+    "Connect to Audiobookshelf" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Audiobookshelf verbinden"
+          }
+        }
+      }
+    },
     "Continue" : {
       "localizations" : {
         "de" : {
@@ -1896,6 +1906,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ältere Folgen laden"
+          }
+        }
+      }
+    },
+    "Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcasts sofort hören — ganz ohne Konto. Audiobookshelf, ein Musik-Server oder Podcast-Sync lassen sich jederzeit in den Einstellungen ergänzen. Beim Verbinden mit einem Server im Heimnetz fragt iOS ggf. nach der Berechtigung fürs lokale Netzwerk."
           }
         }
       }
@@ -3942,6 +3962,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Timer beenden"
+          }
+        }
+      }
+    },
+    "Start without a server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Server loslegen"
           }
         }
       }

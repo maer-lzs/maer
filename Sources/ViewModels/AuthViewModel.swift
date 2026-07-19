@@ -116,6 +116,8 @@ final class AuthViewModel: ObservableObject {
             apiToken = ""
             password = ""
             isLoggedIn = true
+            // Y37/F10: the book tab appears live once the source exists.
+            AppSession.shared.notifySourcesChanged()
         } catch {
             errorMessage = Self.friendlyMessage(for: error)
         }
@@ -123,7 +125,11 @@ final class AuthViewModel: ObservableObject {
 
     func logout() {
         KeychainStore.delete(forKey: KeychainKey.apiToken)
+        // F10: empty the client too — `isAvailable` (tab visibility, search
+        // fan-out) must flip with the logout, not only the root switch.
+        apiClient.clearToken()
         isLoggedIn = false
+        AppSession.shared.notifySourcesChanged()
     }
 
     private static func normalizedURL(from raw: String) -> URL? {

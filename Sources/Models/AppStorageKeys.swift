@@ -113,6 +113,14 @@ nonisolated enum AppStorageKeys {
 
     // MARK: - Subsonic / Navidrome (music source)
 
+    /// F10: the user chose to run WITHOUT an ABS server (podcasts-first);
+    /// every source stays individually attachable in the settings.
+    static let serverlessMode = "serverlessMode"
+    static var serverlessModeValue: Bool {
+        get { UserDefaults.standard.bool(forKey: serverlessMode) }
+        set { UserDefaults.standard.set(newValue, forKey: serverlessMode) }
+    }
+
     static let subsonicServerURL = "subsonicServerURL"
     static let subsonicUsername = "subsonicUsername"
     static let subsonicEnabled = "subsonicEnabled"

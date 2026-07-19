@@ -12,6 +12,10 @@ final class LocalProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "local" }
+    /// F10: like the RSS source, availability is CONTENT-driven — the local
+    /// source only surfaces the audiobooks tab once files were imported (a
+    /// serverless podcasts-first start is not greeted by an empty book tab).
+    var isAvailable: Bool { !library.libraryItems().isEmpty }
     /// No capabilities: no server sync, no server bookmarks, no remote search,
     /// no password login.
     var capabilities: ProviderCapabilities { [] }

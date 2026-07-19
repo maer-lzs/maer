@@ -98,6 +98,25 @@ struct SetupView: View {
                         Text("Connects to a public demo server with sample audiobooks.")
                     }
                 }
+
+                // F10: the EQUAL second path — no server required. Podcasts
+                // work immediately; every server source (Audiobookshelf,
+                // music, gpodder) attaches later in the settings.
+                Section {
+                    Button {
+                        AppStorageKeys.serverlessModeValue = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Start without a server")
+                            Spacer()
+                        }
+                    }
+                    // Locale-independent handle for the UI-test harness.
+                    .accessibilityIdentifier("start-serverless")
+                } footer: {
+                    Text("Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
+                }
             }
             .navigationTitle("Audiobookshelf")
         }
