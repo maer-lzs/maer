@@ -117,6 +117,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
     @Published var sleepTimerRemaining: TimeInterval?
+    /// F2: raw ICY StreamTitle from the live stream (radio) — parsed for
+    /// display via `icyNowPlaying`; reset on every item switch.
+    @Published var icyStreamTitle: String?
+    /// Keeps the metadata-output delegate alive (the output holds it weakly).
+    private var icyCollector: ICYMetadataCollector?
     /// True while the sleep timer runs in "until end of chapter" mode (for the
     /// menu display).
     @Published var sleepUntilChapterEnd = false
@@ -553,6 +558,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
+        icyStreamTitle = nil   // F2: never carry a song title across items
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             // Decide per track: a partially downloaded book can mix local
@@ -564,6 +570,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 let headers = provider.streamAuthHeaders(forItemId: self.item?.id ?? "")
                 let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
                 item = AVPlayerItem(asset: asset)
+            }
+            // F2: live radio — tap the in-stream ICY metadata (song title)
+            // for the player UI and the lock screen.
+            if self.item?.id.hasPrefix("radio:") == true {
+                let output = AVPlayerItemMetadataOutput(identifiers: nil)
+                let collector = ICYMetadataCollector { [weak self] value in
+                    Task { @MainActor in
+                        guard let self, self.icyStreamTitle != value else { return }
+                        self.icyStreamTitle = value
+                        self.updateNowPlayingInfo()
+                    }
+                }
+                icyCollector = collector
+                output.setDelegate(collector, queue: DispatchQueue(label: "de.lzs.maer.icy"))
+                item.add(output)
             }
             itemTrackIndex[ObjectIdentifier(item)] = index
             items.append(item)
@@ -979,5 +1000,27 @@ final class PlayerViewModel: NSObject, ObservableObject {
         syncTask?.cancel()
         sleepTask?.cancel()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+}
+
+
+/// F2: ICY timed-metadata tap for live radio. AVFoundation calls the delegate
+/// on OUR serial queue — nonisolated by construction (the Y32 class rule);
+/// the value hops to the MainActor inside `onValue`.
+private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMetadataOutputPushDelegate {
+    private let onValue: @Sendable (String) -> Void
+    init(onValue: @escaping @Sendable (String) -> Void) { self.onValue = onValue }
+
+    func metadataOutput(_ output: AVPlayerItemMetadataOutput,
+                        didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup],
+                        from track: AVPlayerItemTrack?) {
+        for group in groups {
+            for item in group.items {
+                if let value = item.stringValue, !value.isEmpty {
+                    onValue(value)
+                    return
+                }
+            }
+        }
     }
 }

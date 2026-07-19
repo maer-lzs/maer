@@ -13,11 +13,28 @@ extension PlayerViewModel {
     /// not the album.
     var isMusicItem: Bool { item?.id.hasPrefix("sub:") == true }
 
+    /// F2: live radio (`radio:`) — no duration, no seek, elapsed only; the
+    /// player switches to its live abstraction and Now Playing flags the
+    /// stream as live.
+    var isLiveStream: Bool { item?.id.hasPrefix("radio:") == true }
+
+    /// F2: ICY "Artist - Title" parsed from the in-stream metadata (nil while
+    /// the stream sent nothing yet).
+    var icyNowPlaying: (title: String, artist: String?)? {
+        icyStreamTitle.flatMap { ICYMetadata.parse(streamTitle: $0) }
+    }
+
     /// X14: the large title = the work (book/episode title; the SONG title for
     /// music). One derivation for the full player, lock screen and CarPlay —
     /// never empty.
     var nowPlayingTitle: String {
-        NowPlayingPresentation.title(
+        // F2: live radio — the ICY song title when the stream ships one,
+        // otherwise the station name.
+        if isLiveStream {
+            if let icy = icyNowPlaying { return icy.title }
+            return item?.media.metadata?.title ?? String(localized: "Radio")
+        }
+        return NowPlayingPresentation.title(
             isMusic: isMusicItem,
             songTitle: currentMusicSong?.title,
             workTitle: item?.media.metadata?.title,
@@ -29,6 +46,14 @@ extension PlayerViewModel {
     /// author (a fallback marker is never a chapter name → suppressed). The full
     /// player uses its own richer line (it also surfaces the fallback marker).
     var nowPlayingSubtitle: String? {
+        // F2: live radio — artist from ICY; with a song title showing, the
+        // station name moves to the subtitle slot.
+        if isLiveStream {
+            if let icy = icyNowPlaying {
+                return icy.artist ?? item?.media.metadata?.title
+            }
+            return nil
+        }
         let author = item?.media.metadata?.authorName
         if isMusicItem { return author }
         return NowPlayingPresentation.subtitle(
@@ -83,9 +108,16 @@ extension PlayerViewModel {
         // Activity.
         info[MPMediaItemPropertyTitle] = nowPlayingTitle
         info[MPMediaItemPropertyArtist] = nowPlayingSubtitle ?? ""
-        info[MPMediaItemPropertyPlaybackDuration] = duration
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0
+        if isLiveStream {
+            // F2: the system live treatment (no scrubber, "LIVE" pill on the
+            // lock screen) — duration/elapsed stay out.
+            info[MPNowPlayingInfoPropertyIsLiveStream] = true
+            info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0
+        } else {
+            info[MPMediaItemPropertyPlaybackDuration] = duration
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+            info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? Double(playbackRate) : 0
+        }
         if let artworkImage {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(
                 boundsSize: artworkImage.size,

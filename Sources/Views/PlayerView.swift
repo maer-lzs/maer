@@ -185,7 +185,11 @@ struct PlayerView: View {
     @ViewBuilder
     private var controlsColumn: some View {
         chapterHeader
-        scrubber
+        if viewModel.isLiveStream {
+            liveRow
+        } else {
+            scrubber
+        }
         transportControls
         secondaryControls
         tertiaryControls
@@ -304,6 +308,24 @@ struct PlayerView: View {
         return Date().addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened)
     }
 
+    /// F2: live radio — no scrubber, no duration; a LIVE mark plus the
+    /// elapsed listening time (the only honest number for a stream).
+    private var liveRow: some View {
+        HStack(spacing: 8) {
+            Circle().fill(.red).frame(width: 8, height: 8)
+            Text(verbatim: "LIVE")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+            Spacer()
+            Text(format(viewModel.currentTime))
+                .monospacedDigit()
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+        .padding(.horizontal, 24)
+        .frame(minHeight: 44)
+    }
+
     private var scrubber: some View {
         VStack(spacing: 8) {
             Slider(
@@ -362,7 +384,21 @@ struct PlayerView: View {
         .padding(.horizontal, 24)
     }
 
+    @ViewBuilder
     private var transportControls: some View {
+        if viewModel.isLiveStream {
+            // F2: live — play/pause is the whole transport.
+            Button { viewModel.togglePlayPause() } label: {
+                Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                    .font(.system(size: 68))
+            }
+            .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
+        } else {
+            fullTransportControls
+        }
+    }
+
+    private var fullTransportControls: some View {
         let skip = Int(viewModel.skipInterval)
         // D2: `.title`-scaled icons at AX sizes pushed the row past the screen
         // edge — tighter spacing and a capped type size keep all five controls
@@ -406,7 +442,23 @@ struct PlayerView: View {
     /// D2: one horizontal row while it fits; at accessibility sizes the four
     /// controls fall back to a leading-aligned two-column grid instead of
     /// clipping past the screen edge.
+    @ViewBuilder
     private var secondaryControls: some View {
+        if viewModel.isLiveStream {
+            // F2: no speed, no chapters, no skip interval for live audio —
+            // the sleep timer stays (clock-based options only; the chapter/
+            // track-end options gate themselves out without chapters).
+            HStack(spacing: 32) {
+                sleepControl
+            }
+            .font(.footnote)
+            .padding(.top, 4)
+        } else {
+            regularSecondaryControls
+        }
+    }
+
+    private var regularSecondaryControls: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 32) {
                 speedControl
