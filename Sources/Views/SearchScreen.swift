@@ -499,52 +499,79 @@ struct SearchScreen: View {
         }
     }
 
-    /// Upper tier: drilldown entry points with counts. Audiobooks get
-    /// Authors/Series/Genres, music gets Artists; podcasts have none (shows
-    /// ARE the unit — straight to the raster). The library scope shows the
-    /// MIXED tier of all types and no giant raster below it.
+    /// Upper tier (Y43): drilldown entry points as Apple-Podcasts-style TILES —
+    /// a 2-column raster of glyph + title + count. Same targets as the former
+    /// rows (drill or scope switch); a deliberate trial, cheap to revert (render
+    /// `deckEntries` as `deckEntryRow`s instead of `deckEntryTile`s). Audiobooks
+    /// get Authors/Series/Genres, music gets Artists; podcasts/radio have none
+    /// (shows/stations ARE the unit). The library scope shows the mixed tier.
     @ViewBuilder
     private var deckTier: some View {
+        let entries = deckEntries
+        if !entries.isEmpty {
+            LazyVGrid(columns: Self.tierColumns, spacing: 12) {
+                ForEach(entries) { deckEntryTile($0) }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
+        }
+    }
+
+    private static let tierColumns = [GridItem(.flexible(), spacing: 12),
+                                      GridItem(.flexible(), spacing: 12)]
+
+    /// One entry-point descriptor — decouples the tier's data (title, glyph,
+    /// count, target) from its presentation, so the tile/row swap is one line.
+    private struct DeckEntry: Identifiable {
+        let id: String
+        let title: String
+        let systemImage: String
+        let count: Int
+        let action: () -> Void
+    }
+
+    private var deckEntries: [DeckEntry] {
         switch scope {
-        case .audiobooks:
-            audiobookTier
-        case .music:
-            artistTierRow
-        case .podcasts, .radio:
-            EmptyView()
+        case .audiobooks: return audiobookDeckEntries
+        case .music: return [artistDeckEntry]
+        case .podcasts, .radio: return []
         case .library:
-            audiobookTier
-            deckEntryRow(title: String(localized: "Shows"), count: subscribedShows.count) {
-                scope = .podcasts
-            }
-            artistTierRow
-            deckEntryRow(title: String(localized: "Albums"), count: cachedAlbums.count) {
-                scope = .music
-            }
+            return audiobookDeckEntries + [
+                DeckEntry(id: "shows", title: String(localized: "Shows"),
+                          systemImage: "mic.fill", count: subscribedShows.count) { scope = .podcasts },
+                artistDeckEntry,
+                DeckEntry(id: "albums", title: String(localized: "Albums"),
+                          systemImage: "square.stack.fill", count: cachedAlbums.count) { scope = .music },
+            ]
         }
     }
 
-    @ViewBuilder
-    private var audiobookTier: some View {
-        deckEntryRow(title: String(localized: "Authors"), count: libraryViewModel.authorGroups.count) {
-            withAnimation(.snappy(duration: 0.2)) {
-                drill.append(.groups(title: String(localized: "Authors"), groups: libraryViewModel.authorGroups))
-            }
-        }
-        deckEntryRow(title: String(localized: "Series"), count: seriesGroups.count) {
-            withAnimation(.snappy(duration: 0.2)) {
-                drill.append(.groups(title: String(localized: "Series"), groups: seriesGroups))
-            }
-        }
-        deckEntryRow(title: String(localized: "Genres"), count: libraryViewModel.genreGroups.count) {
-            withAnimation(.snappy(duration: 0.2)) {
-                drill.append(.groups(title: String(localized: "Genres"), groups: libraryViewModel.genreGroups))
-            }
-        }
+    private var audiobookDeckEntries: [DeckEntry] {
+        [
+            DeckEntry(id: "authors", title: String(localized: "Authors"),
+                      systemImage: "person.2.fill", count: libraryViewModel.authorGroups.count) {
+                withAnimation(.snappy(duration: 0.2)) {
+                    drill.append(.groups(title: String(localized: "Authors"), groups: libraryViewModel.authorGroups))
+                }
+            },
+            DeckEntry(id: "series", title: String(localized: "Series"),
+                      systemImage: "books.vertical.fill", count: seriesGroups.count) {
+                withAnimation(.snappy(duration: 0.2)) {
+                    drill.append(.groups(title: String(localized: "Series"), groups: seriesGroups))
+                }
+            },
+            DeckEntry(id: "genres", title: String(localized: "Genres"),
+                      systemImage: "theatermasks.fill", count: libraryViewModel.genreGroups.count) {
+                withAnimation(.snappy(duration: 0.2)) {
+                    drill.append(.groups(title: String(localized: "Genres"), groups: libraryViewModel.genreGroups))
+                }
+            },
+        ]
     }
 
-    private var artistTierRow: some View {
-        deckEntryRow(title: String(localized: "Artists"), count: artistCount ?? 0) {
+    private var artistDeckEntry: DeckEntry {
+        DeckEntry(id: "artists", title: String(localized: "Artists"),
+                  systemImage: "music.mic", count: artistCount ?? 0) {
             Task {
                 let artists = (try? await SubsonicProvider.shared.allArtists()) ?? []
                 withAnimation(.snappy(duration: 0.2)) {
@@ -555,6 +582,37 @@ struct SearchScreen: View {
         }
     }
 
+    /// Apple-Podcasts-style entry tile: glyph + count on top, title below.
+    private func deckEntryTile(_ entry: DeckEntry) -> some View {
+        Button(action: entry.action) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top) {
+                    Image(systemName: entry.systemImage)
+                        .font(.title2)
+                        .foregroundStyle(AppTheme.accent)
+                    Spacer()
+                    Text("\(entry.count)")
+                        .font(.subheadline).monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                Text(entry.title)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(14)
+            .frame(minHeight: 92, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.06)))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("deck-tier-\(entry.id)")
+    }
+
+    /// Drilldown sub-level row (still a row — the drilled lists of individual
+    /// authors/series/artists are long, not a tile grid). Y43 only changed the
+    /// upper ENTRY tier to tiles.
     private func deckEntryRow(title: String, count: Int, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack {
