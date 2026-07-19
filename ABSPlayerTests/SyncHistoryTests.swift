@@ -51,5 +51,51 @@ struct SyncHistoryTests {
         #expect(relaunched.entries.count == 2)
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
     }
+
+    /// Y36 candidate check: a `.music` entry (Y27 counters) survives the
+    /// persistence round-trip exactly like the older services.
+    @MainActor
+    @Test("a .music entry persists across relaunch with its counters")
+    func musicEntryRoundTrip() {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: file) }
+
+        let store = SyncHistoryStore(fileURL: file)
+        store.append(SyncHistory.entry(
+            service: .music, direction: .down,
+            counters: [.init(key: .albumsUpdated, value: 42),
+                       .init(key: .songsUpdated, value: 512)],
+            duration: 2.0, deviceId: "dev-1"))
+
+        let relaunched = SyncHistoryStore(fileURL: file)
+        #expect(relaunched.entries.count == 1)
+        #expect(relaunched.entries.first?.service == .music)
+        #expect(relaunched.entries.first?.counters.map(\.value) == [42, 512])
+    }
+
+    /// Y36 (Regel 3): an unreadable history file is parked as evidence, the
+    /// store starts empty, and the next append begins a fresh ring.
+    @MainActor
+    @Test("a corrupt history file is parked, not silently overwritten")
+    func corruptFileParked() {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
+        let parked = file.appendingPathExtension("corrupt")
+        defer {
+            try? FileManager.default.removeItem(at: file)
+            try? FileManager.default.removeItem(at: parked)
+        }
+        try? Data("not json".utf8).write(to: file)
+
+        let store = SyncHistoryStore(fileURL: file)
+        #expect(store.entries.isEmpty)
+        #expect(FileManager.default.fileExists(atPath: parked.path))
+
+        store.append(SyncHistory.entry(service: .music, direction: .down,
+                                       counters: [], duration: 0, deviceId: "dev-1"))
+        let relaunched = SyncHistoryStore(fileURL: file)
+        #expect(relaunched.entries.count == 1)
+    }
 }
 #endif

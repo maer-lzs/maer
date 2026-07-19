@@ -25,14 +25,27 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         self.fileURL = fileURL ?? FileManager.default
             .urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("syncHistory.json")
-        if let data = try? Data(contentsOf: self.fileURL),
-           let stored = try? JSONDecoder().decode([SyncHistoryEntry].self, from: data) {
-            entries = SyncHistory.trimmed(stored)
+        // Y36 (Regel 3): a failed load must never be silent — a corrupt file
+        // would drop the whole history and the next append would overwrite it.
+        if FileManager.default.fileExists(atPath: self.fileURL.path) {
+            do {
+                let data = try Data(contentsOf: self.fileURL)
+                entries = SyncHistory.trimmed(try JSONDecoder().decode([SyncHistoryEntry].self, from: data))
+                Logger.library.info("sync history loaded: \(self.entries.count) entries")
+            } catch {
+                Logger.library.error("sync history load FAILED: \(error.localizedDescription, privacy: .public)")
+                // Park the unreadable file as evidence — otherwise the next
+                // append would silently overwrite it with a fresh ring.
+                let parked = self.fileURL.appendingPathExtension("corrupt")
+                try? FileManager.default.removeItem(at: parked)
+                try? FileManager.default.moveItem(at: self.fileURL, to: parked)
+            }
         }
     }
 
     func append(_ entry: SyncHistoryEntry) {
         entries = SyncHistory.trimmed([entry] + entries)
+        Logger.library.info("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
         do {
             let data = try JSONEncoder().encode(entries)
             try data.write(to: fileURL, options: .atomic)

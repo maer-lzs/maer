@@ -72,31 +72,49 @@ final class SubsonicProvider: AudioProvider {
         catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
     }
 
+    /// F9 seam (Y36): injectable history store so the sync core is testable.
+    var historyStore: any SyncHistoryStoring = SyncHistoryStore.shared
+
     /// Y27: the music library refresh as a VISIBLE operation (sync parity
     /// with the other sources): fetch the album list fresh, remember it, and
     /// record a history entry — numbers, duration, errors in clear text.
     func syncLibraryNow() async -> String? {
-        guard let client else { return String(localized: "Enter server, username and password.") }
+        guard let client else {
+            // Y36 diagnosis: a press that never reaches the sync core must be
+            // visible in the device log.
+            Logger.music.error("music sync pressed but no client (URL/user missing)")
+            return String(localized: "Enter server, username and password.")
+        }
+        return await runLibrarySync { try await client.albumList2(type: "alphabeticalByName", size: 500) }
+    }
+
+    /// Testable core (fetch injected): success remembers the albums, records
+    /// a `.music` history entry and fires `librarySynced`; failure records an
+    /// error entry. Every path logs (Y36 device diagnosis).
+    func runLibrarySync(fetch: () async throws -> [SubsonicAlbum]) async -> String? {
         let started = Date()
+        Logger.music.info("music sync started")
         do {
-            let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
+            let albums = try await fetch()
             remember(await Self.mapAlbums(albums))
             let songs = albums.reduce(0) { $0 + ($1.songCount ?? 0) }
-            SyncHistoryStore.shared.append(SyncHistory.entry(
+            historyStore.append(SyncHistory.entry(
                 service: .music, direction: .down,
                 counters: [.init(key: .albumsUpdated, value: albums.count),
                            .init(key: .songsUpdated, value: songs)],
                 duration: Date().timeIntervalSince(started),
                 deviceId: SyncHistoryStore.deviceId, startedAt: started))
+            Logger.music.info("music sync ok: \(albums.count) albums, \(songs) songs — history entry appended")
             return nil
         } catch {
             let message = (error as? SubsonicClient.SubsonicError)?.errorDescription
                 ?? error.localizedDescription
-            SyncHistoryStore.shared.append(SyncHistory.entry(
+            historyStore.append(SyncHistory.entry(
                 service: .music, direction: .down, counters: [],
                 duration: Date().timeIntervalSince(started),
                 error: message,
                 deviceId: SyncHistoryStore.deviceId, startedAt: started))
+            Logger.music.error("music sync failed: \(message, privacy: .public) — error entry appended")
             return message
         }
     }
