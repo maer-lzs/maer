@@ -72,31 +72,51 @@ struct SubsonicClient {
 
     private func get(_ endpoint: String, _ params: [String: String] = [:]) async throws -> SubsonicBody {
         guard let url = requestURL(endpoint, params) else { throw SubsonicError.badURL }
-        let data: Data
-        do {
-            (data, _) = try await URLSession.maer.data(from: url)
-        } catch {
-            throw SubsonicError.network
+        // Y39: retry parity with the ABS client — transient failures and the
+        // 401 probe run INSIDE the shared policy fetch; on top the Subsonic
+        // specialty: auth errors arrive as API code 40/41 in a 200 envelope,
+        // so those get the SAME single probe before they count.
+        var envelopeAuthAttempt = 0
+        while true {
+            let data: Data
+            let http: HTTPURLResponse?
+            do {
+                (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
+            } catch {
+                throw SubsonicError.network
+            }
+            if let status = http?.statusCode, !(200...299).contains(status) {
+                // Survived the policy (incl. the HTTP-401 probe) — final.
+                throw status == 401
+                    ? SubsonicError.api(code: 40, message: nil)
+                    : SubsonicError.network
+            }
+            // Decode off-main — album catalogs are large and this used to run on
+            // the main actor (project default isolation). Same pattern as APIClient.
+            guard let env = try? await Task.detached(priority: .userInitiated, operation: {
+                // Regression guard: envelope decode stays off the main actor.
+                #if DEBUG
+                dispatchPrecondition(condition: .notOnQueue(.main))
+                #endif
+                return try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
+            }).value else {
+                throw SubsonicError.decoding
+            }
+            let body = env.subsonicResponse
+            if let err = body.error {
+                if case .retry(let ms) = RequestRetryPolicy.subsonicDecision(
+                    apiCode: err.code, attempt: envelopeAuthAttempt) {
+                    envelopeAuthAttempt += 1
+                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                    continue
+                }
+                throw SubsonicError.api(code: err.code, message: err.message)
+            }
+            guard body.status == "ok" else {
+                throw SubsonicError.api(code: -1, message: body.status)
+            }
+            return body
         }
-        // Decode off-main — album catalogs are large and this used to run on
-        // the main actor (project default isolation). Same pattern as APIClient.
-        guard let env = try? await Task.detached(priority: .userInitiated, operation: {
-            // Regression guard: envelope decode stays off the main actor.
-            #if DEBUG
-            dispatchPrecondition(condition: .notOnQueue(.main))
-            #endif
-            return try JSONDecoder().decode(SubsonicEnvelope.self, from: data)
-        }).value else {
-            throw SubsonicError.decoding
-        }
-        let body = env.subsonicResponse
-        if let err = body.error {
-            throw SubsonicError.api(code: err.code, message: err.message)
-        }
-        guard body.status == "ok" else {
-            throw SubsonicError.api(code: -1, message: body.status)
-        }
-        return body
     }
 
     // MARK: - Endpoints

@@ -36,5 +36,20 @@ struct RequestRetryPolicyTests {
         #expect(RequestRetryPolicy.decide(status: nil, urlErrorCode: NSURLErrorNotConnectedToInternet,
                                           attempt: 0) == .fail)
     }
+
+    /// Y39: Subsonic auth codes (200-envelope) ride the SAME 401 probe; every
+    /// other API code is final on the spot.
+    @Test("subsonic envelope auth codes probe once, other codes fail")
+    func subsonicEnvelopeMapping() {
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 40, attempt: 0) == .retry(afterMs: 500))
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 40, attempt: 1) == .fail)
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 41, attempt: 0) == .retry(afterMs: 500))
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 41, attempt: 1) == .fail)
+        // 50 = "not authorized for this operation" (permissions, not
+        // credentials), 70 = not found — both final, no probe.
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 50, attempt: 0) == .fail)
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 70, attempt: 0) == .fail)
+        #expect(RequestRetryPolicy.subsonicDecision(apiCode: 0, attempt: 0) == .fail)
+    }
 }
 #endif

@@ -52,6 +52,50 @@ nonisolated enum RequestRetryPolicy {
 
     static let transientBackoffMs = [400, 1200]
 
+    /// Y39: Subsonic reports auth failures as an API code INSIDE a 200
+    /// envelope (40 = wrong credentials, 41 = token auth unsupported) — map
+    /// them onto the 401 probe so a gateway hiccup doesn't read as "wrong
+    /// password". Every other API code is final.
+    static func subsonicDecision(apiCode: Int, attempt: Int) -> Decision {
+        (apiCode == 40 || apiCode == 41)
+            ? decide(status: 401, urlErrorCode: nil, attempt: attempt)
+            : .fail
+    }
+
+    /// Y39: one policy-driven fetch loop for the NON-ABS clients (Subsonic
+    /// envelope requests, RSS feed pulls) — the ABS `APIClient.perform` runs
+    /// the same policy with its own logout hook. Returns the LAST response
+    /// (even non-2xx) so the caller keeps its own status semantics; URL-level
+    /// errors rethrow after the policy gives up.
+    static func fetch(_ request: URLRequest,
+                      session: URLSession? = nil) async throws -> (Data, HTTPURLResponse?) {
+        // Default argument can't reference `.maer` here (isolation of the
+        // default-value context) — resolve inside instead.
+        let session = session ?? URLSession.maer
+        var attempt = 0
+        while true {
+            do {
+                let (data, response) = try await session.data(for: request)
+                let http = response as? HTTPURLResponse
+                if let status = http?.statusCode, !(200...299).contains(status),
+                   case .retry(let ms) = decide(status: status, urlErrorCode: nil, attempt: attempt) {
+                    attempt += 1
+                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                    continue
+                }
+                return (data, http)
+            } catch let urlError as URLError {
+                if case .retry(let ms) = decide(status: nil, urlErrorCode: urlError.code.rawValue,
+                                                attempt: attempt) {
+                    attempt += 1
+                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                    continue
+                }
+                throw urlError
+            }
+        }
+    }
+
     static func decide(status: Int?, urlErrorCode: Int?, attempt: Int) -> Decision {
         if status == 401 {
             return attempt == 0 ? .retry(afterMs: 500) : .fail

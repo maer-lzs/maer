@@ -66,6 +66,8 @@ plain `NavigationLink { destination }` would stay on the stack.
 | `SearchableProvider` (capability) + `SearchRanking`/`PodcastLocalSearch` | APIClient (ABS: books/authors/series, server search; offline = cached entries) · SubsonicProvider (search3: albums/songs/artists; offline = cached items) · RSSProvider (ALL subscribed shows incl. abspod via `allShows()` — the ABS-podcast provider deliberately does not conform, one searcher) | `search(query:) -> [SearchResult]` (typed, namespaced ids, `isPlayableNow` for the offline glyph rule); offline-first through the SAME protocol |
 | `RediscoverSections` | HomeView (Rediscover row) | `picks(paused:unheard:seriesNext:now:daySeed:limit)` — three prioritized local sources (paused > 3 weeks · unheard > 30 days · next volume after a finished predecessor; both thresholds named constants), seeded daily rotation (`daySeed(for:)`), round-robin mix; `volume(fromSeriesName:)` parses the ABS "#N" convention; no candidates ⇒ empty ⇒ section hidden |
 
+| `RequestRetryPolicy` (+ `fetch`) | APIClient `perform` (ABS, with logout hook after a CONFIRMED 401) · SubsonicClient `get` (Y39: shared `RequestRetryPolicy.fetch` loop + envelope-auth probe `subsonicDecision` for API codes 40/41) · `PodcastSubscriptions.fetchAndParse` (Y39: every feed pull — subscribe, refreshAll, preview) | Pure per-attempt decision: 401 → ONE probe (500 ms) then fail; 429/5xx/timeout/connLost/cannotConnect → backoff [400, 1200]; real offline final. `fetch(_:session:)` = the policy loop for non-ABS callers, returns the last response so callers keep their own status semantics |
+
 ## State & chrome
 
 | Component | Used by | Parameters / variants |

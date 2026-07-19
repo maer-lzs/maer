@@ -516,7 +516,11 @@ final class PodcastSubscriptions: ObservableObject {
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {
             request.setValue(value, forHTTPHeaderField: field)
         }
-        guard let (data, _) = try? await URLSession.maer.data(for: request) else { return nil }
+        // Y39: feed pulls ride the same retry policy as the ABS/Subsonic
+        // clients (transient backoff, 401 probe for private feeds); a non-2xx
+        // that survives the policy stays a nil result like before.
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else { return nil }
+        if let status = http?.statusCode, !(200...299).contains(status) { return nil }
         let parser = RSSFeedParser(feedURL: feedURL.absoluteString)
         return parser.parse(data)
     }
