@@ -107,29 +107,27 @@ nonisolated func withSearchTimeout<T: Sendable>(
     }
 }
 
-/// Y15: the filter-chip row above the results (Apple-Podcasts pattern). Chips
-/// are on/off toggles, there is NO "All": "Library" scopes to OWN content
-/// (all types, no catalog); a type chip narrows to its sections, where the
-/// podcasts chip includes the catalog — unless "Library" is also active.
-/// The set never goes empty: dropping the last chip falls back to the start
-/// state (library only).
-nonisolated enum SearchChip: String, CaseIterable, Identifiable {
+/// Y20: the STANDING scope bar above the results (single select, gliding
+/// pill — the MediaTabBar pattern). Replaces the Y15 multi-toggle chips:
+/// "Library" = own content of every type (catalog behind the explicit row),
+/// a type scope narrows to its sections, where podcasts includes the catalog.
+nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     case library, audiobooks, podcasts, music
     var id: String { rawValue }
-}
 
-nonisolated enum SearchChipFilter {
-    static let start: Set<SearchChip> = [.library]
-
-    static func toggled(_ chips: Set<SearchChip>, tapping chip: SearchChip) -> Set<SearchChip> {
-        var out = chips
-        if out.contains(chip) { out.remove(chip) } else { out.insert(chip) }
-        if out.isEmpty { out = start }
-        return out
+    /// The scope a search opened from a given tab starts in.
+    static func initial(for tab: MediaType) -> SearchScope {
+        switch tab {
+        case .audiobooks: return .audiobooks
+        case .podcasts: return .podcasts
+        case .music: return .music
+        default: return .library
+        }
     }
 
-    static func kinds(for chip: SearchChip) -> Set<SearchResult.Kind> {
-        switch chip {
+    /// The OWN kinds this scope shows.
+    var kinds: Set<SearchResult.Kind> {
+        switch self {
         case .library: return Set(SearchResult.Kind.allCases).subtracting([.catalogShow])
         case .audiobooks: return [.book, .author, .series]
         case .podcasts: return [.show, .episode]
@@ -137,14 +135,6 @@ nonisolated enum SearchChipFilter {
         }
     }
 
-    /// Visible OWN kinds + whether the catalog section belongs into the list.
-    static func visible(chips: Set<SearchChip>)
-        -> (kinds: Set<SearchResult.Kind>, includesCatalog: Bool) {
-        let typeChips = chips.subtracting([.library])
-        let visibleKinds: Set<SearchResult.Kind> = typeChips.isEmpty
-            ? Self.kinds(for: .library)
-            : typeChips.reduce(into: []) { $0.formUnion(Self.kinds(for: $1)) }
-        let includesCatalog = chips.contains(.podcasts) && !chips.contains(.library)
-        return (visibleKinds, includesCatalog)
-    }
+    /// Whether the catalog section renders inline for this scope.
+    var includesCatalog: Bool { self == .podcasts }
 }

@@ -963,6 +963,16 @@
         }
       }
     },
+    "Close search" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche schließen"
+          }
+        }
+      }
+    },
     "Completed" : {
       "localizations" : {
         "de" : {
@@ -1540,6 +1550,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Genre"
+          }
+        }
+      }
+    },
+    "Genres" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genres"
           }
         }
       }
@@ -3211,6 +3231,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reaktivieren"
+          }
+        }
+      }
+    },
+    "Recent Searches" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gesucht"
           }
         }
       }

@@ -193,33 +193,71 @@ nonisolated final class MaerUITests: XCTestCase {
         }
     }
 
-    /// F6: ONE query in the global search finds the seeded book, episode and
-    /// album, and the "New Shows" catalog section appears (seeded directory —
-    /// no real catalog request leaves the harness).
+    /// F6/Y23: ONE query on the search PAGE finds the seeded book, episode and
+    /// album, the "New Shows" catalog sits behind the explicit row (seeded
+    /// directory — no real catalog request leaves the harness), the Y20 scope
+    /// bar narrows single-select, and the Y19/Y24 X button clears then closes
+    /// (with the Y30 recents chip on the deck in between).
     func testGlobalSearchFindsAllTypes() {
         let app = launchSeeded()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap()
-        // Y17: the field sits in the bottom bar now.
+        // Y20: the standing scope bar tops the page; Home opens at "Library".
+        XCTAssertTrue(app.buttons["scope-library"].firstMatch.waitForExistence(timeout: 10),
+                      "the scope bar must stand on the search page")
+        // Y17: the field sits in the bottom bar.
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
         field.typeText("Seed")
-        // Library scope (default chip): own hits of every type.
+        // Library scope: own hits of every type.
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
                       "search must find the seeded episode")
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
                       "search must find the seeded album")
         snap(app, "global-search-library")
-        // Y15: the catalog sits behind the explicit catalog row.
+        // Y15: the catalog sits behind the explicit catalog row — dismiss the
+        // keyboard (submit) and scroll it into reach first; on the full page
+        // it trails ALL own sections.
+        field.typeText("\n")
         let catalogRow = app.buttons["search-catalog-row"].firstMatch
         XCTAssertTrue(catalogRow.waitForExistence(timeout: 5), "catalog row must close the library results")
+        var swipes = 0
+        while !catalogRow.isHittable && swipes < 4 {
+            app.swipeUp()
+            swipes += 1
+        }
         catalogRow.tap()
         XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.waitForExistence(timeout: 10),
                       "the catalog view must show the seeded catalog show")
         snap(app, "global-search-catalog")
+        // Y20: single-select — the music scope narrows to the album hit.
+        app.buttons["scope-music"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 5),
+                      "music scope must keep the album hit")
+        XCTAssertFalse(app.staticTexts["Seed Episode One"].firstMatch.exists,
+                       "music scope must drop the episode hit")
+        snap(app, "global-search-scope-music")
+        // Y19/Y24: first X clears the query → the browse deck appears with the
+        // just-run query as a Y30 recents chip.
+        let close = app.buttons["search-close"].firstMatch
+        XCTAssertTrue(close.waitForExistence(timeout: 5), "the round X must sit next to the field")
+        close.tap()
+        let recentChip = app.buttons["Seed"].firstMatch
+        XCTAssertTrue(recentChip.waitForExistence(timeout: 5),
+                      "the deck must offer the recent search")
+        snap(app, "global-search-deck")
+        // Tapping the chip re-runs the search (results view returns).
+        recentChip.tap()
+        XCTAssertTrue(app.buttons["search-catalog-row"].firstMatch.waitForExistence(timeout: 10),
+                      "the recents chip must re-run the query")
+        // Second X pair: clear, then close — the magnifier button returns.
+        close.tap()
+        close.tap()
+        XCTAssertTrue(app.buttons["global-search"].firstMatch.waitForExistence(timeout: 5),
+                      "the X on an empty field must close the search")
     }
 
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
