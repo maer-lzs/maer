@@ -65,6 +65,14 @@ struct BookDetailScreen: View {
                     .frame(height: 4)
                 }
             }
+            // Y6b: the author portrait floats on the SEAM between cover and
+            // gradient (avatar-over-banner pattern), trailing side — mostly
+            // above the edge, dipping slightly below it.
+            .overlay(alignment: .bottomTrailing) {
+                authorPortrait
+                    .padding(.trailing, 20)
+                    .offset(y: Self.portraitSize / 2 - 16)
+            }
             .frame(maxWidth: .infinity)
     }
 
@@ -97,11 +105,20 @@ struct BookDetailScreen: View {
                 // without a picture). Tapping filters the library to this
                 // author — the image is function, not decoration — and is only
                 // active when the author has MORE than one work here.
-                HStack(spacing: 8) {
-                    authorPortrait
+                // Y6b: in the hero the portrait FLOATS on the cover edge (see
+                // heroCover overlay) — the author line stays pure text. The
+                // left-aligned side-by-side layout keeps the inline row.
+                if isHero {
                     Text(author)
                         .font(.subheadline)
-                        .foregroundStyle(isHero ? AnyShapeStyle(.white.opacity(0.75)) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(AnyShapeStyle(.white.opacity(0.75)))
+                } else {
+                    HStack(spacing: 12) {
+                        authorPortrait
+                        Text(author)
+                            .font(.subheadline)
+                            .foregroundStyle(AnyShapeStyle(.secondary))
+                    }
                 }
             }
             if let p = currentProgress, p.isStarted, !isFinished {
@@ -130,6 +147,9 @@ struct BookDetailScreen: View {
         return libraryViewModel.entries.filter { $0.item.author == author }
     }
 
+    /// Y6b: portrait diameter — floats on the cover/gradient seam.
+    private static let portraitSize: CGFloat = 72
+
     @ViewBuilder
     private var authorPortrait: some View {
         if let url = authorImageURL {
@@ -140,8 +160,48 @@ struct BookDetailScreen: View {
             // the row looks exactly like today.
             let portrait = CachedAsyncImage(url: url, useThumbnail: true) { image in
                 image.resizable().aspectRatio(contentMode: .fill)
-                    .frame(width: 28, height: 28)
-                    .clipShape(Circle())
+                    .frame(width: Self.portraitSize, height: Self.portraitSize)
+                    // Y6b: downward SMEAR (not a gaussian blur) over the lower
+                    // part — stacked copies dragged downward approximate a
+                    // directional motion smear, softened a touch and faded in
+                    // via the gradient mask.
+                    .overlay {
+                        ZStack {
+                            ForEach(1..<5) { step in
+                                image.resizable().aspectRatio(contentMode: .fill)
+                                    .frame(width: Self.portraitSize, height: Self.portraitSize)
+                                    .offset(y: CGFloat(step) * 3)
+                                    .opacity(0.22)
+                            }
+                        }
+                        .blur(radius: 1.5)
+                        .mask(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .clear, location: 0.45),
+                                    .init(color: .black, location: 0.85)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                    }
+                    // Y6b: crisp circle on top, DISSOLVING bottom — the mask
+                    // is the circle filled with a vertical fade, so only the
+                    // lower rim blends into the gradient behind it.
+                    .mask(
+                        Circle().fill(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0.55),
+                                    .init(color: .clear, location: 1.0)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                    )
+                    // Y6b: monochrome for now (design trial) — keeps the mixed
+                    // press-photo colors from fighting the cover gradient.
+                    .grayscale(1)
             } placeholder: {
                 // Y6 root cause: an `EmptyView` placeholder never "appears",
                 // so CachedAsyncImage's `.task(id:)` never fired and the load
