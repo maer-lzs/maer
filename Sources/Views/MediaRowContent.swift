@@ -23,6 +23,10 @@ struct MediaRowContent: View {
     /// V7: cover edge length. Default 64; the Up-Next queue rows pass a larger
     /// value to set themselves apart from the compact Downloaded list.
     var coverSize: CGFloat = 64
+    /// Y58: a caller-supplied cover view replacing the `coverURL` image (radio
+    /// rows pass `RadioArtwork`, so a missing favicon reads the same as in the
+    /// player). Framing, clipping, dimming and badges stay MediaRowContent's.
+    var coverOverride: AnyView? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -63,7 +67,9 @@ struct MediaRowContent: View {
     private var artwork: some View {
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         return Group {
-            if let coverURL {
+            if let coverOverride {
+                coverOverride
+            } else if let coverURL {
                 CachedAsyncImage(url: coverURL, useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {

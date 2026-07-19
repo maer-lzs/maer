@@ -202,14 +202,26 @@ struct PlayerView: View {
         }
     }
 
+    @ViewBuilder
     private var cover: some View {
-        CachedAsyncImage(url: coverURL) { image in
-            image.resizable().aspectRatio(contentMode: .fit)
-        } placeholder: {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.white.opacity(0.1))
-                .aspectRatio(1, contentMode: .fit)
-                .overlay(Image(systemName: "book.closed").font(.largeTitle))
+        Group {
+            if viewModel.isLiveStream {
+                // Y58: radio — never upscale a low-res favicon fullscreen. A
+                // station-color field carries a small, sharp logo (or the SF
+                // symbol). Shared with the station rows via `RadioArtwork`.
+                RadioArtwork(stationID: viewModel.item?.id ?? "",
+                             faviconURL: coverURL, isHero: true)
+                    .aspectRatio(1, contentMode: .fit)
+            } else {
+                CachedAsyncImage(url: coverURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fit)
+                } placeholder: {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.white.opacity(0.1))
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay(Image(systemName: "book.closed").font(.largeTitle))
+                }
+            }
         }
         .frame(maxWidth: 300)
         .clipShape(RoundedRectangle(cornerRadius: 12))

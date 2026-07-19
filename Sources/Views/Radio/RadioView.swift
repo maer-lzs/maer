@@ -60,13 +60,16 @@ struct RadioView: View {
             play(station)
         } label: {
             MediaRowContent(
-                coverURL: station.faviconURL.flatMap { URL(string: $0) },
+                coverURL: nil,
                 eyebrow: station.tags.first,
                 title: station.name,
                 titleDimmed: !networkMonitor.isConnected,
                 coverDimmed: !networkMonitor.isConnected,
                 offlineBadge: !networkMonitor.isConnected,
-                placeholderSystemImage: "dot.radiowaves.left.and.right"
+                placeholderSystemImage: "dot.radiowaves.left.and.right",
+                coverOverride: AnyView(RadioArtwork(
+                    stationID: station.id,
+                    faviconURL: station.faviconURL.flatMap { URL(string: $0) }))
             )
             .padding(.horizontal)
             .contentShape(Rectangle())

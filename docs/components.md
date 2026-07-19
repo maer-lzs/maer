@@ -19,7 +19,8 @@ components rather than forking them.
 
 | Component | Used by (file · context) | Parameters / variants |
 |---|---|---|
-| `MediaRowContent` | `PlayQueueRow` · `BookDownloadRow` (BookGridComponents) · `PodcastEpisodeRow` (PodcastComponents) · RadioView (station rows) | `coverURL, title`; opt. `eyebrow, meta, progressFraction`; flags `titleDimmed/coverDimmed/offlineBadge/downloadedBadge/showsPlayedCheck`; `placeholderSystemImage`; `coverSize=64` |
+| `MediaRowContent` | `PlayQueueRow` · `BookDownloadRow` (BookGridComponents) · `PodcastEpisodeRow` (PodcastComponents) · RadioView (station rows, `coverOverride: RadioArtwork`) | `coverURL, title`; opt. `eyebrow, meta, progressFraction`; flags `titleDimmed/coverDimmed/offlineBadge/downloadedBadge/showsPlayedCheck`; `placeholderSystemImage`; `coverSize=64`; Y58 `coverOverride: AnyView?` (caller-supplied cover, framing/clip/dim/badges stay MediaRowContent's) |
+| `RadioArtwork` (Y58) | RadioView (station rows via `coverOverride`) · PlayerView (`cover`, `isHero: true`) | `stationID, faviconURL, isHero=false`; favicon → shown; missing/broken → deterministic per-station color (`color(for:)`, FNV-hash → `RediscoverSections.SplitMix64`) + white `dot.radiowaves`; hero = station-color gradient + small sharp logo / big SF symbol (never a fullscreen favicon upscale) |
 | `PlayQueueRow` | HomeView (Up Next) · PodcastsView (Up Next) · PodcastQueueView (queue page) | `item, playerCoordinator`; wraps `MediaRowContent` at default cover size; tap plays (leaves queue) |
 | `PodcastEpisodeRow` | PodcastsView (Downloaded shelf) · PodcastShowView (episode list) | `item, playerCoordinator`; `rowTap = .detail` (`.play`/`.detail`/`.none`); swipe/menu actions; wraps `MediaRowContent` |
 | `RecentShowTile` | PodcastsView (Recently Updated grid) | `info: RecentShowInfo`; cover + new-episode count badge + title + relative update time; offline dimming; caller wraps in `NavigationLink(value: .show)` |
