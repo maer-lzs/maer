@@ -43,10 +43,12 @@ struct LatestEpisodesGrid: View {
             .padding(.horizontal)
             // Y45: bind the animation to `expanded` on the grid itself (not a
             // withAnimation wrapper around the toggle) so the row add/remove
-            // runs with the SAME curve in BOTH directions — collapse no longer
-            // reads more abruptly than the reference expand. Y55: 0.35 — a touch
-            // slower, moderate not sluggish.
-            .animation(.snappy(duration: 0.35), value: expanded)
+            // runs with the SAME curve in BOTH directions. Y55: 0.35 — a touch
+            // slower. Y62 (candidate): a plain timing curve instead of the
+            // `.snappy` spring — the spring overshot on COLLAPSE, so the content
+            // below rushed up too fast. `.easeInOut` settles without overshoot;
+            // decelerating out. Feel is the owner'ss call in the device loop.
+            .animation(.easeInOut(duration: 0.35), value: expanded)
             if items.count > cols * 2 {
                 Button {
                     expanded.toggle()
