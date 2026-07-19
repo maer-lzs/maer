@@ -10,9 +10,6 @@
 		CF68E6513002599A00C97B74 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6503002599A00C97B74 /* WidgetKit.framework */; };
 		CF68E6533002599A00C97B74 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6523002599A00C97B74 /* SwiftUI.framework */; };
 		CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		AAE2000000000000000000B1 /* WidgetProbeExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AAE2000000000000000000B2 /* WidgetProbeExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		AAE2000000000000000000B8 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6503002599A00C97B74 /* WidgetKit.framework */; };
-		AAE2000000000000000000B9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6523002599A00C97B74 /* SwiftUI.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -37,13 +34,6 @@
 			remoteGlobalIDString = CF1170F22FF99D9D00DA1AC5;
 			remoteInfo = ABSPlayer;
 		};
-		AAE2000000000000000000C4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CF1170EB2FF99D9D00DA1AC5 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AAE2000000000000000000B5;
-			remoteInfo = WidgetProbeExtension;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -54,7 +44,6 @@
 			dstSubfolderSpec = 13;
 			files = (
 				CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */,
-				AAE2000000000000000000B1 /* WidgetProbeExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -67,7 +56,6 @@
 		CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MaerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		AAE2000000000000000000B2 /* WidgetProbeExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WidgetProbeExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -79,8 +67,6 @@
 				"ABSPlayer-Info.plist",
 				ABSPlayerUITests/MaerUITests.swift,
 				LiveActivityWidget/ContinueListeningWidget.swift,
-				WidgetProbe/Info.plist,
-				WidgetProbe/WidgetProbeBundle.swift,
 				LiveActivityWidget/MaerWidgetBundle.swift,
 				LiveActivityWidget/PodcastUpNextWidget.swift,
 				MaerWidgets/Assets.xcassets,
@@ -106,13 +92,6 @@
 			);
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 		};
-		AAE2000000000000000000B3 /* Exceptions for "WidgetProbe" folder in "WidgetProbeExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = AAE2000000000000000000B5 /* WidgetProbeExtension */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -128,14 +107,6 @@
 				CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "MaerWidgetsExtension" target */,
 			);
 			name = ABSPlayer;
-			sourceTree = "<group>";
-		};
-		AAE2000000000000000000B4 /* WidgetProbe */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				AAE2000000000000000000B3 /* Exceptions for "WidgetProbe" folder in "WidgetProbeExtension" target */,
-			);
-			path = WidgetProbe;
 			sourceTree = "<group>";
 		};
 		CF68E6543002599A00C97B74 /* MaerWidgets */ = {
@@ -184,15 +155,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AAE2000000000000000000B7 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AAE2000000000000000000B8 /* WidgetKit.framework in Frameworks */,
-				AAE2000000000000000000B9 /* SwiftUI.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -207,8 +169,6 @@
 				CFC8E64B30006E4B00226154 /* ABSPlayerTests */,
 				CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */,
 				CF68E6543002599A00C97B74 /* MaerWidgets */,
-				AAE2000000000000000000B2 /* WidgetProbeExtension.appex */,
-				AAE2000000000000000000B4 /* WidgetProbe */,
 				CF68E64F3002599A00C97B74 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -230,28 +190,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		AAE2000000000000000000B5 /* WidgetProbeExtension */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AAE2000000000000000000C1 /* Build configuration list for PBXNativeTarget "WidgetProbeExtension" */;
-			buildPhases = (
-				AAE2000000000000000000B6 /* Sources */,
-				AAE2000000000000000000B7 /* Frameworks */,
-				AAE2000000000000000000C0 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				AAE2000000000000000000B4 /* WidgetProbe */,
-			);
-			name = WidgetProbeExtension;
-			packageProductDependencies = (
-			);
-			productName = WidgetProbeExtension;
-			productReference = AAE2000000000000000000B2 /* WidgetProbeExtension.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		AAE1000000000000000000A1 /* ABSPlayerUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AAE1000000000000000000A7 /* Build configuration list for PBXNativeTarget "ABSPlayerUITests" */;
@@ -288,7 +226,6 @@
 			);
 			dependencies = (
 				CF68E65F3002599B00C97B74 /* PBXTargetDependency */,
-				AAE2000000000000000000C5 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
@@ -392,7 +329,6 @@
 				CFC8E64930006E4A00226154 /* ABSPlayerTests */,
 				AAE1000000000000000000A1 /* ABSPlayerUITests */,
 				CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */,
-				AAE2000000000000000000B5 /* WidgetProbeExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -420,13 +356,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CFC8E64830006E4A00226154 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AAE2000000000000000000C0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -464,13 +393,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AAE2000000000000000000B6 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -488,11 +410,6 @@
 			isa = PBXTargetDependency;
 			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
 			targetProxy = CFC8E64E30006E4B00226154 /* PBXContainerItemProxy */;
-		};
-		AAE2000000000000000000C5 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AAE2000000000000000000B5 /* WidgetProbeExtension */;
-			targetProxy = AAE2000000000000000000C4 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -846,60 +763,6 @@
 			};
 			name = Release;
 		};
-		AAE2000000000000000000C2 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
-				DEVELOPMENT_TEAM = WA68UQ6KAH;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = WidgetProbe/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Mär Probe";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 2.5;
-				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.WidgetProbe;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		AAE2000000000000000000C3 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
-				DEVELOPMENT_TEAM = WA68UQ6KAH;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = WidgetProbe/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Mär Probe";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				MARKETING_VERSION = 2.5;
-				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.WidgetProbe;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -944,15 +807,6 @@
 			buildConfigurations = (
 				CFC8E65130006E4B00226154 /* Debug */,
 				CFC8E65230006E4B00226154 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AAE2000000000000000000C1 /* Build configuration list for PBXNativeTarget "WidgetProbeExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AAE2000000000000000000C2 /* Debug */,
-				AAE2000000000000000000C3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
