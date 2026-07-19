@@ -96,7 +96,8 @@ struct ABSPlayerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                // App-wide accent color: orange instead of system blue.
+                // App-wide accent color: the dark-gray brand accent (A1)
+                // instead of system blue.
                 .tint(AppTheme.accent)
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
@@ -122,22 +123,48 @@ struct ABSPlayerApp: App {
 /// Central place for app-wide colors. To change the accent color, adjust it
 /// here.
 enum AppTheme {
+    typealias RGB = (r: Double, g: Double, b: Double)
+    /// One gray candidate: a light-scheme tone and a dark-scheme tone. The
+    /// accent MUST be adaptive — a fixed dark gray would vanish on the
+    /// always-dark player/hero surfaces.
+    typealias GrayShade = (light: RGB, dark: RGB)
+
+    /// A1 (brand decision, final): the accent is DARK GRAY/anthracite — orange
+    /// lives on ONLY as the audiobook TYPE color at the tab selector
+    /// (`MediaType.tint`).
+    static let anthraciteShade: GrayShade = ((0.24, 0.26, 0.29), (0.78, 0.80, 0.83))
     #if DEBUG
-    /// Teil 7 (decision prep only): DEBUG-only brand-accent trial so the
-    /// candidates can be compared live on device — 0 = orange (today),
-    /// 1 = Mär blue candidate, 2 = anthracite candidate. The productive value
-    /// stays orange until the brand decision; the selector tab tints are
-    /// untouched either way.
-    static var accent: Color {
+    /// A1 tone trial (DEBUG): two more gray shades behind the existing
+    /// switch — the owner picks on device, then the tone is hard-set and the
+    /// alternatives go. 1 = slate (darker), 2 = graphite (lighter).
+    static let slateShade: GrayShade = ((0.17, 0.19, 0.22), (0.68, 0.71, 0.75))
+    static let graphiteShade: GrayShade = ((0.33, 0.36, 0.39), (0.86, 0.88, 0.90))
+
+    private static var currentShade: GrayShade {
         switch UserDefaults.standard.integer(forKey: "brandAccentTrial") {
-        case 1: return maerBlue
-        case 2: return anthracite
-        default: return .orange
+        case 1: return slateShade
+        case 2: return graphiteShade
+        default: return anthraciteShade
         }
     }
-    static let maerBlue = Color(red: 0.20, green: 0.36, blue: 0.66)
-    static let anthracite = Color(red: 0.24, green: 0.26, blue: 0.29)
     #else
-    static let accent = Color.orange
+    private static var currentShade: GrayShade { anthraciteShade }
     #endif
+
+    static var accent: Color { Color(accentUIColor) }
+
+    /// The accent as a DYNAMIC UIColor — also for UIKit-backed views (AirPlay
+    /// route button): `UIColor(Color)` flattens to one trait at init, this
+    /// provider keeps the light/dark adaptation alive.
+    static var accentUIColor: UIColor {
+        let shade = currentShade
+        // @Sendable (the Y32/aa93a31 lesson): UIKit resolves dynamic colors on
+        // ARBITRARY threads (SwiftUI's AsyncRenderer included) — a closure
+        // inheriting the project's MainActor default trips the executor check
+        // there and traps. Captures are plain Double tuples.
+        return UIColor { @Sendable trait in
+            let c = trait.userInterfaceStyle == .dark ? shade.dark : shade.light
+            return UIColor(red: c.r, green: c.g, blue: c.b, alpha: 1)
+        }
+    }
 }

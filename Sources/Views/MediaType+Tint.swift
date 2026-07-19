@@ -17,7 +17,7 @@ extension MediaType {
         case .audiobooks: return .orange
         case .podcasts: return .purple
         case .music: return .red
-        case .radio: return .teal          // reserved for the future tab
+        case .radio: return .cyan          // A1/F4: radio's type color (blue/cyan)
         }
     }
 }

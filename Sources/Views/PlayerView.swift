@@ -534,7 +534,7 @@ struct PlayerView: View {
     }
 
     private var airPlayControl: some View {
-        AirPlayButton(tintColor: .white, activeTintColor: UIColor(AppTheme.accent))
+        AirPlayButton(tintColor: .white, activeTintColor: AppTheme.accentUIColor)
             .frame(width: 44, height: 44)
     }
 

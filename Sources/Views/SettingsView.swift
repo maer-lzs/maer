@@ -321,14 +321,15 @@ struct SettingsView: View {
     }
 
     #if DEBUG
-    /// Teil 7: DEBUG-only brand-accent trial switch (decision prep, no
-    /// productive color change).
+    /// A1: DEBUG-only GRAY-tone trial — the brand decision (dark gray) is
+    /// final, this picks the exact shade on device; afterwards the tone is
+    /// hard-set and the alternatives removed.
     private var brandAccentTrialSection: some View {
-        Section("DEBUG: Brand accent trial") {
-            Picker("Accent", selection: $brandAccentTrial) {
-                Text(verbatim: "Orange (today)").tag(0)
-                Text(verbatim: "Mär-Blau").tag(1)
-                Text(verbatim: "Anthrazit").tag(2)
+        Section("DEBUG: Gray-tone trial") {
+            Picker("Shade", selection: $brandAccentTrial) {
+                Text(verbatim: "Anthrazit (Standard)").tag(0)
+                Text(verbatim: "Schiefer (dunkler)").tag(1)
+                Text(verbatim: "Graphit (heller)").tag(2)
             }
         }
     }

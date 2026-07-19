@@ -125,7 +125,7 @@ struct MiniPlayerBar: View {
             // Switch output route — stays in iPhone portrait too, just a plain
             // white icon directly on the bar.
             if !compact && (showExtendedControls || isCompactPortrait) {
-                AirPlayButton(tintColor: .label, activeTintColor: UIColor(AppTheme.accent))
+                AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
                     .frame(width: 26, height: 26)
                     .frame(width: 44, height: 48)
             }
