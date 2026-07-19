@@ -102,6 +102,9 @@ struct ABSPlayerApp: App {
                 // On moving to the background, schedule the next podcast refresh.
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .background { PodcastRefreshService.schedule() }
+                    // Y34: migrate legacy keychain items while the device is
+                    // certainly unlocked (one-time, self-retrying).
+                    if phase == .active { KeychainStore.migrateAccessibilityOnce() }
                 }
         }
     }
