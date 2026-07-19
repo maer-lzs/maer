@@ -174,25 +174,28 @@ struct BookDetailScreen: View {
                                     .opacity(0.22)
                             }
                         }
-                        .blur(radius: 1.5)
+                        .blur(radius: 2.2)
                         .mask(
                             LinearGradient(
                                 stops: [
-                                    .init(color: .clear, location: 0.45),
-                                    .init(color: .black, location: 0.85)
+                                    .init(color: .clear, location: 0.30),
+                                    .init(color: .black, location: 0.75)
                                 ],
                                 startPoint: .top, endPoint: .bottom
                             )
                         )
                     }
-                    // Y6b: crisp circle on top, DISSOLVING bottom — the mask
-                    // is the circle filled with a vertical fade, so only the
-                    // lower rim blends into the gradient behind it.
+                    // Y6b/Y46: crisp circle on top, DISSOLVING bottom — the mask
+                    // is the circle filled with a vertical fade, so the lower part
+                    // blends into the gradient behind it. Y46: the fade begins
+                    // earlier (0.40) and runs softly over a longer distance so the
+                    // lower half dissolves noticeably more into the background.
                     .mask(
                         Circle().fill(
                             LinearGradient(
                                 stops: [
-                                    .init(color: .black, location: 0.55),
+                                    .init(color: .black, location: 0.40),
+                                    .init(color: .black.opacity(0.5), location: 0.7),
                                     .init(color: .clear, location: 1.0)
                                 ],
                                 startPoint: .top, endPoint: .bottom
