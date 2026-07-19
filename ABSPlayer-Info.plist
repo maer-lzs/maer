@@ -17,6 +17,16 @@
 	<array>
 		<string>de.lzs.ABSPlayer.podcastRefresh</string>
 	</array>
+	<!-- Radio streams are frequently plain HTTP (Radio Browser url_resolved,
+	     AzuraCast mounts on :8000). NSAllowsArbitraryMediaLoads relaxes ATS for
+	     AVFoundation MEDIA loads only — every URLSession call (ABS/Subsonic/
+	     gpodder/Radio Browser API, metadata) still requires HTTPS. Without this
+	     the AVPlayer item silently fails to load and no station plays. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryMediaLoads</key>
+		<true/>
+	</dict>
 	<!-- Self-hosted servers usually live on private IPs/.local — iOS asks for
 	     local-network permission; localized in InfoPlist.xcstrings. -->
 	<key>NSLocalNetworkUsageDescription</key>

@@ -4168,6 +4168,16 @@
         }
       }
     },
+    "Stream unavailable — the station could not be reached" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stream nicht verfügbar — der Sender ist nicht erreichbar"
+          }
+        }
+      }
+    },
     "Subscribe" : {
       "localizations" : {
         "de" : {

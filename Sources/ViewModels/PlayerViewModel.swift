@@ -69,6 +69,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         case offline
         case conflict
         case trackFailed
+        case streamFailed
 
         var label: String {
             switch self {
@@ -79,6 +80,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .offline: return String(localized: "Offline — progress saved locally")
             case .conflict: return String(localized: "Conflict detected")
             case .trackFailed: return String(localized: "Playback error — track unavailable")
+            case .streamFailed: return String(localized: "Stream unavailable — the station could not be reached")
             }
         }
 
@@ -91,6 +93,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             case .offline: return "icloud.slash"
             case .conflict: return "exclamationmark.triangle"
             case .trackFailed: return "exclamationmark.triangle"
+            case .streamFailed: return "exclamationmark.triangle"
             }
         }
     }
@@ -155,6 +158,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private var resumeAfterInterruption = false
     nonisolated(unsafe) private var trackAdvanceObserver: NSObjectProtocol?
     nonisolated(unsafe) private var trackFailureObserver: NSObjectProtocol?
+    /// KVO on each queued item's `status`: an unreachable or ATS-blocked stream
+    /// sets `.failed` WITHOUT ever firing `AVPlayerItemFailedToPlayToEndTime`
+    /// (playback never begins) — it would stall silently. Rebuilt per queue.
+    private var itemStatusObservers: [NSKeyValueObservation] = []
     /// Track indices that already got their ONE automatic recovery attempt —
     /// guards against a rebuild loop on a persistently broken track.
     private var trackRetryAttempts: Set<Int> = []
@@ -555,12 +562,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
         trackAdvanceObserver = nil
+        for observer in itemStatusObservers { observer.invalidate() }
+        itemStatusObservers.removeAll()
 
+        let isRadio = self.item?.id.hasPrefix("radio:") == true
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
         icyStreamTitle = nil   // F2: never carry a song title across items
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
+            if isRadio {
+                // Y42: persistent breadcrumb — a station that never plays leaves
+                // the resolved stream URL and, below, its load error in the log.
+                Logger.player.notice("radio play: building stream \(url.absoluteString, privacy: .public)")
+            }
             // Decide per track: a partially downloaded book can mix local
             // files and streaming (auth header only makes sense remotely).
             let item: AVPlayerItem
@@ -573,7 +588,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
             // F2: live radio — tap the in-stream ICY metadata (song title)
             // for the player UI and the lock screen.
-            if self.item?.id.hasPrefix("radio:") == true {
+            if isRadio {
                 let output = AVPlayerItemMetadataOutput(identifiers: nil)
                 let collector = ICYMetadataCollector { [weak self] value in
                     Task { @MainActor in
@@ -587,6 +602,21 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 item.add(output)
             }
             itemTrackIndex[ObjectIdentifier(item)] = index
+            // Surface a load failure that never starts playback (ATS block,
+            // dead stream, 404) — otherwise it stalls silently (Regel 3).
+            // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
+            // would trap there under the MainActor default (the Y32 lesson). Only
+            // Sendable values (index, description) cross onto the main actor.
+            let failedIndex = index
+            let observation = item.observe(\.status, options: [.new]) { @Sendable [weak self] observedItem, _ in
+                guard observedItem.status == .failed else { return }
+                let description = observedItem.error?.localizedDescription
+                    ?? observedItem.errorLog()?.events.last?.errorComment
+                Task { @MainActor [weak self] in
+                    self?.handleItemLoadFailure(trackIndex: failedIndex, errorDescription: description)
+                }
+            }
+            itemStatusObservers.append(observation)
             items.append(item)
         }
         guard !items.isEmpty else { return false }
@@ -952,6 +982,20 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// An item whose asset never loads (`status == .failed`) — the load failure
+    /// path that FailedToPlayToEndTime doesn't cover (playback never started).
+    /// Logs the error persistently (Y42 diagnosis) and surfaces a hint instead
+    /// of a silent stall.
+    private func handleItemLoadFailure(trackIndex index: Int, errorDescription: String?) {
+        let isRadio = item?.id.hasPrefix("radio:") == true
+        Logger.player.notice("play failed: item \(index) status .failed for \(self.item?.id ?? "?", privacy: .public) — \(errorDescription ?? "no error", privacy: .public)")
+        // Radio is single-item live audio — no track recovery to attempt; stop
+        // and tell the user. Books/podcasts keep their existing retry path.
+        guard isRadio else { return }
+        isPlaying = false
+        showSourceHint(.streamFailed)
+    }
+
     /// Absolute book time where the currently playing track ends —
     /// nil if unknown. Used by the "sleep until end of track" mode.
     func currentTrackEndTime() -> Double? {
@@ -996,6 +1040,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         routeChangeObserver = nil
         mediaResetObserver = nil
         trackFailureObserver = nil
+        for observer in itemStatusObservers { observer.invalidate() }
+        itemStatusObservers.removeAll()
         player = nil
         syncTask?.cancel()
         sleepTask?.cancel()

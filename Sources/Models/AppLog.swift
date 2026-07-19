@@ -6,4 +6,5 @@ extension Logger {
     nonisolated static let gpodder = Logger(subsystem: "de.lzs.ABSPlayer", category: "gpodder")
     nonisolated static let music = Logger(subsystem: "de.lzs.ABSPlayer", category: "music")
     nonisolated static let library = Logger(subsystem: "de.lzs.ABSPlayer", category: "library")
+    nonisolated static let player = Logger(subsystem: "de.lzs.ABSPlayer", category: "player")
 }
