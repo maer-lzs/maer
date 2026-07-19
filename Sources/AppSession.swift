@@ -49,9 +49,12 @@ final class AppSession: ObservableObject {
     /// Subsonic/Navidrome music as a source of type `.music`.
     var subsonicProvider: SubsonicProvider { SubsonicProvider.shared }
 
+    /// Internet radio (Radio Browser catalog + manual streams), type `.radio`.
+    var radioProvider: RadioProvider { RadioProvider.shared }
+
     /// All active sources.
     var allProviders: [any AudioProvider] {
-        [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider]
+        [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider, radioProvider]
     }
 
     /// Routes an item to its source by id prefix. This is the ONLY place allowed
@@ -61,6 +64,7 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
         if itemId.hasPrefix("rss:") { return rssProvider }
         if itemId.hasPrefix("sub:") { return subsonicProvider }
+        if itemId.hasPrefix("radio:") { return radioProvider }
         return provider
     }
 
@@ -85,6 +89,9 @@ final class AppSession: ObservableObject {
         }
         if itemId.hasPrefix("sub:") {
             return subsonicProvider.libraryItem(forId: itemId)
+        }
+        if itemId.hasPrefix("radio:") {
+            return radioProvider.libraryItem(forId: itemId)
         }
         // Audiobooks / local titles from the loaded library list.
         return libraryViewModel.libraryItem(forId: itemId)

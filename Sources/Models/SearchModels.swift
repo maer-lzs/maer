@@ -8,6 +8,8 @@ nonisolated struct SearchResult: Identifiable, Equatable {
         /// Catalog source "New Shows" — NOT a provider capability; results are
         /// unsubscribed shows whose id is the feed URL.
         case catalogShow
+        /// F4: a radio station (catalog or own list).
+        case radioStation
     }
 
     /// Namespaced item id (`rss:`/`abspod:`/`sub:`/ABS raw), a synthetic
@@ -27,7 +29,7 @@ nonisolated enum SearchRanking {
     /// The FIXED base order of the typed sections; the catalog section is
     /// always last (clearly a catalog, not the user's own content).
     static let baseOrder: [SearchResult.Kind] = [
-        .book, .author, .series, .show, .episode, .album, .artist, .song, .catalogShow
+        .book, .author, .series, .show, .episode, .album, .artist, .song, .radioStation, .catalogShow
     ]
 
     /// Kinds that belong to a tab — its sections lead while that tab is active.
@@ -36,6 +38,7 @@ nonisolated enum SearchRanking {
         case .audiobooks: return [.book, .author, .series]
         case .podcasts: return [.show, .episode]
         case .music: return [.album, .artist, .song]
+        case .radio: return [.radioStation]
         default: return []
         }
     }
@@ -112,7 +115,7 @@ nonisolated func withSearchTimeout<T: Sendable>(
 /// "Library" = own content of every type (catalog behind the explicit row),
 /// a type scope narrows to its sections, where podcasts includes the catalog.
 nonisolated enum SearchScope: String, CaseIterable, Identifiable {
-    case library, audiobooks, podcasts, music
+    case library, audiobooks, podcasts, music, radio
     var id: String { rawValue }
 
     /// The scope a search opened from a given tab starts in.
@@ -121,6 +124,7 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
         case .audiobooks: return .audiobooks
         case .podcasts: return .podcasts
         case .music: return .music
+        case .radio: return .radio
         default: return .library
         }
     }
@@ -132,6 +136,7 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
         case .audiobooks: return [.book, .author, .series]
         case .podcasts: return [.show, .episode]
         case .music: return [.album, .artist, .song]
+        case .radio: return [.radioStation]
         }
     }
 

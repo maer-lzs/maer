@@ -121,6 +121,15 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: serverlessMode) }
     }
 
+    // MARK: - Radio (F1)
+
+    /// Radio source toggle — the tab appears once switched on.
+    static let radioEnabled = "radioEnabled"
+    static var radioEnabledValue: Bool {
+        get { UserDefaults.standard.bool(forKey: radioEnabled) }
+        set { UserDefaults.standard.set(newValue, forKey: radioEnabled) }
+    }
+
     static let subsonicServerURL = "subsonicServerURL"
     static let subsonicUsername = "subsonicUsername"
     static let subsonicEnabled = "subsonicEnabled"

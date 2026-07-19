@@ -71,7 +71,14 @@ final class PlayQueue: ObservableObject {
 
     /// To the very front (play next). Any existing occurrence (incl. a twin) is
     /// pulled to the front rather than duplicated.
+    /// F3 (decided): radio stations NEVER enter the queue — play only
+    /// replaces the active playback. Pure rule, tested.
+    nonisolated static func canEnqueue(_ id: String) -> Bool {
+        !id.hasPrefix("radio:")
+    }
+
     func playNext(_ id: String) {
+        guard Self.canEnqueue(id) else { return }
         removeMatching(id)
         ids.insert(id, at: 0)
         save()
@@ -79,6 +86,7 @@ final class PlayQueue: ObservableObject {
 
     /// To the end of the queue (no-op if already present under any face).
     func playLast(_ id: String) {
+        guard Self.canEnqueue(id) else { return }
         guard !contains(id) else { return }
         ids.append(id)
         save()
