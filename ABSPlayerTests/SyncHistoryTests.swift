@@ -74,6 +74,55 @@ struct SyncHistoryTests {
         #expect(relaunched.entries.first?.counters.map(\.value) == [42, 512])
     }
 
+    /// Y48/Y50: `noteChecked` records a per-service "last checked" stamp that
+    /// leaves NO ring entry and survives a relaunch.
+    @MainActor
+    @Test("noteChecked stamps a service without a ring entry, and persists")
+    func lastCheckedPersistsWithoutEntry() {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
+        let checked = file.deletingPathExtension().appendingPathExtension("lastchecked.json")
+        defer {
+            try? FileManager.default.removeItem(at: file)
+            try? FileManager.default.removeItem(at: checked)
+        }
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        let store = SyncHistoryStore(fileURL: file)
+        store.noteChecked(.music, at: when)
+        #expect(store.entries.isEmpty)   // a check is not a ring entry
+        #expect(store.lastChecked["music"] == when)
+
+        let relaunched = SyncHistoryStore(fileURL: file)
+        #expect(relaunched.entries.isEmpty)
+        #expect(relaunched.lastChecked["music"] == when)
+    }
+
+    /// The stamp only moves forward — a stale/out-of-order check never rewinds
+    /// it, and an append also refreshes the service's stamp.
+    @MainActor
+    @Test("last-checked is monotonic; append refreshes the stamp")
+    func lastCheckedMonotonicAndAppend() {
+        let file = FileManager.default.temporaryDirectory
+            .appendingPathComponent("syncHistory-test-\(UUID().uuidString).json")
+        let checked = file.deletingPathExtension().appendingPathExtension("lastchecked.json")
+        defer {
+            try? FileManager.default.removeItem(at: file)
+            try? FileManager.default.removeItem(at: checked)
+        }
+        let newer = Date(timeIntervalSince1970: 2_000)
+        let older = Date(timeIntervalSince1970: 1_000)
+        let store = SyncHistoryStore(fileURL: file)
+        store.noteChecked(.absProgress, at: newer)
+        store.noteChecked(.absProgress, at: older)   // ignored (backwards)
+        #expect(store.lastChecked["absProgress"] == newer)
+
+        let appendedAt = Date(timeIntervalSince1970: 3_000)
+        store.append(SyncHistory.entry(service: .absProgress, direction: .up,
+                                       counters: [.init(key: .positionsUp, value: 3)],
+                                       duration: 0, deviceId: "dev-1", startedAt: appendedAt))
+        #expect(store.lastChecked["absProgress"] == appendedAt)
+    }
+
     /// Y36 (Regel 3): an unreadable history file is parked as evidence, the
     /// store starts empty, and the next append begins a fresh ring.
     @MainActor

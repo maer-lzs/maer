@@ -99,6 +99,10 @@ final class PodcastCloudSync {
                            .init(key: .positionsUp, value: outcome.toCloud.count)],
                 duration: 0,
                 deviceId: SyncHistoryStore.deviceId))
+        } else {
+            // Y48/Y50: a clean full-scan merge leaves no ring entry — still show
+            // it ran via the "last checked" stamp.
+            SyncHistoryStore.shared.noteChecked(.iCloud)
         }
     }
 

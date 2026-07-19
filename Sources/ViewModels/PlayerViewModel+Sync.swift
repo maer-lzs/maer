@@ -73,6 +73,12 @@ extension PlayerViewModel {
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
+            // Y48/Y50: a real ABS progress write happened — keep the "last
+            // checked" stamp current (throttled to disk in the store). Only for
+            // progress-sync sources (books); Subsonic scrobbles, radio no-ops.
+            if provider.capabilities.contains(.progressSync) {
+                SyncHistoryStore.shared.noteChecked(.absProgress)
+            }
             // Our own write moved the server's lastUpdate forward — adopt the
             // SERVER's timestamp (not the device clock: the clocks differ),
             // exactly like updateSyncStatusFromQueue does after a queue flush.

@@ -12,7 +12,11 @@ import Foundation
 struct SubsonicSyncTests {
     private final class MockHistoryStore: SyncHistoryStoring {
         var entries: [SyncHistoryEntry] = []
+        var lastChecked: [String: Date] = [:]
         func append(_ entry: SyncHistoryEntry) { entries.append(entry) }
+        func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date) {
+            lastChecked[service.rawValue] = date
+        }
     }
 
     private func album(id: String, songs: Int) -> SubsonicAlbum {

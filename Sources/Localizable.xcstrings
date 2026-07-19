@@ -1899,6 +1899,16 @@
         }
       }
     },
+    "Last checked" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt geprüft"
+          }
+        }
+      }
+    },
     "Latest Episodes" : {
       "localizations" : {
         "de" : {
@@ -3413,6 +3423,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reaktivieren"
+          }
+        }
+      }
+    },
+    "Recent changes" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzte Änderungen"
           }
         }
       }

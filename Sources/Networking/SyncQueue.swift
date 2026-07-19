@@ -139,6 +139,10 @@ final class SyncQueue {
         } catch {
             return
         }
+        // Y48/Y50: the flush reached the server (fetch succeeded) — record the
+        // check even if no position ends up written below, so ABS progress sync
+        // is visible in the history when nothing was hanging in the queue.
+        await MainActor.run { SyncHistoryStore.shared.noteChecked(.absProgress) }
 
         for (itemId, update) in pending {
             // The entry may be gone by now (an active player synced and removed

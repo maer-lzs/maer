@@ -5,18 +5,52 @@ import SwiftUI
 struct SyncHistoryView: View {
     @ObservedObject private var store = SyncHistoryStore.shared
 
+    /// Y48/Y50: fixed display order for the "last checked" header.
+    private static let checkedOrder: [SyncHistoryEntry.Service] =
+        [.absProgress, .music, .gpodder, .iCloud]
+
+    private var checkedRows: [(service: SyncHistoryEntry.Service, date: Date)] {
+        Self.checkedOrder.compactMap { service in
+            store.lastChecked[service.rawValue].map { (service, $0) }
+        }
+    }
+
     var body: some View {
         List {
-            if store.entries.isEmpty {
-                ContentUnavailableView(
-                    "No sync runs yet",
-                    systemImage: "arrow.triangle.2.circlepath",
-                    description: Text("Sync runs appear here as they happen.")
-                )
-            } else {
-                ForEach(store.entries) { entry in
-                    row(entry)
+            // Y48/Y50: per-service "last checked" — a check that changed nothing
+            // (clean ABS flush, live music refresh, no-op gpodder/iCloud) leaves
+            // no ring entry but still updates its stamp here.
+            if !checkedRows.isEmpty {
+                Section {
+                    ForEach(checkedRows, id: \.service) { row in
+                        HStack {
+                            Label(serviceLabel(row.service), systemImage: serviceIcon(row.service))
+                                .font(.subheadline)
+                            Spacer()
+                            Text(row.date.formatted(.relative(presentation: .named)))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Last checked")
                 }
+            }
+
+            Section {
+                if store.entries.isEmpty {
+                    ContentUnavailableView(
+                        "No sync runs yet",
+                        systemImage: "arrow.triangle.2.circlepath",
+                        description: Text("Sync runs appear here as they happen.")
+                    )
+                } else {
+                    ForEach(store.entries) { entry in
+                        row(entry)
+                    }
+                }
+            } header: {
+                if !store.entries.isEmpty { Text("Recent changes") }
             }
         }
         .navigationTitle("Sync History")

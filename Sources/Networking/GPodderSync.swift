@@ -97,17 +97,25 @@ final class GPodderSync {
             report.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
         persist(report)   // S20: survive an app restart + keep a guard warning sticky
-        // F9: every run that actually happened lands in the history; a tripped
-        // guard becomes a PERMANENT marked entry (not just the sticky warning).
-        SyncHistoryStore.shared.append(SyncHistory.entry(
-            service: .gpodder, direction: .both,
-            counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
-                       .init(key: .subscriptionsUp, value: report.pushedToServer),
-                       .init(key: .positionsDown, value: report.historyPulled),
-                       .init(key: .positionsUp, value: report.historyPushed)],
-            duration: Date().timeIntervalSince(syncStarted),
-            error: report.error, guardNote: report.warning,
-            deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted))
+        // F9/Y50: a run that CHANGED something, failed or tripped a guard lands
+        // as a ring entry (a guard becomes a PERMANENT marked entry); a clean
+        // no-op run only bumps the "last checked" stamp, so the ring stays
+        // meaningful.
+        let changed = report.addedLocally > 0 || report.pushedToServer > 0
+            || report.historyPulled > 0 || report.historyPushed > 0
+        if changed || report.error != nil || report.warning != nil {
+            SyncHistoryStore.shared.append(SyncHistory.entry(
+                service: .gpodder, direction: .both,
+                counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
+                           .init(key: .subscriptionsUp, value: report.pushedToServer),
+                           .init(key: .positionsDown, value: report.historyPulled),
+                           .init(key: .positionsUp, value: report.historyPushed)],
+                duration: Date().timeIntervalSince(syncStarted),
+                error: report.error, guardNote: report.warning,
+                deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted))
+        } else {
+            SyncHistoryStore.shared.noteChecked(.gpodder, at: syncStarted)
+        }
         return report
     }
 

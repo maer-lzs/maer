@@ -137,6 +137,10 @@ final class SubsonicProvider: AudioProvider {
         // Alphabetical is the stable "browse all" order; the Music tab (later)
         // requests newest/frequent separately for its shelves.
         let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
+        // Y49: the LIVE library refresh reaches the server too — record the
+        // check so a clean load is visible in the history (only the manual
+        // "Sync Now" button used to leave a trace, via runLibrarySync).
+        historyStore.noteChecked(.music)
         return remember(await Self.mapAlbums(albums))
     }
 
