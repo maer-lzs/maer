@@ -34,6 +34,10 @@ struct SearchScreen: View {
     @State private var artistCount: Int?
     @State private var pageWidth: CGFloat = 0
     @Namespace private var scopePillNS
+    // Y60: the browse-deck book rows need the offline glyph like every other
+    // MediaRowContent surface (the search-result rows already use isPlayableNow).
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloadManager = DownloadManager.shared
 
     /// Y18: a section shows at most this many hits until expanded.
     static let sectionCap = 4
@@ -359,13 +363,19 @@ struct SearchScreen: View {
     }
 
     private func bookEntryRow(_ entry: LibraryEntry) -> some View {
-        Button {
+        let unavailable = MediaAvailability.offlineUnavailable(
+            isConnected: networkMonitor.isConnected,
+            isDownloaded: downloadManager.isDownloaded(itemId: entry.id))
+        return Button {
             onOpen(SearchResult(id: entry.id, kind: .book, title: entry.item.title))
         } label: {
             MediaRowContent(
                 coverURL: AppSession.shared.coverURL(forItemId: entry.id),
                 eyebrow: entry.item.author,
                 title: entry.item.title,
+                titleDimmed: unavailable,
+                coverDimmed: unavailable,
+                offlineBadge: unavailable,
                 placeholderSystemImage: "book.closed"
             )
             .padding(.horizontal, 20)

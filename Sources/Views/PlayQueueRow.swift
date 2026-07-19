@@ -8,6 +8,15 @@ import SwiftUI
 struct PlayQueueRow: View {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    // Y60: an offline, not-downloaded queue entry must dim AND carry the white
+    // wifi.slash glyph (the A3 rule), like every other MediaRowContent surface.
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @ObservedObject private var downloadManager = DownloadManager.shared
+
+    private var isOfflineUnavailable: Bool {
+        MediaAvailability.offlineUnavailable(isConnected: networkMonitor.isConnected,
+                                             isDownloaded: downloadManager.isDownloaded(itemId: item.id))
+    }
 
     var body: some View {
         Button {
@@ -17,6 +26,9 @@ struct PlayQueueRow: View {
                 coverURL: AppSession.shared.coverURL(forItemId: item.id),
                 eyebrow: item.media?.metadata?.authorName ?? item.author,
                 title: item.title,
+                titleDimmed: isOfflineUnavailable,
+                coverDimmed: isOfflineUnavailable,
+                offlineBadge: isOfflineUnavailable,
                 placeholderSystemImage: placeholderSystemImage
             )
         }
