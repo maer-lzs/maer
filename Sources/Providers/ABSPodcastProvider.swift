@@ -35,7 +35,11 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     @Published private(set) var shows: [PodcastShow] = []
     /// Whether the server has podcast libraries — drives tab visibility. Only
     /// true after a successful `refresh()`.
-    @Published private(set) var hasPodcasts = false
+    @Published private(set) var hasPodcasts = false {
+        // Y37: availability flips must reach the tab bar live (the toggle's
+        // refresh() probes and sets this on ANY of its paths).
+        didSet { if oldValue != hasPodcasts { AppSession.shared.notifySourcesChanged() } }
+    }
     /// Server progress per episode (key = `abspod:<item>:<episode>`) — basis for
     /// the played state of ABS episodes (there is nothing local for it).
     @Published private(set) var episodeProgress: [String: BookProgress] = [:]

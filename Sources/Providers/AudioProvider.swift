@@ -50,6 +50,13 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// Content type (tab) of this source — default: audiobooks.
     var mediaType: MediaType { get }
     var capabilities: ProviderCapabilities { get }
+    /// Whether the source currently has content (drives tab visibility and the
+    /// search fan-out). MUST be a protocol REQUIREMENT: the callers hold
+    /// `[any AudioProvider]`, and an extension-only property on the existential
+    /// binds statically to the default (`true`) — the concrete implementations
+    /// (Subsonic toggle, podcast subscriptions) were never consulted (Y37's
+    /// always-on Music tab).
+    var isAvailable: Bool { get }
 
     // MARK: Library
     func fetchLibraries() async throws -> [ABSLibrary]

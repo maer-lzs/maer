@@ -90,6 +90,8 @@ struct SettingsView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { dismiss() }
+                    // Locale-independent handle for the UI-test harness.
+                    .accessibilityIdentifier("settings-done")
             }
         }
         .task {
@@ -140,6 +142,8 @@ struct SettingsView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                // Locale-independent handle for the UI-test harness.
+                .accessibilityIdentifier("settings-tab-\(t.rawValue)")
             }
         }
         .frame(maxWidth: .infinity)
@@ -402,6 +406,8 @@ struct SettingsView: View {
             } label: {
                 Label("Subsonic / Navidrome", systemImage: "music.note")
             }
+            // Locale-independent handle for the UI-test harness.
+            .accessibilityIdentifier("settings-music-source")
         } header: {
             Text("Sources")
         } footer: {

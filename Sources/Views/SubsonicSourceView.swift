@@ -38,6 +38,12 @@ struct SubsonicSourceView: View {
 
             Section {
                 Toggle("Show Music tab", isOn: $enabled)
+                    // Locale-independent handle for the UI-test harness.
+                    .accessibilityIdentifier("music-tab-toggle")
+                    // Y37: the toggle acts IMMEDIATELY (like the ABS podcast
+                    // toggle) — save rebuilds the client and notifies the tab
+                    // bar; before, nothing happened until the view closed.
+                    .onChange(of: enabled) { _, _ in save() }
             } footer: {
                 Text("When on, your albums, artists and playlists appear in a Music tab in the library.")
             }

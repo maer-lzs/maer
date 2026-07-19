@@ -260,6 +260,50 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the X on an empty field must close the search")
     }
 
+    /// Y37: the source toggle drives the tab bar LIVE in both directions —
+    /// switching the music source off removes the Music tab without a restart,
+    /// switching it back on restores it.
+    func testMusicSourceToggleUpdatesTabs() {
+        let app = launchSeeded()
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15), "seeded music source must surface the tab")
+
+        func setMusicToggle() {
+            let gear = app.buttons["open-settings"].firstMatch
+            XCTAssertTrue(gear.waitForExistence(timeout: 10))
+            gear.tap()
+            // The source row lives under the settings' MUSIC pill tab.
+            let musicTab = app.buttons["settings-tab-music"].firstMatch
+            XCTAssertTrue(musicTab.waitForExistence(timeout: 10))
+            musicTab.tap()
+            let row = app.buttons["settings-music-source"].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10))
+            row.tap()
+            let toggle = app.switches["music-tab-toggle"].firstMatch
+            XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+            // The identifier sits on the row-wide element — a center tap hits
+            // the label, which does NOT flip a Form toggle. Tap the trailing
+            // knob and verify the value actually changed.
+            let before = toggle.value as? String
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            let flipped = NSPredicate(format: "value != %@", before ?? "")
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
+                                          timeout: 5), .completed, "the toggle must flip")
+            // Back to the settings root (Done lives on ITS toolbar), then out.
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            let done = app.buttons["settings-done"].firstMatch
+            XCTAssertTrue(done.waitForExistence(timeout: 5))
+            done.tap()
+        }
+
+        setMusicToggle()   // off
+        XCTAssertTrue(music.waitForNonExistence(timeout: 10),
+                      "switching the source off must remove the tab live")
+        setMusicToggle()   // on again
+        XCTAssertTrue(music.waitForExistence(timeout: 10),
+                      "switching the source on must restore the tab live")
+    }
+
     /// Music tab (seeded albums) — for the S17b bottom-bar background comparison.
     func testMusicTab() {
         let app = launchSeeded()

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Process-wide playback/library session. Coordinator and LibraryViewModel used
 /// to live as @StateObject in LibraryView — on a CarPlay COLD START (the app is
@@ -6,8 +7,26 @@ import Foundation
 /// belong to the process; UI and CarPlay scene share the same instances (one
 /// player, one queue).
 @MainActor
-final class AppSession {
+final class AppSession: ObservableObject {
     static let shared = AppSession()
+
+    /// Y37: source configuration as an OBSERVABLE state — bumped whenever a
+    /// source's availability may have changed (toggle, credential change,
+    /// probe result). The tab bar derives `availableMediaTypes` from
+    /// `isAvailable` on every render; without this signal nothing re-rendered
+    /// after a settings change, so a toggled source only appeared/disappeared
+    /// on the next incidental re-render (or app restart).
+    @Published private(set) var sourcesVersion = 0
+
+    func notifySourcesChanged() {
+        // A provider's FIRST touch can happen inside a body render (the tab
+        // bar reads `allProviders` while rendering) and its init calls
+        // reloadConfig → here. Publishing during a view update is illegal —
+        // defer the bump out of the update cycle.
+        Task { @MainActor in
+            self.sourcesVersion += 1
+        }
+    }
 
     /// Owns the APIClient (built from the keychain) — base URL and token are
     /// updated IN PLACE on login, so the objects below stay valid.

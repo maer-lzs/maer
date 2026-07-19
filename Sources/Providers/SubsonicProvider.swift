@@ -51,6 +51,10 @@ final class SubsonicProvider: AudioProvider {
             username: AppStorageKeys.subsonicUsernameValue,
             password: password
         )
+        // Y37: availability may have flipped (toggle, credentials) — the tab
+        // bar reacts live in both directions.
+        Logger.music.info("subsonic config reloaded (enabled=\(AppStorageKeys.subsonicEnabledValue), client=\(self.client != nil))")
+        AppSession.shared.notifySourcesChanged()
         // Y26 diagnosis: this is the spot that effectively deactivates the
         // source — never let it happen silently.
         if AppStorageKeys.subsonicEnabledValue, client == nil {

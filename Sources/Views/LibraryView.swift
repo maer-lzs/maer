@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import OSLog
 
 struct LibraryView: View {
     // Process-wide instances (AppSession) instead of own @StateObjects — the
@@ -10,6 +11,10 @@ struct LibraryView: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
+    /// Y37: observe the source configuration — `availableMediaTypes` reads
+    /// `isAvailable` per render, so the tab bar follows every toggle live
+    /// (Subsonic reloadConfig, ABS-podcast probe) in BOTH directions.
+    @ObservedObject private var session = AppSession.shared
     @State private var isShowingSearch = false
     /// Y17: the search field lives in the BOTTOM bar; bar and search page
     /// share this model (the page renders, the bar types).
@@ -152,6 +157,16 @@ struct LibraryView: View {
                 }
                 .onChange(of: selectedMediaType) { _, newValue in
                     mountedTabs.insert(newValue)
+                }
+                // Y37: the ACTIVE tab's source can be switched off in the
+                // settings — fall back to Home instead of standing on a tab
+                // the bar no longer offers.
+                .onChange(of: session.sourcesVersion) { _, _ in
+                    Logger.library.info("sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public)")
+                    if !availableMediaTypes.contains(selectedMediaType) {
+                        navigationPath = NavigationPath()
+                        selectedMediaType = .home
+                    }
                 }
             }
             .navigationTitle(selectedMediaType == .audiobooks ? Text("Library") : Text(selectedMediaType.label))
@@ -1119,6 +1134,9 @@ struct LibraryView: View {
             toolbarGlassIcon("gearshape")
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("Settings"))
+        // Locale-independent handle for the UI-test harness.
+        .accessibilityIdentifier("open-settings")
     }
 
     /// Toolbar icon on our OWN adaptive glass circle, treated EXACTLY like
