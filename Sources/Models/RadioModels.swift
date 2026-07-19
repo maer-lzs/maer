@@ -222,3 +222,52 @@ nonisolated enum RadioStore {
             .first { $0.id == id }
     }
 }
+
+/// F4-discovery: one curated genre — a Radio Browser tag with a display name
+/// and an SF Symbol. Foundation-only (MaerCore rule): the glyph is just a name
+/// string, the view renders it.
+nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
+    let tag: String          // exact Radio Browser tag (bytagexact)
+    let systemImage: String
+    let title: String
+    var id: String { tag }
+}
+
+/// F4-discovery: the catalog browse layer for the radio tab — a CURATED genre
+/// set (the raw tag cloud is too noisy) plus the pure offline/section-gating
+/// rules. Extendable: add rows to `genres`.
+nonisolated enum RadioCatalog {
+    static let genres: [RadioGenre] = [
+        RadioGenre(tag: "news", systemImage: "newspaper", title: String(localized: "News")),
+        RadioGenre(tag: "music", systemImage: "music.note", title: String(localized: "Music")),
+        RadioGenre(tag: "pop", systemImage: "music.mic", title: String(localized: "Pop")),
+        RadioGenre(tag: "rock", systemImage: "guitars", title: String(localized: "Rock")),
+        RadioGenre(tag: "classical", systemImage: "pianokeys", title: String(localized: "Classical")),
+        RadioGenre(tag: "jazz", systemImage: "music.quarternote.3", title: String(localized: "Jazz")),
+        RadioGenre(tag: "electronic", systemImage: "waveform", title: String(localized: "Electronic")),
+        RadioGenre(tag: "talk", systemImage: "bubble.left.and.bubble.right", title: String(localized: "Talk")),
+        RadioGenre(tag: "sport", systemImage: "sportscourt", title: String(localized: "Sport")),
+        RadioGenre(tag: "culture", systemImage: "theatermasks", title: String(localized: "Culture")),
+    ]
+
+    /// The device region as an uppercase ISO country code for the "From your
+    /// region" section — nil when the locale has no region (→ section hidden).
+    static func deviceRegionCode(locale: Locale = .current) -> String? {
+        guard let cc = locale.region?.identifier, !cc.isEmpty else { return nil }
+        return cc.uppercased()
+    }
+
+    // Section-visibility gates (pure): the catalog sections need the network,
+    // so offline they vanish and the tab falls back to favorites/recents.
+    static func showsPopular(isConnected: Bool, popular: [RadioStation]) -> Bool {
+        isConnected && !popular.isEmpty
+    }
+
+    static func showsRegion(isConnected: Bool, regionCode: String?, regional: [RadioStation]) -> Bool {
+        isConnected && (regionCode?.isEmpty == false) && !regional.isEmpty
+    }
+
+    static func showsGenres(isConnected: Bool) -> Bool {
+        isConnected
+    }
+}
