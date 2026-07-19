@@ -1,6 +1,146 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Popular Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebte Sender"
+          }
+        }
+      }
+    },
+    "From Your Region" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus deiner Region"
+          }
+        }
+      }
+    },
+    "By Genre" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Genre"
+          }
+        }
+      }
+    },
+    "No stations found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Sender gefunden"
+          }
+        }
+      }
+    },
+    "Browsing the radio catalog needs a connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Stöbern im Radio-Katalog ist eine Verbindung nötig."
+          }
+        }
+      }
+    },
+    "News" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachrichten"
+          }
+        }
+      }
+    },
+    "Pop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pop"
+          }
+        }
+      }
+    },
+    "Rock" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rock"
+          }
+        }
+      }
+    },
+    "Classical" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klassik"
+          }
+        }
+      }
+    },
+    "Jazz" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jazz"
+          }
+        }
+      }
+    },
+    "Electronic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elektro"
+          }
+        }
+      }
+    },
+    "Talk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk"
+          }
+        }
+      }
+    },
+    "Sport" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sport"
+          }
+        }
+      }
+    },
+    "Culture" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kultur"
+          }
+        }
+      }
+    },
     "" : {
 
     },

@@ -337,6 +337,19 @@ nonisolated final class MaerUITests: XCTestCase {
         radio.tap()
         XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10),
                       "favorites must list the seeded station")
+        // F4-discovery: the browse sections show the seeded catalog stand-in
+        // (net-gated in production; the harness never hits the real catalog).
+        XCTAssertTrue(app.staticTexts["Seed Popular Station"].firstMatch.waitForExistence(timeout: 10),
+                      "the Popular browse row must list the seeded catalog station")
+        // A curated genre tile pushes its station list (byTag drilldown).
+        let newsGenre = app.buttons["radio-genre-news"].firstMatch
+        var genreSwipes = 0
+        while !newsGenre.isHittable && genreSwipes < 6 { app.swipeUp(); genreSwipes += 1 }
+        XCTAssertTrue(newsGenre.waitForExistence(timeout: 10), "the curated genre tiles must appear")
+        newsGenre.tap()
+        XCTAssertTrue(app.staticTexts["Seed Catalog Two"].firstMatch.waitForExistence(timeout: 10),
+                      "tapping a genre must push its station list")
+        app.navigationBars.buttons.element(boundBy: 0).tap()   // back to the radio tab
         // Radio scope in the global search (only visible with the source on).
         app.buttons["global-search"].firstMatch.tap()
         XCTAssertTrue(app.buttons["scope-radio"].firstMatch.waitForExistence(timeout: 10),

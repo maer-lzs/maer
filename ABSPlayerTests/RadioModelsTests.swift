@@ -109,6 +109,69 @@ struct RadioModelsTests {
         #expect(recents.first?.id == "radio:rb:b")
     }
 
+    @Test("F4-discovery: catalog query construction per endpoint")
+    func catalogQueries() {
+        func params(_ q: RadioBrowserClient.Query) -> [String: String] {
+            Dictionary(uniqueKeysWithValues: q.queryItems.map { ($0.name, $0.value ?? "") })
+        }
+        let popular = RadioBrowserClient.Query.popular(limit: 40)
+        #expect(popular.path == "/json/stations/topvote")
+        #expect(params(popular)["limit"] == "40")
+        #expect(params(popular)["hidebroken"] == "true")
+
+        let region = RadioBrowserClient.Query.byRegion(countryCode: "CH", limit: 40)
+        #expect(region.path == "/json/stations/bycountrycodeexact/CH")
+        #expect(params(region)["order"] == "votes")
+        #expect(params(region)["reverse"] == "true")
+        #expect(params(region)["limit"] == "40")
+
+        let tag = RadioBrowserClient.Query.byTag(tag: "news", limit: 40)
+        #expect(tag.path == "/json/stations/bytagexact/news")
+        #expect(params(tag)["order"] == "votes")
+
+        // Tag with a space is path-escaped, not left raw.
+        let spaced = RadioBrowserClient.Query.byTag(tag: "hip hop", limit: 40)
+        #expect(!spaced.path.contains(" "))
+        #expect(spaced.path.hasPrefix("/json/stations/bytagexact/"))
+
+        let search = RadioBrowserClient.Query.search(name: "dlf", limit: 50)
+        #expect(search.path == "/json/stations/search")
+        #expect(params(search)["name"] == "dlf")
+        #expect(params(search)["limit"] == "50")
+    }
+
+    @Test("F4-discovery: curated genre list maps display names to Radio Browser tags")
+    func curatedGenres() {
+        let tags = RadioCatalog.genres.map(\.tag)
+        #expect(tags.contains("news"))
+        #expect(tags.contains("classical"))
+        #expect(tags.contains("jazz"))
+        #expect(tags.count >= 8)
+        // Tags are unique, and every genre carries a glyph + a non-empty title.
+        #expect(Set(tags).count == tags.count)
+        #expect(RadioCatalog.genres.allSatisfy { !$0.systemImage.isEmpty && !$0.title.isEmpty })
+    }
+
+    @Test("F4-discovery: section-visibility gates (offline / region / genres)")
+    func discoveryGates() {
+        let one = [RadioStation(id: "radio:rb:a", name: "A", streamURL: "https://s/a")]
+        // Popular: online + non-empty.
+        #expect(RadioCatalog.showsPopular(isConnected: true, popular: one))
+        #expect(!RadioCatalog.showsPopular(isConnected: false, popular: one))
+        #expect(!RadioCatalog.showsPopular(isConnected: true, popular: []))
+        // Region: online + a region code + non-empty results.
+        #expect(RadioCatalog.showsRegion(isConnected: true, regionCode: "CH", regional: one))
+        #expect(!RadioCatalog.showsRegion(isConnected: true, regionCode: nil, regional: one))
+        #expect(!RadioCatalog.showsRegion(isConnected: true, regionCode: "CH", regional: []))
+        #expect(!RadioCatalog.showsRegion(isConnected: false, regionCode: "CH", regional: one))
+        // Genres: online only (tiles are static, targets are net-gated).
+        #expect(RadioCatalog.showsGenres(isConnected: true))
+        #expect(!RadioCatalog.showsGenres(isConnected: false))
+        // Region code derives from the locale, uppercased; missing region → nil.
+        #expect(RadioCatalog.deviceRegionCode(locale: Locale(identifier: "de_CH")) == "CH")
+        #expect(RadioCatalog.deviceRegionCode(locale: Locale(identifier: "en")) == nil)
+    }
+
     @Test("F3: radio never enqueues — play only replaces the active playback")
     func queueVeto() {
         #expect(!PlayQueue.canEnqueue("radio:rb:abc"))

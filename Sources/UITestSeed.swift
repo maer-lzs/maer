@@ -159,6 +159,16 @@ enum UITestSeed {
                      streamURL: "https://seed.example/two.mp3"),
     ]
 
+    /// F4-discovery: stand-in catalog results — the browse sections and the
+    /// genre drilldown use these under `-uitest` instead of hitting the real
+    /// Radio Browser network, so the journey stays deterministic.
+    static let seedRadioCatalog = [
+        RadioStation(id: "radio:rb:seed-pop-1", name: "Seed Popular Station",
+                     streamURL: "https://seed.example/pop.mp3", countryCode: "CH"),
+        RadioStation(id: "radio:rb:seed-pop-2", name: "Seed Catalog Two",
+                     streamURL: "https://seed.example/pop2.mp3", countryCode: "CH"),
+    ]
+
     private static func chapter(_ id: Int, _ start: Double, _ end: Double, _ title: String) -> ABSChapter {
         ABSChapter(id: id, start: start, end: end, title: title)
     }
