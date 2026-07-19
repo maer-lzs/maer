@@ -54,13 +54,7 @@ struct BookCoverView: View {
                         .foregroundStyle(.white, AppTheme.accent)
                         .padding(4)
                 } else if isOfflineUnavailable {
-                    let badge = CoverBadge.size(tileWidth: size)
-                    Image(systemName: "wifi.slash")
-                        .font(.system(size: badge * 0.5, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: badge, height: badge)
-                        .background(.black.opacity(0.4), in: Circle())
-                        .padding(4)
+                    OfflineUnavailableBadge().padding(5)
                 }
             }
             // Install ring is layered by the enclosing cell as a SIBLING of the
