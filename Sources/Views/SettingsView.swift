@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// Central settings, split into pill tabs at the top: "General" (appearance,
-/// storage, sync, server, app info) and per media type "Audiobooks" (playback,
-/// library, stats, local files) and "Podcasts" (sources, iCloud sync).
+/// Central settings (Etappe E layout), split into pill tabs at the top:
+/// "General" carries the tab-INDEPENDENT sections — Sources (all services
+/// equal, one row per source) and Sync (history of all services + iCloud) —
+/// plus appearance/storage/about; "Audiobooks" and "Podcasts" keep only their
+/// playback/UI specifics.
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// For reloading after a library switch — the settings are pushed from
@@ -13,14 +15,13 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case general, audiobooks, podcasts, music
+        case general, audiobooks, podcasts
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: return "General"
             case .audiobooks: return "Audiobooks"
             case .podcasts: return "Podcasts"
-            case .music: return "Music"
             }
         }
     }
@@ -44,16 +45,8 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
-    @State private var availableLibraries: [ABSLibrary] = []
-    @AppStorage(AppStorageKeys.selectedLibraryId) private var selectedLibraryId = ""
     @State private var coverCacheBytes: Int64 = 0
-    @State private var pendingSyncCount = 0
-    @State private var isSyncing = false
     @State private var showDeleteAllDownloads = false
-    @State private var showLogoutConfirm = false
-    /// F10: attach Audiobookshelf from serverless mode (Setup as a sheet).
-    @State private var showABSSetup = false
-    @ObservedObject private var authViewModel = AppSession.shared.authViewModel
 
     /// Same speed steps as the full player's speed menu.
     private let availableRates: [Double] = [0.8, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0]
@@ -62,8 +55,13 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             pillTabs
             Form {
+                // Etappe E layout: SOURCES and SYNC are tab-independent
+                // (all services equal, the history shows them all); the media
+                // pills keep only their playback/UI specifics.
                 switch tab {
                 case .general:
+                    sourcesSection
+                    globalSyncSection
                     appearanceSection
                     recommendationsSection
                     storageSection
@@ -73,17 +71,9 @@ struct SettingsView: View {
                     #endif
                 case .audiobooks:
                     playbackSection
-                    serverSection
-                    if availableLibraries.count > 1 { librarySection }
-                    syncSection
-                    localFilesSection
                     statsSection
                 case .podcasts:
-                    podcastSourcesSection
                     podcastNotificationSection
-                    podcastSyncSection
-                case .music:
-                    musicSourcesSection
                 }
             }
             .bottomBarClearance()
@@ -97,26 +87,8 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings-done")
             }
         }
-        // F10: the ABS login as a sheet from serverless mode; a successful
-        // connect closes it (RootView's normal switch takes over otherwise).
-        .sheet(isPresented: $showABSSetup) {
-            SetupView(viewModel: authViewModel)
-        }
-        .onChange(of: authViewModel.isLoggedIn) { _, loggedIn in
-            if loggedIn { showABSSetup = false }
-        }
         .task {
             coverCacheBytes = ImageCache.shared.cacheSizeBytes()
-            pendingSyncCount = SyncQueue.shared.allPending().count
-            if let libraries = try? await coordinator.provider.fetchLibraries() {
-                // ONLY book libraries — podcast libraries belong to the podcast
-                // tab, not the audiobook library picker.
-                availableLibraries = libraries.filter { !$0.isPodcast }
-                // Reflect the effective library when nothing was chosen yet.
-                if selectedLibraryId.isEmpty || !availableLibraries.contains(where: { $0.id == selectedLibraryId }) {
-                    selectedLibraryId = availableLibraries.first?.id ?? ""
-                }
-            }
         }
         .alert("Delete all downloads?", isPresented: $showDeleteAllDownloads) {
             Button("Delete", role: .destructive) {
@@ -125,12 +97,6 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("All downloaded audiobooks will be removed from this device. Listening progress is kept.")
-        }
-        .alert("Log out?", isPresented: $showLogoutConfirm) {
-            Button("Log Out", role: .destructive) { onLogout() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("The server address stays saved; the token is removed.")
         }
     }
 
@@ -217,66 +183,70 @@ struct SettingsView: View {
         }
     }
 
-    private var syncSection: some View {
+    /// Etappe E: ONE tab-independent Sources section — every service equal,
+    /// one row per source, each source page follows the same pattern
+    /// (access / toggle / its own sync button).
+    private var sourcesSection: some View {
         Section {
-            LabeledContent {
-                Text("\(pendingSyncCount)")
+            NavigationLink {
+                ABSSourceView(coordinator: coordinator,
+                              libraryViewModel: libraryViewModel,
+                              onLogout: onLogout)
             } label: {
-                Label("Pending Updates", systemImage: "arrow.triangle.2.circlepath")
+                Label("Audiobookshelf", systemImage: "server.rack")
             }
-            Button {
-                isSyncing = true
-                Task {
-                    await SyncQueue.shared.flush(apiClient: coordinator.provider)
-                    pendingSyncCount = SyncQueue.shared.allPending().count
-                    isSyncing = false
-                }
+            .accessibilityIdentifier("settings-abs-source")
+            NavigationLink {
+                PodcastSourceView()
             } label: {
-                if isSyncing {
-                    ProgressView()
-                } else {
-                    Label("Sync Now", systemImage: "arrow.clockwise")
-                }
+                Label("Podcasts", systemImage: "mic")
             }
-            .disabled(pendingSyncCount == 0 || isSyncing)
-            // F9: the persisted history of sync runs (all services).
+            .accessibilityIdentifier("settings-podcast-source")
+            NavigationLink {
+                SubsonicSourceView()
+            } label: {
+                Label("Music Server", systemImage: "music.note")
+            }
+            // Locale-independent handle for the UI-test harness.
+            .accessibilityIdentifier("settings-music-source")
+            NavigationLink {
+                LocalFilesView(onImported: {
+                    Task { await libraryViewModel?.refreshAfterLocalChange() }
+                })
+            } label: {
+                Label("Local Files", systemImage: "folder")
+            }
+        } header: {
+            Text("Sources")
+        } footer: {
+            Text("Every source is optional and can be added or removed here at any time.")
+        }
+    }
+
+    /// Etappe E: the GLOBAL sync section — the history shows all services, so
+    /// it lives tab-independent; per-source sync buttons sit on the source
+    /// pages (one pattern, no scattered "Sync Now" variants).
+    private var globalSyncSection: some View {
+        Section {
             NavigationLink {
                 SyncHistoryView()
             } label: {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
+            Toggle(isOn: $podcastICloudSync) {
+                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
+            }
+            .onChange(of: podcastICloudSync) { _, on in
+                if on { PodcastCloudSync.shared.start() }
+            }
         } header: {
             Text("Sync")
         } footer: {
-            Text("Progress updates that could not reach the server yet are sent automatically as soon as possible.")
+            Text("iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page.")
         }
     }
 
-    private var serverSection: some View {
-        Section("Server") {
-            if authViewModel.isLoggedIn {
-                LabeledContent {
-                    Text(AppSession.shared.apiClient.baseURL.absoluteString)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                } label: {
-                    Label("Address", systemImage: "server.rack")
-                }
-                Button(role: .destructive) {
-                    showLogoutConfirm = true
-                } label: {
-                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            } else {
-                // F10: serverless mode — Audiobookshelf attaches HERE, anytime.
-                Button {
-                    showABSSetup = true
-                } label: {
-                    Label("Connect to Audiobookshelf", systemImage: "server.rack")
-                }
-            }
-        }
-    }
+
 
     private var aboutSection: some View {
         Section {
@@ -369,32 +339,7 @@ struct SettingsView: View {
         }
     }
 
-    private var librarySection: some View {
-        Section("Library") {
-            Picker(selection: $selectedLibraryId) {
-                ForEach(availableLibraries) { library in
-                    Text(library.name).tag(library.id)
-                }
-            } label: {
-                Label("Library", systemImage: "books.vertical")
-            }
-            .onChange(of: selectedLibraryId) { _, _ in
-                Task { await libraryViewModel?.loadLibrary() }
-            }
-        }
-    }
 
-    private var localFilesSection: some View {
-        Section("Sources") {
-            NavigationLink {
-                LocalFilesView(onImported: {
-                    Task { await libraryViewModel?.refreshAfterLocalChange() }
-                })
-            } label: {
-                Label("Local Files", systemImage: "folder")
-            }
-        }
-    }
 
     private var statsSection: some View {
         Section {
@@ -408,33 +353,9 @@ struct SettingsView: View {
 
     // MARK: - Podcasts
 
-    private var podcastSourcesSection: some View {
-        Section("Sources") {
-            NavigationLink {
-                PodcastSourceView()
-            } label: {
-                Label("Podcasts", systemImage: "mic")
-            }
-        }
-    }
 
     // MARK: - Music
 
-    private var musicSourcesSection: some View {
-        Section {
-            NavigationLink {
-                SubsonicSourceView()
-            } label: {
-                Label("Subsonic / Navidrome", systemImage: "music.note")
-            }
-            // Locale-independent handle for the UI-test harness.
-            .accessibilityIdentifier("settings-music-source")
-        } header: {
-            Text("Sources")
-        } footer: {
-            Text("Stream music from your own Subsonic-compatible server (Navidrome, Gonic, Airsonic).")
-        }
-    }
 
     private var podcastNotificationSection: some View {
         Section {
@@ -454,20 +375,6 @@ struct SettingsView: View {
         }
     }
 
-    private var podcastSyncSection: some View {
-        Section {
-            Toggle(isOn: $podcastICloudSync) {
-                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
-            }
-            .onChange(of: podcastICloudSync) { _, on in
-                if on { PodcastCloudSync.shared.start() }
-            }
-        } header: {
-            Text("Sync")
-        } footer: {
-            Text("iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server-based podcast sync (gpodder, Audiobookshelf) is configured under Sources → Podcasts.")
-        }
-    }
 
     private static var versionString: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"

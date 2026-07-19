@@ -294,10 +294,8 @@ nonisolated final class MaerUITests: XCTestCase {
             let gear = app.buttons["open-settings"].firstMatch
             XCTAssertTrue(gear.waitForExistence(timeout: 10))
             gear.tap()
-            // The source row lives under the settings' MUSIC pill tab.
-            let musicTab = app.buttons["settings-tab-music"].firstMatch
-            XCTAssertTrue(musicTab.waitForExistence(timeout: 10))
-            musicTab.tap()
+            // Etappe E: the source row lives in the tab-independent Sources
+            // section on the General pill (the settings' landing tab).
             let row = app.buttons["settings-music-source"].firstMatch
             XCTAssertTrue(row.waitForExistence(timeout: 10))
             row.tap()
