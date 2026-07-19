@@ -55,7 +55,7 @@ final class RSSProvider: AudioProvider {
     /// Load chapter JSON and map it to `[ABSChapter]` (end = next start, episode
     /// duration for the last). Error → nil (episode plays without chapters).
     static func loadChapters(url: URL, duration: Double) async -> [ABSChapter]? {
-        guard let (data, _) = try? await URLSession.maer.data(from: url),
+        guard let (data, _) = try? await RequestRetryPolicy.fetch(URLRequest(url: url)),
               let list = try? JSONDecoder().decode(PC20ChapterList.self, from: data),
               !list.chapters.isEmpty else { return nil }
         let sorted = list.chapters.sorted { $0.startTime < $1.startTime }

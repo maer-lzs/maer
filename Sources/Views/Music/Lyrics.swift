@@ -158,8 +158,8 @@ final class LyricsService: ObservableObject {
         guard let url = comps?.url else { return nil }
         var request = URLRequest(url: url)
         request.setValue("Maer/2.1 (https://codeberg.org/lzs/maer)", forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await URLSession.maer.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
+              http?.statusCode == 200 else { return nil }
 
         struct LRCLIBResponse: Decodable {
             let syncedLyrics: String?

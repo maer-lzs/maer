@@ -35,8 +35,8 @@ actor CoverArtArchive {
 
         var request = URLRequest(url: url)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await URLSession.maer.data(for: request),
-              (response as? HTTPURLResponse)?.statusCode == 200,
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
+              http?.statusCode == 200,
               let image = UIImage(data: data) else {
             missing.insert(mbid)
             return nil

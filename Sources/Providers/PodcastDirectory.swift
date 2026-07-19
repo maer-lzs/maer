@@ -42,7 +42,7 @@ struct ITunesDirectory: PodcastDirectory {
             URLQueryItem(name: "limit", value: "25")
         ]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.maer.data(from: url)
+        let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
         return Self.map(try JSONDecoder().decode(Response.self, from: data))
     }
 
@@ -51,7 +51,7 @@ struct ITunesDirectory: PodcastDirectory {
     func topPodcasts(limit: Int = 40) async throws -> [PodcastSearchResult] {
         let region = (Locale.current.region?.identifier ?? "US").lowercased()
         guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)/json") else { return [] }
-        let (data, _) = try await URLSession.maer.data(from: chartURL)
+        let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: chartURL))
         let ids = (try JSONDecoder().decode(ChartResponse.self, from: data)).feed.entry.map { $0.id.attributes.imId }
         guard !ids.isEmpty else { return [] }
 
@@ -61,7 +61,7 @@ struct ITunesDirectory: PodcastDirectory {
             URLQueryItem(name: "entity", value: "podcast")
         ]
         guard let lookupURL = comp.url else { return [] }
-        let (ldata, _) = try await URLSession.maer.data(from: lookupURL)
+        let (ldata, _) = try await RequestRetryPolicy.fetch(URLRequest(url: lookupURL))
         return Self.map(try JSONDecoder().decode(Response.self, from: ldata))
     }
 
@@ -134,7 +134,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         var components = URLComponents(string: "https://api.podcastindex.org/api/1.0/search/byterm")!
         components.queryItems = [URLQueryItem(name: "q", value: term)]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
+        let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
@@ -149,7 +149,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
         }
         components.queryItems = q
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
+        let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         return try JSONDecoder().decode(Response.self, from: data).feeds.compactMap(Self.map)
     }
 
@@ -177,7 +177,7 @@ struct PodcastIndexDirectory: PodcastDirectory {
             URLQueryItem(name: "max", value: String(max))
         ]
         guard let url = components.url else { return [] }
-        let (data, _) = try await URLSession.maer.data(for: signedRequest(url: url))
+        let (data, _) = try await RequestRetryPolicy.fetch(signedRequest(url: url))
         let response = try JSONDecoder().decode(EpisodesResponse.self, from: data)
         return response.items.map {
             PodcastIndexEpisode(
