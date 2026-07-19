@@ -41,9 +41,14 @@ struct LatestEpisodesGrid: View {
                 }
             }
             .padding(.horizontal)
+            // Y45: bind the animation to `expanded` on the grid itself (not a
+            // withAnimation wrapper around the toggle) so the row add/remove
+            // runs with the SAME curve in BOTH directions — collapse no longer
+            // reads more abruptly than the reference expand.
+            .animation(.snappy(duration: 0.25), value: expanded)
             if items.count > cols * 2 {
                 Button {
-                    withAnimation(.snappy(duration: 0.25)) { expanded.toggle() }
+                    expanded.toggle()
                 } label: {
                     Label(expanded ? String(localized: "Show Less")
                                    : String(localized: "Show More"),
