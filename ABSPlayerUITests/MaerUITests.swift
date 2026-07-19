@@ -123,6 +123,11 @@ nonisolated final class MaerUITests: XCTestCase {
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(album.waitForExistence(timeout: 15))
         album.tap()
+        // Y63: the settings cog stays on the album page (outermost) alongside
+        // the album's own trailing actions — it doesn't vanish behind them.
+        let albumCog = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(albumCog.waitForExistence(timeout: 10) && albumCog.isHittable,
+                      "the settings cog must remain visible on the album page (Y63)")
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 10))
         books.tap()

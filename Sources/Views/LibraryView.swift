@@ -226,6 +226,10 @@ struct LibraryView: View {
         .environment(\.pushPodcastRoute) { navigationPath.append($0) }
         // Home tiles push book detail pages (String route) the same way.
         .environment(\.pushBookDetail) { navigationPath.append($0) }
+        // Y63: pushed detail pages (music album, podcast show) host the settings
+        // cog themselves — the root toolbar's cog doesn't propagate. Set on the
+        // NavigationStack itself so pushed destinations inherit it.
+        .environment(\.openSettings) { showSettings = true }
         // Y23: a push out of the search page's deck (grid cells navigate
         // value-based via NavigationLink) leaves search mode — the pushed
         // detail must get the normal bottom bar, not the search field.

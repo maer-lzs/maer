@@ -90,6 +90,9 @@ struct MusicAlbumView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .toolbar {
+            // Y63: page actions inboard, the settings cog OUTERMOST — declared
+            // last so it sits at the trailing edge and never vanishes behind
+            // download/favorite (the root cog doesn't propagate to pushed pages).
             ToolbarItemGroup(placement: .topBarTrailing) {
                 downloadButton
                 if isAlbum {
@@ -100,6 +103,7 @@ struct MusicAlbumView: View {
                     }
                     .tint(starred ? .red : nil)
                 }
+                SettingsToolbarButton()
             }
         }
         .task(id: item.id) {

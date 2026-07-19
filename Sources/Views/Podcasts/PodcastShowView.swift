@@ -91,8 +91,12 @@ struct PodcastShowView: View {
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            // Y63 (parity): the per-show settings slider inboard, the global
+            // app settings cog OUTERMOST (declared last) so it stays visible on
+            // this pushed page like on the music album page.
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                SettingsToolbarButton()
             }
         }
         .sheet(isPresented: $showSettings) {
