@@ -112,8 +112,19 @@ struct SubsonicSourceView: View {
     }
 
     private func save() {
-        AppStorageKeys.subsonicServerURLValue = serverURL.trimmingCharacters(in: .whitespaces)
-        AppStorageKeys.subsonicUsernameValue = username.trimmingCharacters(in: .whitespaces)
+        // Y26 class (Y38): a transiently EMPTY field must never erase the
+        // stored value — the unconditional save on disappear nuked the server
+        // URL, which (since Y37 reacts live) drops the Music tab on the spot.
+        // Same decision as the password below: clearing a source is done via
+        // the toggle, not by emptying a field.
+        let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
+        if !trimmedURL.isEmpty {
+            AppStorageKeys.subsonicServerURLValue = trimmedURL
+        }
+        let trimmedUser = username.trimmingCharacters(in: .whitespaces)
+        if !trimmedUser.isEmpty {
+            AppStorageKeys.subsonicUsernameValue = trimmedUser
+        }
         // Y26: NEVER persist an empty field as a keychain DELETE — when the
         // @State init read the password as empty (locked-device keychain
         // failure), the unconditional save on disappear silently erased the

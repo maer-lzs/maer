@@ -116,12 +116,31 @@ struct GPodderSettingsView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
+        // Y26/Y38 parity: the mask always prefills the LAST stored state —
+        // also refills fields the early @State init may have read empty.
+        .onAppear {
+            if serverURL.isEmpty { serverURL = AppStorageKeys.gpodderServerURLValue }
+            if username.isEmpty { username = AppStorageKeys.gpodderUsernameValue }
+            if password.isEmpty { password = AppStorageKeys.gpodderPasswordValue }
+        }
     }
 
     private func save() {
-        AppStorageKeys.gpodderServerURLValue = serverURL.trimmingCharacters(in: .whitespaces)
-        AppStorageKeys.gpodderUsernameValue = username.trimmingCharacters(in: .whitespaces)
-        AppStorageKeys.setGpodderPassword(password)
+        // Y26 class (Y38, parity with the music source): a transiently EMPTY
+        // field must never erase the stored value — the unconditional save on
+        // disappear could nuke URL, user AND the keychain password. Clearing
+        // the source is done via the toggle, not by emptying fields.
+        let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
+        if !trimmedURL.isEmpty {
+            AppStorageKeys.gpodderServerURLValue = trimmedURL
+        }
+        let trimmedUser = username.trimmingCharacters(in: .whitespaces)
+        if !trimmedUser.isEmpty {
+            AppStorageKeys.gpodderUsernameValue = trimmedUser
+        }
+        if !password.isEmpty {
+            AppStorageKeys.setGpodderPassword(password)
+        }
         AppStorageKeys.gpodderEnabledValue = enabled
     }
 
