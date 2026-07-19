@@ -336,7 +336,15 @@ struct LibraryView: View {
             // the meantime.
             if newPhase == .active {
                 PodcastCloudSync.shared.reconcile()   // pull the iCloud podcast state
+                // Y33 (c): recheck the active sources and reconnect silently —
+                // an outage must never require a force-quit to recover.
+                if SubsonicProvider.shared.isAvailable == false, AppStorageKeys.subsonicEnabledValue {
+                    SubsonicProvider.shared.reloadConfig()
+                }
                 Task {
+                    if viewModel.isShowingOfflineCache, NetworkMonitor.shared.isConnected {
+                        await viewModel.loadLibrary()   // leave the stale cache state
+                    }
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
                 }

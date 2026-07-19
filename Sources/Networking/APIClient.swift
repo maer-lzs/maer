@@ -399,9 +399,41 @@ final class APIClient {
         if let token, !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        let (data, response) = try await URLSession.maer.data(for: request)
-        try validate(response, data: data)
-        return data
+        return try await perform(request)
+    }
+
+    /// Y33: ONE request path with the self-healing policy — a 401 is probed
+    /// once more before the logout fires (outage gateways answer 401
+    /// spuriously), transient failures (429/5xx/timeouts/connection drops)
+    /// back off briefly instead of surfacing straight away.
+    private func perform(_ request: URLRequest) async throws -> Data {
+        var attempt = 0
+        while true {
+            let data: Data
+            let response: URLResponse
+            do {
+                (data, response) = try await URLSession.maer.data(for: request)
+            } catch let urlError as URLError {
+                if case .retry(let ms) = RequestRetryPolicy.decide(
+                    status: nil, urlErrorCode: urlError.code.rawValue, attempt: attempt) {
+                    attempt += 1
+                    try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                    continue
+                }
+                throw urlError
+            }
+            guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+            if (200...299).contains(http.statusCode) { return data }
+            if case .retry(let ms) = RequestRetryPolicy.decide(
+                status: http.statusCode, urlErrorCode: nil, attempt: attempt) {
+                attempt += 1
+                try? await Task.sleep(nanoseconds: UInt64(ms) * 1_000_000)
+                continue
+            }
+            // Only a CONFIRMED 401 (survived the probe retry) logs out.
+            if http.statusCode == 401 { onUnauthorized?() }
+            throw APIError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+        }
     }
 
     private func patch(path: String, body: [String: Any]) async throws -> Data {
@@ -419,9 +451,7 @@ final class APIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: body)
         }
-        let (data, response) = try await URLSession.maer.data(for: request)
-        try validate(response, data: data)
-        return data
+        return try await perform(request)
     }
 
     /// Like `send`, but with an arbitrary JSON body (dict OR array) — for
@@ -435,9 +465,7 @@ final class APIClient {
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: json)
-        let (data, response) = try await URLSession.maer.data(for: request)
-        try validate(response, data: data)
-        return data
+        return try await perform(request)
     }
 
     /// Decode OFF the main actor — APIClient is MainActor-isolated by project
@@ -462,16 +490,6 @@ final class APIClient {
         }
     }
 
-    private func validate(_ response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 401 {
-                onUnauthorized?()
-            }
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw APIError.http(http.statusCode, body)
-        }
-    }
 }
 
 // MARK: - F6 global search (SearchableProvider)

@@ -38,3 +38,34 @@ func withRetry<T>(attempts: Int = 3,
     }
     throw lastError ?? APIError.invalidResponse
 }
+
+/// Y33 (pure, tested): per-attempt decision for one HTTP request. A 401 gets
+/// exactly ONE probe retry before it counts as a real auth failure — gateways
+/// answer 401/5xx spuriously during outages, and logging the user out on the
+/// first one made a server hiccup cost a re-login. Transient failures back
+/// off twice; everything else fails immediately.
+nonisolated enum RequestRetryPolicy {
+    enum Decision: Equatable {
+        case retry(afterMs: Int)
+        case fail
+    }
+
+    static let transientBackoffMs = [400, 1200]
+
+    static func decide(status: Int?, urlErrorCode: Int?, attempt: Int) -> Decision {
+        if status == 401 {
+            return attempt == 0 ? .retry(afterMs: 500) : .fail
+        }
+        let transientStatus = status.map { $0 == 429 || (500...599).contains($0) } ?? false
+        let transientURLError = urlErrorCode.map {
+            [NSURLErrorTimedOut, NSURLErrorNetworkConnectionLost,
+             NSURLErrorCannotConnectToHost].contains($0)
+        } ?? false
+        if transientStatus || transientURLError {
+            return attempt < transientBackoffMs.count
+                ? .retry(afterMs: transientBackoffMs[attempt])
+                : .fail
+        }
+        return .fail
+    }
+}
