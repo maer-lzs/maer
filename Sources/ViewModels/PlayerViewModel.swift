@@ -3,6 +3,7 @@ import Combine
 import AVFoundation
 import MediaPlayer
 import UIKit
+import OSLog
 
 @MainActor
 final class PlayerViewModel: NSObject, ObservableObject {
