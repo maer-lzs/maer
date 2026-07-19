@@ -24,6 +24,21 @@ extension PlayerViewModel {
         icyStreamTitle.flatMap { ICYMetadata.parse(streamTitle: $0) }
     }
 
+    /// The station name (radio items) — the in-app player shows it as the big
+    /// title, with `icyDisplayLine` underneath (the lock screen stays song-first
+    /// per Apple's convention, see `nowPlayingTitle`).
+    var stationName: String {
+        item?.media.metadata?.title ?? String(localized: "Radio")
+    }
+
+    /// The current ICY song as one line ("Artist — Title", or just the title) —
+    /// nil when the stream has sent nothing.
+    var icyDisplayLine: String? {
+        guard let icy = icyNowPlaying else { return nil }
+        if let artist = icy.artist, !artist.isEmpty { return "\(artist) — \(icy.title)" }
+        return icy.title
+    }
+
     /// X14: the large title = the work (book/episode title; the SONG title for
     /// music). One derivation for the full player, lock screen and CarPlay —
     /// never empty.

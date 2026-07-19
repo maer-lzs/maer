@@ -261,6 +261,22 @@ struct PlayerView: View {
 
     private var chapterHeader: some View {
         VStack(spacing: 4) {
+            if viewModel.isLiveStream {
+                // F2/ICY: radio shows the STATION as the big title, with the
+                // current ICY song underneath (in-app arrangement; the lock
+                // screen stays song-first per Apple's convention).
+                Text(viewModel.stationName)
+                    .font(.title3).bold()
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if let nowPlaying = viewModel.icyDisplayLine {
+                    Text(nowPlaying)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+            } else {
             // X14: the WORK is the large title (shared derivation — book/episode
             // title, the song title for music). It had silently vanished from the
             // player once T9d stopped baking the work title into the chapter
@@ -294,6 +310,7 @@ struct PlayerView: View {
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.55))
                     .monospacedDigit()
+            }
             }
         }
         .padding(.horizontal)
