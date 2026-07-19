@@ -6,8 +6,8 @@ import SwiftUI
 /// in the bottom bar (Y17/Y19/Y24). On top the STANDING scope bar (Y20,
 /// single select, gliding pill — the MediaTabBar pattern). An empty field
 /// shows the browse deck (Y28) with the recent searches on top (Y30); typing
-/// yields to the results with capped sections (Y18) and the clearly
-/// set-apart catalog card (Y16).
+/// yields to the results with capped sections (Y18), the clearly set-apart
+/// catalog card (Y16) and typed catalog rows (Y25).
 struct SearchScreen: View {
     @ObservedObject var libraryViewModel: LibraryViewModel
     /// Owned by LibraryView (the bar types, the page renders).
@@ -71,8 +71,9 @@ struct SearchScreen: View {
                     }
                     .padding(.bottom, 12)
                     .bottomBarClearance()
-                    // Y14: calm arrival — sections land with a soft fade.
-                    .animation(.easeOut(duration: 0.25), value: model.sections)
+                    // Y29: a touch softer than the first pass (0.25 easeOut) —
+                    // sections land with a gentle fade, no jump.
+                    .animation(.smooth(duration: 0.35), value: model.sections)
                 }
                 .scrollDismissesKeyboard(.immediately)
                 // A–Z jump rail (Y28, audiobooks deck root only) — floats over
@@ -327,6 +328,9 @@ struct SearchScreen: View {
                     titleDimmed: !result.isPlayableNow,
                     coverDimmed: !result.isPlayableNow,
                     offlineBadge: !result.isPlayableNow,
+                    // Y25: catalog hits say WHAT they are (today only podcast
+                    // shows; a LibriVox source will add audiobooks later).
+                    meta: result.kind == .catalogShow ? String(localized: "Podcast") : nil,
                     placeholderSystemImage: Self.placeholder(result.kind)
                 )
                 if result.kind == .author || result.kind == .series {
