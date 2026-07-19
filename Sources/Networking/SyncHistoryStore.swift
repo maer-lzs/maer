@@ -31,7 +31,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
             do {
                 let data = try Data(contentsOf: self.fileURL)
                 entries = SyncHistory.trimmed(try JSONDecoder().decode([SyncHistoryEntry].self, from: data))
-                Logger.library.info("sync history loaded: \(self.entries.count) entries")
+                Logger.library.notice("sync history loaded: \(self.entries.count) entries")
             } catch {
                 Logger.library.error("sync history load FAILED: \(error.localizedDescription, privacy: .public)")
                 // Park the unreadable file as evidence — otherwise the next
@@ -45,7 +45,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
 
     func append(_ entry: SyncHistoryEntry) {
         entries = SyncHistory.trimmed([entry] + entries)
-        Logger.library.info("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
+        Logger.library.notice("sync history append: \(entry.service.rawValue, privacy: .public) → \(self.entries.count) entries")
         do {
             let data = try JSONEncoder().encode(entries)
             try data.write(to: fileURL, options: .atomic)

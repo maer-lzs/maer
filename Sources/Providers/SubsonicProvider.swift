@@ -54,7 +54,7 @@ final class SubsonicProvider: AudioProvider {
         )
         // Y37: availability may have flipped (toggle, credentials) — the tab
         // bar reacts live in both directions.
-        Logger.music.info("subsonic config reloaded (enabled=\(AppStorageKeys.subsonicEnabledValue), client=\(self.client != nil))")
+        Logger.music.notice("subsonic config reloaded (enabled=\(AppStorageKeys.subsonicEnabledValue), client=\(self.client != nil))")
         AppSession.shared.notifySourcesChanged()
         // Y26 diagnosis: this is the spot that effectively deactivates the
         // source — never let it happen silently.
@@ -99,7 +99,7 @@ final class SubsonicProvider: AudioProvider {
     /// error entry. Every path logs (Y36 device diagnosis).
     func runLibrarySync(fetch: () async throws -> [SubsonicAlbum]) async -> String? {
         let started = Date()
-        Logger.music.info("music sync started")
+        Logger.music.notice("music sync started")
         do {
             let albums = try await fetch()
             remember(await Self.mapAlbums(albums))
@@ -110,7 +110,7 @@ final class SubsonicProvider: AudioProvider {
                            .init(key: .songsUpdated, value: songs)],
                 duration: Date().timeIntervalSince(started),
                 deviceId: SyncHistoryStore.deviceId, startedAt: started))
-            Logger.music.info("music sync ok: \(albums.count) albums, \(songs) songs — history entry appended")
+            Logger.music.notice("music sync ok: \(albums.count) albums, \(songs) songs — history entry appended")
             librarySynced.send()
             return nil
         } catch {

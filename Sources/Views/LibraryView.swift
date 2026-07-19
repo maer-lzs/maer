@@ -162,7 +162,7 @@ struct LibraryView: View {
                 // settings — fall back to Home instead of standing on a tab
                 // the bar no longer offers.
                 .onChange(of: session.sourcesVersion) { _, _ in
-                    Logger.library.info("sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public)")
+                    Logger.library.notice("sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public)")
                     if !availableMediaTypes.contains(selectedMediaType) {
                         navigationPath = NavigationPath()
                         selectedMediaType = .home
