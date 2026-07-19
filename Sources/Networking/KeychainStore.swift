@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Security
 
 /// Very simple keychain wrapper. Enough for a single-user app — no third-party
@@ -20,6 +21,10 @@ nonisolated enum KeychainStore {
 
         var attributes = query
         attributes[kSecValueData as String] = data
+        // Y26: readable after the first unlock — without this the default
+        // (WhenUnlocked) makes every background/locked read fail, and a failed
+        // credential read used to cascade into "source logged out".
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
@@ -33,7 +38,15 @@ nonisolated enum KeychainStore {
         ]
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        guard status == errSecSuccess, let data = result as? Data else {
+            // Y26 diagnosis: an unreadable item is NOT the same as a missing
+            // one — log every non-notFound failure (e.g. -25308
+            // interactionNotAllowed while the device is locked).
+            if status != errSecItemNotFound {
+                Logger.library.error("keychain read for \(key, privacy: .public) failed: \(status)")
+            }
+            return nil
+        }
         return String(data: data, encoding: .utf8)
     }
 

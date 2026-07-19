@@ -65,6 +65,21 @@ struct SubsonicSourceView: View {
                 }
                 .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
 
+                // Y27: the library refresh as a VISIBLE sync (parity with the
+                // other sources) — lands in Settings → Sync → Sync History.
+                Button {
+                    save()
+                    isTesting = true
+                    Task {
+                        let err = await SubsonicProvider.shared.syncLibraryNow()
+                        setStatus(err ?? String(localized: "Music library synced."), isError: err != nil)
+                        isTesting = false
+                    }
+                } label: {
+                    Label("Sync Now", systemImage: "arrow.clockwise")
+                }
+                .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
+
                 if isTesting {
                     HStack { ProgressView(); Text("Working…").foregroundStyle(.secondary) }
                 }
@@ -80,12 +95,26 @@ struct SubsonicSourceView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
+        // Y26: the mask always prefills the LAST stored state — a kicked-out
+        // session costs at most the password re-entry. Also refills fields the
+        // early @State init may have read empty.
+        .onAppear {
+            if serverURL.isEmpty { serverURL = AppStorageKeys.subsonicServerURLValue }
+            if username.isEmpty { username = AppStorageKeys.subsonicUsernameValue }
+            if password.isEmpty { password = AppStorageKeys.subsonicPasswordValue }
+        }
     }
 
     private func save() {
         AppStorageKeys.subsonicServerURLValue = serverURL.trimmingCharacters(in: .whitespaces)
         AppStorageKeys.subsonicUsernameValue = username.trimmingCharacters(in: .whitespaces)
-        AppStorageKeys.setSubsonicPassword(password)
+        // Y26: NEVER persist an empty field as a keychain DELETE — when the
+        // @State init read the password as empty (locked-device keychain
+        // failure), the unconditional save on disappear silently erased the
+        // stored credential. An empty field simply leaves the keychain alone.
+        if !password.isEmpty {
+            AppStorageKeys.setSubsonicPassword(password)
+        }
         AppStorageKeys.subsonicEnabledValue = enabled
         // Rebuild the client so the next request uses the new credentials.
         SubsonicProvider.shared.reloadConfig()

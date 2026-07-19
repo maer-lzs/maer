@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// AudioProvider for Subsonic-compatible music servers (Navidrome & co.). A new
 /// media TYPE for Mär: music, not spoken audio. Mapping to the shared domain:
@@ -44,11 +45,19 @@ final class SubsonicProvider: AudioProvider {
 
     /// Rebuild the client from the stored settings (call after a settings change).
     func reloadConfig() {
+        let password = AppStorageKeys.subsonicPasswordValue
         client = SubsonicClient(
             serverURL: AppStorageKeys.subsonicServerURLValue,
             username: AppStorageKeys.subsonicUsernameValue,
-            password: AppStorageKeys.subsonicPasswordValue
+            password: password
         )
+        // Y26 diagnosis: this is the spot that effectively deactivates the
+        // source — never let it happen silently.
+        if AppStorageKeys.subsonicEnabledValue, client == nil {
+            Logger.music.error("subsonic source enabled but client rebuild failed (URL/user missing)")
+        } else if AppStorageKeys.subsonicEnabledValue, password.isEmpty {
+            Logger.music.error("subsonic client built WITHOUT a password (keychain empty or unreadable)")
+        }
     }
 
     /// Validate server + credentials; returns a user-facing error string or nil.
@@ -57,6 +66,35 @@ final class SubsonicProvider: AudioProvider {
         guard let client else { return String(localized: "Enter server, username and password.") }
         do { try await client.ping(); return nil }
         catch { return (error as? SubsonicClient.SubsonicError)?.errorDescription ?? error.localizedDescription }
+    }
+
+    /// Y27: the music library refresh as a VISIBLE operation (sync parity
+    /// with the other sources): fetch the album list fresh, remember it, and
+    /// record a history entry — numbers, duration, errors in clear text.
+    func syncLibraryNow() async -> String? {
+        guard let client else { return String(localized: "Enter server, username and password.") }
+        let started = Date()
+        do {
+            let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
+            remember(await Self.mapAlbums(albums))
+            let songs = albums.reduce(0) { $0 + ($1.songCount ?? 0) }
+            SyncHistoryStore.shared.append(SyncHistory.entry(
+                service: .music, direction: .down,
+                counters: [.init(key: .albumsUpdated, value: albums.count),
+                           .init(key: .songsUpdated, value: songs)],
+                duration: Date().timeIntervalSince(started),
+                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+            return nil
+        } catch {
+            let message = (error as? SubsonicClient.SubsonicError)?.errorDescription
+                ?? error.localizedDescription
+            SyncHistoryStore.shared.append(SyncHistory.entry(
+                service: .music, direction: .down, counters: [],
+                duration: Date().timeIntervalSince(started),
+                error: message,
+                deviceId: SyncHistoryStore.deviceId, startedAt: started))
+            return message
+        }
     }
 
     // MARK: - Library
