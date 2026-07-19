@@ -1,29 +1,55 @@
 import SwiftUI
 
-/// F4: the radio tab — favorites and last-heard stations as shared rows;
-/// the CATALOG lives in the global search (radio scope). Stations play
-/// directly (F3: play replaces the active playback, never queued). Offline
-/// everything dims WITH the white status glyph (A3 rule) — a live stream
-/// without network is simply unavailable.
+/// F4: the radio tab. On top, the user's own stations (favorites + last-heard
+/// rows). Below, the catalog browse layer (F4-discovery): Popular, From your
+/// region, and curated genres — all net-gated, so offline the tab falls back to
+/// the cached favorites/recents and nothing breaks. Stations play directly
+/// (F3: play replaces the active playback, never queued).
 struct RadioView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var isActive: Bool = true
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    /// Re-render on favorite/recent changes (UserDefaults-backed store).
+
+    // User's own stations (UserDefaults-backed store).
     @State private var favorites: [RadioStation] = []
     @State private var recents: [RadioStation] = []
+    // Catalog browse — cached per session, re-fetched only on refresh.
+    @State private var popular: [RadioStation] = []
+    @State private var regional: [RadioStation] = []
+    @State private var discoveryLoaded = false
+    private let regionCode = RadioCatalog.deviceRegionCode()
+
+    private var showsPopular: Bool { RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
+    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionCode, regional: regional) }
+    private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
+    private var hasAnyContent: Bool {
+        !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                if favorites.isEmpty && recents.isEmpty {
-                    emptyState
-                } else {
-                    if !favorites.isEmpty {
-                        section(title: String(localized: "Favorites"), stations: favorites)
-                    }
-                    if !recents.isEmpty {
-                        section(title: String(localized: "Recently Played"), stations: recents)
+                if !favorites.isEmpty {
+                    listSection(title: String(localized: "Favorites"), stations: favorites)
+                }
+                if !recents.isEmpty {
+                    listSection(title: String(localized: "Recently Played"), stations: recents)
+                }
+                if showsPopular {
+                    cardRow(title: String(localized: "Popular Stations"), stations: popular)
+                }
+                if showsRegion {
+                    cardRow(title: String(localized: "From Your Region"), stations: regional)
+                }
+                if showsGenres {
+                    genreSection
+                }
+                if !hasAnyContent {
+                    if networkMonitor.isConnected && !discoveryLoaded {
+                        HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
+                            .frame(maxWidth: .infinity).padding(.top, 60)
+                    } else {
+                        emptyState
                     }
                 }
             }
@@ -31,66 +57,70 @@ struct RadioView: View {
             .bottomBarClearance()
         }
         .reportsBottomBarScroll(active: isActive)
+        .refreshable { await loadDiscovery(force: true) }
         .task(id: "\(isActive)-\(playerCoordinator.activeItem?.id ?? "")") {
             reload()
+            await loadDiscovery()
         }
     }
 
-    private func reload() {
-        favorites = RadioStore.favorites()
-        recents = RadioStore.recents().filter { station in
-            !favorites.contains { $0.id == station.id }
-        }
-    }
+    // MARK: - Sections
 
-    private func section(title: String, stations: [RadioStation]) -> some View {
+    private func listSection(title: String, stations: [RadioStation]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title).font(.title3).bold().padding(.horizontal)
             LazyVStack(spacing: 0) {
                 ForEach(stations) { station in
-                    stationRow(station)
+                    RadioStationRow(station: station, playerCoordinator: playerCoordinator,
+                                    onFavoriteToggled: reload)
                     Divider().padding(.leading, 88)
                 }
             }
         }
     }
 
-    private func stationRow(_ station: RadioStation) -> some View {
-        Button {
-            play(station)
-        } label: {
-            MediaRowContent(
-                coverURL: nil,
-                eyebrow: station.tags.first,
-                title: station.name,
-                titleDimmed: !networkMonitor.isConnected,
-                coverDimmed: !networkMonitor.isConnected,
-                offlineBadge: !networkMonitor.isConnected,
-                placeholderSystemImage: "dot.radiowaves.left.and.right",
-                coverOverride: AnyView(RadioArtwork(
-                    stationID: station.id,
-                    faviconURL: station.faviconURL.flatMap { URL(string: $0) }))
-            )
-            .padding(.horizontal)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(!networkMonitor.isConnected)
-        .contextMenu {
-            Button {
-                RadioStore.toggleFavorite(station)
-                reload()
-            } label: {
-                Label(RadioStore.isFavorite(station.id) ? String(localized: "Remove Favorite")
-                                                        : String(localized: "Add Favorite"),
-                      systemImage: RadioStore.isFavorite(station.id) ? "star.slash" : "star")
+    private func cardRow(title: String, stations: [RadioStation]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.title3).bold().padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(stations) { station in
+                        RadioStationCard(station: station, playerCoordinator: playerCoordinator,
+                                         onFavoriteToggled: reload)
+                    }
+                }
+                .padding(.horizontal)
             }
         }
     }
 
-    private func play(_ station: RadioStation) {
-        // The recent-ring records centrally in RadioProvider.fetchItemDetail.
-        Task { await playerCoordinator.open(item: RadioProvider.libraryItem(for: station)) }
+    private var genreSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("By Genre").font(.title3).bold().padding(.horizontal)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                      spacing: 12) {
+                ForEach(RadioCatalog.genres) { genre in
+                    NavigationLink(value: RadioRoute.genre(tag: genre.tag, title: genre.title)) {
+                        HStack(spacing: 12) {
+                            Image(systemName: genre.systemImage)
+                                .font(.title2)
+                                .foregroundStyle(AppTheme.accent)
+                                .frame(width: 28)
+                            Text(genre.title).font(.body.weight(.medium)).lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.primary.opacity(0.06)))
+                        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("radio-genre-\(genre.tag)")
+                }
+            }
+            .padding(.horizontal)
+        }
     }
 
     private var emptyState: some View {
@@ -100,5 +130,43 @@ struct RadioView: View {
             Text("Search the catalog with the magnifier and star your stations — or add a stream URL under Settings → Sources → Radio.")
         }
         .padding(.top, 60)
+    }
+
+    // MARK: - Loading
+
+    private func reload() {
+        favorites = RadioStore.favorites()
+        recents = RadioStore.recents().filter { station in
+            !favorites.contains { $0.id == station.id }
+        }
+    }
+
+    /// Fetch the catalog rows once per session (guarded), re-fetched on refresh.
+    /// Net-gated: offline it does nothing and the sections stay hidden.
+    private func loadDiscovery(force: Bool = false) async {
+        guard networkMonitor.isConnected else { return }
+        if !force, discoveryLoaded { return }
+        #if DEBUG
+        if UITestSeed.isActive {
+            // Deterministic stand-in — no real Radio Browser call in the harness.
+            popular = UITestSeed.seedRadioCatalog
+            regional = UITestSeed.seedRadioCatalog
+            discoveryLoaded = true
+            return
+        }
+        #endif
+        async let topTask = RadioBrowserClient.popular()
+        async let regionTask = Self.regionStations(regionCode)
+        let topResult = (try? await topTask) ?? []
+        let regionResult = await regionTask
+        RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
+        popular = topResult
+        regional = regionResult
+        discoveryLoaded = true
+    }
+
+    private static func regionStations(_ countryCode: String?) async -> [RadioStation] {
+        guard let countryCode else { return [] }
+        return (try? await RadioBrowserClient.byRegion(countryCode: countryCode)) ?? []
     }
 }

@@ -215,6 +215,8 @@ struct LibraryView: View {
             // album/artist pages back to the library. (Home shows album tiles as
             // well, so the registration belongs on the root, not the music tab.)
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
+            // F4-discovery: radio genre drilldown on the same stack root.
+            .radioNavigationDestinations(playerCoordinator: playerCoordinator)
         }
         // Buttons inside List rows push routes over this callback instead of a
         // NavigationLink (which draws a disclosure chevron in a List). Set on
