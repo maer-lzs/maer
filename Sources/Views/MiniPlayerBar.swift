@@ -95,8 +95,10 @@ struct MiniPlayerBar: View {
             .accessibilityHint(Text("Opens the player"))
 
             // Skip buttons only when there is enough room AND not in iPhone
-            // portrait — there more of the title should be visible.
-            if showExtendedControls && !isCompactPortrait {
+            // portrait — there more of the title should be visible. F2: a
+            // live stream has nothing to skip into — the bar gates like the
+            // full player (play/pause stays).
+            if showExtendedControls && !isCompactPortrait && !viewModel.isLiveStream {
                 Button {
                     viewModel.skip(by: -viewModel.skipInterval)
                 } label: {

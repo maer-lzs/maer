@@ -101,6 +101,15 @@ extension PlayerViewModel {
     }
 
     func updateNowPlayingInfo() {
+        // F2: live streams have nothing to skip into — lock-screen/headset
+        // skip gestures are DISABLED for radio (re-enabled on the next
+        // regular item; this runs on every item switch). Position/rate
+        // commands are never registered, and the live flag below removes the
+        // lock-screen scrubber.
+        let commandCenter = MPRemoteCommandCenter.shared()
+        commandCenter.skipForwardCommand.isEnabled = !isLiveStream
+        commandCenter.skipBackwardCommand.isEnabled = !isLiveStream
+
         var info: [String: Any] = [:]
         // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for
         // music), the subtitle is the real chapter + author. Shared derivation —
