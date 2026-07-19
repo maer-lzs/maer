@@ -42,19 +42,18 @@ struct BookCoverView: View {
             // checkmark — desaturated and slightly dimmed.
             .saturation(progress?.isFinished == true ? 0 : 1)
             .opacity(progress?.isFinished == true ? 0.55 : (isOfflineUnavailable ? 0.5 : 1))
+            // Y44: TOP-RIGHT holds either the finished check or — for an
+            // unfinished, offline, not-downloaded title — the wifi.slash disc
+            // (same family look as the shared modifier). They're mutually
+            // exclusive (a finished title needs no "can't play offline" hint),
+            // so the corner never doubles up.
             .overlay(alignment: .topTrailing) {
                 if progress?.isFinished == true {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: size * 0.14))
                         .foregroundStyle(.white, AppTheme.accent)
                         .padding(4)
-                }
-            }
-            // S14c: offline (not-downloaded) badge — part of the badge family with
-            // the download ring: BOTTOM-RIGHT, sized via CoverBadge (22 % of the
-            // tile, [18,44]), same disc as the ring so the family reads uniform.
-            .overlay(alignment: .bottomTrailing) {
-                if isOfflineUnavailable {
+                } else if isOfflineUnavailable {
                     let badge = CoverBadge.size(tileWidth: size)
                     Image(systemName: "wifi.slash")
                         .font(.system(size: badge * 0.5, weight: .semibold))
