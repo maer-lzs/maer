@@ -42,6 +42,34 @@ struct RadioModelsTests {
         #expect(stations.first?.bitrate == 128)
     }
 
+    @Test("Y59: inconsistent country codes on one station still collapse to one")
+    func collapseInconsistentCountry() {
+        // Radio Browser reports the SAME station's country as "DE", empty and
+        // "de " across its codec variants — they must still fold to ONE.
+        let folded = RadioMapping.stations(from: [
+            raw("d1", name: "Deutschlandfunk | DLF | MP3 128k", url: "https://s/1", country: "DE"),
+            raw("d2", name: "Deutschlandfunk | DLF | AAC 48k", url: "https://s/2", country: ""),
+            raw("d3", name: "Deutschlandfunk | DLF | OPUS 24k", url: "https://s/3", country: "de "),
+        ])
+        #expect(folded.count == 1)
+
+        // But two genuinely different same-named stations in different countries
+        // (both codes present, different) stay apart — no mis-fusion.
+        let byCountry = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:de", name: "Radio X", streamURL: "https://s/de", countryCode: "DE"),
+            RadioStation(id: "radio:rb:fr", name: "Radio X", streamURL: "https://s/fr", countryCode: "FR"),
+        ])
+        #expect(byCountry.count == 2)
+
+        // An empty-country variant must not glue two real countries together.
+        let withEmpty = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:x", name: "Radio X", streamURL: "https://s/x", countryCode: nil),
+            RadioStation(id: "radio:rb:de", name: "Radio X", streamURL: "https://s/de", countryCode: "DE"),
+            RadioStation(id: "radio:rb:fr", name: "Radio X", streamURL: "https://s/fr", countryCode: "FR"),
+        ])
+        #expect(withEmpty.count == 2)
+    }
+
     @Test("Y57: equal bitrate prefers MP3; different country is not merged")
     func collapseTieBreakAndCountry() {
         let tie = RadioMapping.collapseVariants([

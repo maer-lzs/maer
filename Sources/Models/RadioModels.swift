@@ -78,22 +78,41 @@ nonisolated enum RadioMapping {
     /// best stream. Per-variant selection comes later. First-appearance order
     /// (i.e. the highest-voted variant's position) is preserved.
     static func collapseVariants(_ stations: [RadioStation]) -> [RadioStation] {
-        var order: [String] = []
-        var best: [String: RadioStation] = [:]
+        // Y59: greedy grouping instead of a plain name|country key. Radio
+        // Browser reports the SAME station's country inconsistently ("DE" on one
+        // variant, empty on the next), which split e.g. Deutschlandfunk into two
+        // buckets. Country is now only a SEPARATOR when two variants carry two
+        // DIFFERENT non-empty codes; empty/nil is compatible with anything of the
+        // same name. Each bucket tracks its first non-empty code as the effective
+        // country, so an empty-country variant can't glue two real countries
+        // together. Not a plain equivalence (compatibility isn't transitive), so
+        // it can't be a hash key — a linear scan over the (≤40) buckets.
+        var buckets: [(name: String, country: String?, best: RadioStation)] = []
         for station in stations {
-            let key = variantKey(for: station)
-            if let existing = best[key] {
-                if prefers(station, over: existing) { best[key] = station }
+            let name = normalizedStationName(station.name)
+            let code = normalizedCountry(station.countryCode)
+            if let idx = buckets.firstIndex(where: {
+                $0.name == name && countryCompatible(bucket: $0.country, station: code)
+            }) {
+                if let code, buckets[idx].country == nil { buckets[idx].country = code }
+                if prefers(station, over: buckets[idx].best) { buckets[idx].best = station }
             } else {
-                best[key] = station
-                order.append(key)
+                buckets.append((name: name, country: code, best: station))
             }
         }
-        return order.compactMap { best[$0] }
+        return buckets.map(\.best)
     }
 
-    private static func variantKey(for station: RadioStation) -> String {
-        "\(normalizedStationName(station.name))|\(station.countryCode?.lowercased() ?? "")"
+    private static func normalizedCountry(_ raw: String?) -> String? {
+        let c = (raw ?? "").trimmingCharacters(in: .whitespaces).lowercased()
+        return c.isEmpty ? nil : c
+    }
+
+    /// Compatible unless BOTH the bucket's effective country and the station's
+    /// are non-empty AND differ — so a missing code never separates.
+    private static func countryCompatible(bucket: String?, station: String?) -> Bool {
+        guard let station, let bucket else { return true }
+        return bucket == station
     }
 
     /// Strip codec/bitrate decorations and separators so variants of a station
