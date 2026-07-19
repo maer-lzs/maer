@@ -143,7 +143,12 @@ struct BookDetailScreen: View {
                     .frame(width: 28, height: 28)
                     .clipShape(Circle())
             } placeholder: {
-                EmptyView()
+                // Y6 root cause: an `EmptyView` placeholder never "appears",
+                // so CachedAsyncImage's `.task(id:)` never fired and the load
+                // never STARTED — server 200s notwithstanding. A zero-sized
+                // real view participates in the lifecycle while still
+                // reserving no visible space without an image.
+                Color.clear.frame(width: 0, height: 0)
             }
             if LibraryViewModel.authorFilterEnabled(workCount: works.count),
                let author = entry.item.author {
