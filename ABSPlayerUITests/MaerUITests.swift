@@ -171,25 +171,30 @@ nonisolated final class MaerUITests: XCTestCase {
 
     /// Teil 7 (brand-accent trial, decision prep): Start / audiobook library /
     /// full player per candidate — 0 orange (today), 1 Mär blue, 2 anthracite.
+    /// A4: gray-shade decision screenshots — every candidate in light AND
+    /// dark (the shades are adaptive, both sides matter for the pick).
     func testBrandAccentTrialScreenshots() {
-        for (tag, name) in [(0, "orange"), (1, "maerblau"), (2, "anthrazit")] {
-            let app = XCUIApplication()
-            app.launchArguments += ["-uitest", "-uitest-player", "-brandAccentTrial", "\(tag)"]
-            app.launch()
-            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-            XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
-            snap(app, "accent-\(name)-home")
-            let books = app.buttons["tab-audiobooks"].firstMatch
-            if books.waitForExistence(timeout: 10) { books.tap() }
-            _ = app.staticTexts["Seed Book One"].waitForExistence(timeout: 10)
-            snap(app, "accent-\(name)-library")
-            let mini = app.buttons["Now Playing Book"].firstMatch
-            if mini.waitForExistence(timeout: 10) {
-                mini.tap()
-                _ = app.staticTexts["Now Playing Book"].waitForExistence(timeout: 10)
-                snap(app, "accent-\(name)-player")
+        for (tag, name) in [(0, "anthrazit"), (1, "schiefer"), (2, "graphit")] {
+            for mode in ["light", "dark"] {
+                let app = XCUIApplication()
+                app.launchArguments += ["-uitest", "-uitest-player",
+                                        "-brandAccentTrial", "\(tag)", "-appearance", mode]
+                app.launch()
+                XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+                XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+                snap(app, "gray-\(name)-\(mode)-home")
+                let books = app.buttons["tab-audiobooks"].firstMatch
+                if books.waitForExistence(timeout: 10) { books.tap() }
+                _ = app.staticTexts["Seed Book One"].waitForExistence(timeout: 10)
+                snap(app, "gray-\(name)-\(mode)-library")
+                let mini = app.buttons["Now Playing Book"].firstMatch
+                if mini.waitForExistence(timeout: 10) {
+                    mini.tap()
+                    _ = app.staticTexts["Now Playing Book"].waitForExistence(timeout: 10)
+                    snap(app, "gray-\(name)-\(mode)-player")
+                }
+                app.terminate()
             }
-            app.terminate()
         }
     }
 
