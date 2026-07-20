@@ -1,3 +1,7 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import SwiftUI
 
 /// Shared badge family for cover surfaces (S11c/S14c). The offline (wifi.slash)

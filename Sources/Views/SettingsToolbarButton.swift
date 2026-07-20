@@ -1,3 +1,7 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import SwiftUI
 
 /// Y63: environment action to open the app settings sheet. Provided by

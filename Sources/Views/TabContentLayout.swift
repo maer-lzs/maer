@@ -1,3 +1,7 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import SwiftUI
 
 /// Shared top inset and section spacing for the scrollable content of all three

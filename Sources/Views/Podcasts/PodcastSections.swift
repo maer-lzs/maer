@@ -1,3 +1,7 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import Foundation
 
 /// Result of the podcast home-section computation (see `PodcastSections`).

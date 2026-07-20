@@ -1,3 +1,7 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import XCTest
 
 /// Permanent UI-test harness (Stage 2). Read-only journeys only — never mutate a
