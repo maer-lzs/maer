@@ -78,6 +78,34 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))
     }
 
+    /// F3: the author portrait is SUCCESS-ONLY. The seed injects content into
+    /// the view models and serves no author image, so the author line must stay
+    /// plain text and NO "All books by …" tap surface may appear — the G8 rule
+    /// (no image → no placeholder, no false affordance). The positive path
+    /// (image present + ≥2 works → tap filters the library) is device-validated:
+    /// the seed has no HTTP layer to vend an author image, and the tap gate
+    /// itself is covered by `authorFilterEnabled` unit tests.
+    func testAuthorPortraitAbsentWithoutServerImage() {
+        let app = launchSeeded()
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 20))
+        books.tap()
+        // The TabView keeps Home mounted behind the audiobooks tab, so several
+        // buttons carry "Seed Book One" — pick the on-screen (hittable) grid
+        // tile, not the occluded Home row.
+        let matches = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seed Book One"))
+        XCTAssertTrue(matches.element(boundBy: 0).waitForExistence(timeout: 15),
+                      "seeded book cell must exist")
+        let bookCell = matches.allElementsBoundByIndex.first { $0.isHittable } ?? matches.firstMatch
+        bookCell.tap()
+        // Detail page: the author renders as plain text …
+        XCTAssertTrue(app.staticTexts["Ada Author"].waitForExistence(timeout: 15),
+                      "author line must render on the detail page")
+        // … and no author-portrait filter tap surface exists (no server image).
+        XCTAssertFalse(app.buttons["All books by Ada Author"].exists,
+                       "no server image → no portrait, no filter tap surface")
+    }
+
     /// Etappe 6 matrix: the changed surfaces at an ACCESSIBILITY text size (AX3)
     /// — Home (mixed queue, 128pt covers, sections) and the Music tab (badges,
     /// CoverGrid). Screenshots for the size matrix.
