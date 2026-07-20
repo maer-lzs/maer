@@ -173,6 +173,12 @@ struct SubsonicClient {
         try await get("getPlaylist", ["id": id]).playlist
     }
 
+    /// F5: create a server playlist. Newer servers echo the created playlist
+    /// (with its id) in the response; older ones return an empty body.
+    func createPlaylist(name: String) async throws -> SubsonicPlaylist? {
+        try await get("createPlaylist", ["name": name]).playlist
+    }
+
     /// Marks a song as played (Last.fm/ListenBrainz scrobble on servers that
     /// support it). `submission=false` would be a "now playing" ping.
     func scrobble(id: String, submission: Bool = true) async throws {

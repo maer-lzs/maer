@@ -265,6 +265,38 @@ final class SubsonicProvider: AudioProvider {
         return try await client.playlists()
     }
 
+    /// F5: create a server playlist; returns its namespaced item id when the
+    /// server echoed the created playlist, else nil (the caller re-fetches).
+    func createPlaylist(name: String) async throws -> String? {
+        guard let client else { return nil }
+        let created = try await client.createPlaylist(name: name)
+        return created.map { Self.itemId(playlistId: $0.id) }
+    }
+
+    /// F5: the first up-to-4 DISTINCT album cover-art ids of a playlist for the
+    /// 2×2 mosaic (the server's single playlist cover is deliberately ignored).
+    /// Best-effort, cached per session.
+    private var playlistMosaicCache: [String: [String]] = [:]
+    func playlistMosaicCoverIDs(playlistRawId: String) async -> [String] {
+        if let cached = playlistMosaicCache[playlistRawId] { return cached }
+        guard let client, let pl = try? await client.playlist(id: playlistRawId) else { return [] }
+        var seen = Set<String>()
+        var ids: [String] = []
+        for song in pl.entry ?? [] {
+            guard let art = song.coverArt, seen.insert(art).inserted else { continue }
+            ids.append(art)
+            if ids.count == 4 { break }
+        }
+        playlistMosaicCache[playlistRawId] = ids
+        return ids
+    }
+
+    /// F5: cover URL for a raw Subsonic cover-art id (mosaic tiles use these,
+    /// not `sub:` item ids).
+    func subsonicCoverURL(coverArtId: String, size: Int = 300) -> URL? {
+        client?.mediaURL("getCoverArt", ["id": coverArtId, "size": String(size)])
+    }
+
     // MARK: - OpenSubsonic metadata (M1) — best-effort; empty is normal.
 
     func artistInfo(artistId: String) async -> SubsonicArtistInfo? {

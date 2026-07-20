@@ -162,5 +162,7 @@ nonisolated struct SubsonicPlaylist: Decodable, Identifiable {
     let duration: Int?
     let coverArt: String?
     let owner: String?
+    /// ISO-8601 last-modified timestamp — F5 sorts "recently changed first".
+    let changed: String?
     let entry: [SubsonicSong]?   // getPlaylist
 }
