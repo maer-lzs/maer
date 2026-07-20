@@ -202,7 +202,7 @@ private struct PlaylistCard: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
 
-    static let width: CGFloat = 150
+    static let width = CardMetrics.playlistCardWidth
 
     var body: some View {
         MediaTile(

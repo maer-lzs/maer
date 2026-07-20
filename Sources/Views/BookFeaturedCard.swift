@@ -20,7 +20,7 @@ struct BookFeaturedCard: View {
     /// Chapters are loaded lazily from the item detail — the library list comes
     /// "minified" and contains no chapters (see currentChapter).
     @State private var loadedChapters: [ABSChapter]?
-    private let width: CGFloat = 235
+    private let width = CardMetrics.featuredCardWidth
     // D5/B4: pill reserve and line heights scale with Dynamic Type — at AX
     // sizes the overlay pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40

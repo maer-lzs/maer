@@ -18,7 +18,7 @@ struct PodcastFeaturedCard: View {
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @StateObject private var colorLoader = CoverColorLoader()
-    private let width: CGFloat = 235
+    private let width = CardMetrics.featuredCardWidth
     // D5/B4: the overlay pill and the fixed line heights scale with Dynamic
     // Type — at AX sizes the pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -570,7 +570,7 @@ struct PodcastSubscribeButton: View {
 struct RecommendationTile: View {
     let result: PodcastSearchResult
     var subtitle: String? = nil
-    var width: CGFloat = 140
+    var width: CGFloat = CardMetrics.recommendationTileWidth
     @Environment(\.pushPodcastRoute) private var pushRoute
     /// A3: catalog tiles need the net (preview + subscribe) — offline they dim
     /// and carry the badge instead of failing silently on tap.

@@ -246,7 +246,7 @@ struct PodcastsView: View {
     /// Y2a: the SAME tile as Home's Discover row (RecommendationTile) — tap
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
-        RecommendationTile(result: r, width: 132)
+        RecommendationTile(result: r)
     }
 
     // MARK: - Latest episodes (X1c: the SHARED grid, identical on Home)
