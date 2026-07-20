@@ -179,6 +179,13 @@ nonisolated enum RadioStore {
     static let manualKey = "radioManualStations"
     static let recentsKey = "radioRecents"
     static let recentsCap = 8
+    // Teil 3: play-frequency ("Most Played"). The counts are the source of
+    // truth; the whole stations are stored alongside so the row stays resolvable
+    // after the volatile catalog rotates (like recents). The store is bounded by
+    // keeping the top-ranked entries, so a heavy favorite is never evicted.
+    static let playCountsKey = "radioPlayCounts"
+    static let mostPlayedKey = "radioMostPlayedStations"
+    static let mostPlayedStoreCap = 40
 
     private static func load(_ key: String, defaults: UserDefaults) -> [RadioStation] {
         guard let data = defaults.data(forKey: key),
@@ -243,6 +250,58 @@ nonisolated enum RadioStore {
     static func station(forId id: String, defaults: UserDefaults = .standard) -> RadioStation? {
         (favorites(defaults: defaults) + manualStations(defaults: defaults) + recents(defaults: defaults))
             .first { $0.id == id }
+    }
+
+    // MARK: - Teil 3: play frequency
+
+    static func playCounts(defaults: UserDefaults = .standard) -> [String: Int] {
+        guard let data = defaults.data(forKey: playCountsKey),
+              let counts = try? JSONDecoder().decode([String: Int].self, from: data) else { return [:] }
+        return counts
+    }
+
+    private static func savePlayCounts(_ counts: [String: Int], defaults: UserDefaults) {
+        if let data = try? JSONEncoder().encode(counts) { defaults.set(data, forKey: playCountsKey) }
+    }
+
+    /// Count one play of `station` and keep its record resolvable. Bounded: when
+    /// the store overflows it is trimmed to the top-ranked entries (ties → most
+    /// recent), so a station played a lot is never dropped for a rarely-heard one.
+    static func recordPlay(_ station: RadioStation, defaults: UserDefaults = .standard) {
+        var counts = playCounts(defaults: defaults)
+        counts[station.id, default: 0] += 1
+        var stored = load(mostPlayedKey, defaults: defaults)
+        stored.removeAll { $0.id == station.id }
+        stored.append(station)   // append = most-recent, the tie-break anchor
+        if stored.count > mostPlayedStoreCap {
+            stored = RadioRanking.mostPlayed(stations: stored, counts: counts, limit: mostPlayedStoreCap)
+        }
+        savePlayCounts(counts, defaults: defaults)
+        save(stored, mostPlayedKey, defaults: defaults)
+    }
+
+    /// Stations ranked by play frequency (desc), capped — the "Most Played" row.
+    static func mostPlayed(limit: Int = 8, defaults: UserDefaults = .standard) -> [RadioStation] {
+        RadioRanking.mostPlayed(stations: load(mostPlayedKey, defaults: defaults),
+                                counts: playCounts(defaults: defaults), limit: limit)
+    }
+}
+
+/// Teil 3 (pure, tested): rank stations by play frequency. Positive counts only,
+/// descending; ties keep the later-stored (more-recently-played) station first;
+/// capped. Foundation-only (MaerCore rule) — no store, no UI.
+nonisolated enum RadioRanking {
+    static func mostPlayed(stations: [RadioStation], counts: [String: Int], limit: Int) -> [RadioStation] {
+        guard limit > 0 else { return [] }
+        return stations.enumerated()
+            .filter { (counts[$0.element.id] ?? 0) > 0 }
+            .sorted { a, b in
+                let ca = counts[a.element.id] ?? 0, cb = counts[b.element.id] ?? 0
+                if ca != cb { return ca > cb }
+                return a.offset > b.offset   // tie → more recently stored wins
+            }
+            .prefix(limit)
+            .map(\.element)
     }
 }
 

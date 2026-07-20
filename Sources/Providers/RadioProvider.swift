@@ -37,8 +37,10 @@ final class RadioProvider: AudioProvider {
         guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else {
             throw URLError(.resourceUnavailable)
         }
-        // Every play path lands here — record the last-heard ring centrally.
+        // Every play path lands here — record the last-heard ring and the
+        // play-frequency count (Teil 3, "Most Played") centrally.
         RadioStore.recordRecent(station)
+        RadioStore.recordPlay(station)
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(
             id: station.id,

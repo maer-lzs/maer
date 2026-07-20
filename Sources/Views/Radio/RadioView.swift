@@ -17,6 +17,8 @@ struct RadioView: View {
     // User's own stations (UserDefaults-backed store).
     @State private var favorites: [RadioStation] = []
     @State private var recents: [RadioStation] = []
+    // Teil 3: stations ranked by play frequency (net-independent — from the store).
+    @State private var mostPlayed: [RadioStation] = []
     // Catalog browse — cached per session, re-fetched only on refresh.
     @State private var popular: [RadioStation] = []
     @State private var regional: [RadioStation] = []
@@ -27,12 +29,15 @@ struct RadioView: View {
     private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionCode, regional: regional) }
     private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
     private var hasAnyContent: Bool {
-        !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
+        !mostPlayed.isEmpty || !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                if !mostPlayed.isEmpty {
+                    cardRow(title: String(localized: "Most Played"), stations: mostPlayed)
+                }
                 if !favorites.isEmpty {
                     listSection(title: String(localized: "Favorites"), stations: favorites)
                 }
@@ -143,6 +148,7 @@ struct RadioView: View {
         recents = RadioStore.recents().filter { station in
             !favorites.contains { $0.id == station.id }
         }
+        mostPlayed = RadioStore.mostPlayed()
     }
 
     /// Fetch the catalog rows once per session (guarded), re-fetched on refresh.

@@ -141,6 +141,37 @@ struct RadioModelsTests {
         #expect(recents.first?.id == "radio:rb:b")
     }
 
+    @Test("Teil 3: RadioRanking orders by play count, drops zero, breaks ties by recency, caps")
+    func mostPlayedRanking() {
+        func s(_ id: String) -> RadioStation { RadioStation(id: "radio:rb:\(id)", name: id, streamURL: "https://s/\(id)") }
+        // Store order (append = more recent): a, b, c, d. Counts as noted.
+        let stations = [s("a"), s("b"), s("c"), s("d")]
+        let counts = ["radio:rb:a": 3, "radio:rb:b": 1, "radio:rb:c": 5, "radio:rb:d": 0]
+        // c(5) > a(3) > b(1); d has zero plays → dropped.
+        #expect(RadioRanking.mostPlayed(stations: stations, counts: counts, limit: 8).map(\.name) == ["c", "a", "b"])
+        // Cap.
+        #expect(RadioRanking.mostPlayed(stations: stations, counts: counts, limit: 2).map(\.name) == ["c", "a"])
+        #expect(RadioRanking.mostPlayed(stations: stations, counts: counts, limit: 0).isEmpty)
+        // Tie on count → later-stored (more recent) first: b stored after a.
+        let tie = RadioRanking.mostPlayed(stations: [s("a"), s("b")],
+                                          counts: ["radio:rb:a": 2, "radio:rb:b": 2], limit: 8)
+        #expect(tie.map(\.name) == ["b", "a"])
+    }
+
+    @Test("Teil 3: recordPlay counts plays; mostPlayed reflects frequency and persists")
+    func recordPlayStore() {
+        let name = "radio-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        func s(_ id: String) -> RadioStation { RadioStation(id: "radio:rb:\(id)", name: id.uppercased(), streamURL: "https://s/\(id)") }
+        for _ in 0..<3 { RadioStore.recordPlay(s("a"), defaults: defaults) }
+        RadioStore.recordPlay(s("b"), defaults: defaults)
+        for _ in 0..<2 { RadioStore.recordPlay(s("c"), defaults: defaults) }
+        #expect(RadioStore.playCounts(defaults: defaults)["radio:rb:a"] == 3)
+        #expect(RadioStore.mostPlayed(limit: 8, defaults: defaults).map(\.name) == ["A", "C", "B"])
+        #expect(RadioStore.mostPlayed(limit: 2, defaults: defaults).map(\.name) == ["A", "C"])
+    }
+
     @Test("F4-discovery: catalog query construction per endpoint")
     func catalogQueries() {
         func params(_ q: RadioBrowserClient.Query) -> [String: String] {
