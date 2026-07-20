@@ -50,5 +50,22 @@ struct PlaylistPresentationTests {
         }
         #expect(sorted.map(\.name) == ["new", "mid", "old", "none"])
     }
+
+    @Test("TF2: realPlaylists keeps only real named playlists (name non-empty and != id), incl. empty ones")
+    func realPlaylistsFilter() {
+        func pl(_ id: String, _ name: String?, songs: Int? = 0) -> SubsonicPlaylist {
+            SubsonicPlaylist(id: id, name: name, songCount: songs, duration: nil,
+                             coverArt: nil, owner: nil, changed: nil, entry: nil)
+        }
+        let input = [
+            pl("pl-1", "My Mix", songs: 18),          // real, named
+            pl("pl-2", "Empty but named", songs: 0),  // real, named, EMPTY → kept
+            pl("abc123", "abc123"),                   // junk: name == id
+            pl("pl-4", ""),                           // junk: empty name
+            pl("pl-5", "   "),                        // junk: whitespace-only name
+            pl("pl-6", nil),                          // junk: nil name
+        ]
+        #expect(PlaylistPresentation.realPlaylists(input).map(\.id) == ["pl-1", "pl-2"])
+    }
 }
 #endif

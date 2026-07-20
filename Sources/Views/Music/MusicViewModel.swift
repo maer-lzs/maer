@@ -145,6 +145,8 @@ final class MusicViewModel: ObservableObject {
         if let value = try? await newestTask { newest = value }
         if let value = try? await frequentTask { frequent = value }
         if let value = try? await artistsTask { artists = value }
-        if let value = try? await playlistsTask { playlists = value }
+        // TF2: filter junk playlists (name == id / nameless, 0 songs) at THE one
+        // feed, so both the F5 card row and the Playlists browse page are clean.
+        if let value = try? await playlistsTask { playlists = PlaylistPresentation.realPlaylists(value) }
     }
 }

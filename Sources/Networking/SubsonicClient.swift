@@ -4,6 +4,7 @@
 
 import Foundation
 import CryptoKit
+import OSLog
 
 /// Talks to a Subsonic-compatible server (Navidrome, Gonic, Airsonic, …). Auth
 /// is per-request via query params `u` (user), `t` (token = md5(password+salt)),
@@ -166,7 +167,16 @@ struct SubsonicClient {
     }
 
     func playlists() async throws -> [SubsonicPlaylist] {
-        try await get("getPlaylists").playlists?.playlist ?? []
+        let list = try await get("getPlaylists").playlists?.playlist ?? []
+        #if DEBUG
+        // TF2 log-first: confirm the junk-playlist shape on the real server
+        // (hypothesis: name == id, songCount 0). Device-side confirmation for
+        // the report — the filter itself is `PlaylistPresentation.realPlaylists`.
+        for p in list.prefix(4) {
+            Logger.music.log("TF2 raw playlist id=\(p.id, privacy: .public) name=\(p.name ?? "<nil>", privacy: .public) songCount=\(p.songCount ?? -1) nameEqualsId=\(p.name == p.id)")
+        }
+        #endif
+        return list
     }
 
     func playlist(id: String) async throws -> SubsonicPlaylist? {

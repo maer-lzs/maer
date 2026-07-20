@@ -15,6 +15,22 @@ nonisolated enum PlaylistPresentation {
         min(max(coverCount, 0), 4)
     }
 
+    /// TF2 (pure, tested): drop junk playlists. Some Subsonic servers return
+    /// `getPlaylists` entries whose `name` is just the raw id (or is empty),
+    /// with 0 songs — F5 would render each as an empty-mosaic card, a wall of
+    /// blanks. Keep a playlist ONLY when it has a non-empty name that is NOT
+    /// equal to its id: real named playlists stay (including genuinely EMPTY
+    /// ones — a real empty playlist still has a real name), while name==id and
+    /// nameless junk is removed. `songCount` is deliberately NOT the criterion.
+    /// THE one filter — applied where `playlists` is loaded, so every surface
+    /// (F5 card row, the Playlists browse page) is clean (Regel 2).
+    static func realPlaylists(_ playlists: [SubsonicPlaylist]) -> [SubsonicPlaylist] {
+        playlists.filter { playlist in
+            let name = (playlist.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return !name.isEmpty && name != playlist.id
+        }
+    }
+
     /// Total playlist duration → "1:12" (H:MM) when at least an hour, else
     /// "3:45" (M:SS). Used in the metadata pill "18 Titel · 1:12".
     static func durationText(seconds: Int) -> String {
