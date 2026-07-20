@@ -188,6 +188,64 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
+    // MARK: - Library toggles (TF bib-toggles): two levels — tab master + source
+
+    /// Tab masters (whole media type on/off). Default ON so existing installs
+    /// keep every tab; `object ?? true` because `bool(forKey:)` defaults false.
+    static let audiobooksTabEnabled = "audiobooksTabEnabled"
+    static let podcastsTabEnabled = "podcastsTabEnabled"
+    static let musicTabEnabled = "musicTabEnabled"
+    static let radioTabEnabled = "radioTabEnabled"
+    static var audiobooksTabEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: audiobooksTabEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: audiobooksTabEnabled) }
+    }
+    static var podcastsTabEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: podcastsTabEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: podcastsTabEnabled) }
+    }
+    static var musicTabEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: musicTabEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: musicTabEnabled) }
+    }
+    static var radioTabEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: radioTabEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: radioTabEnabled) }
+    }
+
+    /// Per-source toggles that were missing (ABS-audiobooks, RSS). Default ON —
+    /// they only surface content when there IS content anyway (token / feeds).
+    /// (Subsonic, ABS-podcasts and Radio already have their own toggles above.)
+    static let absAudiobooksEnabled = "absAudiobooksEnabled"
+    static let rssEnabled = "rssEnabled"
+    static var absAudiobooksEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: absAudiobooksEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: absAudiobooksEnabled) }
+    }
+    static var rssEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: rssEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: rssEnabled) }
+    }
+
+    /// Effective activation per source = tab master ∧ source toggle (the one
+    /// invariant, `SourceActivation.effective`). Providers gate ALL their calls
+    /// and their tab visibility on these.
+    static var absAudiobooksActive: Bool {
+        SourceActivation.effective(tabEnabled: audiobooksTabEnabledValue, sourceEnabled: absAudiobooksEnabledValue)
+    }
+    static var absPodcastsActive: Bool {
+        SourceActivation.effective(tabEnabled: podcastsTabEnabledValue, sourceEnabled: absPodcastsEnabledValue)
+    }
+    static var rssActive: Bool {
+        SourceActivation.effective(tabEnabled: podcastsTabEnabledValue, sourceEnabled: rssEnabledValue)
+    }
+    static var subsonicActive: Bool {
+        SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: subsonicEnabledValue)
+    }
+    static var radioActive: Bool {
+        SourceActivation.effective(tabEnabled: radioTabEnabledValue, sourceEnabled: radioEnabledValue)
+    }
+
     /// Notify about new podcast episodes (background refresh). Opt-in.
     static let podcastNewEpisodeNotifications = "podcastNewEpisodeNotifications"
     static var podcastNewEpisodeNotificationsEnabled: Bool {

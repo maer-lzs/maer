@@ -19,7 +19,10 @@ final class LocalProvider: AudioProvider {
     /// F10: like the RSS source, availability is CONTENT-driven — the local
     /// source only surfaces the audiobooks tab once files were imported (a
     /// serverless podcasts-first start is not greeted by an empty book tab).
-    var isAvailable: Bool { !library.libraryItems().isEmpty }
+    /// TF bib-toggles: gated by the audiobooks TAB master only — local downloads
+    /// have no server source to toggle and no calls to gate, but the whole-type
+    /// switch still hides them (downloads stay playable via search/queue).
+    var isAvailable: Bool { AppStorageKeys.audiobooksTabEnabledValue && !library.libraryItems().isEmpty }
     /// No capabilities: no server sync, no server bookmarks, no remote search,
     /// no password login.
     var capabilities: ProviderCapabilities { [] }

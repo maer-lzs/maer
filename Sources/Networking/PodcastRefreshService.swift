@@ -68,7 +68,7 @@ enum PodcastRefreshService {
     static func run() async {
         await PodcastSubscriptions.shared.refreshAll()
         await GPodderSync.shared.reconcile()
-        if AppStorageKeys.absPodcastsEnabledValue { await ABSPodcastProvider.shared.refresh() }
+        if AppStorageKeys.absPodcastsActive { await ABSPodcastProvider.shared.refresh() }
         let shows = dedupedShows()
         await notifyNewEpisodes(shows)
         await PodcastAutoDownload.run(shows: shows)
@@ -77,7 +77,7 @@ enum PodcastRefreshService {
     /// Cross-source show list (RSS + active ABS), deduplicated by the normalised
     /// feed URL (ABS preferred) — like the podcast home view.
     private static func dedupedShows() -> [PodcastShow] {
-        let abs = AppStorageKeys.absPodcastsEnabledValue ? ABSPodcastProvider.shared.activeShows : []
+        let abs = AppStorageKeys.absPodcastsActive ? ABSPodcastProvider.shared.activeShows : []
         let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
         let rssOnly = PodcastSubscriptions.shared.shows.filter {
             !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))

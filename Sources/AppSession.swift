@@ -32,6 +32,15 @@ final class AppSession: ObservableObject {
         }
     }
 
+    /// TF bib-toggles: apply a tab-master / source toggle change. Rebuilds the
+    /// Subsonic client for its new active state (nil when off, so its calls
+    /// stop) and refreshes the tab bar. Every library toggle in Settings calls
+    /// this — the ONE entry point so a flipped toggle takes effect everywhere.
+    func reconfigureSources() {
+        SubsonicProvider.shared.reloadConfig()   // rebuilds/nils client + notifies
+        notifySourcesChanged()                   // toggles that don't touch Subsonic
+    }
+
     /// Owns the APIClient (built from the keychain) — base URL and token are
     /// updated IN PLACE on login, so the objects below stay valid.
     let authViewModel = AuthViewModel()

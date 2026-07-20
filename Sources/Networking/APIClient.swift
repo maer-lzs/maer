@@ -63,7 +63,10 @@ final class APIClient {
     /// F10: ABS is a SOURCE like the others — without a signed-in server it
     /// is simply unavailable (tab hidden, search fan-out skips it) instead of
     /// a forced empty library.
-    var isAvailable: Bool { token?.isEmpty == false }
+    /// TF bib-toggles: also gated by the effective ABS-audiobooks activation
+    /// (audiobooks tab ∧ ABS-audiobooks toggle) — off → tab hidden, library
+    /// load and search fan-out skip it, so no audiobooks server calls fire.
+    var isAvailable: Bool { AppStorageKeys.absAudiobooksActive && token?.isEmpty == false }
 
     init(baseURL: URL, token: String? = nil) {
         self.baseURL = baseURL

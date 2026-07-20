@@ -17,8 +17,9 @@ final class RSSProvider: AudioProvider {
 
     var providerId: String { "rss" }
     var mediaType: MediaType { .podcasts }
-    /// Only show the podcast tab once at least one feed is subscribed.
-    var isAvailable: Bool { subs.hasSubscriptions }
+    /// Only show the podcast tab once at least one feed is subscribed AND the
+    /// RSS source is effectively active (podcast tab ∧ RSS on) — TF bib-toggles.
+    var isAvailable: Bool { AppStorageKeys.rssActive && subs.hasSubscriptions }
     /// Episodes can be downloaded for offline; no server sync, no server
     /// bookmarks.
     var capabilities: ProviderCapabilities { [.downloadable] }

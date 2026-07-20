@@ -48,6 +48,19 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
+    // TF bib-toggles: two-level library toggles. Tab masters (default ON) +
+    // per-source (absAudiobooks/rss default ON; the opt-in sources default OFF).
+    // Every change routes through `AppSession.reconfigureSources()`.
+    @AppStorage(AppStorageKeys.audiobooksTabEnabled) private var audiobooksTab = true
+    @AppStorage(AppStorageKeys.podcastsTabEnabled) private var podcastsTab = true
+    @AppStorage(AppStorageKeys.musicTabEnabled) private var musicTab = true
+    @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
+    @AppStorage(AppStorageKeys.absAudiobooksEnabled) private var absAudiobooksOn = true
+    @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsOn = false
+    @AppStorage(AppStorageKeys.rssEnabled) private var rssOn = true
+    @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
+    @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
+
     @State private var coverCacheBytes: Int64 = 0
     @State private var showDeleteAllDownloads = false
 
@@ -185,47 +198,82 @@ struct SettingsView: View {
     /// Etappe E: ONE tab-independent Sources section — every service equal,
     /// one row per source, each source page follows the same pattern
     /// (access / toggle / its own sync button).
+    /// TF bib-toggles: TWO-LEVEL library section — per tab a master toggle and,
+    /// under it, one toggle per source (Podcasts = ABS + RSS separately). A
+    /// source is effectively active only when tab ∧ source are on; every change
+    /// routes through `AppSession.reconfigureSources()` so a flipped toggle takes
+    /// effect everywhere (calls stop, tab hides). Config lives on the linked
+    /// source pages (server URL, credentials, per-source sync).
+    @ViewBuilder
     private var sourcesSection: some View {
+        // Audiobooks
         Section {
-            NavigationLink {
-                ABSSourceView(coordinator: coordinator,
-                              libraryViewModel: libraryViewModel,
-                              onLogout: onLogout)
-            } label: {
-                Label("Audiobookshelf", systemImage: "server.rack")
-            }
-            .accessibilityIdentifier("settings-abs-source")
-            NavigationLink {
-                PodcastSourceView()
-            } label: {
-                Label("Podcasts", systemImage: "mic")
-            }
-            .accessibilityIdentifier("settings-podcast-source")
-            NavigationLink {
-                SubsonicSourceView()
-            } label: {
-                Label("Music Server", systemImage: "music.note")
-            }
-            // Locale-independent handle for the UI-test harness.
-            .accessibilityIdentifier("settings-music-source")
-            NavigationLink {
-                RadioSourceView()
-            } label: {
-                Label("Radio", systemImage: "dot.radiowaves.left.and.right")
-            }
-            .accessibilityIdentifier("settings-radio-source")
-            NavigationLink {
-                LocalFilesView(onImported: {
+            tabMasterToggle("Audiobooks", isOn: $audiobooksTab)
+            if audiobooksTab {
+                sourceToggle("Audiobookshelf", isOn: $absAudiobooksOn)
+                NavigationLink { ABSSourceView(coordinator: coordinator,
+                                               libraryViewModel: libraryViewModel,
+                                               onLogout: onLogout) } label: {
+                    Label("Audiobookshelf server", systemImage: "server.rack")
+                }
+                .accessibilityIdentifier("settings-abs-source")
+                NavigationLink { LocalFilesView(onImported: {
                     Task { await libraryViewModel?.refreshAfterLocalChange() }
-                })
-            } label: {
-                Label("Local Files", systemImage: "folder")
+                }) } label: { Label("Local Files", systemImage: "folder") }
             }
-        } header: {
-            Text("Sources")
-        } footer: {
-            Text("Every source is optional and can be added or removed here at any time.")
+        } header: { Text("Audiobooks") }
+
+        // Podcasts — two sources, separately switchable.
+        Section {
+            tabMasterToggle("Podcasts", isOn: $podcastsTab)
+            if podcastsTab {
+                sourceToggle("Audiobookshelf podcasts", isOn: $absPodcastsOn)
+                sourceToggle("RSS feeds", isOn: $rssOn)
+                NavigationLink { PodcastSourceView() } label: {
+                    Label("Podcast sources", systemImage: "mic")
+                }
+                .accessibilityIdentifier("settings-podcast-source")
+            }
+        } header: { Text("Podcasts") }
+
+        // Music
+        Section {
+            tabMasterToggle("Music", isOn: $musicTab)
+            if musicTab {
+                sourceToggle("Music server (Subsonic)", isOn: $subsonicOn)
+                NavigationLink { SubsonicSourceView() } label: {
+                    Label("Music server", systemImage: "music.note")
+                }
+                .accessibilityIdentifier("settings-music-source")
+            }
+        } header: { Text("Music") }
+
+        // Radio
+        Section {
+            tabMasterToggle("Radio", isOn: $radioTab)
+            if radioTab {
+                sourceToggle("Internet radio", isOn: $radioOn)
+                NavigationLink { RadioSourceView() } label: {
+                    Label("Radio", systemImage: "dot.radiowaves.left.and.right")
+                }
+                .accessibilityIdentifier("settings-radio-source")
+            }
+        } header: { Text("Radio") } footer: {
+            Text("Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab.")
         }
+    }
+
+    /// TF bib-toggles: the tab-master row (bold) — flipping it reconfigures.
+    private func tabMasterToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) { Text(title).fontWeight(.semibold) }
+            .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
+    }
+
+    /// TF bib-toggles: a per-source row (indented) — flipping it reconfigures.
+    private func sourceToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) { Text(title) }
+            .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
+            .padding(.leading, 12)
     }
 
     /// Etappe E: the GLOBAL sync section — the history shows all services, so

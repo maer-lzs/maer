@@ -43,28 +43,38 @@ final class SubsonicProvider: AudioProvider {
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 
-    /// Only surfaces the Music tab when configured AND switched on.
+    /// Only surfaces the Music tab when configured AND effectively active
+    /// (music tab ∧ subsonic on). `client != nil` already implies active.
     var isAvailable: Bool {
-        AppStorageKeys.subsonicEnabledValue && client != nil
+        AppStorageKeys.subsonicActive && client != nil
     }
 
     /// Rebuild the client from the stored settings (call after a settings change).
     func reloadConfig() {
         let password = AppStorageKeys.subsonicPasswordValue
-        client = SubsonicClient(
-            serverURL: AppStorageKeys.subsonicServerURLValue,
-            username: AppStorageKeys.subsonicUsernameValue,
-            password: password
-        )
+        // TF bib-toggles: build the client ONLY when the source is effectively
+        // active (music tab ∧ subsonic on) — otherwise nil, so the existing
+        // `guard let client` in every method becomes THE one gate and ALL calls
+        // (including cross-tab callers like Home's albumShelf) stop. Fixes the
+        // "client is never nil when disabled" bug.
+        if AppStorageKeys.subsonicActive {
+            client = SubsonicClient(
+                serverURL: AppStorageKeys.subsonicServerURLValue,
+                username: AppStorageKeys.subsonicUsernameValue,
+                password: password
+            )
+        } else {
+            client = nil
+        }
         // Y37: availability may have flipped (toggle, credentials) — the tab
         // bar reacts live in both directions.
-        Logger.music.notice("subsonic config reloaded (enabled=\(AppStorageKeys.subsonicEnabledValue), client=\(self.client != nil))")
+        Logger.music.notice("subsonic config reloaded (active=\(AppStorageKeys.subsonicActive), client=\(self.client != nil))")
         AppSession.shared.notifySourcesChanged()
         // Y26 diagnosis: this is the spot that effectively deactivates the
         // source — never let it happen silently.
-        if AppStorageKeys.subsonicEnabledValue, client == nil {
+        if AppStorageKeys.subsonicActive, client == nil {
             Logger.music.error("subsonic source enabled but client rebuild failed (URL/user missing)")
-        } else if AppStorageKeys.subsonicEnabledValue, password.isEmpty {
+        } else if AppStorageKeys.subsonicActive, password.isEmpty {
             Logger.music.error("subsonic client built WITHOUT a password (keychain empty or unreadable)")
         }
     }

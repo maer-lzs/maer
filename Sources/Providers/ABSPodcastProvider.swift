@@ -79,7 +79,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     var capabilities: ProviderCapabilities { [.progressSync, .downloadable] }
     var streamAuthHeaders: [String: String] { client.streamAuthHeaders }
     /// Only when the user explicitly enabled ABS as a podcast source.
-    var isAvailable: Bool { AppStorageKeys.absPodcastsEnabledValue && hasPodcasts }
+    var isAvailable: Bool { AppStorageKeys.absPodcastsActive && hasPodcasts }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         try await client.fetchPodcastLibraries()
@@ -134,7 +134,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     func refreshAvailability() async {
         // ABS is opt-in as a podcast source — without it enabled do NOT query the
         // server and do not assume podcasts exist.
-        guard AppStorageKeys.absPodcastsEnabledValue else {
+        guard AppStorageKeys.absPodcastsActive else {
             if hasPodcasts { hasPodcasts = false }
             return
         }
@@ -161,7 +161,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     func refresh() async {
         // ABS is opt-in as a podcast source — without it enabled load nothing and
         // clear the existing state (the user then uses ABS for audiobooks only).
-        guard AppStorageKeys.absPodcastsEnabledValue else {
+        guard AppStorageKeys.absPodcastsActive else {
             if hasPodcasts || !shows.isEmpty { hasPodcasts = false; shows = []; changeToken += 1 }
             return
         }

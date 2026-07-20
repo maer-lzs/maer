@@ -1,6 +1,86 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Audiobookshelf podcasts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Podcasts"
+          }
+        }
+      }
+    },
+    "Audiobookshelf server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Server"
+          }
+        }
+      }
+    },
+    "Internet radio" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Internetradio"
+          }
+        }
+      }
+    },
+    "Music server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server"
+          }
+        }
+      }
+    },
+    "Music server (Subsonic)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server (Subsonic)"
+          }
+        }
+      }
+    },
+    "Podcast sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Quellen"
+          }
+        }
+      }
+    },
+    "RSS feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS-Feeds"
+          }
+        }
+      }
+    },
+    "Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen ganzen Tab abschalten oder eine einzelne Quelle. Eine Quelle aus macht null Server-Aufrufe und blendet ihren Tab aus."
+          }
+        }
+      }
+    },
     "Applies the next time you play this station." : {
       "localizations" : {
         "de" : {

@@ -442,6 +442,11 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.
     func refreshAll() async {
+        // TF bib-toggles: RSS source off (podcast tab ∧ RSS toggle) → no feed
+        // fetches from any caller (background refresh, tab load, pull-to-refresh).
+        // THE one gate for the bulk RSS refresh; deliberate user actions
+        // (subscribe/preview) stay ungated.
+        guard AppStorageKeys.rssActive else { return }
         var updated = shows
         for (index, show) in shows.enumerated() {
             if let url = URL(string: show.feedURL), let fresh = await Self.fetchAndParse(feedURL: url) {
