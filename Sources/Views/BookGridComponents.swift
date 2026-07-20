@@ -343,7 +343,6 @@ struct BookDownloadRow: View {
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
-    @ObservedObject private var downloads = DownloadManager.shared
 
     private var isCurrent: Bool { playerCoordinator.activeItem?.id == entry.id }
     private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
@@ -357,7 +356,10 @@ struct BookDownloadRow: View {
                     coverURL: AppSession.shared.coverURL(forItemId: entry.id),
                     eyebrow: entry.item.author,
                     title: entry.item.title,
-                    downloadedBadge: downloads.isDownloaded(itemId: entry.id),
+                    // TF4/E1: the Downloaded section is rebuilt by its parent
+                    // (LibraryView) when downloads change, so this row reads the
+                    // flag non-observed — it never re-renders on a progress tick.
+                    downloadedBadge: DownloadManager.shared.isDownloaded(itemId: entry.id),
                     progressFraction: (entry.progress?.isStarted == true) ? entry.progress?.fraction : nil,
                     meta: entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) },
                     placeholderSystemImage: "book.closed"
