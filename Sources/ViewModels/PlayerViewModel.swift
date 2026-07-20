@@ -128,6 +128,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// F2: raw ICY StreamTitle from the live stream (radio) — parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
     @Published var icyStreamTitle: String?
+    /// Teil 2: the resolved now-playing cover for the CURRENT ICY song (nil =
+    /// show the station logo). Drives the in-app player cover; the lock screen
+    /// uses `artworkImage`. Reset on every item switch.
+    @Published var icySongArtwork: UIImage?
     /// Keeps the metadata-output delegate alive (the output holds it weakly).
     private var icyCollector: ICYMetadataCollector?
     /// True while the sleep timer runs in "until end of chapter" mode (for the
@@ -179,6 +183,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// finished") — the coordinator uses it for auto-play-next-in-series.
     var onBookFinished: ((String) -> Void)?
     var artworkImage: UIImage?
+    /// Teil 2: the station logo (favicon) for live radio — the fallback the ICY
+    /// now-playing cover reverts to when a song has no Cover Art Archive match.
+    /// Set by `loadArtwork`, read by `refreshICYArtwork` (both in +NowPlaying).
+    var stationArtwork: UIImage?
 
     /// All tracks of the book, sorted. Exactly one for a normal M4B book,
     /// several for multi-file books.
@@ -574,6 +582,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         var items: [AVPlayerItem] = []
         itemTrackIndex.removeAll()
         icyStreamTitle = nil   // F2: never carry a song title across items
+        icySongArtwork = nil   // Teil 2: nor its resolved cover
+        stationArtwork = nil   // Teil 2: the next station loads its own logo
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {
@@ -600,6 +610,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
                         guard let self, self.icyStreamTitle != value else { return }
                         self.icyStreamTitle = value
                         self.updateNowPlayingInfo()
+                        // Teil 2: try to resolve now-playing cover art for the song.
+                        self.refreshICYArtwork()
                     }
                 }
                 icyCollector = collector

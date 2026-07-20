@@ -210,12 +210,20 @@ struct PlayerView: View {
     private var cover: some View {
         Group {
             if viewModel.isLiveStream {
-                // Y58: radio — never upscale a low-res favicon fullscreen. A
-                // station-color field carries a small, sharp logo (or the SF
-                // symbol). Shared with the station rows via `RadioArtwork`.
-                RadioArtwork(stationID: viewModel.item?.id ?? "",
-                             faviconURL: coverURL, isHero: true)
-                    .aspectRatio(1, contentMode: .fit)
+                if let songCover = viewModel.icySongArtwork {
+                    // Teil 2: a resolved now-playing cover (MusicBrainz → Cover
+                    // Art Archive) is real album art — show it full size.
+                    Image(uiImage: songCover)
+                        .resizable().aspectRatio(1, contentMode: .fit)
+                        .transition(.opacity)
+                } else {
+                    // Y58: radio — never upscale a low-res favicon fullscreen. A
+                    // station-color field carries a small, sharp logo (or the SF
+                    // symbol). Shared with the station rows via `RadioArtwork`.
+                    RadioArtwork(stationID: viewModel.item?.id ?? "",
+                                 faviconURL: coverURL, isHero: true)
+                        .aspectRatio(1, contentMode: .fit)
+                }
             } else {
                 CachedAsyncImage(url: coverURL) { image in
                     image.resizable().aspectRatio(contentMode: .fit)

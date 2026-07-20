@@ -173,6 +173,9 @@ extension PlayerViewModel {
             guard let image = await Self.loadImage(for: coverURL) else { return }
             await MainActor.run {
                 self?.artworkImage = image
+                // Teil 2: remember the station logo so the ICY cover can fall
+                // back to it between songs / on a lookup miss.
+                if self?.isLiveStream == true { self?.stationArtwork = image }
                 self?.updateNowPlayingInfo()
                 // X9/V8: write the RELIABLY-loaded cover to the shared app-group
                 // file the home widget reads, then refresh it. The old path wrote
@@ -182,6 +185,46 @@ extension PlayerViewModel {
                 // already retries, so this is dependable.
                 self?.refreshSharedCover(from: image)
             }
+        }
+    }
+
+    /// Teil 2: best-effort now-playing cover for live radio. On an ICY song with
+    /// both artist and title, look the cover up (MusicBrainz → Cover Art Archive)
+    /// and, if found and still current, show it on the lock screen / in-app
+    /// player. Reverts to the station logo first, so a previous song's cover
+    /// never lingers, and on a miss the station logo simply stays.
+    func refreshICYArtwork() {
+        guard isLiveStream else { return }
+        let icy = icyNowPlaying
+        guard let artist = icy?.artist, let title = icy?.title,
+              RadioArtworkLookup.shouldLookup(artist: artist, title: title) else {
+            revertToStationLogo()
+            return
+        }
+        // Revert to the station logo while the async lookup runs, so a previous
+        // song's cover never lingers on a new song.
+        revertToStationLogo()
+        let itemID = item?.id
+        let songToken = icyStreamTitle
+        Task { [weak self] in
+            let image = await RadioArtworkService.shared.artwork(artist: artist, title: title)
+            await MainActor.run {
+                guard let self, let image,
+                      self.item?.id == itemID, self.icyStreamTitle == songToken else { return }
+                self.icySongArtwork = image           // in-app player cover
+                self.artworkImage = image             // lock screen cover
+                self.updateNowPlayingInfo()
+                self.refreshSharedCover(from: image)
+            }
+        }
+    }
+
+    /// Teil 2: drop any resolved song cover and show the station logo again.
+    private func revertToStationLogo() {
+        icySongArtwork = nil
+        if let logo = stationArtwork, artworkImage !== logo {
+            artworkImage = logo
+            updateNowPlayingInfo()
         }
     }
 

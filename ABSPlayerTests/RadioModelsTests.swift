@@ -228,6 +228,33 @@ struct RadioModelsTests {
         #expect(RadioMapping.effectiveStreamURL(for: station, selectedURL: "https://gone") == "https://s/hi")
     }
 
+    @Test("Teil 2: ICY artwork lookup gates on artist+title and builds a MusicBrainz query")
+    func icyArtworkLookup() {
+        #expect(!RadioArtworkLookup.shouldLookup(artist: nil, title: "Song"))
+        #expect(!RadioArtworkLookup.shouldLookup(artist: "  ", title: "Song"))
+        #expect(!RadioArtworkLookup.shouldLookup(artist: "Artist", title: ""))
+        #expect(RadioArtworkLookup.shouldLookup(artist: "Daft Punk", title: "One More Time"))
+        // Case/space-insensitive, stable cache key.
+        #expect(RadioArtworkLookup.cacheKey(artist: " Daft Punk ", title: "One More Time")
+              == RadioArtworkLookup.cacheKey(artist: "daft punk", title: "one more time"))
+        // MB recording endpoint, JSON, quoted title AND artist.
+        let url = RadioArtworkLookup.musicBrainzQueryURL(artist: "Daft Punk", title: "One More Time")
+        #expect(url?.absoluteString.hasPrefix("https://musicbrainz.org/ws/2/recording?") == true)
+        let comps = URLComponents(url: url!, resolvingAgainstBaseURL: false)!
+        #expect(comps.queryItems?.contains(URLQueryItem(name: "fmt", value: "json")) == true)
+        #expect(comps.queryItems?.first { $0.name == "query" }?.value
+              == "recording:\"One More Time\" AND artist:\"Daft Punk\"")
+    }
+
+    @Test("Teil 2: first release MBID is picked across the returned recordings")
+    func firstReleaseMBID() {
+        let json = Data(#"{"recordings":[{"releases":[]},{"releases":[{"id":"mbid-1"},{"id":"mbid-2"}]}]}"#.utf8)
+        let decoded = try! JSONDecoder().decode(MBRecordingResponse.self, from: json)
+        #expect(RadioArtworkLookup.firstReleaseMBID(decoded) == "mbid-1")
+        let empty = try! JSONDecoder().decode(MBRecordingResponse.self, from: Data(#"{"recordings":[]}"#.utf8))
+        #expect(RadioArtworkLookup.firstReleaseMBID(empty) == nil)
+    }
+
     @Test("F4-discovery: catalog query construction per endpoint")
     func catalogQueries() {
         func params(_ q: RadioBrowserClient.Query) -> [String: String] {

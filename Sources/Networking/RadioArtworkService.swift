@@ -1,0 +1,70 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import Foundation
+import UIKit
+
+/// Teil 2: best-effort now-playing cover art for live radio. From the ICY
+/// "Artist - Title" it searches MusicBrainz for the recording, takes the first
+/// release MBID and pulls the front cover from the Cover Art Archive (both open,
+/// no key). Net-gated and MusicBrainz-polite (identifying User-Agent, requests
+/// serialized at ~1 req/s). Everything is cached for the session — including
+/// negatives — so a stream that repeats a song never re-queries. nil means
+/// "keep the station logo" (coverage is patchy; no cover is normal).
+actor RadioArtworkService {
+    static let shared = RadioArtworkService()
+
+    private var covers: [String: URL] = [:]     // cacheKey → resolved CAA front URL
+    private var missing: Set<String> = []       // cacheKey with no usable cover
+    private var lastRequestAt: Date = .distantPast
+
+    func artwork(artist: String, title: String) async -> UIImage? {
+        guard RadioArtworkLookup.shouldLookup(artist: artist, title: title) else { return nil }
+        let key = RadioArtworkLookup.cacheKey(artist: artist, title: title)
+        if missing.contains(key) { return nil }
+        if let coverURL = covers[key] { return await image(from: coverURL, key: key) }
+
+        guard await NetworkMonitor.shared.isConnected,
+              let queryURL = RadioArtworkLookup.musicBrainzQueryURL(artist: artist, title: title) else {
+            return nil
+        }
+        await throttle()
+        var request = URLRequest(url: queryURL)
+        request.setValue(CoverArtArchive.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request), http?.statusCode == 200,
+              let decoded = try? JSONDecoder().decode(MBRecordingResponse.self, from: data),
+              let mbid = RadioArtworkLookup.firstReleaseMBID(decoded),
+              let coverURL = CoverArtArchive.frontURL(mbid: mbid) else {
+            missing.insert(key)
+            return nil
+        }
+        covers[key] = coverURL
+        return await image(from: coverURL, key: key)
+    }
+
+    private func image(from url: URL, key: String) async -> UIImage? {
+        if let cached = await ImageCache.shared.image(for: url) { return cached }
+        guard await NetworkMonitor.shared.isConnected else { return nil }
+        await throttle()
+        var request = URLRequest(url: url)
+        request.setValue(CoverArtArchive.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, http) = try? await RequestRetryPolicy.fetch(request), http?.statusCode == 200,
+              let image = UIImage(data: data) else {
+            missing.insert(key)
+            return nil
+        }
+        await ImageCache.shared.set(image, data: data, for: url)
+        return image
+    }
+
+    /// At most one outbound request per second (MusicBrainz + CAA policy).
+    private func throttle() async {
+        let elapsed = Date().timeIntervalSince(lastRequestAt)
+        if elapsed < 1.0 {
+            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
+        }
+        lastRequestAt = Date()
+    }
+}
