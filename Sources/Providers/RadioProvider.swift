@@ -22,7 +22,7 @@ final class RadioProvider: AudioProvider {
 
     /// The radio tab appears once the source is switched on (settings). Like
     /// every source toggle it reacts live (Y37).
-    var isAvailable: Bool { AppStorageKeys.radioEnabledValue }
+    var isAvailable: Bool { AppStorageKeys.radioActive }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
         [ABSLibrary(id: "radio", name: String(localized: "Radio"))]
