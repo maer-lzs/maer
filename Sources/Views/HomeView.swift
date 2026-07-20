@@ -30,16 +30,37 @@ struct HomeView: View {
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     @ObservedObject private var subs = PodcastSubscriptions.shared
-    /// A3: tiles dim + badge when unavailable — connectivity/download flips
-    /// must re-render (same per-surface observation as BookCoverView).
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    // TF4/E1: the Home page no longer observes DownloadManager/NetworkMonitor.
+    // A download-progress tick used to re-render the whole page and every
+    // section; now each tile's availability lives in its own MediaAvailabilityScope.
     @Environment(\.pushPodcastRoute) private var pushRoute
     @Environment(\.pushBookDetail) private var pushBook
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
+    /// TF4/E3: the Discover row's subscribed-Set + excluding-subscribed filter,
+    /// computed off the body (only when subscriptions/recommendations change)
+    /// instead of on every render.
+    @State private var discoverShown: [PodcastSearchResult] = []
     @State private var ready = false
+    /// TF4/E4: explicit height for the lazy "Recently Added" cells — the fixed
+    /// 150 cover plus a Dynamic-Type-scaling text block, so every cell matches
+    /// and none clips. (Device candidate: the text allowance.)
+    @ScaledMetric(relativeTo: .caption) private var recentlyAddedTextHeight: CGFloat = 70
+    private var recentlyAddedCellHeight: CGFloat { 150 + recentlyAddedTextHeight }
+
+    /// TF4/E3: recompute the Discover row only when its inputs change.
+    private var discoverToken: String {
+        "\(recommendationsEnabled)-\(recommendations.results.count)-\(subs.shows.count)-\(ABSPodcastProvider.shared.shows.count)"
+    }
+
+    private func recomputeDiscover() {
+        guard recommendationsEnabled else { discoverShown = []; return }
+        let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
+            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        discoverShown = PodcastRecommendationsStore.excludingSubscribed(
+            recommendations.results, subscribedNormalizedFeeds: subscribed)
+    }
 
     private var recomputeToken: String {
         "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)"
@@ -73,6 +94,8 @@ struct HomeView: View {
             guard isActive else { return }
             await compute()
         }
+        // E3: recompute the Discover filter only when its inputs change.
+        .task(id: discoverToken) { recomputeDiscover() }
     }
 
     private var isEmpty: Bool {
@@ -108,7 +131,7 @@ struct HomeView: View {
     /// card, anything else (a podcast episode) → the podcast card.
     @ViewBuilder
     private func continueCard(_ id: String) -> some View {
-        if let entry = libraryViewModel.entries.first(where: { $0.id == id }) {
+        if let entry = libraryViewModel.entry(id: id) {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
@@ -145,11 +168,6 @@ struct HomeView: View {
         }
     }
 
-    /// A3: an episode is unavailable offline unless downloaded.
-    private func isUnavailable(_ item: LibraryItem) -> Bool {
-        !networkMonitor.isConnected && !downloadManager.isDownloaded(itemId: item.id)
-    }
-
     private func episodeProgress(_ item: LibraryItem) -> Double? {
         if case .inProgress(let fraction, _) = podcastPlayState(for: item) { return fraction }
         return nil
@@ -163,10 +181,9 @@ struct HomeView: View {
     /// flow as the podcast tab's Discover grid; the tile tap opens that grid.
     @ViewBuilder
     private var discoverSection: some View {
-        let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
-            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        let shown = PodcastRecommendationsStore.excludingSubscribed(
-            recommendations.results, subscribedNormalizedFeeds: subscribed)
+        // E3: the subscribed-Set + filter are computed off the body (discoverToken);
+        // the section only reads the result.
+        let shown = discoverShown
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Discover").font(.title3).bold().padding(.horizontal)
@@ -217,28 +234,34 @@ struct HomeView: View {
 
     @ViewBuilder
     private func rediscoverTile(_ pick: RediscoverSections.Pick) -> some View {
-        if let entry = libraryViewModel.entries.first(where: { $0.id == pick.id }) {
-            MediaTile(
-                title: entry.item.title,
-                subtitle: rediscoverSubtitle(pick.reason),
-                coverURL: AppSession.shared.coverURL(forItemId: entry.id),
-                placeholderSystemImage: "book.closed",
-                progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
-                unavailable: isUnavailable(entry.item),
-                onTap: { pushBook(entry.id) }
-            ) {
-                MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
+        // TF4/E1: the shared scope is the ONE observer of download/network state
+        // for the tile; MediaTile stays value-driven off its `unavailable`.
+        if let entry = libraryViewModel.entry(id: pick.id) {
+            MediaAvailabilityScope(itemId: entry.id) { unavailable in
+                MediaTile(
+                    title: entry.item.title,
+                    subtitle: rediscoverSubtitle(pick.reason),
+                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                    placeholderSystemImage: "book.closed",
+                    progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
+                    unavailable: unavailable,
+                    onTap: { pushBook(entry.id) }
+                ) {
+                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
+                }
             }
         } else if let item = AppSession.shared.libraryItem(forId: pick.id) {
-            MediaTile(
-                title: item.title,
-                subtitle: rediscoverSubtitle(pick.reason),
-                coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                progress: episodeProgress(item),
-                unavailable: isUnavailable(item),
-                onTap: { pushRoute(.episode(itemId: item.id)) }
-            ) {
-                MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+            MediaAvailabilityScope(itemId: item.id) { unavailable in
+                MediaTile(
+                    title: item.title,
+                    subtitle: rediscoverSubtitle(pick.reason),
+                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    progress: episodeProgress(item),
+                    unavailable: unavailable,
+                    onTap: { pushRoute(.episode(itemId: item.id)) }
+                ) {
+                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+                }
             }
         }
     }
@@ -266,11 +289,15 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Recently Added").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
-                    // Eager HStack (like the library tab's shelf): the lazy variant
-                    // froze the shelf height on the first cell and clipped taller ones.
-                    HStack(alignment: .top, spacing: 16) {
+                    // TF4/E4: LazyHStack (was eager). The lazy variant used to freeze
+                    // the shelf height on the first cell and clip taller ones — an
+                    // EXPLICIT per-cell height fixes that: the cover is a fixed 150,
+                    // the text block scales with Dynamic Type, so every cell is the
+                    // same height and none clips.
+                    LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(recentlyAddedItems) { item in
                             recentlyAddedTile(item)
+                                .frame(width: 150, height: recentlyAddedCellHeight, alignment: .top)
                         }
                     }
                     .padding(.horizontal)
@@ -283,7 +310,7 @@ struct HomeView: View {
     /// otherwise (an album) → the album cell.
     @ViewBuilder
     private func recentlyAddedTile(_ item: LibraryItem) -> some View {
-        if let entry = libraryViewModel.entries.first(where: { $0.id == item.id }) {
+        if let entry = libraryViewModel.entry(id: item.id) {
             BookGridCell(entry: entry, width: 150,
                          playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
         } else {

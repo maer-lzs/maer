@@ -255,37 +255,33 @@ struct AlbumCell: View {
     let item: LibraryItem
     var width: CGFloat? = nil
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// A3: offline non-downloaded albums dim + carry the wifi.slash badge —
-    /// same per-cell observation as BookCoverView.
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloadManager = DownloadManager.shared
     /// D4/B3: single-line titles truncate to fragments at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    private var isOfflineUnavailable: Bool {
-        !networkMonitor.isConnected && !downloadManager.isDownloaded(itemId: item.id)
-    }
 
     var body: some View {
         // X15: value-based push (MusicRoute) so the tab bar can switch library
         // from the album page — plain destination links stayed on the stack.
         NavigationLink(value: MusicRoute.album(item)) {
             VStack(alignment: .leading, spacing: 6) {
-                CachedAsyncImage(
-                    url: AppSession.shared.coverURL(forItemId: item.id),
-                    useThumbnail: true, thumbnailMaxPixel: 400
-                ) { image in
-                    image.resizable().aspectRatio(1, contentMode: .fill)
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(.quaternary)
-                        .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+                // TF4/E1: the shared scope is the ONE observer of download/network
+                // state for this cell — only the cover re-renders on a tick.
+                MediaAvailabilityScope(itemId: item.id) { unavailable in
+                    CachedAsyncImage(
+                        url: AppSession.shared.coverURL(forItemId: item.id),
+                        useThumbnail: true, thumbnailMaxPixel: 400
+                    ) { image in
+                        image.resizable().aspectRatio(1, contentMode: .fill)
+                    } placeholder: {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.quaternary)
+                            .overlay(Image(systemName: "music.note").foregroundStyle(.secondary))
+                    }
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(width: width)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // A3: dimming alone never carries the state.
+                    .offlineUnavailableBadge(unavailable)
                 }
-                .aspectRatio(1, contentMode: .fit)
-                .frame(width: width)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                // A3: dimming alone never carries the state.
-                .offlineUnavailableBadge(isOfflineUnavailable)
 
                 Text(item.title).font(.subheadline)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)

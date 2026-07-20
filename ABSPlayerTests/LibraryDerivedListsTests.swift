@@ -82,6 +82,20 @@ struct LibraryDerivedListsTests {
 
     // MARK: - X16b: a restart clears the local finished flag
 
+    @Test("TF4/E2: indexById maps ids to entries, first entry wins on a duplicate id")
+    func e2IndexById() {
+        let entries = [
+            entry(id: "b1", title: "One"),
+            entry(id: "b2", title: "Two"),
+            entry(id: "b1", title: "Dup"),   // duplicate id
+        ]
+        let index = LibraryViewModel.indexById(entries)
+        #expect(index.count == 2)
+        #expect(index["b1"]?.item.title == "One")   // first wins (mirrors first(where:))
+        #expect(index["b2"]?.item.title == "Two")
+        #expect(index["missing"] == nil)
+    }
+
     @Test("markUnfinishedLocally clears the finished flag across the library lists")
     func markUnfinishedLocallyClears() {
         withCleanSortDefaults { vm in

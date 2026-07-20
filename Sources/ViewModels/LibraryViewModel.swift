@@ -74,8 +74,28 @@ nonisolated struct LibraryDiskCache: Codable {
 @MainActor
 final class LibraryViewModel: ObservableObject {
     @Published var entries: [LibraryEntry] = [] {
-        didSet { entriesStamp &+= 1 }
+        didSet {
+            entriesStamp &+= 1
+            // TF4/E2: rebuild the id index so per-tile lookups stay O(1).
+            entriesById = Self.indexById(entries)
+        }
     }
+
+    /// TF4/E2 (pure, tested): id → entry index; on a duplicate id the first
+    /// entry wins (mirrors `first(where:)`, whose result it replaces).
+    nonisolated static func indexById(_ entries: [LibraryEntry]) -> [String: LibraryEntry] {
+        Dictionary(entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+    /// TF4/E2: id → entry index. Home tiles and series navigation resolved an
+    /// entry with `entries.first(where:)` — O(N) per tile per render, which on
+    /// the Home page (many tiles, frequent redraws) was a needless cost. The
+    /// index is rebuilt only when `entries` changes. Not @Published: it is
+    /// derived from `entries`, whose own change already drives the views.
+    private(set) var entriesById: [String: LibraryEntry] = [:]
+
+    /// O(1) resolve of a loaded entry by id. The shelves are not indexed — use
+    /// `libraryItem(forId:)` when a shelf-only item must resolve too.
+    func entry(id: String) -> LibraryEntry? { entriesById[id] }
     @Published var continueListening: [LibraryEntry] = []
     @Published var recentlyAdded: [LibraryEntry] = []
     @Published var isLoading = false
@@ -92,7 +112,10 @@ final class LibraryViewModel: ObservableObject {
     /// The shelves are checked too, so an item that is only on a shelf still
     /// resolves before the full grid has paged in.
     func libraryItem(forId itemId: String) -> LibraryItem? {
-        for list in [entries, continueListening, recentlyAdded] {
+        // E2: the big `entries` list resolves via the O(1) index; the two small
+        // shelves stay a linear scan (an item only there still resolves).
+        if let hit = entriesById[itemId] { return hit.item }
+        for list in [continueListening, recentlyAdded] {
             if let hit = list.first(where: { $0.id == itemId }) { return hit.item }
         }
         return nil
@@ -442,7 +465,7 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func nextInSeries(after itemId: String) -> LibraryEntry? {
-        guard let current = entries.first(where: { $0.id == itemId }),
+        guard let current = entry(id: itemId),
               let base = Self.baseSeriesName(current.item.media?.metadata?.seriesName) else { return nil }
         let key = Self.seriesGroupKey(base)
         let books = entries

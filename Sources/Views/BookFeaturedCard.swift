@@ -74,11 +74,12 @@ struct BookFeaturedCard: View {
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             // X6a: the cover still dims when offline-unavailable; the wifi.slash
-            // marker itself lives in the card-corner badge. TF4: the dimming
-            // observes the network on its OWN (OfflineDimming), so a reconnect
-            // updates it without the whole card observing anything.
-            OfflineDimming(itemId: entry.id) {
+            // marker itself lives in the card-corner badge. TF4/E1: the shared
+            // MediaAvailabilityScope observes the globals for this item, so a
+            // reconnect/download updates ONLY the cover — the card observes nothing.
+            MediaAvailabilityScope(itemId: entry.id) { unavailable in
                 podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+                    .opacity(unavailable ? 0.5 : 1)
             }
             .overlay(alignment: .bottom) {
                 LinearGradient(colors: [.clear, colorLoader.accent],
@@ -187,23 +188,3 @@ final class FeaturedChapterCache {
     func store(_ chapters: [ABSChapter], for id: String) { cache[id] = chapters }
 }
 
-/// TF4: dims its content when the title can't play right now (offline + not
-/// downloaded). It observes ONLY the network on its own, so a reconnect updates
-/// the dimming without the whole `BookFeaturedCard` observing anything — a
-/// download-progress tick therefore never re-renders the card (and never
-/// re-validates chapters). `isDownloaded` is read non-observed: a download can
-/// only COMPLETE while online, and the offline case re-reads it on the next
-/// network change.
-private struct OfflineDimming<Content: View>: View {
-    let itemId: String
-    @ViewBuilder var content: Content
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-
-    var body: some View {
-        content.opacity(unavailable ? 0.5 : 1)
-    }
-
-    private var unavailable: Bool {
-        !networkMonitor.isConnected && !DownloadManager.shared.isDownloaded(itemId: itemId)
-    }
-}
