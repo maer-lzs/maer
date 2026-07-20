@@ -23,6 +23,17 @@ struct ChapterModelTests {
         #expect(v.map(\.id) == [0, 1, 2])
     }
 
+    @Test("TF4: BookFeaturedCard.chapterTitle memo helper resolves the current chapter (nil past the end / no inputs)")
+    func featuredCardChapterTitle() {
+        let raw = [ch(0, 0, 100), ch(1, 100, 200), ch(2, 200, 300)]
+        #expect(BookFeaturedCard.chapterTitle(raw: raw, currentTime: 150, duration: 300) == "C1")
+        #expect(BookFeaturedCard.chapterTitle(raw: raw, currentTime: nil, duration: 300) == nil)
+        #expect(BookFeaturedCard.chapterTitle(raw: [], currentTime: 150, duration: 300) == nil)
+        #expect(BookFeaturedCard.chapterTitle(raw: nil, currentTime: 150, duration: 300) == nil)
+        // Past the last real chapter (coverage-fallback book) → nil, not a phantom.
+        #expect(BookFeaturedCard.chapterTitle(raw: raw, currentTime: 5000, duration: 300) == nil)
+    }
+
     @Test("Zero-length / reversed chapters are dropped")
     func zeroLengthDropped() {
         let raw = [ch(0, 0, 100), ch(1, 100, 100), ch(2, 200, 150), ch(3, 200, 300)]

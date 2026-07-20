@@ -10,16 +10,22 @@ import SwiftUI
 /// resumes directly (Apple style); detail via the info pill at the bottom left,
 /// more actions via long-press.
 struct BookFeaturedCard: View {
-    // Observed so the offline dimming reacts to reconnects/scan completion.
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    // TF4: the card no longer observes DownloadManager/NetworkMonitor at the
+    // whole-card level. A download-progress tick published `phase` on every
+    // observing view, re-running the (previously unmemoized) chapter validation
+    // per card per tick — a very visible hitch with a 186-part book. Now the
+    // download badge observes `phase` on its own, the offline dimming observes
+    // the network on its own (OfflineDimming), and the chapter title is memoized.
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
     @StateObject private var colorLoader = CoverColorLoader()
     /// Chapters are loaded lazily from the item detail — the library list comes
-    /// "minified" and contains no chapters (see currentChapter).
+    /// "minified" and contains no chapters (see loadChapters).
     @State private var loadedChapters: [ABSChapter]?
+    /// TF4: memoized current-chapter title — recomputed ONLY when the loaded
+    /// chapters or the playback position change, never per body eval.
+    @State private var currentChapterTitle: String?
     private let width = CardMetrics.featuredCardWidth
     // D5/B4: pill reserve and line heights scale with Dynamic Type — at AX
     // sizes the overlay pill used to grow into the text block.
@@ -43,7 +49,10 @@ struct BookFeaturedCard: View {
         // legible instead of exploding (content surfaces scale fully).
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        .task(id: entry.id) { await loadChapters() }
+        .task(id: entry.id) { await loadChapters(); recomputeChapter() }
+        // TF4: recompute the chapter title on a position change (the ONLY other
+        // input) — not on every redraw, and never on a download tick.
+        .onChange(of: entry.progress?.currentTime) { recomputeChapter() }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         // X6a: the unified download/offline badge (family) at the CARD's
         // bottom-right corner — a tap cancels/downloads instead of triggering the
@@ -62,23 +71,20 @@ struct BookFeaturedCard: View {
         ))
     }
 
-    /// A6: same offline marking as BookCoverView — dim the cover and badge it
-    /// when the title cannot play right now (offline + not downloaded).
-    private var isOfflineUnavailable: Bool {
-        !NetworkMonitor.shared.isConnected && !DownloadManager.shared.isDownloaded(itemId: entry.id)
-    }
-
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
-                // X6a: the cover still dims when offline-unavailable; the
-                // wifi.slash marker itself now lives in the card-corner badge.
-                .opacity(isOfflineUnavailable ? 0.5 : 1)
-                .overlay(alignment: .bottom) {
-                    LinearGradient(colors: [.clear, colorLoader.accent],
-                                   startPoint: .top, endPoint: .bottom)
-                        .frame(height: width * 0.3)
-                }
+            // X6a: the cover still dims when offline-unavailable; the wifi.slash
+            // marker itself lives in the card-corner badge. TF4: the dimming
+            // observes the network on its OWN (OfflineDimming), so a reconnect
+            // updates it without the whole card observing anything.
+            OfflineDimming(itemId: entry.id) {
+                podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+            }
+            .overlay(alignment: .bottom) {
+                LinearGradient(colors: [.clear, colorLoader.accent],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: width * 0.3)
+            }
 
             VStack(alignment: .leading, spacing: 5) {
                 let sub = [remainingText, lastPlayedText].compactMap { $0 }.joined(separator: " · ")
@@ -94,7 +100,7 @@ struct BookFeaturedCard: View {
                 Text(entry.item.author ?? " ")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: authorMinHeight, alignment: .topLeading)
-                Text(currentChapter ?? " ")
+                Text(currentChapterTitle ?? " ")
                     .font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
                     .frame(maxWidth: .infinity, minHeight: 6, alignment: .topLeading)
             }
@@ -132,16 +138,25 @@ struct BookFeaturedCard: View {
         return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
     }
 
-    /// Current chapter — from the (lazily loaded) chapters, otherwise from the
-    /// possibly already-present item data.
-    private var currentChapter: String? {
-        guard let raw = loadedChapters ?? entry.item.media?.chapters,
-              !raw.isEmpty, let t = entry.progress?.currentTime else { return nil }
-        // V6: derive the current chapter from the VALIDATED list (never the raw
-        // server chapters). `last(where: t >= start)` on raw chapters names a
-        // phantom chapter for a coverage-fallback book once the position is past
-        // the last real chapter; `current` returns nil there → no wrong label.
-        let validated = ChapterModel.validated(raw, duration: entry.item.media?.duration ?? 0)
+    /// TF4: recompute the memoized chapter title from the current inputs. Called
+    /// only when the chapters load or the position changes (see the modifiers),
+    /// never per body eval — the validation over the whole chapter list used to
+    /// run per card per download tick.
+    private func recomputeChapter() {
+        currentChapterTitle = Self.chapterTitle(
+            raw: loadedChapters ?? entry.item.media?.chapters,
+            currentTime: entry.progress?.currentTime,
+            duration: entry.item.media?.duration)
+    }
+
+    /// Current-chapter title (pure, tested). V6: derive from the VALIDATED list,
+    /// never the raw server chapters — `last(where: t >= start)` on raw chapters
+    /// names a phantom chapter for a coverage-fallback book once the position is
+    /// past the last real chapter; `current` returns nil there → no wrong label.
+    nonisolated static func chapterTitle(raw: [ABSChapter]?, currentTime: Double?,
+                                         duration: Double?) -> String? {
+        guard let raw, !raw.isEmpty, let t = currentTime else { return nil }
+        let validated = ChapterModel.validated(raw, duration: duration ?? 0)
         return ChapterModel.current(at: t, in: validated)?.title
     }
 
@@ -170,4 +185,25 @@ final class FeaturedChapterCache {
     private var cache: [String: [ABSChapter]] = [:]
     func chapters(for id: String) -> [ABSChapter]? { cache[id] }
     func store(_ chapters: [ABSChapter], for id: String) { cache[id] = chapters }
+}
+
+/// TF4: dims its content when the title can't play right now (offline + not
+/// downloaded). It observes ONLY the network on its own, so a reconnect updates
+/// the dimming without the whole `BookFeaturedCard` observing anything — a
+/// download-progress tick therefore never re-renders the card (and never
+/// re-validates chapters). `isDownloaded` is read non-observed: a download can
+/// only COMPLETE while online, and the offline case re-reads it on the next
+/// network change.
+private struct OfflineDimming<Content: View>: View {
+    let itemId: String
+    @ViewBuilder var content: Content
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+
+    var body: some View {
+        content.opacity(unavailable ? 0.5 : 1)
+    }
+
+    private var unavailable: Bool {
+        !networkMonitor.isConnected && !DownloadManager.shared.isDownloaded(itemId: itemId)
+    }
 }
