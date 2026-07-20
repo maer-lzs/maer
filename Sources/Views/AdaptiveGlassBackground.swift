@@ -37,6 +37,13 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.glassAccent) private var environmentAccent
+    /// TF (bottom-bar morph hitch): real Liquid Glass re-samples the scrolling
+    /// cover background EVERY frame. While a scroll is in flight — and the bar's
+    /// collapse/expand morph, which the scroll drives — drop to cheap Material
+    /// so the morph animates Material, not Glass. This reconnects the previously
+    /// DEAD `BottomBarState.isScrolling` optimization at THE one shared glass
+    /// surface (Regel 2); the phase is already wired via `reportsBottomBarScroll`.
+    @ObservedObject private var bottomBar = BottomBarState.shared
 
     private var isDark: Bool { forceDark || colorScheme == .dark }
 
@@ -63,26 +70,37 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
 
     func body(content: Content) -> some View {
         Group {
-            if #available(iOS 26.0, *) {
+            // Real Liquid Glass only when at REST; during a scroll/morph the
+            // cheap Material fallback avoids per-frame re-sampling (the hitch).
+            if #available(iOS 26.0, *), !bottomBar.isScrolling {
                 content.glassEffect(
                     .regular.tint(isDark ? Color.black.opacity(0.3) : lightTint),
                     in: shape
                 )
             } else {
-                content
-                    .background {
-                        shape
-                            .fill(.ultraThinMaterial)
-                            .overlay(shape.fill(isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)))
-                    }
-                    .overlay(shape.stroke(isDark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 0.5))
+                materialFallback(content)
             }
         }
         // Light mode: a soft shadow separates white-ish glass from white
         // backgrounds — the main reason the mini player got lost visually.
         .shadow(color: .black.opacity(isDark ? 0 : 0.12), radius: 10, y: 4)
+        // TF: swap glass↔material only at scroll start/end (one change each,
+        // masked by the motion), never per frame — isScrolling flips on phase.
+        .animation(.easeInOut(duration: 0.2), value: bottomBar.isScrolling)
         // Cross-fade tint changes (book switch loads a new cover accent
         // asynchronously) instead of popping hard to the new color.
         .animation(.easeInOut(duration: 0.4), value: lightTint)
+    }
+
+    /// The cheap Material look — the pre-iOS-26 fallback, and (TF) the
+    /// scroll/morph look on iOS 26 so a scroll never re-samples real glass.
+    private func materialFallback(_ content: Content) -> some View {
+        content
+            .background {
+                shape
+                    .fill(.ultraThinMaterial)
+                    .overlay(shape.fill(isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)))
+            }
+            .overlay(shape.stroke(isDark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 0.5))
     }
 }
