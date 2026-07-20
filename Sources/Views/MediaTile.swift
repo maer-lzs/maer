@@ -29,6 +29,10 @@ struct MediaTile<Corner: View>: View {
     /// A3: unavailable content (offline, not downloaded) dims AND carries the
     /// white wifi.slash badge — dimming alone never carries the state.
     var unavailable: Bool = false
+    /// F5: a caller-supplied square cover replacing the `coverURL` image
+    /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic) — the Y58
+    /// coverOverride pattern for the poster tile. Progress/badges/clip stay.
+    var coverOverride: AnyView? = nil
     let onTap: () -> Void
     @ViewBuilder let corner: () -> Corner
 
@@ -63,13 +67,20 @@ struct MediaTile<Corner: View>: View {
         }
     }
 
+    @ViewBuilder
     private var image: some View {
-        CachedAsyncImage(url: coverURL, useThumbnail: true) { image in
-            image.resizable().aspectRatio(1, contentMode: imageContentMode)
-        } placeholder: {
-            Self.imageShape
-                .fill(.quaternary)
-                .overlay(Image(systemName: placeholderSystemImage).foregroundStyle(.secondary))
+        Group {
+            if let coverOverride {
+                coverOverride
+            } else {
+                CachedAsyncImage(url: coverURL, useThumbnail: true) { image in
+                    image.resizable().aspectRatio(1, contentMode: imageContentMode)
+                } placeholder: {
+                    Self.imageShape
+                        .fill(.quaternary)
+                        .overlay(Image(systemName: placeholderSystemImage).foregroundStyle(.secondary))
+                }
+            }
         }
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: .infinity)
@@ -115,11 +126,13 @@ extension MediaTile where Corner == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         coverOverride: AnyView? = nil,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable, onTap: onTap) { EmptyView() }
+                  progress: progress, unavailable: unavailable, coverOverride: coverOverride,
+                  onTap: onTap) { EmptyView() }
     }
 }
 

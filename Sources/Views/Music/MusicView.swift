@@ -21,8 +21,16 @@ struct MusicView: View {
     // Teil 2: server-side album sort, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage key.
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
+    // F5: create-playlist flow.
+    @State private var showNewPlaylist = false
+    @State private var newPlaylistName = ""
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    /// F5: playlists newest-changed first (default sort).
+    private var sortedPlaylists: [SubsonicPlaylist] {
+        PlaylistPresentation.sortedByChanged(vm.playlists) { PlaylistPresentation.changedDate($0.changed) }
+    }
 
     var body: some View {
         Group {
@@ -87,6 +95,23 @@ struct MusicView: View {
         .overlay(alignment: .top) {
             if vm.isLoading && !vm.albums.isEmpty { RefreshActivityPill() }
         }
+        // F5: create a server playlist (songs are added later via the song
+        // context menu). The server is the source of truth.
+        .alert("New Playlist", isPresented: $showNewPlaylist) {
+            TextField("Name", text: $newPlaylistName)
+            Button("Create") {
+                let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
+                newPlaylistName = ""
+                guard !name.isEmpty else { return }
+                Task {
+                    _ = try? await SubsonicProvider.shared.createPlaylist(name: name)
+                    await vm.reload()
+                }
+            }
+            Button("Cancel", role: .cancel) { newPlaylistName = "" }
+        } message: {
+            Text("Create an empty playlist on your music server.")
+        }
     }
 
     private var content: some View {
@@ -98,18 +123,14 @@ struct MusicView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             }
-            if !vm.newest.isEmpty { shelf("Recently Added", vm.newest) }
-            if !vm.frequent.isEmpty { shelf("Most Played", vm.frequent) }
+            // F5: playlist card row on top. Recently-Added / Most-Played shelves
+            // are intentionally gone here — the Home tab owns those; the music
+            // tab is playlists (top) + album grid (backbone) + artists browse.
+            playlistRow
 
-            if !vm.artists.isEmpty || !vm.playlists.isEmpty {
+            if !vm.artists.isEmpty {
                 VStack(spacing: 0) {
-                    if !vm.artists.isEmpty {
-                        browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
-                    }
-                    if !vm.playlists.isEmpty {
-                        Divider().padding(.leading, 52)
-                        browseRow("Playlists", systemImage: "music.note.list", route: .playlists(vm.playlists))
-                    }
+                    browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
                 }
                 .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal)
@@ -154,6 +175,78 @@ struct MusicView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(route.accessibilityId)
+    }
+
+    /// F5: the playlist card row — vertical poster cards (2×2 mosaic + name +
+    /// metadata) plus the "New Playlist" card at the end. Always shown so a
+    /// playlist can be created even before any exist.
+    private var playlistRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Playlists").font(.title3).bold().padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(sortedPlaylists) { PlaylistCard(playlist: $0) }
+                    NewPlaylistCard { showNewPlaylist = true }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+}
+
+/// F5: a playlist as a vertical poster card — the 2×2 mosaic (Y58 coverOverride
+/// slot) over the name and a metadata line "18 tracks · 1:12". Tapping opens the
+/// detail page (no direct playback).
+private struct PlaylistCard: View {
+    let playlist: SubsonicPlaylist
+    @Environment(\.pushMusicRoute) private var pushRoute
+    @State private var coverURLs: [URL] = []
+
+    static let width: CGFloat = 150
+
+    var body: some View {
+        MediaTile(
+            title: playlist.name ?? String(localized: "Playlist"),
+            subtitle: metaLine,
+            coverURL: nil,
+            coverOverride: AnyView(PlaylistArtwork(playlistID: playlist.id, coverURLs: coverURLs)),
+            onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
+        )
+        .frame(width: Self.width)
+        .task(id: playlist.id) {
+            let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: playlist.id)
+            coverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
+        }
+    }
+
+    private var metaLine: String {
+        let count = playlist.songCount ?? 0
+        let duration = PlaylistPresentation.durationText(seconds: playlist.duration ?? 0)
+        return "\(count) \(String(localized: "tracks")) · \(duration)"
+    }
+}
+
+/// F5: the dashed "New Playlist" card at the end of the row → create flow.
+private struct NewPlaylistCard: View {
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 6) {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                    .foregroundStyle(.secondary)
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay(Image(systemName: "plus").font(.title).foregroundStyle(.secondary))
+                Text("New Playlist")
+                    .font(.caption.weight(.medium))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+            }
+            .frame(width: PlaylistCard.width)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("new-playlist-card")
     }
 }
 

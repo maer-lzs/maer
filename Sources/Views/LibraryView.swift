@@ -234,6 +234,8 @@ struct LibraryView: View {
         // cog themselves — the root toolbar's cog doesn't propagate. Set on the
         // NavigationStack itself so pushed destinations inherit it.
         .environment(\.openSettings) { showSettings = true }
+        // F5: playlist cards (MediaTile onTap) push music routes through this.
+        .environment(\.pushMusicRoute) { navigationPath.append($0) }
         // Y23: a push out of the search page's deck (grid cells navigate
         // value-based via NavigationLink) leaves search mode — the pushed
         // detail must get the normal bottom bar, not the search field.

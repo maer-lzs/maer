@@ -135,7 +135,11 @@ enum UITestSeed {
     ]
     static let seedPlaylists: [SubsonicPlaylist] = [
         SubsonicPlaylist(id: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
-                         duration: 600, coverArt: nil, owner: nil, entry: nil),
+                         duration: 600, coverArt: nil, owner: nil,
+                         changed: "2026-07-19T10:00:00Z", entry: nil),
+        SubsonicPlaylist(id: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
+                         duration: 4320, coverArt: nil, owner: nil,
+                         changed: "2026-07-20T10:00:00Z", entry: nil),
     ]
 
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?) -> LibraryEntry {

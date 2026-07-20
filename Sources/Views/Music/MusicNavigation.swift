@@ -50,6 +50,34 @@ enum MusicRoute: Hashable {
     }
 }
 
+/// F5: push callback for a music route from a button-based tile (MediaTile uses
+/// an onTap closure, not a NavigationLink) — set on the NavigationStack itself
+/// by LibraryView, like `pushPodcastRoute`, so pushed views inherit it.
+nonisolated struct PushMusicRouteKey: EnvironmentKey {
+    static let defaultValue: @MainActor (MusicRoute) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var pushMusicRoute: @MainActor (MusicRoute) -> Void {
+        get { self[PushMusicRouteKey.self] }
+        set { self[PushMusicRouteKey.self] = newValue }
+    }
+}
+
+/// F5: a light library item pointing at a playlist (the detail view loads its
+/// tracks via `fetchItemDetail`). Shared by the playlist list and the card row.
+@MainActor
+func playlistLibraryItem(_ playlist: SubsonicPlaylist) -> LibraryItem {
+    LibraryItem(
+        id: SubsonicProvider.itemId(playlistId: playlist.id),
+        media: LibraryItemMedia(
+            metadata: LibraryItemMetadata(
+                title: playlist.name, authorName: nil, narratorName: nil,
+                seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+            duration: playlist.duration.map(Double.init), chapters: nil, tracks: nil),
+        addedAt: nil)
+}
+
 extension View {
     /// Registers the music destinations on the enclosing NavigationStack. Attach
     /// once on the stack ROOT (LibraryView), like the podcast destinations — the
