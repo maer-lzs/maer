@@ -8,7 +8,7 @@ import Foundation
 /// imports; Android groundwork). A station is LIVE audio: no duration, no
 /// position, no download — the capability flags stay honest (see
 /// RadioProvider).
-nonisolated struct RadioStation: Codable, Identifiable, Equatable, Sendable {
+nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// Namespaced id: `radio:rb:<stationuuid>` (Radio Browser catalog) or
     /// `radio:manual:<uuid>` (user-entered stream URL).
     let id: String
@@ -20,11 +20,35 @@ nonisolated struct RadioStation: Codable, Identifiable, Equatable, Sendable {
     var countryCode: String? = nil
     var tags: [String] = []
     /// Y57: stream quality — drives which codec/bitrate variant survives the
-    /// name-based collapse (per-variant selection comes later).
+    /// name-based collapse.
     var bitrate: Int? = nil
     var codec: String? = nil
+    /// Teil 1: the sibling codec/bitrate variants of this station (the collapse
+    /// keeps the best as default and attaches ALL variants here, self included).
+    /// Optional so already-persisted stations decode unchanged (no key → nil);
+    /// nested variants are always flattened to nil (no recursion).
+    var variants: [RadioStation]? = nil
 
     var isManual: Bool { id.hasPrefix("radio:manual:") }
+
+    /// The variant list (self included) or empty when this station has no
+    /// alternatives — the picker only appears for two or more.
+    var variantList: [RadioStation] { variants ?? [] }
+
+    /// Teil 1: human label for the variant picker — "128 kbps · MP3", one part,
+    /// or a generic fallback. Foundation-only (like the curated genre titles).
+    var qualityLabel: String {
+        var parts: [String] = []
+        if let bitrate, bitrate > 0 { parts.append("\(bitrate) kbps") }
+        if let codec, !codec.isEmpty { parts.append(codec.uppercased()) }
+        return parts.isEmpty ? String(localized: "Stream") : parts.joined(separator: " · ")
+    }
+
+    // Identity is the namespaced id — the attached variants/quality never change
+    // WHICH station this is, and id-based identity keeps store/dedupe lookups and
+    // value-based navigation stable regardless of the transient variant payload.
+    static func == (l: RadioStation, r: RadioStation) -> Bool { l.id == r.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 /// Radio Browser API station payload (subset). The API is an OPEN catalog —
@@ -91,20 +115,48 @@ nonisolated enum RadioMapping {
         // country, so an empty-country variant can't glue two real countries
         // together. Not a plain equivalence (compatibility isn't transitive), so
         // it can't be a hash key — a linear scan over the (≤40) buckets.
-        var buckets: [(name: String, country: String?, best: RadioStation)] = []
+        var buckets: [(name: String, country: String?, members: [RadioStation])] = []
         for station in stations {
             let name = normalizedStationName(station.name)
             let code = normalizedCountry(station.countryCode)
+            var flat = station; flat.variants = nil   // never nest variants
             if let idx = buckets.firstIndex(where: {
                 $0.name == name && countryCompatible(bucket: $0.country, station: code)
             }) {
                 if let code, buckets[idx].country == nil { buckets[idx].country = code }
-                if prefers(station, over: buckets[idx].best) { buckets[idx].best = station }
+                buckets[idx].members.append(flat)
             } else {
-                buckets.append((name: name, country: code, best: station))
+                buckets.append((name: name, country: code, members: [flat]))
             }
         }
-        return buckets.map(\.best)
+        // Teil 1: rank each bucket (best first) and let the surviving best carry
+        // the full variant list (self included) so the detail page can offer a
+        // picker. Bucket order = first appearance (the highest-voted variant's
+        // position), preserved.
+        return buckets.map { bucket in
+            let ranked = bucket.members.sorted { prefers($0, over: $1) }
+            var best = ranked[0]
+            best.variants = ranked.count > 1 ? ranked : nil
+            return best
+        }
+    }
+
+    /// Teil 1 (pure): a STABLE key for a station's variant selection — survives
+    /// catalog rotation (a different variant winning the collapse) because it
+    /// keys on the normalized name + country, not the volatile stationuuid.
+    static func variantKey(for station: RadioStation) -> String {
+        normalizedStationName(station.name) + "|" + (normalizedCountry(station.countryCode) ?? "")
+    }
+
+    /// Teil 1 (pure): resolve the stream to play — the user's persisted variant
+    /// choice when it still exists among the station's variants, else the best
+    /// (default) stream.
+    static func effectiveStreamURL(for station: RadioStation, selectedURL: String?) -> String {
+        guard let selectedURL, station.variantList.count > 1,
+              station.variantList.contains(where: { $0.streamURL == selectedURL }) else {
+            return station.streamURL
+        }
+        return selectedURL
     }
 
     private static func normalizedCountry(_ raw: String?) -> String? {
@@ -284,6 +336,29 @@ nonisolated enum RadioStore {
     static func mostPlayed(limit: Int = 8, defaults: UserDefaults = .standard) -> [RadioStation] {
         RadioRanking.mostPlayed(stations: load(mostPlayedKey, defaults: defaults),
                                 counts: playCounts(defaults: defaults), limit: limit)
+    }
+
+    // MARK: - Teil 1: per-station codec/bitrate variant selection
+
+    static let variantSelectionKey = "radioVariantSelection"   // [variantKey: streamURL]
+
+    private static func variantSelections(defaults: UserDefaults) -> [String: String] {
+        (defaults.dictionary(forKey: variantSelectionKey) as? [String: String]) ?? [:]
+    }
+
+    /// The persisted variant stream URL for a station, or nil for the default.
+    static func selectedVariantURL(for station: RadioStation, defaults: UserDefaults = .standard) -> String? {
+        variantSelections(defaults: defaults)[RadioMapping.variantKey(for: station)]
+    }
+
+    /// Persist a variant choice; passing the station's default (best) stream
+    /// clears the override so the station tracks the catalog's best again.
+    static func setSelectedVariant(_ streamURL: String, for station: RadioStation,
+                                   defaults: UserDefaults = .standard) {
+        var dict = variantSelections(defaults: defaults)
+        let key = RadioMapping.variantKey(for: station)
+        if streamURL == station.streamURL { dict[key] = nil } else { dict[key] = streamURL }
+        defaults.set(dict, forKey: variantSelectionKey)
     }
 }
 

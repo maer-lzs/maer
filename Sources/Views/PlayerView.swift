@@ -341,8 +341,19 @@ struct PlayerView: View {
         return Date().addingTimeInterval(remaining).formatted(date: .omitted, time: .shortened)
     }
 
+    /// Teil 1: the active radio station (with its variants) — resolved from the
+    /// store/session so the live quality menu can offer the codec/bitrate
+    /// variants. nil for non-radio or a single-variant station (→ no menu).
+    private var liveStation: RadioStation? {
+        guard viewModel.isLiveStream, let id = viewModel.item?.id,
+              let station = RadioProvider.shared.station(forId: id),
+              station.variantList.count > 1 else { return nil }
+        return station
+    }
+
     /// F2: live radio — no scrubber, no duration; a LIVE mark plus the
-    /// elapsed listening time (the only honest number for a stream).
+    /// elapsed listening time (the only honest number for a stream). Teil 1: a
+    /// quality menu appears when the station ships codec/bitrate variants.
     private var liveRow: some View {
         HStack(spacing: 8) {
             Circle().fill(.red).frame(width: 8, height: 8)
@@ -350,6 +361,7 @@ struct PlayerView: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
             Spacer()
+            if let station = liveStation { qualityMenu(for: station) }
             Text(format(viewModel.currentTime))
                 .monospacedDigit()
                 .font(.caption)
@@ -357,6 +369,33 @@ struct PlayerView: View {
         }
         .padding(.horizontal, 24)
         .frame(minHeight: 44)
+    }
+
+    /// Teil 1: switch the live stream to another codec/bitrate variant — good
+    /// when the current one stutters. The choice persists per station and the
+    /// station re-opens at the chosen stream (the play path picks it up).
+    private func qualityMenu(for station: RadioStation) -> some View {
+        let selected = RadioStore.selectedVariantURL(for: station) ?? station.streamURL
+        return Menu {
+            ForEach(station.variantList, id: \.id) { variant in
+                Button {
+                    RadioStore.setSelectedVariant(variant.streamURL, for: station)
+                    RadioPlay.play(station, playerCoordinator: AppSession.shared.playerCoordinator)
+                } label: {
+                    if variant.streamURL == selected {
+                        Label(variant.qualityLabel, systemImage: "checkmark")
+                    } else {
+                        Text(variant.qualityLabel)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.8))
+                .frame(minWidth: 44, minHeight: 44, alignment: .trailing)
+        }
+        .accessibilityLabel(Text("Stream Quality"))
     }
 
     private var scrubber: some View {

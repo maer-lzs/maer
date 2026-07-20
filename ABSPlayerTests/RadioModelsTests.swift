@@ -172,6 +172,62 @@ struct RadioModelsTests {
         #expect(RadioStore.mostPlayed(limit: 2, defaults: defaults).map(\.name) == ["A", "C"])
     }
 
+    @Test("Teil 1: collapse keeps the best as default and attaches all variants (self included, flattened)")
+    func variantsAttached() {
+        let raw = [
+            RadioStation(id: "radio:rb:hi", name: "Radio X 192k MP3", streamURL: "https://s/hi",
+                         countryCode: "DE", bitrate: 192, codec: "MP3"),
+            RadioStation(id: "radio:rb:lo", name: "Radio X 64k AAC", streamURL: "https://s/lo",
+                         countryCode: "DE", bitrate: 64, codec: "AAC"),
+        ]
+        let out = RadioMapping.collapseVariants(raw)
+        #expect(out.count == 1)
+        #expect(out[0].id == "radio:rb:hi")                                    // highest bitrate = default
+        #expect(out[0].variantList.map(\.id) == ["radio:rb:hi", "radio:rb:lo"]) // ranked, self included
+        #expect(out[0].variantList.allSatisfy { $0.variants == nil })          // no nesting
+        #expect(RadioMapping.collapseVariants([raw[0]])[0].variantList.isEmpty) // lone station → no picker
+    }
+
+    @Test("Teil 1: qualityLabel formats bitrate and codec")
+    func qualityLabels() {
+        func st(_ b: Int?, _ c: String?) -> RadioStation {
+            RadioStation(id: "x", name: "X", streamURL: "https://s", bitrate: b, codec: c)
+        }
+        #expect(st(128, "mp3").qualityLabel == "128 kbps · MP3")
+        #expect(st(nil, "AAC").qualityLabel == "AAC")
+        #expect(st(96, nil).qualityLabel == "96 kbps")
+        #expect(!st(nil, nil).qualityLabel.isEmpty)   // generic fallback (localized)
+    }
+
+    @Test("Teil 1: variant selection persists per station (stable key) and resolves the effective stream")
+    func variantSelection() {
+        let name = "radio-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let raw = [
+            RadioStation(id: "radio:rb:hi", name: "Deutschlandfunk MP3 192k", streamURL: "https://s/hi",
+                         countryCode: "DE", bitrate: 192, codec: "MP3"),
+            RadioStation(id: "radio:rb:lo", name: "Deutschlandfunk AAC 64k", streamURL: "https://s/lo",
+                         countryCode: "DE", bitrate: 64, codec: "AAC"),
+        ]
+        let station = RadioMapping.collapseVariants(raw)[0]
+        // No selection → best stream.
+        #expect(RadioMapping.effectiveStreamURL(
+            for: station, selectedURL: RadioStore.selectedVariantURL(for: station, defaults: defaults)) == "https://s/hi")
+        // Choose the low variant → persisted and resolved.
+        RadioStore.setSelectedVariant("https://s/lo", for: station, defaults: defaults)
+        #expect(RadioStore.selectedVariantURL(for: station, defaults: defaults) == "https://s/lo")
+        #expect(RadioMapping.effectiveStreamURL(for: station, selectedURL: "https://s/lo") == "https://s/lo")
+        // The key ignores codec/bitrate decorations → two variants of one station
+        // (same country) share the key, so the choice survives catalog rotation.
+        #expect(RadioMapping.variantKey(for: raw[0]) == RadioMapping.variantKey(for: raw[1]))
+        // Selecting the default clears the override.
+        RadioStore.setSelectedVariant("https://s/hi", for: station, defaults: defaults)
+        #expect(RadioStore.selectedVariantURL(for: station, defaults: defaults) == nil)
+        // A stale selection (no longer a variant) falls back to the best.
+        #expect(RadioMapping.effectiveStreamURL(for: station, selectedURL: "https://gone") == "https://s/hi")
+    }
+
     @Test("F4-discovery: catalog query construction per endpoint")
     func catalogQueries() {
         func params(_ q: RadioBrowserClient.Query) -> [String: String] {

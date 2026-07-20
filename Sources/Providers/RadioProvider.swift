@@ -41,6 +41,9 @@ final class RadioProvider: AudioProvider {
         // play-frequency count (Teil 3, "Most Played") centrally.
         RadioStore.recordRecent(station)
         RadioStore.recordPlay(station)
+        // Teil 1: honor the user's per-station variant choice (else the best).
+        let streamURL = RadioMapping.effectiveStreamURL(
+            for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(
             id: station.id,
@@ -51,7 +54,7 @@ final class RadioProvider: AudioProvider {
                     publishedYear: nil, description: nil),
                 duration: nil, chapters: nil,
                 tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: nil,
-                                       contentUrl: station.streamURL, metadata: nil)]),
+                                       contentUrl: streamURL, metadata: nil)]),
             userMediaProgress: nil)
     }
 

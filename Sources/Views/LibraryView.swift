@@ -236,6 +236,9 @@ struct LibraryView: View {
         .environment(\.openSettings) { showSettings = true }
         // F5: playlist cards (MediaTile onTap) push music routes through this.
         .environment(\.pushMusicRoute) { navigationPath.append($0) }
+        // Teil 1: radio station rows/cards push the station detail page (variant
+        // picker) from their context menu — the tap itself still plays.
+        .environment(\.pushRadioRoute) { navigationPath.append($0) }
         // Y23: a push out of the search page's deck (grid cells navigate
         // value-based via NavigationLink) leaves search mode — the pushed
         // detail must get the normal bottom bar, not the search field.

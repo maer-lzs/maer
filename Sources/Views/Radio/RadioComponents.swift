@@ -14,6 +14,7 @@ struct RadioStationRow: View {
     /// Called after the favorite is toggled, so a favorites list can refresh.
     var onFavoriteToggled: () -> Void = {}
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    @Environment(\.pushRadioRoute) private var pushRadioRoute
 
     var body: some View {
         Button {
@@ -36,7 +37,10 @@ struct RadioStationRow: View {
         }
         .buttonStyle(.plain)
         .disabled(!networkMonitor.isConnected)
-        .contextMenu { RadioFavoriteButton(station: station, onToggled: onFavoriteToggled) }
+        .contextMenu {
+            RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
+            RadioDetailsButton(station: station, push: pushRadioRoute)
+        }
     }
 }
 
@@ -46,6 +50,7 @@ struct RadioStationCard: View {
     let station: RadioStation
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var onFavoriteToggled: () -> Void = {}
+    @Environment(\.pushRadioRoute) private var pushRadioRoute
 
     static let width: CGFloat = 128
 
@@ -65,7 +70,25 @@ struct RadioStationCard: View {
             }
         }
         .buttonStyle(.plain)
-        .contextMenu { RadioFavoriteButton(station: station, onToggled: onFavoriteToggled) }
+        .contextMenu {
+            RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
+            RadioDetailsButton(station: station, push: pushRadioRoute)
+        }
+    }
+}
+
+/// Teil 1: context-menu entry that opens the station detail page (tap still
+/// plays directly — F3). Shared by the row and the card.
+struct RadioDetailsButton: View {
+    let station: RadioStation
+    let push: @MainActor (RadioRoute) -> Void
+
+    var body: some View {
+        Button {
+            push(.station(station))
+        } label: {
+            Label("Station Details", systemImage: "info.circle")
+        }
     }
 }
 
