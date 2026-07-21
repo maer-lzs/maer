@@ -66,6 +66,7 @@ struct RadioView: View {
             .bottomBarClearance()
         }
         .reportsBottomBarScroll(active: isActive)
+        .topEdgeFade()   // GT3c: fade anchored to this tab's scroll viewport
         .refreshable { await loadDiscovery(force: true) }
         .task(id: "\(isActive)-\(playerCoordinator.activeItem?.id ?? "")") {
             reload()

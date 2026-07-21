@@ -38,3 +38,16 @@ struct TopScrollEdgeFade: View {
 
     private var tone: Color { colorScheme == .dark ? .black : .white }
 }
+
+extension View {
+    /// GT3c: anchor the top-edge fade to THIS scroll surface's viewport top.
+    /// Apply to each tab's ROOT `ScrollView` — the ScrollView IS the viewport,
+    /// so its top edge is the real content top under the nav bar (reliable,
+    /// unlike hanging the fade on a layout container, which centered it when a
+    /// tab didn't fill the height — GT3/GT3b). ONE implementation, applied per
+    /// tab = tab parity, no duplicated fade. `.overlay` sits on the ScrollView
+    /// frame, so it stays FIXED at the top while the content scrolls under it.
+    func topEdgeFade() -> some View {
+        overlay(alignment: .top) { TopScrollEdgeFade() }
+    }
+}

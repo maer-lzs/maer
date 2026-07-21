@@ -141,16 +141,10 @@ struct LibraryView: View {
                     // tab — covered content must not stay reachable for
                     // VoiceOver behind the page.
                     .accessibilityHidden(isShowingSearch)
-                    // GT3/GT3b: ONE persistent adaptive top-edge fade over ALL
-                    // library tabs — pinned to the FILLING container (fills the
-                    // ZStack, top-aligned) so "top" is the real content top under
-                    // the nav bar even when a tab does NOT fill the height. (As a
-                    // `.overlay` on the Group it centered mid-page: a short tab
-                    // shrinks the Group, which the ZStack then centers.) Above the
-                    // tabs, BELOW the search page (declared before it here).
-                    TopScrollEdgeFade()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .allowsHitTesting(false)
+                    // GT3c: the top-edge fade is anchored on each tab's ROOT
+                    // ScrollView via `.topEdgeFade()` (the viewport's real top),
+                    // NOT here on a layout container — hanging it on the ZStack/
+                    // Group centered it mid-page when a tab didn't fill the height.
                     // Y23: search mode is a FULL PAGE over the tab content
                     // (inside the stack — the deck's grid cells push value
                     // routes onto the same navigationPath).
@@ -874,6 +868,7 @@ struct LibraryView: View {
         // Only the visible tab reports — hidden-but-mounted tabs must not feed
         // the shared BottomBarState (see reportsBottomBarScroll(active:)).
         .reportsBottomBarScroll(active: selectedMediaType == .audiobooks)
+        .topEdgeFade()   // GT3c: fade anchored to this tab's scroll viewport
     }
 
     // MARK: "Recently Added" (large tiles, side-scrolling)

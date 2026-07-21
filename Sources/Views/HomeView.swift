@@ -90,6 +90,7 @@ struct HomeView: View {
         // Home hangs on the SHARED bottom bar like every tab — only the visible
         // one reports (active-gate). Transition/feedback edge untouched.
         .reportsBottomBarScroll(active: isActive)
+        .topEdgeFade()   // GT3c: fade anchored to this tab's scroll viewport
         .task(id: recomputeToken) {
             guard isActive else { return }
             await compute()

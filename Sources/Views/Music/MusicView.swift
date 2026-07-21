@@ -61,6 +61,7 @@ struct MusicView: View {
                     // the bar stayed expanded (heavy/opaque look) and never
                     // collapsed. One binding, both symptoms.
                     .reportsBottomBarScroll(active: isActive)
+                    .topEdgeFade()   // GT3c: fade anchored to this tab's scroll viewport
             }
         }
         .task {
