@@ -96,6 +96,34 @@ struct LibraryDerivedListsTests {
         #expect(index["missing"] == nil)
     }
 
+    @Test("TF1: multi-file frozen server fraction → makeEntry recomputes from currentTime / local duration")
+    func tf1MultiFileProgress() {
+        let item = entry(id: "mf", title: "Multi").item   // media.duration = 100
+        func frac(_ p: BookProgress) -> Double {
+            LibraryViewModel.makeEntry(item: item, progress: ["mf": p], queued: [:]).progress?.fraction ?? -1
+        }
+        // Stale server fraction 0.10 but currentTime at 50/100 → authoritative ~0.50.
+        #expect(abs(frac(BookProgress(fraction: 0.10, isFinished: false, lastUpdate: 5, currentTime: 50)) - 0.50) < 0.001)
+        // Single-file (server fraction == currentTime/duration) unchanged.
+        #expect(abs(frac(BookProgress(fraction: 0.30, isFinished: false, lastUpdate: 5, currentTime: 30)) - 0.30) < 0.001)
+        // Finished stays finished and full (no recompute, no un-finish).
+        let done = LibraryViewModel.makeEntry(
+            item: item, progress: ["mf": BookProgress(fraction: 1.0, isFinished: true, lastUpdate: 5, currentTime: 90)], queued: [:])
+        #expect(done.progress?.isFinished == true)
+        #expect((done.progress?.fraction ?? 0) == 1.0)
+        // No local duration → keep the server fraction (not 0).
+        let noDur = LibraryItem(
+            id: "nd",
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(title: "ND", authorName: nil, narratorName: nil,
+                                              seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+        let kept = LibraryViewModel.makeEntry(
+            item: noDur, progress: ["nd": BookProgress(fraction: 0.12, isFinished: false, lastUpdate: 5, currentTime: 999)], queued: [:])
+        #expect(abs((kept.progress?.fraction ?? 0) - 0.12) < 0.001)
+    }
+
     @Test("markUnfinishedLocally clears the finished flag across the library lists")
     func markUnfinishedLocallyClears() {
         withCleanSortDefaults { vm in

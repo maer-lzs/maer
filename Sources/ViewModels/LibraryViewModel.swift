@@ -755,18 +755,31 @@ final class LibraryViewModel: ObservableObject {
     /// A server item + (server/local) progress + queued updates → a
     /// display-ready `LibraryEntry`. Extracted so both the full list and the
     /// seed rows (Continue/Recently Added) are prepared exactly the same way.
-    nonisolated private static func makeEntry(item: LibraryItem,
-                                              progress: [String: BookProgress],
-                                              queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
+    nonisolated static func makeEntry(item: LibraryItem,
+                                      progress: [String: BookProgress],
+                                      queued: [String: SyncQueue.PendingUpdate]) -> LibraryEntry {
         var p = progress[item.id]
-        // Multi-file fallback: if the server has no fraction (duration 0/empty
-        // there) but a position, recompute it from the LOCALLY known book
-        // duration — otherwise bars/"Continue" are missing.
-        if let existing = p, existing.fraction <= 0.001, !existing.isFinished,
+        // TF1: for MULTI-FILE books the client deliberately sends no server
+        // `progress`/`duration` (an explicit 0 would clobber existing server
+        // progress) — so the server fraction FREEZES while `currentTime` keeps
+        // advancing. The authoritative value is `currentTime` over the LOCALLY
+        // known total duration. Recompute it whenever both are known and the
+        // book is not finished — previously this only ran for a ~0 server
+        // fraction, so a frozen non-zero fraction (e.g. 0.10) was shown stale.
+        // Non-regression: single-file books have currentTime/duration equal to
+        // the server fraction (unchanged); `isFinished` is preserved (no
+        // un-finish); no local duration → keep the server fraction (not 0).
+        if let existing = p, !existing.isFinished,
            let time = existing.currentTime, time > 0,
            let duration = item.media?.duration, duration > 0 {
+            let recomputed = min(max(time / duration, 0), 1)
+            #if DEBUG
+            if abs(existing.fraction - recomputed) > 0.02 {
+                Logger.library.log("TF1 progress \(item.id, privacy: .public): server=\(existing.fraction) currentTime=\(time) duration=\(duration) → \(recomputed)")
+            }
+            #endif
             p = BookProgress(
-                fraction: min(max(time / duration, 0), 1),
+                fraction: recomputed,
                 isFinished: existing.isFinished,
                 lastUpdate: existing.lastUpdate,
                 currentTime: time
