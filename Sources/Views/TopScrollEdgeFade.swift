@@ -18,13 +18,15 @@ import SwiftUI
 /// tab content so every library tab shares it (no per-tab duplication).
 struct TopScrollEdgeFade: View {
     @Environment(\.colorScheme) private var colorScheme
-    /// Fade depth from the top edge.
-    var height: CGFloat = 40
+    /// Fade depth from the top edge (GT3b: taller, softer).
+    var height: CGFloat = 68
+    /// GT3b: top-tone start opacity — subtler than a full-opaque edge.
+    var topOpacity: Double = 0.7
 
     var body: some View {
         LinearGradient(
             stops: [
-                .init(color: tone, location: 0.0),
+                .init(color: tone.opacity(topOpacity), location: 0.0),
                 .init(color: tone.opacity(0), location: 1.0),
             ],
             startPoint: .top, endPoint: .bottom

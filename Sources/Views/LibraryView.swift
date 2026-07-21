@@ -141,11 +141,16 @@ struct LibraryView: View {
                     // tab — covered content must not stay reachable for
                     // VoiceOver behind the page.
                     .accessibilityHidden(isShowingSearch)
-                    // GT3: ONE persistent adaptive top-edge fade over ALL library
-                    // tabs (not per-tab) — content softens into the system tone
-                    // at the top and stays while scrolling. Behind the search
-                    // page (lower in the ZStack), so it shows only on the tabs.
-                    .overlay(alignment: .top) { TopScrollEdgeFade() }
+                    // GT3/GT3b: ONE persistent adaptive top-edge fade over ALL
+                    // library tabs — pinned to the FILLING container (fills the
+                    // ZStack, top-aligned) so "top" is the real content top under
+                    // the nav bar even when a tab does NOT fill the height. (As a
+                    // `.overlay` on the Group it centered mid-page: a short tab
+                    // shrinks the Group, which the ZStack then centers.) Above the
+                    // tabs, BELOW the search page (declared before it here).
+                    TopScrollEdgeFade()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .allowsHitTesting(false)
                     // Y23: search mode is a FULL PAGE over the tab content
                     // (inside the stack — the deck's grid cells push value
                     // routes onto the same navigationPath).
@@ -1184,14 +1189,15 @@ struct LibraryView: View {
             .environment(\.colorScheme, systemColorScheme)
             // Menu renders its label via tint (ignoring foregroundStyle).
             .tint(.primary)
-            // 3c: sort + settings (both go through here) collapse away WITH the
-            // bottom bar — same `barCollapsed` state + spring (3b consistency).
-            // Declutter, and during a scroll almost no glass surface remains
-            // (opacity 0 drops the glass render) → hitch relief.
-            .scaleEffect(barCollapsed ? 0.6 : 1, anchor: .top)
+            // 3c/GT3b: sort + settings (both via here) SCROLL UP out of frame
+            // when the bottom bar collapses (scrolling) and POP back in at rest —
+            // same `barCollapsed` trigger (3b consistency). `opacity 0` while out
+            // drops the glass render (hitch relief); the bouncy spring gives the
+            // pop-in ("aufploppen").
+            .offset(y: barCollapsed ? -72 : 0)
             .opacity(barCollapsed ? 0 : 1)
             .allowsHitTesting(!barCollapsed)
-            .animation(.spring(response: 0.42, dampingFraction: 0.85), value: barCollapsed)
+            .animation(.spring(response: 0.35, dampingFraction: 0.62), value: barCollapsed)
     }
 
     /// Cover grid with a self-computed column count and width (see
