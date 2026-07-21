@@ -141,6 +141,11 @@ struct LibraryView: View {
                     // tab — covered content must not stay reachable for
                     // VoiceOver behind the page.
                     .accessibilityHidden(isShowingSearch)
+                    // GT3: ONE persistent adaptive top-edge fade over ALL library
+                    // tabs (not per-tab) — content softens into the system tone
+                    // at the top and stays while scrolling. Behind the search
+                    // page (lower in the ZStack), so it shows only on the tabs.
+                    .overlay(alignment: .top) { TopScrollEdgeFade() }
                     // Y23: search mode is a FULL PAGE over the tab content
                     // (inside the stack — the deck's grid cells push value
                     // routes onto the same navigationPath).
@@ -1179,6 +1184,14 @@ struct LibraryView: View {
             .environment(\.colorScheme, systemColorScheme)
             // Menu renders its label via tint (ignoring foregroundStyle).
             .tint(.primary)
+            // 3c: sort + settings (both go through here) collapse away WITH the
+            // bottom bar — same `barCollapsed` state + spring (3b consistency).
+            // Declutter, and during a scroll almost no glass surface remains
+            // (opacity 0 drops the glass render) → hitch relief.
+            .scaleEffect(barCollapsed ? 0.6 : 1, anchor: .top)
+            .opacity(barCollapsed ? 0 : 1)
+            .allowsHitTesting(!barCollapsed)
+            .animation(.spring(response: 0.42, dampingFraction: 0.85), value: barCollapsed)
     }
 
     /// Cover grid with a self-computed column count and width (see
