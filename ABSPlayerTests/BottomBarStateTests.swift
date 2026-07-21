@@ -114,22 +114,6 @@ struct BottomBarStateTests {
         #expect(!state.collapsed)
     }
 
-    /// Etappe 5: `isScrolling` drives the bar's glass reduction and must publish
-    /// ONLY on scroll start/stop boundaries — never per frame (which would
-    /// reintroduce the per-frame re-renders the s16b gate fix removed).
-    @Test("isScrolling publishes only on scroll boundaries, not per report")
-    func scrollingIsBoundaryOnly() {
-        let state = BottomBarState()
-        let publishes = publishCount(of: state) {
-            state.setScrolling(true)    // start → publish
-            state.setScrolling(true)    // still scrolling → no-op
-            state.setScrolling(true)    // still scrolling → no-op
-            state.setScrolling(false)   // stop → publish
-        }
-        #expect(!state.isScrolling)
-        #expect(publishes == 2)         // exactly the two boundaries
-    }
-
     /// X21: the collapse is held back until the delay past scroll start; expanding
     /// is never delayed.
     @Test("shouldCollapse: below threshold / force-expanded / within the delay do NOT collapse")

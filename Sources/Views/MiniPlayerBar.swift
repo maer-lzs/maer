@@ -152,7 +152,7 @@ struct MiniPlayerBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .modifier(AdaptiveGlassBackground(shape: shape))
+        .modifier(AdaptiveGlassBackground(shape: shape, tier: .glass))
         .background(
             GeometryReader { geo in
                 Color.clear

@@ -601,7 +601,7 @@ struct LibraryView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
         .matchedGeometryEffect(id: "media", in: barNS)
         .accessibilityLabel(isShowingSearch ? MediaType.home.label : selectedMediaType.label)
         .accessibilityHint(Text("Expands the bar"))
@@ -674,7 +674,7 @@ struct LibraryView: View {
         .padding(.horizontal, 14)
         .frame(height: 56)
         .frame(maxWidth: .infinity)
-        .modifier(AdaptiveGlassBackground(shape: Capsule()))
+        .modifier(AdaptiveGlassBackground(shape: Capsule(), tier: .glass))
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityIdentifier("global-search-field")
     }
@@ -696,7 +696,7 @@ struct LibraryView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
         .accessibilityLabel(Text("Close search"))
         .accessibilityIdentifier("search-close")
     }
@@ -1173,6 +1173,7 @@ struct LibraryView: View {
             .frame(width: 40, height: 40)
             .modifier(AdaptiveGlassBackground(
                 shape: Circle(),
+                tier: .glass,
                 lightAccent: bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil
             ))
             .environment(\.colorScheme, systemColorScheme)

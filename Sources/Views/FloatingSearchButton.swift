@@ -22,7 +22,7 @@ struct FloatingSearchButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle()))
+        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
         .accessibilityLabel(Text("Search"))
     }
 }
