@@ -139,11 +139,19 @@ struct RadioView: View {
     // MARK: - Loading
 
     private func reload() {
-        favorites = RadioStore.favorites()
-        recents = RadioStore.recents().filter { station in
-            !favorites.contains { $0.id == station.id }
+        let favs = RadioStore.favorites()
+        let recs = RadioStore.recents().filter { station in
+            !favs.contains { $0.id == station.id }
         }
-        mostPlayed = RadioStore.mostPlayed()
+        let most = RadioStore.mostPlayed()
+        // Layout-shift: same calm gate as loadDiscovery — the per-section
+        // empty→filled rule applies to the library rows too (user-driven calls
+        // run while calm, so they still apply instantly).
+        BottomBarState.shared.runWhenCalm { [self] in
+            favorites = favs
+            recents = recs
+            mostPlayed = most
+        }
     }
 
     /// Fetch the catalog rows once per session (guarded), re-fetched on refresh.
