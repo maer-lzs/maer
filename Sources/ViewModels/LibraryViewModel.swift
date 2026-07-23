@@ -735,11 +735,30 @@ final class LibraryViewModel: ObservableObject {
         // the stale cached items.
         var items = cachedItems
         if let libraryId, let fresh = try? await provider.fetchLibraryItems(libraryId: libraryId) {
-            items = fresh
+            // Plausibility (like loadContent only persisting a COMPLETE load): a
+            // foreground refresh must not shrink the visible library on a partial
+            // 2xx answer — and this result is even persisted to the disk cache.
+            // Accept the fresh list only when it is not smaller than the cache.
+            #if DEBUG
+            let cachedCount = cachedItems.count
+            if fresh.count < cachedCount {
+                Logger.library.debug("ABS refreshProgress: fresh=\(fresh.count) < cached=\(cachedCount) → keeping cached (implausible shrink)")
+            }
+            #endif
+            items = Self.plausibleFreshItems(fresh, cached: cachedItems)
         }
         isShowingOfflineCache = false
         await rebuild(items: items, progress: progress)
         saveLibraryDiskCache(items: items, progress: progress)
+    }
+
+    /// ABS hardening (pure, tested): accept a silent foreground re-fetch only
+    /// when it is not SMALLER than the cache — a partial/hiccuped answer must not
+    /// shrink (and then persist) the visible library. Real growth is taken as is.
+    /// (A genuine server-side deletion needs an explicit path, not a quiet
+    /// foreground shrink — flagged for a decision, not given a back door here.)
+    nonisolated static func plausibleFreshItems(_ fresh: [LibraryItem], cached: [LibraryItem]) -> [LibraryItem] {
+        fresh.count >= cached.count ? fresh : cached
     }
 
     /// Re-mix the list after importing/deleting local files — without querying
