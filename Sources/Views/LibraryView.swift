@@ -83,15 +83,7 @@ struct LibraryView: View {
     /// Tabs that have been shown at least once — they stay mounted (hidden)
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
-    /// Front 2 fix 3: mounted-but-inactive tabs are PRUNED after a grace
-    /// period (below) — five permanently mounted tabs meant SwiftUI diffed the
-    /// whole monolith graph every frame while scrolling (50–70 % main-thread
-    /// AttributeGraph upkeep in the trace). The grace keeps quick back-and-
-    /// forth switches instant; a later return rebuilds from the store caches.
     @State private var mountedTabs: Set<MediaType> = [.home]
-    @State private var tabPruneTask: Task<Void, Never>?
-    /// How long an inactive tab stays mounted before pruning.
-    private static let inactiveTabGraceSeconds: UInt64 = 10
 
     private func isTabMounted(_ type: MediaType) -> Bool {
         mountedTabs.contains(type) || selectedMediaType == type
@@ -179,14 +171,6 @@ struct LibraryView: View {
                 }
                 .onChange(of: selectedMediaType) { _, newValue in
                     mountedTabs.insert(newValue)
-                    // Front 2 fix 3: after the grace, only the active tab stays
-                    // in the tree — the graph shrinks to one tab's subtree.
-                    tabPruneTask?.cancel()
-                    tabPruneTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: Self.inactiveTabGraceSeconds * 1_000_000_000)
-                        guard !Task.isCancelled else { return }
-                        mountedTabs = [newValue]
-                    }
                 }
                 // Y37: the ACTIVE tab's source can be switched off in the
                 // settings — fall back to Home instead of standing on a tab
