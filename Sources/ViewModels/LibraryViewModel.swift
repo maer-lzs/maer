@@ -921,15 +921,26 @@ final class LibraryViewModel: ObservableObject {
             #endif
             return Self.computeRebuild(input)
         }.value
-        entries = output.entries   // didSet bumps entriesStamp
-        continueListening = output.continueListening
-        recentlyAdded = output.recentlyAdded
-        // Warm the memo caches (key derived AFTER the entries assignment).
-        let key = derivedKey()
-        sortedCacheKey = key
-        sortedCache = output.sorted
-        groupedCacheKey = key
-        groupedCache = output.grouped
+        // Layout-shift fix: a progressive page landing mid-scroll used to grow
+        // the grid under the finger — non-initial applies wait for the shared
+        // calm gate (BottomBarState). The initial fill (empty library) applies
+        // immediately; queued applies flush in order, so the newest state wins.
+        let applyOutput: @MainActor () -> Void = { [self] in
+            entries = output.entries   // didSet bumps entriesStamp
+            continueListening = output.continueListening
+            recentlyAdded = output.recentlyAdded
+            // Warm the memo caches (key derived AFTER the entries assignment).
+            let key = derivedKey()
+            sortedCacheKey = key
+            sortedCache = output.sorted
+            groupedCacheKey = key
+            groupedCache = output.grouped
+        }
+        if entries.isEmpty {
+            applyOutput()
+        } else {
+            BottomBarState.shared.runWhenCalm(applyOutput)
+        }
         rebuildRunning = false
         if let pending = pendingRebuild {
             pendingRebuild = nil

@@ -382,8 +382,9 @@ struct HomeView: View {
         let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
 
         // Radio on Home: cheap sync read; empty when the source is off, so the
-        // pure gating hides the section (no placeholder).
-        radioRecents = RadioProvider.shared.isAvailable ? RadioStore.recents() : []
+        // pure gating hides the section (no placeholder). Applied with the
+        // other sections through the calm gate below.
+        let radio = RadioProvider.shared.isAvailable ? RadioStore.recents() : []
 
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
         // first — the shared pure derivation (cap 30 so the Y3a six-row
@@ -404,18 +405,29 @@ struct HomeView: View {
         for id in rankedContinue {
             await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: id))
         }
-        continueIds = rankedContinue
-        musicContinueProgress = musicProgress
-        recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
-        recentlyAddedItems = mergedIds.compactMap { byId[$0] }
+        let rediscover: [RediscoverSections.Pick]
         if recommendationsEnabled {
-            rediscoverPicks = computeRediscover(
+            rediscover = computeRediscover(
                 bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
             await recommendations.refreshIfNeeded()
         } else {
-            rediscoverPicks = []
+            rediscover = []
         }
-        withAnimation(ready ? nil : .easeOut(duration: 0.25)) { ready = true }
+        let episodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        let addedItems = mergedIds.compactMap { byId[$0] }
+        let initialFill = !ready
+        let apply: @MainActor () -> Void = {
+            radioRecents = radio
+            continueIds = rankedContinue
+            musicContinueProgress = musicProgress
+            recentEpisodeItems = episodeItems
+            recentlyAddedItems = addedItems
+            rediscoverPicks = rediscover
+            withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
+        }
+        // Layout-shift fix: same calm gate as the other libraries — a landed
+        // recompute never reshapes Home mid-scroll.
+        if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
     }
 
     /// Teil 3: assemble the three candidate sources (mixed media types) and let

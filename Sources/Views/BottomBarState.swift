@@ -57,6 +57,35 @@ final class BottomBarState: ObservableObject {
     /// correlate the collapse/expand morphs with scroll hitches.
     private static let signpostLog = OSLog(subsystem: "de.lzs.ABSPlayer", category: "BottomBar")
 
+    // MARK: - Layout-shift gate (shared across all library tabs)
+
+    /// True from the first user drag until the scroll fully rests — the window
+    /// in which arriving background data must NOT reshape the visible content
+    /// (sections growing in under the finger read as a "hitch" even at a
+    /// perfect frame rate).
+    private(set) var scrollActiveForLayout = false
+    private var calmQueue: [@MainActor () -> Void] = []
+
+    /// Content updates that can GROW/move sections route through here (tab
+    /// parity — ONE mechanism for every library): applied immediately while
+    /// calm, queued during an active scroll and flushed in order when the
+    /// scroll rests or the surface resets (tab switch).
+    func runWhenCalm(_ block: @escaping @MainActor () -> Void) {
+        if scrollActiveForLayout {
+            calmQueue.append(block)
+        } else {
+            block()
+        }
+    }
+
+    private func flushCalmQueue() {
+        scrollActiveForLayout = false
+        guard !calmQueue.isEmpty else { return }
+        let blocks = calmQueue
+        calmQueue = []
+        for block in blocks { block() }
+    }
+
     func report(_ y: CGFloat) {
         scrollY = y
         if forceExpanded, userDragging { forceExpanded = false }
@@ -69,6 +98,7 @@ final class BottomBarState: ObservableObject {
         userDragging = dragging
         if dragging {
             hasUserScrolled = true                    // Y31: a real gesture happened
+            scrollActiveForLayout = true              // layout-shift gate opens
             if started { scrollStartedAt = Date() }   // X21: reset the collapse delay
             idleExpandTask?.cancel()   // active scroll → drop any pending expand
             if forceExpanded { forceExpanded = false; applyCollapsed() }
@@ -78,6 +108,7 @@ final class BottomBarState: ObservableObject {
     /// S10: the scroll view reached `.idle` (finger up AND deceleration done).
     /// Schedule the auto-expand; a fresh drag cancels it via `setUserDragging`.
     func scrollDidRest() {
+        flushCalmQueue()   // scroll settled → apply deferred content updates
         idleExpandTask?.cancel()
         guard collapsed else { return }
         idleExpandTask = Task { @MainActor [weak self] in
@@ -98,6 +129,7 @@ final class BottomBarState: ObservableObject {
     /// final `.tracking → .idle` phase change may never arrive; leaving the flag
     /// set would strand the auto-expand.
     func reset() {
+        flushCalmQueue()   // the fresh surface starts with settled content
         idleExpandTask?.cancel()
         scrollY = 0
         forceExpanded = false

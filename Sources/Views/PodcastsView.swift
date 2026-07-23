@@ -154,14 +154,22 @@ struct PodcastsView: View {
             // re-fires with fresh data when the tab becomes visible again.
             guard isActive else { return }
             let sections = await computeSections()
-            withAnimation(sectionsReady ? nil : .easeOut(duration: 0.25)) {
-                nextUp = sections.nextUp
-                recentShows = sections.recentShows
-                downloaded = sections.downloaded
-                latestItems = PodcastSections.newestPerShow(shows: allShows)
-                    .compactMap { AppSession.shared.libraryItem(forId: $0) }
-                sectionsReady = true
+            let latest = PodcastSections.newestPerShow(shows: allShows)
+                .compactMap { AppSession.shared.libraryItem(forId: $0) }
+            let initialFill = !sectionsReady
+            let apply: @MainActor () -> Void = {
+                withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) {
+                    nextUp = sections.nextUp
+                    recentShows = sections.recentShows
+                    downloaded = sections.downloaded
+                    latestItems = latest
+                    sectionsReady = true
+                }
             }
+            // Layout-shift fix: landed background data must not reshape the
+            // content mid-scroll — non-initial updates wait for the calm gate
+            // (the initial fill replaces the spinner, nothing can shift).
+            if initialFill { apply() } else { BottomBarState.shared.runWhenCalm(apply) }
             // Precompute card colors → nothing happens while scrolling.
             for item in nextUp {
                 await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: item.id))

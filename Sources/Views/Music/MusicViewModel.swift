@@ -124,7 +124,9 @@ final class MusicViewModel: ObservableObject {
             var lastCount = first.count
             while lastCount == pageSize {
                 guard let next = try? await source.albumsPage(sort, offset, pageSize), !next.isEmpty else { break }
-                albums += next
+                // Layout-shift fix: silent page appends grow the grid — apply
+                // through the shared calm gate, never mid-scroll.
+                BottomBarState.shared.runWhenCalm { [self] in albums += next }
                 offset += next.count
                 lastCount = next.count
             }
@@ -142,11 +144,20 @@ final class MusicViewModel: ObservableObject {
             return
         }
 
-        if let value = try? await newestTask { newest = value }
-        if let value = try? await frequentTask { frequent = value }
-        if let value = try? await artistsTask { artists = value }
+        // Late best-effort arrivals reshape the shelves — same calm gate.
+        if let value = try? await newestTask {
+            BottomBarState.shared.runWhenCalm { [self] in newest = value }
+        }
+        if let value = try? await frequentTask {
+            BottomBarState.shared.runWhenCalm { [self] in frequent = value }
+        }
+        if let value = try? await artistsTask {
+            BottomBarState.shared.runWhenCalm { [self] in artists = value }
+        }
         // TF2: filter junk playlists (name == id / nameless, 0 songs) at THE one
         // feed, so both the F5 card row and the Playlists browse page are clean.
-        if let value = try? await playlistsTask { playlists = PlaylistPresentation.realPlaylists(value) }
+        if let value = try? await playlistsTask {
+            BottomBarState.shared.runWhenCalm { [self] in playlists = PlaylistPresentation.realPlaylists(value) }
+        }
     }
 }

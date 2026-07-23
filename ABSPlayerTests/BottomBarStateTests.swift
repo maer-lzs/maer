@@ -207,4 +207,45 @@ struct BottomBarStateTests {
         #expect(!state.collapsed)
     }
 }
+
+/// Layout-shift gate: content applies run immediately while calm, queue during
+/// an active user scroll and flush IN ORDER on rest or reset.
+@MainActor
+struct CalmGateTests {
+    @Test("calm: block runs immediately")
+    func immediateWhenCalm() {
+        let bar = BottomBarState()
+        var ran = false
+        bar.runWhenCalm { ran = true }
+        #expect(ran)
+    }
+
+    @Test("scrolling: blocks queue and flush in order on rest")
+    func queuedWhileScrolling() {
+        let bar = BottomBarState()
+        bar.setUserDragging(true)
+        var order: [Int] = []
+        bar.runWhenCalm { order.append(1) }
+        bar.runWhenCalm { order.append(2) }
+        #expect(order.isEmpty)          // nothing applies mid-scroll
+        bar.setUserDragging(false)
+        #expect(order.isEmpty)          // deceleration still counts as scrolling
+        bar.scrollDidRest()
+        #expect(order == [1, 2])        // settled → applied in order
+        var late = false
+        bar.runWhenCalm { late = true } // gate is open again
+        #expect(late)
+    }
+
+    @Test("reset (tab switch) flushes the queue too")
+    func resetFlushes() {
+        let bar = BottomBarState()
+        bar.setUserDragging(true)
+        var ran = false
+        bar.runWhenCalm { ran = true }
+        bar.reset()
+        #expect(ran)
+    }
+}
+
 #endif
