@@ -51,7 +51,8 @@ struct SubsonicClient {
 
     /// Builds `<base>/rest/<endpoint>.view` with auth + JSON params. A fresh salt
     /// per call keeps the token from being replayable.
-    private func requestURL(_ endpoint: String, _ params: [String: String] = [:]) -> URL? {
+    private func requestURL(_ endpoint: String, _ params: [String: String] = [:],
+                            extraItems: [URLQueryItem] = []) -> URL? {
         let salt = Self.randomSalt()
         let token = Self.md5Hex(password + salt)
         var comps = URLComponents(url: baseURL.appendingPathComponent("rest/\(endpoint).view"),
@@ -65,6 +66,7 @@ struct SubsonicClient {
             URLQueryItem(name: "f", value: "json"),
         ]
         items.append(contentsOf: params.map { URLQueryItem(name: $0.key, value: $0.value) })
+        items.append(contentsOf: extraItems)
         comps?.queryItems = items
         return comps?.url
     }
@@ -75,8 +77,9 @@ struct SubsonicClient {
         requestURL(endpoint, params)
     }
 
-    private func get(_ endpoint: String, _ params: [String: String] = [:]) async throws -> SubsonicBody {
-        guard let url = requestURL(endpoint, params) else { throw SubsonicError.badURL }
+    private func get(_ endpoint: String, _ params: [String: String] = [:],
+                     extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
+        guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
         // Y39: retry parity with the ABS client — transient failures and the
         // 401 probe run INSIDE the shared policy fetch; on top the Subsonic
         // specialty: auth errors arrive as API code 40/41 in a 200 envelope,
@@ -187,6 +190,19 @@ struct SubsonicClient {
     /// (with its id) in the response; older ones return an empty body.
     func createPlaylist(name: String) async throws -> SubsonicPlaylist? {
         try await get("createPlaylist", ["name": name]).playlist
+    }
+
+    /// Add songs to an existing playlist (Subsonic `updatePlaylist`, repeated
+    /// `songIdToAdd`). Removal is index-based in Subsonic and deferred.
+    func updatePlaylist(id: String, songIdsToAdd: [String]) async throws {
+        guard !songIdsToAdd.isEmpty else { return }
+        _ = try await get("updatePlaylist", ["playlistId": id],
+                          extraItems: Self.addSongItems(songIdsToAdd))
+    }
+
+    /// Pure (tested): the repeated `songIdToAdd` query items for `updatePlaylist`.
+    nonisolated static func addSongItems(_ songIds: [String]) -> [URLQueryItem] {
+        songIds.map { URLQueryItem(name: "songIdToAdd", value: $0) }
     }
 
     /// Marks a song as played (Last.fm/ListenBrainz scrobble on servers that

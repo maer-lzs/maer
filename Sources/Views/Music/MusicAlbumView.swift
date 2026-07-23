@@ -20,6 +20,8 @@ struct MusicAlbumView: View {
     @State private var notesExpanded = false
     /// M6: high-res front cover from the Cover Art Archive (via release MBID).
     @State private var highResCover: UIImage?
+    /// Package 1: the single song a user long-pressed to add to a playlist.
+    @State private var addTarget: AddToPlaylistTarget?
     /// D12/B11: track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
@@ -60,6 +62,13 @@ struct MusicAlbumView: View {
                             Button {
                                 Task { await play(fromTrackAt: track.start) }
                             } label: { Label("Play from Here", systemImage: "play.fill") }
+                            Button {
+                                Task {
+                                    if let songId = await AppSession.shared.subsonicProvider.songId(forItemId: item.id, trackIndex: index) {
+                                        addTarget = AddToPlaylistTarget(itemId: SubsonicProvider.itemId(songId: songId))
+                                    }
+                                }
+                            } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
                             if downloadManager.isDownloaded(itemId: item.id) {
                                 Button(role: .destructive) {
                                     downloadManager.deleteDownload(itemId: item.id)
@@ -93,6 +102,7 @@ struct MusicAlbumView: View {
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
+        .addToPlaylistSheet(target: $addTarget)
         .toolbar {
             // Y63: page actions inboard, the settings cog OUTERMOST — declared
             // last so it sits at the trailing edge and never vanishes behind

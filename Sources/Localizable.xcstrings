@@ -1,6 +1,48 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Add to Playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Zur Playlist hinzufügen" }
+        }
+      }
+    },
+    "Could not add to the playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Konnte nicht zur Playlist hinzufügen." }
+        }
+      }
+    },
+    "Could not create the playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Konnte die Playlist nicht erstellen." }
+        }
+      }
+    },
+    "Create a playlist and add the selection to it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Erstelle eine Playlist und füge die Auswahl hinzu." }
+        }
+      }
+    },
+    "No playlists yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Noch keine Playlists." }
+        }
+      }
+    },
+    "Nothing to add." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nichts zum Hinzufügen." }
+        }
+      }
+    },
     "Audiobookshelf podcasts were turned off — only one podcast server at a time." : {
       "localizations" : {
         "de" : {

@@ -283,6 +283,35 @@ final class SubsonicProvider: AudioProvider {
         return created.map { Self.itemId(playlistId: $0.id) }
     }
 
+    /// The Subsonic song ids that a music item contributes when added to a
+    /// playlist: a single song → itself; an album/playlist → all its tracks
+    /// (the track `contentUrl` IS the song id — same mapping used for scrobble).
+    func songIds(forItemId itemId: String) async -> [String] {
+        if let songId = Self.id(itemId, kind: "song") { return [songId] }
+        if let cached = songsByItemId[itemId] { return cached.map(\.id) }
+        _ = try? await fetchItemDetail(itemId: itemId)   // populates songsByItemId
+        return songsByItemId[itemId]?.map(\.id) ?? []
+    }
+
+    /// The Subsonic song id for one track of an album/playlist item. Track lists
+    /// and `songsByItemId` share the same ordering, so the row index maps directly.
+    func songId(forItemId itemId: String, trackIndex: Int) async -> String? {
+        if songsByItemId[itemId] == nil { _ = try? await fetchItemDetail(itemId: itemId) }
+        guard let songs = songsByItemId[itemId], songs.indices.contains(trackIndex) else { return nil }
+        return songs[trackIndex].id
+    }
+
+    /// Add songs to an existing server playlist. `playlistItemId` is a namespaced
+    /// `sub:playlist:<id>`; the raw id is passed to Subsonic `updatePlaylist`.
+    func addSongs(_ songIds: [String], toPlaylistItemId playlistItemId: String) async throws {
+        guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !songIds.isEmpty else { return }
+        try await client.updatePlaylist(id: rawId, songIdsToAdd: songIds)
+        // The cover mosaic is cached; drop it so it re-derives from the new
+        // tracks. The detail itself always re-fetches (fetchItemDetail is not
+        // cached), so the track list refreshes on the next open on its own.
+        playlistMosaicCache[rawId] = nil
+    }
+
     /// F5: the first up-to-4 DISTINCT album cover-art ids of a playlist for the
     /// 2×2 mosaic (the server's single playlist cover is deliberately ignored).
     /// Best-effort, cached per session.
@@ -432,6 +461,11 @@ final class SubsonicProvider: AudioProvider {
 
     nonisolated static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
     nonisolated static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
+    nonisolated static func itemId(songId: String) -> String { "sub:song:\(songId)" }
+
+    /// Whether this item id belongs to the Subsonic music namespace — gates the
+    /// music-only "Add to Playlist" action (albums/songs/playlists are `sub:…`).
+    nonisolated static func owns(itemId: String) -> Bool { itemId.hasPrefix("sub:") }
 
     /// Extracts the raw id for a given kind ("album"/"playlist") from `sub:<kind>:<id>`.
     nonisolated static func id(_ itemId: String, kind: String) -> String? {

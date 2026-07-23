@@ -301,40 +301,62 @@ struct AlbumCell: View {
 extension View {
     /// S18: context menu for a music album/song — mirrors the podcast/book
     /// menus (Regel 2). Play + Play Next/Last (global Up-Next queue) +
-    /// download/delete.
+    /// Add to Playlist + download/delete.
     func musicItemMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
-        contextMenu {
-            let isPlayable = NetworkMonitor.shared.isConnected
-                || DownloadManager.shared.isDownloaded(itemId: item.id)
-            if isPlayable {
-                Button {
-                    Task { await playerCoordinator.open(item: item) }
-                } label: { Label("Play", systemImage: "play.fill") }
-                // Global Up-Next queue. An album is one multi-track item, so
-                // queuing it enqueues the whole album as a single entry that
-                // plays its songs as a group (same actions as book/podcast).
-                Button {
-                    PlayQueue.shared.playNext(item.id)
-                } label: { Label("Play Next", systemImage: "text.insert") }
-                Button {
-                    PlayQueue.shared.playLast(item.id)
-                } label: { Label("Play Last", systemImage: "text.append") }
-            }
+        modifier(MusicItemMenu(item: item, playerCoordinator: playerCoordinator))
+    }
+}
 
-            if DownloadManager.shared.isDownloaded(itemId: item.id) {
-                Button(role: .destructive) {
-                    DownloadManager.shared.deleteDownload(itemId: item.id)
-                } label: { Label("Delete Download", systemImage: "trash") }
-            } else if NetworkMonitor.shared.isConnected {
-                Button {
-                    Task {
-                        let p = AppSession.shared.provider(for: item.id)
-                        if let d = try? await p.fetchItemDetail(itemId: item.id) {
-                            await DownloadManager.shared.download(item: d, provider: p)
+/// The music item context menu as a modifier so it can own the add-to-playlist
+/// sheet state (a `contextMenu` button can only flip a `@State`; the sheet is
+/// attached to the view). One shared surface used by every music album/song cell.
+private struct MusicItemMenu: ViewModifier {
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var addTarget: AddToPlaylistTarget?
+
+    func body(content: Content) -> some View {
+        content
+            .contextMenu {
+                let isPlayable = NetworkMonitor.shared.isConnected
+                    || DownloadManager.shared.isDownloaded(itemId: item.id)
+                if isPlayable {
+                    Button {
+                        Task { await playerCoordinator.open(item: item) }
+                    } label: { Label("Play", systemImage: "play.fill") }
+                    // Global Up-Next queue. An album is one multi-track item, so
+                    // queuing it enqueues the whole album as a single entry that
+                    // plays its songs as a group (same actions as book/podcast).
+                    Button {
+                        PlayQueue.shared.playNext(item.id)
+                    } label: { Label("Play Next", systemImage: "text.insert") }
+                    Button {
+                        PlayQueue.shared.playLast(item.id)
+                    } label: { Label("Play Last", systemImage: "text.append") }
+                }
+
+                // Add to Playlist — only meaningful for Subsonic music items.
+                if SubsonicProvider.owns(itemId: item.id) {
+                    Button {
+                        addTarget = AddToPlaylistTarget(itemId: item.id)
+                    } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
+                }
+
+                if DownloadManager.shared.isDownloaded(itemId: item.id) {
+                    Button(role: .destructive) {
+                        DownloadManager.shared.deleteDownload(itemId: item.id)
+                    } label: { Label("Delete Download", systemImage: "trash") }
+                } else if NetworkMonitor.shared.isConnected {
+                    Button {
+                        Task {
+                            let p = AppSession.shared.provider(for: item.id)
+                            if let d = try? await p.fetchItemDetail(itemId: item.id) {
+                                await DownloadManager.shared.download(item: d, provider: p)
+                            }
                         }
-                    }
-                } label: { Label("Download", systemImage: "arrow.down.circle") }
+                    } label: { Label("Download", systemImage: "arrow.down.circle") }
+                }
             }
-        }
+            .addToPlaylistSheet(target: $addTarget)
     }
 }
