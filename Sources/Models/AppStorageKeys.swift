@@ -188,6 +188,27 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: absPodcastsEnabled) }
     }
 
+    /// gpodder ↔ ABS-podcasts are mutually exclusive (one external podcast SERVER
+    /// at a time; RSS is separate and untouched). Set the two ONLY through these
+    /// so the rule lives in one place (Regel 2, `PodcastServerExclusivity`).
+    /// Returns true when the OTHER source was just turned off (UI can note it).
+    @discardableResult
+    static func setGpodderEnabled(_ on: Bool) -> Bool {
+        let absWasOn = absPodcastsEnabledValue
+        let r = PodcastServerExclusivity.resolved(gpodder: on, abs: absWasOn, changed: .gpodder)
+        gpodderEnabledValue = r.gpodder
+        absPodcastsEnabledValue = r.abs
+        return absWasOn && !r.abs
+    }
+    @discardableResult
+    static func setABSPodcastsEnabled(_ on: Bool) -> Bool {
+        let gpodderWasOn = gpodderEnabledValue
+        let r = PodcastServerExclusivity.resolved(gpodder: gpodderWasOn, abs: on, changed: .abs)
+        gpodderEnabledValue = r.gpodder
+        absPodcastsEnabledValue = r.abs
+        return gpodderWasOn && !r.gpodder
+    }
+
     // MARK: - Library toggles (TF bib-toggles): two levels — tab master + source
 
     /// Tab masters (whole media type on/off). Default ON so existing installs

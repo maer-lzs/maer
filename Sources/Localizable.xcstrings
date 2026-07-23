@@ -1,6 +1,27 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Audiobookshelf podcasts were turned off — only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Audiobookshelf-Podcasts wurden deaktiviert — nur ein Podcast-Server gleichzeitig." }
+        }
+      }
+    },
+    "gpodder sync was turned off — only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "gpodder-Sync wurde deaktiviert — nur ein Podcast-Server gleichzeitig." }
+        }
+      }
+    },
+    "Podcast source changed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Podcast-Quelle geändert" }
+        }
+      }
+    },
     "Apply" : {
       "localizations" : {
         "de" : {

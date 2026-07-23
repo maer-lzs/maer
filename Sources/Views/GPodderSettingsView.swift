@@ -13,6 +13,8 @@ struct GPodderSettingsView: View {
     @State private var username = AppStorageKeys.gpodderUsernameValue
     @State private var password = AppStorageKeys.gpodderPasswordValue
     @State private var enabled = AppStorageKeys.gpodderEnabledValue
+    /// Exclusivity note (gpodder turned ABS-podcasts off, or vice versa).
+    @State private var podcastServerNote: String?
 
     @State private var isTesting = false
     @State private var isSyncing = false
@@ -43,6 +45,14 @@ struct GPodderSettingsView: View {
 
             Section {
                 Toggle("Sync podcasts via gpodder", isOn: $enabled)
+                    // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
+                    // server at a time; RSS untouched). Enabling gpodder turns ABS
+                    // off, with a note so it's not surprising.
+                    .onChange(of: enabled) {
+                        if AppStorageKeys.setGpodderEnabled(enabled) {
+                            podcastServerNote = String(localized: "Audiobookshelf podcasts were turned off — only one podcast server at a time.")
+                        }
+                    }
                 LabeledContent("Device", value: AppStorageKeys.gpodderDeviceIdValue)
             } footer: {
                 Text("Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf.")
@@ -124,6 +134,9 @@ struct GPodderSettingsView: View {
         }
         .navigationTitle("gpodder Sync")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Podcast source changed", isPresented: Binding(
+            get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
+        )) { Button("OK", role: .cancel) {} } message: { Text(podcastServerNote ?? "") }
         // Don't let the mini-player overlay overlap.
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
@@ -153,7 +166,7 @@ struct GPodderSettingsView: View {
         if !password.isEmpty {
             AppStorageKeys.setGpodderPassword(password)
         }
-        AppStorageKeys.gpodderEnabledValue = enabled
+        AppStorageKeys.setGpodderEnabled(enabled)   // enforces gpodder↔ABS exclusivity
     }
 
     private func setStatus(_ message: String, isError: Bool) {

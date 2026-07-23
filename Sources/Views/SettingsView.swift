@@ -61,6 +61,8 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
     @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
 
+    /// Exclusivity note (ABS-podcasts turned gpodder off, or vice versa).
+    @State private var podcastServerNote: String?
     @State private var coverCacheBytes: Int64 = 0
     @State private var showDeleteAllDownloads = false
 
@@ -90,6 +92,9 @@ struct SettingsView: View {
             }
             .bottomBarClearance()
         }
+        .alert("Podcast source changed", isPresented: Binding(
+            get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
+        )) { Button("OK", role: .cancel) {} } message: { Text(podcastServerNote ?? "") }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -227,7 +232,17 @@ struct SettingsView: View {
         Section {
             tabMasterToggle("Podcasts", isOn: $podcastsTab)
             if podcastsTab {
-                sourceToggle("Audiobookshelf podcasts", isOn: $absPodcastsOn)
+                // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
+                // server at a time; RSS below stays free). Enabling ABS turns
+                // gpodder off, with a note.
+                Toggle(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
+                    .onChange(of: absPodcastsOn) {
+                        if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
+                            podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
+                        }
+                        AppSession.shared.reconfigureSources()
+                    }
+                    .padding(.leading, 12)
                 sourceToggle("RSS feeds", isOn: $rssOn)
                 NavigationLink { PodcastSourceView() } label: {
                     Label("Podcast sources", systemImage: "mic")
