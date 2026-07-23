@@ -45,17 +45,16 @@ struct LatestEpisodesGrid: View {
                 }
             }
             .padding(.horizontal)
-            // Y45: bind the animation to `expanded` on the grid itself (not a
-            // withAnimation wrapper around the toggle) so the row add/remove
-            // runs with the SAME curve in BOTH directions. Y55: 0.35 — a touch
-            // slower. Y62 (candidate): a plain timing curve instead of the
-            // `.snappy` spring — the spring overshot on COLLAPSE, so the content
-            // below rushed up too fast. `.easeInOut` settles without overshoot;
-            // decelerating out. Feel is the owner'ss call in the device loop.
-            .animation(.easeInOut(duration: 0.35), value: expanded)
+            // Front 2 fix 1 (trace-backed): NO standing `.animation(value:)` on
+            // the grid — it made every tile frame an animatable attribute on
+            // TWO permanently mounted tabs (86k AnimatableFrameAttribute
+            // updates in a 9 s scroll trace). The toggle is the ONLY flip site,
+            // so a withAnimation transaction there gives the identical curve in
+            // both directions (Y45's goal) without the per-frame tracking.
+            // Curve unchanged: Y62 `.easeInOut(0.35)` (no overshoot on collapse).
             if items.count > cols * 2 {
                 Button {
-                    expanded.toggle()
+                    withAnimation(.easeInOut(duration: 0.35)) { expanded.toggle() }
                 } label: {
                     Label(expanded ? String(localized: "Show Less")
                                    : String(localized: "Show More"),
