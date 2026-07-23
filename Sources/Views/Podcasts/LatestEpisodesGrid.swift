@@ -17,8 +17,9 @@ struct LatestEpisodesGrid: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.pushPodcastRoute) private var pushRoute
     /// A3: connectivity/download flips must re-render the badge state.
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloadManager = DownloadManager.shared
+    // Front 2 fix 2: NO grid-level store observing — a download progress tick
+    // used to re-render all ~30 tiles on TWO mounted tabs. Availability is
+    // resolved per tile by the shared MediaAvailabilityScope (TF4/E1 pattern).
     /// Y3a: 2 rows collapsed, up to 6 expanded — inline, not persisted.
     @State private var expanded = false
     @State private var width: CGFloat = 0
@@ -76,15 +77,17 @@ struct LatestEpisodesGrid: View {
     }
 
     private func episodeTile(_ item: LibraryItem) -> some View {
-        MediaTile(
-            title: item.title,
-            coverURL: AppSession.shared.coverURL(forItemId: item.id),
-            cornerBadgeURL: showBadgeURL(for: item),
-            progress: episodeProgress(item),
-            unavailable: !networkMonitor.isConnected && !downloadManager.isDownloaded(itemId: item.id),
-            onTap: { pushRoute(.episode(itemId: item.id)) }
-        ) {
-            MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+        MediaAvailabilityScope(itemId: item.id) { unavailable in
+            MediaTile(
+                title: item.title,
+                coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                cornerBadgeURL: showBadgeURL(for: item),
+                progress: episodeProgress(item),
+                unavailable: unavailable,
+                onTap: { pushRoute(.episode(itemId: item.id)) }
+            ) {
+                MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+            }
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
     }

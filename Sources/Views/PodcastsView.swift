@@ -30,13 +30,16 @@ struct PodcastsView: View {
     /// becoming visible (isActive is part of the recompute token).
     var isActive: Bool = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    // Sections depend on progress (played/in progress) and downloads — observe
-    // both so "Up Next"/"Downloaded"/"Played" rebuild live.
-    @ObservedObject private var progress = PodcastProgressStore.shared
-    @ObservedObject private var downloads = DownloadManager.shared
-    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    // Front 2 fix 2: the tab root observes the NOISY stores (progress store =
+    // every playback save, DownloadManager = every download progress tick,
+    // ABS provider) only through the deduplicating recompute scope below —
+    // each publish used to re-render the WHOLE tab. Sections still rebuild via
+    // `.task(id: recomputeToken)`; rows/tiles observe at leaf level.
+    @ObservedObject private var recomputeScope = PodcastsRecomputeScope.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+
+    /// Non-observing store handles (reads only; re-render is driven by the scope).
+    private var absPodcast: ABSPodcastProvider { ABSPodcastProvider.shared }
     // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage keys.
     @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
@@ -73,9 +76,10 @@ struct PodcastsView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change — and when the
-    /// tab becomes visible again (isActive gates the actual work).
+    /// tab becomes visible again (isActive gates the actual work). The store
+    /// part comes deduplicated from the scope.
     private var recomputeToken: String {
-        "\(isActive)-\(subs.shows.count)-\(downloads.downloadedItemIds.count)-\(progress.changeToken)-\(absPodcast.changeToken)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)"
+        "\(isActive)-\(recomputeScope.token)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)"
     }
 
     var body: some View {
@@ -317,5 +321,43 @@ struct PodcastsView: View {
                 }
             }
         }
+    }
+}
+
+
+/// Front 2 fix 2: THE one observer of the podcast tab's noisy recompute inputs
+/// (the MediaAvailabilityScope idea lifted to the tab level, Regel 2). It
+/// listens to the stores' objectWillChange, recomputes the coarse token on the
+/// next runloop turn (values settled) and republishes ONLY when the token
+/// actually changed — a download progress tick or playback save no longer
+/// re-renders the whole tab.
+@MainActor
+final class PodcastsRecomputeScope: ObservableObject {
+    static let shared = PodcastsRecomputeScope()
+
+    @Published private(set) var token: String = ""
+    private var cancellables: Set<AnyCancellable> = []
+
+    init() {
+        token = Self.compute()
+        Publishers.MergeMany(
+            PodcastSubscriptions.shared.objectWillChange.eraseToAnyPublisher(),
+            PodcastProgressStore.shared.objectWillChange.eraseToAnyPublisher(),
+            DownloadManager.shared.objectWillChange.eraseToAnyPublisher(),
+            ABSPodcastProvider.shared.objectWillChange.eraseToAnyPublisher()
+        )
+        // objectWillChange fires BEFORE the mutation — hop to the next runloop
+        // turn so the token reads settled values.
+        .receive(on: RunLoop.main)
+        .sink { [weak self] _ in
+            guard let self else { return }
+            let fresh = Self.compute()
+            if fresh != self.token { self.token = fresh }
+        }
+        .store(in: &cancellables)
+    }
+
+    private static func compute() -> String {
+        "\(PodcastSubscriptions.shared.shows.count)-\(DownloadManager.shared.downloadedItemIds.count)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)"
     }
 }
