@@ -12,6 +12,11 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     var addLocally: Set<String> = []
     var removeFromServer: Set<String> = []
     var removeLocally: Set<String> = []
+    /// The removals the guard BLOCKED (would have happened without the guard).
+    /// Kept for the diagnostic log so a suspected loss can be traced whether the
+    /// remove was applied or vetoed — they are NOT applied.
+    var blockedRemoveLocally: Set<String> = []
+    var blockedRemoveFromServer: Set<String> = []
     /// Human-readable reason when a plausibility guard fired (nil = clean run).
     var warning: String?
     /// False when the guard fired: the last-synced state must stay untouched,
@@ -46,6 +51,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         if removesImplausible(count: removeLocally.count, of: local.count) {
             merge.warning = "gpodder answer would unsubscribe \(removeLocally.count) of \(local.count) local feeds — skipped as implausible."
             merge.mayUpdatePrevState = false
+            merge.blockedRemoveLocally = removeLocally
         } else {
             merge.removeLocally = removeLocally
         }
@@ -53,6 +59,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             let text = "local state would unsubscribe \(removeFromServer.count) of \(server.count) server feeds — skipped as implausible."
             merge.warning = merge.warning.map { $0 + " " + text } ?? "gpodder: " + text
             merge.mayUpdatePrevState = false
+            merge.blockedRemoveFromServer = removeFromServer
         } else {
             merge.removeFromServer = removeFromServer
         }

@@ -73,5 +73,24 @@ struct GPodderMergeTests {
         #expect(m.removeLocally.isEmpty)
         #expect(m.warning != nil)
     }
+
+    // Log-First: a vetoed removal must still be VISIBLE via the blocked-candidate
+    // sets (for the diagnostic log), while an applied removal is not "blocked".
+    @Test func vetoedRemovesAreExposedAsBlockedCandidates() {
+        let five = Set(["a", "b", "c", "d", "e"])
+        var server = five; server.remove("a"); server.remove("b")
+        let m = GPodderSubscriptionMerge.compute(local: five, server: server, prev: five)
+        #expect(m.removeLocally.isEmpty)                 // not applied
+        #expect(m.blockedRemoveLocally == ["a", "b"])    // but recorded for the log
+        #expect(m.blockedRemoveFromServer.isEmpty)
+    }
+
+    @Test func appliedSingleRemoveIsNotBlocked() {
+        var server = feeds; server.remove("feed7")
+        let m = GPodderSubscriptionMerge.compute(local: feeds, server: server, prev: feeds)
+        #expect(m.removeLocally == ["feed7"])
+        #expect(m.blockedRemoveLocally.isEmpty)
+        #expect(m.blockedRemoveFromServer.isEmpty)
+    }
 }
 #endif

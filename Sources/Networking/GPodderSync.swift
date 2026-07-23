@@ -19,6 +19,12 @@ final class GPodderSync {
         var pushedToServer = 0      // local subscriptions pushed to the server
         var historyPulled = 0       // episode positions pulled from the server
         var historyPushed = 0       // episode positions pushed to the server
+        /// Subscriptions this run actually REMOVED (possible-data-loss trail).
+        var removedLocally = 0      // local unsubscribes applied
+        var removedFromServer = 0   // dropped from the server
+        /// Human-readable "title — url" of every removed feed (both sides), so
+        /// the history entry can name exactly what disappeared.
+        var removedFeeds: [String] = []
         var error: String?
         /// Set when the mass-delete guard skipped implausible removes.
         var warning: String?
@@ -171,17 +177,23 @@ final class GPodderSync {
         // as a ring entry (a guard becomes a PERMANENT marked entry); a clean
         // no-op run only bumps the "last checked" stamp, so the ring stays
         // meaningful.
+        // A removal (even a single "plausible" one) MUST create a visible entry —
+        // that was the silent data-loss gap. Removals count as "changed".
         let changed = report.addedLocally > 0 || report.pushedToServer > 0
             || report.historyPulled > 0 || report.historyPushed > 0
+            || report.removedLocally > 0 || report.removedFromServer > 0
         if changed || report.error != nil || report.warning != nil {
             SyncHistoryStore.shared.append(SyncHistory.entry(
                 service: .gpodder, direction: .both,
                 counters: [.init(key: .subscriptionsDown, value: report.addedLocally),
                            .init(key: .subscriptionsUp, value: report.pushedToServer),
+                           .init(key: .subscriptionsRemovedLocally, value: report.removedLocally),
+                           .init(key: .subscriptionsRemovedFromServer, value: report.removedFromServer),
                            .init(key: .positionsDown, value: report.historyPulled),
                            .init(key: .positionsUp, value: report.historyPushed)],
                 duration: Date().timeIntervalSince(syncStarted),
                 error: report.error, guardNote: report.warning,
+                removedFeeds: report.removedFeeds,
                 deviceId: SyncHistoryStore.deviceId, startedAt: syncStarted))
         } else {
             SyncHistoryStore.shared.noteChecked(.gpodder, at: syncStarted)
@@ -225,6 +237,14 @@ final class GPodderSync {
             Logger.gpodder.warning("subscription sync guard: \(warning, privacy: .public)")
         }
 
+        // Log-First (possible data loss): record EVERY removal — applied or
+        // guard-blocked — with its normalised url, side and prior-state
+        // membership, so a suspected subscription loss can be reconstructed.
+        // The guard threshold is deliberately UNCHANGED here.
+        for norm in merge.blockedRemoveLocally.union(merge.blockedRemoveFromServer) {
+            Logger.gpodder.warning("gpodder removal BLOCKED (guard): url=\(norm, privacy: .public) side=\(merge.blockedRemoveLocally.contains(norm) ? "local" : "server", privacy: .public) inPrev=\(prev.contains(norm))")
+        }
+
         // Server side: add + remove in one request.
         if !merge.addToServer.isEmpty || !merge.removeFromServer.isEmpty {
             try await client.uploadSubscriptions(
@@ -232,6 +252,12 @@ final class GPodderSync {
                 remove: merge.removeFromServer.compactMap { serverByNorm[$0] }
             )
             report.pushedToServer = merge.addToServer.count
+            for norm in merge.removeFromServer {
+                let raw = serverByNorm[norm] ?? norm
+                report.removedFromServer += 1
+                report.removedFeeds.append(raw)
+                Logger.gpodder.warning("gpodder removal APPLIED (server): url=\(raw, privacy: .public) inPrev=\(prev.contains(norm))")
+            }
         }
         // Local side: subscribe to new feeds, remove unsubscribed ones.
         var addedLocallyNorms = Set<String>()
@@ -243,6 +269,10 @@ final class GPodderSync {
         }
         for norm in merge.removeLocally {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
+                report.removedLocally += 1
+                let title = show.title.isEmpty ? show.feedURL : show.title
+                report.removedFeeds.append("\(title) — \(show.feedURL)")
+                Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(show.feedURL, privacy: .public) inPrev=\(prev.contains(norm))")
                 subs.unsubscribe(id: show.id)
             }
         }

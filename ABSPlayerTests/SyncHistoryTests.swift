@@ -28,6 +28,32 @@ struct SyncHistoryTests {
         #expect(e.deviceId == "dev-1")
     }
 
+    // Log-First: a sync that removed subscriptions must carry the removed feeds
+    // and non-zero removal counters into a visible entry (the silent-loss gap).
+    @Test("removed subscriptions surface as counters + named feeds")
+    func removedFeedsAndCounters() {
+        let e = SyncHistory.entry(
+            service: .gpodder, direction: .both,
+            counters: [.init(key: .subscriptionsRemovedLocally, value: 2),
+                       .init(key: .subscriptionsRemovedFromServer, value: 0)],
+            duration: 0.4,
+            removedFeeds: ["Serial — https://feeds.serial.example/rss",
+                           "Reply All — https://feeds.replyall.example/rss"],
+            deviceId: "dev-1")
+        // Zero counter dropped, the non-zero removal counter kept.
+        #expect(e.counters.map(\.key) == [.subscriptionsRemovedLocally])
+        #expect(e.removedFeeds?.count == 2)
+    }
+
+    @Test("no removals → removedFeeds is nil, not an empty list")
+    func emptyRemovedFeedsIsNil() {
+        let e = SyncHistory.entry(
+            service: .gpodder, direction: .both,
+            counters: [.init(key: .subscriptionsUp, value: 1)],
+            duration: 0.2, removedFeeds: [], deviceId: "dev-1")
+        #expect(e.removedFeeds == nil)
+    }
+
     @Test("ring buffer keeps the newest 50")
     func ringBuffer() {
         let many = (0..<60).map { entry(minutesAgo: Double($0)) }

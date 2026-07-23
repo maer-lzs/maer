@@ -27,6 +27,10 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
         enum Key: String, Codable {
             case subscriptionsUp, subscriptionsDown, positionsUp, positionsDown
             case albumsUpdated, songsUpdated
+            /// Subscriptions REMOVED by a sync (possible data-loss trail): local
+            /// unsubscribe vs. dropped from the server. Small "plausible" removes
+            /// used to be applied silently — now they always land in the history.
+            case subscriptionsRemovedLocally, subscriptionsRemovedFromServer
         }
         let key: Key
         let value: Int
@@ -44,6 +48,10 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     /// F9/S20: a tripped guard (mass-delete veto) becomes a PERMANENT marked
     /// entry instead of a transient warning.
     let guardNote: String?
+    /// The exact feeds a sync removed (local unsubscribe or server drop), as
+    /// human-readable "title — url" lines — so a suspected subscription loss can
+    /// be inspected after the fact. Optional: old entries decode as nil.
+    let removedFeeds: [String]?
 }
 
 /// Pure, testable entry creation + the ring-buffer trim.
@@ -59,6 +67,7 @@ nonisolated enum SyncHistory {
         duration: TimeInterval,
         error: String? = nil,
         guardNote: String? = nil,
+        removedFeeds: [String]? = nil,
         deviceId: String,
         id: UUID = UUID(),
         startedAt: Date = Date()
@@ -67,7 +76,8 @@ nonisolated enum SyncHistory {
             id: id, deviceId: deviceId, startedAt: startedAt,
             duration: max(0, duration), service: service, direction: direction,
             counters: counters.filter { $0.value != 0 },
-            error: error, guardNote: guardNote)
+            error: error, guardNote: guardNote,
+            removedFeeds: (removedFeeds?.isEmpty ?? true) ? nil : removedFeeds)
     }
 
     /// Ring buffer: newest first, capped at `limit`.

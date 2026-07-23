@@ -87,6 +87,17 @@ struct SyncHistoryView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+            // Possible data loss: name exactly which feeds a sync removed, so a
+            // suspected subscription loss is inspectable after the fact.
+            if let removed = entry.removedFeeds, !removed.isEmpty {
+                VStack(alignment: .leading, spacing: 1) {
+                    ForEach(removed, id: \.self) { feed in
+                        Label(feed, systemImage: "minus.circle")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
             if let error = entry.error {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -130,6 +141,10 @@ struct SyncHistoryView: View {
                 return String(localized: "\(counter.value) albums updated")
             case .songsUpdated:
                 return String(localized: "\(counter.value) songs updated")
+            case .subscriptionsRemovedLocally:
+                return String(localized: "\(counter.value) subscriptions removed locally")
+            case .subscriptionsRemovedFromServer:
+                return String(localized: "\(counter.value) subscriptions removed on server")
             }
         }.joined(separator: ", ")
     }

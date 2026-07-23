@@ -1,6 +1,20 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld subscriptions removed locally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "%lld Abos lokal entfernt" }
+        }
+      }
+    },
+    "%lld subscriptions removed on server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "%lld Abos am Server entfernt" }
+        }
+      }
+    },
     "Shuffle" : {
       "localizations" : {
         "de" : {
