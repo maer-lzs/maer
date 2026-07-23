@@ -10,13 +10,14 @@ import SwiftUI
 /// versions.
 struct MiniPlayerBar: View {
     @ObservedObject var coordinator: PlayerCoordinator
-    /// The active player, observed directly instead of only via
-    /// `coordinator.viewModel` — otherwise SwiftUI does not reliably notice
-    /// changes to its own @Published values (isPlaying, currentTime, …), because
-    /// `coordinator` itself only notifies when `viewModel` is completely re-SET,
-    /// not when values WITHIN it change. That was why play/pause did not always
-    /// toggle immediately.
-    @ObservedObject var viewModel: PlayerViewModel
+    /// Hitch fix (second-tick): the BAR no longer observes the player — every
+    /// published tick (currentTime, once per second) used to re-commit the whole
+    /// glass surface (measured: one dropped frame ~1×/s while scrolling). The
+    /// dynamic pieces live in SMALL observing children (`MiniPlayerSubtitle`,
+    /// `MiniPlayerRing`, `MiniPlayerTransport`) — the reliable-updates lesson
+    /// (observe the view model directly, not just the coordinator) moves into
+    /// those children unchanged.
+    let viewModel: PlayerViewModel
     let item: LibraryItem
     /// Compact mode of the collapsed bottom zone: AirPlay is dropped (space).
     var compact: Bool = false
@@ -72,25 +73,7 @@ struct MiniPlayerBar: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                             .foregroundStyle(.primary)
-                        if let chapter = viewModel.currentChapter {
-                            HStack(spacing: 4) {
-                                if let sleep = viewModel.sleepTimerRemaining {
-                                    // Active sleep timer, visible without opening the player.
-                                    Label(shortTimer(sleep), systemImage: "moon.zzz.fill")
-                                        .labelStyle(.titleAndIcon)
-                                        .foregroundStyle(AppTheme.accent)
-                                        .monospacedDigit()
-                                }
-                                Text("\(chapter.title) — \(remainingText)")
-                                    .lineLimit(1)
-                            }
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        } else {
-                            Text(timeText)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                        MiniPlayerSubtitle(viewModel: viewModel)
                     }
                     Spacer(minLength: 0)
                 }
@@ -101,57 +84,9 @@ struct MiniPlayerBar: View {
             .accessibilityLabel(Text(item.title))
             .accessibilityHint(Text("Opens the player"))
 
-            // Skip buttons only when there is enough room AND not in iPhone
-            // portrait — there more of the title should be visible. F2: a
-            // live stream has nothing to skip into — the bar gates like the
-            // full player (play/pause stays).
-            if showExtendedControls && !isCompactPortrait && !viewModel.isLiveStream {
-                Button {
-                    viewModel.skip(by: -viewModel.skipInterval)
-                } label: {
-                    Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 48)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Skip back \(Int(viewModel.skipInterval)) seconds"))
-
-                Button {
-                    viewModel.skip(by: viewModel.skipInterval)
-                } label: {
-                    Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
-                        .font(.title2)
-                        .foregroundStyle(.primary)
-                        .frame(width: 44, height: 48)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
-            }
-
-            // Switch output route — stays in iPhone portrait too, just a plain
-            // white icon directly on the bar.
-            if !compact && (showExtendedControls || isCompactPortrait) {
-                AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
-                    .frame(width: 26, height: 26)
-                    .frame(width: 44, height: 48)
-            }
-
-            // Play/pause: plain white icon, no own background — again the same
-            // size as the other transport buttons.
-            Button {
-                viewModel.togglePlayPause()
-            } label: {
-                Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title2)
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 48)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
+            MiniPlayerTransport(viewModel: viewModel,
+                                showsSkip: showExtendedControls && !isCompactPortrait,
+                                showsAirPlay: !compact && (showExtendedControls || isCompactPortrait))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -169,44 +104,41 @@ struct MiniPlayerBar: View {
         )
     }
 
-    /// Cover with a thin circular progress ring — sits at the edge AROUND the
-    /// cover (ring slightly larger than the cover), not as a smaller circle on
-    /// top.
+    /// Cover with the observing progress ring child around it.
     private var coverWithProgressRing: some View {
-        let coverSize: CGFloat = 34
-        // Ring as large as cover + stroke width: the inner edge of the ring thus
-        // sits directly on the cover edge, with no gap in between.
-        let ringSize: CGFloat = 36
+        MiniPlayerRing(viewModel: viewModel, itemId: item.id)
+    }
+}
 
-        return ZStack {
-            Circle()
-                .stroke(Color.primary.opacity(0.3), lineWidth: 2)
-                .frame(width: ringSize, height: ringSize)
-            Circle()
-                .trim(from: 0, to: max(0.01, fraction))
-                .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .frame(width: ringSize, height: ringSize)
-                .rotationEffect(.degrees(-90))
+/// Per-second dynamic subtitle (chapter — remaining / time / sleep timer) —
+/// the ONLY text that changes every tick, isolated so the tick re-renders this
+/// tiny view instead of the whole glass bar.
+private struct MiniPlayerSubtitle: View {
+    @ObservedObject var viewModel: PlayerViewModel
 
-            CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: item.id), useThumbnail: true) { image in
-                image.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Circle()
-                    .fill(Color.secondary.opacity(0.15))
-                    .overlay(Image(systemName: "book.closed").foregroundStyle(.secondary))
+    var body: some View {
+        if let chapter = viewModel.currentChapter {
+            HStack(spacing: 4) {
+                if let sleep = viewModel.sleepTimerRemaining {
+                    // Active sleep timer, visible without opening the player.
+                    Label(Self.shortTimer(sleep), systemImage: "moon.zzz.fill")
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(AppTheme.accent)
+                        .monospacedDigit()
+                }
+                Text("\(chapter.title) — \(remainingText)")
+                    .lineLimit(1)
             }
-            .frame(width: coverSize, height: coverSize)
-            .clipShape(Circle())
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        } else {
+            Text(timeText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
-        .frame(width: ringSize, height: ringSize)
     }
 
-    private var fraction: Double {
-        guard viewModel.duration > 0 else { return 0 }
-        return min(max(viewModel.currentTime / viewModel.duration, 0), 1)
-    }
-
-    private func shortTimer(_ remaining: TimeInterval) -> String {
+    private static func shortTimer(_ remaining: TimeInterval) -> String {
         let m = Int(remaining) / 60, s = Int(remaining) % 60
         return String(format: "%d:%02d", m, s)
     }
@@ -226,5 +158,108 @@ struct MiniPlayerBar: View {
             return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%02d:%02d", m, sec)
         }
         return "\(fmt(viewModel.currentTime)) / \(fmt(viewModel.duration))"
+    }
+}
+
+/// Progress ring + cover — the ring fraction moves with currentTime, so it
+/// observes; the surrounding bar does not.
+private struct MiniPlayerRing: View {
+    @ObservedObject var viewModel: PlayerViewModel
+    let itemId: String
+
+    var body: some View {
+        let coverSize: CGFloat = 34
+        // Ring as large as cover + stroke width: the inner edge of the ring thus
+        // sits directly on the cover edge, with no gap in between.
+        let ringSize: CGFloat = 36
+
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.3), lineWidth: 2)
+                .frame(width: ringSize, height: ringSize)
+            Circle()
+                .trim(from: 0, to: max(0.01, fraction))
+                .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                .frame(width: ringSize, height: ringSize)
+                .rotationEffect(.degrees(-90))
+
+            CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: itemId), useThumbnail: true) { image in
+                image.resizable().aspectRatio(contentMode: .fill)
+            } placeholder: {
+                Circle()
+                    .fill(Color.secondary.opacity(0.15))
+                    .overlay(Image(systemName: "book.closed").foregroundStyle(.secondary))
+            }
+            .frame(width: coverSize, height: coverSize)
+            .clipShape(Circle())
+        }
+        .frame(width: ringSize, height: ringSize)
+    }
+
+    private var fraction: Double {
+        guard viewModel.duration > 0 else { return 0 }
+        return min(max(viewModel.currentTime / viewModel.duration, 0), 1)
+    }
+}
+
+/// Skip/AirPlay/play cluster — observes for isPlaying and the skip-interval
+/// glyphs (the reliable-updates lesson lives HERE now, not on the whole bar).
+private struct MiniPlayerTransport: View {
+    @ObservedObject var viewModel: PlayerViewModel
+    let showsSkip: Bool
+    let showsAirPlay: Bool
+
+    var body: some View {
+        // Skip buttons only when there is enough room AND not in iPhone
+        // portrait — there more of the title should be visible. F2: a
+        // live stream has nothing to skip into — the bar gates like the
+        // full player (play/pause stays).
+        if showsSkip && !viewModel.isLiveStream {
+            Button {
+                viewModel.skip(by: -viewModel.skipInterval)
+            } label: {
+                Image(systemName: "gobackward.\(Int(viewModel.skipInterval))")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 48)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Skip back \(Int(viewModel.skipInterval)) seconds"))
+
+            Button {
+                viewModel.skip(by: viewModel.skipInterval)
+            } label: {
+                Image(systemName: "goforward.\(Int(viewModel.skipInterval))")
+                    .font(.title2)
+                    .foregroundStyle(.primary)
+                    .frame(width: 44, height: 48)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Skip forward \(Int(viewModel.skipInterval)) seconds"))
+        }
+
+        // Switch output route — stays in iPhone portrait too, just a plain
+        // white icon directly on the bar.
+        if showsAirPlay {
+            AirPlayButton(tintColor: .label, activeTintColor: AppTheme.accentUIColor)
+                .frame(width: 26, height: 26)
+                .frame(width: 44, height: 48)
+        }
+
+        // Play/pause: plain white icon, no own background — again the same
+        // size as the other transport buttons.
+        Button {
+            viewModel.togglePlayPause()
+        } label: {
+            Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                .font(.title2)
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 48)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(viewModel.isPlaying ? Text("Pause") : Text("Play"))
     }
 }
