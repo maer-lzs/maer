@@ -122,12 +122,19 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     @available(iOS 26.0, *)
     @ViewBuilder
     private func glassContent(_ content: Content) -> some View {
+        // Hitch fix lever 1 (trace-backed): flatten the content into ONE layer
+        // BEFORE the glass effect — the documented adoption fix for glitchy/
+        // expensive glass rendering. Without it every subview contributes its
+        // own layer to the effect's input and the morph multiplies offscreen
+        // passes (measured 8 → 116+ with 256–328 ms single render frames).
         if let morphID, let morphNamespace {
             content
+                .compositingGroup()
                 .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
                 .glassEffectID(morphID, in: morphNamespace)
         } else {
             content
+                .compositingGroup()
                 .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
         }
     }
