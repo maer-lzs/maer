@@ -364,6 +364,50 @@ final class SubsonicProvider: AudioProvider {
         }
     }
 
+    /// One Subsonic song → a playable single-track `sub:song:` library item.
+    /// The shared mapping used by top-songs and by shuffle-play.
+    nonisolated static func songItem(from song: SubsonicSong) -> LibraryItem {
+        LibraryItem(
+            id: itemId(songId: song.id),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: song.title, authorName: song.artist, narratorName: nil,
+                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                duration: song.duration.map(Double.init), chapters: nil, tracks: nil),
+            addedAt: nil)
+    }
+
+    /// Shuffle-play: the album/playlist's songs as individual playable items (so
+    /// they can be played in a shuffled ORDER through the Up-Next queue, one song
+    /// = one entry). A single song resolves to itself. Items are cached in
+    /// `itemsById` so the queue's auto-continue can resolve each id.
+    func songItems(forItemId itemId: String) async -> [LibraryItem] {
+        guard let client else { return [] }
+        let songs: [SubsonicSong]
+        if let albumId = Self.id(itemId, kind: "album") {
+            songs = (try? await client.album(id: albumId))?.song ?? []
+        } else if let playlistId = Self.id(itemId, kind: "playlist") {
+            songs = (try? await client.playlist(id: playlistId))?.entry ?? []
+        } else if let songId = Self.id(itemId, kind: "song"), let song = try? await client.song(id: songId) {
+            songs = [song]
+        } else {
+            songs = []
+        }
+        let items = songs.map(Self.songItem(from:))
+        for item in items { itemsById[item.id] = item }
+        return items
+    }
+
+    /// Shuffle-play the WHOLE library: a random pool of songs across the active
+    /// server as playable items (cached like `songItems`). The final order is set
+    /// by the shared `MediaShuffle` at the call site — this only supplies the pool.
+    func shuffleLibrarySongItems(limit: Int = 100) async -> [LibraryItem] {
+        guard let client, let songs = try? await client.randomSongs(size: limit) else { return [] }
+        let items = songs.map(Self.songItem(from:))
+        for item in items { itemsById[item.id] = item }
+        return items
+    }
+
     /// OpenSubsonic lyrics for a song id (structured, possibly synced).
     func lyrics(songId: String) async -> [SubsonicStructuredLyrics] {
         guard let client else { return [] }

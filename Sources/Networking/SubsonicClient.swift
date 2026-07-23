@@ -252,6 +252,12 @@ struct SubsonicClient {
         try await get("getSong", ["id": id]).song
     }
 
+    /// A random set of songs across the library — the pool for whole-library
+    /// shuffle. `size` is capped server-side (Subsonic max is 500).
+    func randomSongs(size: Int = 100) async throws -> [SubsonicSong] {
+        try await get("getRandomSongs", ["size": String(size)]).randomSongs?.song ?? []
+    }
+
     // MARK: - Helpers
 
     private static func randomSalt() -> String {

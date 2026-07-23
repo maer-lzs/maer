@@ -30,6 +30,7 @@ nonisolated struct SubsonicBody: Decodable {
     let similarSongs2: SubsonicSimilarSongs?    // getSimilarSongs2
     let lyricsList: SubsonicLyricsList?     // getLyricsBySongId (OpenSubsonic)
     let song: SubsonicSong?                 // getSong
+    let randomSongs: SubsonicRandomSongs?   // getRandomSongs (whole-library shuffle)
 }
 
 // MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL — a server
@@ -58,6 +59,10 @@ nonisolated struct SubsonicTopSongs: Decodable {
 }
 
 nonisolated struct SubsonicSimilarSongs: Decodable {
+    let song: [SubsonicSong]?
+}
+
+nonisolated struct SubsonicRandomSongs: Decodable {
     let song: [SubsonicSong]?
 }
 

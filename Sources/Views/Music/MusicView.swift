@@ -137,7 +137,18 @@ struct MusicView: View {
                 .padding(.horizontal)
             }
 
-            Text("Albums").font(.title3).bold().padding(.horizontal)
+            // "Albums" header carries the whole-library shuffle (same component
+            // as the album/playlist detail) — on the existing header row so it
+            // adds no vertical shift to the grid below.
+            HStack {
+                Text("Albums").font(.title3).bold()
+                Spacer()
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
+                    await SubsonicProvider.shared.shuffleLibrarySongItems()
+                }
+                .font(.title3)
+            }
+            .padding(.horizontal)
             CoverGrid(columns: columns) {
                 ForEach(vm.albums) { album in
                     AlbumCell(item: album, playerCoordinator: playerCoordinator)

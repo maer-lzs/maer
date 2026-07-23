@@ -91,6 +91,14 @@ struct PlayQueueTests {
         #expect(q.isEmpty)
     }
 
+    @Test("setUpNext replaces the whole list in order and drops radio ids")
+    func setUpNextReplaces() {
+        let q = queue()
+        ["old1", "old2"].forEach { q.playLast($0) }
+        q.setUpNext(["s1", "s2", "radio:x", "s3"])   // shuffle tail; radio never queues
+        #expect(q.ids == ["s1", "s2", "s3"])
+    }
+
     // MARK: - Cross-media auto-continue (Teil-1 core journey)
 
     /// Proves the core journey "enqueue mixed types → auto-continue across the

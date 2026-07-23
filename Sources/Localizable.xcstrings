@@ -1,6 +1,13 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Shuffle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Zufällig" }
+        }
+      }
+    },
     "Add to Playlist" : {
       "localizations" : {
         "de" : {

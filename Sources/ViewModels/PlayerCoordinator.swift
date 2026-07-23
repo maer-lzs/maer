@@ -181,6 +181,19 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
+    /// Shuffle-play a set of playable items in random order. Regel 2: the whole
+    /// music library, a playlist and an album all funnel here — each supplies its
+    /// own pool, the shared `MediaShuffle` sets the order. The first item starts
+    /// now; the shuffled tail becomes the Up-Next context and plays through the
+    /// existing cross-media auto-continue. An empty pool is a no-op.
+    func shufflePlay(items: [LibraryItem]) async {
+        let order = MediaShuffle.shuffled(items)
+        guard let first = order.first else { return }
+        // The tail replaces Up Next; open() also drops `first` if it lingers.
+        PlayQueue.shared.setUpNext(order.dropFirst().map(\.id))
+        await open(item: first, restart: true)
+    }
+
     /// Auto-continue when an item plays to its end. Order:
     /// 1. The global "Up Next" queue, CROSS-MEDIA and in order (a queued book,
     ///    episode or album plays next regardless of what just finished).

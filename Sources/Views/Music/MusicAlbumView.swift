@@ -205,7 +205,16 @@ struct MusicAlbumView: View {
                 }
             }
 
-            playButton
+            HStack(spacing: 12) {
+                playButton
+                // Shuffle this album/playlist — same button/component as the
+                // music-tab root, icon style beside the primary play control.
+                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
+                    await AppSession.shared.subsonicProvider.songItems(forItemId: item.id)
+                }
+                .font(.title3)
+                .disabled(tracks.isEmpty)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
