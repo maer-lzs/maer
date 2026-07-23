@@ -96,6 +96,14 @@ struct GPodderSettingsView: View {
                         Label(warning, systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.orange)
                             .font(.footnote)
+                        // The guard blocks but doesn't resolve — offer a manual
+                        // merge screen so the divergence can be converged.
+                        NavigationLink {
+                            GPodderConflictResolutionView()
+                        } label: {
+                            Label("Resolve conflict…", systemImage: "arrow.triangle.merge")
+                        }
+                        .onDisappear { storedReport = GPodderSync.shared.storedReport }
                     }
                     if let error = stored.report.error {
                         Label(error, systemImage: "xmark.octagon")

@@ -1,6 +1,97 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Apply" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Anwenden" }
+        }
+      }
+    },
+    "Choose per feed below, or set all at once. Nothing changes until you tap Apply." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Unten pro Feed wählen oder alle auf einmal. Es ändert sich nichts, bis du auf „Anwenden“ tippst." }
+        }
+      }
+    },
+    "Couldn't reach the gpodder server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Der gpodder-Server war nicht erreichbar." }
+        }
+      }
+    },
+    "Keep everything (union)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Alles behalten (Vereinigung)" }
+        }
+      }
+    },
+    "Keep only the server's" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nur die vom Server behalten" }
+        }
+      }
+    },
+    "Keep only this device's" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nur die von diesem Gerät behalten" }
+        }
+      }
+    },
+    "Loading subscriptions…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Abonnements werden geladen…" }
+        }
+      }
+    },
+    "No differences — this device and the server already match." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Keine Unterschiede — dieses Gerät und der Server stimmen bereits überein." }
+        }
+      }
+    },
+    "Only on the server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nur auf dem Server" }
+        }
+      }
+    },
+    "Only on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nur auf diesem Gerät" }
+        }
+      }
+    },
+    "Resolve all" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Alle auflösen" }
+        }
+      }
+    },
+    "Resolve Conflict" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Konflikt auflösen" }
+        }
+      }
+    },
+    "Resolve conflict…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Konflikt auflösen…" }
+        }
+      }
+    },
     "Audiobookshelf podcasts" : {
       "localizations" : {
         "de" : {

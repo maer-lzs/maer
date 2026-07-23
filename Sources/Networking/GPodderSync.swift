@@ -80,6 +80,72 @@ final class GPodderSync {
         catch { return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
     }
 
+    // MARK: - Manual conflict resolution (guard-blocked divergence)
+
+    /// A fetched local↔server picture for the resolution screen. Normalized keys
+    /// (for the pure `GPodderConflictResolution`) + the raw URLs to apply with.
+    struct ConflictSnapshot {
+        let localNorms: Set<String>
+        let serverNorms: Set<String>
+        let localRaw: [String: String]    // norm → raw local feed URL
+        let serverRaw: [String: String]   // norm → raw server feed URL
+    }
+
+    /// Fetch the current server + local subscriptions for the resolution UI.
+    /// nil when not configured or the server can't be reached.
+    func conflictSnapshot() async -> ConflictSnapshot? {
+        guard let config else { return nil }
+        let client = GPodderClient(config: config)
+        guard (try? await client.login()) != nil,
+              let serverURLs = try? await client.subscriptions() else { return nil }
+        let serverRaw = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
+                                   uniquingKeysWith: { a, _ in a })
+        let localRaw = Dictionary(PodcastSubscriptions.shared.shows.map {
+            (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL)
+        }, uniquingKeysWith: { a, _ in a })
+        return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),
+                                localRaw: localRaw, serverRaw: serverRaw)
+    }
+
+    /// Apply the user's resolution via the EXISTING building blocks (no parallel
+    /// sync path): push/remove on the server, subscribe/unsubscribe locally, set
+    /// the converged `gpodderLastSyncedFeeds`, and CLEAR the sticky guard warning
+    /// so the next `reconcile()` doesn't immediately re-fire it for feeds the
+    /// user just resolved. Returns an error text or nil.
+    func applyConflictResolution(_ actions: GPodderConflictResolution.Actions,
+                                 snapshot: ConflictSnapshot) async -> String? {
+        guard let config else { return String(localized: "Please fill in server, username and password.") }
+        let client = GPodderClient(config: config)
+        let subs = PodcastSubscriptions.shared
+        // Server side (one request): push kept local-only, remove dropped server-only.
+        let add = actions.addToServer.compactMap { snapshot.localRaw[$0] }
+        let remove = actions.removeFromServer.compactMap { snapshot.serverRaw[$0] }
+        if !add.isEmpty || !remove.isEmpty {
+            do { try await client.login(); try await client.uploadSubscriptions(add: add, remove: remove) }
+            catch { return (error as? LocalizedError)?.errorDescription ?? error.localizedDescription }
+        }
+        // Local side.
+        for norm in actions.subscribeLocally {
+            if let raw = snapshot.serverRaw[norm] { _ = await subs.subscribe(urlString: raw) }
+        }
+        for norm in actions.unsubscribeLocally {
+            if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
+                subs.unsubscribe(id: show.id)
+            }
+        }
+        UserDefaults.standard.set(Array(actions.converged), forKey: AppStorageKeys.gpodderLastSyncedFeeds)
+        clearGuardWarning()
+        return nil
+    }
+
+    /// Drop the sticky guard warning (keeps the last-sync counts/date).
+    func clearGuardWarning() {
+        guard let stored = storedReport, stored.warning != nil else { return }
+        let cleared = StoredReport(date: stored.date, report: stored.report, warning: nil, warningDate: nil)
+        storedReport = cleared
+        cleared.save()
+    }
+
     /// Reconcile subscriptions (and history – part 2). Idempotent, never two at once.
     @discardableResult
     func reconcile() async -> Report {
