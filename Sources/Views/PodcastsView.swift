@@ -73,6 +73,10 @@ struct PodcastsView: View {
     /// used to pop in one by one across several recompute passes.
     @State private var sectionsReady = false
     @State private var downloadedExpanded = false
+    /// Layout-shift: gated snapshot of the recommendations store — a late
+    /// arrival routes through the calm gate (a whole-section insert is exactly
+    /// the shift; empty→filled counts, no initial-fill exception per section).
+    @State private var recommendationItems: [PodcastSearchResult] = []
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change — and when the
@@ -149,6 +153,12 @@ struct PodcastsView: View {
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
             await recommendations.refreshIfNeeded()               // recommendations (external)
         }
+        // Layout-shift: mirror the store into the gated snapshot (count as the
+        // change signal — results are replaced wholesale by the store).
+        .task(id: recommendations.results.count) {
+            let fresh = recommendations.results
+            BottomBarState.shared.runWhenCalm { recommendationItems = fresh }
+        }
         .task(id: recomputeToken) {
             // Hidden-but-mounted: skip; the token includes isActive, so the task
             // re-fires with fresh data when the tab becomes visible again.
@@ -214,12 +224,16 @@ struct PodcastsView: View {
 
     @ViewBuilder
     private var recommendationsSection: some View {
-        if !recommendations.results.isEmpty {
+        // Layout-shift: renders from the GATED snapshot, not the live store —
+        // the section (2nd from top) used to insert whole when the external
+        // fetch landed, shoving everything below (the reviewer's precision: the
+        // conditional if-!isEmpty card-row insert IS the shift).
+        if !recommendationItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 Text("Recommended").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(recommendations.results) { r in recommendationTile(r) }
+                        ForEach(recommendationItems) { r in recommendationTile(r) }
                     }
                     .padding(.horizontal)
                 }

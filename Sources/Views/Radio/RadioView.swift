@@ -165,8 +165,12 @@ struct RadioView: View {
         let topResult = (try? await topTask) ?? []
         let regionResult = await regionTask
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
-        popular = topResult
-        regional = regionResult
+        // Layout-shift: the discovery sections land as whole-section inserts —
+        // apply through the shared calm gate, never mid-scroll.
+        BottomBarState.shared.runWhenCalm { [self] in
+            popular = topResult
+            regional = regionResult
+        }
         discoveryLoaded = true
     }
 

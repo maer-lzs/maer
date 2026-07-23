@@ -64,8 +64,11 @@ struct HomeView: View {
         guard recommendationsEnabled else { discoverShown = []; return }
         let subscribed = Set((subs.shows + ABSPodcastProvider.shared.shows)
             .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        discoverShown = PodcastRecommendationsStore.excludingSubscribed(
+        let fresh = PodcastRecommendationsStore.excludingSubscribed(
             recommendations.results, subscribedNormalizedFeeds: subscribed)
+        // Layout-shift: the whole-section insert (2nd from top) routes through
+        // the calm gate — empty→filled IS the shift, so no immediate path here.
+        BottomBarState.shared.runWhenCalm { discoverShown = fresh }
     }
 
     private var recomputeToken: String {
