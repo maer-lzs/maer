@@ -110,7 +110,11 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         }
         // Light mode: a soft shadow separates white-ish glass from white
         // backgrounds — the main reason the mini player got lost visually.
-        .shadow(color: .black.opacity(isDark ? 0 : 0.12), radius: 10, y: 4)
+        // Hitch fix lever 2 (trace-backed): the shadow is limited to the few
+        // `.glass` surfaces — on EVERY material surface it multiplied offscreen
+        // passes (a shadow is an offscreen pass, and there are ~20 material
+        // callers) while its visual purpose only ever was the glass bar.
+        .shadow(color: .black.opacity(tier == .glass && !isDark ? 0.12 : 0), radius: 10, y: 4)
         // Cross-fade tint changes (book switch loads a new cover accent
         // asynchronously) instead of popping hard to the new color.
         .animation(.easeInOut(duration: 0.4), value: lightTint)
