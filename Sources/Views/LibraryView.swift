@@ -35,6 +35,9 @@ struct LibraryView: View {
     @Namespace private var barNS
     @ObservedObject private var bottomBar = BottomBarState.shared
     private var barCollapsed: Bool { bottomBar.collapsed }
+    /// Lag applied to the bottom bar's collapse spring so it follows the top
+    /// icons out of frame instead of vanishing in the same frame (24.07 decouple).
+    private static let barCollapseLag: TimeInterval = 0.12
     /// Vertical drag offset of the full player while dismissing downward
     /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
@@ -268,7 +271,17 @@ struct LibraryView: View {
                 // the mini-player keeps its matchedGeometry morph across it, the
                 // extra rows cross-fade.
                 // GT: gentler/slower bottom-bar collapse (was response 0.42).
-                .animation(.spring(response: 0.55, dampingFraction: 0.85), value: barCollapsed)
+                // Decouple (24.07): the top icons (`toolbarGlassIcon`) react to the
+                // SAME `barCollapsed` flip immediately; the bar itself waits
+                // `Self.barCollapseLag` on COLLAPSE only, so it visibly follows the
+                // icons out instead of vanishing in the same frame. Expand (return
+                // to rest) stays immediate — the primary surface should come back
+                // promptly while the icons pop back in with their own bouncy spring.
+                .animation(
+                    barCollapsed
+                        ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
+                        : .spring(response: 0.55, dampingFraction: 0.85),
+                    value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
                 // Measure the height → pass it as free space to the scroll
