@@ -118,7 +118,6 @@ struct PodcastsView: View {
             NavigationStack { PodcastSourceView() }
         }
         .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
-        .topEdgeFade()   // GT3c: fade anchored to this tab's scroll viewport
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
         // detail fetches) keeps running as a background task; the sections
