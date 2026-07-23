@@ -336,4 +336,23 @@ func radioHomeSectionGating() {
     #expect(!RadioHomePresentation.showsSection(radioActive: false, recentsCount: 0))
 }
 
+
+@Test("mirror loop propagates cancellation instead of walking all mirrors")
+func radioBrowserCancellationPropagates() async {
+    let task = Task {
+        // Deterministic: cancel ourselves BEFORE the call — the loop's
+        // checkCancellation must throw on entry, no network is touched.
+        withUnsafeCurrentTask { $0?.cancel() }
+        return try await RadioBrowserClient.stations(.popular(limit: 1))
+    }
+    do {
+        _ = try await task.value
+        Issue.record("expected CancellationError")
+    } catch is CancellationError {
+        // expected: immediate propagation
+    } catch {
+        Issue.record("expected CancellationError, got \(error)")
+    }
+}
+
 #endif

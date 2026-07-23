@@ -103,9 +103,20 @@ nonisolated enum RadioBrowserClient {
     static func stations(_ query: Query) async throws -> [RadioStation] {
         var lastError: Error = URLError(.cannotConnectToHost)
         for mirror in mirrors {
-            var comps = URLComponents(string: mirror + query.path)!
+            // A cancelled task must not walk the remaining mirrors.
+            try Task.checkCancellation()
+            // Hardened URL build (mirrors are hardcoded, so this is belt and
+            // braces): a malformed URL skips the mirror instead of trapping.
+            guard var comps = URLComponents(string: mirror + query.path) else {
+                lastError = URLError(.badURL)
+                continue
+            }
             comps.queryItems = query.queryItems
-            var request = URLRequest(url: comps.url!)
+            guard let url = comps.url else {
+                lastError = URLError(.badURL)
+                continue
+            }
+            var request = URLRequest(url: url)
             // The API asks clients to identify themselves.
             request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
             do {
@@ -116,6 +127,9 @@ nonisolated enum RadioBrowserClient {
                 }
                 let raw = try JSONDecoder().decode([RadioBrowserStation].self, from: data)
                 return RadioMapping.stations(from: raw)
+            } catch is CancellationError {
+                // Propagate cancellation immediately — no next-mirror attempt.
+                throw CancellationError()
             } catch {
                 // Next mirror — the policy already retried transients here.
                 lastError = error
