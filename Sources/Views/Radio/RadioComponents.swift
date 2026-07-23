@@ -65,8 +65,12 @@ struct RadioStationCard: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 Text(station.name)
                     .font(.caption.weight(.medium))
-                    .lineLimit(2)
-                    .frame(width: Self.width, height: 34, alignment: .topLeading)
+                    // Layout-shift/a11y: reserve both lines at the CURRENT type
+                    // size — the fixed 34 pt matched two caption lines only at
+                    // the default size (clipped at accessibility sizes, uneven
+                    // card heights otherwise).
+                    .lineLimit(2, reservesSpace: true)
+                    .frame(width: Self.width, alignment: .topLeading)
             }
         }
         .buttonStyle(.plain)

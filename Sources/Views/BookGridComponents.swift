@@ -235,21 +235,23 @@ struct BookGridCell: View {
                     itemId: entry.id,
                     size: width
                 )
+                // Layout-shift: a UNIFORM text block — title reserves both
+                // lines, author/status lines always exist (empty when absent),
+                // so every cell in a LazyVGrid row is equally tall and rows
+                // stop jumping while scrolling (variable-height stutter,
+                // Apple Forums 685461).
                 Text(entry.item.title)
                     .font(.caption)
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
-                if let author = entry.item.author {
-                    Text(author)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if let p = entry.progress {
-                    Text(bookStatusText(p, duration: entry.item.media?.duration))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
+                    .lineLimit(2, reservesSpace: true)
+                Text(entry.item.author ?? " ")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1, reservesSpace: true)
+                Text(entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) } ?? " ")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1, reservesSpace: true)
             }
             .frame(width: width, alignment: .leading)
             // Top-align within the grid row: LazyVGrid sizes each row to its

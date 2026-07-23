@@ -52,8 +52,13 @@ struct MediaTile<Corner: View>: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.caption.weight(.medium))
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+                        // Layout-shift: reserve BOTH lines at every type size —
+                        // the old fixed minHeight matched two lines only at the
+                        // default size, so grid rows went uneven at larger
+                        // Dynamic Type (variable LazyVGrid row heights jump
+                        // while scrolling, Apple Forums 685461).
+                        .lineLimit(2, reservesSpace: true)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                     if let subtitle {
                         Text(subtitle)
                             .font(.caption2)

@@ -294,12 +294,13 @@ struct AlbumCell: View {
                     .offlineUnavailableBadge(unavailable)
                 }
 
+                // Layout-shift: reserved lines + an always-present artist line
+                // keep every cell in a grid row equally tall (variable heights
+                // jump while scrolling).
                 Text(item.title).font(.subheadline)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                if let artist = item.author {
-                    Text(artist).font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
-                }
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1, reservesSpace: true)
+                Text(item.author ?? " ").font(.caption).foregroundStyle(.secondary)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1, reservesSpace: true)
             }
             .frame(width: width, alignment: .leading)
         }
