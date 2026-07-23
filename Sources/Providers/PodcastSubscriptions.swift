@@ -68,6 +68,15 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
 /// XMLParser, no third-party dependency), persistent cache. Pure source backend
 /// behind the `RSSProvider` — the core talks only to the provider, never
 /// directly here (only the management UI does).
+/// Y51: a just-subscribed premium feed looks like an existing free
+/// subscription — offer to replace it (with progress takeover). Presented as a
+/// QUESTION, never applied silently.
+nonisolated struct PremiumReplacementOffer: Equatable {
+    let freeShowId: String
+    let premiumShowId: String
+    let showTitle: String
+}
+
 @MainActor
 final class PodcastSubscriptions: ObservableObject {
     static let shared = PodcastSubscriptions()
@@ -75,6 +84,10 @@ final class PodcastSubscriptions: ObservableObject {
     @Published private(set) var shows: [PodcastShow] = [] {
         didSet { rebuildCaches() }
     }
+
+    /// Y51: set when a new premium subscription matches an existing free one;
+    /// the sources UI presents it as an alert. Cleared on accept/decline.
+    @Published var pendingPremiumReplacement: PremiumReplacementOffer?
 
     /// guid → (show index, episode index) for O(1) lookup instead of a linear
     /// search over all episodes (which ran per cover cell and dragged after import).
@@ -301,9 +314,51 @@ final class PodcastSubscriptions: ObservableObject {
             shows[idx] = Self.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
+            // Y51: a NEW premium feed (credentials stored for its feedKey) that
+            // looks like an existing credential-free subscription → offer the
+            // replacement. Conservative same-show test; the user decides.
+            if PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey(show.feedURL)),
+               let free = shows.first(where: {
+                   $0.id != show.id
+                       && !PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey($0.feedURL))
+                       && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
+               }) {
+                pendingPremiumReplacement = PremiumReplacementOffer(
+                    freeShowId: free.id, premiumShowId: show.id, showTitle: show.title)
+            }
         }
         save()
         return true
+    }
+
+    /// Y51 accept path: move the matched episodes' local progress free→premium
+    /// (the migrateLocalPosition pattern: target-empty guard), adopt their
+    /// downloads, then unsubscribe the free show. Unmatched free episodes keep
+    /// nothing to lose — their progress keys simply become orphaned history.
+    @discardableResult
+    func replaceFreeWithPremium(_ offer: PremiumReplacementOffer) -> (progressMoved: Int, downloadsAdopted: Int) {
+        defer { pendingPremiumReplacement = nil }
+        guard let free = shows.first(where: { $0.id == offer.freeShowId }),
+              let premium = shows.first(where: { $0.id == offer.premiumShowId }) else { return (0, 0) }
+        let matches = PodcastPremiumMatch.episodeMatches(free: free.episodes, premium: premium.episodes)
+        var moved = 0
+        var adopted = 0
+        let defaults = UserDefaults.standard
+        for (freeGuid, premiumGuid) in matches {
+            if defaults.object(forKey: AppStorageKeys.localPosition(freeGuid)) != nil {
+                Self.migrateLocalPosition(from: freeGuid, to: premiumGuid)
+                moved += 1
+            }
+            if DownloadManager.shared.adoptDownload(from: freeGuid, to: premiumGuid) {
+                adopted += 1
+            }
+        }
+        unsubscribe(id: free.id)
+        PodcastProgressStore.shared.reload()
+        // Regel 3: the takeover is visible in the log (titles only, no URLs —
+        // premium URLs can carry secrets).
+        Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(matches.count) matched, \(moved) progress moved, \(adopted) downloads adopted")
+        return (moved, adopted)
     }
 
     func unsubscribe(id: String) {

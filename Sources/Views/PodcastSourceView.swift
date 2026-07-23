@@ -119,6 +119,17 @@ struct PodcastSourceView: View {
         } message: {
             if let subscribeError { Text(subscribeError) }
         }
+        // Y51: a new premium feed matched an existing free subscription — ask,
+        // never replace silently. Decline keeps both (today's behavior).
+        .alert("Premium feed detected", isPresented: Binding(
+            get: { subs.pendingPremiumReplacement != nil },
+            set: { if !$0 { subs.pendingPremiumReplacement = nil } }
+        ), presenting: subs.pendingPremiumReplacement) { offer in
+            Button("Replace") { subs.replaceFreeWithPremium(offer) }
+            Button("Keep Both", role: .cancel) { subs.pendingPremiumReplacement = nil }
+        } message: { offer in
+            Text("“\(offer.showTitle)” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?")
+        }
         // Debounce: wait briefly after typing, then search.
         .task(id: searchText) {
             let term = searchText.trimmingCharacters(in: .whitespaces)

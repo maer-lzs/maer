@@ -5,6 +5,7 @@
 import Foundation
 import Combine
 import AVFoundation
+import OSLog
 
 /// Manages locally downloaded audiobooks. Each book gets its own subfolder
 /// "Downloads/{itemId}/0.{ext}", "1.{ext}", … — multi-file books (several audio
@@ -610,5 +611,28 @@ final class DownloadManager: ObservableObject {
         ImageCache.shared.removePersistent(itemId: itemId)
         downloadedItemIds.remove(itemId)
         recalculateTotalSize()
+    }
+
+    /// Y51 premium replacement: re-key a finished download from the old item id
+    /// to its successor (folder + metadata move) so the file stays offline
+    /// usable under the new id instead of orphaning. No-op unless the source is
+    /// downloaded and the target is free. Returns whether an adoption happened.
+    @discardableResult
+    func adoptDownload(from oldItemId: String, to newItemId: String) -> Bool {
+        guard downloadedItemIds.contains(oldItemId),
+              !downloadedItemIds.contains(newItemId) else { return false }
+        let fm = FileManager.default
+        do {
+            try fm.moveItem(at: itemDirectory(oldItemId), to: itemDirectory(newItemId))
+        } catch {
+            Logger.rss.error("download adopt failed: \(error.localizedDescription, privacy: .public)")
+            return false
+        }
+        let oldMeta = metadataDirectory.appendingPathComponent("\(oldItemId).json")
+        let newMeta = metadataDirectory.appendingPathComponent("\(newItemId).json")
+        try? fm.moveItem(at: oldMeta, to: newMeta)
+        downloadedItemIds.remove(oldItemId)
+        downloadedItemIds.insert(newItemId)
+        return true
     }
 }
