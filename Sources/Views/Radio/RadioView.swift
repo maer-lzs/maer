@@ -42,7 +42,11 @@ struct RadioView: View {
                     listSection(title: String(localized: "Favorites"), stations: favorites)
                 }
                 if !recents.isEmpty {
-                    listSection(title: String(localized: "Recently Played"), stations: recents)
+                    // The radio library's prominent "card" (parity with the other
+                    // tabs' continue/playlist cards): Recently Played as the
+                    // reused RadioStationCard row, not a plain list. Favorites
+                    // stays a list. Regel 2 — same card as "Most Played".
+                    cardRow(title: String(localized: "Recently Played"), stations: recents)
                 }
                 if showsPopular {
                     cardRow(title: String(localized: "Popular Stations"), stations: popular)
