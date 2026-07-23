@@ -225,13 +225,25 @@ final class GPodderSync {
         let localByNorm = Dictionary(subs.shows.map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
                                      uniquingKeysWith: { a, _ in a })
         let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
+        // 2–3-feed removals awaiting their second confirmation (from last run).
+        let prevPendingLocal = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveLocal) as? [String]) ?? [])
+        let prevPendingServer = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveServer) as? [String]) ?? [])
 
         let local = Set(localByNorm.keys)
         let server = Set(serverByNorm.keys)
 
         // Pure 3-way merge WITH mass-delete guard — an implausible server
-        // answer must not wipe the local subscription list.
-        let merge = GPodderSubscriptionMerge.compute(local: local, server: server, prev: prev)
+        // answer must not wipe the local subscription list. 2–3-feed removals
+        // additionally need a second consecutive confirmation before applying.
+        let merge = GPodderSubscriptionMerge.compute(
+            local: local, server: server, prev: prev,
+            pendingRemoveLocally: prevPendingLocal, pendingRemoveFromServer: prevPendingServer)
+        // Persist the held (not-yet-confirmed) removals for the next run.
+        defaults.set(Array(merge.pendingRemoveLocally), forKey: AppStorageKeys.gpodderPendingRemoveLocal)
+        defaults.set(Array(merge.pendingRemoveFromServer), forKey: AppStorageKeys.gpodderPendingRemoveServer)
+        for norm in merge.pendingRemoveLocally.union(merge.pendingRemoveFromServer) {
+            Logger.gpodder.warning("gpodder removal PENDING (awaiting 2nd sync): url=\(norm, privacy: .public) side=\(merge.pendingRemoveLocally.contains(norm) ? "local" : "server", privacy: .public)")
+        }
         if let warning = merge.warning {
             report.warning = warning
             Logger.gpodder.warning("subscription sync guard: \(warning, privacy: .public)")

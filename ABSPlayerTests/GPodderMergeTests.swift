@@ -92,5 +92,48 @@ struct GPodderMergeTests {
         #expect(m.blockedRemoveLocally.isEmpty)
         #expect(m.blockedRemoveFromServer.isEmpty)
     }
+
+    // MARK: - 2–3-feed confirmation (hardening: apply only after a 2nd sync)
+
+    @Test func singleRemoveStaysImmediate() {
+        let (apply, pending) = GPodderSubscriptionMerge.confirmRemovals(candidates: ["a"], prevPending: [])
+        #expect(apply == ["a"])
+        #expect(pending.isEmpty)
+    }
+
+    @Test func twoFeedRemovalFirstRunOnlyPends() {
+        // Six local feeds, server dropped two → 2/6 = 33% is > 30%? 0.333 > 0.3 →
+        // that WOULD be guard-blocked. Use eight feeds so 2/8 = 25% stays under
+        // the guard and reaches the confirmation path.
+        let eight = Set((1...8).map { "f\($0)" })
+        var server = eight; server.remove("f1"); server.remove("f2")
+        let m = GPodderSubscriptionMerge.compute(local: eight, server: server, prev: eight,
+                                                 pendingRemoveLocally: [], pendingRemoveFromServer: [])
+        #expect(m.warning == nil)                         // under the guard
+        #expect(m.removeLocally.isEmpty)                  // NOT applied on first sight
+        #expect(m.pendingRemoveLocally == ["f1", "f2"])   // held for confirmation
+        #expect(!m.mayUpdatePrevState)                    // prev kept so it recomputes
+    }
+
+    @Test func twoFeedRemovalSecondRunApplies() {
+        let eight = Set((1...8).map { "f\($0)" })
+        var server = eight; server.remove("f1"); server.remove("f2")
+        // Same diff still stands, and both were pending from last run → apply.
+        let m = GPodderSubscriptionMerge.compute(local: eight, server: server, prev: eight,
+                                                 pendingRemoveLocally: ["f1", "f2"], pendingRemoveFromServer: [])
+        #expect(m.removeLocally == ["f1", "f2"])
+        #expect(m.pendingRemoveLocally.isEmpty)
+    }
+
+    @Test func glitchedRemovalSelfHeals() {
+        // First run pended {f1,f2}; next run the feeds are back (no candidate) →
+        // nothing applied and the pending set clears.
+        let eight = Set((1...8).map { "f\($0)" })
+        let m = GPodderSubscriptionMerge.compute(local: eight, server: eight, prev: eight,
+                                                 pendingRemoveLocally: ["f1", "f2"], pendingRemoveFromServer: [])
+        #expect(m.removeLocally.isEmpty)
+        #expect(m.pendingRemoveLocally.isEmpty)           // discarded, self-healed
+        #expect(m.mayUpdatePrevState)
+    }
 }
 #endif

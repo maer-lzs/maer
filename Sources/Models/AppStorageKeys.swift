@@ -81,6 +81,10 @@ nonisolated enum AppStorageKeys {
     /// Last synced subscription state (normalised feed URLs) — basis for the
     /// 3-way merge so unsubscribes are detected and propagated.
     static let gpodderLastSyncedFeeds = "gpodderLastSyncedFeeds"
+    /// 2–3-feed removals held for a second consecutive-sync confirmation
+    /// (normalised keys) — one per side; a diff must persist across two runs.
+    static let gpodderPendingRemoveLocal = "gpodderPendingRemoveLocal"
+    static let gpodderPendingRemoveServer = "gpodderPendingRemoveServer"
 
     static var gpodderServerURLValue: String {
         get { UserDefaults.standard.string(forKey: gpodderServerURL) ?? "" }
