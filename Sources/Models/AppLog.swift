@@ -8,6 +8,7 @@ import OSLog
 /// print so incidents are visible in Console/sysdiagnose on device.
 extension Logger {
     nonisolated static let gpodder = Logger(subsystem: "de.lzs.ABSPlayer", category: "gpodder")
+    nonisolated static let rss = Logger(subsystem: "de.lzs.ABSPlayer", category: "rss")
     nonisolated static let music = Logger(subsystem: "de.lzs.ABSPlayer", category: "music")
     nonisolated static let library = Logger(subsystem: "de.lzs.ABSPlayer", category: "library")
     nonisolated static let player = Logger(subsystem: "de.lzs.ABSPlayer", category: "player")

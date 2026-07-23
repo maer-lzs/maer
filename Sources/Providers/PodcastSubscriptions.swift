@@ -4,6 +4,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// Person from the feed (`<podcast:person>` / `itunes:owner`) — host/guest.
 nonisolated struct PodcastPerson: Codable, Hashable {
@@ -264,7 +265,10 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Merge two shows of the same feed: keep the metadata of the richer one,
     /// deduplicate episodes by guid, newest first.
-    private nonisolated static func merge(_ a: PodcastShow, _ b: PodcastShow) -> PodcastShow {
+    /// Union two versions of a show by episode GUID, keeping the richer set and
+    /// losing nothing — the base is whichever already has more episodes. `internal`
+    /// so the RSS hardening (never shrink on a weak fetch) is unit-testable.
+    nonisolated static func merge(_ a: PodcastShow, _ b: PodcastShow) -> PodcastShow {
         let (base, other) = a.episodes.count >= b.episodes.count ? (a, b) : (b, a)
         var result = base
         var seen = Set(base.episodes.map { $0.guid })
@@ -292,7 +296,9 @@ final class PodcastSubscriptions: ObservableObject {
         guard let url = normalizedFeedURL(trimmed) else { return false }
         guard let show = await Self.fetchAndParse(feedURL: url) else { return false }
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
-            shows[idx] = show
+            // Re-subscribe must not blindly replace: a weak parse (valid title,
+            // few/zero episodes) would drop the cached episodes. Union instead.
+            shows[idx] = Self.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
         }
@@ -450,7 +456,16 @@ final class PodcastSubscriptions: ObservableObject {
         var updated = shows
         for (index, show) in shows.enumerated() {
             if let url = URL(string: show.feedURL), let fresh = await Self.fetchAndParse(feedURL: url) {
-                updated[index] = fresh
+                // Never shrink on a single weak fetch: a parse that returns a
+                // valid title but far fewer episodes (server hiccup, empty but
+                // valid <channel>) would otherwise wipe the cached episode list.
+                // Union keeps everything; more episodes still add normally.
+                #if DEBUG
+                if fresh.episodes.count * 2 < show.episodes.count {
+                    Logger.rss.debug("RSS refresh shrank \(show.title, privacy: .public): cached=\(show.episodes.count) fresh=\(fresh.episodes.count) → union keeps the cache")
+                }
+                #endif
+                updated[index] = Self.merge(show, fresh)
             }
             // Pro-Show-Limit anwenden (News-Shows schlank halten).
             applyLimit(&updated[index], keepLatest: AppStorageKeys.podcastEpisodeLimitValue(updated[index].id))
