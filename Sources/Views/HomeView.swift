@@ -25,6 +25,9 @@ struct HomeView: View {
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
+    /// Radio on Home: recently played stations (RadioStore recents, loaded in
+    /// the same compute pass as the other sections — no extra observer).
+    @State private var radioRecents: [RadioStation] = []
     /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
     /// volume) — empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
@@ -78,6 +81,7 @@ struct HomeView: View {
                     continueSection
                     if recommendationsEnabled { discoverSection }
                     upNextSection
+                    radioSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
                     recentlyAddedSection
@@ -163,6 +167,21 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// Radio on Home: "recently listened" stations as the SAME card row the
+    /// radio tab uses (`RadioCardRow`) — the fourth media type joins the hub.
+    /// Placed after Up Next (planned queue) and before Latest Episodes, like a
+    /// "recently used" shelf. Unlike the radio tab, favorites are NOT filtered
+    /// out — Home has no favorites list to duplicate against.
+    @ViewBuilder
+    private var radioSection: some View {
+        if RadioHomePresentation.showsSection(radioActive: RadioProvider.shared.isAvailable,
+                                              recentsCount: radioRecents.count) {
+            RadioCardRow(title: String(localized: "Radio"),
+                         stations: radioRecents,
+                         playerCoordinator: playerCoordinator)
         }
     }
 
@@ -361,6 +380,10 @@ struct HomeView: View {
             .filter { SubsonicProvider.id($0.key, kind: "playlist") != nil && $0.value.isStarted }
             .map { (id: $0.key, ts: $0.value.lastUpdate) }
         let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
+
+        // Radio on Home: cheap sync read; empty when the source is off, so the
+        // pure gating hides the section (no placeholder).
+        radioRecents = RadioProvider.shared.isAvailable ? RadioStore.recents() : []
 
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
         // first — the shared pure derivation (cap 30 so the Y3a six-row

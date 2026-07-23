@@ -117,3 +117,28 @@ enum RadioPlay {
         Task { await playerCoordinator.open(item: RadioProvider.libraryItem(for: station)) }
     }
 }
+
+/// The shared horizontal station-card row (title + RadioStationCard carousel) —
+/// used by the radio tab's sections AND the Home "Radio" section (Regel 2: one
+/// row component, no copies).
+struct RadioCardRow: View {
+    let title: String
+    let stations: [RadioStation]
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    var onFavoriteToggled: () -> Void = {}
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.title3).bold().padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(stations) { station in
+                        RadioStationCard(station: station, playerCoordinator: playerCoordinator,
+                                         onFavoriteToggled: onFavoriteToggled)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+}

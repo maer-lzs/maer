@@ -92,19 +92,10 @@ struct RadioView: View {
         }
     }
 
+    /// Regel 2: the row itself is the shared `RadioCardRow` (also on Home).
     private func cardRow(title: String, stations: [RadioStation]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.title3).bold().padding(.horizontal)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 14) {
-                    ForEach(stations) { station in
-                        RadioStationCard(station: station, playerCoordinator: playerCoordinator,
-                                         onFavoriteToggled: reload)
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
+        RadioCardRow(title: title, stations: stations,
+                     playerCoordinator: playerCoordinator, onFavoriteToggled: reload)
     }
 
     private var genreSection: some View {

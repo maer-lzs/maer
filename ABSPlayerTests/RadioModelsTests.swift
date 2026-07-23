@@ -327,4 +327,13 @@ struct RadioModelsTests {
         #expect(PlayQueue.canEnqueue("book-id"))
     }
 }
+
+@Test("Radio on Home gates on active source AND non-empty recents")
+func radioHomeSectionGating() {
+    #expect(RadioHomePresentation.showsSection(radioActive: true, recentsCount: 3))
+    #expect(!RadioHomePresentation.showsSection(radioActive: true, recentsCount: 0))
+    #expect(!RadioHomePresentation.showsSection(radioActive: false, recentsCount: 3))
+    #expect(!RadioHomePresentation.showsSection(radioActive: false, recentsCount: 0))
+}
+
 #endif

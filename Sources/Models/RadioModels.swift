@@ -362,6 +362,15 @@ nonisolated enum RadioStore {
     }
 }
 
+/// Home "Radio" section gating (pure): the section renders ONLY when the radio
+/// source is active AND there is something to show — never an empty placeholder.
+nonisolated enum RadioHomePresentation {
+    static func showsSection(radioActive: Bool, recentsCount: Int) -> Bool {
+        radioActive && recentsCount > 0
+    }
+}
+
+
 /// Teil 3 (pure, tested): rank stations by play frequency. Positive counts only,
 /// descending; ties keep the later-stored (more-recently-played) station first;
 /// capped. Foundation-only (MaerCore rule) — no store, no UI.
