@@ -210,6 +210,17 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
+    /// Provider-premium (Teil 5 cut): the comparable host of a feed URL —
+    /// scheme/`www.` stripped, lowercased, up to the first path segment.
+    nonisolated static func feedHost(_ raw: String) -> String {
+        var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        s = s.replacingOccurrences(of: "https://", with: "")
+             .replacingOccurrences(of: "http://", with: "")
+        if s.hasPrefix("www.") { s.removeFirst(4) }
+        if let slash = s.firstIndex(where: { $0 == "/" || $0 == "?" }) { s = String(s[..<slash]) }
+        return s
+    }
+
     /// Y52: display/log-safe form — secret parameter values become "••••",
     /// everything else stays. Never show/log a token feed URL unmasked.
     nonisolated static func maskedFeedURL(_ raw: String) -> String {

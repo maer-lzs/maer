@@ -90,6 +90,14 @@ struct PodcastTokenFeedTests {
                 == "Show — https://h.example/f?key=••••")
     }
 
+    @Test("feedHost: comparable host for the provider-login reuse")
+    func feedHost() {
+        #expect(PodcastSubscriptions.feedHost("https://www.Provider.example/rss/a?token=x") == "provider.example")
+        #expect(PodcastSubscriptions.feedHost("http://provider.example/other") == "provider.example")
+        #expect(PodcastSubscriptions.feedHost("provider.example") == "provider.example")
+        #expect(PodcastSubscriptions.feedHost("https://other.example/rss") != "provider.example")
+    }
+
     @Test("premium test: token class counts even without stored credentials")
     func premiumIncludesTokenClass() {
         #expect(PodcastSubscriptions.isPremiumFeed("https://h.example/feed?token=abc"))

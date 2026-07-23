@@ -44,6 +44,9 @@ struct PodcastSourceView: View {
     @State private var isSyncing = false
     @State private var syncMessage: String?
 
+    /// S22: the premium feed being edited (credentials sheet).
+    @State private var premiumEditTarget: PodcastShow?
+
     var body: some View {
         List {
             Section {
@@ -84,6 +87,7 @@ struct PodcastSourceView: View {
             }
             // Subscription list deliberately at the very bottom (after search/add/manage).
             subscriptionsSection
+            premiumManagementSection
             archivedSection
         }
         .navigationTitle("Podcasts")
@@ -129,6 +133,11 @@ struct PodcastSourceView: View {
             Button("Keep Both", role: .cancel) { subs.pendingPremiumReplacement = nil }
         } message: { offer in
             Text("“\(offer.showTitle)” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?")
+        }
+        // S22: credentials editor for a premium feed.
+        .sheet(item: $premiumEditTarget) { show in
+            NavigationStack { PremiumFeedEditor(show: show) }
+                .presentationDetents([.medium])
         }
         // Debounce: wait briefly after typing, then search.
         .task(id: searchText) {
@@ -225,6 +234,21 @@ struct PodcastSourceView: View {
             || absPodcast.shows.contains { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
     }
 
+    /// Teil 5 cut: a credentialed subscription on the SAME host as the typed
+    /// URL — the "provider account" is derived from existing feeds, no new
+    /// persistence. Only offered while the login fields are empty.
+    private var providerLoginSource: PodcastShow? {
+        let url = feedURL.trimmingCharacters(in: .whitespaces)
+        guard !url.isEmpty,
+              feedUser.trimmingCharacters(in: .whitespaces).isEmpty, feedPassword.isEmpty else { return nil }
+        let host = PodcastSubscriptions.feedHost(url)
+        guard !host.isEmpty else { return nil }
+        return subs.shows.first {
+            PodcastSubscriptions.feedHost($0.feedURL) == host
+                && PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey($0.feedURL))
+        }
+    }
+
     /// Create a subscription — on the server (synced) if possible/chosen, else locally.
     private func performSubscribe(feedURL: String) async -> Bool {
         if subscribeToServer, absPodcast.hasPodcasts {
@@ -275,6 +299,55 @@ struct PodcastSourceView: View {
         }
     }
 
+    // MARK: - Premium management (S22)
+
+    /// S22: THE management surface for premium feeds — which feeds have a
+    /// login, which are the token-URL class, change/delete credentials (until
+    /// now only possible at subscribe time). URLs render MASKED (Y52).
+    @ViewBuilder
+    private var premiumManagementSection: some View {
+        let premium = subs.shows.filter { PodcastSubscriptions.isPremiumFeed($0.feedURL) }
+        if !premium.isEmpty {
+            Section {
+                ForEach(premium) { show in
+                    Button {
+                        premiumEditTarget = show
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(show.title).lineLimit(1)
+                                Spacer()
+                                Text(premiumClassLabel(show))
+                                    .font(.caption2)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.primary.opacity(0.08)))
+                            }
+                            Text(PodcastSubscriptions.maskedFeedURL(show.feedURL))
+                                .font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Label("Premium Feeds", systemImage: "lock.fill")
+            } footer: {
+                Text("Token feeds carry their access in the URL — they are never shown unmasked and never synced to a gpodder server.")
+            }
+        }
+    }
+
+    private func premiumClassLabel(_ show: PodcastShow) -> String {
+        if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(show.feedURL)) {
+            return String(localized: "Login")
+        }
+        if PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
+            return String(localized: "Token URL")
+        }
+        return String(localized: "Members")
+    }
+
     @ViewBuilder
     private var addByURLSection: some View {
         Section {
@@ -287,14 +360,30 @@ struct PodcastSourceView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 SecureField("Password (optional)", text: $feedPassword)
+                // Teil 5 (provider premium, foundation cut): another show of a
+                // provider you already have a login for — reuse it, visibly.
+                if let source = providerLoginSource {
+                    Label("Will use your \(PodcastSubscriptions.feedHost(source.feedURL)) login (from “\(source.title)”)",
+                          systemImage: "person.badge.key")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Button("Add Feed") {
                     let url = feedURL.trimmingCharacters(in: .whitespaces)
                     guard !url.isEmpty else { return }
                     urlError = nil
                     // Store credentials BEFORE fetching (private/premium feeds).
+                    // Empty fields + a known provider host → adopt that login.
+                    var user = feedUser.trimmingCharacters(in: .whitespaces)
+                    var password = feedPassword
+                    if user.isEmpty, password.isEmpty,
+                       let source = providerLoginSource,
+                       let c = PodcastFeedAuth.credentials(feedKey: PodcastSubscriptions.feedKey(source.feedURL)) {
+                        user = c.user
+                        password = c.password
+                    }
                     PodcastFeedAuth.set(feedKey: PodcastSubscriptions.feedKey(url),
-                                        user: feedUser.trimmingCharacters(in: .whitespaces),
-                                        password: feedPassword)
+                                        user: user,
+                                        password: password)
                     Task {
                         let ok = await performSubscribe(feedURL: url)
                         if ok {
@@ -483,5 +572,69 @@ private struct PodcastIndexKeyView: View {
         .navigationTitle("PodcastIndex Access")
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
+    }
+}
+
+
+/// S22: change/delete the login of ONE premium feed — the management sheet
+/// behind the Premium Feeds section (until now credentials could only be set
+/// while subscribing). Token feeds show their class; a login can coexist.
+struct PremiumFeedEditor: View {
+    let show: PodcastShow
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var user = ""
+    @State private var password = ""
+
+    private var feedKey: String { PodcastSubscriptions.feedKey(show.feedURL) }
+
+    var body: some View {
+        Form {
+            Section {
+                Text(show.title).font(.headline)
+                // Y52: never show the URL unmasked.
+                Text(PodcastSubscriptions.maskedFeedURL(show.feedURL))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .textSelection(.disabled)
+            }
+            if PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
+                Section {
+                    Label("Access is embedded in the feed URL (token). This feed stays on this device and is never synced to a gpodder server.", systemImage: "key.horizontal")
+                        .font(.caption)
+                }
+            }
+            Section("Login") {
+                TextField("Username", text: $user)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $password)
+                Button("Save") {
+                    PodcastFeedAuth.set(feedKey: feedKey,
+                                        user: user.trimmingCharacters(in: .whitespaces),
+                                        password: password)
+                    dismiss()
+                }
+                .disabled(user.isEmpty && password.isEmpty)
+                if PodcastFeedAuth.hasCredentials(feedKey: feedKey) {
+                    Button("Remove Login", role: .destructive) {
+                        PodcastFeedAuth.set(feedKey: feedKey, user: "", password: "")
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .navigationTitle("Premium Feed")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
+        .onAppear {
+            if let c = PodcastFeedAuth.credentials(feedKey: feedKey) {
+                user = c.user
+                password = c.password
+            }
+        }
     }
 }
