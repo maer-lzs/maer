@@ -267,7 +267,8 @@ struct LibraryView: View {
                 // S10: slightly crisper collapse/expand spring (less floaty) —
                 // the mini-player keeps its matchedGeometry morph across it, the
                 // extra rows cross-fade.
-                .animation(.spring(response: 0.42, dampingFraction: 0.85), value: barCollapsed)
+                // GT: gentler/slower bottom-bar collapse (was response 0.42).
+                .animation(.spring(response: 0.55, dampingFraction: 0.85), value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
                 // Measure the height → pass it as free space to the scroll
