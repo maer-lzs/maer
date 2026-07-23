@@ -30,16 +30,16 @@ struct PlaylistArtwork: View {
         case 1:
             tile(coverURLs[0])
         case 2:
-            HStack(spacing: 1) { tile(coverURLs[0]); tile(coverURLs[1]) }
+            HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
         case 3:
-            VStack(spacing: 1) {
-                HStack(spacing: 1) { tile(coverURLs[0]); tile(coverURLs[1]) }
+            VStack(spacing: 0) {
+                HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
                 tile(coverURLs[2])
             }
         default:
-            VStack(spacing: 1) {
-                HStack(spacing: 1) { tile(coverURLs[0]); tile(coverURLs[1]) }
-                HStack(spacing: 1) { tile(coverURLs[2]); tile(coverURLs[3]) }
+            VStack(spacing: 0) {
+                HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
+                HStack(spacing: 0) { tile(coverURLs[2]); tile(coverURLs[3]) }
             }
         }
     }

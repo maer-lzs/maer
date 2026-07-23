@@ -22,12 +22,18 @@ struct MusicAlbumView: View {
     @State private var highResCover: UIImage?
     /// Package 1: the single song a user long-pressed to add to a playlist.
     @State private var addTarget: AddToPlaylistTarget?
+    /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
+    /// not a single server cover — up to four distinct album covers.
+    @State private var mosaicCoverURLs: [URL] = []
     /// D12/B11: track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
     /// Albums can be starred; playlists cannot.
     private var isAlbum: Bool { SubsonicProvider.id(item.id, kind: "album") != nil }
+    /// Playlists get the mosaic header; albums keep their single cover.
+    private var isPlaylist: Bool { SubsonicProvider.id(item.id, kind: "playlist") != nil }
+    private var playlistRawId: String { SubsonicProvider.id(item.id, kind: "playlist") ?? item.id }
 
     var body: some View {
         List {
@@ -122,6 +128,11 @@ struct MusicAlbumView: View {
         }
         .task(id: item.id) {
             await loadDetail()
+            if isPlaylist {
+                // Same mosaic path as the cards — no second artwork builder.
+                let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: playlistRawId)
+                mosaicCoverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
+            }
             if isAlbum {
                 starred = await SubsonicProvider.shared.isStarred(itemId: item.id)
                 // M3/M6: notes + (via release MBID) a high-res cover — both
@@ -171,8 +182,13 @@ struct MusicAlbumView: View {
     private var header: some View {
         VStack(spacing: 12) {
             Group {
-                // M6: prefer the high-res Cover Art Archive front when loaded.
-                if let highResCover {
+                // A playlist shows the F5 2×2 mosaic — the same component as the
+                // cards/rows, not the server's single playlist cover.
+                if isPlaylist {
+                    PlaylistArtwork(playlistID: playlistRawId, coverURLs: mosaicCoverURLs)
+                        .aspectRatio(1, contentMode: .fit)
+                } else if let highResCover {
+                    // M6: prefer the high-res Cover Art Archive front when loaded.
                     Image(uiImage: highResCover)
                         .resizable().aspectRatio(1, contentMode: .fit)
                 } else {
