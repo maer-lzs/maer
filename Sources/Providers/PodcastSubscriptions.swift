@@ -190,8 +190,54 @@ final class PodcastSubscriptions: ObservableObject {
     /// these are DIFFERENT feeds (private tokens, CMS show selectors) and must
     /// not collapse into one subscription. Everything else (tracking params
     /// etc.) is still stripped.
+    /// Y52: query parameters whose VALUES are access secrets — a feed carrying
+    /// one is the token-URL premium class (access baked into the URL, no login).
+    /// ONE source: the identity set below builds on this, no duplication.
+    nonisolated static let secretQueryParams: Set<String> =
+        ["token", "auth", "key", "secret"]
+
     nonisolated private static let identityQueryParams: Set<String> =
-        ["token", "auth", "key", "id", "show", "feed", "user", "podcast"]
+        secretQueryParams.union(["id", "show", "feed", "user", "podcast"])
+
+    /// Y52: token-URL premium class — a known secret parameter with a non-empty
+    /// value. Conservative string parse (works for raw AND normalized URLs).
+    nonisolated static func isTokenFeedURL(_ raw: String) -> Bool {
+        guard let q = raw.firstIndex(of: "?") else { return false }
+        return raw[raw.index(after: q)...].split(separator: "&").contains { pair in
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            return parts.count == 2 && !parts[1].isEmpty
+                && secretQueryParams.contains(parts[0].lowercased())
+        }
+    }
+
+    /// Y52: display/log-safe form — secret parameter values become "••••",
+    /// everything else stays. Never show/log a token feed URL unmasked.
+    nonisolated static func maskedFeedURL(_ raw: String) -> String {
+        guard let q = raw.firstIndex(of: "?") else { return raw }
+        let base = raw[..<q]
+        let masked = raw[raw.index(after: q)...].split(separator: "&").map { pair -> String in
+            let parts = pair.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2, secretQueryParams.contains(parts[0].lowercased()) else {
+                return String(pair)
+            }
+            return "\(parts[0])=••••"
+        }
+        return base + "?" + masked.joined(separator: "&")
+    }
+
+    /// Known members-only feed hosts (moved here from the podcast tab so the
+    /// premium test has ONE home).
+    nonisolated private static let premiumHosts =
+        ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access"]
+
+    /// THE premium test: stored basic-auth credentials OR the token-URL class
+    /// OR a known members-only host. Used by the tab grouping and management.
+    nonisolated static func isPremiumFeed(_ feedURL: String) -> Bool {
+        if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
+        if isTokenFeedURL(feedURL) { return true }
+        let lower = feedURL.lowercased()
+        return premiumHosts.contains { lower.contains($0) }
+    }
 
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {
         var s = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)

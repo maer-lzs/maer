@@ -64,4 +64,37 @@ struct PodcastPremiumMatchTests {
         #expect(PodcastPremiumMatch.episodeMatches(free: free, premium: dupPremium).isEmpty)
     }
 }
+
+/// Y52: token-URL premium class — classification and masking (secrets never
+/// shown or logged unmasked).
+struct PodcastTokenFeedTests {
+    @Test("token classification: known secret param with value; conservative otherwise")
+    func classification() {
+        #expect(PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?token=abc123"))
+        #expect(PodcastSubscriptions.isTokenFeedURL("h.example/feed?auth=x&limit=5"))
+        #expect(PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?SECRET=s"))
+        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed"))
+        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?page=2"))
+        #expect(!PodcastSubscriptions.isTokenFeedURL("https://h.example/feed?token="))   // empty value
+    }
+
+    @Test("masking replaces ONLY secret values, works on raw, normalized and composite strings")
+    func masking() {
+        #expect(PodcastSubscriptions.maskedFeedURL("https://h.example/feed?token=abc&page=2")
+                == "https://h.example/feed?token=••••&page=2")
+        #expect(PodcastSubscriptions.maskedFeedURL("h.example/feed?auth=x")
+                == "h.example/feed?auth=••••")
+        #expect(PodcastSubscriptions.maskedFeedURL("https://h.example/feed") == "https://h.example/feed")
+        // Composite report string ("Title — url?token=…") still gets masked.
+        #expect(PodcastSubscriptions.maskedFeedURL("Show — https://h.example/f?key=s")
+                == "Show — https://h.example/f?key=••••")
+    }
+
+    @Test("premium test: token class counts even without stored credentials")
+    func premiumIncludesTokenClass() {
+        #expect(PodcastSubscriptions.isPremiumFeed("https://h.example/feed?token=abc"))
+        #expect(PodcastSubscriptions.isPremiumFeed("https://www.patreon.com/rss/show"))
+        #expect(!PodcastSubscriptions.isPremiumFeed("https://h.example/feed"))
+    }
+}
 #endif

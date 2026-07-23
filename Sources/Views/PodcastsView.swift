@@ -260,20 +260,10 @@ struct PodcastsView: View {
 
     // MARK: - Premium (private/paid feeds)
 
-    /// Premium if basic-auth credentials are stored OR the feed URL looks like
-    /// private/paid access (token in the query or a known premium host).
+    /// Y52: the ONE premium test lives in PodcastSubscriptions (credentials OR
+    /// token-URL class OR known members-only host).
     private func isPremium(_ show: PodcastShow) -> Bool {
-        if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(show.feedURL)) {
-            return true
-        }
-        let url = show.feedURL.lowercased()
-        let hosts = ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access"]
-        if hosts.contains(where: { url.contains($0) }) { return true }
-        if let items = URLComponents(string: show.feedURL)?.queryItems,
-           items.contains(where: { ["auth", "token", "key", "secret"].contains($0.name.lowercased()) }) {
-            return true
-        }
-        return false
+        PodcastSubscriptions.isPremiumFeed(show.feedURL)
     }
 
     @ViewBuilder

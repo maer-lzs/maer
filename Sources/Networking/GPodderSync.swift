@@ -106,9 +106,12 @@ final class GPodderSync {
               let serverURLs = try? await client.subscriptions() else { return nil }
         let serverRaw = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
                                    uniquingKeysWith: { a, _ in a })
-        let localRaw = Dictionary(PodcastSubscriptions.shared.shows.map {
-            (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL)
-        }, uniquingKeysWith: { a, _ in a })
+        // Y52: token feeds never take part in gpodder sync (pushing them would
+        // hand the secret to the server) — invisible to the resolution UI too.
+        let localRaw = Dictionary(PodcastSubscriptions.shared.shows
+            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) }
+            .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
+            uniquingKeysWith: { a, _ in a })
         return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),
                                 localRaw: localRaw, serverRaw: serverRaw)
     }
@@ -222,8 +225,15 @@ final class GPodderSync {
         let serverURLs = try await client.subscriptions()
         let serverByNorm = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
                                       uniquingKeysWith: { a, _ in a })
-        let localByNorm = Dictionary(subs.shows.map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
-                                     uniquingKeysWith: { a, _ in a })
+        // Y52: token feeds are LOCAL-ONLY — excluded from the entire sync
+        // comparison (never pushed; their absence on the server must not read
+        // as a removal either). A token feed pushed BEFORE this policy shows up
+        // as server-only and converges off the server via the normal guarded
+        // removal path.
+        let localByNorm = Dictionary(subs.shows
+            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) }
+            .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
+            uniquingKeysWith: { a, _ in a })
         let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
         // 2–3-feed removals awaiting their second confirmation (from last run).
         let prevPendingLocal = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveLocal) as? [String]) ?? [])
@@ -242,7 +252,7 @@ final class GPodderSync {
         defaults.set(Array(merge.pendingRemoveLocally), forKey: AppStorageKeys.gpodderPendingRemoveLocal)
         defaults.set(Array(merge.pendingRemoveFromServer), forKey: AppStorageKeys.gpodderPendingRemoveServer)
         for norm in merge.pendingRemoveLocally.union(merge.pendingRemoveFromServer) {
-            Logger.gpodder.warning("gpodder removal PENDING (awaiting 2nd sync): url=\(norm, privacy: .public) side=\(merge.pendingRemoveLocally.contains(norm) ? "local" : "server", privacy: .public)")
+            Logger.gpodder.warning("gpodder removal PENDING (awaiting 2nd sync): url=\(PodcastSubscriptions.maskedFeedURL(norm), privacy: .public) side=\(merge.pendingRemoveLocally.contains(norm) ? "local" : "server", privacy: .public)")
         }
         if let warning = merge.warning {
             report.warning = warning
@@ -254,7 +264,7 @@ final class GPodderSync {
         // membership, so a suspected subscription loss can be reconstructed.
         // The guard threshold is deliberately UNCHANGED here.
         for norm in merge.blockedRemoveLocally.union(merge.blockedRemoveFromServer) {
-            Logger.gpodder.warning("gpodder removal BLOCKED (guard): url=\(norm, privacy: .public) side=\(merge.blockedRemoveLocally.contains(norm) ? "local" : "server", privacy: .public) inPrev=\(prev.contains(norm))")
+            Logger.gpodder.warning("gpodder removal BLOCKED (guard): url=\(PodcastSubscriptions.maskedFeedURL(norm), privacy: .public) side=\(merge.blockedRemoveLocally.contains(norm) ? "local" : "server", privacy: .public) inPrev=\(prev.contains(norm))")
         }
 
         // Server side: add + remove in one request.
@@ -267,8 +277,8 @@ final class GPodderSync {
             for norm in merge.removeFromServer {
                 let raw = serverByNorm[norm] ?? norm
                 report.removedFromServer += 1
-                report.removedFeeds.append(raw)
-                Logger.gpodder.warning("gpodder removal APPLIED (server): url=\(raw, privacy: .public) inPrev=\(prev.contains(norm))")
+                report.removedFeeds.append(PodcastSubscriptions.maskedFeedURL(raw))
+                Logger.gpodder.warning("gpodder removal APPLIED (server): url=\(PodcastSubscriptions.maskedFeedURL(raw), privacy: .public) inPrev=\(prev.contains(norm))")
             }
         }
         // Local side: subscribe to new feeds, remove unsubscribed ones.
@@ -283,8 +293,8 @@ final class GPodderSync {
             if let show = subs.shows.first(where: { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == norm }) {
                 report.removedLocally += 1
                 let title = show.title.isEmpty ? show.feedURL : show.title
-                report.removedFeeds.append("\(title) — \(show.feedURL)")
-                Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(show.feedURL, privacy: .public) inPrev=\(prev.contains(norm))")
+                report.removedFeeds.append("\(title) — \(PodcastSubscriptions.maskedFeedURL(show.feedURL))")
+                Logger.gpodder.warning("gpodder removal APPLIED (local): title=\(title, privacy: .public) url=\(PodcastSubscriptions.maskedFeedURL(show.feedURL), privacy: .public) inPrev=\(prev.contains(norm))")
                 subs.unsubscribe(id: show.id)
             }
         }
