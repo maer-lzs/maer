@@ -115,9 +115,13 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         // passes (a shadow is an offscreen pass, and there are ~20 material
         // callers) while its visual purpose only ever was the glass bar.
         .shadow(color: .black.opacity(tier == .glass && !isDark ? 0.12 : 0), radius: 10, y: 4)
-        // Cross-fade tint changes (book switch loads a new cover accent
-        // asynchronously) instead of popping hard to the new color.
-        .animation(.easeInOut(duration: 0.4), value: lightTint)
+        // Hitch fix lever 3 (trace-backed): the tint cross-fade animated a GLASS
+        // PARAMETER per frame (`AnimatableAttribute<…UnwrappedMaterial>` 374×
+        // in a 9 s trace → per-frame backdrop re-render). Glass tint now changes
+        // WITHOUT animation — the mini-player swap choreography (dip below the
+        // edge while the new accent loads) already masks the change on the main
+        // surface. The cheap material fallback keeps the cross-fade.
+        .animation(tier == .glass ? nil : .easeInOut(duration: 0.4), value: lightTint)
     }
 
     /// Real Liquid Glass. When a morph id + namespace are given (bottom-bar
