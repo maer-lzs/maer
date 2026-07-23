@@ -30,6 +30,8 @@ struct LibraryView: View {
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
+    /// Up-Next queue sheet (mini-player long-press entry).
+    @State private var showQueueSheet = false
     /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
     /// in the library turns it into a compact row.
     @Namespace private var barNS
@@ -471,6 +473,13 @@ struct LibraryView: View {
             }
             .environment(\.bottomBarInset, 0)
         }
+        // Up-Next home at the player: the queue sheet opened from the
+        // mini-player long-press (the full player presents its own copy of the
+        // same PlayQueueSheet). Root-level, so it works from every tab and
+        // above any pushed detail page.
+        .sheet(isPresented: $showQueueSheet) {
+            PlayQueueSheet(playerCoordinator: playerCoordinator)
+        }
         // Full player as an overlay OVER the library (instead of push).
         .overlay {
             if isShowingFullPlayer {
@@ -581,6 +590,17 @@ struct LibraryView: View {
                     }
                 },
                 glassMorphID: "player", glassMorphNamespace: bottomGlassNS)
+            // Up-Next entry from EVERY tab: long-press on the mini player (tap
+            // keeps opening the full player). A context menu adds no glass
+            // surface and no layout change — the fresh GlassEffectContainer/
+            // glassEffectID morph structure stays untouched.
+            .contextMenu {
+                Button {
+                    showQueueSheet = true
+                } label: {
+                    Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+                }
+            }
             .offset(y: miniPlayerSwapOffset)
             .matchedGeometryEffect(id: "player", in: barNS)
         }

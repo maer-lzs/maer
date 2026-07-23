@@ -24,6 +24,8 @@ struct PlayerView: View {
     @State private var scrubValue: Double = 0
     @State private var showChapters = false
     @State private var showBookmarks = false
+    /// Up-Next home at the player: the global queue opens as a sheet from here.
+    @State private var showQueue = false
     /// M4: lyrics of the CURRENT song (nil = none/still loading) + panel state.
     @State private var songLyrics: SongLyrics?
     @State private var showLyrics = false
@@ -127,6 +129,11 @@ struct PlayerView: View {
         }
         .sheet(isPresented: $showBookmarks) {
             BookmarksSheet(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showQueue) {
+            // The process-wide coordinator — the same instance the library
+            // observes (PlayerView itself only holds the view model).
+            PlayQueueSheet(playerCoordinator: AppSession.shared.playerCoordinator)
         }
         .sheet(isPresented: $showChapters) {
             ChapterListView(
@@ -652,6 +659,9 @@ struct PlayerView: View {
                     lyricsControl
                     bookmarksControl
                 }
+                GridRow {
+                    queueControl
+                }
             }
         }
         .padding(.top, 4)
@@ -660,9 +670,20 @@ struct PlayerView: View {
     @ViewBuilder
     private var tertiaryItems: some View {
         airPlayControl
+        queueControl
         lyricsControl
         bookmarksControl
         markFinishedControl
+    }
+
+    /// Up-Next home at the player: opens the global queue (sheet) — the queue is
+    /// a player concept, so its entry lives HERE, not on the library tabs.
+    private var queueControl: some View {
+        Button { showQueue = true } label: {
+            Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
+        }
+        .font(.footnote)
+        .accessibilityIdentifier("player-queue")
     }
 
     private var airPlayControl: some View {

@@ -5,6 +5,21 @@
 import SwiftUI
 import Combine
 
+/// The queue as a modal sheet — THE player-queue entry surface (full-player
+/// button + mini-player long-press share this ONE wrapper). Its own
+/// NavigationStack carries the title and the Edit/Clear toolbar; presented as a
+/// sheet it is reachable from every tab and above any pushed detail page.
+struct PlayQueueSheet: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        NavigationStack {
+            PlayQueueView(playerCoordinator: playerCoordinator)
+        }
+        .presentationDragIndicator(.visible)
+    }
+}
+
 /// Reorderable global "Up Next" page across ALL media types: reorder
 /// (`.onMove`/EditButton), swipe to remove, tap a row to play it (and remove it
 /// from the queue). Rows render uniformly via `PlayQueueRow`.
