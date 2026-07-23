@@ -10,6 +10,9 @@ import SwiftUI
 /// into a field itself.
 struct FloatingSearchButton: View {
     let action: () -> Void
+    /// Native glass-morph identity when hosted in the bottom-bar container.
+    var glassMorphID: String? = nil
+    var glassMorphNamespace: Namespace.ID? = nil
 
     var body: some View {
         Button(action: action) {
@@ -22,7 +25,9 @@ struct FloatingSearchButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: Circle(), tier: .glass,
+            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         .accessibilityLabel(Text("Search"))
     }
 }

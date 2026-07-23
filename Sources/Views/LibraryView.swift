@@ -33,6 +33,11 @@ struct LibraryView: View {
     /// Scroll-driven collapsing of the bottom zone (Apple-Music-like): scrolling
     /// in the library turns it into a compact row.
     @Namespace private var barNS
+    /// Native glass-morph namespace (24.07): the bottom-bar `.glass` surfaces live
+    /// in ONE `GlassEffectContainer` (shared sampling region) and morph via
+    /// `glassEffectID` in this namespace — media pill ↔ home button, magnifier ↔
+    /// search field — instead of cross-fading independent glass surfaces.
+    @Namespace private var bottomGlassNS
     @ObservedObject private var bottomBar = BottomBarState.shared
     private var barCollapsed: Bool { bottomBar.collapsed }
     /// Lag applied to the bottom bar's collapse spring so it follows the top
@@ -507,6 +512,10 @@ struct LibraryView: View {
     /// matchedGeometry as before. No extra work at scroll start: the collapse
     /// now removes fewer views than the old full-branch swap.
     private var bottomBarContent: some View {
+        bottomBarStack.bottomGlassContainer()
+    }
+
+    private var bottomBarStack: some View {
         VStack(spacing: 8) {
             // Y17 search mode: the field sits where the tab pill was, the tab
             // bar yields to the round home button (like the collapsed state).
@@ -568,11 +577,14 @@ struct LibraryView: View {
     @ViewBuilder
     private var miniPlayer: some View {
         if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
-            MiniPlayerBar(coordinator: playerCoordinator, viewModel: vm, item: item, compact: barCollapsed) {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                    isShowingFullPlayer = true
-                }
-            }
+            MiniPlayerBar(
+                coordinator: playerCoordinator, viewModel: vm, item: item, compact: barCollapsed,
+                onOpenPlayer: {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                        isShowingFullPlayer = true
+                    }
+                },
+                glassMorphID: "player", glassMorphNamespace: bottomGlassNS)
             .offset(y: miniPlayerSwapOffset)
             .matchedGeometryEffect(id: "player", in: barNS)
         }
@@ -581,11 +593,14 @@ struct LibraryView: View {
     @ViewBuilder
     private var mediaBar: some View {
         if availableMediaTypes.count > 1 {
-            MediaTabBar(types: availableMediaTypes, selected: selectedMediaType) { newValue in
-                navigationPath = NavigationPath()
-                bottomBar.reset()   // switching tabs expands the bar
-                withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
-            }
+            MediaTabBar(
+                types: availableMediaTypes, selected: selectedMediaType,
+                onSelect: { newValue in
+                    navigationPath = NavigationPath()
+                    bottomBar.reset()   // switching tabs expands the bar
+                    withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
+                },
+                glassMorphID: "media", glassMorphNamespace: bottomGlassNS)
             .matchedGeometryEffect(id: "media", in: barNS)
         }
     }
@@ -619,7 +634,9 @@ struct LibraryView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: Circle(), tier: .glass,
+            morphID: "media", morphNamespace: bottomGlassNS))
         .matchedGeometryEffect(id: "media", in: barNS)
         .accessibilityLabel(isShowingSearch ? MediaType.home.label : selectedMediaType.label)
         .accessibilityHint(Text("Expands the bar"))
@@ -692,7 +709,9 @@ struct LibraryView: View {
         .padding(.horizontal, 14)
         .frame(height: 56)
         .frame(maxWidth: .infinity)
-        .modifier(AdaptiveGlassBackground(shape: Capsule(), tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: Capsule(), tier: .glass,
+            morphID: "search", morphNamespace: bottomGlassNS))
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityIdentifier("global-search-field")
     }
@@ -714,7 +733,9 @@ struct LibraryView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .modifier(AdaptiveGlassBackground(shape: Circle(), tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: Circle(), tier: .glass,
+            morphID: "close", morphNamespace: bottomGlassNS))
         .accessibilityLabel(Text("Close search"))
         .accessibilityIdentifier("search-close")
     }
@@ -726,12 +747,14 @@ struct LibraryView: View {
     }
 
     private var searchButton: some View {
-        FloatingSearchButton {
-            searchModel.query = ""
-            // Y20: the scope starts where the user is (Home → Library).
-            searchScope = SearchScope.initial(for: selectedMediaType)
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
-        }
+        FloatingSearchButton(
+            action: {
+                searchModel.query = ""
+                // Y20: the scope starts where the user is (Home → Library).
+                searchScope = SearchScope.initial(for: selectedMediaType)
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
+            },
+            glassMorphID: "search", glassMorphNamespace: bottomGlassNS)
         .matchedGeometryEffect(id: "search", in: barNS)
         .accessibilityLabel(Text("Search"))
         // Locale-independent handle for the UI-test harness.

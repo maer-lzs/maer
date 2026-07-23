@@ -18,6 +18,9 @@ struct MediaTabBar: View {
     /// (resetting the navigation path) that were unreliable in a binding setter
     /// (a tap "did nothing").
     let onSelect: (MediaType) -> Void
+    /// Native glass-morph identity when hosted in the bottom-bar container.
+    var glassMorphID: String? = nil
+    var glassMorphNamespace: Namespace.ID? = nil
 
     /// D7/B6: at accessibility sizes the caption labels truncated anyway —
     /// icons only, the label lives on as the accessibility label.
@@ -85,6 +88,8 @@ struct MediaTabBar: View {
         // N1d: the end padding IS the pill gap — the pill's horizontal distance
         // to the bar's rounded ends equals its vertical inset everywhere.
         .padding(.horizontal, Self.pillGap)
-        .modifier(AdaptiveGlassBackground(shape: Capsule(), tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: Capsule(), tier: .glass,
+            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
     }
 }

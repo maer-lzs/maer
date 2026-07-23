@@ -35,6 +35,23 @@ extension EnvironmentValues {
 /// "use glass sparingly"; glass everywhere caused the bottom-bar morph hitch).
 nonisolated enum GlassTier { case material, glass }
 
+extension View {
+    /// Wraps a bottom-bar cluster in a `GlassEffectContainer` on iOS 26 so its
+    /// `.glass` surfaces share ONE sampling region (Apple: "glass cannot sample
+    /// other glass") and morph via `glassEffectID` instead of cross-fading
+    /// independent glass surfaces — the shared region is what the bottom-bar
+    /// morph hitch needed. `spacing: nil` = no automatic proximity-merge, so the
+    /// distinct buttons stay separate. No-op below iOS 26.
+    @ViewBuilder
+    func bottomGlassContainer() -> some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer { self }
+        } else {
+            self
+        }
+    }
+}
+
 struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     let shape: S
     /// `.glass` = real Liquid Glass (Material below iOS 26); `.material`
@@ -45,6 +62,15 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
     /// stays distinguishable on white backgrounds. Near-white accents
     /// (mostly white covers) are clamped to a neutral gray via luminance.
     var lightAccent: Color? = nil
+    /// Native glass-morph identity (24.07). When a `.glass` surface lives inside
+    /// a `GlassEffectContainer` and carries a `morphID` + `morphNamespace`, iOS 26
+    /// morphs the GLASS SHAPE itself between two surfaces sharing the id (e.g. the
+    /// media pill ↔ the round home button) instead of cross-fading two
+    /// independent glass surfaces — the shared sampling region is what the
+    /// bottom-bar morph hitch needed ("glass cannot sample other glass"). Only the
+    /// glass shape morphs here; `matchedGeometryEffect` still handles position.
+    var morphID: String? = nil
+    var morphNamespace: Namespace.ID? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.glassAccent) private var environmentAccent
@@ -77,10 +103,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
             // Real Liquid Glass ONLY for `.glass` surfaces on iOS 26; everything
             // else (default `.material`, or older OS) gets the cheap look.
             if tier == .glass, #available(iOS 26.0, *) {
-                content.glassEffect(
-                    .regular.tint(isDark ? Color.black.opacity(0.3) : lightTint),
-                    in: shape
-                )
+                glassContent(content)
             } else {
                 materialFallback(content)
             }
@@ -91,6 +114,22 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         // Cross-fade tint changes (book switch loads a new cover accent
         // asynchronously) instead of popping hard to the new color.
         .animation(.easeInOut(duration: 0.4), value: lightTint)
+    }
+
+    /// Real Liquid Glass. When a morph id + namespace are given (bottom-bar
+    /// cluster inside a `GlassEffectContainer`), tag the glass with
+    /// `glassEffectID` so surfaces sharing the id morph into one another.
+    @available(iOS 26.0, *)
+    @ViewBuilder
+    private func glassContent(_ content: Content) -> some View {
+        if let morphID, let morphNamespace {
+            content
+                .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
+                .glassEffectID(morphID, in: morphNamespace)
+        } else {
+            content
+                .glassEffect(.regular.tint(isDark ? Color.black.opacity(0.3) : lightTint), in: shape)
+        }
     }
 
     /// The cheap Material look — used for `.material` surfaces and as the

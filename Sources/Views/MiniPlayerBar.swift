@@ -25,6 +25,9 @@ struct MiniPlayerBar: View {
     /// every level) hangs outside the NavigationStack and a NavigationLink would
     /// find no stack to navigate there.
     let onOpenPlayer: () -> Void
+    /// Native glass-morph identity when hosted in the bottom-bar container.
+    var glassMorphID: String? = nil
+    var glassMorphNamespace: Namespace.ID? = nil
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -152,7 +155,9 @@ struct MiniPlayerBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .modifier(AdaptiveGlassBackground(shape: shape, tier: .glass))
+        .modifier(AdaptiveGlassBackground(
+            shape: shape, tier: .glass,
+            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
         .background(
             GeometryReader { geo in
                 Color.clear
