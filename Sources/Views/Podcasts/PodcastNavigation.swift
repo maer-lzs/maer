@@ -12,7 +12,6 @@ import SwiftUI
 enum PodcastRoute: Hashable {
     case show(feedURL: String)
     case episode(itemId: String)
-    case queue
     /// Y2b: the temporary show preview for a not-yet-subscribed show.
     case showPreview(feedURL: String)
 }
@@ -36,8 +35,6 @@ extension View {
                 } else {
                     ContentUnavailableView("Episode unavailable", systemImage: "mic")
                 }
-            case .queue:
-                PlayQueueView(playerCoordinator: playerCoordinator)
             case .showPreview(let feedURL):
                 PodcastShowPreviewView(feedURL: feedURL)
             }

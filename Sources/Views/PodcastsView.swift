@@ -36,7 +36,6 @@ struct PodcastsView: View {
     @ObservedObject private var progress = PodcastProgressStore.shared
     @ObservedObject private var downloads = DownloadManager.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    @ObservedObject private var queue = PlayQueue.shared
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
     // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage keys.
@@ -85,7 +84,6 @@ struct PodcastsView: View {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     nextUpSection
                     recommendationsSection
-                    queueSection
                     latestEpisodesSection
                     premiumSection
                     downloadedShelf
@@ -103,7 +101,9 @@ struct PodcastsView: View {
         // LibraryView (the Home tab pushes them too) — not here.
         // No subscription → instead of blank, an empty state with a path to add/import.
         .overlay {
-            if allShows.isEmpty && downloaded.isEmpty && queue.isEmpty {
+            // The queue no longer renders on this tab (its home is the player),
+            // so queued items don't keep the empty state away anymore.
+            if allShows.isEmpty && downloaded.isEmpty {
                 ContentUnavailableView {
                     Label("No podcasts yet", systemImage: "dot.radiowaves.left.and.right")
                 } description: {
@@ -175,34 +175,6 @@ struct PodcastsView: View {
         return await PodcastSections.computeDetached(
             shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
         )
-    }
-
-    // MARK: - Queue (user-managed)
-
-    @ViewBuilder
-    private var queueSection: some View {
-        // Show only the resolvable ids (skip orphaned entries silently — the
-        // reorder page cleans them up on play).
-        let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Up Next").font(.title3).bold()
-                    Spacer()
-                    NavigationLink(value: PodcastRoute.queue) {
-                        Text("Edit")
-                    }
-                }
-                .padding(.horizontal)
-                LazyVStack(spacing: 0) {
-                    ForEach(items.prefix(5)) { item in
-                        PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
-                            .padding(.horizontal)
-                        Divider().padding(.leading, 88)
-                    }
-                }
-            }
-        }
     }
 
     // MARK: - Up Next (large cards, one per show)

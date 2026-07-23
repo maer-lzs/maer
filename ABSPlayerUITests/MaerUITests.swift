@@ -142,6 +142,52 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "full-player-book")
     }
 
+    /// Up-Next home at the player, entry 1: the mini-player long-press menu
+    /// opens the queue sheet; the podcast tab carries no queue section anymore
+    /// (its "Up Next" header came only from the removed section). All queries
+    /// via locale-independent a11y ids — the sim runs localized.
+    func testPlayerQueueEntryMiniPlayer() {
+        let app = launchSeeded(withActivePlayer: true)
+        // Podcast tab: no queue section despite the seeded, non-empty queue.
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 20))
+        podcasts.tap()
+        // "Seed Show" is the established tab anchor (testHomeAndTabSwitching).
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15),
+                      "podcast tab content must be up before asserting absence")
+        XCTAssertFalse(app.staticTexts["Up Next"].firstMatch.exists,
+                       "the podcast tab must not render the queue section anymore")
+        // Long-press on the mini player → context menu → queue sheet.
+        let miniPlayer = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 15))
+        miniPlayer.press(forDuration: 1.6)
+        let menuEntry = app.buttons["mini-queue-entry"].firstMatch
+        XCTAssertTrue(menuEntry.waitForExistence(timeout: 10),
+                      "mini-player long-press must offer the queue entry")
+        menuEntry.tap()
+        let queueList = app.descendants(matching: .any)["play-queue-list"].firstMatch
+        XCTAssertTrue(queueList.waitForExistence(timeout: 10),
+                      "queue sheet must open from the mini player")
+        snap(app, "player-queue-sheet")
+        app.terminate()
+    }
+
+    /// Up-Next home at the player, entry 2: the full player's queue control
+    /// opens the same queue sheet.
+    func testPlayerQueueEntryFullPlayer() {
+        let app = launchSeeded(withActivePlayer: true)
+        let miniPlayer = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20))
+        miniPlayer.tap()
+        let queueControl = app.buttons["player-queue"].firstMatch
+        XCTAssertTrue(queueControl.waitForExistence(timeout: 15),
+                      "full player must carry the queue control")
+        queueControl.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["play-queue-list"].firstMatch.waitForExistence(timeout: 10),
+                      "queue sheet must open from the full player")
+        app.terminate()
+    }
+
     /// X15: from a music SUB-page (album detail, artist detail) the media tab bar
     /// must switch library — music pushes used plain destination links that stayed
     /// on the stack, so the tab tap looked dead. Both entry points are covered.

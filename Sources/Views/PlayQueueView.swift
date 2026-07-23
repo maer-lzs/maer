@@ -41,8 +41,11 @@ struct PlayQueueView: View {
             }
         }
         .listStyle(.plain)
-        .bottomBarClearance()
-        .reportsBottomBarScroll()
+        // Sheet-only since the player became the queue's home: no floating
+        // bottom bar inside a sheet (no clearance), and reporting scroll from
+        // here would collapse the bar BEHIND the sheet (no reporting).
+        // Locale-independent handle for the UI-test harness.
+        .accessibilityIdentifier("play-queue-list")
         .navigationTitle("Up Next")
         .toolbar {
             if !queue.isEmpty {

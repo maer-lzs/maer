@@ -600,6 +600,8 @@ struct LibraryView: View {
                 } label: {
                     Label("Up Next", systemImage: "text.line.first.and.arrowtriangle.forward")
                 }
+                // Locale-independent handle for the UI-test harness.
+                .accessibilityIdentifier("mini-queue-entry")
             }
             .offset(y: miniPlayerSwapOffset)
             .matchedGeometryEffect(id: "player", in: barNS)
