@@ -31,6 +31,11 @@ final class SubsonicProvider: AudioProvider {
     /// F6: artists surfaced by search, kept for the artist route.
     var searchedArtistsById: [String: SubsonicArtist] = [:]
     private var lastScrobbledSong: [String: String] = [:]
+    /// Package 3: the last song we wrote a continue-bookmark for, per playlist
+    /// item — so the previous song's bookmark is cleaned up on a song change.
+    private var lastBookmarkedSong: [String: String] = [:]
+    /// Short-lived cache of the server's bookmarks (invalidated on our own write).
+    private var bookmarksCache: [SubsonicBookmark]?
 
     /// Albums the user starred (favorites), loaded lazily from the server.
     private var starredAlbumIds: Set<String>?
@@ -218,7 +223,33 @@ final class SubsonicProvider: AudioProvider {
         // T3/T5: remember this item too, so a song played from an artist page
         // (never in the album grid) still resolves in the Up-Next queue.
         itemsById[itemId] = LibraryItem(id: itemId, media: media, addedAt: nil)
-        return LibraryItemDetail(id: itemId, media: media, userMediaProgress: nil)
+        // Package 3: a playlist resumes from its server bookmark (cross-device).
+        // Same-device resume is also covered by the player's local backup, so a
+        // bookmark-API failure just leaves this nil — no hard dependency.
+        let progress = await playlistResumeProgress(itemId: itemId, total: total)
+        return LibraryItemDetail(id: itemId, media: media, userMediaProgress: progress)
+    }
+
+    /// The most-recent bookmark for a playlist, as a `MediaProgress` the player
+    /// seeks to on open. Nil for non-playlists or when no usable bookmark exists.
+    private func playlistResumeProgress(itemId: String, total: Double) async -> MediaProgress? {
+        guard Self.id(itemId, kind: "playlist") != nil, total > 0,
+              let bookmarks = try? await loadBookmarks(),
+              let songs = songsByItemId[itemId] else { return nil }
+        let candidates: [(time: Double, ts: Double)] = bookmarks
+            .filter { $0.comment == itemId }
+            .compactMap { bm in
+                guard let songId = bm.entry?.id,
+                      let time = BookmarkProgressMath.playlistCurrentTime(
+                        songId: songId, positionMs: bm.position ?? 0, songs: songs) else { return nil }
+                return (time, Self.parseCreated(bm.changed) ?? Self.parseCreated(bm.created) ?? 0)
+            }
+        guard let idx = BookmarkProgressMath.mostRecent(candidates.map(\.ts)) else { return nil }
+        let pick = candidates[idx]
+        return MediaProgress(
+            currentTime: pick.time, duration: total,
+            progress: min(max(pick.time / total, 0), 1),
+            isFinished: pick.time >= total - 1, lastUpdate: pick.ts)
     }
 
     /// Songs → player tracks (per-song stream URL via `contentUrl` = song id) plus
@@ -454,20 +485,102 @@ final class SubsonicProvider: AudioProvider {
         client?.mediaURL("stream", ["id": contentPath])
     }
 
-    // MARK: - Progress (no server sync — like local files; scrobble is separate)
+    // MARK: - Progress (scrobble + playlist continue-listening via bookmarks)
 
-    func fetchAllProgress() async throws -> [String: BookProgress] { [:] }
+    /// Package 3: continue-listening for PLAYLISTS. Server bookmarks are the
+    /// source of truth (cross-device); on any failure/empty we fall back to the
+    /// local per-second position backups. Albums are intentionally out of scope
+    /// (the architecture works for them identically — same `sub:` mechanics).
+    func fetchAllProgress() async throws -> [String: BookProgress] {
+        guard client != nil else { return [:] }
+        if let bookmarks = try? await loadBookmarks(), !bookmarks.isEmpty {
+            let byPlaylist = await playlistProgress(from: bookmarks)
+            if !byPlaylist.isEmpty { return byPlaylist }
+        }
+        return await localPlaylistProgress()
+    }
 
-    /// No position sync, but scrobble each song as it starts playing (play counts
-    /// on the server, Last.fm/ListenBrainz where configured). Called ~every 30 s
-    /// and on pause/seek, so a song-change is detected within one interval.
+    /// Scrobble each song as it starts (play counts) AND, for playlists, bookmark
+    /// the current position so it can be resumed later / on another device.
+    /// Called ~every 30 s and on pause/seek, so the position stays fresh.
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
         guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
-        guard song.id != lastScrobbledSong[itemId] else { return }
-        lastScrobbledSong[itemId] = song.id
-        try? await client.scrobble(id: song.id, submission: true)
+        // Scrobble once per song change (play counts) — unchanged.
+        if song.id != lastScrobbledSong[itemId] {
+            lastScrobbledSong[itemId] = song.id
+            try? await client.scrobble(id: song.id, submission: true)
+        }
+        // Continue-listening bookmark — PLAYLISTS only (scope). The position is
+        // WITHIN the current song (same `songsByItemId` offset arithmetic as the
+        // scrobble); the playlist item id rides in the comment as context.
+        guard Self.id(itemId, kind: "playlist") != nil else { return }
+        // Moving to a new song → drop the previous song's bookmark so at most one
+        // lingers per playlist (resume is unaffected — the fetch picks the most
+        // recent). Best-effort; a song shared across playlists is a rare edge.
+        if let prev = lastBookmarkedSong[itemId], prev != song.id {
+            try? await client.deleteBookmark(songId: prev)
+        }
+        lastBookmarkedSong[itemId] = song.id
+        let positionMs = Int(max(0, currentTime - song.start) * 1000)
+        try? await client.createBookmark(songId: song.id, positionMs: positionMs, comment: itemId)
+        bookmarksCache = nil   // our own write invalidates the cache
     }
+
+    private func loadBookmarks() async throws -> [SubsonicBookmark] {
+        if let cached = bookmarksCache { return cached }
+        guard let client else { return [] }
+        let list = try await client.getBookmarks()
+        bookmarksCache = list
+        return list
+    }
+
+    /// Reconstruct per-playlist continue progress from bookmarks: group by the
+    /// playlist item id in the comment, add each bookmarked song's offset back
+    /// (shared `songsByItemId` mapping), keep the most-recent per playlist. A
+    /// bookmark whose song is no longer in the playlist is cleanly dropped.
+    private func playlistProgress(from bookmarks: [SubsonicBookmark]) async -> [String: BookProgress] {
+        var byPlaylist: [String: [SubsonicBookmark]] = [:]
+        for bm in bookmarks {
+            guard let comment = bm.comment, Self.id(comment, kind: "playlist") != nil else { continue }
+            byPlaylist[comment, default: []].append(bm)
+        }
+        var result: [String: BookProgress] = [:]
+        for (playlistItemId, bms) in byPlaylist {
+            guard let detail = try? await fetchItemDetail(itemId: playlistItemId),
+                  let songs = songsByItemId[playlistItemId],
+                  let duration = detail.media.duration, duration > 0 else { continue }
+            let candidates: [(time: Double, ts: Double)] = bms.compactMap { bm in
+                guard let songId = bm.entry?.id,
+                      let time = BookmarkProgressMath.playlistCurrentTime(
+                        songId: songId, positionMs: bm.position ?? 0, songs: songs) else { return nil }
+                return (time, Self.parseCreated(bm.changed) ?? Self.parseCreated(bm.created) ?? 0)
+            }
+            guard let idx = BookmarkProgressMath.mostRecent(candidates.map(\.ts)) else { continue }
+            let pick = candidates[idx]
+            result[playlistItemId] = BookmarkProgressMath.progress(
+                currentTime: pick.time, duration: duration, lastUpdate: pick.ts)
+        }
+        return result
+    }
+
+    /// Fallback for servers without a usable bookmark API: continue progress from
+    /// the per-second local position backups (written by the player) for the
+    /// playlists we know. Storage TECHNIQUE mirrors `LocalProvider` (that provider
+    /// stays untouched — this is a self-contained copy).
+    private func localPlaylistProgress() async -> [String: BookProgress] {
+        let playlists = (try? await allPlaylists()) ?? []
+        var result: [String: BookProgress] = [:]
+        for pl in playlists {
+            let itemId = Self.itemId(playlistId: pl.id)
+            guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
+                  stored.count == 2, let duration = pl.duration.map(Double.init), duration > 0 else { continue }
+            result[itemId] = BookmarkProgressMath.progress(
+                currentTime: stored[0], duration: duration, lastUpdate: stored[1])
+        }
+        return result
+    }
+
 
     // MARK: - Bookmarks (unsupported)
 

@@ -258,6 +258,25 @@ struct SubsonicClient {
         try await get("getRandomSongs", ["size": String(size)]).randomSongs?.song ?? []
     }
 
+    // MARK: - Bookmarks (play-position sync — playlist continue-listening)
+
+    /// All of the user's play-position bookmarks (song + position + comment).
+    func getBookmarks() async throws -> [SubsonicBookmark] {
+        try await get("getBookmarks").bookmarks?.bookmark ?? []
+    }
+
+    /// Create/replace the bookmark for a song (Subsonic keeps one per song per
+    /// user). `comment` carries the enclosing playlist item id (Mär context).
+    func createBookmark(songId: String, positionMs: Int, comment: String) async throws {
+        _ = try await get("createBookmark",
+                          ["id": songId, "position": String(max(0, positionMs)), "comment": comment])
+    }
+
+    /// Delete a song's bookmark (used when playback moves on to the next song).
+    func deleteBookmark(songId: String) async throws {
+        _ = try await get("deleteBookmark", ["id": songId])
+    }
+
     // MARK: - Helpers
 
     private static func randomSalt() -> String {

@@ -30,6 +30,16 @@ struct HomeSectionsTests {
         #expect(HomeSections.byRecency([[]], limit: 5).isEmpty)
     }
 
+    @Test("byRecency ranks a THIRD stream (music playlists) purely by recency")
+    func threeStreams() {
+        let books = [("b1", 30.0)]
+        let episodes = [("e1", 15.0)]
+        let music = [("sub:playlist:p1", 45.0), ("sub:playlist:p2", 5.0)]
+        // Package 3: music is just another input to the same merge — pure recency.
+        let r = HomeSections.byRecency([books, episodes, music], limit: 8)
+        #expect(r == ["sub:playlist:p1", "b1", "e1", "sub:playlist:p2"])
+    }
+
     // MARK: - X1a: fair interleave (both libraries stay present)
 
     @Test("interleave alternates sources so neither starves")

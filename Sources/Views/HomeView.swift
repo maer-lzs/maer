@@ -19,6 +19,9 @@ struct HomeView: View {
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
     /// as the library tabs, no Home-specific component).
     @State private var continueIds: [String] = []
+    /// Package 3: progress per in-progress music playlist (id → progress), so a
+    /// playlist continue card can show its bar and resume at the right spot.
+    @State private var musicContinueProgress: [String: BookProgress] = [:]
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
@@ -136,6 +139,11 @@ struct HomeView: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
+        } else if id.hasPrefix("sub:playlist:"), let item = AppSession.shared.libraryItem(forId: id) {
+            // Package 3: a playlist resumes here (F5 2×2 mosaic cover + progress).
+            MusicContinueCard(item: item,
+                              progress: musicContinueProgress[id],
+                              playerCoordinator: playerCoordinator)
         } else if let item = AppSession.shared.libraryItem(forId: id) {
             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
         }
@@ -346,7 +354,14 @@ struct HomeView: View {
             (id: $0.id, ts: $0.progress?.lastUpdate ?? 0)
         }
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
-        let rankedContinue = HomeSections.byRecency([books, episodes], limit: 8)
+        // Package 3: in-progress music playlists as a THIRD stream (no merge
+        // rewrite — byRecency already takes N streams). Keep the progress map so
+        // the playlist card can render its bar + resume.
+        let musicProgress = (try? await SubsonicProvider.shared.fetchAllProgress()) ?? [:]
+        let music = musicProgress
+            .filter { SubsonicProvider.id($0.key, kind: "playlist") != nil && $0.value.isStarted }
+            .map { (id: $0.key, ts: $0.value.lastUpdate) }
+        let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
 
         // X1b/X1c "Latest Episodes": the newest episode of each show, newest
         // first — the shared pure derivation (cap 30 so the Y3a six-row
@@ -368,6 +383,7 @@ struct HomeView: View {
             await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: id))
         }
         continueIds = rankedContinue
+        musicContinueProgress = musicProgress
         recentEpisodeItems = episodeIds.compactMap { AppSession.shared.libraryItem(forId: $0) }
         recentlyAddedItems = mergedIds.compactMap { byId[$0] }
         if recommendationsEnabled {

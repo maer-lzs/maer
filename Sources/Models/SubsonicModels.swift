@@ -31,6 +31,7 @@ nonisolated struct SubsonicBody: Decodable {
     let lyricsList: SubsonicLyricsList?     // getLyricsBySongId (OpenSubsonic)
     let song: SubsonicSong?                 // getSong
     let randomSongs: SubsonicRandomSongs?   // getRandomSongs (whole-library shuffle)
+    let bookmarks: SubsonicBookmarks?       // getBookmarks (playlist continue-listening)
 }
 
 // MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL — a server
@@ -64,6 +65,21 @@ nonisolated struct SubsonicSimilarSongs: Decodable {
 
 nonisolated struct SubsonicRandomSongs: Decodable {
     let song: [SubsonicSong]?
+}
+
+nonisolated struct SubsonicBookmarks: Decodable {
+    let bookmark: [SubsonicBookmark]?
+}
+
+/// A Subsonic play-position bookmark: a song (`entry`) + a position in ms + an
+/// optional `comment` (Mär stores the enclosing playlist item id there — a song
+/// can be in several playlists, but a bookmark only knows song+position).
+nonisolated struct SubsonicBookmark: Decodable {
+    let position: Int?          // milliseconds into the song
+    let comment: String?
+    let created: String?        // ISO-8601
+    let changed: String?        // ISO-8601 (most-recent wins)
+    let entry: SubsonicSong?
 }
 
 /// OpenSubsonic structured lyrics: optionally time-synced lines.
