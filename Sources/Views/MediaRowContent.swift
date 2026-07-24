@@ -9,7 +9,7 @@ import SwiftUI
 /// a 64pt cover with optional offline/downloaded badges, and a text column
 /// (eyebrow · title · optional progress bar · meta line). The trailing control
 /// cluster stays at each call site (its actions differ per medium).
-struct MediaRowContent: View {
+struct MediaRowContent<CoverOverride: View>: View {
     let coverURL: URL?
     /// Uppercased eyebrow line above the title (show name / author).
     var eyebrow: String? = nil
@@ -30,7 +30,30 @@ struct MediaRowContent: View {
     /// Y58: a caller-supplied cover view replacing the `coverURL` image (radio
     /// rows pass `RadioArtwork`, so a missing favicon reads the same as in the
     /// player). Framing, clipping, dimming and badges stay MediaRowContent's.
-    var coverOverride: AnyView? = nil
+    /// Cell-cost sweep: CONCRETE generic instead of `AnyView` (type erasure
+    /// taxed every row creation/diff in the Lazy containers).
+    var coverOverride: CoverOverride?
+
+    init(coverURL: URL?, eyebrow: String? = nil, title: String,
+         titleDimmed: Bool = false, coverDimmed: Bool = false,
+         offlineBadge: Bool = false, downloadedBadge: Bool = false,
+         progressFraction: Double? = nil, meta: String? = nil,
+         showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
+         coverSize: CGFloat = 64, coverOverride: CoverOverride?) {
+        self.coverURL = coverURL
+        self.eyebrow = eyebrow
+        self.title = title
+        self.titleDimmed = titleDimmed
+        self.coverDimmed = coverDimmed
+        self.offlineBadge = offlineBadge
+        self.downloadedBadge = downloadedBadge
+        self.progressFraction = progressFraction
+        self.meta = meta
+        self.showsPlayedCheck = showsPlayedCheck
+        self.placeholderSystemImage = placeholderSystemImage
+        self.coverSize = coverSize
+        self.coverOverride = coverOverride
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -104,5 +127,24 @@ struct MediaRowContent: View {
                     .padding(2)
             }
         }
+    }
+}
+
+
+extension MediaRowContent where CoverOverride == EmptyView {
+    /// The standard row (no cover override) — every non-radio caller.
+    init(coverURL: URL?, eyebrow: String? = nil, title: String,
+         titleDimmed: Bool = false, coverDimmed: Bool = false,
+         offlineBadge: Bool = false, downloadedBadge: Bool = false,
+         progressFraction: Double? = nil, meta: String? = nil,
+         showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
+         coverSize: CGFloat = 64) {
+        self.init(coverURL: coverURL, eyebrow: eyebrow, title: title,
+                  titleDimmed: titleDimmed, coverDimmed: coverDimmed,
+                  offlineBadge: offlineBadge, downloadedBadge: downloadedBadge,
+                  progressFraction: progressFraction, meta: meta,
+                  showsPlayedCheck: showsPlayedCheck,
+                  placeholderSystemImage: placeholderSystemImage,
+                  coverSize: coverSize, coverOverride: nil)
     }
 }

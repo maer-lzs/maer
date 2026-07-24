@@ -11,33 +11,30 @@ import SwiftUI
 /// which removes it from the queue via the coordinator ("start = flies out").
 struct PlayQueueRow: View {
     let item: LibraryItem
-    @ObservedObject var playerCoordinator: PlayerCoordinator
-    // Y60: an offline, not-downloaded queue entry must dim AND carry the white
-    // wifi.slash glyph (the A3 rule), like every other MediaRowContent surface.
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloadManager = DownloadManager.shared
-
-    private var isOfflineUnavailable: Bool {
-        MediaAvailability.offlineUnavailable(isConnected: networkMonitor.isConnected,
-                                             isDownloaded: downloadManager.isDownloaded(itemId: item.id))
-    }
+    /// Cell-cost sweep: plain reference (actions only) — no subscriptions on
+    /// row creation; the A3 dim resolves in the scope leaf.
+    let playerCoordinator: PlayerCoordinator
 
     var body: some View {
-        Button {
-            Task { await playerCoordinator.open(item: item) }
-        } label: {
-            MediaRowContent(
-                coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                eyebrow: item.media?.metadata?.authorName ?? item.author,
-                title: item.title,
-                titleDimmed: isOfflineUnavailable,
-                coverDimmed: isOfflineUnavailable,
-                offlineBadge: isOfflineUnavailable,
-                placeholderSystemImage: placeholderSystemImage
-            )
+        // Y60: an offline, not-downloaded queue entry must dim AND carry the
+        // white wifi.slash glyph (the A3 rule) — reactive via the ONE scope leaf.
+        MediaAvailabilityScope(itemId: item.id) { unavailable in
+            Button {
+                Task { await playerCoordinator.open(item: item) }
+            } label: {
+                MediaRowContent(
+                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    eyebrow: item.media?.metadata?.authorName ?? item.author,
+                    title: item.title,
+                    titleDimmed: unavailable,
+                    coverDimmed: unavailable,
+                    offlineBadge: unavailable,
+                    placeholderSystemImage: placeholderSystemImage
+                )
+            }
+            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .contentShape(Rectangle())
     }
 
     /// Cover-less placeholder glyph by media type.

@@ -10,13 +10,17 @@ import SwiftUI
 /// row dims and carries the white status glyph, and the tap is disabled.
 struct RadioStationRow: View {
     let station: RadioStation
-    @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Cell-cost sweep: plain reference (actions only) — the row builds without
+    /// subscriptions; the net gate resolves in the scope leaf below.
+    let playerCoordinator: PlayerCoordinator
     /// Called after the favorite is toggled, so a favorites list can refresh.
     var onFavoriteToggled: () -> Void = {}
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @Environment(\.pushRadioRoute) private var pushRadioRoute
 
     var body: some View {
+        // Live radio is a pure net gate (never "downloaded") — the ONE
+        // observing leaf wraps the row so dim AND disabled stay reactive.
+        MediaAvailabilityScope(itemId: station.id, isDownloadedOverride: { false }) { unavailable in
         Button {
             RadioPlay.play(station, playerCoordinator: playerCoordinator)
         } label: {
@@ -24,22 +28,23 @@ struct RadioStationRow: View {
                 coverURL: nil,
                 eyebrow: station.tags.first,
                 title: station.name,
-                titleDimmed: !networkMonitor.isConnected,
-                coverDimmed: !networkMonitor.isConnected,
-                offlineBadge: !networkMonitor.isConnected,
+                titleDimmed: unavailable,
+                coverDimmed: unavailable,
+                offlineBadge: unavailable,
                 placeholderSystemImage: "dot.radiowaves.left.and.right",
-                coverOverride: AnyView(RadioArtwork(
+                coverOverride: RadioArtwork(
                     stationID: station.id,
-                    faviconURL: station.faviconURL.flatMap { URL(string: $0) }))
+                    faviconURL: station.faviconURL.flatMap { URL(string: $0) })
             )
             .padding(.horizontal)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!networkMonitor.isConnected)
+        .disabled(unavailable)
         .contextMenu {
             RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
             RadioDetailsButton(station: station, push: pushRadioRoute)
+        }
         }
     }
 }
@@ -48,7 +53,8 @@ struct RadioStationRow: View {
 /// (Popular / From your region) — the shared `RadioArtwork` (Y58) over the name.
 struct RadioStationCard: View {
     let station: RadioStation
-    @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Cell-cost sweep: plain reference — actions only, no subscription.
+    let playerCoordinator: PlayerCoordinator
     var onFavoriteToggled: () -> Void = {}
     @Environment(\.pushRadioRoute) private var pushRadioRoute
 
@@ -128,7 +134,8 @@ enum RadioPlay {
 struct RadioCardRow: View {
     let title: String
     let stations: [RadioStation]
-    @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// Cell-cost sweep: plain reference — actions only, no subscription.
+    let playerCoordinator: PlayerCoordinator
     var onFavoriteToggled: () -> Void = {}
 
     var body: some View {
