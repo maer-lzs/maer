@@ -435,6 +435,13 @@ struct SettingsView: View {
     private static var versionString: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "–"
+        // Build stamp: the short git SHA of the BUILT state (stamped into the
+        // Info.plist by the "Stamp git SHA" build phase) — device tests are now
+        // unambiguously attributable to a commit (a stale incremental build
+        // shows its old SHA instead of silently masquerading as the fix).
+        if let sha = Bundle.main.object(forInfoDictionaryKey: "GitSHA") as? String, !sha.isEmpty {
+            return "\(version) (\(build)) · \(sha)"
+        }
         return "\(version) (\(build))"
     }
 }
