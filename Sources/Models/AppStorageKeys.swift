@@ -351,4 +351,12 @@ nonisolated enum AppStorageKeys {
             }
         }
     }
+
+    /// Hitch A/B diagnosis: disable the bar collapse entirely (`collapsed`
+    /// stays false). Compiled into Release on purpose — the felt tests run on
+    /// Release builds; the toggle lives at the bottom of Settings.
+    static let disableBarCollapse = "debug.disableBarCollapse"
+    static var disableBarCollapseValue: Bool {
+        UserDefaults.standard.bool(forKey: disableBarCollapse)
+    }
 }

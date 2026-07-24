@@ -316,12 +316,19 @@ struct SettingsView: View {
 
 
 
+    /// Hitch A/B diagnosis toggle (spec 25.07): collapse fully off, so a
+    /// remaining wiggle at the threshold is provably collapse-coupled or not.
+    @AppStorage(AppStorageKeys.disableBarCollapse) private var disableBarCollapse = false
+
     private var aboutSection: some View {
         Section {
             LabeledContent {
                 Text(Self.versionString)
             } label: {
                 Label("Version", systemImage: "info.circle")
+            }
+            Toggle(isOn: $disableBarCollapse) {
+                Label("Disable bar collapse (diagnosis)", systemImage: "rectangle.bottomthird.inset.filled")
             }
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")
