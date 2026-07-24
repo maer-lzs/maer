@@ -64,7 +64,15 @@ struct LibraryView: View {
     /// Measured height of the floating bottom zone (mini-player + tabs) — passed
     /// as bottom free space to all scroll contents so nothing is covered. The
     /// zone is an overlay (reserves no space itself).
+    /// ROOT-HITCH fix: this value must NEVER track the morphing bar live — an
+    /// animated inset moves the content, the moved content reports new scroll
+    /// offsets, the reports re-flip the collapse at the 60 pt threshold, and
+    /// the scroll oscillates back-and-forth at one fixed spot (the felt bump
+    /// that survived every previous fix). Only SETTLED heights commit (below).
     @State private var bottomBarHeight: CGFloat = 0
+    /// Settle-debounce for the height commit: mid-animation values re-cancel
+    /// this task every frame, so a morph can never move the reserved inset.
+    @State private var barHeightSettleTask: Task<Void, Never>?
     /// Settings as a modal sheet (NOT pushed onto the library stack) — otherwise
     /// the mini-player overlay lies over it and its media pills trigger a jump
     /// back to the library from within the settings.
@@ -295,7 +303,22 @@ struct LibraryView: View {
                         Color.clear
                             .onAppear { bottomBarHeight = proxy.size.height }
                             .onChange(of: proxy.size.height) { _, h in
-                                if !barCollapsed { bottomBarHeight = h }
+                                // ROOT-HITCH fix: commit only SETTLED expanded
+                                // heights. During a collapse/expand spring the
+                                // measured height changes every frame — each
+                                // change cancels the pending commit, so the
+                                // reserved inset stays CONSTANT through the
+                                // morph (the morph is purely visual overlay
+                                // work and never perturbs scroll geometry).
+                                // Genuine composition changes (banner appears,
+                                // mini player mounts) still commit once calm.
+                                guard !barCollapsed, h != bottomBarHeight else { return }
+                                barHeightSettleTask?.cancel()
+                                barHeightSettleTask = Task { @MainActor in
+                                    try? await Task.sleep(nanoseconds: 180_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    if bottomBarHeight != h { bottomBarHeight = h }
+                                }
                             }
                     }
                 }
