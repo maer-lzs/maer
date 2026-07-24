@@ -220,7 +220,7 @@ private struct PlaylistCard: View {
             title: playlist.name ?? String(localized: "Playlist"),
             subtitle: metaLine,
             coverURL: nil,
-            coverOverride: AnyView(PlaylistArtwork(playlistID: playlist.id, coverURLs: coverURLs)),
+            coverOverride: PlaylistArtwork(playlistID: playlist.id, coverURLs: coverURLs),
             onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
         )
         .frame(width: Self.width)

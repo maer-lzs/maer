@@ -14,7 +14,7 @@ import SwiftUI
 /// - a 2-line title and an OPTIONAL subtitle below.
 /// The tap target is the caller's (`onTap`); the corner control is a sibling
 /// overlay so its taps never trigger the tile navigation underneath.
-struct MediaTile<Corner: View>: View {
+struct MediaTile<Corner: View, CoverOverride: View>: View {
     let title: String
     var subtitle: String? = nil
     let coverURL: URL?
@@ -32,9 +32,29 @@ struct MediaTile<Corner: View>: View {
     /// F5: a caller-supplied square cover replacing the `coverURL` image
     /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic) — the Y58
     /// coverOverride pattern for the poster tile. Progress/badges/clip stay.
-    var coverOverride: AnyView? = nil
+    /// Cell-cost sweep: CONCRETE generic instead of `AnyView` — type erasure
+    /// taxed every tile creation/diff (Lazy containers rebuild cells on entry).
+    let coverOverride: CoverOverride?
     let onTap: () -> Void
     @ViewBuilder let corner: () -> Corner
+
+    init(title: String, subtitle: String? = nil, coverURL: URL?,
+         placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
+         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         coverOverride: CoverOverride?,
+         onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
+        self.title = title
+        self.subtitle = subtitle
+        self.coverURL = coverURL
+        self.placeholderSystemImage = placeholderSystemImage
+        self.imageContentMode = imageContentMode
+        self.cornerBadgeURL = cornerBadgeURL
+        self.progress = progress
+        self.unavailable = unavailable
+        self.coverOverride = coverOverride
+        self.onTap = onTap
+        self.corner = corner
+    }
 
     private static var imageShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -97,16 +117,19 @@ struct MediaTile<Corner: View>: View {
     }
 
     /// Thin bar along the image's bottom edge — only for started items.
+    /// Cell-cost sweep: NO GeometryReader (a layout subpass per tile) — the
+    /// accent fill is a full-width rect scaled by the fraction (pure render
+    /// transform, `anchor: .leading`).
     @ViewBuilder
     private var progressBar: some View {
         if let progress, progress > 0 {
-            GeometryReader { geo in
-                Rectangle().fill(.white.opacity(0.35))
-                Rectangle()
-                    .fill(AppTheme.accent)
-                    .frame(width: geo.size.width * min(max(progress, 0), 1))
-            }
-            .frame(height: 3)
+            Rectangle().fill(.white.opacity(0.35))
+                .overlay(alignment: .leading) {
+                    Rectangle()
+                        .fill(AppTheme.accent)
+                        .scaleEffect(x: min(max(progress, 0), 1), y: 1, anchor: .leading)
+                }
+                .frame(height: 3)
         }
     }
 
@@ -127,17 +150,46 @@ struct MediaTile<Corner: View>: View {
     }
 }
 
-extension MediaTile where Corner == EmptyView {
+extension MediaTile where CoverOverride == EmptyView {
+    /// Corner-carrying tiles without a cover override (the standard grid tile).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
-         coverOverride: AnyView? = nil,
+         onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
+        self.init(title: title, subtitle: subtitle, coverURL: coverURL,
+                  placeholderSystemImage: placeholderSystemImage,
+                  imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
+                  progress: progress, unavailable: unavailable, coverOverride: nil,
+                  onTap: onTap, corner: corner)
+    }
+}
+
+extension MediaTile where Corner == EmptyView {
+    /// Cover-override tiles without a corner (the playlist poster card).
+    init(title: String, subtitle: String? = nil, coverURL: URL?,
+         placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
+         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         coverOverride: CoverOverride,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
                   progress: progress, unavailable: unavailable, coverOverride: coverOverride,
-                  onTap: onTap) { EmptyView() }
+                  onTap: onTap, corner: { EmptyView() })
+    }
+}
+
+extension MediaTile where Corner == EmptyView, CoverOverride == EmptyView {
+    /// Plain tiles (no corner, no override).
+    init(title: String, subtitle: String? = nil, coverURL: URL?,
+         placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
+         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         onTap: @escaping () -> Void) {
+        self.init(title: title, subtitle: subtitle, coverURL: coverURL,
+                  placeholderSystemImage: placeholderSystemImage,
+                  imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
+                  progress: progress, unavailable: unavailable, coverOverride: nil,
+                  onTap: onTap, corner: { EmptyView() })
     }
 }
 
