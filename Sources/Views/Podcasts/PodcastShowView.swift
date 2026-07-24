@@ -90,7 +90,7 @@ struct PodcastShowView: View {
                 .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
-        .bottomBarClearance()
+        .barAwareList()
         .reportsBottomBarScroll()
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)

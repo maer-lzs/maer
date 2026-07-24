@@ -107,7 +107,7 @@ struct MusicAlbumView: View {
         .listStyle(.plain)
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
+        .barAwareList()
         .addToPlaylistSheet(target: $addTarget)
         .toolbar {
             // Y63: page actions inboard, the settings cog OUTERMOST — declared

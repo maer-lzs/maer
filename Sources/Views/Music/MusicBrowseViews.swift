@@ -24,7 +24,7 @@ struct MusicArtistsView: View {
         .listStyle(.plain)
         .navigationTitle("Artists")
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
+        .barAwareList()
     }
 }
 
@@ -206,7 +206,7 @@ struct MusicPlaylistsView: View {
         .listStyle(.plain)
         .navigationTitle("Playlists")
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
+        .barAwareList()
     }
 
     /// A light library item pointing at the playlist; the detail view loads its
