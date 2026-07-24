@@ -1264,12 +1264,16 @@ struct LibraryView: View {
             // 3c/GT3b: sort + settings (both via here) SCROLL UP out of frame
             // when the bottom bar collapses (scrolling) and POP back in at rest —
             // same `barCollapsed` trigger (3b consistency). `opacity 0` while out
-            // drops the glass render (hitch relief); the bouncy spring gives the
-            // pop-in ("aufploppen").
+            // drops the glass render (hitch relief).
+            // Hitch-rest H1: dampingFraction 0.62 → 0.9 — the under-damped
+            // spring OVERSHOT (forth-then-back); anything sharing its
+            // transaction window at the collapse flip wiggled with it (the
+            // grid's micro back-and-forth at the 60 pt threshold). 0.9 keeps a
+            // slight pop-in without overshoot.
             .offset(y: barCollapsed ? -72 : 0)
             .opacity(barCollapsed ? 0 : 1)
             .allowsHitTesting(!barCollapsed)
-            .animation(.spring(response: 0.35, dampingFraction: 0.62), value: barCollapsed)
+            .animation(.spring(response: 0.35, dampingFraction: 0.9), value: barCollapsed)
     }
 
     /// Cover grid with a self-computed column count and width (see
