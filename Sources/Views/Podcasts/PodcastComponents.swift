@@ -12,11 +12,12 @@ import Combine
 /// both as overlays so they don't trigger the card tap.
 struct PodcastFeaturedCard: View {
     let item: LibraryItem
-    @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var progress = PodcastProgressStore.shared
-    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    @ObservedObject private var downloads = DownloadManager.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    /// Cell-cost sweep: the CARD carries no global observers — every cell
+    /// creation used to set up 5 subscriptions (the per-cell bump). State is
+    /// read plain; refresh comes from the hosts' coarse recompute (gated
+    /// section applies), the offline dim from the MediaAvailabilityScope LEAF
+    /// around the artwork, live download state from CardDownloadBadge.
+    let playerCoordinator: PlayerCoordinator
     @StateObject private var colorLoader = CoverColorLoader()
     private let width = CardMetrics.featuredCardWidth
     // D5/B4: the overlay pill and the fixed line heights scale with Dynamic
@@ -27,12 +28,6 @@ struct PodcastFeaturedCard: View {
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
     private var isPlayed: Bool { podcastPlayState(for: item) == .played }
-
-    /// S14/A6: offline and not downloaded → the episode can't start. Dim the
-    /// cover and mark it, exactly like the book cards (BookCoverView).
-    private var isOfflineUnavailable: Bool {
-        !networkMonitor.isConnected && !downloads.isDownloaded(itemId: item.id)
-    }
 
     /// Show the show cover as a badge only when it differs from the episode
     /// cover (otherwise it would be redundant).
@@ -74,7 +69,7 @@ struct PodcastFeaturedCard: View {
     /// Last played (relative) from local/ABS progress.
     private var lastPlayedText: String {
         let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
-        let absTs = absPodcast.episodeProgress[item.id]?.lastUpdate ?? 0
+        let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
         let ts = max(localTs, absTs)
         guard ts > 0 else { return relativeDateText(item) }
         return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
@@ -90,10 +85,14 @@ struct PodcastFeaturedCard: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 0) {
-            podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
-                // X6b: cover still dims when played/offline; the wifi.slash marker
-                // now lives in the card-corner badge (CardDownloadBadge).
-                .opacity(isPlayed || isOfflineUnavailable ? 0.5 : 1)
+            // S14/A6 + sweep: the offline dim resolves in the ONE observing
+            // leaf (MediaAvailabilityScope) — the card itself stays plain.
+            MediaAvailabilityScope(itemId: item.id) { unavailable in
+                podcastArtwork(url: coverURL, size: width, corner: 0, thumbnailPixel: 800)
+                    // X6b: cover still dims when played/offline; the wifi.slash
+                    // marker lives in the card-corner badge (CardDownloadBadge).
+                    .opacity(isPlayed || unavailable ? 0.5 : 1)
+            }
                 // The image fades softly into the color area (the "blurry" seam).
                 .overlay(alignment: .bottom) {
                     LinearGradient(colors: [.clear, colorLoader.accent],
@@ -162,19 +161,23 @@ struct PodcastFeaturedCard: View {
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    @ObservedObject private var downloads = DownloadManager.shared
-
-    /// A show is unusable offline when none of its episodes is downloaded — same
-    /// dimming convention as the featured cards.
-    private var isOfflineUnavailable: Bool {
-        guard !networkMonitor.isConnected else { return false }
-        return !info.show.episodes.contains { downloads.isDownloaded(itemId: $0.guid) }
-    }
 
     var body: some View {
-        let unavailable = isOfflineUnavailable
-        return VStack(alignment: .leading, spacing: 6) {
+        // Cell-cost sweep: the tile carries no global observers — the show-level
+        // "any episode downloaded" dim resolves in the MediaAvailabilityScope
+        // leaf (custom resolve), same convention as the featured cards.
+        MediaAvailabilityScope(
+            itemId: info.show.id,
+            isDownloadedOverride: { [episodes = info.show.episodes] in
+                episodes.contains { DownloadManager.shared.isDownloaded(itemId: $0.guid) }
+            }
+        ) { unavailable in
+            tileBody(unavailable: unavailable)
+        }
+    }
+
+    private func tileBody(unavailable: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 CachedAsyncImage(url: info.show.artworkURL.flatMap { URL(string: $0) }, useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
@@ -247,15 +250,13 @@ struct PodcastEpisodeRow: View {
     /// Tapping the row body opens the episode page on every surface (show
     /// list, downloads, queue); the large play button handles playback.
     var rowTap: PodcastRowTap = .detail
-    @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var progress = PodcastProgressStore.shared
-    @ObservedObject private var absPodcast = ABSPodcastProvider.shared
-    @ObservedObject private var downloads = DownloadManager.shared
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    /// Cell-cost sweep: the ROW carries no global observers (5 subscriptions
+    /// per row creation were the per-cell bump). Plain reads; hosts re-render
+    /// coarsely (PodcastsRecomputeScope / section applies), the play glyph
+    /// lives in the observing EpisodeRowPlayButton leaf, live download state
+    /// in PodcastDownloadButton.
+    let playerCoordinator: PlayerCoordinator
     @Environment(\.pushPodcastRoute) private var pushRoute
-
-    private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
-    private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
 
     var body: some View {
         // Resolve the play state ONCE per render — it deserializes UserDefaults,
@@ -271,7 +272,7 @@ struct PodcastEpisodeRow: View {
             // Trailing controls: download + the large play button. Info is
             // gone — the whole row body opens the episode page instead.
             PodcastDownloadButton(item: item, showsDownloadedState: false)
-            playButton
+            EpisodeRowPlayButton(item: item, playerCoordinator: playerCoordinator)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
@@ -303,7 +304,7 @@ struct PodcastEpisodeRow: View {
                 )
             }
             .tint(.green)
-            if downloads.isDownloaded(itemId: item.id) {
+            if DownloadManager.shared.isDownloaded(itemId: item.id) {
                 Button(role: .destructive) {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: {
@@ -346,9 +347,10 @@ struct PodcastEpisodeRow: View {
         }
     }
 
-    /// Offline and not downloaded: the row cannot start playback.
+    /// Offline and not downloaded: the row cannot start playback. Plain reads —
+    /// the hosting page observes NetworkMonitor once (page-level), not per row.
     private var isOfflineUnavailable: Bool {
-        !networkMonitor.isConnected && !downloads.isDownloaded(itemId: item.id)
+        !NetworkMonitor.shared.isConnected && !DownloadManager.shared.isDownloaded(itemId: item.id)
     }
 
     private func rowContent(state: EpisodePlayState, isPlayed: Bool) -> some View {
@@ -360,39 +362,12 @@ struct PodcastEpisodeRow: View {
             titleDimmed: isPlayed,
             coverDimmed: isPlayed || isOfflineUnavailable,
             offlineBadge: isOfflineUnavailable,
-            downloadedBadge: downloads.isDownloaded(itemId: item.id),
+            downloadedBadge: DownloadManager.shared.isDownloaded(itemId: item.id),
             progressFraction: inProgress,
             meta: metaText(state: state),
             showsPlayedCheck: isPlayed,
             placeholderSystemImage: "mic"
         )
-    }
-
-    private var playButton: some View {
-        Button { Task { await playButtonTapped() } } label: {
-            Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")
-                .font(.system(size: 30))
-                .foregroundStyle(.secondary)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
-    }
-
-    private func playButtonTapped() async {
-        if isPlayingThis {
-            playerCoordinator.viewModel?.pause()
-        } else if isCurrent {
-            playerCoordinator.viewModel?.play()
-        } else if podcastPlayState(for: item) == .played {
-            // Replay a finished episode from the beginning + mark unplayed.
-            // `restart` writes 0 through on every source (server + iCloud/gpodder).
-            podcastSetPlayed(item, false)
-            await playerCoordinator.open(item: item, restart: true)
-        } else {
-            await playerCoordinator.open(item: item)
-        }
     }
 
     /// "2 days ago · 45 min", "2 days ago · 12 min left" or "Played".
@@ -411,6 +386,43 @@ struct PodcastEpisodeRow: View {
             }
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// The row's play/pause glyph — the ONE observing leaf of the row (the glyph
+/// must flip live while THIS episode plays; the row itself stays plain).
+struct EpisodeRowPlayButton: View {
+    let item: LibraryItem
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+
+    private var isCurrent: Bool { playerCoordinator.activeItem?.id == item.id }
+    private var isPlayingThis: Bool { isCurrent && playerCoordinator.isPlaying }
+
+    var body: some View {
+        Button { Task { await tapped() } } label: {
+            Image(systemName: isPlayingThis ? "pause.circle.fill" : "play.circle.fill")
+                .font(.system(size: 30))
+                .foregroundStyle(.secondary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
+    }
+
+    private func tapped() async {
+        if isPlayingThis {
+            playerCoordinator.viewModel?.pause()
+        } else if isCurrent {
+            playerCoordinator.viewModel?.play()
+        } else if podcastPlayState(for: item) == .played {
+            // Replay a finished episode from the beginning + mark unplayed.
+            // `restart` writes 0 through on every source (server + iCloud/gpodder).
+            podcastSetPlayed(item, false)
+            await playerCoordinator.open(item: item, restart: true)
+        } else {
+            await playerCoordinator.open(item: item)
+        }
     }
 }
 
@@ -572,19 +584,20 @@ struct RecommendationTile: View {
     var subtitle: String? = nil
     var width: CGFloat = CardMetrics.recommendationTileWidth
     @Environment(\.pushPodcastRoute) private var pushRoute
-    /// A3: catalog tiles need the net (preview + subscribe) — offline they dim
-    /// and carry the badge instead of failing silently on tap.
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-
     var body: some View {
-        MediaTile(
-            title: result.title,
-            subtitle: subtitle,
-            coverURL: result.artworkURL.flatMap { URL(string: $0) },
-            unavailable: !networkMonitor.isConnected,
-            onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
-        ) {
-            PodcastSubscribeBadge(feedURL: result.feedURL)
+        // A3 + sweep: catalog tiles need the net (preview + subscribe) — the
+        // offline dim resolves in the scope leaf (never "downloaded"), the
+        // tile itself carries no observer.
+        MediaAvailabilityScope(itemId: result.feedURL, isDownloadedOverride: { false }) { unavailable in
+            MediaTile(
+                title: result.title,
+                subtitle: subtitle,
+                coverURL: result.artworkURL.flatMap { URL(string: $0) },
+                unavailable: unavailable,
+                onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
+            ) {
+                PodcastSubscribeBadge(feedURL: result.feedURL)
+            }
         }
         .frame(width: width)
         .contextMenu {

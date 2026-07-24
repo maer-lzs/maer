@@ -20,6 +20,10 @@ import SwiftUI
 /// The download badge stays the separate, self-observing `CardDownloadBadge`.
 struct MediaAvailabilityScope<Content: View>: View {
     let itemId: String
+    /// Cell-cost sweep: cases whose "downloaded" notion is not a single item id
+    /// (a show = any episode downloaded; a catalog tile = never) resolve it
+    /// here — the scope stays THE one observing leaf either way.
+    var isDownloadedOverride: (() -> Bool)? = nil
     @ViewBuilder var content: (_ unavailable: Bool) -> Content
     @ObservedObject private var downloadManager = DownloadManager.shared
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
@@ -27,6 +31,6 @@ struct MediaAvailabilityScope<Content: View>: View {
     var body: some View {
         content(MediaAvailability.offlineUnavailable(
             isConnected: networkMonitor.isConnected,
-            isDownloaded: downloadManager.isDownloaded(itemId: itemId)))
+            isDownloaded: isDownloadedOverride?() ?? downloadManager.isDownloaded(itemId: itemId)))
     }
 }

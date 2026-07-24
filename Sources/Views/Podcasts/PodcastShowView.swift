@@ -11,6 +11,12 @@ struct PodcastShowView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
+    /// Cell-cost sweep: the episode ROWS carry no observers anymore — the PAGE
+    /// observes coarsely instead (ONE subscription set per page, not five per
+    /// row): the recompute scope covers progress/download changes (played
+    /// flips, finished downloads), the network monitor the offline dim.
+    @ObservedObject private var recomputeScope = PodcastsRecomputeScope.shared
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var descriptionExpanded = false
