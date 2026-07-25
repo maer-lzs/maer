@@ -57,6 +57,11 @@ enum UITestSeed {
                       chapters: [chapter(0, 0, 1800, "Chapter 1"), chapter(1, 1800, 3600, "Chapter 2")]),
             bookEntry(id: "seed-book-2", title: "Seed Book Two", author: "Ben Author", chapters: nil),
         ]
+        // Scroll depth for collapse-threshold journeys (the two-book grid never
+        // reaches the 60 pt raw offset): a page of filler books.
+        + (3...24).map {
+            bookEntry(id: "seed-book-\($0)", title: "Seed Filler \($0)", author: "Ada Author", chapters: nil)
+        }
         session.libraryViewModel.entries = books
         session.libraryViewModel.recentlyAdded = books
 

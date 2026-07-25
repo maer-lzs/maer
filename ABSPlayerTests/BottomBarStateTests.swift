@@ -39,6 +39,8 @@ struct BottomBarStateTests {
     func publishesOnlyOnFlip() {
         let state = BottomBarState()
         state.collapseDelaySeconds = 0
+        state.flipCooldownSeconds = 0   // H2 belt off: this test pins the
+                                        // publish-dedupe contract, not timing
         state.setUserDragging(true)   // Y31 gesture gate
         // Many below-threshold frames: zero publishes.
         let below = publishCount(of: state) {
@@ -62,6 +64,7 @@ struct BottomBarStateTests {
     func expandAndRecollapse() {
         let state = BottomBarState()
         state.collapseDelaySeconds = 0   // X21: test the threshold, not the delay
+        state.flipCooldownSeconds = 0    // H2 belt off: pins the drag-gate contract
         state.setUserDragging(true)
         state.report(200)
         #expect(state.collapsed)
@@ -245,6 +248,42 @@ struct CalmGateTests {
         bar.runWhenCalm { ran = true }
         bar.reset()
         #expect(ran)
+    }
+}
+
+
+/// H2 belt: a report-driven re-flip is blocked while the previous flip's morph
+/// still runs — whatever geometry the morph perturbs cannot feed back.
+@MainActor
+struct FlipCooldownTests {
+    @Test("a small perturbation back across the threshold is swallowed; a real move and expand() pass")
+    func cooldownBlocksPerturbationOnly() {
+        let bar = BottomBarState()
+        bar.collapseDelaySeconds = 0
+        bar.flipCooldownSeconds = 60          // effectively "morph still running"
+        bar.setUserDragging(true)
+        bar.report(62)
+        #expect(bar.collapsed)                // first flip passes (just past 60)
+        bar.report(58)                        // morph perturbation: 4 pt back
+        #expect(bar.collapsed)                // swallowed: no oscillation
+        bar.report(10)                        // a REAL move (52 pt from the flip)
+        #expect(!bar.collapsed)               // genuine direction change passes
+        bar.report(200)
+        #expect(bar.collapsed)
+        bar.expand()                          // explicit expand always bypasses
+        #expect(!bar.collapsed)
+    }
+
+    @Test("zero cooldown behaves like before the belt")
+    func cooldownExpires() {
+        let bar = BottomBarState()
+        bar.collapseDelaySeconds = 0
+        bar.flipCooldownSeconds = 0
+        bar.setUserDragging(true)
+        bar.report(200)
+        #expect(bar.collapsed)
+        bar.report(10)
+        #expect(!bar.collapsed)               // normal expand at zero cooldown
     }
 }
 

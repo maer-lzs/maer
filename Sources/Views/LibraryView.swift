@@ -73,6 +73,11 @@ struct LibraryView: View {
     /// Settle-debounce for the height commit: mid-animation values re-cancel
     /// this task every frame, so a morph can never move the reserved inset.
     @State private var barHeightSettleTask: Task<Void, Never>?
+    /// H2 finding: the newest measured height — the settle task re-validates
+    /// against it at FIRE time. Without this, the last onChange before a flip
+    /// scheduled a task that fired MID-morph and committed a stale/animated
+    /// height (the ±5 pt contentSize wobble the sim diagnosis caught).
+    @State private var lastMeasuredBarHeight: CGFloat = 0
     /// Settings as a modal sheet (NOT pushed onto the library stack) — otherwise
     /// the mini-player overlay lies over it and its media pills trigger a jump
     /// back to the library from within the settings.
@@ -308,16 +313,23 @@ struct LibraryView: View {
                                 // measured height changes every frame — each
                                 // change cancels the pending commit, so the
                                 // reserved inset stays CONSTANT through the
-                                // morph (the morph is purely visual overlay
-                                // work and never perturbs scroll geometry).
-                                // Genuine composition changes (banner appears,
-                                // mini player mounts) still commit once calm.
+                                // morph. H2: the task RE-VALIDATES at fire
+                                // time (still expanded AND the value truly
+                                // held) — a task scheduled just before a flip
+                                // used to fire mid-morph and commit an
+                                // animated height (the ±5 pt contentSize
+                                // wobble → scroll-geometry perturbation →
+                                // re-flip oscillation).
+                                lastMeasuredBarHeight = h
                                 guard !barCollapsed, h != bottomBarHeight else { return }
                                 barHeightSettleTask?.cancel()
                                 barHeightSettleTask = Task { @MainActor in
                                     try? await Task.sleep(nanoseconds: 180_000_000)
-                                    guard !Task.isCancelled else { return }
-                                    if bottomBarHeight != h { bottomBarHeight = h }
+                                    guard !Task.isCancelled,
+                                          !barCollapsed,
+                                          lastMeasuredBarHeight == h,
+                                          bottomBarHeight != h else { return }
+                                    bottomBarHeight = h
                                 }
                             }
                     }

@@ -52,6 +52,18 @@ final class BottomBarState: ObservableObject {
     /// X21: how long after scroll-start the bar may collapse. Internal so tests
     /// can zero it out; app default 0.2 s (X21c: 0.4 s felt sluggish).
     var collapseDelaySeconds: TimeInterval = 0.2
+    /// H2 belt: report-driven RE-flips are blocked while the previous flip's
+    /// morph still runs AND the offset has barely moved since — the morph's own
+    /// residual geometry perturbation (a few pt) cannot feed back into a new
+    /// decision, while a GENUINE quick direction change (a real swipe moves the
+    /// offset far) passes. `expand()`/`reset()` bypass as before. Internal so
+    /// tests can tune them; cooldown ~the longest morph spring + margin.
+    var flipCooldownSeconds: TimeInterval = 0.7
+    /// Below this offset distance from the last flip a re-flip counts as
+    /// perturbation, not intent.
+    var reflipPerturbationDistance: CGFloat = 44
+    private var lastFlip: Date = .distantPast
+    private var scrollYAtLastFlip: CGFloat = 0
 
     /// X21: signpost each `collapsed` flip so a device Instruments trace can
     /// correlate the collapse/expand morphs with scroll hitches.
@@ -154,6 +166,14 @@ final class BottomBarState: ObservableObject {
                                            elapsedSinceScrollStart: elapsed,
                                            collapseDelay: collapseDelaySeconds)
         guard newValue != collapsed else { return }
+        // H2 belt: a re-flip within the morph window that the offset barely
+        // moved for is the morph's own perturbation — swallow it. Genuine
+        // moves (real swipes) and explicit expands pass.
+        if !forceExpanded,
+           Date().timeIntervalSince(lastFlip) < flipCooldownSeconds,
+           abs(scrollY - scrollYAtLastFlip) < reflipPerturbationDistance { return }
+        lastFlip = Date()
+        scrollYAtLastFlip = scrollY
         collapsed = newValue
         os_signpost(.event, log: Self.signpostLog, name: "barCollapsedFlip",
                     "%{public}s", newValue ? "collapse" : "expand")
