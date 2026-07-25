@@ -28,8 +28,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// can resolve a queued music item for the Up-Next UI + auto-continue.
     /// Populated whenever albums are mapped or an item detail is fetched.
     var itemsById: [String: LibraryItem] = [:]
-    /// F6: artists surfaced by search, kept for the artist route.
-    var searchedArtistsById: [String: SubsonicArtist] = [:]
+    /// F6: artists surfaced by search, kept for the artist route (domain type).
+    var searchedArtistsById: [String: MusicArtist] = [:]
     private var lastScrobbledSong: [String: String] = [:]
     /// Package 3: the last song we wrote a continue-bookmark for, per playlist
     /// item — so the previous song's bookmark is cleaned up on a song change.
@@ -303,9 +303,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             try await client.albumList2(type: type, size: size, offset: offset)))
     }
 
-    func allArtists() async throws -> [SubsonicArtist] {
+    func allArtists() async throws -> [MusicArtist] {
         guard let client else { return [] }
-        return try await client.artists()
+        return try await client.artists().map(Self.domainArtist)
     }
 
     /// Albums of one artist as library items.
@@ -314,9 +314,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return await Self.mapAlbums(try await client.artist(id: artistId)?.album ?? [])
     }
 
-    func allPlaylists() async throws -> [SubsonicPlaylist] {
+    func allPlaylists() async throws -> [MusicPlaylist] {
         guard let client else { return [] }
-        return try await client.playlists()
+        return try await client.playlists().map(Self.domainPlaylist)
     }
 
     /// F5: create a server playlist; returns its namespaced item id when the
@@ -389,30 +389,20 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     // MARK: - OpenSubsonic metadata (M1) — best-effort; empty is normal.
 
-    func artistInfo(artistId: String) async -> SubsonicArtistInfo? {
+    func artistInfo(artistId: String) async -> MusicArtistInfo? {
         guard let client else { return nil }
-        return try? await client.artistInfo(id: artistId)
+        return (try? await client.artistInfo(id: artistId)).map(Self.domainArtistInfo)
     }
 
-    func albumInfo(itemId: String) async -> SubsonicAlbumInfo? {
+    func albumInfo(itemId: String) async -> MusicAlbumInfo? {
         guard let client, let albumId = Self.id(itemId, kind: "album") else { return nil }
-        return try? await client.albumInfo(id: albumId)
+        return (try? await client.albumInfo(id: albumId)).map(Self.domainAlbumInfo)
     }
 
     /// Top songs of an artist as playable one-song items.
-    func topSongs(artistName: String, count: Int = 10) async -> [(item: LibraryItem, song: SubsonicSong)] {
+    func topSongs(artistName: String, count: Int = 10) async -> [MusicTopSong] {
         guard let client, let songs = try? await client.topSongs(artist: artistName, count: count) else { return [] }
-        return songs.map { song in
-            (LibraryItem(
-                id: "sub:song:\(song.id)",
-                media: LibraryItemMedia(
-                    metadata: LibraryItemMetadata(
-                        title: song.title, authorName: song.artist, narratorName: nil,
-                        seriesName: nil, genres: nil, publishedYear: nil, description: nil),
-                    duration: song.duration.map(Double.init), chapters: nil, tracks: nil),
-                addedAt: nil
-            ), song)
-        }
+        return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
     /// One Subsonic song → a playable single-track `sub:song:` library item.
@@ -459,10 +449,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return items
     }
 
-    /// OpenSubsonic lyrics for a song id (structured, possibly synced).
-    func lyrics(songId: String) async -> [SubsonicStructuredLyrics] {
-        guard let client else { return [] }
-        return (try? await client.lyrics(songId: songId)) ?? []
+    /// OpenSubsonic lyrics for a song id — best variant as `SongLyrics`.
+    func lyrics(songId: String) async -> SongLyrics? {
+        guard let client else { return nil }
+        return Self.songLyrics(fromStructured: (try? await client.lyrics(songId: songId)) ?? [])
     }
 
     // MARK: - Favorites (star)
@@ -594,7 +584,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         for pl in playlists {
             let itemId = Self.itemId(playlistId: pl.id)
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
-                  stored.count == 2, let duration = pl.duration.map(Double.init), duration > 0 else { continue }
+                  stored.count == 2, let duration = pl.duration, duration > 0 else { continue }
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
@@ -721,14 +711,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 // MARK: - F6 global search (SearchableProvider)
 
 extension SubsonicProvider {
-    /// Artists seen through search — the artist route needs the full DTO.
-    func artist(forId id: String) -> SubsonicArtist? {
+    /// Artists seen through search — the artist route needs the domain value.
+    func artist(forId id: String) -> MusicArtist? {
         searchedArtistsById[id]
     }
 
     /// Cache a browsed artist so the shared artist route resolves it (same
     /// path as a server search hit).
-    func cacheSearchedArtist(_ artist: SubsonicArtist) {
+    func cacheSearchedArtist(_ artist: MusicArtist) {
         searchedArtistsById[artist.id] = artist
     }
 
@@ -764,7 +754,7 @@ extension SubsonicProvider: SearchableProvider {
         var out: [SearchResult] = []
         for artist in hits.artist ?? [] {
             guard let name = artist.name else { continue }
-            searchedArtistsById[artist.id] = artist
+            searchedArtistsById[artist.id] = Self.domainArtist(artist)
             out.append(SearchResult(
                 id: "sub:artist:\(artist.id)", kind: .artist, title: name,
                 coverURL: coverURL(forItemId: "sub:artist:\(artist.id)")))

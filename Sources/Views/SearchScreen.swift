@@ -26,7 +26,7 @@ struct SearchScreen: View {
     private enum DeckDrill {
         case groups(title: String, groups: [(name: String, entries: [LibraryEntry])])
         case entries(title: String, entries: [LibraryEntry])
-        case artists(title: String, artists: [SubsonicArtist])
+        case artists(title: String, artists: [MusicArtist])
     }
 
     @State private var drill: [DeckDrill] = []

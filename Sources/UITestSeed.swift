@@ -143,16 +143,14 @@ enum UITestSeed {
     /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
     /// rows — the harness navigates through them to reach the artist page and
     /// verify the tab bar can switch library from there (X15).
-    static let seedArtists: [SubsonicArtist] = [
-        SubsonicArtist(id: "seed-artist-1", name: "Seed Artist", coverArt: nil, albumCount: 2, album: nil),
+    static let seedArtists: [MusicArtist] = [
+        MusicArtist(id: "seed-artist-1", name: "Seed Artist", albumCount: 2),
     ]
-    static let seedPlaylists: [SubsonicPlaylist] = [
-        SubsonicPlaylist(id: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
-                         duration: 600, coverArt: nil, owner: nil,
-                         changed: "2026-07-19T10:00:00Z", entry: nil),
-        SubsonicPlaylist(id: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
-                         duration: 4320, coverArt: nil, owner: nil,
-                         changed: "2026-07-20T10:00:00Z", entry: nil),
+    static let seedPlaylists: [MusicPlaylist] = [
+        MusicPlaylist(id: "seed-playlist-1", name: "Seed Playlist", songCount: 3,
+                      duration: 600, changedAt: 1_784_455_200_000),
+        MusicPlaylist(id: "seed-playlist-2", name: "Seed Playlist Two", songCount: 12,
+                      duration: 4320, changedAt: 1_784_541_600_000),
     ]
 
     private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?) -> LibraryEntry {

@@ -28,8 +28,10 @@ struct MusicView: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     /// F5: playlists newest-changed first (default sort).
-    private var sortedPlaylists: [SubsonicPlaylist] {
-        PlaylistPresentation.sortedByChanged(vm.playlists) { PlaylistPresentation.changedDate($0.changed) }
+    private var sortedPlaylists: [MusicPlaylist] {
+        PlaylistPresentation.sortedByChanged(vm.playlists) {
+            $0.changedAt.map { Date(timeIntervalSince1970: $0 / 1000) }
+        }
     }
 
     var body: some View {
@@ -219,7 +221,7 @@ struct MusicView: View {
 /// slot) over the name and a metadata line "18 tracks · 1:12". Tapping opens the
 /// detail page (no direct playback).
 private struct PlaylistCard: View {
-    let playlist: SubsonicPlaylist
+    let playlist: MusicPlaylist
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
 
@@ -244,7 +246,7 @@ private struct PlaylistCard: View {
 
     private var metaLine: String {
         let count = playlist.songCount ?? 0
-        let duration = PlaylistPresentation.durationText(seconds: playlist.duration ?? 0)
+        let duration = PlaylistPresentation.durationText(seconds: Int(playlist.duration ?? 0))
         return "\(count) \(String(localized: "tracks")) · \(duration)"
     }
 }

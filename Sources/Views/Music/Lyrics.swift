@@ -69,19 +69,6 @@ nonisolated enum LyricsParser {
         return (stamps, rest.trimmingCharacters(in: .whitespaces))
     }
 
-    /// Map OpenSubsonic structured lyrics; prefers a synced variant.
-    static func fromStructured(_ list: [SubsonicStructuredLyrics]) -> SongLyrics? {
-        let best = list.first { $0.synced == true } ?? list.first
-        guard let best, let rawLines = best.line, !rawLines.isEmpty else { return nil }
-        let offset = (best.offset ?? 0) / 1000
-        let synced = best.synced == true
-        let lines = rawLines.map {
-            LyricsLine(start: synced ? ($0.start.map { max(0, $0 / 1000 + offset) }) : nil,
-                       text: $0.value)
-        }
-        return SongLyrics(synced: synced, lines: lines)
-    }
-
     /// LRCLIB result sanity check: their matching is by artist+title (+fuzzy
     /// duration) — reject only when both durations are known and clearly apart.
     static func lrclibDurationAcceptable(result: Double?, song: Double, tolerance: Double = 5) -> Bool {
@@ -129,9 +116,9 @@ final class LyricsService: ObservableObject {
             return entry.lyrics
         }
 
-        // 1. Server (OpenSubsonic).
-        var result = LyricsParser.fromStructured(
-            await AppSession.shared.musicProvider.lyrics(songId: songId))
+        // 1. Server (OpenSubsonic) — already mapped to SongLyrics at the
+        // provider boundary (stage 1½).
+        var result = await AppSession.shared.musicProvider.lyrics(songId: songId)
 
         // 2. LRCLIB fallback — only online, only when enabled (opt-out toggle).
         if result == nil,

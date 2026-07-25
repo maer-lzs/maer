@@ -13,14 +13,14 @@ struct MusicMappingTests {
     func playlistMapping() {
         let wire = SubsonicPlaylist(id: "pl-1", name: "Roadtrip", songCount: 12,
                                     duration: 3600, coverArt: nil, owner: nil,
-                                    changed: "2026-07-01T10:00:00Z")
+                                    changed: "2026-07-01T10:00:00Z", entry: nil)
         let domain = SubsonicProvider.domainPlaylist(wire)
         #expect(domain.name == "Roadtrip")
         #expect(domain.duration == 3600)
         #expect(domain.changedAt == 1_782_900_000_000)  // 2026-07-01T10:00:00Z in epoch ms
         let unstamped = SubsonicProvider.domainPlaylist(
             SubsonicPlaylist(id: "pl-2", name: nil, songCount: nil, duration: nil,
-                             coverArt: nil, owner: nil, changed: "not-a-date"))
+                             coverArt: nil, owner: nil, changed: "not-a-date", entry: nil))
         #expect(unstamped.changedAt == nil)
     }
 

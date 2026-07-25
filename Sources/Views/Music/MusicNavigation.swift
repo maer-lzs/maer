@@ -12,12 +12,12 @@ import SwiftUI
 /// put — so from an album/artist page the tab bar could not switch library.
 ///
 /// `Hashable` is implemented by id, so the associated values (LibraryItem,
-/// SubsonicArtist, …) need not be Hashable themselves and stay untouched.
+/// the payloads hash by id, so their types stay simple.
 enum MusicRoute: Hashable {
     case album(LibraryItem)
-    case artist(SubsonicArtist)
-    case artists([SubsonicArtist])
-    case playlists([SubsonicPlaylist])
+    case artist(MusicArtist)
+    case artists([MusicArtist])
+    case playlists([MusicPlaylist])
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -67,14 +67,14 @@ extension EnvironmentValues {
 /// F5: a light library item pointing at a playlist (the detail view loads its
 /// tracks via `fetchItemDetail`). Shared by the playlist list and the card row.
 @MainActor
-func playlistLibraryItem(_ playlist: SubsonicPlaylist) -> LibraryItem {
+func playlistLibraryItem(_ playlist: MusicPlaylist) -> LibraryItem {
     LibraryItem(
         id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
         media: LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: playlist.name, authorName: nil, narratorName: nil,
                 seriesName: nil, genres: nil, publishedYear: nil, description: nil),
-            duration: playlist.duration.map(Double.init), chapters: nil, tracks: nil),
+            duration: playlist.duration, chapters: nil, tracks: nil),
         addedAt: nil)
 }
 

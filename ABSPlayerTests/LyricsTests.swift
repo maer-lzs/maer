@@ -52,7 +52,7 @@ struct LyricsTests {
             line: [SubsonicLyricsLine(start: 5000, value: "Five seconds"),
                    SubsonicLyricsLine(start: 500, value: "Clamped to zero")]
         )]
-        let lyrics = try #require(LyricsParser.fromStructured(structured))
+        let lyrics = try #require(SubsonicProvider.songLyrics(fromStructured: structured))
         #expect(lyrics.synced)
         // 5000ms - 1000ms offset = 4s; 500ms - 1000ms clamps to 0.
         #expect(lyrics.lines.map(\.start) == [4.0, 0.0])
@@ -65,7 +65,7 @@ struct LyricsTests {
             SubsonicStructuredLyrics(lang: "en", synced: true, offset: nil, displayArtist: nil,
                                      displayTitle: nil, line: [SubsonicLyricsLine(start: 1000, value: "synced")]),
         ]
-        let lyrics = try #require(LyricsParser.fromStructured(structured))
+        let lyrics = try #require(SubsonicProvider.songLyrics(fromStructured: structured))
         #expect(lyrics.synced)
         #expect(lyrics.lines.first?.text == "synced")
     }

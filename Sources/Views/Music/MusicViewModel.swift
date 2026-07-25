@@ -20,8 +20,8 @@ struct MusicSource {
     /// reports a case unavailable). Teil 2.
     var albumsPage: @MainActor @Sendable (_ sort: MusicSortOption, _ offset: Int, _ size: Int) async throws -> [LibraryItem]
     var shelf: @MainActor @Sendable (_ type: String, _ size: Int) async throws -> [LibraryItem]
-    var artists: @MainActor @Sendable () async throws -> [SubsonicArtist]
-    var playlists: @MainActor @Sendable () async throws -> [SubsonicPlaylist]
+    var artists: @MainActor @Sendable () async throws -> [MusicArtist]
+    var playlists: @MainActor @Sendable () async throws -> [MusicPlaylist]
 
     static let live = MusicSource(
         albumsPage: { try await AppSession.shared.musicProvider.albumPage(sort: $0, offset: $1, size: $2) },
@@ -61,8 +61,8 @@ final class MusicViewModel: ObservableObject {
     @Published var newest: [LibraryItem] = []
     @Published var frequent: [LibraryItem] = []
     @Published var albums: [LibraryItem] = []
-    @Published var artists: [SubsonicArtist] = []
-    @Published var playlists: [SubsonicPlaylist] = []
+    @Published var artists: [MusicArtist] = []
+    @Published var playlists: [MusicPlaylist] = []
     @Published var isLoading = false
     @Published var errorText: String?
 
@@ -138,8 +138,9 @@ final class MusicViewModel: ObservableObject {
         } catch {
             // Real error: report it, but KEEP the already-loaded library
             // (the view shows the full-screen error page only when empty).
-            errorText = (error as? SubsonicClient.SubsonicError)?.errorDescription
-                ?? error.localizedDescription
+            // Stage 1½: no client-type cast in the UI — SubsonicError is a
+            // LocalizedError, so localizedDescription already carries its text.
+            errorText = error.localizedDescription
             Logger.music.error("album page load failed: \(String(describing: error), privacy: .public)")
             return
         }

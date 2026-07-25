@@ -19,12 +19,12 @@ enum MusicItemKind {
 /// provider cannot do is hidden via the established `capabilities` /
 /// `isAvailable` pattern, not via `if provider is X` branches.
 ///
-/// Deliberate stage-1 cuts (documented for stage 2):
-/// - DTOs keep their Subsonic names (`SubsonicArtist`, `SubsonicPlaylist`, …).
-///   They are generic id/name/count shapes; a second implementation maps into
-///   them. Renaming them is mechanical and rides with stage 2.
-/// - Shelf vocabulary (`"newest"`, `"frequent"`, …) is Subsonic's
-///   `getAlbumList2` type set; a second implementation translates.
+/// Stage 1½: the protocol speaks the NEUTRAL domain types (`MusicArtist`,
+/// `MusicPlaylist`, `MusicArtistInfo`, `MusicAlbumInfo`, `MusicTopSong`,
+/// `SongLyrics`, `LibraryItem`) — the `Subsonic*` Decodables are wire DTOs
+/// internal to their provider, which maps at its boundary (anti-corruption).
+/// Remaining deliberate cut: shelf vocabulary (`"newest"`, `"frequent"`, …)
+/// is Subsonic's `getAlbumList2` type set; a second implementation translates.
 @MainActor
 protocol MusicProvider: AudioProvider {
     /// Fires after a successful library sync — the mounted Music tab re-runs
@@ -38,20 +38,20 @@ protocol MusicProvider: AudioProvider {
     // MARK: Albums
     func albumShelf(type: String, size: Int) async throws -> [LibraryItem]
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem]
-    func albumInfo(itemId: String) async -> SubsonicAlbumInfo?
+    func albumInfo(itemId: String) async -> MusicAlbumInfo?
 
     // MARK: Artists
-    func allArtists() async throws -> [SubsonicArtist]
+    func allArtists() async throws -> [MusicArtist]
     func artistAlbums(artistId: String) async throws -> [LibraryItem]
     /// Resolve an artist surfaced earlier (search/browse cache).
-    func artist(forId id: String) -> SubsonicArtist?
+    func artist(forId id: String) -> MusicArtist?
     /// Cache a browsed artist so the shared artist route resolves it.
-    func cacheSearchedArtist(_ artist: SubsonicArtist)
-    func artistInfo(artistId: String) async -> SubsonicArtistInfo?
-    func topSongs(artistName: String, count: Int) async -> [(item: LibraryItem, song: SubsonicSong)]
+    func cacheSearchedArtist(_ artist: MusicArtist)
+    func artistInfo(artistId: String) async -> MusicArtistInfo?
+    func topSongs(artistName: String, count: Int) async -> [MusicTopSong]
 
     // MARK: Playlists
-    func allPlaylists() async throws -> [SubsonicPlaylist]
+    func allPlaylists() async throws -> [MusicPlaylist]
     /// Create a server playlist; returns its namespaced item id when the
     /// server echoed it, else nil (the caller re-fetches).
     func createPlaylist(name: String) async throws -> String?
@@ -74,7 +74,9 @@ protocol MusicProvider: AudioProvider {
     func shuffleLibrarySongItems(limit: Int) async -> [LibraryItem]
 
     // MARK: Lyrics
-    func lyrics(songId: String) async -> [SubsonicStructuredLyrics]
+    /// The best lyrics variant for a song (synced preferred), already in the
+    /// app's `SongLyrics` shape; nil when the provider/server has none.
+    func lyrics(songId: String) async -> SongLyrics?
 
     // MARK: Favorites
     func isStarred(itemId: String) async -> Bool
@@ -101,7 +103,7 @@ extension MusicProvider {
     func albumShelf(type: String) async throws -> [LibraryItem] {
         try await albumShelf(type: type, size: 20)
     }
-    func topSongs(artistName: String) async -> [(item: LibraryItem, song: SubsonicSong)] {
+    func topSongs(artistName: String) async -> [MusicTopSong] {
         await topSongs(artistName: artistName, count: 10)
     }
     func coverURL(coverArtId: String) -> URL? {

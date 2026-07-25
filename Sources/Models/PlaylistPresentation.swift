@@ -24,7 +24,7 @@ nonisolated enum PlaylistPresentation {
     /// nameless junk is removed. `songCount` is deliberately NOT the criterion.
     /// THE one filter — applied where `playlists` is loaded, so every surface
     /// (F5 card row, the Playlists browse page) is clean (Regel 2).
-    static func realPlaylists(_ playlists: [SubsonicPlaylist]) -> [SubsonicPlaylist] {
+    static func realPlaylists(_ playlists: [MusicPlaylist]) -> [MusicPlaylist] {
         playlists.filter { playlist in
             let name = (playlist.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return !name.isEmpty && name != playlist.id

@@ -30,7 +30,7 @@ struct AddToPlaylistSheet: View {
     let itemId: String
 
     @Environment(\.dismiss) private var dismiss
-    @State private var playlists: [SubsonicPlaylist] = []
+    @State private var playlists: [MusicPlaylist] = []
     @State private var loading = true
     @State private var busy = false
     @State private var errorText: String?

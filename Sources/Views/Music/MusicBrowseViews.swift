@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Flat A–Z list of artists → the artist's albums.
 struct MusicArtistsView: View {
-    let artists: [SubsonicArtist]
+    let artists: [MusicArtist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     var body: some View {
@@ -32,14 +32,14 @@ struct MusicArtistsView: View {
 /// (tap-to-play) and similar artists that exist in the OWN library (M2). All
 /// metadata sections are best-effort — servers without agents show none.
 struct MusicArtistView: View {
-    let artist: SubsonicArtist
+    let artist: MusicArtist
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var albums: [LibraryItem] = []
     @State private var loading = true
-    @State private var info: SubsonicArtistInfo?
-    @State private var topSongs: [(item: LibraryItem, song: SubsonicSong)] = []
-    @State private var similarInLibrary: [SubsonicArtist] = []
+    @State private var info: MusicArtistInfo?
+    @State private var topSongs: [MusicTopSong] = []
+    @State private var similarInLibrary: [MusicArtist] = []
     @State private var bioExpanded = false
     /// D12/B11: rank column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var rankWidth: CGFloat = 22
@@ -77,14 +77,12 @@ struct MusicArtistView: View {
             }
             // Similar artists limited to those present in the own library —
             // foreign names without library content would dead-end.
-            if let similar = info?.similarArtist, !similar.isEmpty {
+            if let similar = info?.similarArtistNames, !similar.isEmpty {
                 let libraryNames = Dictionary(
                     ((try? await AppSession.shared.musicProvider.allArtists()) ?? [])
                         .compactMap { a in a.name.map { ($0.lowercased(), a) } },
                     uniquingKeysWith: { a, _ in a })
-                similarInLibrary = similar.compactMap { s in
-                    s.name.flatMap { libraryNames[$0.lowercased()] }
-                }
+                similarInLibrary = similar.compactMap { libraryNames[$0.lowercased()] }
             }
         }
     }
@@ -92,9 +90,9 @@ struct MusicArtistView: View {
     @ViewBuilder
     private var header: some View {
         let bio = strippedBio
-        if info?.largeImageUrl != nil || bio != nil {
+        if info?.imageURL != nil || bio != nil {
             VStack(alignment: .leading, spacing: 10) {
-                if let urlString = info?.largeImageUrl, let url = URL(string: urlString) {
+                if let url = info?.imageURL {
                     // Sizing lives on the LOADED image: servers hand out image
                     // URLs even for artists without pictures — an outer frame
                     // held a 180pt hole open in that case.
@@ -131,7 +129,7 @@ struct MusicArtistView: View {
         if !topSongs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Top Songs").font(.title3).bold().padding(.horizontal)
-                ForEach(Array(topSongs.enumerated()), id: \.element.item.id) { index, entry in
+                ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, entry in
                     Button {
                         Task { await playerCoordinator.open(item: entry.item) }
                     } label: {
@@ -141,8 +139,8 @@ struct MusicArtistView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(width: rankWidth, alignment: .trailing)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.song.title ?? "–").lineLimit(1)
-                                if let album = entry.song.album {
+                                Text(entry.item.title).lineLimit(1)
+                                if let album = entry.albumName {
                                     Text(album).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                 }
                             }
@@ -188,7 +186,7 @@ struct MusicArtistView: View {
 /// List of playlists → the playlist as a playable track list (reusing the album
 /// detail view via a `sub:playlist:` item).
 struct MusicPlaylistsView: View {
-    let playlists: [SubsonicPlaylist]
+    let playlists: [MusicPlaylist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     var body: some View {
@@ -211,7 +209,7 @@ struct MusicPlaylistsView: View {
 
     /// A light library item pointing at the playlist; the detail view loads its
     /// tracks via `fetchItemDetail`.
-    private static func item(for playlist: SubsonicPlaylist) -> LibraryItem {
+    private static func item(for playlist: MusicPlaylist) -> LibraryItem {
         LibraryItem(
             id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
             media: LibraryItemMedia(
@@ -219,7 +217,7 @@ struct MusicPlaylistsView: View {
                     title: playlist.name, authorName: nil, narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil
                 ),
-                duration: playlist.duration.map(Double.init),
+                duration: playlist.duration,
                 chapters: nil,
                 tracks: nil
             ),
