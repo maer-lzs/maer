@@ -625,8 +625,11 @@ struct LibraryView: View {
     @ViewBuilder
     private var miniPlayer: some View {
         if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
+            // Bisect switch 4: "mini morph off" keeps the mini player in its
+            // full shape across the flip (no compact re-layout).
             MiniPlayerBar(
-                coordinator: playerCoordinator, viewModel: vm, item: item, compact: barCollapsed,
+                coordinator: playerCoordinator, viewModel: vm, item: item,
+                compact: AppStorageKeys.hitchMiniMorphOffValue ? false : barCollapsed,
                 onOpenPlayer: {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                         isShowingFullPlayer = true

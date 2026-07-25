@@ -322,6 +322,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.hitchIconOffsetOff) private var hitchIconOffsetOff = false
     @AppStorage(AppStorageKeys.hitchBarAnimOff) private var hitchBarAnimOff = false
     @AppStorage(AppStorageKeys.hitchBarStaticComposition) private var hitchBarStaticComposition = false
+    @AppStorage(AppStorageKeys.hitchMiniMorphOff) private var hitchMiniMorphOff = false
 
     private var aboutSection: some View {
         Section {
@@ -342,6 +343,9 @@ struct SettingsView: View {
             }
             Toggle(isOn: $hitchBarStaticComposition) {
                 Label("Bisect: static bar composition", systemImage: "3.circle")
+            }
+            Toggle(isOn: $hitchMiniMorphOff) {
+                Label("Bisect: mini-player morph off", systemImage: "4.circle")
             }
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")
