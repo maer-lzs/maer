@@ -11,6 +11,13 @@ Present-tense, current state only — history lives in git.
 2. Coverage claims in reports ("all media tabs", "every download surface") cite a
    row here — this table is the source, not prose.
 
+**Convention — swallowed errors (25.07, third find of the class):** a `catch`
+that drops an error, or a `try?` on a throwing call, is only allowed when the
+same block carries a comment saying WHY dropping is correct there. And:
+**cancellation is never translated into a domain error** — `CancellationError`
+/ `URLError.cancelled` propagate (or are handled as cancellation), they never
+become "network failed" or similar (see `SubsonicClient.isCancellation`).
+
 **Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
 switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
 `Label { Text(verbatim: "…") } icon: { Image(systemName:) }`) and NEVER enters
