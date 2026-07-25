@@ -32,6 +32,11 @@ struct GPodderConflictResolutionView: View {
         Form {
             if loading {
                 Section { HStack { ProgressView(); Text("Loading subscriptions…") } }
+            } else if let errorText {
+                // #43 V1: the error branch must come BEFORE the no-conflict
+                // branch — a failed snapshot (server unreachable) used to fall
+                // into the green "No differences" path and read as "in sync".
+                Section { Label(errorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
             } else if !hasConflict {
                 Section {
                     Label("No differences — this device and the server already match.",
