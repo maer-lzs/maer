@@ -116,4 +116,6 @@ nonisolated enum KeychainKey {
     static let podcastIndexSecret = "podcastIndexSecret"
     static let gpodderPassword = "gpodderPassword"
     static let subsonicPassword = "subsonicPassword"
+    static let jellyfinPassword = "jellyfinPassword"
+    static let jellyfinToken = "jellyfinToken"
 }

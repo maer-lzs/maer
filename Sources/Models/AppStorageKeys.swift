@@ -163,6 +163,52 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.subsonicPassword) }
     }
 
+    // Jellyfin music server (Etappe 2) — mirrors the Subsonic key family.
+    static let jellyfinServerURL = "jellyfinServerURL"
+    static let jellyfinUsername = "jellyfinUsername"
+    static let jellyfinEnabled = "jellyfinEnabled"
+    static let jellyfinUserId = "jellyfinUserId"
+    static let jellyfinDeviceId = "jellyfinDeviceId"
+
+    static var jellyfinServerURLValue: String {
+        get { UserDefaults.standard.string(forKey: jellyfinServerURL) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: jellyfinServerURL) }
+    }
+    static var jellyfinUsernameValue: String {
+        get { UserDefaults.standard.string(forKey: jellyfinUsername) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: jellyfinUsername) }
+    }
+    static var jellyfinEnabledValue: Bool {
+        get { UserDefaults.standard.bool(forKey: jellyfinEnabled) }
+        set { UserDefaults.standard.set(newValue, forKey: jellyfinEnabled) }
+    }
+    static var jellyfinUserIdValue: String {
+        get { UserDefaults.standard.string(forKey: jellyfinUserId) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: jellyfinUserId) }
+    }
+    /// Stable per-install device id (Jellyfin session identity).
+    static var jellyfinDeviceIdValue: String {
+        if let existing = UserDefaults.standard.string(forKey: jellyfinDeviceId) { return existing }
+        let fresh = UUID().uuidString
+        UserDefaults.standard.set(fresh, forKey: jellyfinDeviceId)
+        return fresh
+    }
+    /// Password + access token → keychain (credentials, never UserDefaults).
+    static var jellyfinPasswordValue: String {
+        KeychainStore.load(forKey: KeychainKey.jellyfinPassword) ?? ""
+    }
+    static func setJellyfinPassword(_ value: String) {
+        if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.jellyfinPassword) }
+        else { KeychainStore.save(value, forKey: KeychainKey.jellyfinPassword) }
+    }
+    static var jellyfinTokenValue: String {
+        KeychainStore.load(forKey: KeychainKey.jellyfinToken) ?? ""
+    }
+    static func setJellyfinToken(_ value: String) {
+        if value.isEmpty { KeychainStore.delete(forKey: KeychainKey.jellyfinToken) }
+        else { KeychainStore.save(value, forKey: KeychainKey.jellyfinToken) }
+    }
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {
@@ -266,6 +312,9 @@ nonisolated enum AppStorageKeys {
     }
     static var subsonicActive: Bool {
         SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: subsonicEnabledValue)
+    }
+    static var jellyfinActive: Bool {
+        SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: jellyfinEnabledValue)
     }
     static var radioActive: Bool {
         SourceActivation.effective(tabEnabled: radioTabEnabledValue, sourceEnabled: radioEnabledValue)
