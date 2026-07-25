@@ -79,13 +79,14 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                         // while scrolling, Apple Forums 685461).
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    // Jank convention: the subtitle slot is always laid out
+                    // (invisible placeholder when nil) so tiles with and
+                    // without a subtitle are equally tall.
+                    Text(subtitle ?? " ")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1, reservesSpace: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .buttonStyle(.plain)

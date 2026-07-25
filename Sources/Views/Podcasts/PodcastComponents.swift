@@ -233,7 +233,9 @@ struct ShowTile: View {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
             Text(show.title)
                 .font(.caption)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                // Jank convention: reserved lines — a short title must not
+                // shrink the tile (variable LazyVGrid heights bump the scroll).
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2, reservesSpace: true)
                 .frame(width: size, alignment: .leading)
         }
     }

@@ -53,7 +53,9 @@ struct SeriesStackCell: View {
             Text(name)
                 .font(.caption)
                 .foregroundStyle(.primary)
-                .lineLimit(2)
+                // Jank convention: reserved lines, so every series cell in the
+                // LazyVGrid row is equally tall.
+                .lineLimit(2, reservesSpace: true)
             Text("\(entries.count) books")
                 .font(.caption2)
                 .foregroundStyle(.secondary)

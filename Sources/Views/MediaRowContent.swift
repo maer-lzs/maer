@@ -59,32 +59,36 @@ struct MediaRowContent<CoverOverride: View>: View {
         HStack(alignment: .center, spacing: 12) {
             artwork
             VStack(alignment: .leading, spacing: 3) {
-                if let eyebrow {
-                    Text(eyebrow.uppercased())
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                // Jank convention (docs/components.md): cells in lazy
+                // containers have a DATA-INDEPENDENT height. Every slot is
+                // always laid out and reserves its space — a nil value renders
+                // an invisible placeholder, so the realized height never
+                // depends on this row's data (a late height correction is the
+                // weak scroll bump, Apple Forums 685461).
+                Text((eyebrow ?? " ").uppercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1, reservesSpace: true)
                 Text(title)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(titleDimmed ? .secondary : .primary)
-                    .lineLimit(2)
-                if let progressFraction {
-                    ProgressView(value: progressFraction)
-                        .tint(AppTheme.accent)
-                        .padding(.top, 2)
-                }
-                if let meta {
-                    HStack(spacing: 6) {
-                        if showsPlayedCheck {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(meta).font(.caption2).foregroundStyle(.secondary)
+                    .lineLimit(2, reservesSpace: true)
+                ProgressView(value: progressFraction ?? 0)
+                    .tint(AppTheme.accent)
+                    .padding(.top, 2)
+                    .opacity(progressFraction != nil ? 1 : 0)
+                HStack(spacing: 6) {
+                    if showsPlayedCheck {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(.top, 1)
+                    Text(meta ?? " ")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1, reservesSpace: true)
                 }
+                .padding(.top, 1)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -27,11 +27,12 @@ struct MusicContinueCard: View {
                 PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs)
                     .frame(width: Self.width, height: Self.width)
 
-                Text(item.title).font(.headline).lineLimit(1)
-                if let fraction = progress?.fraction, fraction > 0 {
-                    ProgressView(value: min(max(fraction, 0), 1))
-                        .tint(.accentColor)
-                }
+                Text(item.title).font(.headline).lineLimit(1, reservesSpace: true)
+                // Jank convention: the bar slot is always laid out (hidden
+                // when unstarted) so card heights don't depend on progress.
+                ProgressView(value: min(max(progress?.fraction ?? 0, 0), 1))
+                    .tint(.accentColor)
+                    .opacity((progress?.fraction ?? 0) > 0 ? 1 : 0)
             }
             .frame(width: Self.width, alignment: .leading)
             .contentShape(Rectangle())

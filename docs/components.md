@@ -24,6 +24,19 @@ subscription) misses the change. Use content identity (`ContentToken.of`,
 hash of the IDs) or a store `generation`/`contentVersion` counter (pattern:
 `PodcastRecommendationsStore.contentVersion`).
 
+**Convention — cell heights in lazy containers (26.07, second round of the
+class):** cells in `LazyVGrid`/`LazyVStack`/horizontal card rows have a height
+INDEPENDENT of their data. Every text line uses `lineLimit(n, reservesSpace:
+true)`; every optional slot (eyebrow, subtitle, meta, progress bar) is always
+laid out and reserves its space — render an invisible placeholder (`" "` /
+`.opacity(0)`) instead of dropping the line. Otherwise the ScrollView corrects
+the offset when the real height diverges from the estimate (the weak scroll
+bump, Apple Forums 685461). Applies to: `MediaRowContent` (all four slots) ·
+`MediaTile` (title+subtitle) · `BookGridCell` · `AlbumCell` ·
+`SeriesStackCell` · `RecentShowTile` · `MusicContinueCard` ·
+`RadioStationCard`. List-backed rows (native UITableView sizing) are exempt
+but converge via the shared components anyway.
+
 **Convention — settings placement (Variante b, 25.07):** every setting belongs
 to EXACTLY ONE category: **source · library · playback · storage · sync ·
 system/diagnosis**. Media-type-specific settings go on that type's settings
