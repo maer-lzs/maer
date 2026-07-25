@@ -4,6 +4,7 @@
 
 import Foundation
 import BackgroundTasks
+import OSLog
 import UserNotifications
 
 /// Background refresh of the podcast sources: fetches feeds + gpodder/ABS sync,
@@ -59,7 +60,13 @@ enum PodcastRefreshService {
     static func schedule() {
         let request = BGAppRefreshTaskRequest(identifier: taskId)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 4 * 3600)
-        try? BGTaskScheduler.shared.submit(request)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            // No UI: background scheduling is best-effort (the next foreground
+            // run re-schedules) — but the failure must not be silent (rule 3).
+            Logger.rss.error("BG refresh scheduling failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Ablauf
