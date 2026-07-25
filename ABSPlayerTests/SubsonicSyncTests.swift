@@ -86,5 +86,15 @@ struct SubsonicSyncTests {
         #expect(mock.entries.first?.error != nil)
         #expect(mock.entries.first?.counters.isEmpty == true)
     }
+
+    // A1 (#61/V1): cancellation is never translated into SubsonicError.network.
+    @Test("isCancellation: task+URL cancellation true, transport errors false")
+    func cancellationDetection() {
+        #expect(SubsonicClient.isCancellation(CancellationError()))
+        #expect(SubsonicClient.isCancellation(URLError(.cancelled)))
+        #expect(!SubsonicClient.isCancellation(URLError(.notConnectedToInternet)))
+        #expect(!SubsonicClient.isCancellation(URLError(.timedOut)))
+        #expect(!SubsonicClient.isCancellation(SubsonicClient.SubsonicError.network))
+    }
 }
 #endif

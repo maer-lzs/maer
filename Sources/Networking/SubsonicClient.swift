@@ -77,6 +77,12 @@ struct SubsonicClient {
         requestURL(endpoint, params)
     }
 
+    /// Pure: is this a cancellation (task layer or URL layer)? Cancellations
+    /// propagate untranslated — never mapped to `SubsonicError.network`.
+    nonisolated static func isCancellation(_ error: Error) -> Bool {
+        error is CancellationError || (error as? URLError)?.code == .cancelled
+    }
+
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
         guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
@@ -91,6 +97,10 @@ struct SubsonicClient {
             do {
                 (data, http) = try await RequestRetryPolicy.fetch(URLRequest(url: url))
             } catch {
+                // Cancellation is never a domain error: a request torn down
+                // because the user scrolled away must not surface as a
+                // "network error" in the UI. Propagate it untranslated.
+                if Self.isCancellation(error) { throw error }
                 throw SubsonicError.network
             }
             if let status = http?.statusCode, !(200...299).contains(status) {
