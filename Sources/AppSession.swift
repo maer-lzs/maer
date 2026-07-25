@@ -38,7 +38,8 @@ final class AppSession: ObservableObject {
     /// this — the ONE entry point so a flipped toggle takes effect everywhere.
     func reconfigureSources() {
         SubsonicProvider.shared.reloadConfig()   // rebuilds/nils client + notifies
-        notifySourcesChanged()                   // toggles that don't touch Subsonic
+        JellyfinProvider.shared.reloadConfig()
+        notifySourcesChanged()                   // toggles that don't touch the music clients
     }
 
     /// Owns the APIClient (built from the keychain) — base URL and token are
@@ -62,17 +63,28 @@ final class AppSession: ObservableObject {
     /// Subsonic/Navidrome music as a source of type `.music`.
     var subsonicProvider: SubsonicProvider { SubsonicProvider.shared }
 
-    /// THE music access point for the UI (Jellyfin staging, stage 1): views
-    /// and view models talk to this protocol, never to a concrete server
-    /// type. Today it is Subsonic; a future provider swaps in here.
-    var musicProvider: any MusicProvider { SubsonicProvider.shared }
+    /// Jellyfin music as a second source of type `.music` (Etappe 2).
+    var jellyfinProvider: JellyfinProvider { JellyfinProvider.shared }
+
+    /// THE music access point for the UI: views and view models talk to this
+    /// protocol, never to a concrete server type. Stage 2: Jellyfin serves
+    /// when it is the only active music source; with BOTH active, Subsonic
+    /// wins for now — real exclusivity (PodcastServerExclusivity pattern) is
+    /// Etappe 3.
+    var musicProvider: any MusicProvider {
+        if AppStorageKeys.jellyfinActive, !AppStorageKeys.subsonicActive {
+            return JellyfinProvider.shared
+        }
+        return SubsonicProvider.shared
+    }
 
     /// Internet radio (Radio Browser catalog + manual streams), type `.radio`.
     var radioProvider: RadioProvider { RadioProvider.shared }
 
     /// All active sources.
     var allProviders: [any AudioProvider] {
-        [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider, radioProvider]
+        [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider,
+         jellyfinProvider, radioProvider]
     }
 
     /// Routes an item to its source by id prefix. This is the ONLY place allowed
@@ -82,6 +94,7 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("abspod:") { return absPodcastProvider }
         if itemId.hasPrefix("rss:") { return rssProvider }
         if itemId.hasPrefix("sub:") { return subsonicProvider }
+        if itemId.hasPrefix("jf:") { return jellyfinProvider }
         if itemId.hasPrefix("radio:") { return radioProvider }
         return provider
     }
@@ -107,6 +120,9 @@ final class AppSession: ObservableObject {
         }
         if itemId.hasPrefix("sub:") {
             return subsonicProvider.libraryItem(forId: itemId)
+        }
+        if itemId.hasPrefix("jf:") {
+            return jellyfinProvider.libraryItem(forId: itemId)
         }
         if itemId.hasPrefix("radio:") {
             return radioProvider.libraryItem(forId: itemId)

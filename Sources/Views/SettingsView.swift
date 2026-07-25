@@ -74,6 +74,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsOn = false
     @AppStorage(AppStorageKeys.rssEnabled) private var rssOn = true
     @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
+    @AppStorage(AppStorageKeys.jellyfinEnabled) private var jellyfinOn = false
     @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
 
     /// Exclusivity note (ABS-podcasts turned gpodder off, or vice versa).
@@ -268,7 +269,14 @@ struct SettingsView: View {
                 Label("Music server", systemImage: "music.note")
             }
             .accessibilityIdentifier("settings-music-source")
-        } header: { Text("Sources — Music") }
+            sourceToggle("Jellyfin", isOn: $jellyfinOn)
+            NavigationLink { JellyfinSourceView() } label: {
+                Label("Jellyfin server", systemImage: "music.note.house")
+            }
+            .accessibilityIdentifier("settings-jellyfin-source")
+        } header: { Text("Sources — Music") } footer: {
+            Text("One music server at a time: with both on, Subsonic is used.")
+        }
 
         Section {
             sourceToggle("Internet radio", isOn: $radioOn)

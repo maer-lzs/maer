@@ -119,7 +119,7 @@ final class JellyfinClient {
 
     /// Authorized GET returning a decoded value; one silent re-auth on 401
     /// (a revoked token must not strand the source until re-entry).
-    private func get<T: Decodable>(_ path: String, _ query: [String: String] = [:],
+    private func get<T: Decodable & Sendable>(_ path: String, _ query: [String: String] = [:],
                                    as type: T.Type) async throws -> T {
         var (token, _) = try await ensureAuth()
         for attempt in 0..<2 {
