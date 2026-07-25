@@ -11,6 +11,13 @@ Present-tense, current state only — history lives in git.
 2. Coverage claims in reports ("all media tabs", "every download surface") cite a
    row here — this table is the source, not prose.
 
+**Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
+switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
+`Label { Text(verbatim: "…") } icon: { Image(systemName:) }`) and NEVER enters
+the string catalog — no entries, no translations. This keeps the B15
+l10n-coverage lint sharp for REAL missing localizations instead of blunting it
+on throwaway switches. New debug controls inherit this.
+
 Convention: cross-media behaviour and reused UI is **one parametrised component**
 used by every relevant surface (Regel 2). A new media tab wires the existing
 components rather than forking them.

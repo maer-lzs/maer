@@ -332,24 +332,38 @@ struct SettingsView: View {
             } label: {
                 Label("Version", systemImage: "info.circle")
             }
+            // Convention: debug/diagnosis UI is Text(verbatim:) and never
+            // enters the string catalog (docs/components.md, "Debug UI").
             Toggle(isOn: $disableBarCollapse) {
-                Label("Disable bar collapse (diagnosis)", systemImage: "rectangle.bottomthird.inset.filled")
+                Label { Text(verbatim: "Disable bar collapse (diagnosis)") } icon: {
+                    Image(systemName: "rectangle.bottomthird.inset.filled")
+                }
             }
             // Hitch bisect harness — part-effect switches (all OFF = normal).
             Toggle(isOn: $hitchIconOffsetOff) {
-                Label("Bisect: icon offset off", systemImage: "1.circle")
+                Label { Text(verbatim: "Bisect: icon offset off") } icon: {
+                    Image(systemName: "1.circle")
+                }
             }
             Toggle(isOn: $hitchBarAnimOff) {
-                Label("Bisect: bar animation off", systemImage: "2.circle")
+                Label { Text(verbatim: "Bisect: bar animation off") } icon: {
+                    Image(systemName: "2.circle")
+                }
             }
             Toggle(isOn: $hitchBarStaticComposition) {
-                Label("Bisect: static bar composition", systemImage: "3.circle")
+                Label { Text(verbatim: "Bisect: static bar composition") } icon: {
+                    Image(systemName: "3.circle")
+                }
             }
             Toggle(isOn: $hitchMiniMorphOff) {
-                Label("Bisect: mini-player morph off", systemImage: "4.circle")
+                Label { Text(verbatim: "Bisect: mini-player morph off") } icon: {
+                    Image(systemName: "4.circle")
+                }
             }
             Toggle(isOn: $hitchGlassMorphOff) {
-                Label("Bisect: glass morph off", systemImage: "5.circle")
+                Label { Text(verbatim: "Bisect: glass morph off") } icon: {
+                    Image(systemName: "5.circle")
+                }
             }
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")
