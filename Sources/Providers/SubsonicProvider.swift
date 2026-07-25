@@ -258,26 +258,13 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             isFinished: pick.time >= total - 1, lastUpdate: pick.ts)
     }
 
-    /// Songs → player tracks (per-song stream URL via `contentUrl` = song id) plus
-    /// one chapter per song so "next chapter" = "next song".
+    /// Songs → player material via the shared `MusicTrackAssembly` (Regel 2).
     private static func tracksAndChapters(from songs: [SubsonicSong])
         -> (tracks: [ABSAudioTrack], chapters: [ABSChapter], total: Double) {
-        var tracks: [ABSAudioTrack] = []
-        var chapters: [ABSChapter] = []
-        var offset = 0.0
-        for (i, song) in songs.enumerated() {
-            let dur = Double(song.duration ?? 0)
-            tracks.append(ABSAudioTrack(
-                index: i, startOffset: offset, duration: dur,
-                contentUrl: song.id, metadata: ABSFileMetadata(size: song.size)
-            ))
-            chapters.append(ABSChapter(
-                id: i, start: offset, end: offset + dur,
-                title: song.title ?? String(localized: "Track \(i + 1)")
-            ))
-            offset += dur
-        }
-        return (tracks, chapters, offset)
+        MusicTrackAssembly.build(songs.map {
+            MusicTrackAssembly.Song(id: $0.id, title: $0.title,
+                                    duration: Double($0.duration ?? 0), size: $0.size)
+        })
     }
 
     // MARK: - View-facing browse (Music tab)

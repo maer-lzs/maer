@@ -54,3 +54,36 @@ nonisolated struct MusicTopSong: Identifiable {
     let item: LibraryItem
     let albumName: String?
 }
+
+
+/// Shared pure assembly of a multi-song music item's player material: songs →
+/// per-song tracks (stream id in `contentUrl`) plus one chapter per song, so
+/// "next chapter" = "next song" (Regel 2 — both music providers build their
+/// albums/playlists through this).
+nonisolated enum MusicTrackAssembly {
+    struct Song {
+        let id: String
+        let title: String?
+        let duration: Double
+        let size: Int64?
+    }
+
+    static func build(_ songs: [Song])
+        -> (tracks: [ABSAudioTrack], chapters: [ABSChapter], total: Double) {
+        var tracks: [ABSAudioTrack] = []
+        var chapters: [ABSChapter] = []
+        var offset = 0.0
+        for (i, song) in songs.enumerated() {
+            tracks.append(ABSAudioTrack(
+                index: i, startOffset: offset, duration: song.duration,
+                contentUrl: song.id, metadata: ABSFileMetadata(size: song.size)
+            ))
+            chapters.append(ABSChapter(
+                id: i, start: offset, end: offset + song.duration,
+                title: song.title ?? String(localized: "Track \(i + 1)")
+            ))
+            offset += song.duration
+        }
+        return (tracks, chapters, offset)
+    }
+}

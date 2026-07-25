@@ -200,7 +200,8 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    func song(id: String) async throws -> JFItem? {
+    /// Generic single-item fetch (song, album, playlist or artist).
+    func item(id: String) async throws -> JFItem? {
         let (_, uid) = try await ensureAuth()
         return try await get("Users/\(uid)/Items/\(id)", [:], as: JFItem.self)
     }
@@ -220,11 +221,6 @@ final class JellyfinClient {
             "AlbumArtistIds": artistId, "SortBy": "ProductionYear,SortName",
         ], as: JFItemsResult.self)
         return result.items ?? []
-    }
-
-    func artist(id: String) async throws -> JFItem? {
-        let (_, uid) = try await ensureAuth()
-        return try await get("Users/\(uid)/Items/\(id)", [:], as: JFItem.self)
     }
 
     func topSongs(artistId: String, limit: Int) async throws -> [JFItem] {
