@@ -61,8 +61,12 @@ struct HomeView: View {
     private var discoverToken: String {
         // #51 V1 (tab parity with the podcast tab's snapshot): the store's
         // CONTENT version instead of the count — same-size replacements used
-        // to leave the Discover row stale.
-        "\(recommendationsEnabled)-\(recommendations.contentVersion)-\(subs.shows.count)-\(ABSPodcastProvider.shared.shows.count)"
+        // to leave the Discover row stale. #51 W1: the sibling inputs use
+        // content identity too — a swapped subscription at equal count must
+        // still recompute (ContentToken, class-B convention).
+        let feeds = ContentToken.of((subs.shows + ABSPodcastProvider.shared.shows)
+            .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        return "\(recommendationsEnabled)-\(recommendations.contentVersion)-\(feeds)"
     }
 
     private func recomputeDiscover() {

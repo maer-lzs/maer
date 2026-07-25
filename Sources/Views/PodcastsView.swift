@@ -389,6 +389,10 @@ final class PodcastsRecomputeScope: ObservableObject {
     }
 
     private static func compute() -> String {
-        "\(PodcastSubscriptions.shared.shows.count)-\(DownloadManager.shared.downloadedItemIds.count)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)"
+        // #51 W1 (class-B convention): content identity instead of counts —
+        // a swapped subscription or download at equal count must recompute.
+        let feeds = ContentToken.of(PodcastSubscriptions.shared.shows.map(\.feedURL))
+        let downloads = ContentToken.of(DownloadManager.shared.downloadedItemIds)
+        return "\(feeds)-\(downloads)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)"
     }
 }
