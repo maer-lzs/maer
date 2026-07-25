@@ -86,6 +86,10 @@ final class LocalProvider: AudioProvider {
         }.value
     }
 
+    /// Deliberate no-op: there is no server to push progress to. Positions are
+    /// written by the player through the `localPosition` mechanism (the same
+    /// store `fetchAllProgress` reads) — writing here too would duplicate the
+    /// write path for the same key.
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
     // No server bookmarks (capability missing — never called).
