@@ -263,11 +263,16 @@ struct HomeView: View {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(rediscoverPicks, id: \.id) { pick in
                             rediscoverTile(pick)
-                                .frame(width: 140)
+                                // Kachel-Auftrag: screen-relative slots + peek
+                                // instead of the fixed 140 pt.
+                                .containerRelativeFrame(.horizontal,
+                                    count: CardMetrics.rediscoverColumns(regularWidth: horizontalSizeClass == .regular),
+                                    span: 1, spacing: 12)
                         }
                     }
                     .padding(.horizontal)
                 }
+                .scrollClipDisabled()
             }
         }
     }
