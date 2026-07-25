@@ -636,6 +636,48 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         )
     }
 
+    // MARK: - Wire → domain (stage 1½ anti-corruption boundary; pure, tested)
+
+    nonisolated static func domainArtist(_ wire: SubsonicArtist) -> MusicArtist {
+        MusicArtist(id: wire.id, name: wire.name, albumCount: wire.albumCount)
+    }
+
+    nonisolated static func domainPlaylist(_ wire: SubsonicPlaylist) -> MusicPlaylist {
+        MusicPlaylist(
+            id: wire.id, name: wire.name, songCount: wire.songCount,
+            duration: wire.duration.map(Double.init),
+            changedAt: PlaylistPresentation.changedDate(wire.changed)
+                .map { $0.timeIntervalSince1970 * 1000 })
+    }
+
+    nonisolated static func domainArtistInfo(_ wire: SubsonicArtistInfo) -> MusicArtistInfo {
+        MusicArtistInfo(
+            biography: wire.biography,
+            // The hero renders ONE image — take the largest the server offers.
+            imageURL: (wire.largeImageUrl ?? wire.mediumImageUrl ?? wire.smallImageUrl)
+                .flatMap { URL(string: $0) },
+            similarArtistNames: (wire.similarArtist ?? []).compactMap(\.name))
+    }
+
+    nonisolated static func domainAlbumInfo(_ wire: SubsonicAlbumInfo) -> MusicAlbumInfo {
+        MusicAlbumInfo(notes: wire.notes, musicBrainzId: wire.musicBrainzId)
+    }
+
+    /// OpenSubsonic structured lyrics → the app's `SongLyrics`; prefers a
+    /// synced variant. (Moved from LyricsParser: wire knowledge belongs to
+    /// the provider boundary, the UI only sees `SongLyrics`.)
+    nonisolated static func songLyrics(fromStructured list: [SubsonicStructuredLyrics]) -> SongLyrics? {
+        let best = list.first { $0.synced == true } ?? list.first
+        guard let best, let rawLines = best.line, !rawLines.isEmpty else { return nil }
+        let offset = (best.offset ?? 0) / 1000
+        let synced = best.synced == true
+        let lines = rawLines.map {
+            LyricsLine(start: synced ? ($0.start.map { max(0, $0 / 1000 + offset) }) : nil,
+                       text: $0.value)
+        }
+        return SongLyrics(synced: synced, lines: lines)
+    }
+
     nonisolated static func itemId(albumId: String) -> String { "sub:album:\(albumId)" }
     nonisolated static func itemId(playlistId: String) -> String { "sub:playlist:\(playlistId)" }
     nonisolated static func itemId(songId: String) -> String { "sub:song:\(songId)" }
