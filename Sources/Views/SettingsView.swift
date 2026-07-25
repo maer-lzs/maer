@@ -4,11 +4,14 @@
 
 import SwiftUI
 
-/// Central settings (Etappe E layout), split into pill tabs at the top:
-/// "General" carries the tab-INDEPENDENT sections — Sources (all services
-/// equal, one row per source) and Sync (history of all services + iCloud) —
-/// plus appearance/storage/about; "Audiobooks" and "Podcasts" keep only their
-/// playback/UI specifics.
+/// Central settings (Variante b): pill tabs at the top — "General" carries
+/// everything cross-cutting in the placement-rule order (Sources → Libraries →
+/// Sync → Storage → Notifications → Appearance → Statistics → About →
+/// Diagnostics), plus ONE pill per enabled media type that has own settings
+/// (Audiobooks: playback · Podcasts: recommendations). Placement rule: every
+/// setting belongs to exactly one category — source · library · playback ·
+/// storage · sync · system/diagnosis; media-specific goes on its media pill,
+/// cross-cutting on General (docs/components.md).
 struct SettingsView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     /// For reloading after a library switch — the settings are pushed from
@@ -19,19 +22,31 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     private enum Tab: String, CaseIterable, Identifiable {
-        // E6: the Podcasts pill is gone — its only setting (new-episode
-        // notifications) moved to the tab-independent Notifications section
-        // under General. Audiobooks keeps its playback specifics.
-        case general, audiobooks
+        // Variante b: General + one pill per media type that (a) is enabled
+        // and (b) HAS own settings. Today that is Audiobooks (playback) and
+        // Podcasts (recommendations); Music and Radio have no tab-level
+        // settings yet (their specifics live on the source pages), so they
+        // get no pill — an empty tab would be worse than none.
+        case general, audiobooks, podcasts
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: return "General"
             case .audiobooks: return "Audiobooks"
+            case .podcasts: return "Podcasts"
             }
         }
     }
     @State private var tab: Tab = .general
+
+    /// Media-type pills only when the type is enabled (no dead pill for a
+    /// hidden library) — General is always there.
+    private var visibleTabs: [Tab] {
+        var tabs: [Tab] = [.general]
+        if audiobooksTab { tabs.append(.audiobooks) }
+        if podcastsTab { tabs.append(.podcasts) }
+        return tabs
+    }
 
     @State private var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
@@ -73,24 +88,32 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             pillTabs
             Form {
-                // Etappe E layout: SOURCES and SYNC are tab-independent
-                // (all services equal, the history shows them all); the media
-                // pills keep only their playback/UI specifics.
+                // Variante b: General = everything cross-cutting, in the
+                // placement-rule order (sources → libraries → sync → storage →
+                // notifications → appearance → stats → about → diagnostics);
+                // one pill per media type with its specifics.
                 switch tab {
                 case .general:
                     sourcesSection
+                    librariesSection
                     globalSyncSection
+                    storageSection
                     notificationsSection
                     appearanceSection
-                    recommendationsSection
                     statsSection
-                    storageSection
                     aboutSection
+                    diagnosticsSection
                 case .audiobooks:
                     playbackSection
+                case .podcasts:
+                    recommendationsSection
                 }
             }
             .bottomBarClearance()
+        }
+        .onChange(of: visibleTabs) {
+            // The selected media pill can disappear (library toggled off).
+            if !visibleTabs.contains(tab) { tab = .general }
         }
         .alert("Podcast source changed", isPresented: Binding(
             get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
@@ -121,7 +144,7 @@ struct SettingsView: View {
 
     private var pillTabs: some View {
         HStack(spacing: 8) {
-            ForEach(Tab.allCases) { t in
+            ForEach(visibleTabs) { t in
                 Button {
                     withAnimation(.snappy(duration: 0.2)) { tab = t }
                 } label: {
@@ -200,81 +223,77 @@ struct SettingsView: View {
         }
     }
 
-    /// Etappe E: ONE tab-independent Sources section — every service equal,
-    /// one row per source, each source page follows the same pattern
-    /// (access / toggle / its own sync button).
-    /// TF bib-toggles: TWO-LEVEL library section — per tab a master toggle and,
-    /// under it, one toggle per source (Podcasts = ABS + RSS separately). A
-    /// source is effectively active only when tab ∧ source are on; every change
-    /// routes through `AppSession.reconfigureSources()` so a flipped toggle takes
-    /// effect everywhere (calls stop, tab hides). Config lives on the linked
-    /// source pages (server URL, credentials, per-source sync).
+    /// Variante b, rule category "source": servers/accounts with their on/off
+    /// switch and config page — one subsection per media type, every service
+    /// equal. The tab level (which media types appear) lives in the separate
+    /// Libraries section below; effective activity stays tab ∧ source
+    /// (`SourceActivation`), every change routes through
+    /// `AppSession.reconfigureSources()`. Keys unchanged.
     @ViewBuilder
     private var sourcesSection: some View {
-        // Audiobooks
+        Section {
+            sourceToggle("Audiobookshelf", isOn: $absAudiobooksOn)
+            NavigationLink { ABSSourceView(coordinator: coordinator,
+                                           libraryViewModel: libraryViewModel,
+                                           onLogout: onLogout) } label: {
+                Label("Audiobookshelf server", systemImage: "server.rack")
+            }
+            .accessibilityIdentifier("settings-abs-source")
+            NavigationLink { LocalFilesView(onImported: {
+                Task { await libraryViewModel?.refreshAfterLocalChange() }
+            }) } label: { Label("Local Files", systemImage: "folder") }
+        } header: { Text("Sources — Audiobooks") }
+
+        Section {
+            // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
+            // server at a time; RSS below stays free). Enabling ABS turns
+            // gpodder off, with a note.
+            Toggle(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
+                .onChange(of: absPodcastsOn) {
+                    if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
+                        podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
+                    }
+                    AppSession.shared.reconfigureSources()
+                }
+            sourceToggle("RSS feeds", isOn: $rssOn)
+            NavigationLink { PodcastSourceView() } label: {
+                Label("Podcast sources", systemImage: "mic")
+            }
+            .accessibilityIdentifier("settings-podcast-source")
+        } header: { Text("Sources — Podcasts") }
+
+        Section {
+            sourceToggle("Music server (Subsonic)", isOn: $subsonicOn)
+            NavigationLink { SubsonicSourceView() } label: {
+                Label("Music server", systemImage: "music.note")
+            }
+            .accessibilityIdentifier("settings-music-source")
+        } header: { Text("Sources — Music") }
+
+        Section {
+            sourceToggle("Internet radio", isOn: $radioOn)
+            NavigationLink { RadioSourceView() } label: {
+                Label("Radio", systemImage: "dot.radiowaves.left.and.right")
+            }
+            .accessibilityIdentifier("settings-radio-source")
+        } header: { Text("Sources — Radio") } footer: {
+            Text("A source off makes zero server calls. Whether a media type appears at all is set under Libraries below.")
+        }
+    }
+
+    /// Variante b, rule category "library": the tab level of the two-level
+    /// gating — which media types appear. Same keys and reconfigure path as
+    /// before; the per-source switches stay under Sources above.
+    private var librariesSection: some View {
         Section {
             tabMasterToggle("Audiobooks", isOn: $audiobooksTab)
-            if audiobooksTab {
-                sourceToggle("Audiobookshelf", isOn: $absAudiobooksOn)
-                NavigationLink { ABSSourceView(coordinator: coordinator,
-                                               libraryViewModel: libraryViewModel,
-                                               onLogout: onLogout) } label: {
-                    Label("Audiobookshelf server", systemImage: "server.rack")
-                }
-                .accessibilityIdentifier("settings-abs-source")
-                NavigationLink { LocalFilesView(onImported: {
-                    Task { await libraryViewModel?.refreshAfterLocalChange() }
-                }) } label: { Label("Local Files", systemImage: "folder") }
-            }
-        } header: { Text("Audiobooks") }
-
-        // Podcasts — two sources, separately switchable.
-        Section {
             tabMasterToggle("Podcasts", isOn: $podcastsTab)
-            if podcastsTab {
-                // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
-                // server at a time; RSS below stays free). Enabling ABS turns
-                // gpodder off, with a note.
-                Toggle(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
-                    .onChange(of: absPodcastsOn) {
-                        if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
-                            podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
-                        }
-                        AppSession.shared.reconfigureSources()
-                    }
-                    .padding(.leading, 12)
-                sourceToggle("RSS feeds", isOn: $rssOn)
-                NavigationLink { PodcastSourceView() } label: {
-                    Label("Podcast sources", systemImage: "mic")
-                }
-                .accessibilityIdentifier("settings-podcast-source")
-            }
-        } header: { Text("Podcasts") }
-
-        // Music
-        Section {
             tabMasterToggle("Music", isOn: $musicTab)
-            if musicTab {
-                sourceToggle("Music server (Subsonic)", isOn: $subsonicOn)
-                NavigationLink { SubsonicSourceView() } label: {
-                    Label("Music server", systemImage: "music.note")
-                }
-                .accessibilityIdentifier("settings-music-source")
-            }
-        } header: { Text("Music") }
-
-        // Radio
-        Section {
             tabMasterToggle("Radio", isOn: $radioTab)
-            if radioTab {
-                sourceToggle("Internet radio", isOn: $radioOn)
-                NavigationLink { RadioSourceView() } label: {
-                    Label("Radio", systemImage: "dot.radiowaves.left.and.right")
-                }
-                .accessibilityIdentifier("settings-radio-source")
-            }
-        } header: { Text("Radio") } footer: {
-            Text("Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab.")
+        } header: {
+            Text("Libraries")
+        } footer: {
+            Text("Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches above are kept.")
         }
     }
 
@@ -284,11 +303,10 @@ struct SettingsView: View {
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
     }
 
-    /// TF bib-toggles: a per-source row (indented) — flipping it reconfigures.
+    /// TF bib-toggles: a per-source row — flipping it reconfigures.
     private func sourceToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) { Text(title) }
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
-            .padding(.leading, 12)
     }
 
     /// Etappe E: the GLOBAL sync section — the history shows all services, so
@@ -332,8 +350,19 @@ struct SettingsView: View {
             } label: {
                 Label("Version", systemImage: "info.circle")
             }
-            // Convention: debug/diagnosis UI is Text(verbatim:) and never
-            // enters the string catalog (docs/components.md, "Debug UI").
+        } header: {
+            Text("About")
+        } footer: {
+            Text("Mär is an unofficial client for Audiobookshelf.")
+        }
+    }
+
+    /// Variante b, rule category "system/diagnosis": the debug/bisect switches
+    /// get their own clearly-marked section at the very bottom — they were
+    /// squatting in About. Convention: debug/diagnosis UI is Text(verbatim:)
+    /// and never enters the string catalog (docs/components.md, "Debug UI").
+    private var diagnosticsSection: some View {
+        Section {
             Toggle(isOn: $disableBarCollapse) {
                 Label { Text(verbatim: "Disable bar collapse (diagnosis)") } icon: {
                     Image(systemName: "rectangle.bottomthird.inset.filled")
@@ -365,8 +394,10 @@ struct SettingsView: View {
                     Image(systemName: "5.circle")
                 }
             }
+        } header: {
+            Text(verbatim: "Diagnostics")
         } footer: {
-            Text("Mär is an unofficial client for Audiobookshelf.")
+            Text(verbatim: "Temporary switches for device diagnosis. All OFF = normal behavior.")
         }
     }
 
@@ -420,8 +451,11 @@ struct SettingsView: View {
         }
     }
 
-    /// Teil 5: ONE opt-out for both Home recommendation sections (Rediscover +
-    /// Discover) — same convention as the other metadata toggles (default on).
+    // MARK: - Podcasts
+
+    /// Variante b: recommendations live on the Podcasts pill (the Discover
+    /// engine is podcast-driven). Still ONE opt-out for both Home sections
+    /// (Rediscover + Discover) — key unchanged.
     private var recommendationsSection: some View {
         Section {
             Toggle(isOn: $homeRecommendations) {

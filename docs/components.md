@@ -24,6 +24,16 @@ subscription) misses the change. Use content identity (`ContentToken.of`,
 hash of the IDs) or a store `generation`/`contentVersion` counter (pattern:
 `PodcastRecommendationsStore.contentVersion`).
 
+**Convention — settings placement (Variante b, 25.07):** every setting belongs
+to EXACTLY ONE category: **source · library · playback · storage · sync ·
+system/diagnosis**. Media-type-specific settings go on that type's settings
+pill (Audiobooks: playback · Podcasts: recommendations); cross-cutting ones go
+on General, in the fixed order Sources → Libraries → Sync → Storage →
+Notifications → Appearance → Statistics → About → Diagnostics. New settings
+inherit this rule instead of being appended at the end (that is how the
+diagnosis switches ended up squatting in About). A media pill exists only when
+the type is enabled AND has at least one own setting.
+
 **Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
 switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
 `Label { Text(verbatim: "…") } icon: { Image(systemName:) }`) and NEVER enters
