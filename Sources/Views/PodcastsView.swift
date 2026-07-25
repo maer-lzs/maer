@@ -234,10 +234,18 @@ struct PodcastsView: View {
                 Text("Recommended").font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(recommendationItems) { r in recommendationTile(r) }
+                        ForEach(recommendationItems) { r in
+                            recommendationTile(r)
+                                // Kachel-Auftrag: screen-relative slots + peek
+                                // instead of the fixed 126 pt.
+                                .containerRelativeFrame(.horizontal,
+                                    count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
+                                    span: 1, spacing: 12)
+                        }
                     }
                     .padding(.horizontal)
                 }
+                .scrollClipDisabled()
             }
         }
     }

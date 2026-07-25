@@ -582,7 +582,9 @@ struct PodcastSubscribeButton: View {
 struct RecommendationTile: View {
     let result: PodcastSearchResult
     var subtitle: String? = nil
-    var width: CGFloat = CardMetrics.recommendationTileWidth
+    /// Kachel-Auftrag: nil = the tile FILLS its containerRelativeFrame slot
+    /// (screen-relative rows); a numeric width remains for legacy callers.
+    var width: CGFloat? = nil
     @Environment(\.pushPodcastRoute) private var pushRoute
     var body: some View {
         // A3 + sweep: catalog tiles need the net (preview + subscribe) — the
@@ -599,7 +601,7 @@ struct RecommendationTile: View {
                 PodcastSubscribeBadge(feedURL: result.feedURL)
             }
         }
-        .frame(width: width)
+        .frame(width: width)   // nil = slot-driven (containerRelativeFrame at the row)
         .contextMenu {
             Button {
                 UIPasteboard.general.string = result.feedURL

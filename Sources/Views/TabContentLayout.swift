@@ -26,6 +26,14 @@ enum CardMetrics {
     /// Discover / Recommended catalog tiles — Home AND the podcast tab, one size
     /// (was 140 / 132; now 126, ×0.9 of the larger).
     static let recommendationTileWidth: CGFloat = 126
+
+    // containerRelativeFrame column counts for the HORIZONTAL card rows — the
+    // responsive replacement of fixed pt widths (screen-relative slots + a
+    // natural peek of the next card). Design dial: the owner tunes the counts on
+    // device; regular width (iPad/landscape) shows roughly double.
+    static func recommendationColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
+    static func playlistColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
+    static func rediscoverColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     /// Music playlist poster card (150 → 135, ×0.9).
     static let playlistCardWidth: CGFloat = 135
 }
