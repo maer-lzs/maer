@@ -58,9 +58,11 @@ enum UITestSeed {
             bookEntry(id: "seed-book-2", title: "Seed Book Two", author: "Ben Author", chapters: nil),
         ]
         // Scroll depth for collapse-threshold journeys (the two-book grid never
-        // reaches the 60 pt raw offset): a page of filler books.
+        // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
+        // carry "Seed" in their names — the search journeys query "Seed" and
+        // must keep finding the canonical seeds inside the capped sections.
         + (3...24).map {
-            bookEntry(id: "seed-book-\($0)", title: "Seed Filler \($0)", author: "Ada Author", chapters: nil)
+            bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
         session.libraryViewModel.entries = books
         session.libraryViewModel.recentlyAdded = books
@@ -72,6 +74,10 @@ enum UITestSeed {
             episodes: [
                 episode(guid: "rss:seed:ep-1", title: "Seed Episode One"),
                 episode(guid: "rss:seed:ep-2", title: "Seed Episode Two"),
+            ]
+            // Scroll depth for hitch/threshold journeys — every library must be
+            // able to scroll well past the 60 pt collapse threshold.
+            + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
             ])
         PodcastSubscriptions.shared._seedForUITest([show])
 
@@ -131,6 +137,8 @@ enum UITestSeed {
         musicAlbum(id: "sub:album:seed-3", title: "Third Seed", artist: "Bloom"),
         musicAlbum(id: "sub:album:seed-4", title: "Fourth Seed", artist: "Petal"),
     ]
+    // Scroll depth (hitch/threshold journeys) — see the book fillers.
+    + (5...24).map { musicAlbum(id: "sub:album:seed-\($0)", title: "Filler Album \($0)", artist: "Backing Band") }
 
     /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
     /// rows — the harness navigates through them to reach the artist page and
@@ -171,6 +179,11 @@ enum UITestSeed {
         RadioStation(id: "radio:manual:seed-2", name: "Seed Radio Two",
                      streamURL: "https://seed.example/two.mp3"),
     ]
+    // Scroll depth (hitch/threshold journeys) — see the book fillers.
+    + (3...14).map {
+        RadioStation(id: "radio:manual:seed-\($0)", name: "Filler Radio \($0)",
+                     streamURL: "https://seed.example/f\($0).mp3")
+    }
 
     /// F4-discovery: stand-in catalog results — the browse sections and the
     /// genre drilldown use these under `-uitest` instead of hitting the real

@@ -303,13 +303,21 @@ nonisolated final class MaerUITests: XCTestCase {
         // Library scope: own hits of every type.
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
                       "search must find the seeded episode")
-        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
-                      "search must find the seeded album")
-        snap(app, "global-search-library")
-        // Y15: the catalog sits behind the explicit catalog row — dismiss the
-        // keyboard (submit) and scroll it into reach first; on the full page
-        // it trails ALL own sections.
+        // Fillers don't match "Seed", so the capped sections stay canonical;
+        // dismiss the keyboard before scrolling on (swipes over the keyboard
+        // don't scroll the list), then reach the album section.
         field.typeText("\n")
+        let album = app.staticTexts["Seed Album"].firstMatch
+        var albumSwipes = 0
+        while !album.exists && albumSwipes < 4 {
+            app.swipeUp()
+            albumSwipes += 1
+        }
+        XCTAssertTrue(album.exists, "search must find the seeded album")
+        snap(app, "global-search-library")
+        // Y15: the catalog sits behind the explicit catalog row — scroll it
+        // into reach (keyboard already dismissed above); on the full page it
+        // trails ALL own sections.
         let catalogRow = app.buttons["search-catalog-row"].firstMatch
         XCTAssertTrue(catalogRow.waitForExistence(timeout: 5), "catalog row must close the library results")
         var swipes = 0
