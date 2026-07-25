@@ -293,10 +293,14 @@ struct LibraryView: View {
                 // icons out instead of vanishing in the same frame. Expand (return
                 // to rest) stays immediate — the primary surface should come back
                 // promptly while the icons pop back in with their own bouncy spring.
+                // Bisect switch 2: with "bar animation off" the zone snaps
+                // hard between states (no morph spring at all).
                 .animation(
-                    barCollapsed
-                        ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
-                        : .spring(response: 0.55, dampingFraction: 0.85),
+                    AppStorageKeys.hitchBarAnimOffValue
+                        ? nil
+                        : (barCollapsed
+                            ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
+                            : .spring(response: 0.55, dampingFraction: 0.85)),
                     value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)

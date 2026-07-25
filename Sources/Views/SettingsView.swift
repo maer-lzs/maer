@@ -320,6 +320,7 @@ struct SettingsView: View {
     /// remaining wiggle at the threshold is provably collapse-coupled or not.
     @AppStorage(AppStorageKeys.disableBarCollapse) private var disableBarCollapse = false
     @AppStorage(AppStorageKeys.hitchIconOffsetOff) private var hitchIconOffsetOff = false
+    @AppStorage(AppStorageKeys.hitchBarAnimOff) private var hitchBarAnimOff = false
 
     private var aboutSection: some View {
         Section {
@@ -334,6 +335,9 @@ struct SettingsView: View {
             // Hitch bisect harness — part-effect switches (all OFF = normal).
             Toggle(isOn: $hitchIconOffsetOff) {
                 Label("Bisect: icon offset off", systemImage: "1.circle")
+            }
+            Toggle(isOn: $hitchBarAnimOff) {
+                Label("Bisect: bar animation off", systemImage: "2.circle")
             }
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")
