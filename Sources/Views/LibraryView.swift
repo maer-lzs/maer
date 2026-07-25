@@ -61,23 +61,10 @@ struct LibraryView: View {
     /// screen while the new accent loads, then springs back up).
     @State private var miniPlayerSwapOffset: CGFloat = 0
     @State private var lastBottomAccentItemId: String?
-    /// Measured height of the floating bottom zone (mini-player + tabs) — passed
-    /// as bottom free space to all scroll contents so nothing is covered. The
-    /// zone is an overlay (reserves no space itself).
-    /// ROOT-HITCH fix: this value must NEVER track the morphing bar live — an
-    /// animated inset moves the content, the moved content reports new scroll
-    /// offsets, the reports re-flip the collapse at the 60 pt threshold, and
-    /// the scroll oscillates back-and-forth at one fixed spot (the felt bump
-    /// that survived every previous fix). Only SETTLED heights commit (below).
-    @State private var bottomBarHeight: CGFloat = 0
-    /// Settle-debounce for the height commit: mid-animation values re-cancel
-    /// this task every frame, so a morph can never move the reserved inset.
-    @State private var barHeightSettleTask: Task<Void, Never>?
-    /// H2 finding: the newest measured height — the settle task re-validates
-    /// against it at FIRE time. Without this, the last onChange before a flip
-    /// scheduled a task that fired MID-morph and committed a stale/animated
-    /// height (the ±5 pt contentSize wobble the sim diagnosis caught).
-    @State private var lastMeasuredBarHeight: CGFloat = 0
+    // ARCHITECTURE (25.07): the bottom clearance is the CONSTANT
+    // `BottomBarReserve` — the whole live-measurement path (GeometryReader,
+    // bottomBarHeight state, settle-debounce, fire-time re-validation) is
+    // GONE; the bar cannot perturb scroll geometry by construction.
     /// Settings as a modal sheet (NOT pushed onto the library stack) — otherwise
     /// the mini-player overlay lies over it and its media pills trigger a jump
     /// back to the library from within the settings.
@@ -304,40 +291,6 @@ struct LibraryView: View {
                     value: barCollapsed)
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
-                // Measure the height → pass it as free space to the scroll
-                // contents. ONLY while expanded, so the free space doesn't shrink
-                // on collapse (that would trigger a scroll feedback loop).
-                .background {
-                    GeometryReader { proxy in
-                        Color.clear
-                            .onAppear { bottomBarHeight = proxy.size.height }
-                            .onChange(of: proxy.size.height) { _, h in
-                                // ROOT-HITCH fix: commit only SETTLED expanded
-                                // heights. During a collapse/expand spring the
-                                // measured height changes every frame — each
-                                // change cancels the pending commit, so the
-                                // reserved inset stays CONSTANT through the
-                                // morph. H2: the task RE-VALIDATES at fire
-                                // time (still expanded AND the value truly
-                                // held) — a task scheduled just before a flip
-                                // used to fire mid-morph and commit an
-                                // animated height (the ±5 pt contentSize
-                                // wobble → scroll-geometry perturbation →
-                                // re-flip oscillation).
-                                lastMeasuredBarHeight = h
-                                guard !barCollapsed, h != bottomBarHeight else { return }
-                                barHeightSettleTask?.cancel()
-                                barHeightSettleTask = Task { @MainActor in
-                                    try? await Task.sleep(nanoseconds: 180_000_000)
-                                    guard !Task.isCancelled,
-                                          !barCollapsed,
-                                          lastMeasuredBarHeight == h,
-                                          bottomBarHeight != h else { return }
-                                    bottomBarHeight = h
-                                }
-                            }
-                    }
-                }
                 .task(id: playerCoordinator.activeItem?.id) {
                     let previousId = lastBottomAccentItemId
                     lastBottomAccentItemId = playerCoordinator.activeItem?.id
@@ -385,7 +338,11 @@ struct LibraryView: View {
         .environment(\.glassAccent, bottomColorLoader.hasAccent ? bottomColorLoader.accent : nil)
         // Pass the free-space height to ALL contents (also pushed screens); 0 on
         // the full player (it covers everything).
-        .environment(\.bottomBarInset, isShowingFullPlayer ? 0 : bottomBarHeight)
+        // Constant reserve per composition (full player covers everything → 0;
+        // mini-player mount is a REAL composition change and may adjust it —
+        // never `collapsed`/the morph).
+        .environment(\.bottomBarInset,
+                     isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil))
         .task {
             // Series data lives here — hand the coordinator a lookup for the
             // auto-play-next-in-series setting.

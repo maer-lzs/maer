@@ -19,6 +19,26 @@ extension EnvironmentValues {
     }
 }
 
+/// ARCHITECTURE (25.07): the reserved clearance is a CONSTANT per composition —
+/// never a live measurement of the (morphing) bar. This CUTS the feedback
+/// circle offset → bar state → bar height → content padding → contentSize →
+/// offset for good: the bar can morph freely, content geometry never moves.
+/// The reserve covers the EXPANDED shape (sim-measured: 126 pt with the mini
+/// player mounted, 66 pt without); a collapsed bar simply leaves a little air
+/// at the very end of a list — the accepted price for structurally calm
+/// scrolling. It may change on REAL composition changes (mini player mounts/
+/// unmounts) but NEVER on `collapsed` or mid-morph.
+enum BottomBarReserve {
+    /// Media pill row + spacing + bottom padding (expanded, no mini player).
+    static let base: CGFloat = 66
+    /// Additional mini-player row (bar + row spacing).
+    static let miniPlayer: CGFloat = 60
+
+    static func total(hasMiniPlayer: Bool) -> CGFloat {
+        base + (hasMiniPlayer ? miniPlayer : 0)
+    }
+}
+
 extension View {
     /// Leave as much space at the bottom as the floating bottom zone is tall.
     func bottomBarClearance() -> some View {
