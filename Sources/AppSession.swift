@@ -62,6 +62,11 @@ final class AppSession: ObservableObject {
     /// Subsonic/Navidrome music as a source of type `.music`.
     var subsonicProvider: SubsonicProvider { SubsonicProvider.shared }
 
+    /// THE music access point for the UI (Jellyfin staging, stage 1): views
+    /// and view models talk to this protocol, never to a concrete server
+    /// type. Today it is Subsonic; a future provider swaps in here.
+    var musicProvider: any MusicProvider { SubsonicProvider.shared }
+
     /// Internet radio (Radio Browser catalog + manual streams), type `.radio`.
     var radioProvider: RadioProvider { RadioProvider.shared }
 

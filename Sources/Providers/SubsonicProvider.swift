@@ -13,7 +13,7 @@ import OSLog
 /// as "next song" without any change. Auth rides in the stream/cover URLs
 /// (query params), so `streamAuthHeaders` stays empty.
 @MainActor
-final class SubsonicProvider: AudioProvider {
+final class SubsonicProvider: AudioProvider, MusicProvider {
     static let shared = SubsonicProvider()
     private init() { reloadConfig() }
 
@@ -82,6 +82,12 @@ final class SubsonicProvider: AudioProvider {
         } else if AppStorageKeys.subsonicActive, password.isEmpty {
             Logger.music.error("subsonic client built WITHOUT a password (keychain empty or unreadable)")
         }
+    }
+
+    /// Y33 (c): scenePhase revalidation — reconnect silently when the source
+    /// should be active (user toggle on) but the client is currently missing.
+    func reconnectIfNeeded() {
+        if !isAvailable, AppStorageKeys.subsonicEnabledValue { reloadConfig() }
     }
 
     /// Validate server + credentials; returns a user-facing error string or nil.
@@ -282,6 +288,13 @@ final class SubsonicProvider: AudioProvider {
         return remember(await Self.mapAlbums(try await client.albumList2(type: type, size: size)))
     }
 
+    /// One page of the album catalog for a semantic sort (S5: staged loading).
+    /// The MusicSortOption → getAlbumList2-type mapping lives HERE (provider
+    /// level) — a future provider translates its own vocabulary.
+    func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem] {
+        try await albumPage(type: sort.subsonicType, offset: offset, size: size)
+    }
+
     /// One page of the alphabetical album catalog (S5: staged loading — the
     /// grid pages in 100s instead of one 500-album request).
     func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
@@ -347,7 +360,14 @@ final class SubsonicProvider: AudioProvider {
     /// 2×2 mosaic (the server's single playlist cover is deliberately ignored).
     /// Best-effort, cached per session.
     private var playlistMosaicCache: [String: [String]] = [:]
-    func playlistMosaicCoverIDs(playlistRawId: String) async -> [String] {
+
+    /// MusicProvider shape: item-id-based — the UI never handles raw ids.
+    func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String] {
+        guard let rawId = Self.id(itemId, kind: "playlist") else { return [] }
+        return await playlistMosaicCoverIDs(playlistRawId: rawId)
+    }
+
+    private func playlistMosaicCoverIDs(playlistRawId: String) async -> [String] {
         if let cached = playlistMosaicCache[playlistRawId] { return cached }
         guard let client, let pl = try? await client.playlist(id: playlistRawId) else { return [] }
         var seen = Set<String>()
@@ -361,9 +381,9 @@ final class SubsonicProvider: AudioProvider {
         return ids
     }
 
-    /// F5: cover URL for a raw Subsonic cover-art id (mosaic tiles use these,
-    /// not `sub:` item ids).
-    func subsonicCoverURL(coverArtId: String, size: Int = 300) -> URL? {
+    /// F5: cover URL for a raw cover-art id (mosaic tiles use these, not
+    /// `sub:` item ids).
+    func coverURL(coverArtId: String, size: Int = 300) -> URL? {
         client?.mediaURL("getCoverArt", ["id": coverArtId, "size": String(size)])
     }
 
@@ -663,6 +683,32 @@ extension SubsonicProvider {
     func artist(forId id: String) -> SubsonicArtist? {
         searchedArtistsById[id]
     }
+
+    /// Cache a browsed artist so the shared artist route resolves it (same
+    /// path as a server search hit).
+    func cacheSearchedArtist(_ artist: SubsonicArtist) {
+        searchedArtistsById[artist.id] = artist
+    }
+
+    /// The album items this session has cached (offline browse deck).
+    var cachedAlbumItems: [LibraryItem] {
+        itemsById.values.filter { Self.id($0.id, kind: "album") != nil }
+    }
+
+    // MARK: MusicProvider id namespace (instance shape over the statics)
+
+    nonisolated func owns(itemId: String) -> Bool { Self.owns(itemId: itemId) }
+    nonisolated func kind(of itemId: String) -> MusicItemKind? {
+        if Self.id(itemId, kind: "album") != nil { return .album }
+        if Self.id(itemId, kind: "playlist") != nil { return .playlist }
+        if Self.id(itemId, kind: "song") != nil { return .song }
+        if Self.id(itemId, kind: "artist") != nil { return .artist }
+        return nil
+    }
+    nonisolated func itemId(playlistId: String) -> String { Self.itemId(playlistId: playlistId) }
+    nonisolated func itemId(songId: String) -> String { Self.itemId(songId: songId) }
+    nonisolated func itemId(artistId: String) -> String { "sub:artist:\(artistId)" }
+    nonisolated func artistId(fromItemId itemId: String) -> String? { Self.id(itemId, kind: "artist") }
 }
 
 extension SubsonicProvider: SearchableProvider {
