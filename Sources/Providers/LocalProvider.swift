@@ -51,23 +51,39 @@ final class LocalProvider: AudioProvider {
         library.fileURL(forContentPath: contentPath)
     }
 
+    /// Pure (tested): one stored `[time, lastUpdate]` pair + duration → the
+    /// progress value. `nil` when the stored shape is not the expected pair.
+    nonisolated static func storedProgress(_ stored: [Double]?, duration: Double) -> BookProgress? {
+        guard duration > 0, let stored, stored.count == 2 else { return nil }
+        let time = stored[0]
+        return BookProgress(
+            fraction: min(max(time / duration, 0), 1),
+            isFinished: time >= duration - 1,
+            lastUpdate: stored[1],
+            currentTime: time
+        )
+    }
+
     /// Progress comes purely locally from `localPosition` — the provider is the
     /// ONLY interface to the outside, the core never reads it itself.
     func fetchAllProgress() async throws -> [String: BookProgress] {
-        var map: [String: BookProgress] = [:]
-        for item in library.libraryItems() {
-            guard let duration = item.media?.duration, duration > 0,
-                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-                  stored.count == 2 else { continue }
-            let time = stored[0]
-            map[item.id] = BookProgress(
-                fraction: min(max(time / duration, 0), 1),
-                isFinished: time >= duration - 1,
-                lastUpdate: stored[1],
-                currentTime: time
-            )
+        // #62/V4: snapshot the item list on the actor, then read the per-item
+        // defaults OFF the main actor (UserDefaults is thread-safe) — a large
+        // local library must not stall the main thread with n plist reads.
+        let inputs: [(id: String, duration: Double)] = library.libraryItems().compactMap {
+            guard let duration = $0.media?.duration, duration > 0 else { return nil }
+            return ($0.id, duration)
         }
-        return map
+        return await Task.detached(priority: .userInitiated) {
+            var map: [String: BookProgress] = [:]
+            for (id, duration) in inputs {
+                let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]
+                if let progress = Self.storedProgress(stored, duration: duration) {
+                    map[id] = progress
+                }
+            }
+            return map
+        }.value
     }
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
