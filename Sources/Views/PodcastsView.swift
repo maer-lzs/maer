@@ -153,9 +153,10 @@ struct PodcastsView: View {
             await PodcastSubscriptionSync.autoReconcileIfNeeded()  // mirror local subscriptions
             await recommendations.refreshIfNeeded()               // recommendations (external)
         }
-        // Layout-shift: mirror the store into the gated snapshot (count as the
-        // change signal — results are replaced wholesale by the store).
-        .task(id: recommendations.results.count) {
+        // Layout-shift: mirror the store into the gated snapshot. #51: keyed on
+        // the store's CONTENT version — the count missed same-size wholesale
+        // replacements (stale section).
+        .task(id: recommendations.contentVersion) {
             let fresh = recommendations.results
             BottomBarState.shared.runWhenCalm { recommendationItems = fresh }
         }

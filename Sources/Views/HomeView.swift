@@ -57,7 +57,10 @@ struct HomeView: View {
 
     /// TF4/E3: recompute the Discover row only when its inputs change.
     private var discoverToken: String {
-        "\(recommendationsEnabled)-\(recommendations.results.count)-\(subs.shows.count)-\(ABSPodcastProvider.shared.shows.count)"
+        // #51 V1 (tab parity with the podcast tab's snapshot): the store's
+        // CONTENT version instead of the count — same-size replacements used
+        // to leave the Discover row stale.
+        "\(recommendationsEnabled)-\(recommendations.contentVersion)-\(subs.shows.count)-\(ABSPodcastProvider.shared.shows.count)"
     }
 
     private func recomputeDiscover() {

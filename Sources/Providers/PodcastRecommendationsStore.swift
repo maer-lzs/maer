@@ -15,7 +15,14 @@ final class PodcastRecommendationsStore: ObservableObject {
     static let shared = PodcastRecommendationsStore()
     private init() {}
 
-    @Published private(set) var results: [PodcastSearchResult] = []
+    @Published private(set) var results: [PodcastSearchResult] = [] {
+        // #51: a CONTENT identity for snapshot consumers — the count alone
+        // missed same-size wholesale replacements (stale sections).
+        didSet { contentVersion &+= 1 }
+    }
+    /// Bumps on every results assignment; `.task(id:)` consumers key on this
+    /// instead of `results.count`.
+    private(set) var contentVersion: UInt64 = 0
     private var loadedAt: Date?
     private var isLoading = false
 
