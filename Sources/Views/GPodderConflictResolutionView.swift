@@ -16,7 +16,13 @@ struct GPodderConflictResolutionView: View {
     @State private var keep: [String: Bool] = [:]
     @State private var loading = true
     @State private var applying = false
-    @State private var errorText: String?
+    // #43 apply-regression: load and apply failures are semantically different
+    // errors — one shared string made the full-screen load branch swallow the
+    // conflict list after a failed Apply. Keep them as separate states.
+    /// Snapshot could not be fetched — there IS no conflict list to show.
+    @State private var loadErrorText: String?
+    /// Apply failed — the list, selection and retry must STAY visible.
+    @State private var applyErrorText: String?
 
     private var localOnly: [String] {
         guard let s = snapshot else { return [] }
@@ -32,11 +38,11 @@ struct GPodderConflictResolutionView: View {
         Form {
             if loading {
                 Section { HStack { ProgressView(); Text("Loading subscriptions…") } }
-            } else if let errorText {
-                // #43 V1: the error branch must come BEFORE the no-conflict
+            } else if let loadErrorText {
+                // #43 V1: the load-error branch must come BEFORE the no-conflict
                 // branch — a failed snapshot (server unreachable) used to fall
                 // into the green "No differences" path and read as "in sync".
-                Section { Label(errorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
+                Section { Label(loadErrorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
             } else if !hasConflict {
                 Section {
                     Label("No differences — this device and the server already match.",
@@ -69,8 +75,8 @@ struct GPodderConflictResolutionView: View {
                     }
                 }
 
-                if let errorText {
-                    Section { Label(errorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
+                if let applyErrorText {
+                    Section { Label(applyErrorText, systemImage: "xmark.octagon").foregroundStyle(.red) }
                 }
 
                 Section {
@@ -120,14 +126,14 @@ struct GPodderConflictResolutionView: View {
     private func load() async {
         loading = true
         snapshot = await GPodderSync.shared.conflictSnapshot()
-        if snapshot == nil { errorText = String(localized: "Couldn't reach the gpodder server.") }
+        if snapshot == nil { loadErrorText = String(localized: "Couldn't reach the gpodder server.") }
         loading = false
     }
 
     private func apply() async {
         guard let s = snapshot else { return }
         applying = true
-        errorText = nil
+        applyErrorText = nil
         // Map the per-feed "keep" toggles to the pure resolution choices.
         var choices: [String: GPodderConflictResolution.Choice] = [:]
         for feed in localOnly {   // local-only: keep = keepLocal (push), else takeServer (drop)
@@ -139,7 +145,7 @@ struct GPodderConflictResolutionView: View {
         let actions = GPodderConflictResolution.resolve(
             local: s.localNorms, server: s.serverNorms, choices: choices)
         if let err = await GPodderSync.shared.applyConflictResolution(actions, snapshot: s) {
-            errorText = err
+            applyErrorText = err
             applying = false
         } else {
             applying = false
