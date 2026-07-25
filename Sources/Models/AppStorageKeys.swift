@@ -359,4 +359,12 @@ nonisolated enum AppStorageKeys {
     static var disableBarCollapseValue: Bool {
         UserDefaults.standard.bool(forKey: disableBarCollapse)
     }
+
+    // Hitch BISECT harness: the collapse triggers several part-effects at
+    // once; each is individually disableable (Settings → About, below the
+    // master switch, default OFF = today's behavior) so the device test can
+    // isolate WHICH part-effect moves the grid. Removable together once the
+    // culprit is proven.
+    static let hitchIconOffsetOff = "debug.hitch.iconOffsetOff"
+    static var hitchIconOffsetOffValue: Bool { UserDefaults.standard.bool(forKey: hitchIconOffsetOff) }
 }

@@ -1261,6 +1261,10 @@ struct LibraryView: View {
     /// glass with white icon; `\.glassAccent` absent; menu labels tinted
     /// with the app accent → orange symbol). Everything the glass and icon
     /// need is therefore pinned/passed EXPLICITLY here.
+    /// Bisect switch 1: with "icon offset off" the sort/settings icons ignore
+    /// the collapse entirely (static, always visible).
+    private var iconsFollowCollapse: Bool { !AppStorageKeys.hitchIconOffsetOffValue }
+
     private func toolbarGlassIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
             .foregroundStyle(.primary)
@@ -1282,10 +1286,11 @@ struct LibraryView: View {
             // transaction window at the collapse flip wiggled with it (the
             // grid's micro back-and-forth at the 60 pt threshold). 0.9 keeps a
             // slight pop-in without overshoot.
-            .offset(y: barCollapsed ? -72 : 0)
-            .opacity(barCollapsed ? 0 : 1)
-            .allowsHitTesting(!barCollapsed)
-            .animation(.spring(response: 0.35, dampingFraction: 0.9), value: barCollapsed)
+            .offset(y: iconsFollowCollapse && barCollapsed ? -72 : 0)
+            .opacity(iconsFollowCollapse && barCollapsed ? 0 : 1)
+            .allowsHitTesting(!(iconsFollowCollapse && barCollapsed))
+            .animation(iconsFollowCollapse ? .spring(response: 0.35, dampingFraction: 0.9) : nil,
+                       value: barCollapsed)
     }
 
     /// Cover grid with a self-computed column count and width (see
