@@ -579,13 +579,17 @@ struct LibraryView: View {
                     searchCloseButton
                 }
             } else {
-            if !barCollapsed { banner }
+            // Bisect switch 3: "static composition" pins the branches to the
+            // EXPANDED shape — the subtree keeps its identity across the flip
+            // (no view insert/remove at the collapse).
+            let composedCollapsed = AppStorageKeys.hitchBarStaticCompositionValue ? false : barCollapsed
+            if !composedCollapsed { banner }
             HStack(spacing: 8) {
-                if barCollapsed { homeButton }
+                if composedCollapsed { homeButton }
                 miniPlayer
-                if barCollapsed { searchButton }
+                if composedCollapsed { searchButton }
             }
-            if !barCollapsed {
+            if !composedCollapsed {
                 HStack(spacing: 10) {
                     mediaBar
                     Spacer(minLength: 0)
