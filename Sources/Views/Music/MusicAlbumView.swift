@@ -30,10 +30,9 @@ struct MusicAlbumView: View {
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
     /// Albums can be starred; playlists cannot.
-    private var isAlbum: Bool { SubsonicProvider.id(item.id, kind: "album") != nil }
+    private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
     /// Playlists get the mosaic header; albums keep their single cover.
-    private var isPlaylist: Bool { SubsonicProvider.id(item.id, kind: "playlist") != nil }
-    private var playlistRawId: String { SubsonicProvider.id(item.id, kind: "playlist") ?? item.id }
+    private var isPlaylist: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .playlist }
 
     var body: some View {
         List {
@@ -70,8 +69,9 @@ struct MusicAlbumView: View {
                             } label: { Label("Play from Here", systemImage: "play.fill") }
                             Button {
                                 Task {
-                                    if let songId = await AppSession.shared.subsonicProvider.songId(forItemId: item.id, trackIndex: index) {
-                                        addTarget = AddToPlaylistTarget(itemId: SubsonicProvider.itemId(songId: songId))
+                                    let music = AppSession.shared.musicProvider
+                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
+                                        addTarget = AddToPlaylistTarget(itemId: music.itemId(songId: songId))
                                     }
                                 }
                             } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
@@ -117,7 +117,7 @@ struct MusicAlbumView: View {
                 downloadButton
                 if isAlbum {
                     Button {
-                        Task { starred = await SubsonicProvider.shared.toggleStar(itemId: item.id) }
+                        Task { starred = await AppSession.shared.musicProvider.toggleStar(itemId: item.id) }
                     } label: {
                         Image(systemName: starred ? "heart.fill" : "heart")
                     }
@@ -130,14 +130,15 @@ struct MusicAlbumView: View {
             await loadDetail()
             if isPlaylist {
                 // Same mosaic path as the cards — no second artwork builder.
-                let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: playlistRawId)
-                mosaicCoverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
+                let music = AppSession.shared.musicProvider
+                let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
+                mosaicCoverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
             }
             if isAlbum {
-                starred = await SubsonicProvider.shared.isStarred(itemId: item.id)
+                starred = await AppSession.shared.musicProvider.isStarred(itemId: item.id)
                 // M3/M6: notes + (via release MBID) a high-res cover — both
                 // best-effort, on demand only.
-                let info = await SubsonicProvider.shared.albumInfo(itemId: item.id)
+                let info = await AppSession.shared.musicProvider.albumInfo(itemId: item.id)
                 albumNotes = Self.stripped(info?.notes)
                 if let mbid = info?.musicBrainzId, !mbid.isEmpty {
                     highResCover = await CoverArtArchive.shared.frontCover(mbid: mbid)
@@ -185,7 +186,7 @@ struct MusicAlbumView: View {
                 // A playlist shows the F5 2×2 mosaic — the same component as the
                 // cards/rows, not the server's single playlist cover.
                 if isPlaylist {
-                    PlaylistArtwork(playlistID: playlistRawId, coverURLs: mosaicCoverURLs)
+                    PlaylistArtwork(playlistID: item.id, coverURLs: mosaicCoverURLs)
                         .aspectRatio(1, contentMode: .fit)
                 } else if let highResCover {
                     // M6: prefer the high-res Cover Art Archive front when loaded.

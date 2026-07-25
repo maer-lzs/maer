@@ -63,7 +63,7 @@ struct AddToPlaylistSheet: View {
                     } else {
                         ForEach(playlists) { playlist in
                             Button {
-                                Task { await add(toItemId: SubsonicProvider.itemId(playlistId: playlist.id)) }
+                                Task { await add(toItemId: AppSession.shared.musicProvider.itemId(playlistId: playlist.id)) }
                             } label: {
                                 HStack {
                                     Text(playlist.name ?? String(localized: "Playlist"))
@@ -107,7 +107,7 @@ struct AddToPlaylistSheet: View {
 
     private func load() async {
         loading = true
-        let all = (try? await SubsonicProvider.shared.allPlaylists()) ?? []
+        let all = (try? await AppSession.shared.musicProvider.allPlaylists()) ?? []
         playlists = PlaylistPresentation.realPlaylists(all)
         loading = false
     }
@@ -116,13 +116,13 @@ struct AddToPlaylistSheet: View {
         busy = true
         errorText = nil
         do {
-            let ids = await SubsonicProvider.shared.songIds(forItemId: itemId)
+            let ids = await AppSession.shared.musicProvider.songIds(forItemId: itemId)
             guard !ids.isEmpty else {
                 errorText = String(localized: "Nothing to add.")
                 busy = false
                 return
             }
-            try await SubsonicProvider.shared.addSongs(ids, toPlaylistItemId: playlistItemId)
+            try await AppSession.shared.musicProvider.addSongs(ids, toPlaylistItemId: playlistItemId)
             dismiss()
         } catch {
             errorText = String(localized: "Could not add to the playlist.")
@@ -134,7 +134,7 @@ struct AddToPlaylistSheet: View {
         busy = true
         errorText = nil
         do {
-            guard let playlistItemId = try await SubsonicProvider.shared.createPlaylist(name: name) else {
+            guard let playlistItemId = try await AppSession.shared.musicProvider.createPlaylist(name: name) else {
                 errorText = String(localized: "Could not create the playlist.")
                 busy = false
                 return

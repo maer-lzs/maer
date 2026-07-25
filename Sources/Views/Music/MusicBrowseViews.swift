@@ -69,17 +69,17 @@ struct MusicArtistView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task(id: artist.id) {
-            albums = (try? await SubsonicProvider.shared.artistAlbums(artistId: artist.id)) ?? []
+            albums = (try? await AppSession.shared.musicProvider.artistAlbums(artistId: artist.id)) ?? []
             loading = false
-            info = await SubsonicProvider.shared.artistInfo(artistId: artist.id)
+            info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
             if let name = artist.name {
-                topSongs = await SubsonicProvider.shared.topSongs(artistName: name)
+                topSongs = await AppSession.shared.musicProvider.topSongs(artistName: name)
             }
             // Similar artists limited to those present in the own library —
             // foreign names without library content would dead-end.
             if let similar = info?.similarArtist, !similar.isEmpty {
                 let libraryNames = Dictionary(
-                    ((try? await SubsonicProvider.shared.allArtists()) ?? [])
+                    ((try? await AppSession.shared.musicProvider.allArtists()) ?? [])
                         .compactMap { a in a.name.map { ($0.lowercased(), a) } },
                     uniquingKeysWith: { a, _ in a })
                 similarInLibrary = similar.compactMap { s in
@@ -213,7 +213,7 @@ struct MusicPlaylistsView: View {
     /// tracks via `fetchItemDetail`.
     private static func item(for playlist: SubsonicPlaylist) -> LibraryItem {
         LibraryItem(
-            id: SubsonicProvider.itemId(playlistId: playlist.id),
+            id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: playlist.name, authorName: nil, narratorName: nil,

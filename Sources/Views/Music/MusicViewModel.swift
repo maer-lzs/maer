@@ -24,10 +24,10 @@ struct MusicSource {
     var playlists: @MainActor @Sendable () async throws -> [SubsonicPlaylist]
 
     static let live = MusicSource(
-        albumsPage: { try await SubsonicProvider.shared.albumPage(type: $0.subsonicType, offset: $1, size: $2) },
-        shelf: { try await SubsonicProvider.shared.albumShelf(type: $0, size: $1) },
-        artists: { try await SubsonicProvider.shared.allArtists() },
-        playlists: { try await SubsonicProvider.shared.allPlaylists() }
+        albumsPage: { try await AppSession.shared.musicProvider.albumPage(sort: $0, offset: $1, size: $2) },
+        shelf: { try await AppSession.shared.musicProvider.albumShelf(type: $0, size: $1) },
+        artists: { try await AppSession.shared.musicProvider.allArtists() },
+        playlists: { try await AppSession.shared.musicProvider.allPlaylists() }
     )
 }
 

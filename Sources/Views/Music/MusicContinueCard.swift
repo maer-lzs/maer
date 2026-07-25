@@ -17,14 +17,14 @@ struct MusicContinueCard: View {
     @State private var coverURLs: [URL] = []
 
     private static let width: CGFloat = 235
-    private var rawId: String { SubsonicProvider.id(item.id, kind: "playlist") ?? item.id }
+    private var mosaicKey: String { item.id }
 
     var body: some View {
         Button {
             Task { await playerCoordinator.open(item: item) }
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                PlaylistArtwork(playlistID: rawId, coverURLs: coverURLs)
+                PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs)
                     .frame(width: Self.width, height: Self.width)
 
                 Text(item.title).font(.headline).lineLimit(1)
@@ -38,8 +38,9 @@ struct MusicContinueCard: View {
         }
         .buttonStyle(.plain)
         .task(id: item.id) {
-            let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: rawId)
-            coverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
+            let music = AppSession.shared.musicProvider
+            let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
+            coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
         }
     }
 }

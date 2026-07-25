@@ -69,7 +69,7 @@ extension EnvironmentValues {
 @MainActor
 func playlistLibraryItem(_ playlist: SubsonicPlaylist) -> LibraryItem {
     LibraryItem(
-        id: SubsonicProvider.itemId(playlistId: playlist.id),
+        id: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
         media: LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: playlist.name, authorName: nil, narratorName: nil,

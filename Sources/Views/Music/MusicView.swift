@@ -73,7 +73,7 @@ struct MusicView: View {
         // Y35: "Sync Now" (settings) refreshed only the provider cache — a
         // MOUNTED tab (tabs stay alive once visited) never re-read it. The
         // sync signal re-runs the EXISTING load path into this live model.
-        .onReceive(SubsonicProvider.shared.librarySynced) { _ in
+        .onReceive(AppSession.shared.musicProvider.librarySynced) { _ in
             Task { await vm.reload() }
         }
         // A5: return promptly (stuck indicator otherwise) AND survive the
@@ -104,7 +104,7 @@ struct MusicView: View {
                 newPlaylistName = ""
                 guard !name.isEmpty else { return }
                 Task {
-                    _ = try? await SubsonicProvider.shared.createPlaylist(name: name)
+                    _ = try? await AppSession.shared.musicProvider.createPlaylist(name: name)
                     await vm.reload()
                 }
             }
@@ -143,7 +143,7 @@ struct MusicView: View {
                 Text("Albums").font(.title3).bold()
                 Spacer()
                 ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                    await SubsonicProvider.shared.shuffleLibrarySongItems()
+                    await AppSession.shared.musicProvider.shuffleLibrarySongItems()
                 }
                 .font(.title3)
             }
@@ -228,14 +228,17 @@ private struct PlaylistCard: View {
             title: playlist.name ?? String(localized: "Playlist"),
             subtitle: metaLine,
             coverURL: nil,
-            coverOverride: PlaylistArtwork(playlistID: playlist.id, coverURLs: coverURLs),
+            coverOverride: PlaylistArtwork(
+                playlistID: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
+                coverURLs: coverURLs),
             onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
         )
         // Kachel-Auftrag: fills its containerRelativeFrame slot (MediaTile is
         // maxWidth + aspectRatio already) — no fixed width anymore.
         .task(id: playlist.id) {
-            let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: playlist.id)
-            coverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
+            let music = AppSession.shared.musicProvider
+            let ids = await music.playlistMosaicCoverIDs(forItemId: music.itemId(playlistId: playlist.id))
+            coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
         }
     }
 
@@ -356,7 +359,7 @@ private struct MusicItemMenu: ViewModifier {
                 }
 
                 // Add to Playlist — only meaningful for Subsonic music items.
-                if SubsonicProvider.owns(itemId: item.id) {
+                if AppSession.shared.musicProvider.owns(itemId: item.id) {
                     Button {
                         addTarget = AddToPlaylistTarget(itemId: item.id)
                     } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }

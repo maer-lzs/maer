@@ -131,7 +131,7 @@ final class LyricsService: ObservableObject {
 
         // 1. Server (OpenSubsonic).
         var result = LyricsParser.fromStructured(
-            await SubsonicProvider.shared.lyrics(songId: songId))
+            await AppSession.shared.musicProvider.lyrics(songId: songId))
 
         // 2. LRCLIB fallback — only online, only when enabled (opt-out toggle).
         if result == nil,
