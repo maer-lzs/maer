@@ -191,16 +191,26 @@ struct MusicView: View {
     /// F5: the playlist card row — vertical poster cards (2×2 mosaic + name +
     /// metadata) plus the "New Playlist" card at the end. Always shown so a
     /// playlist can be created even before any exist.
+    /// Kachel-Auftrag: column count of the playlist row per width class.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     private var playlistRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let columns = CardMetrics.playlistColumns(regularWidth: horizontalSizeClass == .regular)
+        return VStack(alignment: .leading, spacing: 8) {
             Text("Playlists").font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
-                    ForEach(sortedPlaylists) { PlaylistCard(playlist: $0) }
+                    ForEach(sortedPlaylists) {
+                        PlaylistCard(playlist: $0)
+                            // Screen-relative slots + peek instead of fixed 135 pt.
+                            .containerRelativeFrame(.horizontal, count: columns, span: 1, spacing: 16)
+                    }
                     NewPlaylistCard { showNewPlaylist = true }
+                        .containerRelativeFrame(.horizontal, count: columns, span: 1, spacing: 16)
                 }
                 .padding(.horizontal)
             }
+            .scrollClipDisabled()
         }
     }
 }
@@ -213,8 +223,6 @@ private struct PlaylistCard: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
 
-    static let width = CardMetrics.playlistCardWidth
-
     var body: some View {
         MediaTile(
             title: playlist.name ?? String(localized: "Playlist"),
@@ -223,7 +231,8 @@ private struct PlaylistCard: View {
             coverOverride: PlaylistArtwork(playlistID: playlist.id, coverURLs: coverURLs),
             onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
         )
-        .frame(width: Self.width)
+        // Kachel-Auftrag: fills its containerRelativeFrame slot (MediaTile is
+        // maxWidth + aspectRatio already) — no fixed width anymore.
         .task(id: playlist.id) {
             let ids = await SubsonicProvider.shared.playlistMosaicCoverIDs(playlistRawId: playlist.id)
             coverURLs = ids.compactMap { SubsonicProvider.shared.subsonicCoverURL(coverArtId: $0) }
@@ -254,7 +263,7 @@ private struct NewPlaylistCard: View {
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
             }
-            .frame(width: PlaylistCard.width)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("new-playlist-card")
