@@ -18,6 +18,12 @@ same block carries a comment saying WHY dropping is correct there. And:
 / `URLError.cancelled` propagate (or are handled as cancellation), they never
 become "network failed" or similar (see `SubsonicClient.isCancellation`).
 
+**Convention — change detection (25.07, third find of the class):** never
+detect content changes via `count` — same count, different content (a swapped
+subscription) misses the change. Use content identity (`ContentToken.of`,
+hash of the IDs) or a store `generation`/`contentVersion` counter (pattern:
+`PodcastRecommendationsStore.contentVersion`).
+
 **Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
 switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
 `Label { Text(verbatim: "…") } icon: { Image(systemName:) }`) and NEVER enters
