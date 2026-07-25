@@ -40,8 +40,11 @@ struct LibraryView: View {
     /// `glassEffectID` in this namespace — media pill ↔ home button, magnifier ↔
     /// search field — instead of cross-fading independent glass surfaces.
     @Namespace private var bottomGlassNS
-    @ObservedObject private var bottomBar = BottomBarState.shared
-    private var barCollapsed: Bool { bottomBar.collapsed }
+    // HITCH ROOT (26.07): LibraryView must NOT observe BottomBarState — it
+    // hosts all five tab trees, and every collapse flip re-evaluated them all
+    // (the bump that survived every bisect part-effect switch). Only the
+    // small `BottomBarCollapseReader` leaves observe `collapsed`; state
+    // mutations go through method calls on the shared instance.
     /// Lag applied to the bottom bar's collapse spring so it follows the top
     /// icons out of frame instead of vanishing in the same frame (24.07 decouple).
     private static let barCollapseLag: TimeInterval = 0.12
@@ -269,7 +272,8 @@ struct LibraryView: View {
             // above). On the full player itself the whole row is hidden,
             // otherwise play/pause & co. would appear twice.
             if !isShowingFullPlayer {
-                bottomBarContent
+                BottomBarCollapseReader { barCollapsed in
+                bottomBarContent(collapsed: barCollapsed)
                 // S10: slightly crisper collapse/expand spring (less floaty) —
                 // the mini-player keeps its matchedGeometry morph across it, the
                 // extra rows cross-fade.
@@ -289,6 +293,7 @@ struct LibraryView: View {
                             ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
                             : .spring(response: 0.55, dampingFraction: 0.85)),
                     value: barCollapsed)
+                }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
                 .task(id: playerCoordinator.activeItem?.id) {
@@ -510,11 +515,11 @@ struct LibraryView: View {
     /// morphs into the home button and the search button glides via
     /// matchedGeometry as before. No extra work at scroll start: the collapse
     /// now removes fewer views than the old full-branch swap.
-    private var bottomBarContent: some View {
-        bottomBarStack.bottomGlassContainer()
+    private func bottomBarContent(collapsed: Bool) -> some View {
+        bottomBarStack(collapsed: collapsed).bottomGlassContainer()
     }
 
-    private var bottomBarStack: some View {
+    private func bottomBarStack(collapsed barCollapsed: Bool) -> some View {
         VStack(spacing: 8) {
             // Y17 search mode: the field sits where the tab pill was, the tab
             // bar yields to the round home button (like the collapsed state).
@@ -527,7 +532,7 @@ struct LibraryView: View {
                 // home button steps aside and the field takes the full width;
                 // the X lives in its OWN round glass button (Y24: house →
                 // Home, X → close).
-                if !searchFieldFocused { miniPlayer }
+                if !searchFieldFocused { miniPlayer(collapsed: barCollapsed) }
                 HStack(spacing: 8) {
                     if !searchFieldFocused { homeButton }
                     bottomSearchField
@@ -541,7 +546,7 @@ struct LibraryView: View {
             if !composedCollapsed { banner }
             HStack(spacing: 8) {
                 if composedCollapsed { homeButton }
-                miniPlayer
+                miniPlayer(collapsed: barCollapsed)
                 if composedCollapsed { searchButton }
             }
             if !composedCollapsed {
@@ -578,7 +583,7 @@ struct LibraryView: View {
     }
 
     @ViewBuilder
-    private var miniPlayer: some View {
+    private func miniPlayer(collapsed barCollapsed: Bool) -> some View {
         if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
             // Bisect switch 4: "mini morph off" keeps the mini player in its
             // full shape across the flip (no compact re-layout).
@@ -616,7 +621,7 @@ struct LibraryView: View {
                 types: availableMediaTypes, selected: selectedMediaType,
                 onSelect: { newValue in
                     navigationPath = NavigationPath()
-                    bottomBar.reset()   // switching tabs expands the bar
+                    BottomBarState.shared.reset()   // switching tabs expands the bar
                     withAnimation(.snappy(duration: 0.2)) { selectedMediaType = newValue }
                 },
                 glassMorphID: "media", glassMorphNamespace: bottomGlassNS)
@@ -637,7 +642,7 @@ struct LibraryView: View {
             }
             navigationPath = NavigationPath()
             withAnimation(.spring(response: 0.5, dampingFraction: 0.88)) {
-                bottomBar.expand()
+                BottomBarState.shared.expand()
             }
         } label: {
             // Collapsed bar shows the ACTIVE tab's symbol; tapping only expands
@@ -1233,6 +1238,9 @@ struct LibraryView: View {
     private var iconsFollowCollapse: Bool { !AppStorageKeys.hitchIconOffsetOffValue }
 
     private func toolbarGlassIcon(_ systemName: String) -> some View {
+        // The icon is the OTHER render site of `collapsed` — it observes via
+        // its own reader leaf, so the flip never touches the tab container.
+        BottomBarCollapseReader { barCollapsed in
         Image(systemName: systemName)
             .foregroundStyle(.primary)
             .frame(width: 40, height: 40)
@@ -1258,6 +1266,7 @@ struct LibraryView: View {
             .allowsHitTesting(!(iconsFollowCollapse && barCollapsed))
             .animation(iconsFollowCollapse ? .spring(response: 0.35, dampingFraction: 0.9) : nil,
                        value: barCollapsed)
+        }
     }
 
     /// Cover grid with a self-computed column count and width (see

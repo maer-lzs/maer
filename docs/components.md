@@ -24,6 +24,19 @@ subscription) misses the change. Use content identity (`ContentToken.of`,
 hash of the IDs) or a store `generation`/`contentVersion` counter (pattern:
 `PodcastRecommendationsStore.contentVersion`).
 
+**Convention — observation goes into the smallest leaf (26.07, third round of
+the class):** a container that carries scroll content NEVER observes
+frequently-changing state. Observation belongs in the smallest leaf that
+actually renders the value; frequently-changing = anything that can change
+during a gesture (scroll offset, `collapsed`, download progress, player
+position). Root cause of the hitch that survived all five bisect switches:
+LibraryView (host of all five tab trees) observed `BottomBarState.collapsed`,
+so every flip re-evaluated every mounted tab mid-scroll. The ONE observing
+leaf is `BottomBarCollapseReader` (bar zone + toolbar icons); state mutations
+are method calls on the shared instance (`runWhenCalm`/`reset`/`expand` — calls
+don't observe). Prior rounds: TF4/E1 (`MediaAvailabilityScope`), cell-cost
+sweep (row leaves).
+
 **Convention — cell heights in lazy containers (26.07, second round of the
 class):** cells in `LazyVGrid`/`LazyVStack`/horizontal card rows have a height
 INDEPENDENT of their data. Every text line uses `lineLimit(n, reservesSpace:

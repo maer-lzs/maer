@@ -226,3 +226,20 @@ extension View {
         }
     }
 }
+
+
+/// HITCH ROOT (26.07): the ONE observing leaf for `BottomBarState.collapsed`.
+/// A container that carries scroll content must NEVER observe the bar state —
+/// LibraryView hosts all five tab trees, so its `@ObservedObject` meant every
+/// collapse flip re-evaluated every mounted tab mid-scroll (the bump that
+/// survived all five part-effect bisect switches). Only this tiny wrapper
+/// observes; the flip invalidates just the bar zone / the toolbar icon that
+/// actually renders the state, passed down as a plain value.
+struct BottomBarCollapseReader<Content: View>: View {
+    @ObservedObject private var bottomBar = BottomBarState.shared
+    @ViewBuilder let content: (_ collapsed: Bool) -> Content
+
+    var body: some View {
+        content(bottomBar.collapsed)
+    }
+}
