@@ -112,7 +112,7 @@ struct SearchScreen: View {
             drill = []
             showCatalog = false
             if scope == .music || scope == .library {
-                artistCount = (try? await SubsonicProvider.shared.allArtists())?.count
+                artistCount = (try? await AppSession.shared.musicProvider.allArtists())?.count
             }
         }
     }
@@ -419,8 +419,9 @@ struct SearchScreen: View {
                     deckEntryRow(title: artist.name ?? "—", count: artist.albumCount ?? 0) {
                         // Cache the artist so the shared resolver (artist route)
                         // finds it — same path as a server search hit.
-                        SubsonicProvider.shared.searchedArtistsById[artist.id] = artist
-                        onOpen(SearchResult(id: "sub:artist:\(artist.id)", kind: .artist,
+                        let music = AppSession.shared.musicProvider
+                        music.cacheSearchedArtist(artist)
+                        onOpen(SearchResult(id: music.itemId(artistId: artist.id), kind: .artist,
                                             title: artist.name ?? "—"))
                     }
                 }
@@ -587,7 +588,7 @@ struct SearchScreen: View {
         DeckEntry(id: "artists", title: String(localized: "Artists"),
                   systemImage: "music.mic", count: artistCount ?? 0) {
             Task {
-                let artists = (try? await SubsonicProvider.shared.allArtists()) ?? []
+                let artists = (try? await AppSession.shared.musicProvider.allArtists()) ?? []
                 withAnimation(.snappy(duration: 0.2)) {
                     if scope != .music { scope = .music }
                     drill.append(.artists(title: String(localized: "Artists"), artists: artists))
@@ -806,8 +807,7 @@ struct SearchScreen: View {
 
     /// The album stock this session has cached (same source as the old browse).
     private var cachedAlbums: [LibraryItem] {
-        SubsonicProvider.shared.itemsById.values
-            .filter { $0.id.hasPrefix("sub:album:") }
+        AppSession.shared.musicProvider.cachedAlbumItems
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 

@@ -394,9 +394,7 @@ struct LibraryView: View {
                 PodcastCloudSync.shared.reconcile()   // pull the iCloud podcast state
                 // Y33 (c): recheck the active sources and reconnect silently —
                 // an outage must never require a force-quit to recover.
-                if SubsonicProvider.shared.isAvailable == false, AppStorageKeys.subsonicEnabledValue {
-                    SubsonicProvider.shared.reloadConfig()
-                }
+                AppSession.shared.musicProvider.reconnectIfNeeded()
                 Task {
                     if viewModel.isShowingOfflineCache, NetworkMonitor.shared.isConnected {
                         await viewModel.loadLibrary()   // leave the stale cache state
@@ -682,8 +680,9 @@ struct LibraryView: View {
                 searchResultUnavailable()
             }
         case .artist:
-            let rawId = String(result.id.dropFirst("sub:artist:".count))
-            if let artist = SubsonicProvider.shared.artist(forId: rawId) {
+            let music = AppSession.shared.musicProvider
+            if let rawId = music.artistId(fromItemId: result.id),
+               let artist = music.artist(forId: rawId) {
                 navigationPath.append(MusicRoute.artist(artist))
             } else {
                 searchResultUnavailable()

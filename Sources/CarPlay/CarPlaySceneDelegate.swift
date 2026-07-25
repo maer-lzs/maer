@@ -69,7 +69,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         var templates: [CPListTemplate] = [continueTab, downloadedTab, libraryTab]
         // Podcast tab only when subscriptions exist (queue/continue/shows).
         if let podcasts = await podcastTab() { templates.append(podcasts) }
-        // Music tab only when a Subsonic source is configured + enabled.
+        // Music tab only when a music source is configured + enabled.
         if let music = await musicTab() { templates.append(music) }
 
         let tabBar = CPTabBarTemplate(templates: templates)
@@ -144,12 +144,12 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     // MARK: - Music
 
     /// "Recently Added" + "Albums"; tapping an album plays it. Nil when no
-    /// Subsonic source is configured/enabled.
+    /// music source is configured/enabled.
     private func musicTab() async -> CPListTemplate? {
-        guard SubsonicProvider.shared.isAvailable else { return nil }
+        guard AppSession.shared.musicProvider.isAvailable else { return nil }
         let cap = Int(CPListTemplate.maximumItemCount)
-        let newest = (try? await SubsonicProvider.shared.albumShelf(type: "newest", size: 20)) ?? []
-        let all = (try? await SubsonicProvider.shared.fetchLibraryItems(libraryId: "sub")) ?? []
+        let newest = (try? await AppSession.shared.musicProvider.albumShelf(type: "newest", size: 20)) ?? []
+        let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(libraryId: "sub")) ?? []
 
         var sections: [CPListSection] = []
         if !newest.isEmpty {

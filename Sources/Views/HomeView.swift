@@ -397,9 +397,10 @@ struct HomeView: View {
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite — byRecency already takes N streams). Keep the progress map so
         // the playlist card can render its bar + resume.
-        let musicProgress = (try? await SubsonicProvider.shared.fetchAllProgress()) ?? [:]
+        let musicProvider = AppSession.shared.musicProvider
+        let musicProgress = (try? await musicProvider.fetchAllProgress()) ?? [:]
         let music = musicProgress
-            .filter { SubsonicProvider.id($0.key, kind: "playlist") != nil && $0.value.isStarted }
+            .filter { musicProvider.kind(of: $0.key) == .playlist && $0.value.isStarted }
             .map { (id: $0.key, ts: $0.value.lastUpdate) }
         let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
 
@@ -419,7 +420,7 @@ struct HomeView: View {
         // present (a pure time sort let the music library's fresher timestamps take
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
-        let newAlbums = (try? await SubsonicProvider.shared.albumShelf(type: "newest", size: 12)) ?? []
+        let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(type: "newest", size: 12)) ?? []
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
