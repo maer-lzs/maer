@@ -12,6 +12,15 @@ import UIKit
 ///
 /// Works on a COLD START in the car (phone in the pocket): the library loads
 /// here itself (falls back to the disk cache offline).
+///
+/// Explicitly @MainActor: CPInterfaceController is main-thread-only. The
+/// project's default isolation already isolates this class, but templates
+/// touching the interface controller is an invariant worth stating — it must
+/// survive a future change of the default (Swift-6 migration). The
+/// `Task { @MainActor in }` hops inside the CPListItem handlers stay: the
+/// handler property is a nonisolated block, so the hop is the type-safe way
+/// back onto the actor.
+@MainActor
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private var interfaceController: CPInterfaceController?
 
