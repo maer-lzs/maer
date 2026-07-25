@@ -373,4 +373,6 @@ nonisolated enum AppStorageKeys {
     static var hitchBarStaticCompositionValue: Bool { UserDefaults.standard.bool(forKey: hitchBarStaticComposition) }
     static let hitchMiniMorphOff = "debug.hitch.miniMorphOff"
     static var hitchMiniMorphOffValue: Bool { UserDefaults.standard.bool(forKey: hitchMiniMorphOff) }
+    static let hitchGlassMorphOff = "debug.hitch.glassMorphOff"
+    static var hitchGlassMorphOffValue: Bool { UserDefaults.standard.bool(forKey: hitchGlassMorphOff) }
 }
