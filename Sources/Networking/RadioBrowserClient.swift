@@ -104,34 +104,13 @@ nonisolated enum RadioBrowserClient {
         try await stations(.byState(state: state, limit: limit))
     }
 
-    /// State NAMES of a country (Radio Browser /json/states/{country}) —
-    /// same mirror loop + policy as `stations`, different payload shape.
+    /// State NAMES of a country (Radio Browser /json/states/{country}).
     static func states(countryName: String) async throws -> [String] {
         struct RBState: Decodable { let name: String? }
-        let query = Query.states(countryName: countryName)
-        var lastError: Error = URLError(.cannotConnectToHost)
-        for mirror in mirrors {
-            try Task.checkCancellation()
-            guard var comps = URLComponents(string: mirror + query.path) else { continue }
-            comps.queryItems = query.queryItems
-            guard let url = comps.url else { continue }
-            var request = URLRequest(url: url)
-            request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
-            do {
-                let (data, http) = try await RequestRetryPolicy.fetch(request)
-                guard let status = http?.statusCode, (200...299).contains(status) else {
-                    lastError = URLError(.badServerResponse)
-                    continue
-                }
-                let decoded = (try? JSONDecoder().decode([RBState].self, from: data)) ?? []
-                return Array(Set(decoded.compactMap { $0.name?.isEmpty == false ? $0.name : nil })).sorted()
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                lastError = error
-            }
+        return try await request(.states(countryName: countryName)) { data in
+            let decoded = (try? JSONDecoder().decode([RBState].self, from: data)) ?? []
+            return Array(Set(decoded.compactMap { $0.name?.isEmpty == false ? $0.name : nil })).sorted()
         }
-        throw lastError
     }
 
     /// Stations for an exact tag, by votes (genre drilldown).
@@ -139,18 +118,18 @@ nonisolated enum RadioBrowserClient {
         try await stations(.byTag(tag: tag, limit: limit))
     }
 
-    // MARK: - Shared mirror loop
+    // MARK: - Shared mirror loop (ONE source for policy + drift-free)
 
-    /// Runs a query across the mirror list in order (the de-dupe + Y57 variant
-    /// fold happen in `RadioMapping.stations`). Each request rides the Y39 retry
-    /// policy; on a mirror failure the next is tried.
-    static func stations(_ query: Query) async throws -> [RadioStation] {
+    /// Runs a query across the mirror list in order; each request rides the
+    /// Y39 retry policy; a mirror failure tries the next. The payload shape
+    /// is the caller's `decode` closure — stations and states collapse onto
+    /// this ONE loop (fixlet 4575a76: the copied loop had already drifted).
+    private static func request<T>(_ query: Query,
+                                   decode: (Data) throws -> T) async throws -> T {
         var lastError: Error = URLError(.cannotConnectToHost)
         for mirror in mirrors {
             // A cancelled task must not walk the remaining mirrors.
             try Task.checkCancellation()
-            // Hardened URL build (mirrors are hardcoded, so this is belt and
-            // braces): a malformed URL skips the mirror instead of trapping.
             guard var comps = URLComponents(string: mirror + query.path) else {
                 lastError = URLError(.badURL)
                 continue
@@ -169,8 +148,7 @@ nonisolated enum RadioBrowserClient {
                     lastError = URLError(.badServerResponse)
                     continue
                 }
-                let raw = try JSONDecoder().decode([RadioBrowserStation].self, from: data)
-                return RadioMapping.stations(from: raw)
+                return try decode(data)
             } catch is CancellationError {
                 // Propagate cancellation immediately — no next-mirror attempt.
                 throw CancellationError()
@@ -180,5 +158,12 @@ nonisolated enum RadioBrowserClient {
             }
         }
         throw lastError
+    }
+
+    static func stations(_ query: Query) async throws -> [RadioStation] {
+        try await request(query) { data in
+            let raw = try JSONDecoder().decode([RadioBrowserStation].self, from: data)
+            return RadioMapping.stations(from: raw)
+        }
     }
 }
