@@ -130,10 +130,19 @@ final class PodcastSubscriptions: ObservableObject {
             }.value
             guard let self, !decoded.isEmpty else { return }
             self.shows = self.migrated(decoded)
+            // Listen log: one-time backfill so the history of the CURRENT
+            // subscriptions survives later unsubscribes/rotation.
+            PodcastListenLog.shared.backfillIfNeeded(shows: self.shows)
         }
     }
 
     /// Waits for the initial disk load (no-op once finished).
+    /// Best-effort: the feed URL of the show owning this episode guid (for
+    /// the show-independent listen log).
+    func feedURL(forEpisodeId episodeId: String) -> String? {
+        shows.first { $0.episodes.contains { $0.guid == episodeId } }?.feedURL
+    }
+
     func ensureLoaded() async {
         await bootstrapTask?.value
     }

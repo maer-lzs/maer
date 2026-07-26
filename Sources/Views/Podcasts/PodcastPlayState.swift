@@ -120,6 +120,16 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
 @MainActor
 func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = true) {
     PodcastProgressStore.shared.setPlayed(item, played)
+    // Listen log (show-independent history): played → upsert via the ONE
+    // threshold evaluation; unplayed → tombstone (survives reconciles).
+    if played {
+        PodcastListenLog.shared.noteIfPlayed(
+            guid: item.id, duration: item.media?.duration ?? 0,
+            episodeTitle: item.title, showTitle: item.author ?? "",
+            feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: item.id) ?? "")
+    } else {
+        PodcastListenLog.shared.markUnplayed(guid: item.id)
+    }
     // Invariant "heard = flies out": marking an episode played drops it (and its
     // rss/abspod twin) from the global Up-Next queue. Covers the episode menu,
     // swipe action, detail page and "mark all" — they all route through here.

@@ -931,6 +931,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
                     self.lastLocalSaveAt = now
                     UserDefaults.standard.set([self.currentTime, now * 1000], forKey: key)
+                    // Listen log: a podcast crossing its played threshold in
+                    // normal playback lands in the show-independent history
+                    // (cheap + idempotent; threshold logic stays in the store).
+                    if let detail = self.item, detail.id.hasPrefix("rss:") || detail.id.hasPrefix("abspod:") {
+                        PodcastListenLog.shared.noteIfPlayed(
+                            guid: detail.id, duration: detail.media.duration ?? 0,
+                            episodeTitle: detail.media.metadata?.title ?? "",
+                            showTitle: detail.media.metadata?.authorName ?? "",
+                            feedURL: PodcastSubscriptions.shared.feedURL(forEpisodeId: detail.id) ?? "")
+                    }
                     self.updateWidgetSnapshot()
                 }
                 self.updateCurrentChapter()

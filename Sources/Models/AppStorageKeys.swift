@@ -235,6 +235,9 @@ nonisolated enum AppStorageKeys {
     /// chosen; chosen once, persisted — no location permission, ever).
     static let radioRegionState = "radioRegionState"
 
+    /// Listen log: one-time backfill of the current subscriptions done.
+    static let listenLogBackfilled = "listenLogBackfilled"
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {

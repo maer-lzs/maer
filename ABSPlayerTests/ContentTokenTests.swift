@@ -4,6 +4,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import ABSPlayer
 
 /// #51/W1 (class B): change detection via content identity, never via count.
@@ -35,6 +36,42 @@ struct DriveModeSleepTests {
         #expect(DriveModeView.nextSleepStep(active: true, current: 15 * 60) == 30)
         #expect(DriveModeView.nextSleepStep(active: true, current: 29 * 60) == 60)
         #expect(DriveModeView.nextSleepStep(active: true, current: 60 * 60) == nil)
+    }
+}
+
+/// Listen log (2825f15): played transitions land show-independently, the
+/// unplayed tombstone survives, only a NEWER play flips it back.
+@MainActor
+struct PodcastListenLogTests {
+    private func write(_ guid: String, time: Double, ts: Double) {
+        UserDefaults.standard.set([time, ts], forKey: AppStorageKeys.localPosition(guid))
+    }
+
+    @Test("Played entry survives; unplayed tombstones; newer play flips back")
+    func lifecycle() {
+        let log = PodcastListenLog.shared
+        log._resetForTest()
+        let guid = "rss:test-log-1"
+        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid)) }
+        write(guid, time: 600, ts: 1_000)
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "Show", feedURL: "https://f")
+        #expect(log.entries[guid]?.isPlayed == true)
+        #expect(log.entries[guid]?.showTitle == "Show")
+        log.markUnplayed(guid: guid)
+        #expect(log.entries[guid]?.isPlayed == false)
+        // An OLD position (reconcile echo) must NOT resurrect "played".
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "Show", feedURL: "https://f")
+        #expect(log.entries[guid]?.isPlayed == false)
+        // A NEWER real play-through flips it back.
+        write(guid, time: 600, ts: Date().timeIntervalSince1970 * 1000 + 10_000)
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "Show", feedURL: "https://f")
+        #expect(log.entries[guid]?.isPlayed == true)
+        // In-progress never logs.
+        let guid2 = "rss:test-log-2"
+        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid2)) }
+        write(guid2, time: 100, ts: 2_000)
+        log.noteIfPlayed(guid: guid2, duration: 600, episodeTitle: "E2", showTitle: "S", feedURL: "")
+        #expect(log.entries[guid2] == nil)
     }
 }
 #endif
