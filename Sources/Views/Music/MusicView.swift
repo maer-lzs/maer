@@ -229,15 +229,36 @@ private struct PlaylistCard: View {
     @State private var coverURLs: [URL] = []
 
     var body: some View {
-        MediaTile(
-            title: playlist.name ?? String(localized: "Playlist"),
-            subtitle: metaLine,
-            coverURL: nil,
-            coverOverride: PlaylistArtwork(
+        // Text IN the card on a gradient (owner Ergänzung) — the same
+        // text-on-scrim idiom as the Featured/Continue cards, so the card is
+        // a closed portrait rectangle and row baselines can't diverge.
+        Button {
+            pushRoute(.album(playlistLibraryItem(playlist)))
+        } label: {
+            PlaylistArtwork(
                 playlistID: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
-                coverURLs: coverURLs),
-            onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
-        )
+                coverURLs: coverURLs)
+                .overlay(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(playlist.name ?? String(localized: "Playlist"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1, reservesSpace: true)
+                        Text(metaLine)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .lineLimit(1, reservesSpace: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(
+                        LinearGradient(colors: [.clear, .black.opacity(0.75)],
+                                       startPoint: .top, endPoint: .bottom))
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
         // Playlist basics: rename/delete from the card row too.
         .contextMenu {
             Button {

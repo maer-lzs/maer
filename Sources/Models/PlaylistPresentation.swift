@@ -8,11 +8,11 @@ import Foundation
 /// the 2×2 mosaic degradation, the metadata line's duration, and the
 /// "recently changed first" sort key. Foundation-only.
 nonisolated enum PlaylistPresentation {
-    /// How many mosaic tiles to render for the available cover count (graceful
-    /// degradation): 0 → 0 (the glyph placeholder), 1 → 1 (fills), 2 → 2, 3 → 3
-    /// (rendered 2+1), 4 or more → a full 2×2.
+    /// How many UNIQUE covers the portrait mosaic uses (Kursänderung 26.07:
+    /// one big + two small slots): 0 → tint+glyph, 1 → big cover only,
+    /// 2 → big + one small, 3 or more → all three slots. Never more than 3.
     static func mosaicTileCount(_ coverCount: Int) -> Int {
-        min(max(coverCount, 0), 4)
+        min(max(coverCount, 0), 3)
     }
 
     /// TF2 (pure, tested): drop junk playlists. Some Subsonic servers return

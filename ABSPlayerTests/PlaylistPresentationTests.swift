@@ -15,8 +15,8 @@ struct PlaylistPresentationTests {
         #expect(PlaylistPresentation.mosaicTileCount(1) == 1)
         #expect(PlaylistPresentation.mosaicTileCount(2) == 2)
         #expect(PlaylistPresentation.mosaicTileCount(3) == 3)
-        #expect(PlaylistPresentation.mosaicTileCount(4) == 4)
-        #expect(PlaylistPresentation.mosaicTileCount(9) == 4)   // caps at a full 2×2
+        #expect(PlaylistPresentation.mosaicTileCount(4) == 3)
+        #expect(PlaylistPresentation.mosaicTileCount(9) == 3)   // caps at big + two small
         #expect(PlaylistPresentation.mosaicTileCount(-3) == 0)
     }
 

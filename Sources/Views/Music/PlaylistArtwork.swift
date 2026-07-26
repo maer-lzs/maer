@@ -15,32 +15,44 @@ struct PlaylistArtwork: View {
     let coverURLs: [URL]
 
     var body: some View {
-        mosaic
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        // Kursänderung 26.07: ONE portrait format for every card (~2:3, the
+        // "Kölsch" layout as the standard): two small squares on top (half
+        // width each) + one big square below (full width) — geometry gives
+        // 2:3 for free (h = w/2 + w). Fewer than three unique covers fill
+        // with the deterministic tint, NEVER stretch or stack — every card
+        // in a row is exactly the same size.
+        GeometryReader { geo in
+            let w = geo.size.width
+            let used = PlaylistPresentation.mosaicTileCount(coverURLs.count)
+            VStack(spacing: 0) {
+                HStack(spacing: 0) {
+                    slot(coverIndex: 1, used: used).frame(width: w / 2, height: w / 2)
+                    slot(coverIndex: 2, used: used).frame(width: w / 2, height: w / 2)
+                }
+                slot(coverIndex: 0, used: used)
+                    .frame(width: w, height: w)
+                    .overlay {
+                        if used == 0 {
+                            Image(systemName: "music.note.list")
+                                .font(.system(size: 34))
+                                .foregroundStyle(.white.opacity(0.9))
+                        }
+                    }
+            }
+        }
+        .aspectRatio(2 / 3, contentMode: .fit)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    /// Slot 0 = the big bottom square (first cover, most prominent);
+    /// slots 1/2 = the small top squares (second/third cover); a slot without
+    /// a unique cover renders the tint tile.
     @ViewBuilder
-    private var mosaic: some View {
-        switch PlaylistPresentation.mosaicTileCount(coverURLs.count) {
-        case 0:
-            tint.overlay(
-                Image(systemName: "music.note.list")
-                    .font(.system(size: 34))
-                    .foregroundStyle(.white.opacity(0.9)))
-        case 1:
-            tile(coverURLs[0])
-        case 2:
-            HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
-        case 3:
-            VStack(spacing: 0) {
-                HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
-                tile(coverURLs[2])
-            }
-        default:
-            VStack(spacing: 0) {
-                HStack(spacing: 0) { tile(coverURLs[0]); tile(coverURLs[1]) }
-                HStack(spacing: 0) { tile(coverURLs[2]); tile(coverURLs[3]) }
-            }
+    private func slot(coverIndex: Int, used: Int) -> some View {
+        if coverIndex < used {
+            tile(coverURLs[coverIndex])
+        } else {
+            tint
         }
     }
 

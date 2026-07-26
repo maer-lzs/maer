@@ -25,7 +25,8 @@ struct MusicContinueCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs)
-                    .frame(width: Self.width, height: Self.width)
+                    // Portrait card format (Kursänderung: 2:3 everywhere).
+                    .frame(width: Self.width, height: Self.width * 1.5)
 
                 Text(item.title).font(.headline).lineLimit(1, reservesSpace: true)
                 // Jank convention: the bar slot is always laid out (hidden
