@@ -48,7 +48,9 @@ protocol MusicProvider: AudioProvider {
     /// Cache a browsed artist so the shared artist route resolves it.
     func cacheSearchedArtist(_ artist: MusicArtist)
     func artistInfo(artistId: String) async -> MusicArtistInfo?
-    func topSongs(artistName: String, count: Int) async -> [MusicTopSong]
+    /// Top songs by ARTIST ID — the id is the stable identity, the name is
+    /// display; a provider is never addressed via display text.
+    func topSongs(artistId: String, count: Int) async -> [MusicTopSong]
 
     // MARK: Playlists
     func allPlaylists() async throws -> [MusicPlaylist]
@@ -103,8 +105,8 @@ extension MusicProvider {
     func albumShelf(shelf: MusicShelf) async throws -> [LibraryItem] {
         try await albumShelf(shelf: shelf, size: 20)
     }
-    func topSongs(artistName: String) async -> [MusicTopSong] {
-        await topSongs(artistName: artistName, count: 10)
+    func topSongs(artistId: String) async -> [MusicTopSong] {
+        await topSongs(artistId: artistId, count: 10)
     }
     func coverURL(coverArtId: String) -> URL? {
         coverURL(coverArtId: coverArtId, size: 300)

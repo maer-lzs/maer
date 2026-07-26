@@ -72,9 +72,7 @@ struct MusicArtistView: View {
             albums = (try? await AppSession.shared.musicProvider.artistAlbums(artistId: artist.id)) ?? []
             loading = false
             info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
-            if let name = artist.name {
-                topSongs = await AppSession.shared.musicProvider.topSongs(artistName: name)
-            }
+            topSongs = await AppSession.shared.musicProvider.topSongs(artistId: artist.id)
             // Similar artists limited to those present in the own library —
             // foreign names without library content would dead-end.
             if let similar = info?.similarArtistNames, !similar.isEmpty {

@@ -245,16 +245,8 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return MusicArtistInfo(biography: bio, imageURL: image, similarArtistNames: [])
     }
 
-    func topSongs(artistName: String, count: Int) async -> [MusicTopSong] {
-        // The UI passes the artist NAME (Subsonic heritage); resolve it via the
-        // route cache first, else search.
-        guard let client else { return [] }
-        var artistId = searchedArtistsById.values.first { $0.name == artistName }?.id
-        if artistId == nil {
-            artistId = (try? await client.search(term: artistName))?
-                .first { $0.type == "MusicArtist" && $0.name == artistName }?.id
-        }
-        guard let artistId, let songs = try? await client.topSongs(artistId: artistId, limit: count)
+    func topSongs(artistId: String, count: Int) async -> [MusicTopSong] {
+        guard let client, let songs = try? await client.topSongs(artistId: artistId, limit: count)
         else { return [] }
         let result = songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
         for entry in result { itemsById[entry.item.id] = entry.item }
