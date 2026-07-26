@@ -16,6 +16,7 @@ struct SubsonicSourceView: View {
     @State private var isAudiobooks = AppStorageKeys.subsonicIsAudiobooksValue
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
+    @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
 
     @State private var isTesting = false
     @State private var statusMessage: String?
@@ -67,6 +68,7 @@ struct SubsonicSourceView: View {
 
             Section {
                 Toggle("Look up lyrics online", isOn: $lyricsOnline)
+                Toggle("Load artist images from the web", isOn: $artistImagesOnline)
                 Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
             } header: {
                 Text("Metadata")

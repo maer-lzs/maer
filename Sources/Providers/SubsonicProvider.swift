@@ -678,7 +678,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             // The hero renders ONE image — take the largest the server offers.
             imageURL: (wire.largeImageUrl ?? wire.mediumImageUrl ?? wire.smallImageUrl)
                 .flatMap { URL(string: $0) },
-            similarArtistNames: (wire.similarArtist ?? []).compactMap(\.name))
+            similarArtistNames: (wire.similarArtist ?? []).compactMap(\.name),
+            musicBrainzId: wire.musicBrainzId)
     }
 
     nonisolated static func domainAlbumInfo(_ wire: SubsonicAlbumInfo) -> MusicAlbumInfo {

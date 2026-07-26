@@ -39,6 +39,8 @@ nonisolated struct MusicArtistInfo {
     let imageURL: URL?
     /// Names only — the UI matches them against the own library's artists.
     let similarArtistNames: [String]
+    /// Feeds the no-key portrait chain (MB→Wikidata→Commons) directly.
+    let musicBrainzId: String?
 }
 
 /// Optional album metadata (notes + MusicBrainz id for the CAA cover).

@@ -2324,6 +2324,16 @@
         }
       }
     },
+    "Load artist images from the web" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Künstlerbilder aus dem Netz laden"
+          }
+        }
+      }
+    },
     "Load full history" : {
       "localizations" : {
         "de" : {

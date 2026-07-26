@@ -242,7 +242,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         guard bio != nil || image != nil else { return nil }
         // Similar artists: no cheap Jellyfin equivalent in scope — empty is
         // normal, the section simply doesn't appear.
-        return MusicArtistInfo(biography: bio, imageURL: image, similarArtistNames: [])
+        return MusicArtistInfo(biography: bio, imageURL: image, similarArtistNames: [], musicBrainzId: nil)
     }
 
     func topSongs(artistId: String, count: Int) async -> [MusicTopSong] {

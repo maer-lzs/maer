@@ -4,14 +4,20 @@
 
 import SwiftUI
 
-/// Artists as a VISUAL surface (the owner: no more text list): round portrait
-/// (server image when it exists, else the deterministic color circle with the
-/// initial — the artist ALWAYS appears), name + album count below, A–Z grid
-/// with a search field for large libraries. Tap → the artist page as before.
+/// Artists, decided variant B+C (the owner 26.07.): an ENRICHED LIST — every
+/// row carries a round thumbnail (server image, else the deterministic color
+/// circle with the initial), name and album count — topped by the C row: a
+/// horizontal portrait strip of ONLY artists with a real image (no color
+/// circles there; it appears from ~4 images up and degrades silently).
+/// Missing images resolve through the no-key chain in ArtistPortraitService
+/// (server → MusicBrainz → Wikidata → Commons), lazily per visible row.
 struct MusicArtistsView: View {
     let artists: [MusicArtist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var query = ""
+    /// C row content: artists with a RESOLVED real image (filled lazily as
+    /// rows resolve; the row appears once ≥4 exist).
+    @State private var portraitRow: [MusicArtist] = []
 
     private var shown: [MusicArtist] {
         guard !query.isEmpty else { return artists }
@@ -19,43 +25,70 @@ struct MusicArtistsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 16)], spacing: 20) {
-                ForEach(shown) { artist in
-                    NavigationLink(value: MusicRoute.artist(artist)) {
-                        VStack(spacing: 6) {
-                            ArtistPortraitCircle(artist: artist)
-                            Text(artist.name ?? String(localized: "Unknown Artist"))
-                                .font(.caption.weight(.medium))
-                                .lineLimit(1, reservesSpace: true)
-                            Text(artist.albumCount.map { "\($0)" } ?? " ")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1, reservesSpace: true)
+        List {
+            if portraitRow.count >= 4, query.isEmpty {
+                Section {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(portraitRow) { artist in
+                                NavigationLink(value: MusicRoute.artist(artist)) {
+                                    VStack(spacing: 4) {
+                                        ArtistPortraitCircle(artist: artist, size: 72, onResolved: nil)
+                                        Text(artist.name ?? "")
+                                            .font(.caption2)
+                                            .lineLimit(1)
+                                            .frame(width: 76)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
+                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 0))
+                    .listRowSeparator(.hidden)
                 }
             }
-            .padding(.horizontal)
+            Section {
+                ForEach(shown) { artist in
+                    NavigationLink(value: MusicRoute.artist(artist)) {
+                        HStack(spacing: 12) {
+                            ArtistPortraitCircle(artist: artist, size: 44) { resolved in
+                                // Feed the C row as images resolve — only real
+                                // images, first-come order, no duplicates.
+                                if resolved, !portraitRow.contains(where: { $0.id == artist.id }) {
+                                    portraitRow.append(artist)
+                                }
+                            }
+                            Text(artist.name ?? String(localized: "Unknown Artist"))
+                                .lineLimit(1)
+                            Spacer()
+                            if let count = artist.albumCount {
+                                Text("\(count)").foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
         }
+        .listStyle(.plain)
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic))
         .navigationTitle("Artists")
         .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
+        .barAwareList()
     }
 }
 
-/// Round artist portrait: the server image when one exists (lazy via
-/// `artistInfo`, session-cached), else the deterministic color circle with
-/// the artist's initial (radio color pattern) — never an empty placeholder.
+/// Round artist portrait: server image or the open-source chain (lazy,
+/// session-cached incl. negatives), else the deterministic color circle with
+/// the initial — the artist ALWAYS appears. Plain state, no observers
+/// (cell-cost convention).
 struct ArtistPortraitCircle: View {
     let artist: MusicArtist
-    var size: CGFloat = 88
+    var size: CGFloat = 44
+    /// Reports whether a REAL image resolved (feeds the C row).
+    var onResolved: ((Bool) -> Void)? = nil
     @State private var imageURL: URL?
-
-    /// Session cache: artist id → resolved image URL (nil = known-absent).
-    @MainActor static var cache: [String: URL?] = [:]
 
     var body: some View {
         ZStack {
@@ -72,13 +105,13 @@ struct ArtistPortraitCircle: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         .task(id: artist.id) {
-            if let cached = Self.cache[artist.id] {
-                imageURL = cached
-                return
-            }
-            let url = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)?.imageURL
-            Self.cache[artist.id] = url
-            imageURL = url
+            let serverURL = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
+            let resolved = await ArtistPortraitService.shared.portraitURL(
+                artistId: artist.id, name: artist.name,
+                serverImageURL: serverURL?.imageURL,
+                musicBrainzId: serverURL?.musicBrainzId)
+            imageURL = resolved
+            onResolved?(resolved != nil)
         }
     }
 

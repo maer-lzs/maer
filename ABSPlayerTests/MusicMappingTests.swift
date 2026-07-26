@@ -44,4 +44,38 @@ struct MusicMappingTests {
         #expect(small.similarArtistNames.isEmpty)
     }
 }
+
+/// Portrait chain (pure): conservative MB search, Wikidata relation, P18.
+struct ArtistPortraitLookupTests {
+    @Test("Unique strong hit only — ambiguity yields nil")
+    func conservativeSearch() {
+        let hit = MBArtistHit(id: "mb-1", name: "Kraftwerk", score: 100)
+        #expect(ArtistPortraitLookup.uniqueSearchHit(
+            MBArtistSearchResponse(artists: [hit]), name: "kraftwerk") == "mb-1")
+        let twin = MBArtistHit(id: "mb-2", name: "Kraftwerk", score: 97)
+        #expect(ArtistPortraitLookup.uniqueSearchHit(
+            MBArtistSearchResponse(artists: [hit, twin]), name: "Kraftwerk") == nil)
+        let weak = MBArtistHit(id: "mb-3", name: "Kraftwerk", score: 80)
+        #expect(ArtistPortraitLookup.uniqueSearchHit(
+            MBArtistSearchResponse(artists: [weak]), name: "Kraftwerk") == nil)
+        let wrongName = MBArtistHit(id: "mb-4", name: "Kraftclub", score: 100)
+        #expect(ArtistPortraitLookup.uniqueSearchHit(
+            MBArtistSearchResponse(artists: [wrongName]), name: "Kraftwerk") == nil)
+    }
+
+    @Test("Wikidata relation and P18 parse")
+    func wikidataChain() throws {
+        let mb = MBArtistResponse(relations: [
+            MBRelation(type: "official homepage", url: MBRelationURL(resource: "https://x.example")),
+            MBRelation(type: "wikidata", url: MBRelationURL(resource: "https://www.wikidata.org/wiki/Q11036")),
+        ])
+        #expect(ArtistPortraitLookup.wikidataEntity(mb) == "Q11036")
+        let entityJSON = """
+        {"entities":{"Q11036":{"claims":{"P18":[{"mainsnak":{"datavalue":{"value":"Kraftwerk.jpg"}}}]}}}}
+        """.data(using: .utf8)!
+        #expect(ArtistPortraitLookup.p18FileName(fromEntityData: entityJSON, entity: "Q11036") == "Kraftwerk.jpg")
+        let thumb = try #require(ArtistPortraitLookup.commonsThumbURL(fileName: "Kraftwerk.jpg"))
+        #expect(thumb.absoluteString.contains("Special:FilePath/Kraftwerk.jpg"))
+    }
+}
 #endif

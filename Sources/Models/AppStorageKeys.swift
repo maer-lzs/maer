@@ -223,6 +223,14 @@ nonisolated enum AppStorageKeys {
     static let driveModeCarRouteUID = "driveModeCarRouteUID"
     static let driveModeCarRouteName = "driveModeCarRouteName"
 
+    /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
+    /// server images always win, off just means color circles).
+    static let musicArtistImagesOnline = "musicArtistImagesOnline"
+    static var musicArtistImagesOnlineValue: Bool {
+        get { UserDefaults.standard.object(forKey: musicArtistImagesOnline) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: musicArtistImagesOnline) }
+    }
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {

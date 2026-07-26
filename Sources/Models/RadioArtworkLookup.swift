@@ -62,7 +62,8 @@ nonisolated enum RadioArtworkLookup {
 
     /// Escape Lucene special characters that would otherwise break the quoted
     /// query term (a title with a `"` or `\` is the realistic case).
-    private static func escapeLucene(_ s: String) -> String {
+    /// Shared with ArtistPortraitLookup (Regel 2 — one Lucene escaper).
+    static func escapeLucene(_ s: String) -> String {
         s.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
