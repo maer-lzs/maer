@@ -496,4 +496,32 @@ nonisolated final class MaerUITests: XCTestCase {
         if books.waitForExistence(timeout: 10) { books.tap() }
         snap(app, "audiobooks-tab")
     }
+
+
+    // df69f6b regression: the large title must survive BOTH known killer
+    // cycles — search open/close and fast tab switches while scrolled (the
+    // dynamic ternary title on the live bar used to drop it, leaving its
+    // reserved gap; pinned by navigationBarTitleDisplayMode(.large)).
+    func testLargeTitleSurvivesCycles() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let titleBefore = app.navigationBars.staticTexts.firstMatch.label
+        // Cycle 1: open search, close it.
+        app.buttons["global-search"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["search-close"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["search-close"].firstMatch.tap()
+        sleep(1)
+        let existsAfterSearch = app.navigationBars.staticTexts.firstMatch.exists
+        let labelAfterSearch = existsAfterSearch ? app.navigationBars.staticTexts.firstMatch.label : "<GONE>"
+        // Cycle 2: fast tab switches (also scrolled).
+        app.swipeUp()
+        app.buttons["tab-podcasts"].firstMatch.tap()
+        app.buttons["tab-audiobooks"].firstMatch.tap()
+        sleep(1)
+        let existsAfterTabs = app.navigationBars.staticTexts.firstMatch.exists
+        let labelAfterTabs = existsAfterTabs ? app.navigationBars.staticTexts.firstMatch.label : "<GONE>"
+        print("TITLEPROBE before=\(titleBefore) afterSearch=\(labelAfterSearch) afterTabs=\(labelAfterTabs)")
+        XCTAssertTrue(existsAfterSearch, "title gone after search cycle")
+        XCTAssertTrue(existsAfterTabs, "title gone after tab cycle")
+    }
 }

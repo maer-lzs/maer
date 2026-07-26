@@ -192,6 +192,10 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle(selectedMediaType == .audiobooks ? Text("Library") : Text(selectedMediaType.label))
+            // df69f6b: pin the LARGE display mode — switching the dynamic
+            // title on the live bar (tab change while scrolled) dropped the
+            // title but kept its reserved space (probe-reproduced).
+            .navigationBarTitleDisplayMode(.large)
             // Y23: the search page brings its own header (scope bar) — the
             // nav bar with title + sort/settings yields while searching.
             .toolbar(isShowingSearch ? .hidden : .automatic, for: .navigationBar)
