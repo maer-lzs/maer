@@ -24,6 +24,19 @@ struct RadioView: View {
     @State private var regional: [RadioStation] = []
     @State private var discoveryLoaded = false
     private let regionCode = RadioCatalog.deviceRegionCode()
+    /// The ONE user-chosen state (persisted); nil = not chosen yet. Plain
+    /// state + manual defaults I/O (an optional-String @AppStorage misbehaved
+    /// in the harness bisect).
+    @State private var chosenState: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionState)
+    @State private var availableStates: [String] = []
+    /// "Popular in Switzerland" — country name from the locale, localized.
+    private var nationalTitle: String {
+        guard let code = regionCode,
+              let name = Locale.current.localizedString(forRegionCode: code) else {
+            return String(localized: "Popular Stations")
+        }
+        return String(localized: "Popular in \(name)")
+    }
 
     private var showsPopular: Bool { RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
     private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionCode, regional: regional) }
@@ -49,11 +62,9 @@ struct RadioView: View {
                     cardRow(title: String(localized: "Recently Played"), stations: recents)
                 }
                 if showsPopular {
-                    cardRow(title: String(localized: "Popular Stations"), stations: popular)
+                    cardRow(title: nationalTitle, stations: popular)
                 }
-                if showsRegion {
-                    cardRow(title: String(localized: "From Your Region"), stations: regional)
-                }
+                regionSection
                 if showsGenres {
                     genreSection
                 }
@@ -156,6 +167,47 @@ struct RadioView: View {
 
     /// Fetch the catalog rows once per session (guarded), re-fetched on refresh.
     /// Net-gated: offline it does nothing and the sections stay hidden.
+    /// Region = the user-chosen state: before the choice a small picker
+    /// entry (never an empty list, never a second national section); a
+    /// country without states hides the section silently.
+    @ViewBuilder
+    private var regionSection: some View {
+        if let chosenState, !chosenState.isEmpty {
+            if !regional.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    cardRow(title: chosenState, stations: regional)
+                    Button {
+                        self.chosenState = nil
+                        UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionState)
+                        regional = []
+                    } label: {
+                        Text("Change region")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        } else if !availableStates.isEmpty, networkMonitor.isConnected {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("From Your Region").font(.title3).bold().padding(.horizontal)
+                Menu {
+                    ForEach(availableStates, id: \.self) { state in
+                        Button(state) {
+                            chosenState = state
+                            UserDefaults.standard.set(state, forKey: AppStorageKeys.radioRegionState)
+                            Task { await loadDiscovery(force: true) }
+                        }
+                    }
+                } label: {
+                    Label("Choose your region", systemImage: "mappin.and.ellipse")
+                        .padding(.horizontal)
+                }
+                .accessibilityIdentifier("radio-region-picker")
+            }
+        }
+    }
+
     private func loadDiscovery(force: Bool = false) async {
         guard networkMonitor.isConnected else { return }
         if !force, discoveryLoaded { return }
@@ -164,15 +216,24 @@ struct RadioView: View {
             // Deterministic stand-in — no real Radio Browser call in the harness.
             popular = UITestSeed.seedRadioCatalog
             regional = UITestSeed.seedRadioCatalog
+            if chosenState == nil { chosenState = "Seed Region" }   // section renders
             discoveryLoaded = true
             return
         }
         #endif
-        async let topTask = RadioBrowserClient.popular()
-        async let regionTask = Self.regionStations(regionCode)
+        // National (the owner 26.07.): country top-votes instead of world —
+        // less foreign-language noise; search covers the exotics.
+        async let topTask = Self.nationalPopular(regionCode)
+        async let regionTask = Self.stateStations(chosenState)
         let topResult = (try? await topTask) ?? []
         let regionResult = await regionTask
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
+        // The state list of the device country (once per session) — a country
+        // without states leaves the region section silently hidden.
+        if chosenState == nil, availableStates.isEmpty, let code = regionCode,
+           let countryName = Locale(identifier: "en_US").localizedString(forRegionCode: code) {
+            availableStates = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
+        }
         // Layout-shift: the discovery sections land as whole-section inserts —
         // apply through the shared calm gate, never mid-scroll.
         BottomBarState.shared.runWhenCalm { [self] in
@@ -182,8 +243,17 @@ struct RadioView: View {
         discoveryLoaded = true
     }
 
-    private static func regionStations(_ countryCode: String?) async -> [RadioStation] {
-        guard let countryCode else { return [] }
+    private static func nationalPopular(_ countryCode: String?) async -> [RadioStation] {
+        guard let countryCode else {
+            return (try? await RadioBrowserClient.popular()) ?? []   // no locale → world
+        }
         return (try? await RadioBrowserClient.byRegion(countryCode: countryCode)) ?? []
+    }
+
+    /// The REAL region: stations of the user-chosen state (never guessed,
+    /// never located — same choose-once pattern as the drive-mode BT device).
+    private static func stateStations(_ state: String?) async -> [RadioStation] {
+        guard let state, !state.isEmpty else { return [] }
+        return (try? await RadioBrowserClient.byState(state: state)) ?? []
     }
 }

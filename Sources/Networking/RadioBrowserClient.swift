@@ -27,6 +27,10 @@ nonisolated enum RadioBrowserClient {
         case popular(limit: Int)
         case byRegion(countryCode: String, limit: Int)
         case byTag(tag: String, limit: Int)
+        /// The available states (Kantone/Bundesländer) of a country.
+        case states(countryName: String)
+        /// Stations of ONE state, by votes (the REAL region section).
+        case byState(state: String, limit: Int)
 
         /// Path relative to a mirror host. Region/tag go into the PATH (exact-
         /// match endpoints), percent-encoded.
@@ -40,6 +44,10 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
             case .byTag(let tag, _):
                 return "/json/stations/bytagexact/\(Self.pathEscaped(tag))"
+            case .states(let country):
+                return "/json/states/\(Self.pathEscaped(country))/"
+            case .byState(let state, _):
+                return "/json/stations/bystateexact/\(Self.pathEscaped(state))"
             }
         }
 
@@ -59,7 +67,9 @@ nonisolated enum RadioBrowserClient {
                     .init(name: "limit", value: String(limit)),
                     .init(name: "hidebroken", value: "true"),
                 ]
-            case .byRegion(_, let limit), .byTag(_, let limit):
+            case .states:
+                return [.init(name: "hidebroken", value: "true")]
+            case .byRegion(_, let limit), .byTag(_, let limit), .byState(_, let limit):
                 return [
                     .init(name: "order", value: "votes"),
                     .init(name: "reverse", value: "true"),
@@ -88,6 +98,40 @@ nonisolated enum RadioBrowserClient {
     /// Stations for an exact ISO country code, by votes ("From your region").
     static func byRegion(countryCode: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
         try await stations(.byRegion(countryCode: countryCode, limit: limit))
+    }
+
+    static func byState(state: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
+        try await stations(.byState(state: state, limit: limit))
+    }
+
+    /// State NAMES of a country (Radio Browser /json/states/{country}) —
+    /// same mirror loop + policy as `stations`, different payload shape.
+    static func states(countryName: String) async throws -> [String] {
+        struct RBState: Decodable { let name: String? }
+        let query = Query.states(countryName: countryName)
+        var lastError: Error = URLError(.cannotConnectToHost)
+        for mirror in mirrors {
+            try Task.checkCancellation()
+            guard var comps = URLComponents(string: mirror + query.path) else { continue }
+            comps.queryItems = query.queryItems
+            guard let url = comps.url else { continue }
+            var request = URLRequest(url: url)
+            request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
+            do {
+                let (data, http) = try await RequestRetryPolicy.fetch(request)
+                guard let status = http?.statusCode, (200...299).contains(status) else {
+                    lastError = URLError(.badServerResponse)
+                    continue
+                }
+                let decoded = (try? JSONDecoder().decode([RBState].self, from: data)) ?? []
+                return Array(Set(decoded.compactMap { $0.name?.isEmpty == false ? $0.name : nil })).sorted()
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                lastError = error
+            }
+        }
+        throw lastError
     }
 
     /// Stations for an exact tag, by votes (genre drilldown).

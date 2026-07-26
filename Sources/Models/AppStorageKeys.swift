@@ -231,6 +231,10 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: musicArtistImagesOnline) }
     }
 
+    /// Radio: the ONE user-chosen state for the region section (nil = not
+    /// chosen; chosen once, persisted — no location permission, ever).
+    static let radioRegionState = "radioRegionState"
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {

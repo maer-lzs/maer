@@ -355,4 +355,18 @@ func radioBrowserCancellationPropagates() async {
     }
 }
 
+
+
+/// Region rework: the new state endpoints as pure query data.
+struct RadioStateQueryTests {
+    @Test("states/byState query shapes")
+    func stateQueries() {
+        let states = RadioBrowserClient.Query.states(countryName: "Switzerland")
+        #expect(states.path == "/json/states/Switzerland/")
+        let byState = RadioBrowserClient.Query.byState(state: "Zürich", limit: 40)
+        #expect(byState.path.hasPrefix("/json/stations/bystateexact/"))
+        #expect(byState.queryItems.contains(.init(name: "order", value: "votes")))
+        #expect(byState.queryItems.contains(.init(name: "limit", value: "40")))
+    }
+}
 #endif
