@@ -78,6 +78,10 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         if let retryDelay {
             try? await Task.sleep(nanoseconds: retryDelay)
         }
+        // Funkwhale compat (170ff18): getCoverArt can answer with a JSON
+        // error body — the UIImage decode gate below treats ANY non-image
+        // payload as a miss (placeholder), and nothing non-image is ever
+        // cached (the disk paths gate on downsampling the same way).
         guard let (data, _) = try? await URLSession.coverImage.data(from: url),
               let image = UIImage(data: data) else { return nil }
         ImageCache.shared.set(image, data: data, for: url)

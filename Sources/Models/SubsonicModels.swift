@@ -117,6 +117,19 @@ nonisolated struct SubsonicAlbumList: Decodable {
     let album: [SubsonicAlbum]?
 }
 
+/// Funkwhale compat (170ff18): ids arrive as NUMBER there, as string on
+/// Navidrome & co. ONE shared decode (Regel 2) accepts both and yields a
+/// String — the known ecosystem quirk, not Funkwhale-exclusive.
+extension KeyedDecodingContainer {
+    nonisolated func lenientID(forKey key: Key) throws -> String {
+        if let s = try? decode(String.self, forKey: key) { return s }
+        if let i = try? decode(Int.self, forKey: key) { return String(i) }
+        throw DecodingError.typeMismatch(String.self, .init(
+            codingPath: codingPath + [key],
+            debugDescription: "id is neither string nor int"))
+    }
+}
+
 /// An album. `getAlbumList2` returns it without `song`; `getAlbum` includes the
 /// track list in `song`.
 nonisolated struct SubsonicAlbum: Decodable, Identifiable {
@@ -133,6 +146,34 @@ nonisolated struct SubsonicAlbum: Decodable, Identifiable {
     /// OpenSubsonic: release MBID — key into the Cover Art Archive (M6).
     let musicBrainzId: String?
     let song: [SubsonicSong]?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, artist, artistId, coverArt, songCount, duration, year,
+             genre, created, musicBrainzId, song
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.lenientID(forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        artist = try c.decodeIfPresent(String.self, forKey: .artist)
+        artistId = try c.decodeIfPresent(String.self, forKey: .artistId)
+        coverArt = try c.decodeIfPresent(String.self, forKey: .coverArt)
+        songCount = try c.decodeIfPresent(Int.self, forKey: .songCount)
+        duration = try c.decodeIfPresent(Int.self, forKey: .duration)
+        year = try c.decodeIfPresent(Int.self, forKey: .year)
+        genre = try c.decodeIfPresent(String.self, forKey: .genre)
+        created = try c.decodeIfPresent(String.self, forKey: .created)
+        musicBrainzId = try c.decodeIfPresent(String.self, forKey: .musicBrainzId)
+        song = try c.decodeIfPresent([SubsonicSong].self, forKey: .song)
+    }
+    init(id: String, name: String?, artist: String?, artistId: String?,
+         coverArt: String?, songCount: Int?, duration: Int?, year: Int?,
+         genre: String?, created: String?, musicBrainzId: String?, song: [SubsonicSong]?) {
+        self.id = id; self.name = name; self.artist = artist; self.artistId = artistId
+        self.coverArt = coverArt; self.songCount = songCount; self.duration = duration
+        self.year = year; self.genre = genre; self.created = created
+        self.musicBrainzId = musicBrainzId; self.song = song
+    }
 }
 
 nonisolated struct SubsonicSong: Decodable, Identifiable {
@@ -147,6 +188,25 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let size: Int64?
     let suffix: String?
     let contentType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, album, artist, track, discNumber, duration, coverArt,
+             size, suffix, contentType
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.lenientID(forKey: .id)
+        title = try c.decodeIfPresent(String.self, forKey: .title)
+        album = try c.decodeIfPresent(String.self, forKey: .album)
+        artist = try c.decodeIfPresent(String.self, forKey: .artist)
+        track = try c.decodeIfPresent(Int.self, forKey: .track)
+        discNumber = try c.decodeIfPresent(Int.self, forKey: .discNumber)
+        duration = try c.decodeIfPresent(Int.self, forKey: .duration)
+        coverArt = try c.decodeIfPresent(String.self, forKey: .coverArt)
+        size = try c.decodeIfPresent(Int64.self, forKey: .size)
+        suffix = try c.decodeIfPresent(String.self, forKey: .suffix)
+        contentType = try c.decodeIfPresent(String.self, forKey: .contentType)
+    }
 }
 
 nonisolated struct SubsonicArtistsIndex: Decodable {
@@ -164,6 +224,20 @@ nonisolated struct SubsonicArtist: Decodable, Identifiable {
     let coverArt: String?
     let albumCount: Int?
     let album: [SubsonicAlbum]?   // getArtist
+
+    enum CodingKeys: String, CodingKey { case id, name, coverArt, albumCount, album }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.lenientID(forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        coverArt = try c.decodeIfPresent(String.self, forKey: .coverArt)
+        albumCount = try c.decodeIfPresent(Int.self, forKey: .albumCount)
+        album = try c.decodeIfPresent([SubsonicAlbum].self, forKey: .album)
+    }
+    init(id: String, name: String?, coverArt: String?, albumCount: Int?, album: [SubsonicAlbum]?) {
+        self.id = id; self.name = name; self.coverArt = coverArt
+        self.albumCount = albumCount; self.album = album
+    }
 }
 
 nonisolated struct SubsonicSearchResult3: Decodable {
@@ -186,4 +260,24 @@ nonisolated struct SubsonicPlaylist: Decodable, Identifiable {
     /// ISO-8601 last-modified timestamp — F5 sorts "recently changed first".
     let changed: String?
     let entry: [SubsonicSong]?   // getPlaylist
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, songCount, duration, coverArt, owner, changed, entry
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.lenientID(forKey: .id)
+        name = try c.decodeIfPresent(String.self, forKey: .name)
+        songCount = try c.decodeIfPresent(Int.self, forKey: .songCount)
+        duration = try c.decodeIfPresent(Int.self, forKey: .duration)
+        coverArt = try c.decodeIfPresent(String.self, forKey: .coverArt)
+        owner = try c.decodeIfPresent(String.self, forKey: .owner)
+        changed = try c.decodeIfPresent(String.self, forKey: .changed)
+        entry = try c.decodeIfPresent([SubsonicSong].self, forKey: .entry)
+    }
+    init(id: String, name: String?, songCount: Int?, duration: Int?,
+         coverArt: String?, owner: String?, changed: String?, entry: [SubsonicSong]?) {
+        self.id = id; self.name = name; self.songCount = songCount; self.duration = duration
+        self.coverArt = coverArt; self.owner = owner; self.changed = changed; self.entry = entry
+    }
 }

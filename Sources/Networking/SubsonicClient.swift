@@ -17,8 +17,24 @@ struct SubsonicClient {
     private let password: String
 
     /// API version we speak and a stable client name (both required by the API).
-    private let apiVersion = "1.16.1"
+    /// Booksonic compat (170ff18): the version NEGOTIATES — Booksonic-Air
+    /// answers 1.16.1 with error 30 on EVERY call; on that error we retry
+    /// once with the fallback and persist the choice per server host.
+    private static let preferredVersion = "1.16.1"
+    private static let fallbackVersion = "1.15.0"
     private let clientName = "Maer"
+
+    private var apiVersion: String {
+        Self.negotiatedVersion(host: baseURL.host ?? "") ?? Self.preferredVersion
+    }
+
+    nonisolated static func negotiatedVersion(host: String) -> String? {
+        UserDefaults.standard.string(forKey: "subsonicApiVersion.\(host)")
+    }
+
+    nonisolated static func persistNegotiated(_ version: String, host: String) {
+        UserDefaults.standard.set(version, forKey: "subsonicApiVersion.\(host)")
+    }
 
     init?(serverURL: String, username: String, password: String) {
         let trimmed = serverURL.trimmingCharacters(in: .whitespaces)
@@ -85,13 +101,15 @@ struct SubsonicClient {
 
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
-        guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
         // Y39: retry parity with the ABS client — transient failures and the
         // 401 probe run INSIDE the shared policy fetch; on top the Subsonic
         // specialty: auth errors arrive as API code 40/41 in a 200 envelope,
         // so those get the SAME single probe before they count.
         var envelopeAuthAttempt = 0
+        var versionRetried = false
         while true {
+            // URL builds PER attempt — a version renegotiation must apply.
+            guard let url = requestURL(endpoint, params, extraItems: extraItems) else { throw SubsonicError.badURL }
             let data: Data
             let http: HTTPURLResponse?
             do {
@@ -122,6 +140,14 @@ struct SubsonicClient {
             }
             let body = env.subsonicResponse
             if let err = body.error {
+                // Error 30 = incompatible protocol version (Booksonic caps at
+                // 1.15.0): negotiate down ONCE, persist per host, retry.
+                if err.code == 30, !versionRetried, apiVersion == Self.preferredVersion {
+                    versionRetried = true
+                    Self.persistNegotiated(Self.fallbackVersion, host: baseURL.host ?? "")
+                    Logger.music.notice("subsonic version negotiated down to \(Self.fallbackVersion) for \(self.baseURL.host ?? "?", privacy: .public)")
+                    continue
+                }
                 if case .retry(let ms) = RequestRetryPolicy.subsonicDecision(
                     apiCode: err.code, attempt: envelopeAuthAttempt) {
                     envelopeAuthAttempt += 1

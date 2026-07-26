@@ -122,5 +122,35 @@ struct SubsonicSyncTests {
         // Playlist [A, B, A]: removing index 2 addresses ONLY the second A.
         #expect(SubsonicClient.removeIndexItems([2]).map(\.value) == ["2"])
     }
+
+    // Kompat-Paket 170ff18: Funkwhale sends ids as NUMBERS.
+    @Test("Lenient id decode: string and int, all four DTOs share it")
+    func lenientIDDecoding() throws {
+        let album = try JSONDecoder().decode(SubsonicAlbum.self,
+            from: Data(#"{"id":7,"name":"A"}"#.utf8))
+        #expect(album.id == "7")
+        let albumS = try JSONDecoder().decode(SubsonicAlbum.self,
+            from: Data(#"{"id":"al-7"}"#.utf8))
+        #expect(albumS.id == "al-7")
+        let song = try JSONDecoder().decode(SubsonicSong.self,
+            from: Data(#"{"id":42,"title":"T"}"#.utf8))
+        #expect(song.id == "42")
+        let artist = try JSONDecoder().decode(SubsonicArtist.self,
+            from: Data(#"{"id":9}"#.utf8))
+        #expect(artist.id == "9")
+        let playlist = try JSONDecoder().decode(SubsonicPlaylist.self,
+            from: Data(#"{"id":3,"name":"P"}"#.utf8))
+        #expect(playlist.id == "3")
+    }
+
+    // Kompat-Paket 170ff18: Booksonic negotiates the protocol version down.
+    @Test("Version negotiation persists per host")
+    func versionNegotiation() {
+        let host = "test-booksonic.example"
+        defer { UserDefaults.standard.removeObject(forKey: "subsonicApiVersion.\(host)") }
+        #expect(SubsonicClient.negotiatedVersion(host: host) == nil)
+        SubsonicClient.persistNegotiated("1.15.0", host: host)
+        #expect(SubsonicClient.negotiatedVersion(host: host) == "1.15.0")
+    }
 }
 #endif
