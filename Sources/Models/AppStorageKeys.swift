@@ -218,6 +218,11 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue ? "audiobooks" : "music", forKey: subsonicContentType) }
     }
 
+    /// Drive mode: the ONE remembered car audio-route UID (user-chosen from
+    /// the connected outputs; empty = no auto-activation) + its display name.
+    static let driveModeCarRouteUID = "driveModeCarRouteUID"
+    static let driveModeCarRouteName = "driveModeCarRouteName"
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {
