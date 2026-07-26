@@ -661,6 +661,7 @@ struct PlayerView: View {
                 }
                 GridRow {
                     queueControl
+                    driveModeControl
                 }
             }
         }
@@ -670,6 +671,7 @@ struct PlayerView: View {
     @ViewBuilder
     private var tertiaryItems: some View {
         airPlayControl
+        driveModeControl
         queueControl
         lyricsControl
         bookmarksControl
@@ -684,6 +686,15 @@ struct PlayerView: View {
         }
         .font(.footnote)
         .accessibilityIdentifier("player-queue")
+    }
+
+    /// Manual drive-mode entry — the full-screen variant covers everything.
+    private var driveModeControl: some View {
+        Button { DriveModeController.shared.enter() } label: {
+            Label("Drive Mode", systemImage: "car.fill")
+        }
+        .font(.footnote)
+        .accessibilityIdentifier("player-drive-mode")
     }
 
     private var airPlayControl: some View {

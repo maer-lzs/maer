@@ -26,4 +26,15 @@ struct ContentTokenTests {
         #expect(ContentToken.of(["a", "b"]) != ContentToken.of(["a"]))
     }
 }
+
+/// Drive mode: the one-button sleep cycle off→15→30→60→off.
+struct DriveModeSleepTests {
+    @Test("Sleep cycle steps")
+    func cycle() {
+        #expect(DriveModeView.nextSleepStep(active: false, current: nil) == 15)
+        #expect(DriveModeView.nextSleepStep(active: true, current: 15 * 60) == 30)
+        #expect(DriveModeView.nextSleepStep(active: true, current: 29 * 60) == 60)
+        #expect(DriveModeView.nextSleepStep(active: true, current: 60 * 60) == nil)
+    }
+}
 #endif

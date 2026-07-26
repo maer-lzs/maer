@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import Combine
 import AVFoundation
 import UIKit
 import OSLog

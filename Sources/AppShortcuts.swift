@@ -103,8 +103,29 @@ struct PlayBookIntent: AppIntent {
     }
 }
 
+struct DriveModeIntent: AppIntent {
+    static let title: LocalizedStringResource = "Drive Mode"
+    static let description = IntentDescription("Opens the big-button drive layout.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        DriveModeController.shared.enter()
+        return .result()
+    }
+}
+
 struct MaerShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: DriveModeIntent(),
+            phrases: [
+                "\(.applicationName) drive mode",
+                "\(.applicationName) Fahrmodus"
+            ],
+            shortTitle: "Drive Mode",
+            systemImageName: "car.fill"
+        )
         AppShortcut(
             intent: ContinueListeningIntent(),
             phrases: [

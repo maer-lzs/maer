@@ -40,6 +40,11 @@ struct LibraryView: View {
     /// `glassEffectID` in this namespace — media pill ↔ home button, magnifier ↔
     /// search field — instead of cross-fading independent glass surfaces.
     @Namespace private var bottomGlassNS
+    // Drive mode: rare-flip state (enter/exit only, never during a gesture)
+    // — observing it here does NOT violate the leaf convention, and the
+    // fullScreenCover trigger needs the re-render. While active, the library
+    // is covered anyway.
+    @ObservedObject private var driveMode = DriveModeController.shared
     // HITCH ROOT (26.07): LibraryView must NOT observe BottomBarState — it
     // hosts all five tab trees, and every collapse flip re-evaluated them all
     // (the bump that survived every bisect part-effect switch). Only the
@@ -391,7 +396,15 @@ struct LibraryView: View {
             // Reconcile podcast progress via iCloud (across devices).
             PodcastCloudSync.shared.start()
         }
+        .fullScreenCover(isPresented: Binding(
+            get: { driveMode.isActive },
+            set: { if !$0 { driveMode.exit() } }
+        )) {
+            DriveModeView(coordinator: playerCoordinator, libraryViewModel: viewModel)
+        }
         .onChange(of: scenePhase) { _, newPhase in
+            // Drive mode idle-timer discipline: background always releases it.
+            DriveModeController.shared.scenePhaseChanged(active: newPhase == .active)
             // When the app returns to the foreground, silently refresh the
             // progress bars — e.g. if listening continued on another device in
             // the meantime.

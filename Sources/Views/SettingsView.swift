@@ -100,6 +100,7 @@ struct SettingsView: View {
                     globalSyncSection
                     storageSection
                     notificationsSection
+                    driveModeSection
                     appearanceSection
                     statsSection
                     aboutSection
@@ -477,6 +478,46 @@ struct SettingsView: View {
     }
 
 
+
+    /// Drive mode: choose the ONE car audio output (from the currently
+    /// connected routes) that auto-activates the mode — never guessed.
+    @State private var carRouteName = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? ""
+    private var driveModeSection: some View {
+        Section {
+            if !carRouteName.isEmpty {
+                LabeledContent {
+                    Text(carRouteName)
+                } label: {
+                    Label("Car audio", systemImage: "car.fill")
+                }
+                Button("Forget car audio") {
+                    UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteUID)
+                    UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteName)
+                    carRouteName = ""
+                }
+            } else {
+                let outputs = DriveModeController.currentOutputs()
+                if outputs.isEmpty {
+                    Text("Connect your car audio, then choose it here.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(outputs, id: \.uid) { output in
+                        Button {
+                            UserDefaults.standard.set(output.uid, forKey: AppStorageKeys.driveModeCarRouteUID)
+                            UserDefaults.standard.set(output.name, forKey: AppStorageKeys.driveModeCarRouteName)
+                            carRouteName = output.name
+                        } label: {
+                            Label(output.name, systemImage: "speaker.wave.2")
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("Drive Mode")
+        } footer: {
+            Text("Drive mode starts automatically when this audio output connects, and can always be started from the player. It is a big-button layout, not a safety feature.")
+        }
+    }
 
     /// E7: statistics moved from the Audiobooks pill to General — labelled with
     /// their source (today only Audiobookshelf listening data).

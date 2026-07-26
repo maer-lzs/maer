@@ -270,6 +270,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
             object: AVAudioSession.sharedInstance(),
             queue: .main
         ) { [weak self] note in
+            // Drive mode: every route change re-evaluates the remembered car
+            // route (auto-enter on connect, exit on disconnect).
+            Task { @MainActor in DriveModeController.shared.handleRouteChange() }
             guard let reasonValue = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
                   AVAudioSession.RouteChangeReason(rawValue: reasonValue) == .oldDeviceUnavailable else { return }
             Task { @MainActor [weak self] in
