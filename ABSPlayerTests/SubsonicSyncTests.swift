@@ -96,5 +96,19 @@ struct SubsonicSyncTests {
         #expect(!SubsonicClient.isCancellation(URLError(.timedOut)))
         #expect(!SubsonicClient.isCancellation(SubsonicClient.SubsonicError.network))
     }
+
+    // Booksonic: bookmark continue-scope — playlists always, albums only in
+    // audiobooks mode (user-set, never guessed).
+    @Test("continueScope: playlists always, albums only in Booksonic mode")
+    func booksonicContinueScope() {
+        let prior = UserDefaults.standard.string(forKey: AppStorageKeys.subsonicContentType)
+        defer { UserDefaults.standard.set(prior, forKey: AppStorageKeys.subsonicContentType) }
+        AppStorageKeys.subsonicIsAudiobooksValue = false
+        #expect(SubsonicProvider.continueScope(itemId: "sub:playlist:p1"))
+        #expect(!SubsonicProvider.continueScope(itemId: "sub:album:a1"))
+        AppStorageKeys.subsonicIsAudiobooksValue = true
+        #expect(SubsonicProvider.continueScope(itemId: "sub:album:a1"))
+        #expect(!SubsonicProvider.continueScope(itemId: "sub:song:s1"))
+    }
 }
 #endif

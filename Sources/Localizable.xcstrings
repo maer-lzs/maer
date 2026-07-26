@@ -922,6 +922,16 @@
         }
       }
     },
+    "Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Booksonic-Bibliotheken liefern Hörbücher: Alben erscheinen als Bücher im Hörbücher-Tab, Tracks werden Kapitel. Nie geraten — du stellst es hier ein."
+          }
+        }
+      }
+    },
     "Browsing the radio catalog needs a connection." : {
       "localizations" : {
         "de" : {
@@ -5058,6 +5068,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dieser Treffer ist nicht mehr verfügbar."
+          }
+        }
+      }
+    },
+    "This source contains" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Quelle enthält"
           }
         }
       }

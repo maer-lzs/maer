@@ -952,10 +952,19 @@ final class LibraryViewModel: ObservableObject {
     /// core knows neither LocalLibrary nor the `local:` prefix. Called at the
     /// start of every load (in-memory, never an error).
     private func reloadLocalCache() async {
-        let localProvider = AppSession.shared.localProvider
-        let items = (try? await localProvider.fetchLibraryItems(libraryId: "local")) ?? []
-        let progress = (try? await localProvider.fetchAllProgress()) ?? [:]
-        localCache = items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
+        // Generalized (Booksonic): EVERY secondary audiobook-typed source
+        // merges here via its provider — local files and a Subsonic source the
+        // user set to audiobooks. The core still knows no concrete provider
+        // and no id namespace; the main (ABS) provider stays the primary path.
+        let session = AppSession.shared
+        var entries: [LibraryEntry] = []
+        for provider in session.allProviders
+        where provider !== session.provider && provider.mediaType == .audiobooks && provider.isAvailable {
+            let items = (try? await provider.fetchLibraryItems(libraryId: provider.providerId)) ?? []
+            let progress = (try? await provider.fetchAllProgress()) ?? [:]
+            entries += items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
+        }
+        localCache = entries
     }
 
     private func saveLibraryDiskCache(items: [LibraryItem], progress: [String: BookProgress]) {

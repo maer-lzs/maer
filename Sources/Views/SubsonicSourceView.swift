@@ -13,6 +13,7 @@ struct SubsonicSourceView: View {
     @State private var username = AppStorageKeys.subsonicUsernameValue
     @State private var password = AppStorageKeys.subsonicPasswordValue
     @State private var enabled = AppStorageKeys.subsonicEnabledValue
+    @State private var isAudiobooks = AppStorageKeys.subsonicIsAudiobooksValue
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
 
@@ -38,6 +39,18 @@ struct SubsonicSourceView: View {
                 Text("Subsonic Server")
             } footer: {
                 Text("Works with Navidrome, Gonic and Airsonic. Example: https://music.example.com")
+            }
+
+            Section {
+                Picker(selection: $isAudiobooks) {
+                    Text("Music").tag(false)
+                    Text("Audiobooks").tag(true)
+                } label: {
+                    Label("This source contains", systemImage: "books.vertical")
+                }
+                .onChange(of: isAudiobooks) { _, _ in save() }
+            } footer: {
+                Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here.")
             }
 
             Section {
@@ -137,8 +150,10 @@ struct SubsonicSourceView: View {
             AppStorageKeys.setSubsonicPassword(password)
         }
         AppStorageKeys.subsonicEnabledValue = enabled
-        // Rebuild the client so the next request uses the new credentials.
-        SubsonicProvider.shared.reloadConfig()
+        AppStorageKeys.subsonicIsAudiobooksValue = isAudiobooks
+        // Rebuild the client so the next request uses the new credentials —
+        // via the session so BOTH music clients and the tab bar reconfigure.
+        AppSession.shared.reconfigureSources()
     }
 
     private func setStatus(_ message: String, isError: Bool) {

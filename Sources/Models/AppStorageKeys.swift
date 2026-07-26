@@ -209,6 +209,15 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.jellyfinToken) }
     }
 
+    /// Booksonic: what this Subsonic source CONTAINS — "music" (default) or
+    /// "audiobooks" (a Booksonic library maps albums to books). User-set per
+    /// source, never guessed.
+    static let subsonicContentType = "subsonicContentType"
+    static var subsonicIsAudiobooksValue: Bool {
+        get { UserDefaults.standard.string(forKey: subsonicContentType) == "audiobooks" }
+        set { UserDefaults.standard.set(newValue ? "audiobooks" : "music", forKey: subsonicContentType) }
+    }
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {
@@ -311,7 +320,10 @@ nonisolated enum AppStorageKeys {
         SourceActivation.effective(tabEnabled: podcastsTabEnabledValue, sourceEnabled: rssEnabledValue)
     }
     static var subsonicActive: Bool {
-        SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: subsonicEnabledValue)
+        // Booksonic: the source gates on the tab it actually serves.
+        SourceActivation.effective(
+            tabEnabled: subsonicIsAudiobooksValue ? audiobooksTabEnabledValue : musicTabEnabledValue,
+            sourceEnabled: subsonicEnabledValue)
     }
     static var jellyfinActive: Bool {
         SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: jellyfinEnabledValue)

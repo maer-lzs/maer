@@ -72,7 +72,9 @@ final class AppSession: ObservableObject {
     /// wins for now — real exclusivity (PodcastServerExclusivity pattern) is
     /// Etappe 3.
     var musicProvider: any MusicProvider {
-        if AppStorageKeys.jellyfinActive, !AppStorageKeys.subsonicActive {
+        // Booksonic: a Subsonic source set to audiobooks does not serve music.
+        let subsonicServesMusic = AppStorageKeys.subsonicActive && !AppStorageKeys.subsonicIsAudiobooksValue
+        if AppStorageKeys.jellyfinActive, !subsonicServesMusic {
             return JellyfinProvider.shared
         }
         return SubsonicProvider.shared

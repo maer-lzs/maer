@@ -41,7 +41,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var starredAlbumIds: Set<String>?
 
     var providerId: String { "sub" }
-    var mediaType: MediaType { .music }
+    /// Booksonic: user-set per source — a Booksonic library serves the
+    /// AUDIOBOOKS tab through the generic AudioProvider rail (albums are
+    /// books, tracks are chapters); the music UI is untouched.
+    var mediaType: MediaType { AppStorageKeys.subsonicIsAudiobooksValue ? .audiobooks : .music }
     /// Password login + own search; content is streamed from a server and can be
     /// downloaded for offline. No server-side progress sync (music needs none;
     /// "played" is handled via scrobble at the track level).
@@ -238,8 +241,16 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The most-recent bookmark for a playlist, as a `MediaProgress` the player
     /// seeks to on open. Nil for non-playlists or when no usable bookmark exists.
+    /// Which items get bookmark-based continue-listening: playlists (music
+    /// package 3) and — in Booksonic mode — albums (each album IS a book).
+    /// Same bookmark machinery for both (Regel 2).
+    nonisolated static func continueScope(itemId: String) -> Bool {
+        if id(itemId, kind: "playlist") != nil { return true }
+        return AppStorageKeys.subsonicIsAudiobooksValue && id(itemId, kind: "album") != nil
+    }
+
     private func playlistResumeProgress(itemId: String, total: Double) async -> MediaProgress? {
-        guard Self.id(itemId, kind: "playlist") != nil, total > 0,
+        guard Self.continueScope(itemId: itemId), total > 0,
               let bookmarks = try? await loadBookmarks(),
               let songs = songsByItemId[itemId] else { return nil }
         let candidates: [(time: Double, ts: Double)] = bookmarks
@@ -526,7 +537,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // Continue-listening bookmark — PLAYLISTS only (scope). The position is
         // WITHIN the current song (same `songsByItemId` offset arithmetic as the
         // scrobble); the playlist item id rides in the comment as context.
-        guard Self.id(itemId, kind: "playlist") != nil else { return }
+        guard Self.continueScope(itemId: itemId) else { return }
         // Moving to a new song → drop the previous song's bookmark so at most one
         // lingers per playlist (resume is unaffected — the fetch picks the most
         // recent). Best-effort; a song shared across playlists is a rare edge.
@@ -554,7 +565,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private func playlistProgress(from bookmarks: [SubsonicBookmark]) async -> [String: BookProgress] {
         var byPlaylist: [String: [SubsonicBookmark]] = [:]
         for bm in bookmarks {
-            guard let comment = bm.comment, Self.id(comment, kind: "playlist") != nil else { continue }
+            guard let comment = bm.comment, Self.continueScope(itemId: comment) else { continue }
             byPlaylist[comment, default: []].append(bm)
         }
         var result: [String: BookProgress] = [:]
