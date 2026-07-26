@@ -122,7 +122,10 @@ struct SetupView: View {
                     Text("Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission.")
                 }
             }
-            .navigationTitle("Audiobookshelf")
+            // F10 rest: the FIRST screen must not be branded as an ABS login
+            // — Mär does not begin behind an ABS server (serverless path is a
+            // first-class option below).
+            .navigationTitle(Text(verbatim: "Mär"))
         }
     }
 }
