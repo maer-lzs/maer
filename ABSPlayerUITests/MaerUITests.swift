@@ -524,4 +524,26 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(existsAfterSearch, "title gone after search cycle")
         XCTAssertTrue(existsAfterTabs, "title gone after tab cycle")
     }
+
+
+    // Fixlet 4575a76 regression: a returner with a persisted region taps
+    // "Change region" — the picker must appear IMMEDIATELY (the section used
+    // to go dead until restart because the states list never refilled).
+    func testRadioRegionChangeShowsPicker() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let radio = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radio.waitForExistence(timeout: 10))
+        radio.tap()
+        XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10))
+        let change = app.buttons["radio-region-change"].firstMatch
+        var swipes = 0
+        while !change.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(change.waitForExistence(timeout: 10), "the chosen-region section must offer Change region")
+        change.tap()
+        XCTAssertTrue(app.buttons["radio-region-picker"].firstMatch.waitForExistence(timeout: 10),
+                      "after Change region the picker must appear immediately (no dead section)")
+    }
 }

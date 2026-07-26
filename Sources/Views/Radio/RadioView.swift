@@ -29,6 +29,9 @@ struct RadioView: View {
     /// in the harness bisect).
     @State private var chosenState: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionState)
     @State private var availableStates: [String] = []
+    #if DEBUG
+    @State private var seedRegionApplied = false
+    #endif
     /// "Popular in Switzerland" — country name from the locale, localized.
     private var nationalTitle: String {
         guard let code = regionCode,
@@ -180,12 +183,17 @@ struct RadioView: View {
                         self.chosenState = nil
                         UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionState)
                         regional = []
+                        // Refill the picker list immediately — without this the
+                        // section went DEAD until restart (confirmed regression).
+                        Task { await loadDiscovery(force: true) }
                     } label: {
                         Text("Change region")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.horizontal)
+                    // Locale-independent handle for the UI-test harness.
+                    .accessibilityIdentifier("radio-region-change")
                 }
             }
         } else if !availableStates.isEmpty, networkMonitor.isConnected {
@@ -216,7 +224,13 @@ struct RadioView: View {
             // Deterministic stand-in — no real Radio Browser call in the harness.
             popular = UITestSeed.seedRadioCatalog
             regional = UITestSeed.seedRadioCatalog
-            if chosenState == nil { chosenState = "Seed Region" }   // section renders
+            // Seed region ONCE — after "Change region" the picker must win,
+            // not an immediate re-choose by the seed branch.
+            if chosenState == nil, !seedRegionApplied {
+                chosenState = "Seed Region"
+                seedRegionApplied = true
+            }
+            availableStates = ["Seed Region", "Seed Region Two"]   // picker testable
             discoveryLoaded = true
             return
         }
@@ -230,7 +244,9 @@ struct RadioView: View {
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
         // The state list of the device country (once per session) — a country
         // without states leaves the region section silently hidden.
-        if chosenState == nil, availableStates.isEmpty, let code = regionCode,
+        // Decoupled from chosenState (fixlet 4575a76): a returner with a
+        // persisted state must still get the picker list when changing.
+        if availableStates.isEmpty, let code = regionCode,
            let countryName = Locale(identifier: "en_US").localizedString(forRegionCode: code) {
             availableStates = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
         }
