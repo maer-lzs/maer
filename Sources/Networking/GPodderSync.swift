@@ -390,6 +390,8 @@ final class GPodderSync {
             if tsMs > localTs {
                 defaults.set([Double(pos), tsMs], forKey: AppStorageKeys.localPosition(match.id))
                 pulled += 1
+                // Personen-Ebene: a gpodder-applied transition feeds the log.
+                PodcastListenLog.shared.noteReconciled(guids: [match.id])
             }
         }
         defaults.set(newSince, forKey: AppStorageKeys.gpodderEpisodeSince)

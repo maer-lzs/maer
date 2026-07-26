@@ -500,6 +500,10 @@ final class PodcastSubscriptions: ObservableObject {
         }
         result.progressApplied = applyAppleProgress(library.progress)
         result.paidSkipped = library.unimportablePaidCount
+        // Listen log: the import wrote positions past the played threshold —
+        // re-scan the (now-subscribed) shows with full metadata (fixlet
+        // 4575a76; targeted rescan, not the one-time backfill flag).
+        PodcastListenLog.shared.rescan(shows: shows)
         return result
     }
 

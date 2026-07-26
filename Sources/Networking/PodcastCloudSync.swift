@@ -93,6 +93,8 @@ final class PodcastCloudSync {
         if !outcome.toLocal.isEmpty {
             // Have the UI/sections and ABS provider display re-evaluate.
             PodcastProgressStore.shared.reload()
+            // Personen-Ebene: reconciled transitions land in the listen log.
+            PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
         }
         // F9: record full-scan merges that moved anything (single-key writes
         // stay out — they would flood the ring buffer).
@@ -166,6 +168,7 @@ final class PodcastCloudSync {
         case .adoptCloud(let value):
             defaults.set(value, forKey: keyPrefix + id)
             PodcastProgressStore.shared.reload()
+            PodcastListenLog.shared.noteReconciled(guids: [id])
         case .pushLocal(let value):
             cloud[id] = value
             store.set(cloud, forKey: blobKey)

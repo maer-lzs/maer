@@ -9,9 +9,11 @@ import OSLog
 /// one persistent entry per episode guid that ever transitioned to `.played`,
 /// carrying enough metadata (episode/show title, feed, duration) to stay
 /// enumerable after an unsubscribe or feed rotation — the two gaps of the
-/// UserDefaults-only state. Deliberately NOT iCloud-synced: `localPosition`
-/// already syncs, the log grows on each device from its LOCAL transitions.
-/// Own file (grows to thousands of entries — not UserDefaults).
+/// UserDefaults-only state. PERSON level (the owner 8b354d7): the log stores
+/// person facts — local transitions AND reconciled iCloud/gpodder positions
+/// feed it (noteReconciled); the log FILE itself is not synced (localPosition
+/// already is; each device derives the same facts — endgame candidate: sync
+/// the log itself, see report). Own file (thousands of entries possible).
 @MainActor
 final class PodcastListenLog {
     static let shared = PodcastListenLog()
@@ -35,6 +37,8 @@ final class PodcastListenLog {
     /// guid → entry (dedup; the latest transition wins).
     private(set) var entries: [String: Entry] = [:]
     private var loaded = false
+    /// Bulk passes (backfill/rescan) coalesce the per-hit file writes.
+    private var suspendPersist = false
 
     private init() {}
 
@@ -55,12 +59,58 @@ final class PodcastListenLog {
 
     /// Explicit "mark unplayed": tombstone the entry (kept, flagged) — the
     /// history survives, and only a newer real play-through flips it back.
-    func markUnplayed(guid: String) {
+    /// `at` carries a remote transition's own timestamp (reconcile ordering).
+    func markUnplayed(guid: String, at ts: Double? = nil) {
         loadIfNeeded()
         guard var entry = entries[guid] else { return }
-        entry.unplayedAt = Date().timeIntervalSince1970 * 1000
+        entry.unplayedAt = ts ?? Date().timeIntervalSince1970 * 1000
         entries[guid] = entry
         persist()
+    }
+
+    /// Personen-Ebene (owner decision 8b354d7): reconciled transitions —
+    /// iCloud/gpodder-applied positions — feed the log too; the log stores
+    /// person FACTS, not device events. Metadata resolves via the subscribed
+    /// shows; a guid whose show was never subscribed HERE gets a MINIMAL
+    /// entry (empty titles, feed unknown) — deliberately kept rather than
+    /// dropped, because later upserts enrich empty fields in place and the
+    /// fact "heard" must not depend on this device's subscription history.
+    func noteReconciled(guids: some Sequence<String>) {
+        for guid in guids {
+            let resolved = PodcastSubscriptions.shared.episode(guid: guid)
+            let duration = resolved?.episode.duration ?? 0
+            switch PodcastProgressStore.shared.state(guid: guid, duration: duration) {
+            case .played:
+                noteIfPlayed(guid: guid, duration: duration,
+                             episodeTitle: resolved?.episode.title ?? "",
+                             showTitle: resolved?.show.title ?? "",
+                             feedURL: resolved?.show.feedURL ?? "")
+            case .unplayed:
+                // A remote unplayed-tombstone ([0, ts]) must tombstone HERE
+                // too — otherwise devices diverge in the other direction.
+                if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
+                   arr.count == 2, arr[0] <= 0 {
+                    markUnplayed(guid: guid, at: arr[1])
+                }
+            case .inProgress:
+                break
+            }
+        }
+    }
+
+    /// Targeted re-scan of specific shows (Apple import: metadata is present
+    /// there) — the backfill body without the one-time flag.
+    func rescan(shows: [PodcastShow]) {
+        loadIfNeeded()
+        suspendPersist = true
+        defer { suspendPersist = false; persist() }
+        for show in shows {
+            for episode in show.episodes {
+                noteIfPlayed(guid: episode.guid, duration: episode.duration ?? 0,
+                             episodeTitle: episode.title, showTitle: show.title,
+                             feedURL: show.feedURL)
+            }
+        }
     }
 
     private func upsertPlayed(guid: String, episodeTitle: String, showTitle: String,
@@ -90,6 +140,8 @@ final class PodcastListenLog {
     func backfillIfNeeded(shows: [PodcastShow]) {
         guard !UserDefaults.standard.bool(forKey: AppStorageKeys.listenLogBackfilled) else { return }
         loadIfNeeded()
+        suspendPersist = true
+        defer { suspendPersist = false; persist() }
         for show in shows {
             for episode in show.episodes {
                 noteIfPlayed(guid: episode.guid, duration: episode.duration ?? 0,
@@ -117,6 +169,7 @@ final class PodcastListenLog {
     }
 
     private func persist() {
+        guard !suspendPersist else { return }
         guard let url = Self.fileURL, let data = try? JSONEncoder().encode(entries) else { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                  withIntermediateDirectories: true)
