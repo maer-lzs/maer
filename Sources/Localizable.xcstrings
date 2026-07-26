@@ -1,503 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%lld subscriptions removed locally" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "%lld Abos lokal entfernt" }
-        }
-      }
-    },
-    "%lld subscriptions removed on server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "%lld Abos am Server entfernt" }
-        }
-      }
-    },
-    "Shuffle" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Zufällig" }
-        }
-      }
-    },
-    "Add to Playlist" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Zur Playlist hinzufügen" }
-        }
-      }
-    },
-    "Could not add to the playlist." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Konnte nicht zur Playlist hinzufügen." }
-        }
-      }
-    },
-    "Could not create the playlist." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Konnte die Playlist nicht erstellen." }
-        }
-      }
-    },
-    "Create a playlist and add the selection to it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Erstelle eine Playlist und füge die Auswahl hinzu." }
-        }
-      }
-    },
-    "No playlists yet." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Noch keine Playlists." }
-        }
-      }
-    },
-    "Nothing to add." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Nichts zum Hinzufügen." }
-        }
-      }
-    },
-    "Audiobookshelf podcasts were turned off — only one podcast server at a time." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Audiobookshelf-Podcasts wurden deaktiviert — nur ein Podcast-Server gleichzeitig." }
-        }
-      }
-    },
-    "gpodder sync was turned off — only one podcast server at a time." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "gpodder-Sync wurde deaktiviert — nur ein Podcast-Server gleichzeitig." }
-        }
-      }
-    },
-    "Podcast source changed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Podcast-Quelle geändert" }
-        }
-      }
-    },
-    "Apply" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Anwenden" }
-        }
-      }
-    },
-    "Choose per feed below, or set all at once. Nothing changes until you tap Apply." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Unten pro Feed wählen oder alle auf einmal. Es ändert sich nichts, bis du auf „Anwenden“ tippst." }
-        }
-      }
-    },
-    "Couldn't reach the gpodder server." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Der gpodder-Server war nicht erreichbar." }
-        }
-      }
-    },
-    "Keep everything (union)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Alles behalten (Vereinigung)" }
-        }
-      }
-    },
-    "Keep only the server's" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Nur die vom Server behalten" }
-        }
-      }
-    },
-    "Keep only this device's" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Nur die von diesem Gerät behalten" }
-        }
-      }
-    },
-    "Loading subscriptions…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Abonnements werden geladen…" }
-        }
-      }
-    },
-    "No differences — this device and the server already match." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Keine Unterschiede — dieses Gerät und der Server stimmen bereits überein." }
-        }
-      }
-    },
-    "Only on the server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Nur auf dem Server" }
-        }
-      }
-    },
-    "Only on this device" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Nur auf diesem Gerät" }
-        }
-      }
-    },
-    "Resolve all" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Alle auflösen" }
-        }
-      }
-    },
-    "Resolve Conflict" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Konflikt auflösen" }
-        }
-      }
-    },
-    "Resolve conflict…" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : { "state" : "translated", "value" : "Konflikt auflösen…" }
-        }
-      }
-    },
-    "Audiobookshelf podcasts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Audiobookshelf-Podcasts"
-          }
-        }
-      }
-    },
-    "Audiobookshelf server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Audiobookshelf-Server"
-          }
-        }
-      }
-    },
-    "Internet radio" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Internetradio"
-          }
-        }
-      }
-    },
-    "Music server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Server"
-          }
-        }
-      }
-    },
-    "Music server (Subsonic)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Server (Subsonic)"
-          }
-        }
-      }
-    },
-    "Podcast sources" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Quellen"
-          }
-        }
-      }
-    },
-    "RSS feeds" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RSS-Feeds"
-          }
-        }
-      }
-    },
-    "Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einen ganzen Tab abschalten oder eine einzelne Quelle. Eine Quelle aus macht null Server-Aufrufe und blendet ihren Tab aus."
-          }
-        }
-      }
-    },
-    "Applies the next time you play this station." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wird beim nächsten Abspielen dieses Senders angewendet."
-          }
-        }
-      }
-    },
-    "Best" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beste"
-          }
-        }
-      }
-    },
-    "Quality" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Qualität"
-          }
-        }
-      }
-    },
-    "Station Details" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sender-Details"
-          }
-        }
-      }
-    },
-    "Stream" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stream"
-          }
-        }
-      }
-    },
-    "Stream Quality" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stream-Qualität"
-          }
-        }
-      }
-    },
-    "New Playlist" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Playlist"
-          }
-        }
-      }
-    },
-    "tracks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Titel"
-          }
-        }
-      }
-    },
-    "Create" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erstellen"
-          }
-        }
-      }
-    },
-    "Create an empty playlist on your music server." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine leere Playlist auf deinem Musik-Server anlegen."
-          }
-        }
-      }
-    },
-    "Popular Stations" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebte Sender"
-          }
-        }
-      }
-    },
-    "From Your Region" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus deiner Region"
-          }
-        }
-      }
-    },
-    "By Genre" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nach Genre"
-          }
-        }
-      }
-    },
-    "No stations found" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Sender gefunden"
-          }
-        }
-      }
-    },
-    "Browsing the radio catalog needs a connection." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zum Stöbern im Radio-Katalog ist eine Verbindung nötig."
-          }
-        }
-      }
-    },
-    "News" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nachrichten"
-          }
-        }
-      }
-    },
-    "Pop" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pop"
-          }
-        }
-      }
-    },
-    "Rock" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rock"
-          }
-        }
-      }
-    },
-    "Classical" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Klassik"
-          }
-        }
-      }
-    },
-    "Jazz" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jazz"
-          }
-        }
-      }
-    },
-    "Electronic" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elektro"
-          }
-        }
-      }
-    },
-    "Talk" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Talk"
-          }
-        }
-      }
-    },
-    "Sport" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sport"
-          }
-        }
-      }
-    },
-    "Culture" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kultur"
-          }
-        }
-      }
-    },
     "" : {
 
+    },
+    "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
+      "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
+      "isCommentAutoGenerated" : true
     },
     "%@" : {
       "comment" : "Buch-Titel",
@@ -836,6 +345,26 @@
         }
       }
     },
+    "%lld subscriptions removed locally" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Abos lokal entfernt"
+          }
+        }
+      }
+    },
+    "%lld subscriptions removed on server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Abos am Server entfernt"
+          }
+        }
+      }
+    },
     "%lld subscriptions up" : {
       "localizations" : {
         "de" : {
@@ -859,6 +388,30 @@
           }
         }
       }
+    },
+    "A source off makes zero server calls. Whether a media type appears at all is set under Libraries below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine ausgeschaltete Quelle macht keinerlei Server-Anfragen. Ob ein Medientyp überhaupt erscheint, regelst du unten unter Bibliotheken."
+          }
+        }
+      }
+    },
+    "About" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über"
+          }
+        }
+      }
+    },
+    "Access is embedded in the feed URL (token). This feed stays on this device and is never synced to a gpodder server." : {
+      "comment" : "A description of a token feed.",
+      "isCommentAutoGenerated" : true
     },
     "Add by URL" : {
       "localizations" : {
@@ -918,6 +471,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sender hinzufügen"
+          }
+        }
+      }
+    },
+    "Add to Playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zur Playlist hinzufügen"
           }
         }
       }
@@ -1070,6 +633,26 @@
       "comment" : "A label for the Apple podcast search source.",
       "isCommentAutoGenerated" : true
     },
+    "Applies the next time you play this station." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird beim nächsten Abspielen dieses Senders angewendet."
+          }
+        }
+      }
+    },
+    "Apply" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anwenden"
+          }
+        }
+      }
+    },
     "Archived" : {
       "localizations" : {
         "de" : {
@@ -1160,6 +743,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Audiobookshelf"
+          }
+        }
+      }
+    },
+    "Audiobookshelf podcasts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Podcasts"
+          }
+        }
+      }
+    },
+    "Audiobookshelf podcasts were turned off — only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Podcasts wurden deaktiviert — nur ein Podcast-Server gleichzeitig."
+          }
+        }
+      }
+    },
+    "Audiobookshelf server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiobookshelf-Server"
           }
         }
       }
@@ -1256,6 +869,16 @@
         }
       }
     },
+    "Best" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beste"
+          }
+        }
+      }
+    },
     "Bonus" : {
       "comment" : "Episode type for bonus content.",
       "isCommentAutoGenerated" : true,
@@ -1337,6 +960,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Öffne einmal deinen Musik-Tab — seine Alben erscheinen dann hier."
+          }
+        }
+      }
+    },
+    "Browsing the radio catalog needs a connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Stöbern im Radio-Katalog ist eine Verbindung nötig."
+          }
+        }
+      }
+    },
+    "By Genre" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Genre"
           }
         }
       }
@@ -1438,11 +1081,32 @@
       }
     },
     "Checks your subscriptions in the background and notifies you when new episodes are published. Requires notification permission." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Prüft deine Abos im Hintergrund und benachrichtigt dich, wenn neue Folgen erscheinen. Benötigt die Mitteilungs-Erlaubnis."
+          }
+        }
+      }
+    },
+    "Choose per feed below, or set all at once. Nothing changes until you tap Apply." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unten pro Feed wählen oder alle auf einmal. Es ändert sich nichts, bis du auf „Anwenden“ tippst."
+          }
+        }
+      }
+    },
+    "Classical" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klassik"
           }
         }
       }
@@ -1530,6 +1194,16 @@
         }
       }
     },
+    "Connect to Audiobookshelf" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit Audiobookshelf verbinden"
+          }
+        }
+      }
+    },
     "Connected." : {
       "localizations" : {
         "de" : {
@@ -1546,16 +1220,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbindet mit einem öffentlichen Demo-Server mit Beispiel-Hörbüchern."
-          }
-        }
-      }
-    },
-    "Connect to Audiobookshelf" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Audiobookshelf verbinden"
           }
         }
       }
@@ -1586,6 +1250,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Feed-URL kopieren"
+          }
+        }
+      }
+    },
+    "Could not add to the playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte nicht zur Playlist hinzufügen."
+          }
+        }
+      }
+    },
+    "Could not create the playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konnte die Playlist nicht erstellen."
           }
         }
       }
@@ -1652,12 +1336,62 @@
         }
       }
     },
+    "Couldn't reach the gpodder server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der gpodder-Server war nicht erreichbar."
+          }
+        }
+      }
+    },
     "Cover Cache" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cover-Cache"
+          }
+        }
+      }
+    },
+    "Create" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstellen"
+          }
+        }
+      }
+    },
+    "Create a playlist and add the selection to it." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erstelle eine Playlist und füge die Auswahl hinzu."
+          }
+        }
+      }
+    },
+    "Create an empty playlist on your music server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine leere Playlist auf deinem Musik-Server anlegen."
+          }
+        }
+      }
+    },
+    "Culture" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kultur"
           }
         }
       }
@@ -1935,12 +1669,23 @@
     },
     "Edit" : {
       "comment" : "A button label to edit the queue.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bearbeiten"
+          }
+        }
+      }
+    },
+    "Electronic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elektro"
           }
         }
       }
@@ -2000,11 +1745,22 @@
       }
     },
     "Every source is optional and can be added or removed here at any time." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jede Quelle ist optional und kann hier jederzeit ergänzt oder entfernt werden."
+          }
+        }
+      }
+    },
+    "Example: https://jellyfin.example.com — sign-in stores an access token in the keychain." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beispiel: https://jellyfin.example.com — die Anmeldung legt einen Zugriffstoken im Schlüsselbund ab."
           }
         }
       }
@@ -2111,6 +1867,16 @@
         }
       }
     },
+    "From Your Region" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus deiner Region"
+          }
+        }
+      }
+    },
     "General" : {
       "localizations" : {
         "de" : {
@@ -2165,6 +1931,16 @@
         }
       }
     },
+    "gpodder sync was turned off — only one podcast server at a time." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gpodder-Sync wurde deaktiviert — nur ein Podcast-Server gleichzeitig."
+          }
+        }
+      }
+    },
     "High-res covers (Cover Art Archive)" : {
       "comment" : "A checkbox to show high-resolution album covers.",
       "isCommentAutoGenerated" : true,
@@ -2189,7 +1965,18 @@
         }
       }
     },
+    "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iCloud hält den Podcast-Fortschritt zwischen deinen Geräten synchron (iCloud muss aktiv sein). Server-Sync je Dienst liegt auf der jeweiligen Quellen-Seite."
+          }
+        }
+      }
+    },
     "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server-based podcast sync (gpodder, Audiobookshelf) is configured under Sources → Podcasts." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2225,16 +2012,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus Apple Podcasts importieren"
-          }
-        }
-      }
-    },
-    "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud hält den Podcast-Fortschritt zwischen deinen Geräten synchron (iCloud muss aktiv sein). Server-Sync je Dienst liegt auf der jeweiligen Quellen-Seite."
           }
         }
       }
@@ -2282,6 +2059,16 @@
         }
       }
     },
+    "Internet radio" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Internetradio"
+          }
+        }
+      }
+    },
     "Invalid response from the server." : {
       "localizations" : {
         "de" : {
@@ -2314,12 +2101,96 @@
         }
       }
     },
+    "Jazz" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jazz"
+          }
+        }
+      }
+    },
+    "Jellyfin" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jellyfin"
+          }
+        }
+      }
+    },
+    "Jellyfin server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jellyfin-Server"
+          }
+        }
+      }
+    },
+    "Jellyfin Server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jellyfin-Server"
+          }
+        }
+      }
+    },
+    "Jellyfin sign-in failed — check username and password." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jellyfin-Anmeldung fehlgeschlagen — Nutzername und Passwort prüfen."
+          }
+        }
+      }
+    },
+    "Keep Both" : {
+      "comment" : "A button that keeps both the free and premium feed subscriptions.",
+      "isCommentAutoGenerated" : true
+    },
+    "Keep everything (union)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alles behalten (Vereinigung)"
+          }
+        }
+      }
+    },
     "Keep only latest" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nur neueste behalten"
+          }
+        }
+      }
+    },
+    "Keep only the server's" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur die vom Server behalten"
+          }
+        }
+      }
+    },
+    "Keep only this device's" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur die von diesem Gerät behalten"
           }
         }
       }
@@ -2350,6 +2221,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Letzte 14 Tage"
+          }
+        }
+      }
+    },
+    "Last checked" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt geprüft"
           }
         }
       }
@@ -2390,16 +2271,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Letzte Synchronisierung"
-          }
-        }
-      }
-    },
-    "Last checked" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt geprüft"
           }
         }
       }
@@ -2455,6 +2326,16 @@
         }
       }
     },
+    "Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcasts sofort hören — ganz ohne Konto. Audiobookshelf, ein Musik-Server oder Podcast-Sync lassen sich jederzeit in den Einstellungen ergänzen. Beim Verbinden mit einem Server im Heimnetz fragt iOS ggf. nach der Berechtigung fürs lokale Netzwerk."
+          }
+        }
+      }
+    },
     "Listening statistics come from Audiobookshelf." : {
       "localizations" : {
         "de" : {
@@ -2505,16 +2386,6 @@
         }
       }
     },
-    "Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcasts sofort hören — ganz ohne Konto. Audiobookshelf, ein Musik-Server oder Podcast-Sync lassen sich jederzeit in den Einstellungen ergänzen. Beim Verbinden mit einem Server im Heimnetz fragt iOS ggf. nach der Berechtigung fürs lokale Netzwerk."
-          }
-        }
-      }
-    },
     "Loading library…" : {
       "localizations" : {
         "de" : {
@@ -2533,6 +2404,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lädt mehr…"
+          }
+        }
+      }
+    },
+    "Loading subscriptions…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abonnements werden geladen…"
           }
         }
       }
@@ -2578,6 +2459,7 @@
       }
     },
     "Log out?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2586,6 +2468,10 @@
           }
         }
       }
+    },
+    "Login" : {
+      "comment" : "A label for a feed that requires login.",
+      "isCommentAutoGenerated" : true
     },
     "Login failed — please check username and password." : {
       "localizations" : {
@@ -2647,16 +2533,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abo verwalten"
-          }
-        }
-      }
-    },
-    "My Streams" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meine Streams"
           }
         }
       }
@@ -2753,6 +2629,10 @@
         }
       }
     },
+    "Members" : {
+      "comment" : "A label for a podcast feed that is not a token feed",
+      "isCommentAutoGenerated" : true
+    },
     "Metadata" : {
       "comment" : "A section of the Subsonic settings for music metadata.",
       "isCommentAutoGenerated" : true,
@@ -2827,6 +2707,16 @@
         }
       }
     },
+    "Music server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server"
+          }
+        }
+      }
+    },
     "Music Server" : {
       "comment" : "A label for the music server settings.",
       "isCommentAutoGenerated" : true,
@@ -2839,12 +2729,32 @@
         }
       }
     },
+    "Music server (Subsonic)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik-Server (Subsonic)"
+          }
+        }
+      }
+    },
     "Music unavailable" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Musik nicht verfügbar"
+          }
+        }
+      }
+    },
+    "My Streams" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Streams"
           }
         }
       }
@@ -2924,6 +2834,16 @@
         }
       }
     },
+    "New Playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Playlist"
+          }
+        }
+      }
+    },
     "New Shows" : {
       "localizations" : {
         "de" : {
@@ -2984,6 +2904,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neu veröffentlichte Folgen werden automatisch auf dieses Gerät geladen."
+          }
+        }
+      }
+    },
+    "News" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nachrichten"
           }
         }
       }
@@ -3054,6 +2984,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hier sind noch keine Bücher."
+          }
+        }
+      }
+    },
+    "No differences — this device and the server already match." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Unterschiede — dieses Gerät und der Server stimmen bereits überein."
           }
         }
       }
@@ -3129,6 +3069,16 @@
         }
       }
     },
+    "No playlists yet." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Playlists."
+          }
+        }
+      }
+    },
     "No podcasts yet" : {
       "localizations" : {
         "de" : {
@@ -3155,6 +3105,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Quelle hat geantwortet. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
+    "No stations found" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Sender gefunden"
           }
         }
       }
@@ -3195,16 +3155,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nicht genug freier Speicher für diesen Download."
-          }
-        }
-      }
-    },
-    "Notifications" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benachrichtigungen"
           }
         }
       }
@@ -3252,6 +3202,16 @@
         }
       }
     },
+    "Nothing to add." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zum Hinzufügen."
+          }
+        }
+      }
+    },
     "Nothing to show" : {
       "comment" : "A message that is displayed when there is no content to show.",
       "extractionState" : "stale",
@@ -3281,6 +3241,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nichts als Nächstes"
+          }
+        }
+      }
+    },
+    "Notifications" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Benachrichtigungen"
           }
         }
       }
@@ -3413,6 +3383,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Älteste zuerst"
+          }
+        }
+      }
+    },
+    "One music server at a time: with both on, Subsonic is used." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein Musikserver zur Zeit: Sind beide an, wird Subsonic verwendet."
+          }
+        }
+      }
+    },
+    "Only on the server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur auf dem Server"
+          }
+        }
+      }
+    },
+    "Only on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur auf diesem Gerät"
           }
         }
       }
@@ -3772,6 +3772,26 @@
         }
       }
     },
+    "Podcast source changed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Quelle geändert"
+          }
+        }
+      }
+    },
+    "Podcast sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Quellen"
+          }
+        }
+      }
+    },
     "PodcastIndex" : {
       "comment" : "A podcast source.",
       "isCommentAutoGenerated" : true
@@ -3806,12 +3826,32 @@
         }
       }
     },
+    "Pop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pop"
+          }
+        }
+      }
+    },
     "Popular" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beliebt"
+          }
+        }
+      }
+    },
+    "Popular Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebte Sender"
           }
         }
       }
@@ -3827,6 +3867,18 @@
           }
         }
       }
+    },
+    "Premium Feed" : {
+      "comment" : "A title for the sheet that edits a premium feed.",
+      "isCommentAutoGenerated" : true
+    },
+    "Premium feed detected" : {
+      "comment" : "A warning when a premium feed is found.",
+      "isCommentAutoGenerated" : true
+    },
+    "Premium Feeds" : {
+      "comment" : "A section for premium podcast feeds.",
+      "isCommentAutoGenerated" : true
     },
     "Previous chapter" : {
       "localizations" : {
@@ -3865,6 +3917,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fortschritts-Updates, die den Server noch nicht erreicht haben, werden automatisch nachgereicht. iCloud hält den Podcast-Fortschritt zwischen deinen eigenen Geräten synchron (iCloud muss aktiviert sein)."
+          }
+        }
+      }
+    },
+    "Quality" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualität"
           }
         }
       }
@@ -4064,6 +4126,44 @@
         }
       }
     },
+    "Remove Login" : {
+      "comment" : "A button that removes a feed's login.",
+      "isCommentAutoGenerated" : true
+    },
+    "Replace" : {
+      "comment" : "A button that replaces a free podcast subscription with a premium one.",
+      "isCommentAutoGenerated" : true
+    },
+    "Resolve all" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle auflösen"
+          }
+        }
+      }
+    },
+    "Resolve Conflict" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konflikt auflösen"
+          }
+        }
+      }
+    },
+    "Resolve conflict…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konflikt auflösen…"
+          }
+        }
+      }
+    },
     "Rest from %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4103,6 +4203,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Rock" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rock"
+          }
+        }
+      }
+    },
+    "RSS feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RSS-Feeds"
           }
         }
       }
@@ -4469,6 +4589,16 @@
         }
       }
     },
+    "Shuffle" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zufällig"
+          }
+        }
+      }
+    },
     "Sign In" : {
       "localizations" : {
         "de" : {
@@ -4592,11 +4722,52 @@
       }
     },
     "Sources" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quellen"
+          }
+        }
+      }
+    },
+    "Sources — Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellen — Hörbücher"
+          }
+        }
+      }
+    },
+    "Sources — Music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellen — Musik"
+          }
+        }
+      }
+    },
+    "Sources — Podcasts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellen — Podcasts"
+          }
+        }
+      }
+    },
+    "Sources — Radio" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellen — Radio"
           }
         }
       }
@@ -4607,6 +4778,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Geschwindigkeit"
+          }
+        }
+      }
+    },
+    "Sport" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sport"
           }
         }
       }
@@ -4631,12 +4812,32 @@
         }
       }
     },
+    "Start without a server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Server loslegen"
+          }
+        }
+      }
+    },
     "Starting…" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wird gestartet…"
+          }
+        }
+      }
+    },
+    "Station Details" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sender-Details"
           }
         }
       }
@@ -4671,16 +4872,6 @@
         }
       }
     },
-    "Start without a server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ohne Server loslegen"
-          }
-        }
-      }
-    },
     "Storage" : {
       "localizations" : {
         "de" : {
@@ -4691,8 +4882,19 @@
         }
       }
     },
+    "Stream" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stream"
+          }
+        }
+      }
+    },
     "Stream music from your own Subsonic-compatible server (Navidrome, Gonic, Airsonic)." : {
       "comment" : "A description of the music sources section.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "de" : {
@@ -4703,12 +4905,12 @@
         }
       }
     },
-    "Stream URL" : {
+    "Stream Quality" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Stream-URL"
+            "value" : "Stream-Qualität"
           }
         }
       }
@@ -4719,6 +4921,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stream nicht verfügbar — der Sender ist nicht erreichbar"
+          }
+        }
+      }
+    },
+    "Stream URL" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stream-URL"
           }
         }
       }
@@ -4793,9 +5005,6 @@
         }
       }
     },
-    "Subsonic / Navidrome" : {
-
-    },
     "Subsonic Server" : {
       "comment" : "A heading for the Subsonic server settings.",
       "isCommentAutoGenerated" : true,
@@ -4859,6 +5068,7 @@
       }
     },
     "Sync now" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4948,6 +5158,16 @@
         }
       }
     },
+    "Talk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Talk"
+          }
+        }
+      }
+    },
     "Test connection" : {
       "localizations" : {
         "de" : {
@@ -4968,6 +5188,16 @@
         }
       }
     },
+    "The Jellyfin server could not be reached." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Jellyfin-Server ist nicht erreichbar."
+          }
+        }
+      }
+    },
     "The last played audiobook, one tap away." : {
       "localizations" : {
         "de" : {
@@ -4979,6 +5209,7 @@
       }
     },
     "The server address stays saved; the token is removed." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5081,6 +5312,14 @@
         }
       }
     },
+    "Token feeds carry their access in the URL — they are never shown unmasked and never synced to a gpodder server." : {
+      "comment" : "A description of token feeds.",
+      "isCommentAutoGenerated" : true
+    },
+    "Token URL" : {
+      "comment" : "A label for a podcast feed URL that contains a token.",
+      "isCommentAutoGenerated" : true
+    },
     "Top Songs" : {
       "comment" : "A heading for the top songs of an artist.",
       "isCommentAutoGenerated" : true,
@@ -5131,6 +5370,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Titel %lld von %lld"
+          }
+        }
+      }
+    },
+    "tracks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titel"
           }
         }
       }
@@ -5186,6 +5435,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einen ganzen Tab abschalten oder eine einzelne Quelle. Eine Quelle aus macht null Server-Aufrufe und blendet ihren Tab aus."
+          }
+        }
+      }
+    },
+    "Unexpected answer from the Jellyfin server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unerwartete Antwort vom Jellyfin-Server."
           }
         }
       }
@@ -5312,6 +5581,16 @@
         }
       }
     },
+    "Use as music source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Musikquelle verwenden"
+          }
+        }
+      }
+    },
     "Use Audiobookshelf for podcasts" : {
       "localizations" : {
         "de" : {
@@ -5404,6 +5683,16 @@
         }
       }
     },
+    "When on (and Subsonic off), your Jellyfin albums, artists and playlists appear in the Music tab." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenn aktiviert (und Subsonic aus), erscheinen deine Jellyfin-Alben, -Künstler und -Playlists im Musik-Tab."
+          }
+        }
+      }
+    },
     "When on, your albums, artists and playlists appear in a Music tab in the library." : {
       "comment" : "A description of the effect of enabling the music tab.",
       "isCommentAutoGenerated" : true,
@@ -5412,6 +5701,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wenn aktiv, erscheinen deine Alben, Künstler und Playlists in einem Musik-Tab in der Bibliothek."
+          }
+        }
+      }
+    },
+    "Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches above are kept." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Medientypen als Tabs erscheinen. Ein ausgeschalteter Typ verbirgt seinen Tab und stoppt alle Anfragen seiner Quellen — die Schalter je Quelle oben bleiben erhalten."
+          }
+        }
+      }
+    },
+    "Will use your %@ login (from “%@”)" : {
+      "comment" : "A note that shows a hint that the",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Will use your %1$@ login (from “%2$@”)"
           }
         }
       }

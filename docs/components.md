@@ -60,6 +60,13 @@ inherit this rule instead of being appended at the end (that is how the
 diagnosis switches ended up squatting in About). A media pill exists only when
 the type is enabled AND has at least one own setting.
 
+**Convention — l10n gate (26.07, after two straight misses):** whoever adds
+user-visible strings runs the B15 l10n-coverage lint against the WORKING TREE
+before the commit and adds the new hits to `Localizable.xcstrings` WITH a
+German translation — or deliberately marks them `verbatim` (debug/diagnosis
+class below). The lint exists; it was only being run after the push (Wache) —
+this moves it into the definition of done, no new tooling.
+
 **Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
 switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
 `Label { Text(verbatim: "…") } icon: { Image(systemName:) }`) and NEVER enters
