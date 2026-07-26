@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
+import UIKit
 import OSLog
 
 /// Reconciles podcast subscriptions (and later the listening history) with a
@@ -97,6 +98,35 @@ final class GPodderSync {
         let serverRaw: [String: String]   // norm → raw server feed URL
     }
 
+    /// Register this device once per deviceId (gpodder API; stricter servers
+    /// — PodFetch/Pinepods/Nextcloud — 404 unknown ids, oPodSync creates them
+    /// implicitly). Tolerant in BOTH directions: a failing registration
+    /// (server without a devices endpoint) never blocks the sync — logged,
+    /// not silent (rule 3); success is remembered per deviceId so bestehende
+    /// users keep their id (never re-rolled) and the call stays one-shot.
+    static func ensureDeviceRegistered(_ client: GPodderClient, config: GPodderConfig) async {
+        let key = AppStorageKeys.gpodderDeviceRegisteredFor
+        guard UserDefaults.standard.string(forKey: key) != config.deviceId else { return }
+        do {
+            try await client.registerDevice(caption: Self.deviceCaption())
+            UserDefaults.standard.set(config.deviceId, forKey: key)
+            Logger.gpodder.notice("gpodder device registered (id kept)")
+        } catch {
+            // Server without a devices endpoint (or transient) — sync must
+            // proceed; retry naturally on the next run.
+            Logger.gpodder.error("gpodder device registration failed (sync continues): \(error.localizedDescription)")
+        }
+    }
+
+    /// The user-facing device name as the registration caption.
+    nonisolated static func deviceCaption() -> String {
+        #if canImport(UIKit)
+        return UIDevice.current.name.isEmpty ? "Maer" : UIDevice.current.name
+        #else
+        return "Maer"
+        #endif
+    }
+
     /// Fetch the current server + local subscriptions for the resolution UI.
     /// nil when not configured or the server can't be reached.
     func conflictSnapshot() async -> ConflictSnapshot? {
@@ -168,7 +198,18 @@ final class GPodderSync {
         let client = GPodderClient(config: config)
         do {
             try await client.login()
-            report = try await syncSubscriptions(client)
+            await Self.ensureDeviceRegistered(client, config: config)
+            do {
+                report = try await syncSubscriptions(client)
+            } catch {
+                // A device-scoped endpoint rejecting the id (strict server,
+                // registration lost): register once and retry — never report
+                // the sync as broken for a recoverable device state.
+                Logger.gpodder.notice("gpodder sync retry after device (re)registration")
+                UserDefaults.standard.removeObject(forKey: AppStorageKeys.gpodderDeviceRegisteredFor)
+                await Self.ensureDeviceRegistered(client, config: config)
+                report = try await syncSubscriptions(client)
+            }
             let hist = try await syncEpisodeActions(client)
             report.historyPulled = hist.pulled
             report.historyPushed = hist.pushed

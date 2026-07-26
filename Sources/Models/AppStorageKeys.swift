@@ -238,6 +238,10 @@ nonisolated enum AppStorageKeys {
     /// Listen log: one-time backfill of the current subscriptions done.
     static let listenLogBackfilled = "listenLogBackfilled"
 
+    /// gpodder: the deviceId this install has REGISTERED on the server
+    /// (one-shot per id; the id itself is never re-rolled for existing users).
+    static let gpodderDeviceRegisteredFor = "gpodderDeviceRegisteredFor"
+
     /// M5: LRCLIB lyrics lookup (opt-out; server lyrics always win).
     static let musicLyricsOnlineLookup = "musicLyricsOnlineLookup"
     static var musicLyricsOnlineLookupValue: Bool {

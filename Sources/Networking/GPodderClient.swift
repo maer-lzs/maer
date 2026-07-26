@@ -53,6 +53,26 @@ final class GPodderClient {
 
     // MARK: - Public API
 
+    /// Register THIS device (idempotent upsert in the gpodder API): required
+    /// by stricter servers (PodFetch/Pinepods/Nextcloud) that 404 unknown
+    /// device ids; oPodSync creates devices implicitly, so this is additive.
+    func registerDevice(caption: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "caption": caption, "type": "mobile",
+        ])
+        var req = try request("api/2/devices/\(enc(config.username))/\(enc(config.deviceId)).json",
+                              method: "POST")
+        req.httpBody = body
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        _ = try await send(req)
+    }
+
+    /// The registered devices (cheap probe for the sync history).
+    func devices() async throws -> [[String: Any]] {
+        let data = try await send(try request("api/2/devices/\(enc(config.username)).json", method: "GET"))
+        return (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) ?? []
+    }
+
     /// Login via Basic auth → session cookie. Throws on wrong credentials.
     func login() async throws {
         _ = try await send(request("api/2/auth/\(enc(config.username))/login.json", method: "POST"),
