@@ -210,6 +210,31 @@ struct SubsonicClient {
                           extraItems: Self.addSongItems(songIdsToAdd))
     }
 
+    /// Rename a playlist (Subsonic `updatePlaylist` with `name`).
+    func renamePlaylist(id: String, name: String) async throws {
+        _ = try await get("updatePlaylist", ["playlistId": id, "name": name])
+    }
+
+    /// Remove songs by INDEX (Subsonic semantics: `songIndexToRemove` refers
+    /// to positions in the CURRENT playlist order — resolved server-side in
+    /// one call, so indices never shift mid-removal).
+    func removePlaylistSongs(id: String, indices: [Int]) async throws {
+        guard !indices.isEmpty else { return }
+        _ = try await get("updatePlaylist", ["playlistId": id],
+                          extraItems: Self.removeIndexItems(indices))
+    }
+
+    func deletePlaylist(id: String) async throws {
+        _ = try await get("deletePlaylist", ["id": id])
+    }
+
+    /// Pure (tested): the repeated `songIndexToRemove` items — ONE request
+    /// carries all indices, so Subsonic resolves them against the same
+    /// snapshot (the duplicate-song case stays index-precise).
+    nonisolated static func removeIndexItems(_ indices: [Int]) -> [URLQueryItem] {
+        indices.map { URLQueryItem(name: "songIndexToRemove", value: String($0)) }
+    }
+
     /// Pure (tested): the repeated `songIdToAdd` query items for `updatePlaylist`.
     nonisolated static func addSongItems(_ songIds: [String]) -> [URLQueryItem] {
         songIds.map { URLQueryItem(name: "songIdToAdd", value: $0) }

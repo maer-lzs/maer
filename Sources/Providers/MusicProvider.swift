@@ -58,6 +58,13 @@ protocol MusicProvider: AudioProvider {
     /// server echoed it, else nil (the caller re-fetches).
     func createPlaylist(name: String) async throws -> String?
     func addSongs(_ songIds: [String], toPlaylistItemId playlistItemId: String) async throws
+    /// Rename/remove/delete — playlist basics; server truth: callers reload
+    /// after every mutation.
+    func renamePlaylist(itemId: String, newName: String) async throws
+    /// Index-based removal (positions in the current order — Subsonic
+    /// semantics; ONE call carries all indices).
+    func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws
+    func deletePlaylist(itemId: String) async throws
     /// The provider song ids an item contributes when added to a playlist.
     func songIds(forItemId itemId: String) async -> [String]
     /// The provider song id for one track row of an album/playlist item.

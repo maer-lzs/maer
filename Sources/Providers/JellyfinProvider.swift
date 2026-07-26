@@ -271,6 +271,30 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         playlistMosaicCache[rawId] = nil
     }
 
+    func renamePlaylist(itemId: String, newName: String) async throws {
+        guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return }
+        try await client.renamePlaylist(playlistId: rawId, name: newName)
+    }
+
+    /// Index-based protocol → Jellyfin EntryIds: the current order resolves
+    /// the indices to their PlaylistItemIds (duplicate songs stay precise —
+    /// each entry has its own id).
+    func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws {
+        guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !indices.isEmpty else { return }
+        let songs = try await client.playlistSongs(playlistId: rawId)
+        let entryIds = indices.compactMap { songs.indices.contains($0) ? songs[$0].playlistItemId : nil }
+        try await client.removeFromPlaylist(playlistId: rawId, entryIds: entryIds)
+        playlistMosaicCache[rawId] = nil
+        songsByItemId[playlistItemId] = nil
+    }
+
+    func deletePlaylist(itemId: String) async throws {
+        guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return }
+        try await client.deletePlaylist(playlistId: rawId)
+        playlistMosaicCache[rawId] = nil
+        itemsById[itemId] = nil
+    }
+
     func songIds(forItemId itemId: String) async -> [String] {
         if let songId = Self.id(itemId, kind: "song") { return [songId] }
         if let cached = songsByItemId[itemId] { return cached.map(\.id) }

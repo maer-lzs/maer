@@ -110,5 +110,17 @@ struct SubsonicSyncTests {
         #expect(SubsonicProvider.continueScope(itemId: "sub:album:a1"))
         #expect(!SubsonicProvider.continueScope(itemId: "sub:song:s1"))
     }
+
+    // Playlist basics: index-based removal — ONE request carries all indices
+    // (server resolves against one snapshot; the duplicate-song case removes
+    // exactly the addressed position, not both copies).
+    @Test("removeIndexItems: one request, all indices, duplicates stay precise")
+    func removeIndexItems() {
+        let items = SubsonicClient.removeIndexItems([1, 3])
+        #expect(items.map(\.name) == ["songIndexToRemove", "songIndexToRemove"])
+        #expect(items.map(\.value) == ["1", "3"])
+        // Playlist [A, B, A]: removing index 2 addresses ONLY the second A.
+        #expect(SubsonicClient.removeIndexItems([2]).map(\.value) == ["2"])
+    }
 }
 #endif

@@ -222,6 +222,9 @@ struct MusicView: View {
 /// detail page (no direct playback).
 private struct PlaylistCard: View {
     let playlist: MusicPlaylist
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
 
@@ -235,6 +238,37 @@ private struct PlaylistCard: View {
                 coverURLs: coverURLs),
             onTap: { pushRoute(.album(playlistLibraryItem(playlist))) }
         )
+        // Playlist basics: rename/delete from the card row too.
+        .contextMenu {
+            Button {
+                renameText = playlist.name ?? ""
+                showRename = true
+            } label: { Label("Rename Playlist", systemImage: "pencil") }
+            Button(role: .destructive) { showDeleteConfirm = true } label: {
+                Label("Delete Playlist", systemImage: "trash")
+            }
+        }
+        .alert("Rename Playlist", isPresented: $showRename) {
+            TextField("Name", text: $renameText)
+            Button("Rename") {
+                Task {
+                    try? await AppSession.shared.musicProvider
+                        .renamePlaylist(itemId: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
+                                        newName: renameText)
+                    AppSession.shared.musicProvider.librarySynced.send()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) {
+                Task {
+                    try? await AppSession.shared.musicProvider
+                        .deletePlaylist(itemId: AppSession.shared.musicProvider.itemId(playlistId: playlist.id))
+                    AppSession.shared.musicProvider.librarySynced.send()
+                }
+            }
+        }
         // Kachel-Auftrag: fills its containerRelativeFrame slot (MediaTile is
         // maxWidth + aspectRatio already) — no fixed width anymore.
         .task(id: playlist.id) {

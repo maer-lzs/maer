@@ -29,6 +29,11 @@ struct MusicAlbumView: View {
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
+    // Playlist basics: rename/delete with confirmation; server truth = reload.
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
+    @Environment(\.dismiss) private var dismissView
     /// Albums can be starred; playlists cannot.
     private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
     /// Playlists get the mosaic header; albums keep their single cover.
@@ -61,6 +66,19 @@ struct MusicAlbumView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        // Playlist basics: remove THIS row (index-precise —
+                        // a duplicated song removes only this position).
+                        .swipeActions(edge: .trailing) {
+                            if isPlaylist {
+                                Button(role: .destructive) {
+                                    Task {
+                                        try? await AppSession.shared.musicProvider
+                                            .removeSongs(at: [index], fromPlaylistItemId: item.id)
+                                        await loadDetail()
+                                    }
+                                } label: { Label("Remove from Playlist", systemImage: "minus.circle") }
+                            }
+                        }
                         // S18: song long-press — play from here + album download
                         // (music downloads are per album).
                         .contextMenu {
@@ -123,7 +141,41 @@ struct MusicAlbumView: View {
                     }
                     .tint(starred ? .red : nil)
                 }
+                if isPlaylist {
+                    Menu {
+                        Button {
+                            renameText = item.title
+                            showRename = true
+                        } label: { Label("Rename Playlist", systemImage: "pencil") }
+                        Button(role: .destructive) {
+                            showDeleteConfirm = true
+                        } label: { Label("Delete Playlist", systemImage: "trash") }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityIdentifier("playlist-actions")
+                }
                 SettingsToolbarButton()
+            }
+        }
+        .alert("Rename Playlist", isPresented: $showRename) {
+            TextField("Name", text: $renameText)
+            Button("Rename") {
+                Task {
+                    try? await AppSession.shared.musicProvider
+                        .renamePlaylist(itemId: item.id, newName: renameText)
+                    await loadDetail()
+                    // Server truth: the tab's playlist row re-reads the list.
+                    AppSession.shared.musicProvider.librarySynced.send()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) {
+                Task {
+                    try? await AppSession.shared.musicProvider.deletePlaylist(itemId: item.id)
+                    AppSession.shared.musicProvider.librarySynced.send()
+                    dismissView()
+                }
             }
         }
         .task(id: item.id) {

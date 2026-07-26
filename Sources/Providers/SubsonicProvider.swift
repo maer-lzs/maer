@@ -364,6 +364,25 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         playlistMosaicCache[rawId] = nil
     }
 
+    func renamePlaylist(itemId: String, newName: String) async throws {
+        guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return }
+        try await client.renamePlaylist(id: rawId, name: newName)
+    }
+
+    func removeSongs(at indices: [Int], fromPlaylistItemId playlistItemId: String) async throws {
+        guard let client, let rawId = Self.id(playlistItemId, kind: "playlist"), !indices.isEmpty else { return }
+        try await client.removePlaylistSongs(id: rawId, indices: indices)
+        playlistMosaicCache[rawId] = nil
+        songsByItemId[playlistItemId] = nil   // stale order — refetch on next use
+    }
+
+    func deletePlaylist(itemId: String) async throws {
+        guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return }
+        try await client.deletePlaylist(id: rawId)
+        playlistMosaicCache[rawId] = nil
+        itemsById[itemId] = nil
+    }
+
     /// F5: the first up-to-4 DISTINCT album cover-art ids of a playlist for the
     /// 2×2 mosaic (the server's single playlist cover is deliberately ignored).
     /// Best-effort, cached per session.

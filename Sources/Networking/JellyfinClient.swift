@@ -271,6 +271,22 @@ final class JellyfinClient {
                            ["Ids": songIds.joined(separator: ","), "UserId": uid])
     }
 
+    /// Rename (Jellyfin 10.9+: POST /Playlists/{id} updates the playlist).
+    func renamePlaylist(playlistId: String, name: String) async throws {
+        _ = try await post("Playlists/\(playlistId)", jsonBody: ["Name": name])
+    }
+
+    /// Remove entries by their PlaylistItemIds (NOT song ids).
+    func removeFromPlaylist(playlistId: String, entryIds: [String]) async throws {
+        guard !entryIds.isEmpty else { return }
+        _ = try await post("Playlists/\(playlistId)/Items",
+                           ["EntryIds": entryIds.joined(separator: ",")], method: "DELETE")
+    }
+
+    func deletePlaylist(playlistId: String) async throws {
+        _ = try await post("Items/\(playlistId)", method: "DELETE")
+    }
+
     func search(term: String, limit: Int = 60) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [

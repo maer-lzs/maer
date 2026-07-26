@@ -49,6 +49,8 @@ nonisolated struct JFItem: Decodable {
     let dateCreated: String?      // ISO-8601
     let childCount: Int?
     let userData: JFUserData?
+    /// Entry id WITHIN a playlist (removal is addressed by this, not the song id).
+    let playlistItemId: String?
     enum CodingKeys: String, CodingKey {
         case id = "Id", name = "Name", type = "Type"
         case runTimeTicks = "RunTimeTicks", indexNumber = "IndexNumber"
@@ -57,6 +59,7 @@ nonisolated struct JFItem: Decodable {
         case artists = "Artists", overview = "Overview"
         case dateCreated = "DateCreated", childCount = "ChildCount"
         case userData = "UserData"
+        case playlistItemId = "PlaylistItemId"
     }
 }
 
