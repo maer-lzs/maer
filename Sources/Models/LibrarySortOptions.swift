@@ -44,7 +44,7 @@ nonisolated enum PodcastFilterOption: String, CaseIterable, Identifiable {
 
 /// Music album-grid sort — resolved SERVER-side via getAlbumList2 (no direction
 /// toggle; the API has no direction). The shelves stay fixed; only the grid
-/// re-queries. `subsonicType` is the Subsonic mapping used by the live music
+/// re-queries. `shelf` is the neutral shelf mapping used by the live music
 /// source wiring — a future provider (Jellyfin) maps the same semantic cases or
 /// reports a case as unavailable so the menu hides it.
 nonisolated enum MusicSortOption: String, CaseIterable, Identifiable {
@@ -65,14 +65,15 @@ nonisolated enum MusicSortOption: String, CaseIterable, Identifiable {
         }
     }
 
-    /// getAlbumList2 `type` parameter.
-    var subsonicType: String {
+    /// The neutral shelf this sort corresponds to — providers translate it
+    /// into their own vocabulary (no getAlbumList2 strings here anymore).
+    var shelf: MusicShelf {
         switch self {
-        case .nameAZ: return "alphabeticalByName"
-        case .kuenstler: return "alphabeticalByArtist"
-        case .neu: return "newest"
-        case .zuletztGespielt: return "recent"
-        case .meistgespielt: return "frequent"
+        case .nameAZ: return .alphabetical
+        case .kuenstler: return .byArtist
+        case .neu: return .newest
+        case .zuletztGespielt: return .recent
+        case .meistgespielt: return .frequent
         }
     }
 }

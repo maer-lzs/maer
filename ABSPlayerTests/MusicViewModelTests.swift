@@ -139,13 +139,13 @@ struct MusicViewModelTests {
         #expect(rec.calls.count == before)
     }
 
-    @Test("Teil 2: the sort maps to the expected getAlbumList2 type")
+    @Test("Teil 2: the sort maps to the expected neutral shelf")
     func sortTypeMapping() {
-        #expect(MusicSortOption.nameAZ.subsonicType == "alphabeticalByName")
-        #expect(MusicSortOption.kuenstler.subsonicType == "alphabeticalByArtist")
-        #expect(MusicSortOption.neu.subsonicType == "newest")
-        #expect(MusicSortOption.zuletztGespielt.subsonicType == "recent")
-        #expect(MusicSortOption.meistgespielt.subsonicType == "frequent")
+        #expect(MusicSortOption.nameAZ.shelf == .alphabetical)
+        #expect(MusicSortOption.kuenstler.shelf == .byArtist)
+        #expect(MusicSortOption.neu.shelf == .newest)
+        #expect(MusicSortOption.zuletztGespielt.shelf == .recent)
+        #expect(MusicSortOption.meistgespielt.shelf == .frequent)
     }
 }
 #endif

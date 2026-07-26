@@ -148,7 +148,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func musicTab() async -> CPListTemplate? {
         guard AppSession.shared.musicProvider.isAvailable else { return nil }
         let cap = Int(CPListTemplate.maximumItemCount)
-        let newest = (try? await AppSession.shared.musicProvider.albumShelf(type: "newest", size: 20)) ?? []
+        let newest = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 20)) ?? []
         let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(libraryId: "sub")) ?? []
 
         var sections: [CPListSection] = []

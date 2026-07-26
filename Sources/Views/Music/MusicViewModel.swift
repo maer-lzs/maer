@@ -19,13 +19,13 @@ struct MusicSource {
     /// type here (provider-level mapping — a future provider translates or
     /// reports a case unavailable). Teil 2.
     var albumsPage: @MainActor @Sendable (_ sort: MusicSortOption, _ offset: Int, _ size: Int) async throws -> [LibraryItem]
-    var shelf: @MainActor @Sendable (_ type: String, _ size: Int) async throws -> [LibraryItem]
+    var shelf: @MainActor @Sendable (_ shelf: MusicShelf, _ size: Int) async throws -> [LibraryItem]
     var artists: @MainActor @Sendable () async throws -> [MusicArtist]
     var playlists: @MainActor @Sendable () async throws -> [MusicPlaylist]
 
     static let live = MusicSource(
         albumsPage: { try await AppSession.shared.musicProvider.albumPage(sort: $0, offset: $1, size: $2) },
-        shelf: { try await AppSession.shared.musicProvider.albumShelf(type: $0, size: $1) },
+        shelf: { try await AppSession.shared.musicProvider.albumShelf(shelf: $0, size: $1) },
         artists: { try await AppSession.shared.musicProvider.allArtists() },
         playlists: { try await AppSession.shared.musicProvider.allPlaylists() }
     )
@@ -109,8 +109,8 @@ final class MusicViewModel: ObservableObject {
 
         // Parallel best-effort extras — assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].
-        async let newestTask = source.shelf("newest", 20)
-        async let frequentTask = source.shelf("frequent", 20)
+        async let newestTask = source.shelf(.newest, 20)
+        async let frequentTask = source.shelf(.frequent, 20)
         async let artistsTask = source.artists()
         async let playlistsTask = source.playlists()
 

@@ -420,7 +420,7 @@ struct HomeView: View {
         // present (a pure time sort let the music library's fresher timestamps take
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
-        let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(type: "newest", size: 12)) ?? []
+        let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 

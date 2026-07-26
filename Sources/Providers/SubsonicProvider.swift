@@ -269,17 +269,27 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     // MARK: - View-facing browse (Music tab)
 
-    /// A shelf of albums as library items. `type`: newest | frequent | recent | …
-    func albumShelf(type: String, size: Int = 20) async throws -> [LibraryItem] {
+    /// The neutral shelf → getAlbumList2 `type` mapping (provider vocabulary
+    /// lives HERE, not in the protocol).
+    nonisolated static func albumListType(for shelf: MusicShelf) -> String {
+        switch shelf {
+        case .newest: return "newest"
+        case .frequent: return "frequent"
+        case .recent: return "recent"
+        case .byArtist: return "alphabeticalByArtist"
+        case .alphabetical: return "alphabeticalByName"
+        }
+    }
+
+    func albumShelf(shelf: MusicShelf, size: Int = 20) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return remember(await Self.mapAlbums(try await client.albumList2(type: type, size: size)))
+        return remember(await Self.mapAlbums(
+            try await client.albumList2(type: Self.albumListType(for: shelf), size: size)))
     }
 
     /// One page of the album catalog for a semantic sort (S5: staged loading).
-    /// The MusicSortOption → getAlbumList2-type mapping lives HERE (provider
-    /// level) — a future provider translates its own vocabulary.
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem] {
-        try await albumPage(type: sort.subsonicType, offset: offset, size: size)
+        try await albumPage(type: Self.albumListType(for: sort.shelf), offset: offset, size: size)
     }
 
     /// One page of the alphabetical album catalog (S5: staged loading — the

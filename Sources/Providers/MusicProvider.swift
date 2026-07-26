@@ -23,8 +23,8 @@ enum MusicItemKind {
 /// `MusicPlaylist`, `MusicArtistInfo`, `MusicAlbumInfo`, `MusicTopSong`,
 /// `SongLyrics`, `LibraryItem`) — the `Subsonic*` Decodables are wire DTOs
 /// internal to their provider, which maps at its boundary (anti-corruption).
-/// Remaining deliberate cut: shelf vocabulary (`"newest"`, `"frequent"`, …)
-/// is Subsonic's `getAlbumList2` type set; a second implementation translates.
+/// Shelves speak the neutral `MusicShelf` enum — no provider vocabulary
+/// remains in any signature.
 @MainActor
 protocol MusicProvider: AudioProvider {
     /// Fires after a successful library sync — the mounted Music tab re-runs
@@ -36,7 +36,7 @@ protocol MusicProvider: AudioProvider {
     func reconnectIfNeeded()
 
     // MARK: Albums
-    func albumShelf(type: String, size: Int) async throws -> [LibraryItem]
+    func albumShelf(shelf: MusicShelf, size: Int) async throws -> [LibraryItem]
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem]
     func albumInfo(itemId: String) async -> MusicAlbumInfo?
 
@@ -100,8 +100,8 @@ protocol MusicProvider: AudioProvider {
 
 /// Call-site conveniences mirroring the previous default arguments.
 extension MusicProvider {
-    func albumShelf(type: String) async throws -> [LibraryItem] {
-        try await albumShelf(type: type, size: 20)
+    func albumShelf(shelf: MusicShelf) async throws -> [LibraryItem] {
+        try await albumShelf(shelf: shelf, size: 20)
     }
     func topSongs(artistName: String) async -> [MusicTopSong] {
         await topSongs(artistName: artistName, count: 10)

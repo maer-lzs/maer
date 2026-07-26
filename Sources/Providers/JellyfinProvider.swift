@@ -185,28 +185,27 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     // MARK: - Albums
 
-    /// Subsonic shelf vocabulary → Jellyfin sort (the protocol's documented
-    /// remaining cut: the vocabulary is translated at the provider boundary).
-    nonisolated static func shelfSort(for type: String) -> (by: String, order: String) {
-        switch type {
-        case "newest": return ("DateCreated", "Descending")
-        case "frequent": return ("PlayCount", "Descending")
-        case "recent": return ("DatePlayed", "Descending")
-        case "alphabeticalByArtist": return ("AlbumArtist,SortName", "Ascending")
-        default: return ("SortName", "Ascending")
+    /// The neutral shelf → Jellyfin SortBy/SortOrder mapping.
+    nonisolated static func shelfSort(for shelf: MusicShelf) -> (by: String, order: String) {
+        switch shelf {
+        case .newest: return ("DateCreated", "Descending")
+        case .frequent: return ("PlayCount", "Descending")
+        case .recent: return ("DatePlayed", "Descending")
+        case .byArtist: return ("AlbumArtist,SortName", "Ascending")
+        case .alphabetical: return ("SortName", "Ascending")
         }
     }
 
-    func albumShelf(type: String, size: Int) async throws -> [LibraryItem] {
+    func albumShelf(shelf: MusicShelf, size: Int) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        let sort = Self.shelfSort(for: type)
+        let sort = Self.shelfSort(for: shelf)
         let albums = try await client.albums(sortBy: sort.by, sortOrder: sort.order, limit: size)
         return remember(albums.map(Self.libraryItem(fromAlbum:)))
     }
 
     func albumPage(sort: MusicSortOption, offset: Int, size: Int) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        let mapped = Self.shelfSort(for: sort.subsonicType)
+        let mapped = Self.shelfSort(for: sort.shelf)
         let albums = try await client.albums(sortBy: mapped.by, sortOrder: mapped.order,
                                              startIndex: offset, limit: size)
         return remember(albums.map(Self.libraryItem(fromAlbum:)))

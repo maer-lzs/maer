@@ -60,11 +60,13 @@ struct JellyfinMappingTests {
 
     @Test("Shelf vocabulary translates to Jellyfin sorts")
     func shelfTranslation() {
-        #expect(JellyfinProvider.shelfSort(for: "newest") == ("DateCreated", "Descending"))
-        #expect(JellyfinProvider.shelfSort(for: "frequent") == ("PlayCount", "Descending"))
-        #expect(JellyfinProvider.shelfSort(for: "recent") == ("DatePlayed", "Descending"))
-        #expect(JellyfinProvider.shelfSort(for: "alphabeticalByArtist") == ("AlbumArtist,SortName", "Ascending"))
-        #expect(JellyfinProvider.shelfSort(for: "alphabeticalByName") == ("SortName", "Ascending"))
+        #expect(JellyfinProvider.shelfSort(for: .newest) == ("DateCreated", "Descending"))
+        #expect(JellyfinProvider.shelfSort(for: .frequent) == ("PlayCount", "Descending"))
+        #expect(JellyfinProvider.shelfSort(for: .recent) == ("DatePlayed", "Descending"))
+        #expect(JellyfinProvider.shelfSort(for: .byArtist) == ("AlbumArtist,SortName", "Ascending"))
+        #expect(JellyfinProvider.shelfSort(for: .alphabetical) == ("SortName", "Ascending"))
+        #expect(SubsonicProvider.albumListType(for: .newest) == "newest")
+        #expect(SubsonicProvider.albumListType(for: .byArtist) == "alphabeticalByArtist")
     }
 
     @Test("Lyrics: synced ticks become seconds, unsynced lines carry no start")
