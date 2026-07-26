@@ -4,27 +4,90 @@
 
 import SwiftUI
 
-/// Flat A–Z list of artists → the artist's albums.
+/// Artists as a VISUAL surface (the owner: no more text list): round portrait
+/// (server image when it exists, else the deterministic color circle with the
+/// initial — the artist ALWAYS appears), name + album count below, A–Z grid
+/// with a search field for large libraries. Tap → the artist page as before.
 struct MusicArtistsView: View {
     let artists: [MusicArtist]
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var query = ""
+
+    private var shown: [MusicArtist] {
+        guard !query.isEmpty else { return artists }
+        return artists.filter { ($0.name ?? "").localizedCaseInsensitiveContains(query) }
+    }
 
     var body: some View {
-        List(artists) { artist in
-            NavigationLink(value: MusicRoute.artist(artist)) {
-                HStack {
-                    Text(artist.name ?? String(localized: "Unknown Artist"))
-                    Spacer()
-                    if let count = artist.albumCount {
-                        Text("\(count)").foregroundStyle(.secondary)
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 16)], spacing: 20) {
+                ForEach(shown) { artist in
+                    NavigationLink(value: MusicRoute.artist(artist)) {
+                        VStack(spacing: 6) {
+                            ArtistPortraitCircle(artist: artist)
+                            Text(artist.name ?? String(localized: "Unknown Artist"))
+                                .font(.caption.weight(.medium))
+                                .lineLimit(1, reservesSpace: true)
+                            Text(artist.albumCount.map { "\($0)" } ?? " ")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1, reservesSpace: true)
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal)
         }
-        .listStyle(.plain)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic))
         .navigationTitle("Artists")
         .navigationBarTitleDisplayMode(.inline)
-        .barAwareList()
+        .bottomBarClearance()
+    }
+}
+
+/// Round artist portrait: the server image when one exists (lazy via
+/// `artistInfo`, session-cached), else the deterministic color circle with
+/// the artist's initial (radio color pattern) — never an empty placeholder.
+struct ArtistPortraitCircle: View {
+    let artist: MusicArtist
+    var size: CGFloat = 88
+    @State private var imageURL: URL?
+
+    /// Session cache: artist id → resolved image URL (nil = known-absent).
+    @MainActor static var cache: [String: URL?] = [:]
+
+    var body: some View {
+        ZStack {
+            if let imageURL {
+                CachedAsyncImage(url: imageURL, useThumbnail: true) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    initialCircle
+                }
+            } else {
+                initialCircle
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .task(id: artist.id) {
+            if let cached = Self.cache[artist.id] {
+                imageURL = cached
+                return
+            }
+            let url = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)?.imageURL
+            Self.cache[artist.id] = url
+            imageURL = url
+        }
+    }
+
+    private var initialCircle: some View {
+        PlaylistArtwork.color(for: artist.id)
+            .overlay(
+                Text(String((artist.name ?? "?").prefix(1)).uppercased())
+                    .font(.system(size: size * 0.4, weight: .semibold))
+                    .foregroundStyle(.white))
     }
 }
 

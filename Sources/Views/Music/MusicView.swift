@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import Combine
 
 /// Music tab (Subsonic/Navidrome). Media-type-specific layout, deliberately not
 /// the audiobook grid: shelves on top (recently added, most played), browse rows

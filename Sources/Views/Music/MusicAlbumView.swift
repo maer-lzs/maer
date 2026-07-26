@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import Combine
 
 /// Album (or playlist) detail: cover header + track list. Tapping a track plays
 /// the whole album from that song (album = one multi-track item, songs are
