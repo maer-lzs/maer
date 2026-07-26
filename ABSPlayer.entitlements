@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- CarPlay-Audio: Apples Freigabe fuer die App-ID wurde am 26.07.2026
+	     erteilt — seitdem gilt EINE Entitlements-Datei fuer Simulator UND
+	     Geraet (die fruehere Simulator-Sonderdatei ABSPlayer-CarPlay
+	     .entitlements ist entfernt; Historie siehe git). -->
+	<key>com.apple.developer.carplay-audio</key>
+	<true/>
 	<!-- Geteilter Container fuer das Home-Screen-Widget (Snapshot + Cover).
 	     Forks: an eigene Bundle-Struktur anpassen (auch in WidgetShared.swift
 	     und MaerWidgets.entitlements). -->
