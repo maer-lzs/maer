@@ -60,12 +60,17 @@ inherit this rule instead of being appended at the end (that is how the
 diagnosis switches ended up squatting in About). A media pill exists only when
 the type is enabled AND has at least one own setting.
 
-**Convention — l10n gate (26.07, after two straight misses):** whoever adds
-user-visible strings runs the B15 l10n-coverage lint against the WORKING TREE
-before the commit and adds the new hits to `Localizable.xcstrings` WITH a
-German translation — or deliberately marks them `verbatim` (debug/diagnosis
-class below). The lint exists; it was only being run after the push (Wache) —
-this moves it into the definition of done, no new tooling.
+**Convention — l10n gate (26.07, after two straight misses; extended same
+day):** whoever adds user-visible strings runs the B15 l10n-coverage lint
+against the WORKING TREE before the commit and adds the new hits to
+`Localizable.xcstrings` WITH a German translation — or deliberately marks them
+`verbatim` (debug/diagnosis class below). AND: whenever a commit touches the
+string catalog itself, B1 `xcstrings-lint` (catalog health: missing/stale/
+duplicate) runs before the commit too — `missing` is a STOP. B15 catches
+"in code, not in catalog"; B1 catches "in catalog, but untranslated" (an
+Xcode sync can pull in old never-translated literals). Translation-invariant
+keys (format specifiers, proper nouns) carry `shouldTranslate: false` instead
+of fake translations.
 
 **Convention — Debug UI (agreed with the reviewer, 25.07):** debug/diagnosis UI (bisect
 switches, diagnosis toggles, build stamps) uses `Text(verbatim:)` (for labels:
