@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Synthetic Podcast Subscriptions</title>
+</head>
+<body>
+<outline type="rss" text="Morning Motivation" title="Morning Motivation" xmlUrl="https://example.com/feed.xml" htmlUrl="https://example.com/morning"/>
+<outline type="rss" text="Morning Motivation (Duplicate)" title="Morning Motivation (Duplicate)" xmlUrl="https://example.com/feed.xml" htmlUrl="https://example.com/morning"/>
+<outline type="rss" text="Morning Motivation (Trailing Slash)" title="Morning Motivation (Trailing Slash)" xmlUrl="https://example.com/feed.xml/" htmlUrl="https://example.com/morning"/>
+<outline type="rss" text="Morning Motivation (HTTP)" title="Morning Motivation (HTTP)" xmlUrl="http://example.com/feed.xml" htmlUrl="https://example.com/morning"/>
+</body>
+</opml>

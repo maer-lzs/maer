@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Podcast mit ÄÖÜ und 🎙️🔥</title>
+    <link>https://example.org/podcast</link>
+    <description>Ein faszinierender Podcast über Technologie, Kultur und vieles mehr. Mit spannenden Gästen und viel Spaß! 😄</description>
+    <language>de-de</language>
+    <itunes:author>Max Mustermann</itunes:author>
+    <item>
+      <title>Episodentitel mit Ü und 😎</title>
+      <description>In dieser Episode sprechen wir über das Leben im digitalen Zeitalter, mit einem Schwerpunkt auf Datenschutz und 🌐. Ein spannender Einblick in die Zukunft!</description>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <link>https://example.org/podcast/episode1</link>
+      <itunes:duration>25:30</itunes:duration>
+    </item>
+    <item>
+      <title>Ein weiterer Titel mit Ö und 🚀</title>
+      <description>Wir besprechen aktuelle Trends in der KI-Entwicklung und wie sie unser tägliches Leben verändern könnte. Mit einem Interview mit Dr. Anna Müller, einer führenden Expertin im Bereich Künstliche Intelligenz.</description>
+      <pubDate>Thu, 16 Jan 2025 14:00:00 +0000</pubDate>
+      <link>https://example.org/podcast/episode2</link>
+      <itunes:duration>32:15</itunes:duration>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Daily Insight</title>
+    <link>https://example.org/podcast</link>
+    <description>A daily show offering deep insights on technology and culture.</description>
+    <language>en-us</language>
+    <item>
+      <title>Episode 1: The Future of AI</title>
+      <guid isPermaLink="false">https://example.org/podcast/episode1</guid>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <description>This episode explores the latest developments in artificial intelligence and their impact on society.</description>
+      <enclosure url="https://example.org/podcast/episode1.mp3" length="12345678" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

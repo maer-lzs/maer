@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Daily Dose</title>
+    <link>https://example.org/podcast</link>
+    <description>A daily show bringing you the latest in science, tech, and culture.</description>
+    <language>en-us</language>
+    <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+    <item>
+      <title>Episode 1: The Future of AI</title>
+      <link>https://example.org/podcast/episode1</link>
+      <description>Join us as we explore the future of artificial intelligence and its impact on society.</description>
+      <enclosure url="https://example.org/podcast/episode1.mp3" length="0" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Episode 2: Space Exploration</title>
+      <link>https://example.org/podcast/episode2</link>
+      <description>Discussing the latest developments in space exploration and the journey to Mars.</description>
+      <enclosure url="https://example.org/podcast/episode2.mp3" length="0" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

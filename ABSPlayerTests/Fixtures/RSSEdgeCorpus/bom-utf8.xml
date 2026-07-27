@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>BOM-Feed 🎧</title>
+    <link>https://example.com/bom</link>
+    <description>UTF-8 mit vorangestelltem BOM.</description>
+    <language>de</language>
+    <item>
+      <title>Folge 1: Grüße</title>
+      <guid isPermaLink="false">bom-ep-1</guid>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <description>Mit ümläuten.</description>
+      <enclosure url="https://example.com/bom/ep1.mp3" length="23456" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

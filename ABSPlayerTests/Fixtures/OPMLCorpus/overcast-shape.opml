@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Synthetic Podcast Subscriptions</title>
+</head>
+<body>
+<outline text="Technology">
+<outline type="rss" text="The Daily Tech Brief" title="The Daily Tech Brief" xmlUrl="https://example.com/tech-brief.xml" htmlUrl="https://example.com/tech-brief" overcastId="12345" overcastAddedDate="2025-04-05T14:30:00Z"/>
+<outline type="rss" text="AI Today" title="AI Today" xmlUrl="https://example.com/ai-today.xml" htmlUrl="https://example.com/ai-today" overcastId="67890" overcastAddedDate="2025-04-06T09:15:00Z"/>
+<outline type="rss" text="Quantum Computing Weekly" title="Quantum Computing Weekly" xmlUrl="https://example.com/quantum-weekly.xml" htmlUrl="https://example.com/quantum-weekly" overcastId="54321" overcastAddedDate="2025-04-07T11:45:00Z"/>
+</outline>
+</body>
+</opml>

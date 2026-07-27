@@ -1,0 +1,207 @@
+{
+  "corpus_version": "1.0",
+  "description": "Realitätsnaher Härtefall-Korpus für RSS/Podcast-Parser (Mär). Alle Feeds SYNTHETISCH — keine kopierten echten Feeds. Grundwahrheit für spätere Swift-Tests.",
+  "cases": [
+    {
+      "slug": "minimal-valid",
+      "file": "minimal-valid.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Kleinster gültiger Podcast-Feed (Referenz).",
+      "expected_behavior": "Parst sauber: 1 Channel, 1 Item mit guid, title, enclosure audio/mpeg."
+    },
+    {
+      "slug": "no-guid",
+      "file": "no-guid.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Items ohne <guid> — Fallback-Identität nötig.",
+      "expected_behavior": "Item ohne guid bekommt eine Fallback-ID aus der enclosure-URL."
+    },
+    {
+      "slug": "duplicate-guid",
+      "file": "duplicate-guid.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Zwei Items mit identischer guid.",
+      "expected_behavior": "Beide Items mit gleicher guid werden als Duplikat erkannt; nur eines behalten (oder markieren)."
+    },
+    {
+      "slug": "guid-permalink-url",
+      "file": "guid-permalink-url.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "guid isPermaLink=\"true\" mit einer URL als Wert.",
+      "expected_behavior": "Die URL-guid dient als stabile Identität; isPermaLink=true wird respektiert."
+    },
+    {
+      "slug": "cdata-html-title",
+      "file": "cdata-html-title.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "CDATA + HTML-Entities + Tags in title/description.",
+      "expected_behavior": "CDATA-Inhalt wird als Text übernommen; HTML-Entities werden dekodiert, Tags nicht als Markup missinterpretiert."
+    },
+    {
+      "slug": "umlaut-emoji",
+      "file": "umlaut-emoji.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "UTF-8 mit Umlauten + Emoji in allen Textfeldern.",
+      "expected_behavior": "Alle Mehrbyte-Zeichen (ä/ö/ü/ß + Emoji) bleiben in title/description/author erhalten."
+    },
+    {
+      "slug": "latin1-declared",
+      "file": "latin1-declared.xml",
+      "encoding": "iso-8859-1",
+      "well_formed": true,
+      "generated": false,
+      "byte_exact": true,
+      "tests": "encoding=\"ISO-8859-1\" deklariert UND korrekt als Latin-1 kodiert.",
+      "expected_behavior": "Parser respektiert die XML-Deklaration und dekodiert die Latin-1-Bytes korrekt (ä = 0xE4)."
+    },
+    {
+      "slug": "bom-utf8",
+      "file": "bom-utf8.xml",
+      "encoding": "utf-8-sig",
+      "well_formed": true,
+      "generated": false,
+      "byte_exact": true,
+      "tests": "UTF-8 mit vorangestelltem BOM (EF BB BF).",
+      "expected_behavior": "Der BOM wird erkannt/übersprungen; der Feed parst wie ein normaler UTF-8-Feed."
+    },
+    {
+      "slug": "no-pubdate",
+      "file": "no-pubdate.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Item ohne <pubDate>.",
+      "expected_behavior": "Fehlendes Datum führt nicht zum Absturz; Item bleibt gültig, Datum ist null/unbekannt."
+    },
+    {
+      "slug": "invalid-pubdate",
+      "file": "invalid-pubdate.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Kaputte/uneinheitliche Datumsformate: ohne Wochentag, Zonen-Name (EST), Müll-String.",
+      "expected_behavior": "RFC-2822-Varianten (mit/ohne Wochentag, Zonen-Name) werden tolerant geparst; unparsebare Daten → null statt Absturz."
+    },
+    {
+      "slug": "enclosure-missing",
+      "file": "enclosure-missing.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Item ohne <enclosure>.",
+      "expected_behavior": "Item ohne enclosure ist nicht abspielbar; wird als nicht-abspielbar markiert, kein Absturz."
+    },
+    {
+      "slug": "enclosure-zero-length",
+      "file": "enclosure-zero-length.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "enclosure length=\"0\" (real sehr häufig).",
+      "expected_behavior": "length=0 wird nicht als Fehler behandelt; die enclosure-URL bleibt nutzbar."
+    },
+    {
+      "slug": "enclosure-wrong-mime",
+      "file": "enclosure-wrong-mime.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "enclosure type=\"application/octet-stream\" statt audio/mpeg.",
+      "expected_behavior": "Falscher MIME-Typ verwirft das Item nicht; ggf. Ableitung des Typs aus der Datei-Endung."
+    },
+    {
+      "slug": "relative-urls",
+      "file": "relative-urls.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Relative URLs in enclosure/artwork (kein Schema/Host).",
+      "expected_behavior": "Relative URLs werden gegen die Feed-Basis-URL aufgelöst."
+    },
+    {
+      "slug": "itunes-variants",
+      "file": "itunes-variants.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "itunes:duration in SS / MM:SS / HH:MM:SS; itunes:image vs channel image; itunes:episodeType.",
+      "expected_behavior": "Alle drei duration-Formate ergeben korrekte Sekunden; itunes:image überschreibt channel image pro Item; episodeType (full/trailer/bonus) wird gelesen."
+    },
+    {
+      "slug": "pc20-chapters",
+      "file": "pc20-chapters.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "podcast:chapters-Link (PC20-Namespace) + podcast:guid.",
+      "expected_behavior": "podcast:chapters-URL + podcast:guid werden aus dem PC20-Namespace korrekt extrahiert."
+    },
+    {
+      "slug": "paged-feed",
+      "file": "paged-feed.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "atom:link rel=\"next\"-Pagination.",
+      "expected_behavior": "Die rel=next-URL wird als nächste Seite erkannt (RFC 5005)."
+    },
+    {
+      "slug": "huge-feed",
+      "file": "huge-feed.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": true,
+      "tests": "1000 Items, deterministisch generiert (fester Seed).",
+      "expected_behavior": "Großer Feed parst ohne Speicher-/Zeitprobleme; genau 1000 Items."
+    },
+    {
+      "slug": "youtube-podsync-shape",
+      "file": "youtube-podsync-shape.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Nachgebaute Podsync-Struktur (YouTube→RSS): lange IDs, yt-URLs, typische Feldbelegung.",
+      "expected_behavior": "Podsync-typische Felder (11-stellige Video-IDs als guid, youtube-Enclosure-URLs) parsen als normale Episoden."
+    },
+    {
+      "slug": "youtube-pinchflat-shape",
+      "file": "youtube-pinchflat-shape.xml",
+      "encoding": "utf-8",
+      "well_formed": true,
+      "generated": false,
+      "tests": "Nachgebaute Pinchflat-Struktur (YouTube→RSS).",
+      "expected_behavior": "Pinchflat-typische Feldbelegung (lokale Media-URLs, yt-Metadaten) parst als normale Episoden."
+    },
+    {
+      "slug": "broken-xml",
+      "file": "broken-xml.xml",
+      "encoding": "utf-8",
+      "well_formed": false,
+      "generated": false,
+      "tests": "ABSICHTLICH nicht wohlgeformt: abgeschnittener Tag.",
+      "expected_behavior": "Der stdlib-XML-Parser wirft einen Parse-Fehler; der Parser muss sauber scheitern, nicht abstürzen."
+    },
+    {
+      "slug": "wrong-encoding-lie",
+      "file": "wrong-encoding-lie.xml",
+      "encoding": "utf-8-declared-latin1-bytes",
+      "well_formed": false,
+      "generated": false,
+      "byte_exact": true,
+      "tests": "Deklariert UTF-8, enthält aber Latin-1-Bytes (tückisch).",
+      "expected_behavior": "Strikte UTF-8-Dekodierung scheitert an den Latin-1-Bytes → Parse-Fehler; kein stiller Datenmüll."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Daily Insight</title>
+    <link>https://example.org/podcast</link>
+    <description>A daily show exploring the latest in technology, culture, and ideas.</description>
+    <language>en-us</language>
+    <itunes:author>Samuel R. Vance</itunes:author>
+    <itunes:explicit>clean</itunes:explicit>
+    <itunes:category text="Technology"/>
+    <item>
+      <title>Episode 42: The Future of AI</title>
+      <link>https://example.com/episodes/42</link>
+      <guid isPermaLink="true">https://example.com/episodes/42</guid>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <description>A deep dive into the current state and future of artificial intelligence.</description>
+      <content:encoded>A deep dive into the current state and future of artificial intelligence.</content:encoded>
+      <itunes:duration>28:45</itunes:duration>
+      <itunes:summary>A deep dive into the current state and future of artificial intelligence.</itunes:summary>
+    </item>
+    <item>
+      <title>Episode 43: The Ethics of Tech</title>
+      <link>https://example.com/episodes/43</link>
+      <guid isPermaLink="true">https://example.com/episodes/43</guid>
+      <pubDate>Thu, 16 Jan 2025 09:00:00 +0000</pubDate>
+      <description>Exploring the ethical implications of emerging technologies.</description>
+      <content:encoded>Exploring the ethical implications of emerging technologies.</content:encoded>
+      <itunes:duration>32:15</itunes:duration>
+      <itunes:summary>Exploring the ethical implications of emerging technologies.</itunes:summary>
+    </item>
+  </channel>
+</rss>

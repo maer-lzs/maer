@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Pinchflat Podcast</title>
+    <link>https://example.org/pinchflat</link>
+    <description>A weekly show discussing all things local, with a pinch of flatness.</description>
+    <language>en-us</language>
+    <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+    <item>
+      <title>Episode 1: Local Flats and Flat Locals</title>
+      <link>https://example.org/pinchflat/ep1</link>
+      <description>A deep dive into the world of local flats and the people who live in them.</description>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <guid>UCabc123_ep1</guid>
+      <enclosure url="https://example.com/pinchflat/media/UCabc123_ep1.m4a" type="audio/mp4" />
+      <itunes:duration>25:30</itunes:duration>
+    </item>
+    <item>
+      <title>Episode 2: Flats, Flatness, and Flatulence</title>
+      <link>https://example.org/pinchflat/ep2</link>
+      <description>Exploring the science of flatness and the art of flatulence.</description>
+      <pubDate>Wed, 22 Jan 2025 09:00:00 +0000</pubDate>
+      <guid>UCabc123_ep2</guid>
+      <enclosure url="https://example.com/pinchflat/media/UCabc123_ep2.m4a" type="audio/mp4" />
+      <itunes:duration>28:15</itunes:duration>
+    </item>
+  </channel>
+</rss>

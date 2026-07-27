@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>gpodder subscriptions</title>
+</head>
+<body>
+<outline type="rss" text="The Daily Dose" title="The Daily Dose" xmlUrl="https://example.com/dailydose.xml" htmlUrl="https://example.com/dailydose"/>
+<outline type="rss" text="Tech Today" title="Tech Today" xmlUrl="https://example.com/techtoday.xml" htmlUrl="https://example.com/techtoday"/>
+<outline type="rss" text="World of Books" title="World of Books" xmlUrl="https://example.com/worldofbooks.xml" htmlUrl="https://example.com/worldofbooks"/>
+</body>
+</opml>

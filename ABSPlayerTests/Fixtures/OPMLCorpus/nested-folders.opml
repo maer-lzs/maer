@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Synthetic Podcast Subscriptions</title>
+</head>
+<body>
+<outline text="Technology">
+<outline text="Programming">
+<outline text="Python Weekly" title="Python Weekly" xmlUrl="https://example.com/pythonweekly.xml" htmlUrl="https://example.com/pythonweekly"/>
+</outline>
+<outline text="AI &amp; Machine Learning">
+<outline text="AI Today" title="AI Today" xmlUrl="https://example.com/aitoday.xml" htmlUrl="https://example.com/aitoday"/>
+</outline>
+</outline>
+<outline text="Arts">
+<outline text="Music">
+<outline text="Podcast Jazz" title="Podcast Jazz" xmlUrl="https://example.com/podcastjazz.xml" htmlUrl="https://example.com/podcastjazz"/>
+</outline>
+<outline text="Theater">
+<outline text="Stage Talk" title="Stage Talk" xmlUrl="https://example.com/stagetalk.xml" htmlUrl="https://example.com/stagetalk"/>
+</outline>
+</outline>
+</body>
+</opml>

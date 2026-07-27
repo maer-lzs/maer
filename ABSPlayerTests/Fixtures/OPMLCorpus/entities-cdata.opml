@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Synthetic Podcast Subscriptions</title>
+</head>
+<body>
+<outline type="rss" text="Tech &amp; Talk — Folge #1 &#8217;25" title="Tech &amp; Talk — Folge #1 &#8217;25" xmlUrl="https://example.com/tech-talk.xml" htmlUrl="https://example.com/tech-talk"/>
+<outline type="rss" text="The Daily Dose — &quot;Wellness&quot; Edition" title="The Daily Dose — &quot;Wellness&quot; Edition" xmlUrl="https://example.com/daily-dose.xml" htmlUrl="https://example.com/daily-dose"/>
+</body>
+</opml>

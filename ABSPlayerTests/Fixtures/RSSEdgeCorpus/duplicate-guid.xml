@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Daily Bytecast</title>
+    <link>https://example.org/bytecast</link>
+    <description>A daily dive into the world of technology, programming, and digital culture.</description>
+    <language>en-us</language>
+    <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+    <item>
+      <title>Episode 7: The Future of AI</title>
+      <link>https://example.org/bytecast/ep-0007</link>
+      <description>Exploring the latest developments in artificial intelligence and machine learning.</description>
+      <enclosure url="https://example.org/bytecast/ep-0007.mp3" length="12345678" type="audio/mpeg"/>
+      <guid isPermaLink="false">ep-0007</guid>
+      <itunes:duration>25:30</itunes:duration>
+    </item>
+    <item>
+      <title>Episode 7: Quantum Computing Breakthroughs</title>
+      <link>https://example.org/bytecast/ep-0007b</link>
+      <description>Discussing recent advancements in quantum computing and their potential impact.</description>
+      <enclosure url="https://example.org/bytecast/ep-0007b.mp3" length="13456789" type="audio/mpeg"/>
+      <guid isPermaLink="false">ep-0007</guid>
+      <itunes:duration>27:15</itunes:duration>
+    </item>
+  </channel>
+</rss>

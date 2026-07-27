@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Läge-Feed</title>
+    <link>https://example.com/lie</link>
+    <description>Deklariert UTF-8, ist aber Latin-1.</description>
+    <item>
+      <title>Folge 1</title>
+      <guid>lie-1</guid>
+      <enclosure url="https://example.com/lie/ep1.mp3" length="1" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

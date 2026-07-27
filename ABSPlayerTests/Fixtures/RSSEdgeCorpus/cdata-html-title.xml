@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Deep Tech Talks</title>
+    <link>https://example.org/deep-tech-talks</link>
+    <description>A weekly podcast exploring the future of technology, hosted by Dr. Lena Hart.</description>
+    <language>en-us</language>
+    <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+    <item>
+      <title><![CDATA[Folge 5: R&D, <b>bold</b> & "quotes"]]></title>
+      <description><![CDATA[<p>In this episode, we dive into the latest in AI research and development. <a href="https://example.org/ai-research">Check out the full report</a> here. We also discuss how &amp; is used in XML and how to handle special characters like &#8217; in CDATA sections.</p>]]></description>
+      <pubDate>Wed, 08 Jan 2025 14:30:00 +0000</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Episode 12: Quantum Computing &amp; Ethics]]></title>
+      <description><![CDATA[<p>Join us as we explore the ethical implications of quantum computing. <a href="https://example.org/quantum-ethics">Read more</a> on our website. This episode includes a deep dive into the challenges of quantum algorithms and the importance of responsible innovation.</p>]]></description>
+      <pubDate>Wed, 01 Jan 2025 14:30:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

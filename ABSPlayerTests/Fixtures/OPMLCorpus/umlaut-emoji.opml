@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+<head>
+<title>Synthetic Podcast Feed List</title>
+</head>
+<body>
+<outline type="rss" text="🎧 Musik mit Mäcäsen 🎵" title="🎧 Musik mit Mäcäsen 🎵" xmlUrl="https://example.com/music-with-maecasen.xml" htmlUrl="https://example.com/music-with-maecasen"/>
+<outline type="rss" text="🔥 Tech Talks &amp; Trends 🔥" title="🔥 Tech Talks &amp; Trends 🔥" xmlUrl="https://example.com/tech-talks-trends.xml" htmlUrl="https://example.com/tech-talks-trends"/>
+</body>
+</opml>

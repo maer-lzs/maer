@@ -1,0 +1,243 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#if canImport(Testing)
+import Foundation
+import Testing
+@testable import ABSPlayer
+
+/// RSS parser against the tooling agent's edge-case corpus (ballon5, corpus version 1.0).
+/// Ground truth: `RSS-MANIFEST.json` / the corpus MANIFEST table. Every case
+/// runs on every test run; where Mär deviates from the corpus expectation the
+/// assert is wrapped in `withKnownIssue` with a Befund ID (full list in the
+/// corpus report) — deviations stay visible, they are never bent green.
+///
+/// Befund register (see report):
+/// - R1: items WITHOUT an audio enclosure are dropped entirely (corpus expects
+///   "keep, mark non-playable"). Deliberate player policy, but it silently
+///   empties text-only/paged fixtures.
+/// - R2: enclosures whose MIME type does not start with "audio" are dropped —
+///   `application/octet-stream` and Podsync's `video/mp4` feeds parse as EMPTY.
+/// - R3: relative enclosure/artwork URLs are not resolved against the feed URL.
+/// - R4: two items with the same guid both survive parsing (dedupe only
+///   happens later in the store merge, not on first subscribe).
+/// - R5: RFC-2822 date variants without weekday or with a zone NAME are not
+///   parsed (→ 0 instead of the actual date).
+/// - R6: channel-level `podcast:guid` (PC20) is not read at all.
+/// - R7: `atom:link rel="next"` pagination (RFC 5005) is not surfaced.
+struct RSSEdgeCorpusTests {
+
+    private func parse(_ name: String, feedURL: String = "https://example.org/feed.xml") throws -> PodcastShow? {
+        let data = try CorpusFixture.data(name, ext: "xml", subdirectory: "RSSEdgeCorpus")
+        return RSSFeedParser(feedURL: feedURL).parse(data)
+    }
+
+    // MARK: - Clean passes
+
+    @Test func minimalValid() throws {
+        let show = try #require(try parse("minimal-valid"))
+        #expect(show.title == "The Daily Insight")
+        #expect(show.episodes.count == 1)
+        let ep = show.episodes[0]
+        #expect(ep.title == "Episode 1: The Future of AI")
+        #expect(ep.audioURL == "https://example.org/podcast/episode1.mp3")
+        #expect(ep.guid.hasSuffix(":https://example.org/podcast/episode1"))
+        #expect(ep.pubDate > 0)
+    }
+
+    @Test("no <guid> → stable fallback identity from the enclosure URL")
+    func noGuidFallback() throws {
+        let show = try #require(try parse("no-guid"))
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes[0].guid.hasSuffix(":https://example.org/episodes/ai2025.mp3"))
+    }
+
+    @Test("guid isPermaLink=true: URL value is the identity")
+    func guidPermalinkURL() throws {
+        let show = try #require(try parse("guid-permalink-url"))
+        withKnownIssue("Befund R1: fixture items carry no enclosure → dropped") {
+            #expect(show.episodes.contains { $0.guid.hasSuffix(":https://example.com/episodes/42") })
+        }
+        // The guid semantics themselves, probed inline with the fixture value:
+        let inline = RSSFeedParser(feedURL: "https://example.org/f.xml").parse(Data("""
+        <rss><channel><title>S</title><item><title>E</title>
+        <guid isPermaLink="true">https://example.com/episodes/42</guid>
+        <enclosure url="https://example.org/e.mp3" type="audio/mpeg"/>
+        </item></channel></rss>
+        """.utf8))
+        #expect(inline?.episodes.first?.guid.hasSuffix(":https://example.com/episodes/42") == true)
+    }
+
+    @Test("enclosure length=0 is not an error; URL stays usable")
+    func enclosureZeroLength() throws {
+        let show = try #require(try parse("enclosure-zero-length"))
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes.allSatisfy { $0.audioURL.hasPrefix("https://") })
+    }
+
+    @Test("itunes:duration SS / MM:SS / HH:MM:SS, per-item image, episodeType")
+    func itunesVariants() throws {
+        let show = try #require(try parse("itunes-variants"))
+        withKnownIssue("Befund R1: fixture items carry no enclosure → dropped") {
+            #expect(show.episodes.count == 3)
+        }
+        // The variants themselves, probed inline with the fixture values:
+        func episode(duration: String, type: String, image: String) -> PodcastEpisode? {
+            RSSFeedParser(feedURL: "https://example.org/f.xml").parse(Data("""
+            <rss><channel><title>S</title><item><title>E</title>
+            <itunes:duration>\(duration)</itunes:duration>
+            <itunes:episodeType>\(type)</itunes:episodeType>
+            <itunes:image href="\(image)"/>
+            <enclosure url="https://example.org/e.mp3" type="audio/mpeg"/>
+            </item></channel></rss>
+            """.utf8))?.episodes.first
+        }
+        let ss = episode(duration: "185", type: "full", image: "https://example.org/images/ep1.jpg")
+        #expect(ss?.duration == 185)
+        #expect(ss?.episodeType == "full")
+        #expect(ss?.imageURL == "https://example.org/images/ep1.jpg")
+        #expect(episode(duration: "3:05", type: "bonus", image: "https://x.example/i.jpg")?.duration == 185)
+        let hms = episode(duration: "1:02:05", type: "trailer", image: "https://x.example/i.jpg")
+        #expect(hms?.duration == 3725)
+        #expect(hms?.episodeType == "trailer")
+    }
+
+    @Test("PC20 chapters URL extracted from the podcast: namespace")
+    func pc20Chapters() throws {
+        let show = try #require(try parse("pc20-chapters"))
+        #expect(show.episodes.first?.chaptersURL == "https://example.com/ep1/chapters.json")
+    }
+
+    @Test("BOM is skipped; feed parses as normal UTF-8")
+    func bomUTF8() throws {
+        let show = try #require(try parse("bom-utf8"))
+        #expect(!show.episodes.isEmpty)
+        #expect(show.episodes[0].guid.hasSuffix(":bom-ep-1"))
+    }
+
+    @Test("declared ISO-8859-1 is decoded correctly (channel level)")
+    func latin1Declared() throws {
+        let show = try #require(try parse("latin1-declared"))
+        #expect(show.title == "Käpt'n Blaubär Hörspiel")
+    }
+
+    @Test("multi-byte UTF-8 (umlauts + emoji) survives at channel level")
+    func umlautEmojiChannel() throws {
+        let show = try #require(try parse("umlaut-emoji"))
+        #expect(show.title == "Podcast mit ÄÖÜ und 🎙️🔥")
+    }
+
+    @Test("1000-item feed parses completely")
+    func hugeFeed() throws {
+        let show = try #require(try parse("huge-feed"))
+        #expect(show.episodes.count == 1000)
+    }
+
+    @Test("Pinchflat shape (audio/mp4, yt-style guids) parses as normal episodes")
+    func youtubePinchflatShape() throws {
+        let show = try #require(try parse("youtube-pinchflat-shape"))
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes[0].guid.hasSuffix(":UCabc123_ep1"))
+    }
+
+    @Test("broken XML fails cleanly: nil, no crash, no partial garbage")
+    func brokenXML() throws {
+        #expect(try parse("broken-xml") == nil)
+    }
+
+    @Test("declared UTF-8 with Latin-1 bytes fails instead of silent garbage")
+    func wrongEncodingLie() throws {
+        #expect(try parse("wrong-encoding-lie") == nil)
+    }
+
+    @Test("missing pubDate does not invalidate the feed (channel survives)")
+    func noPubdateChannel() throws {
+        let show = try #require(try parse("no-pubdate"))
+        #expect(show.title == "The Daily Insight")
+    }
+
+    // MARK: - Befunde (known deviations from the corpus ground truth)
+
+    @Test("R1: item without enclosure should survive as non-playable")
+    func enclosureMissing() throws {
+        let show = try #require(try parse("enclosure-missing"))
+        withKnownIssue("Befund R1: enclosure-less items are dropped entirely") {
+            #expect(show.episodes.count == 2)   // corpus: keep both, mark one non-playable
+        }
+        #expect(show.episodes.count == 1)       // current policy: the playable one survives
+    }
+
+    @Test("R2: octet-stream enclosure should not discard the item")
+    func enclosureWrongMime() throws {
+        let show = try #require(try parse("enclosure-wrong-mime"))
+        withKnownIssue("Befund R2: non-audio MIME drops the enclosure → item lost") {
+            #expect(show.episodes.count == 2)
+        }
+    }
+
+    @Test("R2: Podsync (video/mp4) feeds should parse as episodes")
+    func youtubePodsyncShape() throws {
+        let show = try #require(try parse("youtube-podsync-shape"))
+        withKnownIssue("Befund R2: video/mp4 enclosures dropped → Podsync feed parses EMPTY") {
+            #expect(show.episodes.count == 2)
+        }
+    }
+
+    @Test("R3: relative URLs should resolve against the feed base")
+    func relativeURLs() throws {
+        let show = try #require(try parse("relative-urls", feedURL: "https://example.com/podcast/feed.xml"))
+        withKnownIssue("Befund R3: relative enclosure/artwork URLs stay unresolved") {
+            #expect(show.episodes.first?.audioURL == "https://example.com/podcast/media/ep1.mp3")
+            #expect(show.artworkURL == "https://example.com/podcast/art/cover.jpg")
+        }
+    }
+
+    @Test("R4: duplicate guid should collapse to one episode")
+    func duplicateGuid() throws {
+        let show = try #require(try parse("duplicate-guid"))
+        let unique = Set(show.episodes.map(\.guid))
+        withKnownIssue("Befund R4: parser keeps both items with the identical guid") {
+            #expect(show.episodes.count == unique.count)
+        }
+    }
+
+    @Test("R5: RFC-2822 variants (no weekday / zone name) should parse")
+    func invalidPubdateTolerance() throws {
+        // The corpus fixture's items carry no enclosure (blocked by R1), so the
+        // date tolerance is probed with the fixture's exact date strings inline.
+        func pubDate(_ s: String) -> Double {
+            let xml = """
+            <rss><channel><title>D</title><item><title>E</title>
+            <pubDate>\(s)</pubDate>
+            <enclosure url="https://example.org/e.mp3" type="audio/mpeg"/>
+            </item></channel></rss>
+            """
+            return RSSFeedParser(feedURL: "https://example.org/f.xml")
+                .parse(Data(xml.utf8))?.episodes.first?.pubDate ?? -1
+        }
+        #expect(pubDate("Wed, 15 Jan 2025 09:00:00 +0000") > 0)   // reference form parses
+        #expect(pubDate("gestern abend") == 0)                     // garbage → 0, no crash
+        withKnownIssue("Befund R5: no-weekday and zone-name RFC-2822 variants → 0") {
+            #expect(pubDate("15 Jan 2025 09:00:00 GMT") > 0)
+            #expect(pubDate("Wed, 15 Jan 2025 04:00:00 EST") > 0)
+        }
+    }
+
+    @Test("R1+R7: paged feed — items dropped, rel=next not surfaced")
+    func pagedFeed() throws {
+        let show = try #require(try parse("paged-feed"))
+        withKnownIssue("Befund R1: paged feed's enclosure-less items all dropped (R7 rel=next has no API surface at all)") {
+            #expect(show.episodes.count == 2)
+        }
+    }
+
+    @Test("R1: CDATA/HTML title fixture — items dropped before text checks")
+    func cdataHTMLTitle() throws {
+        let show = try #require(try parse("cdata-html-title"))
+        withKnownIssue("Befund R1: enclosure-less items dropped — CDATA/entity handling unverifiable at item level") {
+            #expect(show.episodes.contains { $0.title.contains("R&D") })
+        }
+    }
+}
+#endif

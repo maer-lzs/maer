@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Awesome Channel 123</title>
+    <link>https://example.org/awesomechannel123</link>
+    <description>A channel for awesome content, brought to you by Podsync.</description>
+    <language>en-us</language>
+    <itunes:author>Awesome Channel 123</itunes:author>
+    <itunes:image href="https://example.org/awesomechannel123.jpg"/>
+    <item>
+      <title>Awesome Video 1</title>
+      <link>https://example.org/awesomechannel123/video1</link>
+      <description>&lt;p&gt;This is the long description for the first awesome video. It&amp;rsquo;s very detailed and&amp;nbsp;informative.&lt;/p&gt;</description>
+      <content:encoded>&lt;p&gt;This is the long description for the first awesome video. It&amp;rsquo;s very detailed and&amp;nbsp;informative.&lt;/p&gt;</content:encoded>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <guid>dQw4w9WgXcQ</guid>
+      <enclosure url="https://example.com/podsync/dQw4w9WgXcQ.mp4" type="video/mp4"/>
+    </item>
+    <item>
+      <title>Awesome Video 2</title>
+      <link>https://example.org/awesomechannel123/video2</link>
+      <description>&lt;p&gt;This is the long description for the second awesome video. It&amp;rsquo;s also very detailed and&amp;nbsp;informative.&lt;/p&gt;</description>
+      <content:encoded>&lt;p&gt;This is the long description for the second awesome video. It&amp;rsquo;s also very detailed and&amp;nbsp;informative.&lt;/p&gt;</content:encoded>
+      <pubDate>Wed, 16 Jan 2025 09:00:00 +0000</pubDate>
+      <guid>abc123xyz789</guid>
+      <enclosure url="https://example.com/podsync/abc123xyz789.mp4" type="video/mp4"/>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head><title>BOM-Export 🎧</title></head>
+  <body>
+    <outline type="rss" text="Folge Eins" title="Folge Eins" xmlUrl="https://example.com/eins.xml" htmlUrl="https://example.com/eins"/>
+    <outline type="rss" text="Folge Zwei" title="Folge Zwei" xmlUrl="https://example.com/zwei.xml" htmlUrl="https://example.com/zwei"/>
+  </body>
+</opml>

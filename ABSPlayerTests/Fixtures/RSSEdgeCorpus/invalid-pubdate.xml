@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>The Daily Insight</title>
+    <link>https://example.org/podcast</link>
+    <description>A daily show offering deep dives into the world of technology and culture.</description>
+    <language>en-us</language>
+    <item>
+      <title>Episode 1: The Future of AI</title>
+      <link>https://example.org/podcast/episode1</link>
+      <description>Exploring the implications of artificial intelligence on society.</description>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Episode 2: Cybersecurity in 2025</title>
+      <link>https://example.org/podcast/episode2</link>
+      <description>Understanding the evolving threats in the digital world.</description>
+      <pubDate>15 Jan 2025 09:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Episode 3: The Rise of Quantum Computing</title>
+      <link>https://example.org/podcast/episode3</link>
+      <description>How quantum computing is changing the landscape of technology.</description>
+      <pubDate>Wed, 15 Jan 2025 04:00:00 EST</pubDate>
+    </item>
+    <item>
+      <title>Episode 4: The Ethics of Tech</title>
+      <link>https://example.org/podcast/episode4</link>
+      <description>Discussing the moral responsibilities of tech companies.</description>
+      <pubDate>gestern abend</pubDate>
+    </item>
+  </channel>
+</rss>

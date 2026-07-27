@@ -185,3 +185,4 @@ plain `NavigationLink { destination }` would stay on the stack.
 | Component | Used by | Parameters / variants |
 |---|---|---|
 | `UITestSeed` (seeding hook) | ABSPlayerApp (`applyIfRequested`) · MusicViewModel (`uitestSeed` source) · PlayerCoordinator (`_seedActivePlayerForUITest`) | `isActive` (`-uitest`) bypasses login + seeds providers; `seedsActivePlayer` (`-uitest-player`) adds a presentation-only player; fixtures `seedAlbums/seedArtists/seedPlaylists`; DEBUG-only |
+| `CorpusFixture` (corpus loader) | OPMLCorpusTests · RSSEdgeCorpusTests | Loads the tooling agent's edge-case corpora from `ABSPlayerTests/Fixtures/{OPMLCorpus,RSSEdgeCorpus}` (real files — encodings/BOM matter); ground truth `OPML-MANIFEST.json`/`RSS-MANIFEST.json` (corpus v1.0); deviations are `withKnownIssue` Befunde (O1, R1–R7), never silently bent green |

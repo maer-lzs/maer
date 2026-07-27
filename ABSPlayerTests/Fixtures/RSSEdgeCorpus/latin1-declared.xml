@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<rss version="2.0">
+  <channel>
+    <title>Käpt'n Blaubär Hörspiel</title>
+    <link>https://example.com/latin1</link>
+    <description>Ein Feed in Latin-1: Grüße, Möwen, Fußball.</description>
+    <language>de</language>
+    <item>
+      <title>Folge 1: Über Bord</title>
+      <guid isPermaLink="false">latin1-ep-1</guid>
+      <pubDate>Wed, 15 Jan 2025 09:00:00 +0000</pubDate>
+      <description>Läuft: ä ö ü ß Ä Ö Ü.</description>
+      <enclosure url="https://example.com/latin1/ep1.mp3" length="12345" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>
