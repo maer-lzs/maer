@@ -119,7 +119,7 @@ final class GPodderSync {
     }
 
     /// The user-facing device name as the registration caption.
-    nonisolated static func deviceCaption() -> String {
+    static func deviceCaption() -> String {
         #if canImport(UIKit)
         return UIDevice.current.name.isEmpty ? "Maer" : UIDevice.current.name
         #else

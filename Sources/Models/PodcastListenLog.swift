@@ -106,7 +106,7 @@ final class PodcastListenLog {
         defer { suspendPersist = false; persist() }
         for show in shows {
             for episode in show.episodes {
-                noteIfPlayed(guid: episode.guid, duration: episode.duration ?? 0,
+                noteIfPlayed(guid: episode.guid, duration: episode.duration,
                              episodeTitle: episode.title, showTitle: show.title,
                              feedURL: show.feedURL)
             }
@@ -144,7 +144,7 @@ final class PodcastListenLog {
         defer { suspendPersist = false; persist() }
         for show in shows {
             for episode in show.episodes {
-                noteIfPlayed(guid: episode.guid, duration: episode.duration ?? 0,
+                noteIfPlayed(guid: episode.guid, duration: episode.duration,
                              episodeTitle: episode.title, showTitle: show.title,
                              feedURL: show.feedURL)
             }

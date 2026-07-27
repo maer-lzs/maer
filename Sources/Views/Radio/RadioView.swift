@@ -239,7 +239,7 @@ struct RadioView: View {
         // less foreign-language noise; search covers the exotics.
         async let topTask = Self.nationalPopular(regionCode)
         async let regionTask = Self.stateStations(chosenState)
-        let topResult = (try? await topTask) ?? []
+        let topResult = await topTask
         let regionResult = await regionTask
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
         // The state list of the device country (once per session) — a country
