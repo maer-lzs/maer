@@ -37,6 +37,15 @@ are method calls on the shared instance (`runWhenCalm`/`reset`/`expand` — call
 don't observe). Prior rounds: TF4/E1 (`MediaAvailabilityScope`), cell-cost
 sweep (row leaves).
 
+**Convention — no title/state transitions inside a bar transition (27.07,
+df69f6b damping):** changing `navigationTitle` state in the SAME transaction
+as a tab flip on a live large-title bar permanently drops the title (iOS 26
+bug family, FB18304716 — no community workaround). LibraryView therefore
+decouples `barTitle` (own `@State`) from `selectedMediaType`: it retargets one
+main-actor tick after the flip. This is a marked INTERIM damping; the root fix
+is per-tab NavigationStacks (compat-sprint item 9), where constant titles
+remove the bug condition entirely.
+
 **Convention — cell heights in lazy containers (26.07, second round of the
 class):** cells in `LazyVGrid`/`LazyVStack`/horizontal card rows have a height
 INDEPENDENT of their data. Every text line uses `lineLimit(n, reservesSpace:

@@ -534,15 +534,10 @@ nonisolated final class MaerUITests: XCTestCase {
         let labelAfterTabs = recovered ? app.navigationBars.staticTexts.firstMatch.label : "<GONE>"
         print("TITLEPROBE before=\(titleBefore) afterSearch=\(labelAfterSearch) afterTabs=\(labelAfterTabs) recoveryAttempts=\(attempts)")
         XCTAssertTrue(existsAfterSearch, "title gone after search cycle")
-        // df69f6b: the PERMANENT loss reproduces in suite order (not solo)
-        // and survives both display-mode pins AND three recovery attempts —
-        // the pins are insufficient, the structural fix (per-surface titles /
-        // search as own navigation level) is its own package. Expected
-        // failure keeps the repro visible in every xcresult and flags the
-        // moment a real fix lands (strict: an unexpected PASS fails too).
-        XCTExpectFailure("df69f6b: permanent large-title loss in suite order — structural fix pending") {
-            XCTAssertTrue(recovered, "title PERMANENTLY gone after tab cycle (the device bug)")
-        }
+        // df69f6b: guarded by the tick-decoupled bar title in LibraryView
+        // (FB18304716 family damping) — the title transition no longer lands
+        // inside the bar's tab transition.
+        XCTAssertTrue(recovered, "title PERMANENTLY gone after tab cycle (the device bug)")
     }
 
 

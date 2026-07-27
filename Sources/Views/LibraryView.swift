@@ -92,6 +92,18 @@ struct LibraryView: View {
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
+    /// df69f6b DAMPING (accepted interim, NOT a root fix — FB18304716 family:
+    /// repeated title state transitions on a live bar permanently drop the
+    /// large title on iOS 26). The displayed bar title is decoupled from the
+    /// tab flip: it retargets one runloop tick AFTER `selectedMediaType`
+    /// changes, so the title transition never lands inside the bar's tab
+    /// transition. Root fix is the per-tab NavigationStack structure
+    /// (compat-sprint item 9) — constant titles remove the bug condition.
+    @State private var barTitle: Text = LibraryView.title(for: .home)
+
+    private static func title(for type: MediaType) -> Text {
+        type == .audiobooks ? Text("Library") : Text(type.label)
+    }
 
     private func isTabMounted(_ type: MediaType) -> Bool {
         mountedTabs.contains(type) || selectedMediaType == type
@@ -179,6 +191,11 @@ struct LibraryView: View {
                 }
                 .onChange(of: selectedMediaType) { _, newValue in
                     mountedTabs.insert(newValue)
+                    // df69f6b damping: retarget the title OUTSIDE the flip's
+                    // transaction (next main-actor tick), see `barTitle`.
+                    Task { @MainActor in
+                        barTitle = Self.title(for: newValue)
+                    }
                 }
                 // Y37: the ACTIVE tab's source can be switched off in the
                 // settings — fall back to Home instead of standing on a tab
@@ -191,7 +208,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle(selectedMediaType == .audiobooks ? Text("Library") : Text(selectedMediaType.label))
+            .navigationTitle(barTitle)
             // df69f6b: pin the LARGE display mode — switching the dynamic
             // title on the live bar (tab change while scrolled) dropped the
             // title but kept its reserved space (probe-reproduced).
