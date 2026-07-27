@@ -99,10 +99,10 @@ struct LibraryView: View {
     /// changes, so the title transition never lands inside the bar's tab
     /// transition. Root fix is the per-tab NavigationStack structure
     /// (compat-sprint item 9) — constant titles remove the bug condition.
-    @State private var barTitle: Text = LibraryView.title(for: .home)
+    @State private var barTitle: String = LibraryView.title(for: .home)
 
-    private static func title(for type: MediaType) -> Text {
-        type == .audiobooks ? Text("Library") : Text(type.label)
+    private static func title(for type: MediaType) -> String {
+        type == .audiobooks ? String(localized: "Library") : type.label
     }
 
     private func isTabMounted(_ type: MediaType) -> Bool {
@@ -140,6 +140,11 @@ struct LibraryView: View {
                 // old tab, so every return re-ran the tab's full load chain
                 // (that was the tab-switch sluggishness).
                 ZStack {
+                    // df69f6b damping stage (a): ONE hidden probe captures the
+                    // stack's UINavigationController for the post-flip nudge.
+                    NavigationBarNudge.Probe()
+                        .frame(width: 0, height: 0)
+                        .accessibilityHidden(true)
                     Group {
                         if isTabMounted(.home) {
                             HomeView(playerCoordinator: playerCoordinator,
@@ -193,8 +198,13 @@ struct LibraryView: View {
                     mountedTabs.insert(newValue)
                     // df69f6b damping: retarget the title OUTSIDE the flip's
                     // transaction (next main-actor tick), see `barTitle`.
+                    // Stage (a): afterwards verify the bar actually shows the
+                    // title and force a large-title rebuild if not — the tick
+                    // alone proved flaky in long suite runs.
                     Task { @MainActor in
-                        barTitle = Self.title(for: newValue)
+                        let title = Self.title(for: newValue)
+                        barTitle = title
+                        NavigationBarNudge.nudgeIfTitleMissing(expectedTitle: title)
                     }
                 }
                 // Y37: the ACTIVE tab's source can be switched off in the
@@ -208,7 +218,7 @@ struct LibraryView: View {
                     }
                 }
             }
-            .navigationTitle(barTitle)
+            .navigationTitle(Text(verbatim: barTitle))
             // df69f6b: pin the LARGE display mode — switching the dynamic
             // title on the live bar (tab change while scrolled) dropped the
             // title but kept its reserved space (probe-reproduced).

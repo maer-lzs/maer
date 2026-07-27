@@ -38,13 +38,19 @@ don't observe). Prior rounds: TF4/E1 (`MediaAvailabilityScope`), cell-cost
 sweep (row leaves).
 
 **Convention — no title/state transitions inside a bar transition (27.07,
-df69f6b damping):** changing `navigationTitle` state in the SAME transaction
-as a tab flip on a live large-title bar permanently drops the title (iOS 26
-bug family, FB18304716 — no community workaround). LibraryView therefore
-decouples `barTitle` (own `@State`) from `selectedMediaType`: it retargets one
-main-actor tick after the flip. This is a marked INTERIM damping; the root fix
-is per-tab NavigationStacks (compat-sprint item 9), where constant titles
-remove the bug condition entirely.
+df69f6b damping, two stages):** changing `navigationTitle` state in the SAME
+transaction as a tab flip on a live large-title bar permanently drops the
+title (iOS 26 bug family, FB18304716 — no community workaround). LibraryView
+therefore (b) decouples `barTitle` (own `@State`) from `selectedMediaType` —
+retargeted one main-actor tick after the flip — and (a) verifies afterwards
+via `NavigationBarNudge` (the ONE tightly-scoped UIKit introspection point)
+that a VISIBLE title label actually exists in the bar; if not, it forces a
+large-title rebuild by toggling `largeTitleDisplayMode` (public API only).
+Empirics: the drop leaves the label invisibly in the tree (a naive existence
+check reads "healthy"), (b) alone was flaky over long runs, a BLIND nudge on
+every flip made things worse — detect-then-rebuild is the working shape.
+This is a marked INTERIM damping; the root fix is per-tab NavigationStacks
+(compat-sprint item 9), where constant titles remove the bug condition.
 
 **Convention — cell heights in lazy containers (26.07, second round of the
 class):** cells in `LazyVGrid`/`LazyVStack`/horizontal card rows have a height
