@@ -13,17 +13,13 @@ import Testing
 /// assert is wrapped in `withKnownIssue` with a Befund ID (full list in the
 /// corpus report) — deviations stay visible, they are never bent green.
 ///
-/// Befund register (see report):
-/// - R1: items WITHOUT an audio enclosure are dropped entirely (corpus expects
-///   "keep, mark non-playable"). Deliberate player policy, but it silently
-///   empties text-only/paged fixtures.
-/// - R2: enclosures whose MIME type does not start with "audio" are dropped —
-///   `application/octet-stream` and Podsync's `video/mp4` feeds parse as EMPTY.
-/// - R3: relative enclosure/artwork URLs are not resolved against the feed URL.
-/// - R4: two items with the same guid both survive parsing (dedupe only
-///   happens later in the store merge, not on first subscribe).
-/// - R5: RFC-2822 date variants without weekday or with a zone NAME are not
-///   parsed (→ 0 instead of the actual date).
+/// Befund register (see report). FIXED by the Härtungspaket: R2 (video/*
+/// and octet-stream-with-media-extension enclosures accepted), R3 (relative
+/// URLs resolved against the feed base), R4 (duplicate guids collapse
+/// in-parse), R5 (weekday-less / zone-name RFC-2822 forms parse), O1 (broken
+/// OPML fails visibly). STILL OPEN:
+/// - R1: items WITHOUT a playable enclosure are dropped entirely (corpus
+///   expects "keep, mark non-playable") — product decision with the owner.
 /// - R6: channel-level `podcast:guid` (PC20) is not read at all.
 /// - R7: `atom:link rel="next"` pagination (RFC 5005) is not surfaced.
 struct RSSEdgeCorpusTests {
@@ -168,41 +164,34 @@ struct RSSEdgeCorpusTests {
         #expect(show.episodes.count == 1)       // current policy: the playable one survives
     }
 
-    @Test("R2: octet-stream enclosure should not discard the item")
+    @Test("R2 fixed: octet-stream enclosure with media extension is kept")
     func enclosureWrongMime() throws {
         let show = try #require(try parse("enclosure-wrong-mime"))
-        withKnownIssue("Befund R2: non-audio MIME drops the enclosure → item lost") {
-            #expect(show.episodes.count == 2)
-        }
+        #expect(show.episodes.count == 2)
     }
 
-    @Test("R2: Podsync (video/mp4) feeds should parse as episodes")
+    @Test("R2 fixed: Podsync (video/mp4) feeds parse as episodes")
     func youtubePodsyncShape() throws {
         let show = try #require(try parse("youtube-podsync-shape"))
-        withKnownIssue("Befund R2: video/mp4 enclosures dropped → Podsync feed parses EMPTY") {
-            #expect(show.episodes.count == 2)
-        }
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes.first?.guid.hasSuffix(":dQw4w9WgXcQ") == true)
     }
 
-    @Test("R3: relative URLs should resolve against the feed base")
+    @Test("R3 fixed: relative URLs resolve against the feed base")
     func relativeURLs() throws {
         let show = try #require(try parse("relative-urls", feedURL: "https://example.com/podcast/feed.xml"))
-        withKnownIssue("Befund R3: relative enclosure/artwork URLs stay unresolved") {
-            #expect(show.episodes.first?.audioURL == "https://example.com/podcast/media/ep1.mp3")
-            #expect(show.artworkURL == "https://example.com/podcast/art/cover.jpg")
-        }
+        #expect(show.episodes.first?.audioURL == "https://example.com/podcast/media/ep1.mp3")
+        #expect(show.artworkURL == "https://example.com/podcast/art/cover.jpg")
     }
 
-    @Test("R4: duplicate guid should collapse to one episode")
+    @Test("R4 fixed: duplicate guid collapses to one episode (first wins)")
     func duplicateGuid() throws {
         let show = try #require(try parse("duplicate-guid"))
-        let unique = Set(show.episodes.map(\.guid))
-        withKnownIssue("Befund R4: parser keeps both items with the identical guid") {
-            #expect(show.episodes.count == unique.count)
-        }
+        #expect(show.episodes.count == 1)
+        #expect(show.episodes.first?.audioURL == "https://example.org/bytecast/ep-0007.mp3")
     }
 
-    @Test("R5: RFC-2822 variants (no weekday / zone name) should parse")
+    @Test("R5 fixed: RFC-2822 variants (no weekday / zone name) parse")
     func invalidPubdateTolerance() throws {
         // The corpus fixture's items carry no enclosure (blocked by R1), so the
         // date tolerance is probed with the fixture's exact date strings inline.
@@ -218,10 +207,9 @@ struct RSSEdgeCorpusTests {
         }
         #expect(pubDate("Wed, 15 Jan 2025 09:00:00 +0000") > 0)   // reference form parses
         #expect(pubDate("gestern abend") == 0)                     // garbage → 0, no crash
-        withKnownIssue("Befund R5: no-weekday and zone-name RFC-2822 variants → 0") {
-            #expect(pubDate("15 Jan 2025 09:00:00 GMT") > 0)
-            #expect(pubDate("Wed, 15 Jan 2025 04:00:00 EST") > 0)
-        }
+        // R5 fixed: weekday-less and zone-name forms parse now.
+        #expect(pubDate("15 Jan 2025 09:00:00 GMT") > 0)
+        #expect(pubDate("Wed, 15 Jan 2025 04:00:00 EST") > 0)
     }
 
     @Test("R1+R7: paged feed — items dropped, rel=next not surfaced")

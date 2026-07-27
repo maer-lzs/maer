@@ -491,7 +491,12 @@ struct PodcastSourceView: View {
                     importMessage = String(localized: "Could not read this file.")
                     return
                 }
-                importMessage = summary(await subs.importOPML(data))
+                if let r = await subs.importOPML(data) {
+                    importMessage = summary(r)
+                } else {
+                    // O1: broken XML no longer imports a silent partial list.
+                    importMessage = String(localized: "Could not read this file as OPML.")
+                }
             }
         }
     }

@@ -1280,6 +1280,16 @@
         }
       }
     },
+    "Could not read this file as OPML." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Datei konnte nicht als OPML gelesen werden."
+          }
+        }
+      }
+    },
     "Could not read this file." : {
       "localizations" : {
         "de" : {

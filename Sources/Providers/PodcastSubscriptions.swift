@@ -478,9 +478,12 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
-    func importOPML(_ data: Data) async -> ImportResult {
+    /// `nil` when the file is not well-formed OPML/XML (O1: visible failure
+    /// instead of a silent partial import).
+    func importOPML(_ data: Data) async -> ImportResult? {
+        guard let feeds = PodcastImport.parseOPML(data) else { return nil }
         var result = ImportResult()
-        for feed in PodcastImport.parseOPML(data) {
+        for feed in feeds {
             if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
         }
         return result
@@ -704,6 +707,8 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var pendingFundingURL: String?
 
     private var episodes: [PodcastEpisode] = []
+    /// R4: guids already emitted — duplicate-guid items are dropped in-parse.
+    private var seenGuids: Set<String> = []
     private var inItem = false
     private var text = ""
 
@@ -761,13 +766,17 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         if el == "itunes:category", !inItem, let cat = attrs["text"], !showCategories.contains(cat) {
             showCategories.append(cat)
         }
-        // Enclosure (RSS) or media/link with audio type
-        if el == "enclosure", let url = attrs["url"], (attrs["type"]?.hasPrefix("audio") ?? true) {
-            iAudio = url
+        // Enclosure (RSS) — acceptance incl. video/octet-stream, see
+        // `acceptsEnclosure` (Korpus-Befund R2: Podsync feeds parsed empty).
+        if el == "enclosure", let url = attrs["url"],
+           Self.acceptsEnclosure(type: attrs["type"], url: url) {
+            iAudio = Self.resolved(url, against: feedURL)
         }
-        // itunes:image / channel image via href-Attribut
+        // itunes:image / channel image via href attribute (R3: resolved
+        // against the feed base — relative artwork URLs occur in the wild).
         if el == "itunes:image", let href = attrs["href"] {
-            if inItem { iImage = href } else if showImage == nil { showImage = href }
+            let resolved = Self.resolved(href, against: feedURL)
+            if inItem { iImage = resolved } else if showImage == nil { showImage = resolved }
         }
     }
 
@@ -803,9 +812,13 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             case "link": if iLink.isEmpty { iLink = value }
             case "item", "entry":
                 inItem = false
-                if !iAudio.isEmpty {
+                // R4: duplicate guids collapse HERE (first item wins — feeds
+                // list newest first); duplicates used to survive the first
+                // subscribe and collide as SwiftUI ids.
+                let guid = "rss:\(feedKey):\(iGuid.isEmpty ? iAudio : iGuid)"
+                if !iAudio.isEmpty, seenGuids.insert(guid).inserted {
                     episodes.append(PodcastEpisode(
-                        guid: "rss:\(feedKey):\(iGuid.isEmpty ? iAudio : iGuid)",
+                        guid: guid,
                         title: iTitle.isEmpty ? String(localized: "Untitled Episode") : iTitle,
                         audioURL: iAudio,
                         pubDate: Self.parseDate(iPubDate),
@@ -840,16 +853,58 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
         text = ""
     }
 
-    // RFC822-Datum → ms epoch (Fallback: 0).
-    private static let rfc822: DateFormatter = {
+    // MARK: - Pure helpers (Korpus-Härtung R2/R3, unit-tested)
+
+    /// R2: which enclosures carry playable media. `audio/*` and `video/*`
+    /// play directly (AVPlayer takes the audio track of a video enclosure —
+    /// Podsync's YouTube→RSS feeds ship `video/mp4`); the very common
+    /// `application/octet-stream` lie is accepted when the file extension
+    /// looks like media. Missing type keeps counting as audio (prior
+    /// behaviour). Everything else (text/html, image/…) is rejected.
+    static let mediaExtensions: Set<String> = [
+        "mp3", "m4a", "m4b", "aac", "ogg", "oga", "opus", "wav", "flac",
+        "mp4", "m4v", "mov", "webm",
+    ]
+    nonisolated static func acceptsEnclosure(type: String?, url: String) -> Bool {
+        guard let type, !type.isEmpty else { return true }
+        let lower = type.lowercased()
+        if lower.hasPrefix("audio") || lower.hasPrefix("video") { return true }
+        if lower == "application/octet-stream" {
+            let ext = (URL(string: url)?.pathExtension ?? (url as NSString).pathExtension).lowercased()
+            return mediaExtensions.contains(ext)
+        }
+        return false
+    }
+
+    /// R3: resolve a possibly-relative media/artwork URL against the feed
+    /// URL. Absolute URLs pass through untouched; unresolvable input is
+    /// returned as-is (never worse than before).
+    nonisolated static func resolved(_ raw: String, against base: String) -> String {
+        guard URL(string: raw)?.scheme == nil else { return raw }
+        guard let baseURL = URL(string: base),
+              let resolved = URL(string: raw, relativeTo: baseURL) else { return raw }
+        return resolved.absoluteString
+    }
+
+    // RFC822-Datum → ms epoch (Fallback: 0). R5: the wild also ships the
+    // weekday-less form and zone NAMES (EST/GMT) — one formatter chain,
+    // built once (DateFormatter creation is expensive).
+    private static let dateFormatters: [DateFormatter] = [
+        "EEE, dd MMM yyyy HH:mm:ss Z",
+        "dd MMM yyyy HH:mm:ss Z",
+        "EEE, dd MMM yyyy HH:mm:ss zzz",
+        "dd MMM yyyy HH:mm:ss zzz",
+    ].map { format in
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        f.dateFormat = format
         return f
-    }()
+    }
 
     private static func parseDate(_ s: String) -> Double {
-        if let d = rfc822.date(from: s) { return d.timeIntervalSince1970 * 1000 }
+        for f in dateFormatters {
+            if let d = f.date(from: s) { return d.timeIntervalSince1970 * 1000 }
+        }
         if let d = ISO8601DateFormatter().date(from: s) { return d.timeIntervalSince1970 * 1000 }
         return 0
     }

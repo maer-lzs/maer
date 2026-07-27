@@ -85,5 +85,38 @@ struct RSSFeedParserTests {
         </channel></rss>
         """
     }
+
+    // MARK: - Pure helpers (Korpus-Härtung R2/R3)
+
+    @Test("R2: enclosure acceptance — audio/video/octet-stream heuristic")
+    func enclosureAcceptance() {
+        #expect(RSSFeedParser.acceptsEnclosure(type: "audio/mpeg", url: "https://x.example/a.mp3"))
+        #expect(RSSFeedParser.acceptsEnclosure(type: "video/mp4", url: "https://x.example/v.mp4"))
+        #expect(RSSFeedParser.acceptsEnclosure(type: nil, url: "https://x.example/a"))
+        #expect(RSSFeedParser.acceptsEnclosure(
+            type: "application/octet-stream", url: "https://x.example/e.mp3"))
+        #expect(RSSFeedParser.acceptsEnclosure(
+            type: "application/octet-stream", url: "https://x.example/e.mp3?token=1"))
+        #expect(!RSSFeedParser.acceptsEnclosure(
+            type: "application/octet-stream", url: "https://x.example/page.html"))
+        #expect(!RSSFeedParser.acceptsEnclosure(type: "text/html", url: "https://x.example/e.mp3"))
+        #expect(!RSSFeedParser.acceptsEnclosure(type: "image/jpeg", url: "https://x.example/c.jpg"))
+    }
+
+    @Test("R3: URL resolution against the feed base")
+    func urlResolution() {
+        let base = "https://example.com/podcast/feed.xml"
+        #expect(RSSFeedParser.resolved("media/ep1.mp3", against: base)
+                == "https://example.com/podcast/media/ep1.mp3")
+        #expect(RSSFeedParser.resolved("/root/ep.mp3", against: base)
+                == "https://example.com/root/ep.mp3")
+        #expect(RSSFeedParser.resolved("https://cdn.example/a.mp3", against: base)
+                == "https://cdn.example/a.mp3")
+        // Loose input gets percent-encoded and resolved (iOS 26 lenient URL
+        // parsing); an unparseable BASE passes the raw value through.
+        #expect(RSSFeedParser.resolved("nicht url ähnlich %", against: base)
+                == "https://example.com/podcast/nicht%20url%20%C3%A4hnlich%20%25")
+        #expect(RSSFeedParser.resolved("media/ep1.mp3", against: "") == "media/ep1.mp3")
+    }
 }
 #endif

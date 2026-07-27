@@ -47,10 +47,8 @@ struct OPMLCorpusTests {
         return manifest.cases
     }()
 
-    /// Befund O1: Mär's OPMLParser ignores the XMLParser failure result and
-    /// returns everything collected before the parse error — the corpus
-    /// expects a clean 0 for a non-well-formed file.
-    private static let knownIssues: Set<String> = ["broken-xml"]
+    // Befund O1 FIXED (Härtungspaket): a failed parse now returns nil —
+    // broken-xml imports 0 feeds instead of a silent partial list.
 
     /// Exact-URL dedupe, order-preserving — mirrors the corpus reference
     /// importer (slash/scheme variants intentionally survive).
@@ -67,21 +65,15 @@ struct OPMLCorpusTests {
     func importCount(_ c: CorpusCase) throws {
         let data = try CorpusFixture.data(
             (c.file as NSString).deletingPathExtension, ext: "opml", subdirectory: "OPMLCorpus")
-        let imported = uniqueExact(PodcastImport.parseOPML(data))
-        if Self.knownIssues.contains(c.slug) {
-            withKnownIssue("Befund O1: partial list instead of 0 on broken XML") {
-                #expect(imported.count == c.expectedImportCount)
-            }
-        } else {
-            #expect(imported.count == c.expectedImportCount, "\(c.slug): \(imported)")
-        }
+        let imported = uniqueExact(PodcastImport.parseOPML(data) ?? [])
+        #expect(imported.count == c.expectedImportCount, "\(c.slug): \(imported)")
     }
 
     /// The dedupe semantics themselves (not just counts): exact duplicates
     /// collapse, slash/scheme variants stay distinct.
     @Test func duplicateFeedsKeepsVariants() throws {
         let data = try CorpusFixture.data("duplicate-feeds", ext: "opml", subdirectory: "OPMLCorpus")
-        let imported = uniqueExact(PodcastImport.parseOPML(data))
+        let imported = uniqueExact(try #require(PodcastImport.parseOPML(data)))
         #expect(imported == [
             "https://example.com/feed.xml",
             "https://example.com/feed.xml/",
@@ -92,7 +84,7 @@ struct OPMLCorpusTests {
     /// Multi-byte text must not corrupt neighbouring attribute parsing.
     @Test func umlautEmojiURLsIntact() throws {
         let data = try CorpusFixture.data("umlaut-emoji", ext: "opml", subdirectory: "OPMLCorpus")
-        for url in PodcastImport.parseOPML(data) {
+        for url in try #require(PodcastImport.parseOPML(data)) {
             #expect(URL(string: url) != nil, "URL damaged by multi-byte neighbours: \(url)")
         }
     }
