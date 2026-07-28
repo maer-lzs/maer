@@ -95,6 +95,7 @@ struct ABSPlayerApp: App {
         // bypass login + seed deterministic content BEFORE the first render.
         UITestSeed.applyIfRequested()
         UITestSeed.applySetupProbeIfRequested()
+        FrameProbe.shared.startIfRequested()
         #endif
     }
 

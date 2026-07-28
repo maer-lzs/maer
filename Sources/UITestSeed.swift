@@ -14,6 +14,9 @@ import Foundation
 @MainActor
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
+    /// iPad hitch probes: a deep library (120 books) so wide/landscape grids
+    /// still scroll far past the collapse threshold.
+    static var isBulk: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-bulk") }
     /// Opt-in: also install a presentation-only active player (mini + full
     /// player). Off by default so multi-tab navigation journeys aren't disturbed
     /// by an ever-present, tappable mini player; only the full-player journey
@@ -61,7 +64,7 @@ enum UITestSeed {
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
         // carry "Seed" in their names — the search journeys query "Seed" and
         // must keep finding the canonical seeds inside the capped sections.
-        + (3...24).map {
+        + (3...(isBulk ? 120 : 24)).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
         session.libraryViewModel.entries = books

@@ -561,4 +561,42 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["radio-region-picker"].firstMatch.waitForExistence(timeout: 10),
                       "after Change region the picker must appear immediately (no dead section)")
     }
+
+    // MARK: - iPad hitch probes (28.07 diagnosis package — measurement, no assert on values)
+
+    /// Measured collapse-scroll probe: repeated fast scroll cycles across the
+    /// collapse threshold on the audiobook grid; the scroll signpost metric
+    /// reports hitch-time ratios per iteration. Run on iPhone AND iPad
+    /// simulators, portrait and landscape — the numbers land in the log/
+    /// xcresult (log-first: measure BEFORE any fix attempt).
+    private func runHitchProbe(landscape: Bool) throws {
+        // Measurement tool, not a regression assert — runs only in explicit
+        // probe sessions (HITCH_PROBE=1), never in the routine suites.
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HITCH_PROBE"] == "1",
+                          "measurement probe; set HITCH_PROBE=1 to run")
+        XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-bulk", "-uitest-frameprobe"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 15))
+        books.tap()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].firstMatch.waitForExistence(timeout: 15))
+        // Suspect line (a): how much cell/image work sits in one viewport.
+        print("HITCHPROBE landscape=\(landscape) visibleImages=\(app.images.count) visibleTexts=\(app.staticTexts.count)")
+        measure(metrics: [XCTOSSignpostMetric.scrollingAndDecelerationMetric]) {
+            app.swipeUp(velocity: .fast)
+            app.swipeUp(velocity: .fast)
+            app.swipeDown(velocity: .fast)
+            app.swipeDown(velocity: .fast)
+        }
+    }
+
+    func testHitchProbePortrait() throws { try runHitchProbe(landscape: false) }
+
+    func testHitchProbeLandscape() throws {
+        defer { XCUIDevice.shared.orientation = .portrait }
+        try runHitchProbe(landscape: true)
+    }
 }
