@@ -152,13 +152,6 @@ final class BottomBarState: ObservableObject {
 
     /// Threshold gate: publish only on an actual flip.
     private func applyCollapsed() {
-        // Hitch A/B diagnosis: collapse disabled → the bar never collapses, so
-        // any remaining wiggle at the 60 pt spot is provably NOT collapse-
-        // coupled. Read per flip attempt (cheap; the toggle is rare).
-        if AppStorageKeys.disableBarCollapseValue {
-            if collapsed { collapsed = false }
-            return
-        }
         let elapsed = Date().timeIntervalSince(scrollStartedAt)
         let newValue = Self.shouldCollapse(scrollY: scrollY, forceExpanded: forceExpanded,
                                            alreadyCollapsed: collapsed,

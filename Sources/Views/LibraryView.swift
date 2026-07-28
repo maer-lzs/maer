@@ -321,14 +321,10 @@ struct LibraryView: View {
                 // icons out instead of vanishing in the same frame. Expand (return
                 // to rest) stays immediate — the primary surface should come back
                 // promptly while the icons pop back in with their own bouncy spring.
-                // Bisect switch 2: with "bar animation off" the zone snaps
-                // hard between states (no morph spring at all).
                 .animation(
-                    AppStorageKeys.hitchBarAnimOffValue
-                        ? nil
-                        : (barCollapsed
-                            ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
-                            : .spring(response: 0.55, dampingFraction: 0.85)),
+                    barCollapsed
+                        ? .spring(response: 0.55, dampingFraction: 0.85).delay(Self.barCollapseLag)
+                        : .spring(response: 0.55, dampingFraction: 0.85),
                     value: barCollapsed)
                 }
                 .padding(.horizontal, 10)
@@ -584,10 +580,7 @@ struct LibraryView: View {
                     searchCloseButton
                 }
             } else {
-            // Bisect switch 3: "static composition" pins the branches to the
-            // EXPANDED shape — the subtree keeps its identity across the flip
-            // (no view insert/remove at the collapse).
-            let composedCollapsed = AppStorageKeys.hitchBarStaticCompositionValue ? false : barCollapsed
+            let composedCollapsed = barCollapsed
             if !composedCollapsed { banner }
             HStack(spacing: 8) {
                 if composedCollapsed { homeButton }
@@ -630,11 +623,9 @@ struct LibraryView: View {
     @ViewBuilder
     private func miniPlayer(collapsed barCollapsed: Bool) -> some View {
         if let vm = playerCoordinator.viewModel, let item = playerCoordinator.activeItem {
-            // Bisect switch 4: "mini morph off" keeps the mini player in its
-            // full shape across the flip (no compact re-layout).
             MiniPlayerBar(
                 coordinator: playerCoordinator, viewModel: vm, item: item,
-                compact: AppStorageKeys.hitchMiniMorphOffValue ? false : barCollapsed,
+                compact: barCollapsed,
                 onOpenPlayer: {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
                         isShowingFullPlayer = true
@@ -1278,10 +1269,6 @@ struct LibraryView: View {
     /// glass with white icon; `\.glassAccent` absent; menu labels tinted
     /// with the app accent → orange symbol). Everything the glass and icon
     /// need is therefore pinned/passed EXPLICITLY here.
-    /// Bisect switch 1: with "icon offset off" the sort/settings icons ignore
-    /// the collapse entirely (static, always visible).
-    private var iconsFollowCollapse: Bool { !AppStorageKeys.hitchIconOffsetOffValue }
-
     private func toolbarGlassIcon(_ systemName: String) -> some View {
         // The icon is the OTHER render site of `collapsed` — it observes via
         // its own reader leaf, so the flip never touches the tab container.
@@ -1306,10 +1293,10 @@ struct LibraryView: View {
             // transaction window at the collapse flip wiggled with it (the
             // grid's micro back-and-forth at the 60 pt threshold). 0.9 keeps a
             // slight pop-in without overshoot.
-            .offset(y: iconsFollowCollapse && barCollapsed ? -72 : 0)
-            .opacity(iconsFollowCollapse && barCollapsed ? 0 : 1)
-            .allowsHitTesting(!(iconsFollowCollapse && barCollapsed))
-            .animation(iconsFollowCollapse ? .spring(response: 0.35, dampingFraction: 0.9) : nil,
+            .offset(y: barCollapsed ? -72 : 0)
+            .opacity(barCollapsed ? 0 : 1)
+            .allowsHitTesting(!barCollapsed)
+            .animation(.spring(response: 0.35, dampingFraction: 0.9),
                        value: barCollapsed)
         }
     }

@@ -437,27 +437,4 @@ nonisolated enum AppStorageKeys {
         }
     }
 
-    /// Hitch A/B diagnosis: disable the bar collapse entirely (`collapsed`
-    /// stays false). Compiled into Release on purpose — the felt tests run on
-    /// Release builds; the toggle lives at the bottom of Settings.
-    static let disableBarCollapse = "debug.disableBarCollapse"
-    static var disableBarCollapseValue: Bool {
-        UserDefaults.standard.bool(forKey: disableBarCollapse)
-    }
-
-    // Hitch BISECT harness: the collapse triggers several part-effects at
-    // once; each is individually disableable (Settings → About, below the
-    // master switch, default OFF = today's behavior) so the device test can
-    // isolate WHICH part-effect moves the grid. Removable together once the
-    // culprit is proven.
-    static let hitchIconOffsetOff = "debug.hitch.iconOffsetOff"
-    static var hitchIconOffsetOffValue: Bool { UserDefaults.standard.bool(forKey: hitchIconOffsetOff) }
-    static let hitchBarAnimOff = "debug.hitch.barAnimOff"
-    static var hitchBarAnimOffValue: Bool { UserDefaults.standard.bool(forKey: hitchBarAnimOff) }
-    static let hitchBarStaticComposition = "debug.hitch.barStaticComposition"
-    static var hitchBarStaticCompositionValue: Bool { UserDefaults.standard.bool(forKey: hitchBarStaticComposition) }
-    static let hitchMiniMorphOff = "debug.hitch.miniMorphOff"
-    static var hitchMiniMorphOffValue: Bool { UserDefaults.standard.bool(forKey: hitchMiniMorphOff) }
-    static let hitchGlassMorphOff = "debug.hitch.glassMorphOff"
-    static var hitchGlassMorphOffValue: Bool { UserDefaults.standard.bool(forKey: hitchGlassMorphOff) }
 }

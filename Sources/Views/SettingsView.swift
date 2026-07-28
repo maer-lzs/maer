@@ -104,7 +104,6 @@ struct SettingsView: View {
                     appearanceSection
                     statsSection
                     aboutSection
-                    diagnosticsSection
                 case .audiobooks:
                     playbackSection
                 case .podcasts:
@@ -343,15 +342,6 @@ struct SettingsView: View {
 
 
 
-    /// Hitch A/B diagnosis toggle (spec 25.07): collapse fully off, so a
-    /// remaining wiggle at the threshold is provably collapse-coupled or not.
-    @AppStorage(AppStorageKeys.disableBarCollapse) private var disableBarCollapse = false
-    @AppStorage(AppStorageKeys.hitchIconOffsetOff) private var hitchIconOffsetOff = false
-    @AppStorage(AppStorageKeys.hitchBarAnimOff) private var hitchBarAnimOff = false
-    @AppStorage(AppStorageKeys.hitchBarStaticComposition) private var hitchBarStaticComposition = false
-    @AppStorage(AppStorageKeys.hitchMiniMorphOff) private var hitchMiniMorphOff = false
-    @AppStorage(AppStorageKeys.hitchGlassMorphOff) private var hitchGlassMorphOff = false
-
     private var aboutSection: some View {
         Section {
             LabeledContent {
@@ -363,50 +353,6 @@ struct SettingsView: View {
             Text("About")
         } footer: {
             Text("Mär is an unofficial client for Audiobookshelf.")
-        }
-    }
-
-    /// Variante b, rule category "system/diagnosis": the debug/bisect switches
-    /// get their own clearly-marked section at the very bottom — they were
-    /// squatting in About. Convention: debug/diagnosis UI is Text(verbatim:)
-    /// and never enters the string catalog (docs/components.md, "Debug UI").
-    private var diagnosticsSection: some View {
-        Section {
-            Toggle(isOn: $disableBarCollapse) {
-                Label { Text(verbatim: "Disable bar collapse (diagnosis)") } icon: {
-                    Image(systemName: "rectangle.bottomthird.inset.filled")
-                }
-            }
-            // Hitch bisect harness — part-effect switches (all OFF = normal).
-            Toggle(isOn: $hitchIconOffsetOff) {
-                Label { Text(verbatim: "Bisect: icon offset off") } icon: {
-                    Image(systemName: "1.circle")
-                }
-            }
-            Toggle(isOn: $hitchBarAnimOff) {
-                Label { Text(verbatim: "Bisect: bar animation off") } icon: {
-                    Image(systemName: "2.circle")
-                }
-            }
-            Toggle(isOn: $hitchBarStaticComposition) {
-                Label { Text(verbatim: "Bisect: static bar composition") } icon: {
-                    Image(systemName: "3.circle")
-                }
-            }
-            Toggle(isOn: $hitchMiniMorphOff) {
-                Label { Text(verbatim: "Bisect: mini-player morph off") } icon: {
-                    Image(systemName: "4.circle")
-                }
-            }
-            Toggle(isOn: $hitchGlassMorphOff) {
-                Label { Text(verbatim: "Bisect: glass morph off") } icon: {
-                    Image(systemName: "5.circle")
-                }
-            }
-        } header: {
-            Text(verbatim: "Diagnostics")
-        } footer: {
-            Text(verbatim: "Temporary switches for device diagnosis. All OFF = normal behavior.")
         }
     }
 

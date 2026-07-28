@@ -44,7 +44,7 @@ extension View {
     /// distinct buttons stay separate. No-op below iOS 26.
     @ViewBuilder
     func bottomGlassContainer() -> some View {
-        if #available(iOS 26.0, *), !AppStorageKeys.hitchGlassMorphOffValue {
+        if #available(iOS 26.0, *) {
             GlassEffectContainer { self }
         } else {
             self
@@ -102,10 +102,7 @@ struct AdaptiveGlassBackground<S: Shape>: ViewModifier {
         Group {
             // Real Liquid Glass ONLY for `.glass` surfaces on iOS 26; everything
             // else (default `.material`, or older OS) gets the cheap look.
-            // Bisect switch 5: "glass morph off" forces the cheap material on
-            // every .glass surface — the Liquid-Glass morph drops out as a
-            // candidate entirely.
-            if tier == .glass, !AppStorageKeys.hitchGlassMorphOffValue, #available(iOS 26.0, *) {
+            if tier == .glass, #available(iOS 26.0, *) {
                 glassContent(content)
             } else {
                 materialFallback(content)
