@@ -223,6 +223,17 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
+    /// Alphabetical song list page (music tab "Titles" entry).
+    func songs(startIndex: Int, limit: Int) async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Items", [
+            "IncludeItemTypes": "Audio", "Recursive": "true",
+            "SortBy": "SortName", "SortOrder": "Ascending",
+            "StartIndex": String(startIndex), "Limit": String(limit),
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
     func topSongs(artistId: String, limit: Int) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [

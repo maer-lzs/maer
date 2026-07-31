@@ -120,7 +120,8 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "home-ax3")
         let music = app.buttons["tab-music"].firstMatch
         if music.waitForExistence(timeout: 10) { music.tap() }
-        _ = app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10)
+        // Neuordnung 30.07: the tab shows the library list, not the album grid.
+        _ = app.buttons["music-route-albums"].firstMatch.waitForExistence(timeout: 10)
         snap(app, "music-ax3")
     }
 
@@ -198,6 +199,10 @@ nonisolated final class MaerUITests: XCTestCase {
         music.tap()
 
         // Album detail → switch to the audiobook library via the tab.
+        // Neuordnung 30.07: albums live on their own page behind the list entry.
+        let albumsRow = app.buttons["music-route-albums"].firstMatch
+        XCTAssertTrue(albumsRow.waitForExistence(timeout: 15))
+        albumsRow.tap()
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(album.waitForExistence(timeout: 15))
         album.tap()
@@ -489,7 +494,8 @@ nonisolated final class MaerUITests: XCTestCase {
         let music = app.buttons["tab-music"].firstMatch
         XCTAssertTrue(music.waitForExistence(timeout: 15))
         music.tap()
-        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 15))
+        // Neuordnung 30.07: the tab's anchor is the library list.
+        XCTAssertTrue(app.buttons["music-route-albums"].firstMatch.waitForExistence(timeout: 15))
         snap(app, "music-tab")
         // Reference: the audiobook tab bottom bar.
         let books = app.buttons["tab-audiobooks"].firstMatch

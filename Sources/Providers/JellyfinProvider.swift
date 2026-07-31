@@ -253,6 +253,14 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return result
     }
 
+    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] {
+        guard let client else { return [] }
+        let songs = try await client.songs(startIndex: offset, limit: size)
+        let result = songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+        for entry in result { itemsById[entry.item.id] = entry.item }
+        return result
+    }
+
     // MARK: - Playlists
 
     func allPlaylists() async throws -> [MusicPlaylist] {

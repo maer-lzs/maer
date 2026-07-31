@@ -194,6 +194,20 @@ struct SubsonicClient {
         try await get("getArtist", ["id": id]).artist
     }
 
+    /// Alphabetical song list page (music tab "Titles" entry). Subsonic has no
+    /// dedicated all-songs endpoint; `search3` with an empty query is the
+    /// de-facto standard for it (Navidrome & co. return the full library).
+    func songList(offset: Int, size: Int) async throws -> [SubsonicSong] {
+        let body = try await get("search3", [
+            "query": "",
+            "albumCount": "0",
+            "artistCount": "0",
+            "songCount": String(size),
+            "songOffset": String(offset),
+        ])
+        return body.searchResult3?.song ?? []
+    }
+
     func search3(query: String, albumCount: Int = 40, songCount: Int = 40,
                  artistCount: Int = 20) async throws -> SubsonicSearchResult3 {
         let body = try await get("search3", [

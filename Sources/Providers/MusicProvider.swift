@@ -52,6 +52,9 @@ protocol MusicProvider: AudioProvider {
     /// display; a provider is never addressed via display text.
     func topSongs(artistId: String, count: Int) async -> [MusicTopSong]
 
+    /// Alphabetical page of the whole song library (music tab "Titles" list).
+    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong]
+
     // MARK: Playlists
     func allPlaylists() async throws -> [MusicPlaylist]
     /// Create a server playlist; returns its namespaced item id when the

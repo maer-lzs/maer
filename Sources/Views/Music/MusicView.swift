@@ -5,10 +5,11 @@
 import SwiftUI
 import Combine
 
-/// Music tab (Subsonic/Navidrome). Media-type-specific layout, deliberately not
-/// the audiobook grid: shelves on top (recently added, most played), browse rows
-/// for artists/playlists, then the full album grid. Tapping an album opens its
-/// track list; playback runs through the shared player.
+/// Music tab (Subsonic/Navidrome/Jellyfin). Musik-Tab-Neuordnung (30.07):
+/// playlist cards (shared card size) on top, then the grouped library list
+/// (Artists · Albums · Songs · Playlists · Downloaded — Apple-Music pattern;
+/// the entries replace the old inline album grid), then two server shelves
+/// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
@@ -25,8 +26,6 @@ struct MusicView: View {
     // F5: create-playlist flow.
     @State private var showNewPlaylist = false
     @State private var newPlaylistName = ""
-
-    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     /// F5: playlists newest-changed first (default sort).
     private var sortedPlaylists: [MusicPlaylist] {
@@ -126,39 +125,36 @@ struct MusicView: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             }
-            // F5: playlist card row on top. Recently-Added / Most-Played shelves
-            // are intentionally gone here — the Home tab owns those; the music
-            // tab is playlists (top) + album grid (backbone) + artists browse.
+            // Musik-Tab-Neuordnung (30.07): playlist cards on top (shared card
+            // size), then the library LIST (Apple-Music pattern — the five
+            // entries replace the old inline album grid/artists row), then the
+            // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
-            if !vm.artists.isEmpty {
-                VStack(spacing: 0) {
-                    browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
-                }
-                .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal)
-            }
+            libraryList
 
-            // "Albums" header carries the whole-library shuffle (same component
-            // as the album/playlist detail) — on the existing header row so it
-            // adds no vertical shift to the grid below.
-            HStack {
-                Text("Albums").font(.title3).bold()
-                Spacer()
-                ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
-                    await AppSession.shared.musicProvider.shuffleLibrarySongItems()
-                }
-                .font(.title3)
-            }
-            .padding(.horizontal)
-            CoverGrid(columns: columns) {
-                ForEach(vm.albums) { album in
-                    AlbumCell(item: album, playerCoordinator: playerCoordinator)
-                }
-            }
-            .padding(.horizontal)
+            if !vm.recent.isEmpty { shelf("Recently Played", vm.recent) }
+            if !vm.newest.isEmpty { shelf("Recently Added", vm.newest) }
         }
         .padding(.top, TabContentLayout.topInset)
+    }
+
+    /// The five library entries as one grouped vertical list. Always complete —
+    /// an empty target shows its own empty state instead of hiding the entry.
+    private var libraryList: some View {
+        VStack(spacing: 0) {
+            browseRow("Artists", systemImage: "music.mic", route: .artists(vm.artists))
+            Divider().padding(.leading, 52)
+            browseRow("Albums", systemImage: "square.stack", route: .albums)
+            Divider().padding(.leading, 52)
+            browseRow("Songs", systemImage: "music.note", route: .songs)
+            Divider().padding(.leading, 52)
+            browseRow("Playlists", systemImage: "music.note.list", route: .playlists(sortedPlaylists))
+            Divider().padding(.leading, 52)
+            browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
+        }
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
     }
 
     private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem]) -> some View {

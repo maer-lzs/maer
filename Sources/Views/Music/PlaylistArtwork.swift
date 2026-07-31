@@ -40,7 +40,10 @@ struct PlaylistArtwork: View {
                     }
             }
         }
-        .aspectRatio(2 / 3, contentMode: .fit)
+        // Musik-Tab-Neuordnung (30.07): the special portrait 2:3 yields to the
+        // shared SQUARE tile geometry — same card size as the other libraries'
+        // card rows (MediaTile family); mosaic + text-in-card idiom stay.
+        .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 

@@ -60,6 +60,8 @@ extension MusicSource {
 final class MusicViewModel: ObservableObject {
     @Published var newest: [LibraryItem] = []
     @Published var frequent: [LibraryItem] = []
+    /// Musik-Tab-Neuordnung: "Recently Played" shelf (server-side `recent`).
+    @Published var recent: [LibraryItem] = []
     @Published var albums: [LibraryItem] = []
     @Published var artists: [MusicArtist] = []
     @Published var playlists: [MusicPlaylist] = []
@@ -111,6 +113,7 @@ final class MusicViewModel: ObservableObject {
         // cancellation the previous state stays instead of blanking with [].
         async let newestTask = source.shelf(.newest, 20)
         async let frequentTask = source.shelf(.frequent, 20)
+        async let recentTask = source.shelf(.recent, 20)
         async let artistsTask = source.artists()
         async let playlistsTask = source.playlists()
 
@@ -148,6 +151,9 @@ final class MusicViewModel: ObservableObject {
         // Late best-effort arrivals reshape the shelves — same calm gate.
         if let value = try? await newestTask {
             BottomBarState.shared.runWhenCalm { [self] in newest = value }
+        }
+        if let value = try? await recentTask {
+            BottomBarState.shared.runWhenCalm { [self] in recent = value }
         }
         if let value = try? await frequentTask {
             BottomBarState.shared.runWhenCalm { [self] in frequent = value }

@@ -18,6 +18,10 @@ enum MusicRoute: Hashable {
     case artist(MusicArtist)
     case artists([MusicArtist])
     case playlists([MusicPlaylist])
+    // Musik-Tab-Neuordnung (30.07): the tab's library list pushes whole pages.
+    case albums
+    case songs
+    case downloaded
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -25,6 +29,8 @@ enum MusicRoute: Hashable {
         case let (.artist(a), .artist(b)):       return a.id == b.id
         case let (.artists(a), .artists(b)):     return a.map(\.id) == b.map(\.id)
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
+        case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded):
+            return true
         default:                                 return false
         }
     }
@@ -35,6 +41,9 @@ enum MusicRoute: Hashable {
         case .artist(let a):    hasher.combine(1); hasher.combine(a.id)
         case .artists(let a):   hasher.combine(2); hasher.combine(a.map(\.id))
         case .playlists(let p): hasher.combine(3); hasher.combine(p.map(\.id))
+        case .albums:           hasher.combine(4)
+        case .songs:            hasher.combine(5)
+        case .downloaded:       hasher.combine(6)
         }
     }
 
@@ -46,6 +55,9 @@ enum MusicRoute: Hashable {
         case .artist:    return "music-route-artist"
         case .artists:   return "music-route-artists"
         case .playlists: return "music-route-playlists"
+        case .albums:     return "music-route-albums"
+        case .songs:      return "music-route-songs"
+        case .downloaded: return "music-route-downloaded"
         }
     }
 }
@@ -93,6 +105,12 @@ extension View {
                 MusicArtistsView(artists: artists, playerCoordinator: playerCoordinator)
             case .playlists(let playlists):
                 MusicPlaylistsView(playlists: playlists, playerCoordinator: playerCoordinator)
+            case .albums:
+                MusicAlbumsPage(playerCoordinator: playerCoordinator)
+            case .songs:
+                MusicSongsPage(playerCoordinator: playerCoordinator)
+            case .downloaded:
+                MusicDownloadedPage(playerCoordinator: playerCoordinator)
             }
         }
     }

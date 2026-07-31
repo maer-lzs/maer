@@ -528,6 +528,16 @@
         }
       }
     },
+    "Albums and playlists you download appear here for offline listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geladene Alben und Playlists erscheinen hier zum Offline-Hören."
+          }
+        }
+      }
+    },
     "All" : {
       "localizations" : {
         "de" : {
@@ -3005,6 +3015,16 @@
         }
       }
     },
+    "No downloaded music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine geladene Musik"
+          }
+        }
+      }
+    },
     "No internet connection. Please check your network and try again." : {
       "localizations" : {
         "de" : {
@@ -3081,6 +3101,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keine Treffer."
+          }
+        }
+      }
+    },
+    "No songs" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Titel"
           }
         }
       }

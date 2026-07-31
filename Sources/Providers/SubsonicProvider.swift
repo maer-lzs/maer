@@ -437,6 +437,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
+    func songPage(offset: Int, size: Int) async throws -> [MusicTopSong] {
+        guard let client else { return [] }
+        let songs = try await client.songList(offset: offset, size: size)
+        return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+    }
+
     /// One Subsonic song → a playable single-track `sub:song:` library item.
     /// The shared mapping used by top-songs and by shuffle-play.
     nonisolated static func songItem(from song: SubsonicSong) -> LibraryItem {

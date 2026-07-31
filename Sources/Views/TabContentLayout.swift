@@ -34,6 +34,4 @@ enum CardMetrics {
     static func recommendationColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func playlistColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func rediscoverColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
-    /// Music playlist poster card (150 → 135, ×0.9).
-    static let playlistCardWidth: CGFloat = 135
 }
