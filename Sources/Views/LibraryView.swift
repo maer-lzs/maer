@@ -561,6 +561,32 @@ struct LibraryView: View {
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
         }
+        // Vollplayer → Quellseiten (9aad53c): the full player minimizes and
+        // pushes the source page through the SAME value routes the search
+        // uses. Set BEFORE the overlay modifier so the player inherits it.
+        .environment(\.openPlayerSource) { target in
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                isShowingFullPlayer = false
+            }
+            if isShowingSearch { closeSearch() }
+            switch target {
+            case .book(let itemId):
+                selectedMediaType = .audiobooks
+                navigationPath.append(itemId)
+            case .podcastShow(let feedURL):
+                selectedMediaType = .podcasts
+                navigationPath.append(PodcastRoute.show(feedURL: feedURL))
+            case .podcastEpisode(let itemId):
+                selectedMediaType = .podcasts
+                navigationPath.append(PodcastRoute.episode(itemId: itemId))
+            case .musicAlbum(let item):
+                selectedMediaType = .music
+                navigationPath.append(MusicRoute.album(item))
+            case .musicArtist(let artist):
+                selectedMediaType = .music
+                navigationPath.append(MusicRoute.artist(artist))
+            }
+        }
         // Full player as an overlay OVER the library (instead of push).
         .overlay {
             if isShowingFullPlayer {

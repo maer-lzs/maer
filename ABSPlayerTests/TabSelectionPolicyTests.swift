@@ -30,4 +30,19 @@ struct TabSelectionPolicyTests {
         #expect(!TabSelectionPolicy.shouldFallBackToHome(selected: .home, masterEnabled: false))
     }
 }
+
+/// 9aad53c: pure media-kind derivation for the player's source targets.
+struct PlayerSourceTargetsTests {
+    @Test func mediaKinds() {
+        #expect(PlayerSourceTargets.isBook("li_abs123"))
+        #expect(PlayerSourceTargets.isBook("local:book-1"))
+        #expect(!PlayerSourceTargets.isBook("rss:x:ep"))
+        #expect(PlayerSourceTargets.isPodcast("rss:x:ep"))
+        #expect(PlayerSourceTargets.isPodcast("abspod:show:ep"))
+        #expect(PlayerSourceTargets.isMusic("sub:album:1"))
+        #expect(PlayerSourceTargets.isMusic("jf:album:1"))
+        #expect(!PlayerSourceTargets.isMusic("radio:station-1"))
+        #expect(!PlayerSourceTargets.isBook("radio:station-1"))
+    }
+}
 #endif

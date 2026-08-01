@@ -135,9 +135,13 @@ nonisolated final class MaerUITests: XCTestCase {
         let miniPlayer = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20), "mini player must show the active work")
         miniPlayer.tap()
-        // Full player: the work is the large title; the fallback part marker below.
-        XCTAssertTrue(app.staticTexts["Now Playing Book"].waitForExistence(timeout: 15),
+        // Full player: the work is the large title; the fallback part marker
+        // below. 9aad53c: the title line is a source-navigation BUTTON now.
+        let workTitle = app.buttons["player-source-title"].firstMatch
+        XCTAssertTrue(workTitle.waitForExistence(timeout: 15),
                       "full player must show the work title (X14)")
+        XCTAssertTrue(workTitle.label.contains("Now Playing Book"),
+                      "the title line must carry the work title (X14)")
         XCTAssertTrue(app.staticTexts["Teil 2 von 3"].firstMatch.exists,
                       "the chapter/part line sits below the work title")
         snap(app, "full-player-book")
@@ -624,6 +628,24 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the app must restart on the podcast tab (last selection)")
         // Cleanup for order-independence: back to Home for later journeys.
         app.buttons["tab-home"].firstMatch.tap()
+    }
+
+    /// 9aad53c: the full player's title line navigates to the source page —
+    /// player minimizes (keeps playing, mini bar visible), detail is pushed.
+    func testPlayerNavigatesToSource() {
+        let app = launchSeeded(withActivePlayer: true)
+        let mini = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 20))
+        mini.tap()
+        let title = app.buttons["player-source-title"].firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 15), "book title must be tappable (source target)")
+        title.tap()
+        // Player minimized: the mini bar is back …
+        XCTAssertTrue(mini.waitForExistence(timeout: 10), "player must MINIMIZE, playback keeps running")
+        // … and a detail page is pushed (back button present on the stack).
+        XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10),
+                      "a source page must be pushed onto the stack")
+        snap(app, "player-to-source")
     }
 
     /// Such-Freeze diagnosis (01.08): measured FIRST search open + first query

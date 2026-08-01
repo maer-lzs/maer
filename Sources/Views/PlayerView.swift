@@ -301,17 +301,25 @@ struct PlayerView: View {
             // player once T9d stopped baking the work title into the chapter
             // names ("Kapitel 71 – Armageddon …"); the player never had its own
             // title line, so only the cleaned chapter ("Teil 12") was left.
-            Text(viewModel.nowPlayingTitle)
-                .font(.title3).bold()
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
+            // 9aad53c: title/subtitle navigate to the source page (Apple-
+            // Media convention) — book title → book detail, podcast subtitle
+            // → show page, music subtitle → album page. Plain text when no
+            // target resolves (radio, unresolvable ids).
+            sourceTappable(target: titleTarget, a11yId: "player-source-title") {
+                Text(viewModel.nowPlayingTitle)
+                    .font(.title3).bold()
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+            }
             // Chapter / part line (T9c): a real chapter · author, the fallback
             // marker ("Teil 12 von 39" / "ab 3:15"), or the artist for music.
             if let subtitle = chapterSubtitle {
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
+                sourceTappable(target: subtitleTarget, a11yId: "player-source-subtitle") {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                }
             }
             // "N of M" only for REAL chapters — a fallback marker already carries
             // its position in the line above.
@@ -338,6 +346,85 @@ struct PlayerView: View {
     /// X14: the line under the work title in the full player. For music the
     /// artist (the song is the title); for a fallback book the part/time marker
     /// (which the lock screen deliberately hides); otherwise "chapter · author".
+    // MARK: - 9aad53c source navigation
+
+    @Environment(\.openPlayerSource) private var openPlayerSource
+
+    /// Wraps a line in a Button when a source target exists; ONE context menu
+    /// on the tappable line carries the further destinations (music: artist ·
+    /// podcast: episode) plus the queue entry — no parallel mechanics.
+    @ViewBuilder
+    private func sourceTappable(target: PlayerSourceTarget?, a11yId: String,
+                                @ViewBuilder content: () -> some View) -> some View {
+        if let target {
+            Button { openPlayerSource(target) } label: { content() }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(a11yId)
+                .contextMenu { sourceMenu }
+        } else {
+            content()
+        }
+    }
+
+    /// The primary tap target of the TITLE line: the book detail (audiobooks).
+    private var titleTarget: PlayerSourceTarget? {
+        guard let id = viewModel.item?.id, !viewModel.isLiveStream,
+              PlayerSourceTargets.isBook(id) else { return nil }
+        return .book(itemId: id)
+    }
+
+    /// The primary tap target of the SUBTITLE line: show page (podcast) or
+    /// album page (music).
+    private var subtitleTarget: PlayerSourceTarget? {
+        guard let id = viewModel.item?.id, !viewModel.isLiveStream else { return nil }
+        if PlayerSourceTargets.isPodcast(id) {
+            guard let feed = PodcastSubscriptions.shared.feedURL(forEpisodeId: id) else { return nil }
+            return .podcastShow(feedURL: feed)
+        }
+        if PlayerSourceTargets.isMusic(id) {
+            if let item = AppSession.shared.libraryItem(forId: id) { return .musicAlbum(item) }
+            if let detail = viewModel.item {
+                return .musicAlbum(LibraryItem(id: detail.id, media: detail.media, addedAt: nil))
+            }
+        }
+        return nil
+    }
+
+    @ViewBuilder
+    private var sourceMenu: some View {
+        if let id = viewModel.item?.id {
+            if let subtitleTarget {
+                Button {
+                    openPlayerSource(subtitleTarget)
+                } label: {
+                    PlayerSourceTargets.isPodcast(id)
+                        ? Label("Go to Show", systemImage: "mic")
+                        : Label("Go to Album", systemImage: "square.stack")
+                }
+            }
+            if PlayerSourceTargets.isPodcast(id) {
+                Button {
+                    openPlayerSource(.podcastEpisode(itemId: id))
+                } label: { Label("Go to Episode", systemImage: "doc.text") }
+            }
+            if PlayerSourceTargets.isMusic(id), let artistName = viewModel.item?.media.metadata?.authorName {
+                Button {
+                    Task {
+                        // Best-effort name match — the playing detail carries no
+                        // artist id; unresolvable stays a silent no-op.
+                        let artists = (try? await AppSession.shared.musicProvider.allArtists()) ?? []
+                        if let artist = artists.first(where: { $0.name == artistName }) {
+                            openPlayerSource(.musicArtist(artist))
+                        }
+                    }
+                } label: { Label("Go to Artist", systemImage: "music.mic") }
+            }
+            Button {
+                showQueue = true
+            } label: { Label("Up Next", systemImage: "list.triangle") }
+        }
+    }
+
     private var chapterSubtitle: String? {
         if viewModel.isMusicItem { return viewModel.nowPlayingSubtitle }
         if viewModel.chaptersAreFallback { return viewModel.currentChapter?.title }
