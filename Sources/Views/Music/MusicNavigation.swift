@@ -22,6 +22,9 @@ enum MusicRoute: Hashable {
     case albums
     case songs
     case downloaded
+    // M3: genre chip grid + one genre's albums/songs.
+    case genres
+    case genre(MusicGenre)
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -29,8 +32,10 @@ enum MusicRoute: Hashable {
         case let (.artist(a), .artist(b)):       return a.id == b.id
         case let (.artists(a), .artists(b)):     return a.map(\.id) == b.map(\.id)
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
-        case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded):
+        case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
+             (.genres, .genres):
             return true
+        case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
         }
     }
@@ -44,6 +49,8 @@ enum MusicRoute: Hashable {
         case .albums:           hasher.combine(4)
         case .songs:            hasher.combine(5)
         case .downloaded:       hasher.combine(6)
+        case .genres:           hasher.combine(7)
+        case .genre(let g):     hasher.combine(8); hasher.combine(g.name)
         }
     }
 
@@ -58,6 +65,8 @@ enum MusicRoute: Hashable {
         case .albums:     return "music-route-albums"
         case .songs:      return "music-route-songs"
         case .downloaded: return "music-route-downloaded"
+        case .genres:     return "music-route-genres"
+        case .genre:      return "music-route-genre"
         }
     }
 }
@@ -111,6 +120,10 @@ extension View {
                 MusicSongsPage(playerCoordinator: playerCoordinator)
             case .downloaded:
                 MusicDownloadedPage(playerCoordinator: playerCoordinator)
+            case .genres:
+                MusicGenresPage()
+            case .genre(let genre):
+                MusicGenreDetailPage(genre: genre, playerCoordinator: playerCoordinator)
             }
         }
     }

@@ -32,6 +32,22 @@ nonisolated struct SubsonicBody: Decodable {
     let song: SubsonicSong?                 // getSong
     let randomSongs: SubsonicRandomSongs?   // getRandomSongs (whole-library shuffle)
     let bookmarks: SubsonicBookmarks?       // getBookmarks (playlist continue-listening)
+    let genres: SubsonicGenres?             // getGenres (M3)
+    let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre (M3)
+}
+
+// M3: getGenres — the genre NAME arrives as the element content, which the
+// Subsonic JSON serialization ships under the "value" key.
+nonisolated struct SubsonicGenres: Decodable {
+    let genre: [SubsonicGenre]?
+}
+nonisolated struct SubsonicGenre: Decodable {
+    let value: String?
+    let songCount: Int?
+    let albumCount: Int?
+}
+nonisolated struct SubsonicSongsByGenre: Decodable {
+    let song: [SubsonicSong]?
 }
 
 // MARK: - OpenSubsonic metadata (M1). Empty fields are NORMAL — a server

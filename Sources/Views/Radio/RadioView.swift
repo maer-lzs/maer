@@ -296,7 +296,10 @@ struct RadioView: View {
             popular = UITestSeed.seedRadioCatalog
             regional = UITestSeed.seedRadioCatalog
             // Seed region ONCE — after "Change region" the picker must win,
-            // not an immediate re-choose by the seed branch.
+            // not an immediate re-choose by the seed branch. A PERSISTED
+            // choice (UserDefaults survive across launches within a suite)
+            // counts as applied, else the re-choose fires on the next run.
+            if chosenState != nil { seedRegionApplied = true }
             if chosenState == nil, !seedRegionApplied {
                 chosenState = "Seed Region"
                 seedRegionApplied = true

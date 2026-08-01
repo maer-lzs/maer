@@ -208,6 +208,28 @@ struct SubsonicClient {
         return body.searchResult3?.song ?? []
     }
 
+    /// M3: server genres with song/album counters (getGenres).
+    func genres() async throws -> [SubsonicGenre] {
+        try await get("getGenres").genres?.genre ?? []
+    }
+
+    /// M3: albums of ONE genre (getAlbumList2 type=byGenre).
+    func albumsByGenre(genre: String, size: Int = 100, offset: Int = 0) async throws -> [SubsonicAlbum] {
+        let body = try await get("getAlbumList2", [
+            "type": "byGenre", "genre": genre,
+            "size": String(size), "offset": String(offset),
+        ])
+        return body.albumList2?.album ?? []
+    }
+
+    /// M3: songs of ONE genre, paged (getSongsByGenre).
+    func songsByGenre(genre: String, count: Int, offset: Int) async throws -> [SubsonicSong] {
+        let body = try await get("getSongsByGenre", [
+            "genre": genre, "count": String(count), "offset": String(offset),
+        ])
+        return body.songsByGenre?.song ?? []
+    }
+
     func search3(query: String, albumCount: Int = 40, songCount: Int = 40,
                  artistCount: Int = 20) async throws -> SubsonicSearchResult3 {
         let body = try await get("search3", [

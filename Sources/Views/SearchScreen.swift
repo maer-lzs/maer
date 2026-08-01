@@ -627,31 +627,12 @@ struct SearchScreen: View {
     }
 
     /// Apple-Podcasts-style entry tile: glyph + count on top, title below.
+    // M3: the tile itself moved to the shared `CategoryTile` (the music
+    /// genre grid reuses the exact same chip — Regel 2, one idiom).
     private func deckEntryTile(_ entry: DeckEntry) -> some View {
-        Button(action: entry.action) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    Image(systemName: entry.systemImage)
-                        .font(.title2)
-                        .foregroundStyle(AppTheme.accent)
-                    Spacer()
-                    Text("\(entry.count)")
-                        .font(.subheadline).monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-                Text(entry.title)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(14)
-            .frame(minHeight: 92, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.06)))
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("deck-tier-\(entry.id)")
+        CategoryTile(title: entry.title, systemImage: entry.systemImage,
+                     count: entry.count, accessibilityId: "deck-tier-\(entry.id)",
+                     action: entry.action)
     }
 
     /// Drilldown sub-level row (still a row — the drilled lists of individual

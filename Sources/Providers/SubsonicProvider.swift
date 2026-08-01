@@ -321,6 +321,28 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             try await client.albumList2(type: type, size: size, offset: offset)))
     }
 
+    // MARK: Genres (M3)
+
+    func genres() async throws -> [MusicGenre] {
+        guard let client else { return [] }
+        return try await client.genres().compactMap { genre in
+            guard let name = genre.value else { return nil }
+            return MusicGenre(name: name, songCount: genre.songCount, albumCount: genre.albumCount)
+        }
+    }
+
+    func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {
+        guard let client else { return [] }
+        return remember(await Self.mapAlbums(
+            try await client.albumsByGenre(genre: genre, size: size, offset: offset)))
+    }
+
+    func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong] {
+        guard let client else { return [] }
+        let songs = try await client.songsByGenre(genre: genre, count: size, offset: offset)
+        return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+    }
+
     func allArtists() async throws -> [MusicArtist] {
         guard let client else { return [] }
         return try await client.artists().map(Self.domainArtist)

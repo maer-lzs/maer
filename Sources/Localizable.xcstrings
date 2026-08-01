@@ -1035,6 +1035,26 @@
         }
       }
     },
+    "Could not load genres. Check your connection and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genres konnten nicht geladen werden. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
+    "No genres" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Genres"
+          }
+        }
+      }
+    },
     "Change Country" : {
       "localizations" : {
         "de" : {

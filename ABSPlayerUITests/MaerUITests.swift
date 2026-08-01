@@ -202,6 +202,25 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(music.waitForExistence(timeout: 15))
         music.tap()
 
+        // M3: the sixth browse entry pushes the genre page; the seed provider
+        // has no server → the honest empty state (not a spinner forever).
+        let genresRow = app.buttons["music-route-genres"].firstMatch
+        XCTAssertTrue(genresRow.waitForExistence(timeout: 15), "Genres entry must exist (M3)")
+        genresRow.tap()
+        // The page itself must open (nav title, "Genres" == de + en) and the
+        // empty state must render — ContentUnavailableView's identifier lands
+        // on varying element types, so query ANY descendant.
+        XCTAssertTrue(app.navigationBars["Genres"].waitForExistence(timeout: 10),
+                      "genre page must open (M3)")
+        // Seed has a configured client without a reachable server — the page
+        // must land in ONE of its two honest terminal states (error state
+        // with Retry, or "No genres"), never a spinner forever (rule 3).
+        let genreTerminal = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier IN %@", ["genres-empty", "genres-error"])).firstMatch
+        XCTAssertTrue(genreTerminal.waitForExistence(timeout: 15),
+                      "genre page must reach an honest terminal state without a server")
+        app.navigationBars.buttons.firstMatch.tap()   // back to the tab root
+
         // Album detail → switch to the audiobook library via the tab.
         // Neuordnung 30.07: albums live on their own page behind the list entry.
         let albumsRow = app.buttons["music-route-albums"].firstMatch

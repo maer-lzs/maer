@@ -204,3 +204,149 @@ struct MusicDownloadedPage: View {
         .navigationTitle(Text("Downloaded"))
     }
 }
+
+/// M3: the genre page behind the "Genres" browse entry — the SEARCH deck's
+/// chip grid (shared `CategoryTile`, Regel 2: one chip idiom), fed from the
+/// server's genre list (Subsonic getGenres with counters; Jellyfin without —
+/// then the count numeral hides and the order is alphabetical, both via the
+/// pure `MusicGenrePresentation`). Curated SF glyphs, `music.note` fallback.
+struct MusicGenresPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
+    @State private var genres: [MusicGenre] = []
+    @State private var isLoading = true
+    @State private var loadFailed = false
+
+    private static let columns = [GridItem(.flexible(), spacing: 12),
+                                  GridItem(.flexible(), spacing: 12)]
+
+    var body: some View {
+        Group {
+            if genres.isEmpty && isLoading {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else if genres.isEmpty {
+                // Rule 3: a failed load is distinguishable from "none".
+                if loadFailed {
+                    ContentUnavailableView {
+                        Label("Music unavailable", systemImage: "music.note")
+                    } description: {
+                        Text("Could not load genres. Check your connection and try again.")
+                    } actions: {
+                        Button("Retry") { Task { await load() } }
+                    }
+                    .accessibilityIdentifier("genres-error")
+                } else {
+                    ContentUnavailableView("No genres", systemImage: "music.note")
+                        .accessibilityIdentifier("genres-empty")
+                }
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: Self.columns, spacing: 12) {
+                        ForEach(genres) { genre in
+                            CategoryTile(title: genre.name,
+                                         systemImage: MusicGenreGlyphs.symbol(for: genre.name),
+                                         count: genre.albumCount ?? genre.songCount,
+                                         accessibilityId: "genre-tile-\(genre.name)") {
+                                pushRoute(.genre(genre))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, TabContentLayout.topInset)
+                    .bottomBarClearance()
+                }
+            }
+        }
+        .navigationTitle(Text("Genres"))
+        .task { if genres.isEmpty { await load() } }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            genres = MusicGenrePresentation.presented(try await AppSession.shared.musicProvider.genres())
+            loadFailed = false
+        } catch {
+            loadFailed = true
+        }
+    }
+}
+
+/// M3: one genre — its albums (grid) with the genre's songs below (paged
+/// list). Existing building blocks only: `CoverGrid`+`AlbumCell` and
+/// `MusicSongRow`.
+struct MusicGenreDetailPage: View {
+    let genre: MusicGenre
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var albums: [LibraryItem] = []
+    @State private var songs: [MusicTopSong] = []
+    @State private var isLoading = true
+    @State private var songsLoading = false
+    @State private var songsEnd = false
+
+    private let songPageSize = 50
+    private let albumColumns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    var body: some View {
+        Group {
+            if albums.isEmpty && songs.isEmpty && isLoading {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else if albums.isEmpty && songs.isEmpty {
+                ContentUnavailableView("No music", systemImage: "music.note")
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                        if !albums.isEmpty {
+                            Text("Albums").font(.title3).bold().padding(.horizontal)
+                            CoverGrid(columns: albumColumns) {
+                                ForEach(albums) { album in
+                                    AlbumCell(item: album, playerCoordinator: playerCoordinator)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        if !songs.isEmpty {
+                            Text("Songs").font(.title3).bold().padding(.horizontal)
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                ForEach(songs) { entry in
+                                    MusicSongRow(entry: entry, playerCoordinator: playerCoordinator)
+                                        .onAppear {
+                                            if entry.id == songs.last?.id { Task { await loadMoreSongs() } }
+                                        }
+                                }
+                                if songsLoading && !songs.isEmpty {
+                                    ProgressView().frame(maxWidth: .infinity).padding()
+                                }
+                            }
+                        }
+                    }
+                    .padding(.top, TabContentLayout.topInset)
+                    .bottomBarClearance()
+                }
+            }
+        }
+        .navigationTitle(Text(genre.name))
+        .task {
+            guard albums.isEmpty, songs.isEmpty else { return }
+            isLoading = true
+            defer { isLoading = false }
+            // Best-effort pair — a failed half keeps the other (stale beats
+            // empty); both empty shows the empty state.
+            albums = (try? await AppSession.shared.musicProvider
+                .genreAlbums(genre: genre.name, offset: 0, size: 100)) ?? []
+            await loadMoreSongs()
+        }
+    }
+
+    private func loadMoreSongs() async {
+        guard !songsLoading, !songsEnd else { return }
+        songsLoading = true
+        defer { songsLoading = false }
+        let next = (try? await AppSession.shared.musicProvider
+            .genreSongs(genre: genre.name, offset: songs.count, size: songPageSize)) ?? []
+        if next.isEmpty { songsEnd = true; return }
+        var seen = Set(songs.map(\.id))
+        songs += next.filter { seen.insert($0.id).inserted }
+        if next.count < songPageSize { songsEnd = true }
+    }
+}

@@ -151,6 +151,9 @@ struct MusicView: View {
             Divider().padding(.leading, 52)
             browseRow("Playlists", systemImage: "music.note.list", route: .playlists(sortedPlaylists))
             Divider().padding(.leading, 52)
+            // M3: sixth entry — the genre chip grid.
+            browseRow("Genres", systemImage: "guitars", route: .genres)
+            Divider().padding(.leading, 52)
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))

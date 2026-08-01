@@ -112,3 +112,87 @@ nonisolated enum MusicTrackAssembly {
         return (tracks, chapters, offset)
     }
 }
+
+/// M3: one music genre as the providers report it. Counts are optional —
+/// Subsonic ships song+album counts, Jellyfin ships none (the page then
+/// sorts alphabetically and hides the numerals; honestly reported).
+nonisolated struct MusicGenre: Equatable, Identifiable, Sendable {
+    let name: String
+    var songCount: Int? = nil
+    var albumCount: Int? = nil
+    var id: String { name }
+}
+
+/// M3 pure presentation rules (tested): empty names out; genres KNOWN to be
+/// empty (both counts present and zero) out — unknown counts (Jellyfin) stay;
+/// sort by album count desc, then song count desc, then name (so a count-less
+/// list is simply alphabetical).
+nonisolated enum MusicGenrePresentation {
+    static func presented(_ raw: [MusicGenre]) -> [MusicGenre] {
+        raw.filter { genre in
+            let name = genre.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return false }
+            if let songs = genre.songCount, let albums = genre.albumCount,
+               songs == 0, albums == 0 { return false }
+            return true
+        }
+        .sorted { a, b in
+            let aKey = (a.albumCount ?? 0, a.songCount ?? 0)
+            let bKey = (b.albumCount ?? 0, b.songCount ?? 0)
+            if aKey == bKey {
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+            return aKey > bKey
+        }
+    }
+}
+
+/// M3 glyphs (7e17a31): curated SF-symbol mapping for the common genres,
+/// deterministic `music.note` fallback for the unknown — NEVER guess-and-be-
+/// wrong. Matching is normalized (lowercase, diacritics stripped) exact
+/// first, then whole-word (so "Progressive Rock" finds rock); the FIRST
+/// matching word in the name wins (deterministic).
+nonisolated enum MusicGenreGlyphs {
+    private static let map: [String: String] = [
+        "rock": "guitars", "punk": "guitars", "grunge": "guitars",
+        "metal": "bolt", "hardrock": "bolt",
+        "pop": "music.mic", "schlager": "music.mic",
+        "jazz": "music.quarternote.3", "blues": "music.quarternote.3", "swing": "music.quarternote.3",
+        "classical": "pianokeys", "klassik": "pianokeys", "piano": "pianokeys", "orchestral": "pianokeys",
+        "electronic": "waveform", "electro": "waveform", "edm": "waveform",
+        "techno": "waveform", "house": "waveform", "trance": "waveform", "dance": "waveform",
+        "ambient": "moon.stars", "chillout": "moon.stars", "chill": "moon.stars", "lounge": "moon.stars",
+        "hiphop": "headphones", "rap": "headphones",
+        "soul": "sparkles", "funk": "sparkles", "rnb": "sparkles", "disco": "sparkles",
+        "folk": "leaf", "country": "leaf", "acoustic": "leaf",
+        "reggae": "sun.max",
+        "soundtrack": "film", "score": "film", "filmmusik": "film",
+        "audiobook": "book", "hoerbuch": "book", "hoerspiel": "book",
+        // Diacritic folding yields "horbuch"/"horspiel" (ö→o, not ö→oe) —
+        // both transliterations map.
+        "horbuch": "book", "horspiel": "book",
+        "podcast": "mic", "spoken": "mic", "speech": "mic",
+        "world": "globe", "latin": "globe",
+        "indie": "star", "alternative": "star",
+        "christmas": "snowflake", "weihnachten": "snowflake", "holiday": "snowflake",
+        "kids": "teddybear", "children": "teddybear", "kinder": "teddybear",
+    ]
+
+    /// Normalized key: lowercase, diacritics stripped, separators removed
+    /// ("Hip-Hop" → "hiphop", "R&B" → "rb" — mapped via "rnb" word rule below).
+    static func normalized(_ name: String) -> String {
+        name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber }
+    }
+
+    static func symbol(for name: String) -> String {
+        if let exact = map[normalized(name)] { return exact }
+        // Whole words of the raw name, in order — first mapped word wins.
+        let words = name.split { !$0.isLetter && !$0.isNumber }
+        for word in words {
+            if let hit = map[normalized(String(word))] { return hit }
+        }
+        return "music.note"
+    }
+}

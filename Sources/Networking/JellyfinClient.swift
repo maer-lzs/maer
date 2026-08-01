@@ -244,6 +244,39 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
+    /// M3: the server's music genres. Jellyfin ships NO counts on this list
+    /// (honest limit — the page sorts alphabetically for this provider).
+    func musicGenres() async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("MusicGenres", [
+            "userId": uid, "SortBy": "SortName", "SortOrder": "Ascending",
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
+    /// M3: albums of ONE genre (Genres filter on the items query).
+    func albumsByGenre(genre: String, startIndex: Int = 0, limit: Int = 100) async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Items", [
+            "IncludeItemTypes": "MusicAlbum", "Recursive": "true",
+            "Genres": genre, "SortBy": "SortName", "SortOrder": "Ascending",
+            "StartIndex": String(startIndex), "Limit": String(limit),
+            "Fields": "DateCreated,Genres",
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
+    /// M3: songs of ONE genre, paged.
+    func songsByGenre(genre: String, startIndex: Int, limit: Int) async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Items", [
+            "IncludeItemTypes": "Audio", "Recursive": "true",
+            "Genres": genre, "SortBy": "SortName", "SortOrder": "Ascending",
+            "StartIndex": String(startIndex), "Limit": String(limit),
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
     func randomSongs(limit: Int) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [

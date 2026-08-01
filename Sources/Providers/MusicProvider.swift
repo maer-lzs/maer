@@ -55,6 +55,15 @@ protocol MusicProvider: AudioProvider {
     /// Alphabetical page of the whole song library (music tab "Titles" list).
     func songPage(offset: Int, size: Int) async throws -> [MusicTopSong]
 
+    // MARK: Genres (M3)
+    /// The server's genres (counts optional — a provider without counters
+    /// ships nil and the page sorts alphabetically).
+    func genres() async throws -> [MusicGenre]
+    /// Albums of ONE genre (paged).
+    func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem]
+    /// Songs of ONE genre (paged).
+    func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong]
+
     /// M6: per-track play counts of the LAST detail fetch for this item —
     /// basis for the client-side album/playlist "Top Songs" section (empty
     /// when the server ships no counts; the section then hides silently).

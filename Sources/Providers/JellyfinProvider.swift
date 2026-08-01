@@ -270,6 +270,32 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return result
     }
 
+    // MARK: Genres (M3)
+
+    /// Jellyfin ships NO counts on the genre list — counts stay nil and the
+    /// shared presentation sorts alphabetically (honest limit, reported).
+    func genres() async throws -> [MusicGenre] {
+        guard let client else { return [] }
+        return try await client.musicGenres().compactMap { item in
+            guard let name = item.name, !name.isEmpty else { return nil }
+            return MusicGenre(name: name)
+        }
+    }
+
+    func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {
+        guard let client else { return [] }
+        let albums = try await client.albumsByGenre(genre: genre, startIndex: offset, limit: size)
+        return remember(albums.map(Self.libraryItem(fromAlbum:)))
+    }
+
+    func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong] {
+        guard let client else { return [] }
+        let songs = try await client.songsByGenre(genre: genre, startIndex: offset, limit: size)
+        let result = songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
+        for entry in result { itemsById[entry.item.id] = entry.item }
+        return result
+    }
+
     // MARK: - Playlists
 
     func allPlaylists() async throws -> [MusicPlaylist] {
