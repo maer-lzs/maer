@@ -247,6 +247,8 @@ struct MusicArtistView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    // M2: top songs are queueable — the ONE shared music menu.
+                    .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
                 }
             }
         }

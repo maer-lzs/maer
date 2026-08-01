@@ -86,6 +86,24 @@ struct MusicAlbumView: View {
                             Button {
                                 Task { await play(fromTrackAt: track.start) }
                             } label: { Label("Play from Here", systemImage: "play.fill") }
+                            // M2: single songs join the global Up-Next queue —
+                            // same actions as book/podcast/album menus.
+                            Button {
+                                Task {
+                                    let music = AppSession.shared.musicProvider
+                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
+                                        PlayQueue.shared.playNext(music.itemId(songId: songId))
+                                    }
+                                }
+                            } label: { Label("Play Next", systemImage: "text.insert") }
+                            Button {
+                                Task {
+                                    let music = AppSession.shared.musicProvider
+                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
+                                        PlayQueue.shared.playLast(music.itemId(songId: songId))
+                                    }
+                                }
+                            } label: { Label("Play Last", systemImage: "text.append") }
                             Button {
                                 Task {
                                     let music = AppSession.shared.musicProvider

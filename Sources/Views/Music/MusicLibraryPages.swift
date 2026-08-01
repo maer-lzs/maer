@@ -158,6 +158,9 @@ struct MusicSongRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // M2: songs are queueable from the Titles page — the ONE shared
+        // music item menu (play/queue/add-to-playlist).
+        .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
     }
 }
 
