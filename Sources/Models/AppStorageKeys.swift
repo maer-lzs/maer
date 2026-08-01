@@ -296,6 +296,15 @@ nonisolated enum AppStorageKeys {
 
     /// Tab masters (whole media type on/off). Default ON so existing installs
     /// keep every tab; `object ?? true` because `bool(forKey:)` defaults false.
+    /// Letzter-Tab (01.08): the app starts on the last selected tab again
+    /// (user expectation since the podcast-tab diagnosis; Home stays the
+    /// default for fresh installs).
+    static let lastSelectedTab = "lastSelectedTab"
+    static var lastSelectedTabValue: String? {
+        get { UserDefaults.standard.string(forKey: lastSelectedTab) }
+        set { UserDefaults.standard.set(newValue, forKey: lastSelectedTab) }
+    }
+
     static let audiobooksTabEnabled = "audiobooksTabEnabled"
     static let podcastsTabEnabled = "podcastsTabEnabled"
     static let musicTabEnabled = "musicTabEnabled"

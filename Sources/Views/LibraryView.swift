@@ -125,6 +125,19 @@ struct LibraryView: View {
         self.onLogout = onLogout
         _viewModel = ObservedObject(wrappedValue: AppSession.shared.libraryViewModel)
         _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
+        // Letzter-Tab (01.08): start on the last selected tab — but only when
+        // its MASTER toggle is still on (availability is irrelevant here, the
+        // Y37 policy: a transiently unreachable tab shows its own state).
+        // Seeded journeys keep the deterministic Home start (every journey
+        // would otherwise inherit the previous one's tab) unless they opt in.
+        let args = ProcessInfo.processInfo.arguments
+        let restoreBlocked = args.contains("-uitest") && !args.contains("-uitest-keeptab")
+        if !restoreBlocked, let raw = AppStorageKeys.lastSelectedTabValue,
+           let restored = MediaType(rawValue: raw), restored.userMasterEnabled {
+            _selectedMediaType = State(initialValue: restored)
+            _mountedTabs = State(initialValue: [.home, restored])
+            _barTitle = State(initialValue: LibraryView.title(for: restored))
+        }
     }
 
     var body: some View {
@@ -196,6 +209,8 @@ struct LibraryView: View {
                 }
                 .onChange(of: selectedMediaType) { _, newValue in
                     mountedTabs.insert(newValue)
+                    // Letzter-Tab: remember the choice across launches.
+                    AppStorageKeys.lastSelectedTabValue = newValue.rawValue
                     // df69f6b damping: retarget the title OUTSIDE the flip's
                     // transaction (next main-actor tick), see `barTitle`.
                     // Stage (a): afterwards verify the bar actually shows the

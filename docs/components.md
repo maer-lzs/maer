@@ -57,6 +57,11 @@ every flip made things worse — detect-then-rebuild is the working shape.
 This is a marked INTERIM damping; the root fix is per-tab NavigationStacks
 (compat-sprint item 9), where constant titles remove the bug condition.
 
+**Letzter-Tab (01.08):** `selectedMediaType` persists across launches
+(`lastSelectedTab`; restored only when the tab's MASTER toggle is on). Seeded
+journeys keep the deterministic Home start unless they pass `-uitest-keeptab`
+— otherwise every journey would inherit the previous one's tab.
+
 **Convention — tab selection vs availability (01.08, Y37 hardening):** the
 tab SELECTION is user intent and only a user act moves it — the tab's master
 toggle (pure `TabSelectionPolicy.shouldFallBackToHome`, tested). Transient

@@ -604,6 +604,28 @@ nonisolated final class MaerUITests: XCTestCase {
                       "tab selection must survive transient source loss (Y37 hardening)")
     }
 
+    /// Letzter-Tab (01.08): the app restarts on the last selected tab (master
+    /// toggle permitting) — the "always lands on Home again" complaint.
+    func testAppRestartsOnLastSelectedTab() {
+        var app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-keeptab"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
+        podcasts.tap()
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15))
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-keeptab"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 20),
+                      "the app must restart on the podcast tab (last selection)")
+        // Cleanup for order-independence: back to Home for later journeys.
+        app.buttons["tab-home"].firstMatch.tap()
+    }
+
     /// Such-Freeze diagnosis (01.08): measured FIRST search open + first query
     /// with the FrameProbe running — the long-frame counters around the open/
     /// type moments are the before/after evidence. Gated like the hitch probes.
