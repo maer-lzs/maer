@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 struct PlayerView: View {
     @ObservedObject var viewModel: PlayerViewModel
@@ -348,7 +349,15 @@ struct PlayerView: View {
     /// (which the lock screen deliberately hides); otherwise "chapter · author".
     // MARK: - 9aad53c source navigation
 
-    @Environment(\.openPlayerSource) private var openPlayerSource
+    /// Gate 2: taps go through the ONE central router (environment wiring
+    /// was fragile across presentation contexts — silent no-op on device).
+    /// Log-first: the tap log fires BEFORE routing, so a dead device tap is
+    /// distinguishable (tap logged + no route = handler lost; nothing logged
+    /// = the tap never reaches the button).
+    private func openPlayerSource(_ target: PlayerSourceTarget) {
+        Logger.player.notice("PLAYERSOURCE tap target=\(String(describing: target), privacy: .public)")
+        PlayerSourceRouter.shared.open(target)
+    }
 
     /// Wraps a line in a Button when a source target exists; ONE context menu
     /// on the tappable line carries the further destinations (music: artist ·
@@ -356,7 +365,9 @@ struct PlayerView: View {
     @ViewBuilder
     private func sourceTappable(target: PlayerSourceTarget?, a11yId: String,
                                 @ViewBuilder content: () -> some View) -> some View {
-        if let target {
+        // G8: only offer the tap affordance when a route can actually be
+        // taken — no target OR no registered router handler renders PLAIN.
+        if let target, PlayerSourceRouter.shared.canRoute {
             Button { openPlayerSource(target) } label: { content() }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(a11yId)

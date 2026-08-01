@@ -652,6 +652,81 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source")
     }
 
+    /// Gate 2 (8913feb), second mount context: the full player opened from
+    /// the mini bar while a DETAIL PAGE is already pushed on the stack. The
+    /// title tap must still route (central router — no environment chain
+    /// that can break per presentation context).
+    func testPlayerNavigatesToSourceFromPushedPage() {
+        let app = launchSeeded(withActivePlayer: true)
+        // Push a book detail first (deep mount context).
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 20))
+        books.tap()
+        let matches = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seed Book One"))
+        XCTAssertTrue(matches.element(boundBy: 0).waitForExistence(timeout: 15))
+        (matches.allElementsBoundByIndex.first { $0.isHittable } ?? matches.firstMatch).tap()
+        XCTAssertTrue(app.staticTexts["Ada Author"].waitForExistence(timeout: 15), "book detail must open")
+        // Open the full player from the mini bar ON the pushed page.
+        let mini = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 10))
+        mini.tap()
+        let title = app.buttons["player-source-title"].firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 15), "title must stay tappable in this mount context")
+        title.tap()
+        XCTAssertTrue(mini.waitForExistence(timeout: 10), "player must MINIMIZE, playback keeps running")
+        XCTAssertTrue(app.navigationBars.buttons.firstMatch.waitForExistence(timeout: 10),
+                      "the source page must be pushed onto the stack")
+        snap(app, "player-to-source-pushed")
+    }
+
+    /// Release-Gate 1 (30b2a32): the search must work when opened from a
+    /// PUSHED page — the deck/search state lived on the library root and the
+    /// gap had zero test coverage. One push level per tab.
+    func testSearchOpensFromPushedPages() {
+        let app = launchSeeded()
+        // Book detail (pushed page on the audiobooks tab).
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 20))
+        books.tap()
+        let matches = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seed Book One"))
+        XCTAssertTrue(matches.element(boundBy: 0).waitForExistence(timeout: 15))
+        (matches.allElementsBoundByIndex.first { $0.isHittable } ?? matches.firstMatch).tap()
+        XCTAssertTrue(app.staticTexts["Ada Author"].waitForExistence(timeout: 15), "book detail must open")
+        // Open the search FROM the pushed page.
+        let search = app.buttons["global-search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10), "search button must exist on pushed pages")
+        search.tap()
+        let field = app.textFields["global-search-field"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "search field must appear from a pushed page")
+        field.tap()
+        field.typeText("Seed")
+        // Y20: the scope starts on the tab the user came from (audiobooks) —
+        // assert a BOOK hit, not a cross-media one.
+        XCTAssertTrue(app.staticTexts["Seed Book Two"].firstMatch.waitForExistence(timeout: 10),
+                      "search results must render when opened from a pushed page")
+        snap(app, "search-from-pushed-book")
+        // Y19: the first X only clears the query (browse deck) — the second
+        // X closes the search page.
+        app.buttons["search-close"].firstMatch.tap()
+        app.buttons["search-close"].firstMatch.tap()
+
+        // Podcast show page (pushed page on the podcasts tab).
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 10))
+        podcasts.tap()
+        let show = app.staticTexts["Seed Show"].firstMatch
+        XCTAssertTrue(show.waitForExistence(timeout: 15))
+        show.tap()
+        search.tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("Seed")
+        // Podcast scope: the episode hit is the scope-correct expectation.
+        XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
+                      "search results must render from a pushed podcast page")
+        snap(app, "search-from-pushed-show")
+    }
+
     /// Such-Freeze diagnosis (01.08): measured FIRST search open + first query
     /// with the FrameProbe running — the long-frame counters around the open/
     /// type moments are the before/after evidence. Gated like the hitch probes.

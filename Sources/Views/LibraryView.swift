@@ -561,32 +561,10 @@ struct LibraryView: View {
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
         }
-        // Vollplayer → Quellseiten (9aad53c): the full player minimizes and
-        // pushes the source page through the SAME value routes the search
-        // uses. Set BEFORE the overlay modifier so the player inherits it.
-        .environment(\.openPlayerSource) { target in
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                isShowingFullPlayer = false
-            }
-            if isShowingSearch { closeSearch() }
-            switch target {
-            case .book(let itemId):
-                selectedMediaType = .audiobooks
-                navigationPath.append(itemId)
-            case .podcastShow(let feedURL):
-                selectedMediaType = .podcasts
-                navigationPath.append(PodcastRoute.show(feedURL: feedURL))
-            case .podcastEpisode(let itemId):
-                selectedMediaType = .podcasts
-                navigationPath.append(PodcastRoute.episode(itemId: itemId))
-            case .musicAlbum(let item):
-                selectedMediaType = .music
-                navigationPath.append(MusicRoute.album(item))
-            case .musicArtist(let artist):
-                selectedMediaType = .music
-                navigationPath.append(MusicRoute.artist(artist))
-            }
-        }
+        // Vollplayer → Quellseiten (Gate 2, 8913feb): registered on the ONE
+        // central router — environment wiring was fragile across player
+        // presentation contexts (silent no-op when the env was missing).
+        .onAppear { registerPlayerSourceRouter() }
         // Full player as an overlay OVER the library (instead of push).
         .overlay {
             if isShowingFullPlayer {
@@ -608,6 +586,39 @@ struct LibraryView: View {
                 // No .move transition: slide in/out runs via the offset in the
                 // overlay (interruptible, can no longer get stuck).
                 .transition(.identity)
+            }
+        }
+    }
+
+    /// Gate 2: the ONE navigation handler for full-player → source-page taps.
+    /// The player MINIMIZES (never stops) and the target page is pushed on
+    /// the library stack in the matching tab, through the SAME value routes
+    /// the global search uses. Log-first: paired with the tap/route logs in
+    /// PlayerView/PlayerSourceRouter this shows on-device where a dead tap
+    /// dies (handler fires vs. never called).
+    private func registerPlayerSourceRouter() {
+        PlayerSourceRouter.shared.handler = { target in
+            Logger.library.notice("PLAYERSOURCE handling target in LibraryView")
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                isShowingFullPlayer = false
+            }
+            if isShowingSearch { closeSearch() }
+            switch target {
+            case .book(let itemId):
+                selectedMediaType = .audiobooks
+                navigationPath.append(itemId)
+            case .podcastShow(let feedURL):
+                selectedMediaType = .podcasts
+                navigationPath.append(PodcastRoute.show(feedURL: feedURL))
+            case .podcastEpisode(let itemId):
+                selectedMediaType = .podcasts
+                navigationPath.append(PodcastRoute.episode(itemId: itemId))
+            case .musicAlbum(let item):
+                selectedMediaType = .music
+                navigationPath.append(MusicRoute.album(item))
+            case .musicArtist(let artist):
+                selectedMediaType = .music
+                navigationPath.append(MusicRoute.artist(artist))
             }
         }
     }
@@ -880,6 +891,13 @@ struct LibraryView: View {
                 searchModel.query = ""
                 // Y20: the scope starts where the user is (Home → Library).
                 searchScope = SearchScope.initial(for: selectedMediaType)
+                // Release-Gate 1 (30b2a32): the search page lives on the
+                // library ROOT — opened from a pushed detail page it sat
+                // INVISIBLY underneath it (field in the bottom bar worked,
+                // results never showed). Pop to root first; Y24 already
+                // closes the search on any push, so root-only is the
+                // consistent home of the search.
+                navigationPath = NavigationPath()
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
             },
             glassMorphID: "search", glassMorphNamespace: bottomGlassNS)
