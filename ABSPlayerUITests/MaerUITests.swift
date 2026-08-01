@@ -568,6 +568,35 @@ nonisolated final class MaerUITests: XCTestCase {
                       "after Change region the picker must appear immediately (no dead section)")
     }
 
+    /// Y37 hardening (01.08): a sources-changed bump with TRANSIENT podcast
+    /// unavailability must not throw the user off the podcast tab. The journey
+    /// flips the RSS source OFF and back ON while standing on Podcasts — the
+    /// old availability-based fallback jumped to Home on the first bump; the
+    /// hardened policy keeps the selection (only the tab MASTER toggle moves it).
+    func testPodcastTabSurvivesTransientSourceLoss() {
+        let app = launchSeeded()
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
+        podcasts.tap()
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15))
+
+        let settings = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        let rss = app.switches["settings-source-rss"].firstMatch
+        XCTAssertTrue(rss.waitForExistence(timeout: 10), "RSS source toggle must exist")
+        rss.tap()   // off → sources bump with podcasts transiently unavailable
+        rss.tap()   // back on → second bump, state restored
+        let done = app.buttons["settings-done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 10))
+        done.tap()
+
+        // The podcast tab must still be the active one (the old code showed
+        // Home here — "Seed Book One" — after the first bump).
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 10),
+                      "tab selection must survive transient source loss (Y37 hardening)")
+    }
+
     // MARK: - iPad hitch probes (28.07 diagnosis package — measurement, no assert on values)
 
     /// Measured collapse-scroll probe: repeated fast scroll cycles across the

@@ -257,6 +257,7 @@ struct SettingsView: View {
                     AppSession.shared.reconfigureSources()
                 }
             sourceToggle("RSS feeds", isOn: $rssOn)
+                .accessibilityIdentifier("settings-source-rss")
             NavigationLink { PodcastSourceView() } label: {
                 Label("Podcast sources", systemImage: "mic")
             }

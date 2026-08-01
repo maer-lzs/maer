@@ -207,12 +207,22 @@ struct LibraryView: View {
                         NavigationBarNudge.nudgeIfTitleMissing(expectedTitle: title)
                     }
                 }
-                // Y37: the ACTIVE tab's source can be switched off in the
-                // settings — fall back to Home instead of standing on a tab
-                // the bar no longer offers.
+                // Y37 (hardened 01.08): fall back to Home ONLY on a real user
+                // deactivation (master toggle) — transient availability
+                // (server unreachable, probe pending, async subscription
+                // load) never moves the selection; the tab shows its own
+                // offline/empty state instead. The old `availableMediaTypes`
+                // check threw users off the podcast tab on every start once
+                // servers became VPN-only reachable.
                 .onChange(of: session.sourcesVersion) { _, _ in
-                    Logger.library.notice("sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public)")
-                    if !availableMediaTypes.contains(selectedMediaType) {
+                    // Diagnosis (log-first, device-readable): full source
+                    // state at every bump, so a thrown selection is traceable.
+                    let subs = PodcastSubscriptions.shared
+                    Logger.library.notice("Y37 sources changed → tabs \(availableMediaTypes.map(\.rawValue).joined(separator: ","), privacy: .public) selected=\(selectedMediaType.rawValue, privacy: .public) masters(a/p/m/r)=\(AppStorageKeys.audiobooksTabEnabledValue)/\(AppStorageKeys.podcastsTabEnabledValue)/\(AppStorageKeys.musicTabEnabledValue)/\(AppStorageKeys.radioTabEnabledValue) absPod=\(AppStorageKeys.absPodcastsActive)/\(ABSPodcastProvider.shared.hasPodcasts) rss=\(AppStorageKeys.rssActive)/\(subs.hasSubscriptions)")
+                    if TabSelectionPolicy.shouldFallBackToHome(
+                        selected: selectedMediaType,
+                        masterEnabled: selectedMediaType.userMasterEnabled) {
+                        Logger.library.notice("Y37 fallback → home (user deactivated \(selectedMediaType.rawValue, privacy: .public))")
                         navigationPath = NavigationPath()
                         selectedMediaType = .home
                     }

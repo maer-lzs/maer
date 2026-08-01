@@ -52,6 +52,17 @@ every flip made things worse — detect-then-rebuild is the working shape.
 This is a marked INTERIM damping; the root fix is per-tab NavigationStacks
 (compat-sprint item 9), where constant titles remove the bug condition.
 
+**Convention — tab selection vs availability (01.08, Y37 hardening):** the
+tab SELECTION is user intent and only a user act moves it — the tab's master
+toggle (pure `TabSelectionPolicy.shouldFallBackToHome`, tested). Transient
+availability (server unreachable without VPN, ABS podcast probe pending,
+`PodcastSubscriptions`' ASYNC initial load) never changes the selection; an
+unavailable-but-selected tab shows its own offline/empty state. Root cause of
+"podcast tab keeps getting deselected": every `sourcesVersion` bump inside the
+start window (subs still decoding + probe unanswered) threw the selection to
+Home via the old availability check. The Y37 bump handler logs the full
+source state (`Y37 sources changed …`) — device-readable diagnosis stays in.
+
 **Convention — cell heights in lazy containers (26.07, second round of the
 class):** cells in `LazyVGrid`/`LazyVStack`/horizontal card rows have a height
 INDEPENDENT of their data. Every text line uses `lineLimit(n, reservesSpace:
