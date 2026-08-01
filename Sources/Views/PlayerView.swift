@@ -377,10 +377,17 @@ struct PlayerView: View {
         }
     }
 
-    /// The primary tap target of the TITLE line: the book detail (audiobooks).
+    /// The primary tap target of the TITLE line: the book detail
+    /// (audiobooks) — or, V10, the STATION detail for a live radio stream
+    /// (the title IS the station there).
     private var titleTarget: PlayerSourceTarget? {
-        guard let id = viewModel.item?.id, !viewModel.isLiveStream,
-              PlayerSourceTargets.isBook(id) else { return nil }
+        guard let id = viewModel.item?.id else { return nil }
+        if viewModel.isLiveStream {
+            guard PlayerSourceTargets.isRadio(id),
+                  let station = RadioProvider.shared.station(forId: id) else { return nil }
+            return .radioStation(station)
+        }
+        guard PlayerSourceTargets.isBook(id) else { return nil }
         return .book(itemId: id)
     }
 

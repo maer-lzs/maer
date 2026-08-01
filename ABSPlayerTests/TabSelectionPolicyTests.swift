@@ -43,6 +43,10 @@ struct PlayerSourceTargetsTests {
         #expect(PlayerSourceTargets.isMusic("jf:album:1"))
         #expect(!PlayerSourceTargets.isMusic("radio:station-1"))
         #expect(!PlayerSourceTargets.isBook("radio:station-1"))
+        // V10: radio ids target the station detail (catalog AND manual).
+        #expect(PlayerSourceTargets.isRadio("radio:rb:uuid-1"))
+        #expect(PlayerSourceTargets.isRadio("radio:manual:uuid-2"))
+        #expect(!PlayerSourceTargets.isRadio("sub:album:1"))
     }
 }
 #endif

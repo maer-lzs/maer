@@ -86,6 +86,22 @@ struct DriveModeTests {
 /// unplayed tombstone survives, only a NEWER play flips it back.
 @MainActor
 struct PodcastListenLogTests {
+    @Test("V6 history: tombstones hidden, newest play first")
+    func historyDerivation() {
+        func entry(_ guid: String, played: Double, unplayed: Double? = nil) -> PodcastListenLog.Entry {
+            PodcastListenLog.Entry(guid: guid, episodeTitle: guid, showTitle: "S",
+                                   feedURL: "https://f", duration: 100,
+                                   playedAt: played, unplayedAt: unplayed)
+        }
+        let out = PodcastListenLog.historyList([
+            "a": entry("a", played: 1_000),
+            "b": entry("b", played: 3_000),
+            "c": entry("c", played: 2_000, unplayed: 2_500),   // tombstoned
+            "d": entry("d", played: 4_000, unplayed: 3_500),   // newer play wins
+        ])
+        #expect(out.map(\.guid) == ["d", "b", "a"])
+    }
+
     private func write(_ guid: String, time: Double, ts: Double) {
         UserDefaults.standard.set([time, ts], forKey: AppStorageKeys.localPosition(guid))
     }

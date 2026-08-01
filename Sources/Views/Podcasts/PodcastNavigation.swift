@@ -14,6 +14,8 @@ enum PodcastRoute: Hashable {
     case episode(itemId: String)
     /// Y2b: the temporary show preview for a not-yet-subscribed show.
     case showPreview(feedURL: String)
+    /// V6: the chronological listen history (PodcastListenLog).
+    case history
 }
 
 extension View {
@@ -37,6 +39,8 @@ extension View {
                 }
             case .showPreview(let feedURL):
                 PodcastShowPreviewView(feedURL: feedURL)
+            case .history:
+                PodcastHistoryView(playerCoordinator: playerCoordinator)
             }
         }
     }

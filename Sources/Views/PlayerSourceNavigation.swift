@@ -16,6 +16,8 @@ nonisolated enum PlayerSourceTarget {
     case podcastEpisode(itemId: String)
     case musicAlbum(LibraryItem)
     case musicArtist(MusicArtist)
+    /// V10: the station detail page — radio has a source target now.
+    case radioStation(RadioStation)
 }
 
 /// Gate 2 (8913feb): the environment-based wiring was fragile — a mount
@@ -41,8 +43,8 @@ final class PlayerSourceRouter {
 }
 
 /// Pure target derivation from the playing item's namespaced id (tested):
-/// which tap targets the full player offers. Radio is deliberately excluded
-/// (no detail destination yet — V10 will bring one).
+/// which tap targets the full player offers. V10: radio targets the station
+/// detail page (no longer excluded).
 nonisolated enum PlayerSourceTargets {
     /// The PRIMARY tap target of the title/subtitle line per media kind:
     /// audiobook → book detail (title tap) · podcast → show page (subtitle
@@ -56,5 +58,9 @@ nonisolated enum PlayerSourceTargets {
     }
     static func isMusic(_ id: String) -> Bool {
         id.hasPrefix("sub:") || id.hasPrefix("jf:")
+    }
+    /// V10: radio ids (catalog AND manual) — the title taps to the detail.
+    static func isRadio(_ id: String) -> Bool {
+        id.hasPrefix("radio:")
     }
 }

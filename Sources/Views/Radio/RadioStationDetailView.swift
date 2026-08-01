@@ -17,6 +17,9 @@ struct RadioStationDetailView: View {
     /// The currently selected variant stream (persisted); defaults to the best.
     @State private var selectedURL: String = ""
     @State private var isFavorite = false
+    /// V10: similar stations (byTag of the first tag, else the station's
+    /// country) — net-gated, empty hides the row.
+    @State private var similar: [RadioStation] = []
 
     private var variants: [RadioStation] { station.variantList }
 
@@ -69,6 +72,15 @@ struct RadioStationDetailView: View {
                     }
                     .font(.subheadline)
                 }
+
+                factsSection
+
+                // V10: similar stations — the SAME shared card row as
+                // everywhere else (Regel 2); empty/offline hides it.
+                if !similar.isEmpty {
+                    RadioCardRow(title: String(localized: "Similar Stations"), stations: similar,
+                                 playerCoordinator: playerCoordinator)
+                }
             }
             .padding(.vertical)
             .bottomBarClearance()
@@ -79,6 +91,61 @@ struct RadioStationDetailView: View {
             selectedURL = RadioStore.selectedVariantURL(for: station) ?? station.streamURL
             isFavorite = RadioStore.isFavorite(station.id)
         }
+        .task {
+            guard networkMonitor.isConnected, similar.isEmpty, !station.isManual else { return }
+            let pool: [RadioStation]
+            if let tag = station.tags.first, !tag.isEmpty {
+                pool = (try? await RadioBrowserClient.byTag(tag: tag, limit: 20)) ?? []
+            } else if let cc = station.countryCode, !cc.isEmpty {
+                pool = (try? await RadioBrowserClient.byRegion(countryCode: cc, limit: 20)) ?? []
+            } else {
+                pool = []
+            }
+            let cleaned = Array(pool.filter { $0.id != station.id }.prefix(10))
+            RadioProvider.shared.remember(cleaned)
+            similar = cleaned
+        }
+    }
+
+    /// V10: the station's facts — bitrate/codec of the BEST variant, the
+    /// localized country, all tags. Rows appear only with real data.
+    @ViewBuilder
+    private var factsSection: some View {
+        let codec = station.codec ?? variants.first?.codec
+        let bitrate = station.bitrate ?? variants.first?.bitrate
+        let country = station.countryCode.flatMap {
+            Locale.current.localizedString(forRegionCode: $0)
+        }
+        let tagLine = station.tags.filter { !$0.isEmpty }.joined(separator: ", ")
+        if codec != nil || bitrate != nil || country != nil || !tagLine.isEmpty {
+            VStack(spacing: 0) {
+                if let codec {
+                    factRow(String(localized: "Codec"), codec.uppercased())
+                }
+                if let bitrate, bitrate > 0 {
+                    factRow(String(localized: "Bitrate"), "\(bitrate) kbps")
+                }
+                if let country {
+                    factRow(String(localized: "Country"), country)
+                }
+                if !tagLine.isEmpty {
+                    factRow(String(localized: "Tags"), tagLine)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.06)))
+            .padding(.horizontal)
+        }
+    }
+
+    private func factRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .top) {
+            Text(label).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).multilineTextAlignment(.trailing)
+        }
+        .font(.subheadline)
+        .padding(.horizontal).padding(.vertical, 10)
     }
 
     /// Codec/bitrate chooser — the default (best) is marked, the choice persists.

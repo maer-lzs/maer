@@ -631,6 +631,9 @@ struct LibraryView: View {
             case .musicArtist(let artist):
                 selectedMediaType = .music
                 navigationPath.append(MusicRoute.artist(artist))
+            case .radioStation(let station):
+                selectedMediaType = .radio
+                navigationPath.append(RadioRoute.station(station))
             }
         }
     }

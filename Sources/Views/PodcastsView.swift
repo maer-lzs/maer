@@ -96,6 +96,7 @@ struct PodcastsView: View {
                     premiumSection
                     downloadedShelf
                     recentlyUpdatedSection
+                    historyRow
                 }
                 .padding(.top, TabContentLayout.topInset)
                 .bottomBarClearance()
@@ -325,6 +326,29 @@ struct PodcastsView: View {
     }
 
     // MARK: - Downloaded (3 rows, horizontally scrollable)
+
+    @ViewBuilder
+    /// V6: entry to the listen history — it lives WHERE podcasts live (a
+    /// library fact, not a setting; proposal per report). Last row of the tab.
+    private var historyRow: some View {
+        NavigationLink(value: PodcastRoute.history) {
+            HStack {
+                Label("Listening History", systemImage: "checkmark.circle")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.primary.opacity(0.06)))
+            .padding(.horizontal)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("podcast-history-row")
+    }
 
     @ViewBuilder
     private var downloadedShelf: some View {
