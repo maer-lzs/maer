@@ -3,18 +3,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
+import OSLog
 
 /// HTTP client for the gpodder sync API (mygpo protocol) as spoken by oPodSync,
 /// Nextcloud GPodder and gpodder.net. Auth: HTTP Basic (login also sets a
 /// session cookie, sent along by the shared cookie store). Pure transport — the
 /// reconcile logic lives in `GPodderSync`.
 enum GPodderError: Error, LocalizedError {
-    case badURL, network, status(Int)
+    case badURL, network, status(Int), badPayload
     var errorDescription: String? {
         switch self {
         case .badURL: return String(localized: "Invalid server URL.")
         case .network: return String(localized: "Cannot reach the gpodder server.")
         case .status(let c): return String(localized: "The server responded with HTTP \(c).")
+        // Fix 01.08: a 2xx with an unreadable body (captive portal, proxy
+        // login page) must surface as an ERROR — it silently became "0
+        // subscriptions" before and armed the mass-delete guard.
+        case .badPayload: return String(localized: "The server response could not be read.")
         }
     }
 }
@@ -70,7 +75,7 @@ final class GPodderClient {
     /// The registered devices (cheap probe for the sync history).
     func devices() async throws -> [[String: Any]] {
         let data = try await send(try request("api/2/devices/\(enc(config.username)).json", method: "GET"))
-        return (try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]) ?? []
+        return try Self.logged(data, label: "devices") { try Self.parseDevices($0) }
     }
 
     /// Login via Basic auth → session cookie. Throws on wrong credentials.
@@ -79,13 +84,13 @@ final class GPodderClient {
                            allowAuthRetry: false)
     }
 
-    /// Full current subscription list of this device (URLs).
+    /// Full current subscription list of this device (URLs). An unreadable
+    /// 2xx body THROWS (`badPayload`) — "connection went weird" must never
+    /// read as "the user has no subscriptions" (Fix 01.08; the mass-delete
+    /// guard stays as the second line for the REAL empty list).
     func subscriptions() async throws -> [String] {
         let data = try await send(request(subsPath, method: "GET"))
-        // Without `since` the server returns the full list as a string array.
-        if let arr = try? JSONDecoder().decode([String].self, from: data) { return arr }
-        // Some servers always answer in the change format.
-        return (try? JSONDecoder().decode(SubChanges.self, from: data))?.add ?? []
+        return try Self.logged(data, label: "subscriptions") { try Self.parseSubscriptions($0) }
     }
 
     /// Upload subscription changes (add/remove of feed URLs).
@@ -112,6 +117,9 @@ final class GPodderClient {
         let body = try JSONSerialization.data(withJSONObject: actions)
         let data = try await send(request("api/2/episodes/\(enc(config.username)).json",
                                           method: "POST", body: body))
+        // try?-with-reason (audit 01.08): the POST itself SUCCEEDED — throwing
+        // on a broken timestamp body would falsely fail the upload. Marker 0
+        // only widens the next fetch window (idempotent), it deletes nothing.
         return (try? JSONDecoder().decode(TimestampResp.self, from: data))?.timestamp ?? 0
     }
 
@@ -149,7 +157,9 @@ final class GPodderClient {
             // short backoff before giving up — a brief server hiccup should not
             // fail the whole reconcile. A real offline error is not retried.
             if attempt < maxRetries, Self.isTransientURLError(error) {
-                try? await Self.backoff(attempt)
+                // Audit 01.08: propagate cancellation instead of swallowing it
+                // into another retry round (isCancellation convention).
+                try await Self.backoff(attempt)
                 return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
             }
             throw GPodderError.network
@@ -163,7 +173,7 @@ final class GPodderClient {
         }
         // Retry transient server errors (rate limit / 5xx).
         if attempt < maxRetries, http.statusCode == 429 || (500..<600).contains(http.statusCode) {
-            try? await Self.backoff(attempt)
+            try await Self.backoff(attempt)
             return try await send(req, allowAuthRetry: allowAuthRetry, attempt: attempt + 1)
         }
         guard (200..<300).contains(http.statusCode) else { throw GPodderError.status(http.statusCode) }
@@ -187,9 +197,40 @@ final class GPodderClient {
         s.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? s
     }
 
+    // MARK: - Payload parsing (pure, tested — Fix 01.08)
+
+    /// The subscriptions body: a string array (plain form) or the change
+    /// format. ANYTHING else — captive-portal HTML, a proxy login page, an
+    /// empty body, foreign JSON — throws `badPayload` instead of decaying to
+    /// an empty list.
+    nonisolated static func parseSubscriptions(_ data: Data) throws -> [String] {
+        if let arr = try? JSONDecoder().decode([String].self, from: data) { return arr }
+        if let changes = try? JSONDecoder().decode(SubChanges.self, from: data) { return changes.add }
+        throw GPodderError.badPayload
+    }
+
+    /// The devices body: a JSON array of objects; anything else throws.
+    nonisolated static func parseDevices(_ data: Data) throws -> [[String: Any]] {
+        guard let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            throw GPodderError.badPayload
+        }
+        return arr
+    }
+
+    /// Wraps a parse with the diagnosis log (first ~120 bytes of the body) so
+    /// a captive portal is identifiable from the device log.
+    private nonisolated static func logged<T>(_ data: Data, label: String, _ parse: (Data) throws -> T) throws -> T {
+        do { return try parse(data) }
+        catch {
+            let head = String(decoding: data.prefix(120), as: UTF8.self)
+            Logger.gpodder.error("gpodder \(label, privacy: .public): unreadable 2xx body (\(data.count) bytes): \(head, privacy: .public)")
+            throw error
+        }
+    }
+
     // MARK: - Decodables
 
-    private struct SubChanges: Decodable { let add: [String]; let remove: [String]; let timestamp: Int }
+    private nonisolated struct SubChanges: Decodable { let add: [String]; let remove: [String]; let timestamp: Int }
     private struct EpisodeActionsResp: Decodable { let actions: [GPodderEpisodeAction]; let timestamp: Int }
     private struct TimestampResp: Decodable { let timestamp: Int }
 }

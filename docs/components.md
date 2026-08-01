@@ -11,9 +11,14 @@ Present-tense, current state only — history lives in git.
 2. Coverage claims in reports ("all media tabs", "every download surface") cite a
    row here — this table is the source, not prose.
 
-**Convention — swallowed errors (25.07, third find of the class):** a `catch`
-that drops an error, or a `try?` on a throwing call, is only allowed when the
-same block carries a comment saying WHY dropping is correct there. And:
+**Convention — swallowed errors (25.07, third find of the class; sharpened
+01.08):** a `catch` that drops an error, or a `try?` on a throwing call, is
+only allowed when the same block carries a comment saying WHY dropping is
+correct there. Sharpened by the gpodder incident: `try? decode(…) ?? empty`
+on a RESPONSE BODY is the same class — an unreadable 2xx (captive portal,
+proxy page) must THROW (`GPodderError.badPayload` pattern, pure parser +
+first-120-bytes log), never decay to "no data" when empty is a meaningful
+value (B30 sharpening candidate noted for the tooling agent). And:
 **cancellation is never translated into a domain error** — `CancellationError`
 / `URLError.cancelled` propagate (or are handled as cancellation), they never
 become "network failed" or similar (see `SubsonicClient.isCancellation`).

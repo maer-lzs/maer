@@ -5261,6 +5261,16 @@
         }
       }
     },
+    "The server response could not be read." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Server-Antwort ließ sich nicht lesen."
+          }
+        }
+      }
+    },
     "The subscription guard blocked an implausible mass removal. This warning stays until the next clean sync." : {
       "localizations" : {
         "de" : {
