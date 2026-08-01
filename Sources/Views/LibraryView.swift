@@ -572,6 +572,9 @@ struct LibraryView: View {
             if ProcessInfo.processInfo.arguments.contains("-uitest-drivemode") {
                 DriveModeController.shared.enter()
             }
+            if ProcessInfo.processInfo.arguments.contains("-uitest-fullplayer") {
+                isShowingFullPlayer = true
+            }
             #endif
         }
         // Full player as an overlay OVER the library (instead of push).

@@ -741,30 +741,89 @@ struct PlayerView: View {
             }
     }
 
+    /// a50134c PREVIEW ONLY (DEBUG launch args, default = current layout):
+    /// two candidate sort orders for the owner's picture-based choice — the
+    /// loser and this switch leave with the real implementation commit.
+    /// A: extras row (Up Next · Bookmarks · Lyrics · … More[Drive/Finished])
+    ///    + AirPlay ALONE bottom-center (the Apple position).
+    /// B: ONE row with AirPlay in the MIDDLE, More-menu absorbs the rest.
+    private var rowPreviewVariant: Int {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-uitest-playerrow-a") { return 1 }
+        if ProcessInfo.processInfo.arguments.contains("-uitest-playerrow-b") { return 2 }
+        #endif
+        return 0
+    }
+
     /// D2: like secondaryControls — row while it fits, two-column grid at
     /// accessibility sizes (up to four items with the lyrics button).
+    @ViewBuilder
     private var tertiaryControls: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 36) {
-                tertiaryItems
-            }
-            Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
-                GridRow {
-                    airPlayControl
-                    markFinishedControl
-                }
-                GridRow {
-                    lyricsControl
-                    bookmarksControl
-                }
-                GridRow {
+        switch rowPreviewVariant {
+        #if DEBUG
+        case 1:
+            VStack(spacing: 18) {
+                HStack(spacing: 36) {
                     queueControl
-                    driveModeControl
+                    bookmarksControl
+                    lyricsControl
+                    morePreviewMenu
+                }
+                airPlayControl
+            }
+            .padding(.top, 4)
+        case 2:
+            HStack(spacing: 36) {
+                queueControl
+                bookmarksControl
+                lyricsControl
+                airPlayControl
+                morePreviewMenu
+            }
+            .padding(.top, 4)
+        #endif
+        default:
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 36) {
+                    tertiaryItems
+                }
+                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
+                    GridRow {
+                        airPlayControl
+                        markFinishedControl
+                    }
+                    GridRow {
+                        lyricsControl
+                        bookmarksControl
+                    }
+                    GridRow {
+                        queueControl
+                        driveModeControl
+                    }
                 }
             }
+            .padding(.top, 4)
         }
-        .padding(.top, 4)
     }
+
+    #if DEBUG
+    /// Preview-only More menu (a50134c): absorbs the rare actions so the row
+    /// holds ≤5 peers. Icon-only — no new catalog strings for a preview.
+    private var morePreviewMenu: some View {
+        Menu {
+            Button { DriveModeController.shared.enter() } label: {
+                Label("Drive Mode", systemImage: "car.fill")
+            }
+            Button { Task { await viewModel.toggleFinished() } } label: {
+                Label(viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
+                      systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle").font(.body)
+        }
+        .font(.footnote)
+    }
+    #endif
 
     @ViewBuilder
     private var tertiaryItems: some View {
