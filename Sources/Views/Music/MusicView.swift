@@ -197,7 +197,7 @@ struct MusicView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(sortedPlaylists) {
-                        PlaylistCard(playlist: $0)
+                        PlaylistCard(playlist: $0, playerCoordinator: playerCoordinator)
                     }
                     NewPlaylistCard { showNewPlaylist = true }
                 }
@@ -213,17 +213,29 @@ struct MusicView: View {
 /// detail page (no direct playback).
 private struct PlaylistCard: View {
     let playlist: MusicPlaylist
+    @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var showRename = false
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
+    /// b9898dd Fix 1: the mixed card color comes from the BOTTOM (big) mosaic
+    /// cover — it borders the text block (color continuity). Cached per URL in
+    /// CoverColorLoader; until extraction lands the deterministic tint shows,
+    /// then ONE soft transition (no reload flicker).
+    @StateObject private var colorLoader = CoverColorLoader()
+    // b9898dd Fix 2: EXACT height parity with the Featured-card anatomy —
+    // the same scaled line reserves and pill reserve as PodcastFeaturedCard.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
 
-    /// The card's deterministic tint — doubles as the text-block background
-    /// (the Featured cards use the cover's average color; the playlist card's
-    /// stable per-id tint fills that role without an extra loader).
+    /// Deterministic per-id tint as the instant fallback; the extracted
+    /// bottom-cover color takes over once loaded.
     private var tint: Color {
-        PlaylistArtwork.color(for: AppSession.shared.musicProvider.itemId(playlistId: playlist.id))
+        colorLoader.hasAccent
+            ? colorLoader.accent
+            : PlaylistArtwork.color(for: AppSession.shared.musicProvider.itemId(playlistId: playlist.id))
     }
 
     var body: some View {
@@ -242,17 +254,36 @@ private struct PlaylistCard: View {
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
+                    // b9898dd Fix 3: shuffle badge on the COVER face (bottom
+                    // right) — starts shuffle playback of the playlist
+                    // directly; playlists only, never album cards.
+                    .overlay(alignment: .bottomTrailing) {
+                        ShufflePlayButton(playerCoordinator: playerCoordinator,
+                                          style: .coverBadge, pool: shufflePool)
+                            .padding(12)
+                    }
+                // b9898dd Fix 2: the PodcastFeaturedCard text-block anatomy —
+                // caption line · headline with a 2-line reserve · sub line ·
+                // pill reserve — so every card row across the tabs has the
+                // SAME card height.
                 VStack(alignment: .leading, spacing: 5) {
+                    Text(changedText ?? " ")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
                     Text(playlist.name ?? String(localized: "Playlist"))
                         .font(.headline)
                         .foregroundStyle(.white)
-                        .lineLimit(1, reservesSpace: true)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
                     Text(metaLine)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1, reservesSpace: true)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: metaMinHeight, alignment: .topLeading)
                 }
                 .padding(14)
+                .padding(.bottom, pillReserve)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .contentShape(Rectangle())
@@ -261,9 +292,18 @@ private struct PlaylistCard: View {
         .frame(width: CardMetrics.featuredCardWidth)
         .background(tint)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // ONE soft transition from the deterministic tint to the extracted
+        // bottom-cover color (and none afterwards — the color is cached).
+        .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        // Playlist basics: rename/delete from the card row too.
+        // b9898dd Fix 1: extract the card color from the bottom (big) mosaic
+        // cover — coverURLs[0] is the big bottom slot of PlaylistArtwork.
+        .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
+        // Playlist basics: rename/delete from the card row too; b9898dd Fix 3:
+        // the shuffle action ALSO lives here (consistency slot).
         .contextMenu {
+            ShufflePlayButton(playerCoordinator: playerCoordinator,
+                              style: .menuItem, pool: shufflePool)
             Button {
                 renameText = playlist.name ?? ""
                 showRename = true
@@ -300,6 +340,19 @@ private struct PlaylistCard: View {
             let ids = await music.playlistMosaicCoverIDs(forItemId: music.itemId(playlistId: playlist.id))
             coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
         }
+    }
+
+    /// The playlist's songs as the shuffle pool (shared shufflePlay path).
+    private func shufflePool() async -> [LibraryItem] {
+        await AppSession.shared.musicProvider
+            .songItems(forItemId: AppSession.shared.musicProvider.itemId(playlistId: playlist.id))
+    }
+
+    /// Caption line: when the playlist last changed (the row sorts by this) —
+    /// same time-info slot as the other Featured cards' caption.
+    private var changedText: String? {
+        guard let ts = playlist.changedAt else { return nil }
+        return Date(timeIntervalSince1970: ts / 1000).formatted(.relative(presentation: .named))
     }
 
     private var metaLine: String {
