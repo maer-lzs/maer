@@ -154,8 +154,12 @@ struct HomeView: View {
             BookFeaturedCard(entry: entry,
                              playerCoordinator: playerCoordinator,
                              libraryViewModel: libraryViewModel)
-        } else if id.hasPrefix("sub:playlist:"), let item = AppSession.shared.libraryItem(forId: id) {
-            // Package 3: a playlist resumes here (F5 2×2 mosaic cover + progress).
+        } else if AppSession.shared.musicProvider.owns(itemId: id),
+                  [.playlist, .album].contains(AppSession.shared.musicProvider.kind(of: id)),
+                  let item = AppSession.shared.libraryItem(forId: id) {
+            // Package 3 + M1: playlists AND albums resume here (mosaic for
+            // playlists, the album cover for albums — the card degrades to a
+            // single-cover fill on its own).
             MusicContinueCard(item: item,
                               progress: musicContinueProgress[id],
                               playerCoordinator: playerCoordinator)
@@ -399,8 +403,12 @@ struct HomeView: View {
         // the playlist card can render its bar + resume.
         let musicProvider = AppSession.shared.musicProvider
         let musicProgress = (try? await musicProvider.fetchAllProgress()) ?? [:]
+        // M1: albums join playlists in the continue stream (same machinery).
         let music = musicProgress
-            .filter { musicProvider.kind(of: $0.key) == .playlist && $0.value.isStarted }
+            .filter { key, value in
+                let kind = musicProvider.kind(of: key)
+                return (kind == .playlist || kind == .album) && value.isStarted
+            }
             .map { (id: $0.key, ts: $0.value.lastUpdate) }
         let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
 

@@ -41,8 +41,13 @@ struct MusicContinueCard: View {
         .buttonStyle(.plain)
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider
-            let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
-            coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
+            // M1: an ALBUM has one cover — skip the playlist mosaic lookup.
+            if music.kind(of: item.id) == .album {
+                coverURLs = [AppSession.shared.coverURL(forItemId: item.id)].compactMap { $0 }
+            } else {
+                let ids = await music.playlistMosaicCoverIDs(forItemId: item.id)
+                coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
+            }
         }
     }
 }

@@ -245,8 +245,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// package 3) and — in Booksonic mode — albums (each album IS a book).
     /// Same bookmark machinery for both (Regel 2).
     nonisolated static func continueScope(itemId: String) -> Bool {
-        if id(itemId, kind: "playlist") != nil { return true }
-        return AppStorageKeys.subsonicIsAudiobooksValue && id(itemId, kind: "album") != nil
+        // M1 (01.08): albums get bookmark continue in MUSIC mode too — the
+        // Booksonic-only condition is gone; playlists unchanged (package 3).
+        id(itemId, kind: "playlist") != nil || id(itemId, kind: "album") != nil
     }
 
     private func playlistResumeProgress(itemId: String, total: Double) async -> MediaProgress? {
@@ -621,6 +622,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
                   stored.count == 2, let duration = pl.duration, duration > 0 else { continue }
             result[itemId] = BookmarkProgressMath.progress(
+                currentTime: stored[0], duration: duration, lastUpdate: stored[1])
+        }
+        // M1: albums join the local fallback — same localPosition machinery,
+        // sourced from the session's album cache.
+        for album in cachedAlbumItems {
+            guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(album.id)) as? [Double],
+                  stored.count == 2, let duration = album.media?.duration, duration > 0 else { continue }
+            result[album.id] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
         return result
