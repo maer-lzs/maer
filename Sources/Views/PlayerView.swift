@@ -30,6 +30,9 @@ struct PlayerView: View {
     /// M4: lyrics of the CURRENT song (nil = none/still loading) + panel state.
     @State private var songLyrics: SongLyrics?
     @State private var showLyrics = false
+    /// V7: transcript of the CURRENT episode (nil = no tag/unparseable).
+    @State private var transcript: SongLyrics?
+    @State private var showTranscript = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     /// D2/B2: at accessibility sizes the fixed-spacing control rows used to
@@ -127,6 +130,21 @@ struct PlayerView: View {
             if let songLyrics, let song = viewModel.currentMusicSong {
                 LyricsPanel(lyrics: songLyrics, songStart: song.start, viewModel: viewModel)
             }
+        }
+        // V7: the transcript panel IS the lyrics panel (episode times are
+        // absolute → songStart 0); entry exists only with a parsed transcript.
+        .sheet(isPresented: $showTranscript) {
+            if let transcript {
+                LyricsPanel(lyrics: transcript, title: "Transcript",
+                            songStart: 0, viewModel: viewModel)
+            }
+        }
+        .task(id: viewModel.item?.id) {
+            transcript = nil
+            guard let id = viewModel.item?.id, PlayerSourceTargets.isPodcast(id),
+                  let url = PodcastSubscriptions.shared.episode(guid: id)?.episode.transcriptURL,
+                  !url.isEmpty else { return }
+            transcript = await PodcastTranscriptService.shared.transcript(for: url)
         }
         .sheet(isPresented: $showBookmarks) {
             BookmarksSheet(viewModel: viewModel)
@@ -807,6 +825,9 @@ struct PlayerView: View {
                         queueControl
                         driveModeControl
                     }
+                    GridRow {
+                        transcriptControl
+                    }
                 }
             }
             .padding(.top, 4)
@@ -838,8 +859,22 @@ struct PlayerView: View {
         driveModeControl
         queueControl
         lyricsControl
+        transcriptControl
         bookmarksControl
         markFinishedControl
+    }
+
+    /// V7: transcript — podcast episodes only, and only when the feed's
+    /// `podcast:transcript` actually parsed (no tag → no entry, silently).
+    @ViewBuilder
+    private var transcriptControl: some View {
+        if transcript != nil {
+            Button { showTranscript = true } label: {
+                Label("Transcript", systemImage: "text.quote")
+            }
+            .font(.footnote)
+            .accessibilityIdentifier("player-transcript")
+        }
     }
 
     /// Up-Next home at the player: opens the global queue (sheet) — the queue is
