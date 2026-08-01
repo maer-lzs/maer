@@ -64,6 +64,13 @@ enum NavigationBarNudge {
                 Logger.library.notice("titleNudge: skipped (pushed detail or mid-transition)")
                 return
             }
+            // Such-Freeze-Auftrag 01.08 (Verdacht 1): a DELIBERATELY hidden
+            // bar (search page, Y23 toolbar-hidden) has no visible title BY
+            // DESIGN — the nudge must never fight that state with rebuilds.
+            guard !nav.isNavigationBarHidden, !nav.navigationBar.isHidden else {
+                Logger.library.notice("titleNudge: skipped (bar deliberately hidden)")
+                return
+            }
             if barShowsTitle(nav.navigationBar, expectedTitle) {
                 Logger.library.notice("titleNudge: healthy (\(expectedTitle, privacy: .public))")
                 return

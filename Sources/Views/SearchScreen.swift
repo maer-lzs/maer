@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 /// Y23: THE global search as a FULL PAGE (no overlay, no drag handle — Y21) —
 /// shown instead of the tab content while search mode is active. Content ends
@@ -36,6 +37,12 @@ struct SearchScreen: View {
     @State private var expandedSections: Set<SearchResult.Kind> = []
     @State private var recents = RecentSearches.list()
     @State private var artistCount: Int?
+    /// Such-Freeze (a) 01.08: everything the deck derives from the full stock
+    /// (grouping + ICU sorts over every book/episode/album) is computed ONCE
+    /// per content change, OFF the main thread — never per body eval. The
+    /// empty initial value lets the first open render instantly; the sections
+    /// fill in as the build lands.
+    @State private var deck = DeckData()
     @State private var pageWidth: CGFloat = 0
     @Namespace private var scopePillNS
     // Y60: the browse-deck book rows need the offline glyph like every other
@@ -115,6 +122,28 @@ struct SearchScreen: View {
                 artistCount = (try? await AppSession.shared.musicProvider.allArtists())?.count
             }
         }
+        .task(id: deckToken) {
+            let entries = libraryViewModel.entries
+            let shows = PodcastAutoContinue.allShows()
+            let albums = AppSession.shared.musicProvider.cachedAlbumItems
+            // SEARCHPROBE (device diagnosis): the build runs detached — this
+            // duration must NEVER appear as a main-thread stall. If the
+            // device freeze persists, this log tells whether the deck is
+            // even the right suspect.
+            let started = ContinuousClock.now
+            deck = await Task.detached(priority: .userInitiated) {
+                DeckData.build(entries: entries, shows: shows, albums: albums)
+            }.value
+            let ms = Int(Double((ContinuousClock.now - started).components.attoseconds) / 1e15)
+            Logger.library.notice("SEARCHPROBE deckBuild entries=\(entries.count) shows=\(shows.count) ms=\(ms)")
+        }
+    }
+
+    /// Content identity of the deck's inputs (never counts — convention).
+    private var deckToken: UInt64 {
+        ContentToken.of(libraryViewModel.entries.map(\.id))
+            ^ ContentToken.of(PodcastAutoContinue.allShows().map(\.feedURL))
+            ^ ContentToken.of(AppSession.shared.musicProvider.cachedAlbumItems.map(\.id))
     }
 
     // MARK: - Y20 standing scope bar (single select, gliding pill)
@@ -553,10 +582,10 @@ struct SearchScreen: View {
         case .library:
             return audiobookDeckEntries + [
                 DeckEntry(id: "shows", title: String(localized: "Shows"),
-                          systemImage: "mic.fill", count: subscribedShows.count) { scope = .podcasts },
+                          systemImage: "mic.fill", count: deck.shows.count) { scope = .podcasts },
                 artistDeckEntry,
                 DeckEntry(id: "albums", title: String(localized: "Albums"),
-                          systemImage: "square.stack.fill", count: cachedAlbums.count) { scope = .music },
+                          systemImage: "square.stack.fill", count: deck.albums.count) { scope = .music },
             ]
         }
     }
@@ -564,21 +593,21 @@ struct SearchScreen: View {
     private var audiobookDeckEntries: [DeckEntry] {
         [
             DeckEntry(id: "authors", title: String(localized: "Authors"),
-                      systemImage: "person.2.fill", count: libraryViewModel.authorGroups.count) {
+                      systemImage: "person.2.fill", count: deck.authorGroups.count) {
                 withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Authors"), groups: libraryViewModel.authorGroups))
+                    drill.append(.groups(title: String(localized: "Authors"), groups: deck.authorGroups))
                 }
             },
             DeckEntry(id: "series", title: String(localized: "Series"),
-                      systemImage: "books.vertical.fill", count: seriesGroups.count) {
+                      systemImage: "books.vertical.fill", count: deck.seriesGroups.count) {
                 withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Series"), groups: seriesGroups))
+                    drill.append(.groups(title: String(localized: "Series"), groups: deck.seriesGroups))
                 }
             },
             DeckEntry(id: "genres", title: String(localized: "Genres"),
-                      systemImage: "theatermasks.fill", count: libraryViewModel.genreGroups.count) {
+                      systemImage: "theatermasks.fill", count: deck.genreGroups.count) {
                 withAnimation(.snappy(duration: 0.2)) {
-                    drill.append(.groups(title: String(localized: "Genres"), groups: libraryViewModel.genreGroups))
+                    drill.append(.groups(title: String(localized: "Genres"), groups: deck.genreGroups))
                 }
             },
         ]
@@ -693,7 +722,7 @@ struct SearchScreen: View {
 
     /// Audiobooks: alphabetical sections with letter anchors for the A–Z rail.
     private var audiobookRaster: some View {
-        ForEach(bookLetterSections, id: \.letter) { section in
+        ForEach(deck.letterSections, id: \.letter) { section in
             Text(section.letter)
                 .font(.headline)
                 .padding(.horizontal, 20)
@@ -713,7 +742,7 @@ struct SearchScreen: View {
 
     private var showRaster: some View {
         CoverGrid(columns: rasterColumns) {
-            ForEach(subscribedShows, id: \.feedURL) { show in
+            ForEach(deck.shows, id: \.feedURL) { show in
                 MediaTile(
                     title: show.title,
                     coverURL: show.artworkURL.flatMap { URL(string: $0) },
@@ -728,7 +757,7 @@ struct SearchScreen: View {
 
     private var albumRaster: some View {
         CoverGrid(columns: rasterColumns) {
-            ForEach(cachedAlbums) { item in
+            ForEach(deck.albums) { item in
                 AlbumCell(item: item, width: cellWidth, playerCoordinator: playerCoordinator)
             }
         }
@@ -738,7 +767,7 @@ struct SearchScreen: View {
     /// A–Z rail: tap a letter → jump to its section.
     private func letterRail(proxy: ScrollViewProxy) -> some View {
         VStack(spacing: 1) {
-            ForEach(bookLetterSections, id: \.letter) { section in
+            ForEach(deck.letterSections, id: \.letter) { section in
                 Button {
                     withAnimation(.snappy(duration: 0.25)) {
                         proxy.scrollTo("letter-\(section.letter)", anchor: .top)
@@ -758,57 +787,60 @@ struct SearchScreen: View {
 
     // MARK: - Data
 
-    /// Series grouped like the author groups — key-folded dedupe, sorted.
-    private var seriesGroups: [(name: String, entries: [LibraryEntry])] {
-        var indexByKey: [String: Int] = [:]
-        var groups: [(name: String, entries: [LibraryEntry])] = []
-        for entry in libraryViewModel.entries {
-            guard let name = LibraryViewModel.baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
-            let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
-            if let idx = indexByKey[key] {
-                groups[idx].entries.append(entry)
-            } else {
-                indexByKey[key] = groups.count
-                groups.append((name: name, entries: [entry]))
-            }
-        }
-        return groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
-
-    private struct LetterSection {
+    struct LetterSection {
         let letter: String
         let entries: [LibraryEntry]
     }
 
-    /// Alphabetical, diacritic-folded; titles without a letter start land in "#".
-    private var bookLetterSections: [LetterSection] {
-        let sorted = libraryViewModel.entries.sorted {
-            $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
-        }
-        var sections: [LetterSection] = []
-        for entry in sorted {
-            let first = entry.item.title.first.map {
-                String($0).folding(options: .diacriticInsensitive, locale: nil).uppercased()
-            } ?? "#"
-            let letter = first.rangeOfCharacter(from: .letters) != nil ? first : "#"
-            if let last = sections.indices.last, sections[last].letter == letter {
-                sections[last] = LetterSection(letter: letter, entries: sections[last].entries + [entry])
-            } else {
-                sections.append(LetterSection(letter: letter, entries: [entry]))
+    /// Such-Freeze (a): the deck's derived data, built off-main in one pass.
+    struct DeckData {
+        var authorGroups: [(name: String, entries: [LibraryEntry])] = []
+        var genreGroups: [(name: String, entries: [LibraryEntry])] = []
+        var seriesGroups: [(name: String, entries: [LibraryEntry])] = []
+        var letterSections: [LetterSection] = []
+        var shows: [PodcastShow] = []
+        var albums: [LibraryItem] = []
+
+        nonisolated static func build(entries: [LibraryEntry], shows: [PodcastShow],
+                                      albums: [LibraryItem]) -> DeckData {
+            var deck = DeckData()
+            deck.authorGroups = LibraryViewModel.authorGroups(of: entries)
+            deck.genreGroups = LibraryViewModel.genreGroups(of: entries)
+            // Series grouped like the author groups — key-folded dedupe, sorted.
+            var indexByKey: [String: Int] = [:]
+            var groups: [(name: String, entries: [LibraryEntry])] = []
+            for entry in entries {
+                guard let name = LibraryViewModel.baseSeriesName(entry.item.media?.metadata?.seriesName) else { continue }
+                let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                if let idx = indexByKey[key] {
+                    groups[idx].entries.append(entry)
+                } else {
+                    indexByKey[key] = groups.count
+                    groups.append((name: name, entries: [entry]))
+                }
             }
+            deck.seriesGroups = groups.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            // Alphabetical, diacritic-folded; no letter start lands in "#".
+            let sorted = entries.sorted {
+                $0.item.title.localizedCaseInsensitiveCompare($1.item.title) == .orderedAscending
+            }
+            var sections: [LetterSection] = []
+            for entry in sorted {
+                let first = entry.item.title.first.map {
+                    String($0).folding(options: .diacriticInsensitive, locale: nil).uppercased()
+                } ?? "#"
+                let letter = first.rangeOfCharacter(from: .letters) != nil ? first : "#"
+                if let last = sections.indices.last, sections[last].letter == letter {
+                    sections[last] = LetterSection(letter: letter, entries: sections[last].entries + [entry])
+                } else {
+                    sections.append(LetterSection(letter: letter, entries: [entry]))
+                }
+            }
+            deck.letterSections = sections
+            deck.shows = shows.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            deck.albums = albums.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            return deck
         }
-        return sections
-    }
-
-    private var subscribedShows: [PodcastShow] {
-        PodcastAutoContinue.allShows()
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-    }
-
-    /// The album stock this session has cached (same source as the old browse).
-    private var cachedAlbums: [LibraryItem] {
-        AppSession.shared.musicProvider.cachedAlbumItems
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     // MARK: - Labels

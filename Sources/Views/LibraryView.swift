@@ -392,6 +392,22 @@ struct LibraryView: View {
         .environment(\.bottomBarInset,
                      isShowingFullPlayer ? 0 : BottomBarReserve.total(hasMiniPlayer: playerCoordinator.activeItem != nil))
         .task {
+            #if DEBUG
+            // Such-Freeze probe (01.08): `-uitest-autosearch` opens the search
+            // and types the first query WITHOUT any XCUITest process attached —
+            // the XCT a11y snapshots dominated every in-test measurement
+            // (sample-proven), so the clean numbers come from this self-drive.
+            if ProcessInfo.processInfo.arguments.contains("-uitest-autosearch") {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 6_000_000_000)
+                    searchModel.query = ""
+                    searchScope = SearchScope.initial(for: selectedMediaType)
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) { isShowingSearch = true }
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    searchModel.query = "a"
+                }
+            }
+            #endif
             // Series data lives here — hand the coordinator a lookup for the
             // auto-play-next-in-series setting.
             playerCoordinator.nextInSeriesProvider = { [weak viewModel] itemId in

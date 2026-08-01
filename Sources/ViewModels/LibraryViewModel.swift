@@ -426,7 +426,15 @@ final class LibraryViewModel: ObservableObject {
     }
 
     /// Books grouped by author, alphabetically — for browsing.
-    var authorGroups: [(name: String, entries: [LibraryEntry])] {
+    var authorGroups: [(name: String, entries: [LibraryEntry])] { Self.authorGroups(of: entries) }
+
+    /// Books grouped by genre — a book can appear in several genres.
+    var genreGroups: [(name: String, entries: [LibraryEntry])] { Self.genreGroups(of: entries) }
+
+    /// Pure grouping cores (Such-Freeze (a) 01.08): static so the search deck
+    /// can compute them OFF the main thread — the full-stock grouping + ICU
+    /// sorts froze the first search open when run per body eval.
+    nonisolated static func authorGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
         var dict: [String: [LibraryEntry]] = [:]
         for entry in entries {
             let author = entry.item.author ?? String(localized: "Unknown Author")
@@ -439,8 +447,7 @@ final class LibraryViewModel: ObservableObject {
             .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    /// Books grouped by genre — a book can appear in several genres.
-    var genreGroups: [(name: String, entries: [LibraryEntry])] {
+    nonisolated static func genreGroups(of entries: [LibraryEntry]) -> [(name: String, entries: [LibraryEntry])] {
         var dict: [String: [LibraryEntry]] = [:]
         for entry in entries {
             for genre in entry.item.media?.metadata?.genres ?? [] where !genre.isEmpty {

@@ -611,23 +611,31 @@ nonisolated final class MaerUITests: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HITCH_PROBE"] == "1",
                           "measurement probe; set HITCH_PROBE=1 to run")
         let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-bulk", "-uitest-frameprobe"]
+        app.launchArguments += ["-uitest", "-uitest-huge", "-uitest-frameprobe"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 15))
         books.tap()
         XCTAssertTrue(app.staticTexts["Seed Book One"].firstMatch.waitForExistence(timeout: 15))
-        sleep(2)   // settle → clean probe window
+        // Resolve all tap targets BEFORE the measured window — every XCUI
+        // element query snapshots the (huge) a11y tree and would dominate the
+        // measurement (sample-proven: ~50% XCTElementSnapshotRequest). The
+        // probe window uses raw coordinate taps + app-level typing only.
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
-        search.tap()   // ← the frozen moment on device
-        let field = app.textFields["global-search-field"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 10))
-        sleep(2)
-        field.tap()
-        field.typeText("a")   // ← first query
-        sleep(3)
+        let searchPoint = CGPoint(x: search.frame.midX, y: search.frame.midY)
+        let appOrigin = app.coordinate(withNormalizedOffset: .zero)
+        sleep(4)   // settle past the tab-entry spike → clean probe window
+        appOrigin.withOffset(CGVector(dx: searchPoint.x, dy: searchPoint.y)).tap()   // ← frozen moment
+        sleep(4)
+        // Focus the search field by position (bottom bar, Y17) — still no
+        // element query inside the window — then type the first query.
+        let frame = app.frame
+        appOrigin.withOffset(CGVector(dx: frame.midX, dy: frame.maxY - 40)).tap()
+        sleep(1)
+        app.typeText("a")   // ← first query
+        sleep(4)
         app.terminate()
     }
 

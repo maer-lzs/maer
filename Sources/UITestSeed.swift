@@ -17,6 +17,9 @@ enum UITestSeed {
     /// iPad hitch probes: a deep library (120 books) so wide/landscape grids
     /// still scroll far past the collapse threshold.
     static var isBulk: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-bulk") }
+    /// Such-Freeze probe: a device-sized stock (1200 books, 30 shows × 60
+    /// episodes) so the first-open deck build is measurable on the sim.
+    static var isHuge: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-huge") }
     /// Opt-in: also install a presentation-only active player (mini + full
     /// player). Off by default so multi-tab navigation journeys aren't disturbed
     /// by an ever-present, tappable mini player; only the full-player journey
@@ -64,7 +67,7 @@ enum UITestSeed {
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
         // carry "Seed" in their names — the search journeys query "Seed" and
         // must keep finding the canonical seeds inside the capped sections.
-        + (3...(isBulk ? 120 : 24)).map {
+        + (3...(isHuge ? 1200 : isBulk ? 120 : 24)).map {
             bookEntry(id: "seed-book-\($0)", title: "Filler Book \($0)", author: "Ada Author", chapters: nil)
         }
         session.libraryViewModel.entries = books
@@ -82,7 +85,15 @@ enum UITestSeed {
             // able to scroll well past the 60 pt collapse threshold.
             + (3...22).map { episode(guid: "rss:seed:ep-\($0)", title: "Filler Episode \($0)") } + [
             ])
-        PodcastSubscriptions.shared._seedForUITest([show])
+        // Such-Freeze probe: device-sized podcast stock (30 shows × 60
+        // episodes) so the first-query scan is measurable on the sim.
+        let fillerShows: [PodcastShow] = isHuge ? (1...30).map { s in
+            PodcastShow(
+                id: "filler-show-\(s)", title: "Filler Show \(s)", author: "Host \(s)",
+                artworkURL: nil, description: nil, feedURL: "https://seed.example/filler-\(s)",
+                episodes: (1...60).map { episode(guid: "rss:filler\(s):ep-\($0)", title: "Filler \(s) Episode \($0)") })
+        } : []
+        PodcastSubscriptions.shared._seedForUITest([show] + fillerShows)
 
         // Music: make the tab AVAILABLE (fake config → a non-nil client) and
         // seed resolvable albums. MusicView's grid content comes from the seeded

@@ -19,12 +19,21 @@ extension RSSProvider: SearchableProvider {
     @MainActor
     func search(query: String) async throws -> [SearchResult] {
         let online = NetworkMonitor.shared.isConnected
-        let shows = PodcastAutoContinue.allShows().map { show in
-            (feedURL: show.feedURL, title: show.title,
-             coverURL: show.artworkURL.flatMap { URL(string: $0) },
-             episodes: show.episodes.map { (id: $0.guid, title: $0.title) })
-        }
-        return PodcastLocalSearch.results(shows: shows, query: query).map { result in
+        // Such-Freeze (b) 01.08: the per-query snapshot mapping + scan over
+        // EVERY subscribed episode ran on the main actor — the first-query
+        // hang. The show structs are Sendable values; map and scan detached,
+        // only the small hit list returns to the main actor for the
+        // availability flags.
+        let allShows = PodcastAutoContinue.allShows()
+        let hits = await Task.detached(priority: .userInitiated) {
+            let snapshot = allShows.map { show in
+                (feedURL: show.feedURL, title: show.title,
+                 coverURL: show.artworkURL.flatMap { URL(string: $0) },
+                 episodes: show.episodes.map { (id: $0.guid, title: $0.title) })
+            }
+            return PodcastLocalSearch.results(shows: snapshot, query: query)
+        }.value
+        return hits.map { result in
             guard result.kind == .episode else { return result }
             var episode = result
             episode.isPlayableNow = online || DownloadManager.shared.isDownloaded(itemId: result.id)
