@@ -5249,6 +5249,16 @@
         }
       }
     },
+    "Text only" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nur Text"
+          }
+        }
+      }
+    },
     "The Jellyfin server could not be reached." : {
       "localizations" : {
         "de" : {

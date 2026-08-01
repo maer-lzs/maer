@@ -49,7 +49,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let app = launchSeeded()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20),
                       "queued audiobook must render (T3/T5)")
-        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.exists,
+        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10),
                       "queued music album must render (T3/T5)")
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.exists,
                       "queued podcast episode must render")
@@ -342,8 +342,12 @@ nonisolated final class MaerUITests: XCTestCase {
         app.buttons["scope-music"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 5),
                       "music scope must keep the album hit")
-        XCTAssertFalse(app.staticTexts["Seed Episode One"].firstMatch.exists,
-                       "music scope must drop the episode hit")
+        // Search sections apply asynchronously since the freeze fix — poll
+        // briefly for the episode hit to clear instead of asserting instantly.
+        let droppedEpisode = app.staticTexts["Seed Episode One"].firstMatch
+        var polls = 0
+        while droppedEpisode.exists && polls < 10 { usleep(400_000); polls += 1 }
+        XCTAssertFalse(droppedEpisode.exists, "music scope must drop the episode hit")
         snap(app, "global-search-scope-music")
         // Y19/Y24: first X clears the query → the browse deck appears with the
         // just-run query as a Y30 recents chip.

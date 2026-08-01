@@ -260,11 +260,17 @@ struct PodcastEpisodeRow: View {
     let playerCoordinator: PlayerCoordinator
     @Environment(\.pushPodcastRoute) private var pushRoute
 
+    /// R1: text-only episode (kept, no enclosure) — plain read, one per render.
+    private var isTextOnly: Bool {
+        !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
+    }
+
     var body: some View {
         // Resolve the play state ONCE per render — it deserializes UserDefaults,
         // and the row used to read it 3-4 times per body evaluation.
         let state = podcastPlayState(for: item)
         let isPlayed = state == .played
+        let textOnly = isTextOnly
         HStack(alignment: .center, spacing: 2) {
             // A4: no Spacer next to the max-width row body — two equally
             // flexible siblings made SwiftUI split the width and pushed the
@@ -273,28 +279,37 @@ struct PodcastEpisodeRow: View {
                 .layoutPriority(1)
             // Trailing controls: download + the large play button. Info is
             // gone — the whole row body opens the episode page instead.
+            // R1: text-only rows keep the SLOTS (cell-height convention) but
+            // render them invisible — no play/download affordance.
             PodcastDownloadButton(item: item, showsDownloadedState: false)
+                .opacity(textOnly ? 0 : 1)
+                .allowsHitTesting(!textOnly)
             EpisodeRowPlayButton(item: item, playerCoordinator: playerCoordinator)
+                .opacity(textOnly ? 0 : 1)
+                .allowsHitTesting(!textOnly)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .contentShape(Rectangle())
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
         // Swipe actions apply in `List` contexts (show page, queue); in pure
-        // `LazyVStack` previews the context menu remains.
+        // `LazyVStack` previews the context menu remains. R1: text-only rows
+        // offer no queue swipes (never queueable).
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                PlayQueue.shared.playNext(item.id)
-            } label: {
-                Label("Play Next", systemImage: "text.insert")
+            if !textOnly {
+                Button {
+                    PlayQueue.shared.playNext(item.id)
+                } label: {
+                    Label("Play Next", systemImage: "text.insert")
+                }
+                .tint(AppTheme.accent)
+                Button {
+                    PlayQueue.shared.playLast(item.id)
+                } label: {
+                    Label("Play Last", systemImage: "text.append")
+                }
+                .tint(.gray)
             }
-            .tint(AppTheme.accent)
-            Button {
-                PlayQueue.shared.playLast(item.id)
-            } label: {
-                Label("Play Last", systemImage: "text.append")
-            }
-            .tint(.gray)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button {
@@ -333,10 +348,20 @@ struct PodcastEpisodeRow: View {
     @ViewBuilder private func rowBody(state: EpisodePlayState, isPlayed: Bool) -> some View {
         switch rowTap {
         case .play:
+            // R1: a text-only episode cannot start — its tap opens the notes.
+            if isTextOnly {
+                Button {
+                    pushRoute(.episode(itemId: item.id))
+                } label: {
+                    rowContent(state: state, isPlayed: isPlayed)
+                }
+                .buttonStyle(.plain)
+            } else {
             Button { Task { await playerCoordinator.open(item: item) } } label: {
                 rowContent(state: state, isPlayed: isPlayed)
             }
             .buttonStyle(.plain)
+            }
         case .detail:
             Button {
                 pushRoute(.episode(itemId: item.id))
@@ -361,8 +386,8 @@ struct PodcastEpisodeRow: View {
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             eyebrow: item.media?.metadata?.authorName,
             title: item.title,
-            titleDimmed: isPlayed,
-            coverDimmed: isPlayed || isOfflineUnavailable,
+            titleDimmed: isPlayed || isTextOnly,
+            coverDimmed: isPlayed || isOfflineUnavailable || isTextOnly,
             offlineBadge: isOfflineUnavailable,
             downloadedBadge: DownloadManager.shared.isDownloaded(itemId: item.id),
             progressFraction: inProgress,
@@ -377,6 +402,11 @@ struct PodcastEpisodeRow: View {
         var parts: [String] = []
         let date = relativeDateText(item)
         if !date.isEmpty { parts.append(date) }
+        // R1: mark the text-only row instead of showing play/duration meta.
+        if isTextOnly {
+            parts.append(String(localized: "Text only"))
+            return parts.joined(separator: " · ")
+        }
         switch state {
         case .played:
             parts.append(String(localized: "Played"))

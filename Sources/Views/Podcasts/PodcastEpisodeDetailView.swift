@@ -133,10 +133,14 @@ struct PodcastEpisodeDetailView: View {
                         if let ep = podcastEpisode { badges(ep) }
                     }
 
-                    HStack(spacing: 14) {
-                        playButton
-                        PodcastDownloadButton(item: item, tint: .white)
-                        markPlayedButton
+                    // R1: text-only episodes show the notes without play/
+                    // download/played affordances (nothing to hear).
+                    if !isTextOnly {
+                        HStack(spacing: 14) {
+                            playButton
+                            PodcastDownloadButton(item: item, tint: .white)
+                            markPlayedButton
+                        }
                     }
 
                     metadataSection
@@ -227,6 +231,12 @@ struct PodcastEpisodeDetailView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    /// R1: a text-only episode has nothing to play — the page shows the
+    /// notes without the play affordance.
+    private var isTextOnly: Bool {
+        !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
     }
 
     private var playButton: some View {

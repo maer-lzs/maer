@@ -51,8 +51,8 @@ struct RSSFeedParserTests {
         #expect(mmss.episodes[0].duration == 750)
     }
 
-    @Test("Item ohne Audio-Enclosure wird verworfen")
-    func dropsItemsWithoutAudio() throws {
+    @Test("R1: Item ohne Audio-Enclosure bleibt als Nur-Text-Folge erhalten")
+    func keepsItemsWithoutAudio() throws {
         let show = try #require(parse("""
         <rss><channel><title>S</title>
           <item><title>No audio</title><guid>x</guid></item>
@@ -60,8 +60,14 @@ struct RSSFeedParserTests {
             <enclosure url="https://example.com/a.mp3" type="audio/mpeg"/></item>
         </channel></rss>
         """))
-        #expect(show.episodes.count == 1)
-        #expect(show.episodes[0].title == "Has audio")
+        // R1 (owner decision 01.08): BOTH stay — the text item is kept,
+        // marked non-playable; the audio item stays playable.
+        #expect(show.episodes.count == 2)
+        let text = try #require(show.episodes.first { $0.title == "No audio" })
+        #expect(!text.isPlayable)
+        #expect(text.audioURL.isEmpty)
+        let audio = try #require(show.episodes.first { $0.title == "Has audio" })
+        #expect(audio.isPlayable)
     }
 
     @Test func handlesCDATAAndMissingFields() throws {

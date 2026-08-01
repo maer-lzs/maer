@@ -18,8 +18,8 @@ import Testing
 /// URLs resolved against the feed base), R4 (duplicate guids collapse
 /// in-parse), R5 (weekday-less / zone-name RFC-2822 forms parse), O1 (broken
 /// OPML fails visibly). STILL OPEN:
-/// - R1: items WITHOUT a playable enclosure are dropped entirely (corpus
-///   expects "keep, mark non-playable") — product decision with the owner.
+/// - R1 RESOLVED (owner decision 01.08): text-only items are KEPT and
+///   marked non-playable (`isPlayable == false`) — all five R1 cases strict.
 /// - R6: channel-level `podcast:guid` (PC20) is not read at all.
 /// - R7: `atom:link rel="next"` pagination (RFC 5005) is not surfaced.
 struct RSSEdgeCorpusTests {
@@ -52,9 +52,10 @@ struct RSSEdgeCorpusTests {
     @Test("guid isPermaLink=true: URL value is the identity")
     func guidPermalinkURL() throws {
         let show = try #require(try parse("guid-permalink-url"))
-        withKnownIssue("Befund R1: fixture items carry no enclosure → dropped") {
-            #expect(show.episodes.contains { $0.guid.hasSuffix(":https://example.com/episodes/42") })
-        }
+        // R1 resolved: the enclosure-less items are kept, so the fixture
+        // asserts run strict.
+        #expect(show.episodes.contains { $0.guid.hasSuffix(":https://example.com/episodes/42") })
+        #expect(show.episodes.allSatisfy { !$0.isPlayable })
         // The guid semantics themselves, probed inline with the fixture value:
         let inline = RSSFeedParser(feedURL: "https://example.org/f.xml").parse(Data("""
         <rss><channel><title>S</title><item><title>E</title>
@@ -75,9 +76,11 @@ struct RSSEdgeCorpusTests {
     @Test("itunes:duration SS / MM:SS / HH:MM:SS, per-item image, episodeType")
     func itunesVariants() throws {
         let show = try #require(try parse("itunes-variants"))
-        withKnownIssue("Befund R1: fixture items carry no enclosure → dropped") {
-            #expect(show.episodes.count == 3)
-        }
+        // R1 resolved: all three text-only items are kept — the fixture's
+        // variant metadata is now assertable directly.
+        #expect(show.episodes.count == 3)
+        #expect(show.episodes.map(\.duration) == [185, 185, 3725])
+        #expect(show.episodes.compactMap(\.episodeType) == ["full", "bonus", "trailer"])
         // The variants themselves, probed inline with the fixture values:
         func episode(duration: String, type: String, image: String) -> PodcastEpisode? {
             RSSFeedParser(feedURL: "https://example.org/f.xml").parse(Data("""
@@ -155,13 +158,12 @@ struct RSSEdgeCorpusTests {
 
     // MARK: - Befunde (known deviations from the corpus ground truth)
 
-    @Test("R1: item without enclosure should survive as non-playable")
+    @Test("R1 resolved: item without enclosure survives as non-playable")
     func enclosureMissing() throws {
         let show = try #require(try parse("enclosure-missing"))
-        withKnownIssue("Befund R1: enclosure-less items are dropped entirely") {
-            #expect(show.episodes.count == 2)   // corpus: keep both, mark one non-playable
-        }
-        #expect(show.episodes.count == 1)       // current policy: the playable one survives
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes.filter(\.isPlayable).count == 1)
+        #expect(show.episodes.filter { !$0.isPlayable }.count == 1)
     }
 
     @Test("R2 fixed: octet-stream enclosure with media extension is kept")
@@ -212,20 +214,17 @@ struct RSSEdgeCorpusTests {
         #expect(pubDate("Wed, 15 Jan 2025 04:00:00 EST") > 0)
     }
 
-    @Test("R1+R7: paged feed — items dropped, rel=next not surfaced")
+    @Test("R1 resolved (paged feed): items kept; R7 rel=next stays report-only")
     func pagedFeed() throws {
         let show = try #require(try parse("paged-feed"))
-        withKnownIssue("Befund R1: paged feed's enclosure-less items all dropped (R7 rel=next has no API surface at all)") {
-            #expect(show.episodes.count == 2)
-        }
+        #expect(show.episodes.count == 2)
+        #expect(show.episodes.allSatisfy { !$0.isPlayable })
     }
 
-    @Test("R1: CDATA/HTML title fixture — items dropped before text checks")
+    @Test("R1 resolved: CDATA/entity title survives on the kept text item")
     func cdataHTMLTitle() throws {
         let show = try #require(try parse("cdata-html-title"))
-        withKnownIssue("Befund R1: enclosure-less items dropped — CDATA/entity handling unverifiable at item level") {
-            #expect(show.episodes.contains { $0.title.contains("R&D") })
-        }
+        #expect(show.episodes.contains { $0.title.contains("R&D") })
     }
 }
 #endif

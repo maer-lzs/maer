@@ -62,6 +62,11 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var persons: [PodcastPerson]? = nil
 
     var id: String { guid }
+
+    /// R1 (01.08): an item without an audio enclosure is KEPT as a text-only
+    /// episode — visible (dimmed, show notes on tap) but never playable,
+    /// queueable, downloadable or markable as played.
+    var isPlayable: Bool { !audioURL.isEmpty }
 }
 
 /// Management of podcast subscriptions: add/remove feeds, refresh (RSS/Atom via
@@ -163,6 +168,16 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     var hasSubscriptions: Bool { !shows.isEmpty }
+
+    /// R1 (01.08): THE ONE playability check for episode item ids. Text-only
+    /// rss: episodes (kept in the list, no enclosure) are never playable/
+    /// queueable/downloadable; non-rss ids (abspod:, books, music) always are
+    /// from this check's point of view.
+    func isPlayableEpisode(itemId: String) -> Bool {
+        guard itemId.hasPrefix("rss:") else { return true }
+        guard let found = episode(guid: itemId) else { return true }
+        return found.episode.isPlayable
+    }
 
     #if DEBUG
     /// UI-test seeding only (see UITestSeed) — injects deterministic shows.
@@ -815,8 +830,15 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
                 // R4: duplicate guids collapse HERE (first item wins — feeds
                 // list newest first); duplicates used to survive the first
                 // subscribe and collide as SwiftUI ids.
-                let guid = "rss:\(feedKey):\(iGuid.isEmpty ? iAudio : iGuid)"
-                if !iAudio.isEmpty, seenGuids.insert(guid).inserted {
+                // R1 (owner decision 01.08): items WITHOUT an audio
+                // enclosure are KEPT — dimmed, no play affordance, tap opens
+                // the show notes (Apple-Podcasts behaviour). Text-only feeds
+                // no longer look empty/broken. Identity falls back to the
+                // link, then the title (an item with none of guid/audio/link/
+                // title has no stable identity and is skipped).
+                let fallbackId = iGuid.isEmpty ? (iAudio.isEmpty ? (iLink.isEmpty ? iTitle : iLink) : iAudio) : iGuid
+                let guid = "rss:\(feedKey):\(fallbackId)"
+                if !fallbackId.isEmpty, seenGuids.insert(guid).inserted {
                     episodes.append(PodcastEpisode(
                         guid: guid,
                         title: iTitle.isEmpty ? String(localized: "Untitled Episode") : iTitle,

@@ -36,7 +36,11 @@ enum PodcastAutoContinue {
         return pick(
             shows: allShows(),
             finishedItemId: finishedItemId,
-            isPlayable: { id in !offline || DownloadManager.shared.isDownloaded(itemId: id) },
+            // R1: text-only episodes never auto-continue.
+            isPlayable: { id in
+                PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
+                    && (!offline || DownloadManager.shared.isDownloaded(itemId: id))
+            },
             equivalentIds: { ABSPodcastProvider.shared.equivalentIds($0) },
             playState: { podcastPlayState(for: $0) },
             lastPlayed: { id in

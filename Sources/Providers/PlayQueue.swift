@@ -81,7 +81,14 @@ final class PlayQueue: ObservableObject {
         !id.hasPrefix("radio:")
     }
 
+    /// R1 defensive gate: text-only rss episodes never enter the queue —
+    /// even if some future call site forgets its own gate.
+    private func isQueueable(_ id: String) -> Bool {
+        PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
+    }
+
     func playNext(_ id: String) {
+        guard isQueueable(id) else { return }
         guard Self.canEnqueue(id) else { return }
         removeMatching(id)
         ids.insert(id, at: 0)
@@ -90,6 +97,7 @@ final class PlayQueue: ObservableObject {
 
     /// To the end of the queue (no-op if already present under any face).
     func playLast(_ id: String) {
+        guard isQueueable(id) else { return }
         guard Self.canEnqueue(id) else { return }
         guard !contains(id) else { return }
         ids.append(id)

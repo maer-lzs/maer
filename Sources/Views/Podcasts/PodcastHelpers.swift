@@ -32,8 +32,11 @@ extension View {
         contextMenu {
             // Offline, an episode without a download cannot start — hide the
             // play entries entirely instead of leaving them visible but dead.
-            let isPlayable = NetworkMonitor.shared.isConnected
-                || DownloadManager.shared.isDownloaded(itemId: item.id)
+            // R1: text-only episodes (no enclosure) NEVER get play/queue/
+            // download/played entries — the menu only offers the notes tap.
+            let isTextOnly = !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
+            let isPlayable = !isTextOnly && (NetworkMonitor.shared.isConnected
+                || DownloadManager.shared.isDownloaded(itemId: item.id))
             if isPlayable {
                 Button {
                     Task { await playerCoordinator.open(item: item) }
@@ -45,6 +48,7 @@ extension View {
                     PlayQueue.shared.playLast(item.id)
                 } label: { Label("Play Last", systemImage: "text.append") }
             }
+            if !isTextOnly {
             let played = podcastPlayState(for: item) == .played
             Button {
                 podcastSetPlayed(item, !played)
@@ -66,6 +70,7 @@ extension View {
                         }
                     }
                 } label: { Label("Download", systemImage: "arrow.down.circle") }
+            }
             }
         }
     }
