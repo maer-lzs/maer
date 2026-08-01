@@ -187,25 +187,19 @@ struct MusicView: View {
         .accessibilityIdentifier(route.accessibilityId)
     }
 
-    /// F5: the playlist card row — vertical poster cards (2×2 mosaic + name +
-    /// metadata) plus the "New Playlist" card at the end. Always shown so a
-    /// playlist can be created even before any exist.
-    /// Kachel-Auftrag: column count of the playlist row per width class.
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var playlistRow: some View {
-        let columns = CardMetrics.playlistColumns(regularWidth: horizontalSizeClass == .regular)
-        return VStack(alignment: .leading, spacing: 8) {
+        // Korrektur 01.08 (the owner am Gerät): CARDS, not tiles — the same
+        // card format as the other libraries' card rows (featuredCardWidth,
+        // text block on the card color), with the mosaic as the cover face.
+        VStack(alignment: .leading, spacing: 8) {
             Text("Playlists").font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(sortedPlaylists) {
                         PlaylistCard(playlist: $0)
-                            // Screen-relative slots + peek instead of fixed 135 pt.
-                            .containerRelativeFrame(.horizontal, count: columns, span: 1, spacing: 16)
                     }
                     NewPlaylistCard { showNewPlaylist = true }
-                        .containerRelativeFrame(.horizontal, count: columns, span: 1, spacing: 16)
                 }
                 .padding(.horizontal)
             }
@@ -225,37 +219,49 @@ private struct PlaylistCard: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
 
+    /// The card's deterministic tint — doubles as the text-block background
+    /// (the Featured cards use the cover's average color; the playlist card's
+    /// stable per-id tint fills that role without an extra loader).
+    private var tint: Color {
+        PlaylistArtwork.color(for: AppSession.shared.musicProvider.itemId(playlistId: playlist.id))
+    }
+
     var body: some View {
-        // Text IN the card on a gradient (owner Ergänzung) — the same
-        // text-on-scrim idiom as the Featured/Continue cards, so the card is
-        // a closed portrait rectangle and row baselines can't diverge.
+        // Korrektur 01.08: the SAME card format as BookFeaturedCard /
+        // PodcastFeaturedCard (featuredCardWidth, cover face on top, text
+        // block on the card color below, radius 20) — mosaic as the cover.
         Button {
             pushRoute(.album(playlistLibraryItem(playlist)))
         } label: {
-            PlaylistArtwork(
-                playlistID: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
-                coverURLs: coverURLs)
-                .overlay(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(playlist.name ?? String(localized: "Playlist"))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1, reservesSpace: true)
-                        Text(metaLine)
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(1, reservesSpace: true)
+            VStack(alignment: .leading, spacing: 0) {
+                PlaylistArtwork(
+                    playlistID: AppSession.shared.musicProvider.itemId(playlistId: playlist.id),
+                    coverURLs: coverURLs, cornerRadius: 0)
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(
-                        LinearGradient(colors: [.clear, .black.opacity(0.75)],
-                                       startPoint: .top, endPoint: .bottom))
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(playlist.name ?? String(localized: "Playlist"))
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(1, reservesSpace: true)
+                    Text(metaLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1, reservesSpace: true)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .contentShape(Rectangle())
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .frame(width: CardMetrics.featuredCardWidth)
+        .background(tint)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // Playlist basics: rename/delete from the card row too.
         .contextMenu {
             Button {
@@ -310,7 +316,7 @@ private struct NewPlaylistCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 6) {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
                     .foregroundStyle(.secondary)
                     .aspectRatio(1, contentMode: .fit)
@@ -320,7 +326,8 @@ private struct NewPlaylistCard: View {
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
             }
-            .frame(maxWidth: .infinity)
+            // Korrektur 01.08: same card footprint as the playlist cards.
+            .frame(width: CardMetrics.featuredCardWidth)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("new-playlist-card")

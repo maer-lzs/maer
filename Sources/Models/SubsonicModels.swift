@@ -180,6 +180,9 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let id: String
     let title: String?
     let album: String?
+    /// Album key for mosaic dedupe (Korrektur 01.08): per-SONG coverArt ids
+    /// (Navidrome `mf-…`) defeat cover-id dedupe — the album is the identity.
+    let albumId: String?
     let artist: String?
     let track: Int?
     let discNumber: Int?
@@ -190,7 +193,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let contentType: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, album, artist, track, discNumber, duration, coverArt,
+        case id, title, album, albumId, artist, track, discNumber, duration, coverArt,
              size, suffix, contentType
     }
     init(from decoder: Decoder) throws {
@@ -198,6 +201,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
         id = try c.lenientID(forKey: .id)
         title = try c.decodeIfPresent(String.self, forKey: .title)
         album = try c.decodeIfPresent(String.self, forKey: .album)
+        albumId = c.contains(.albumId) ? try? c.lenientID(forKey: .albumId) : nil
         artist = try c.decodeIfPresent(String.self, forKey: .artist)
         track = try c.decodeIfPresent(Int.self, forKey: .track)
         discNumber = try c.decodeIfPresent(Int.self, forKey: .discNumber)

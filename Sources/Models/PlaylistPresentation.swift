@@ -15,6 +15,26 @@ nonisolated enum PlaylistPresentation {
         min(max(coverCount, 0), 3)
     }
 
+    /// Korrektur 01.08 (pure, tested): pick the mosaic cover ids from a
+    /// playlist's songs — UNIQUE per ALBUM, never per cover-art id. Navidrome
+    /// hands every song its own coverArt id (`mf-…`) even when they all show
+    /// the same album cover, so deduping by cover id built mosaics of three
+    /// identical images. Key: albumId, falling back to the album name, falling
+    /// back to the cover id itself (each cover then counts as its own album).
+    static func mosaicCoverIDs(_ songs: [(albumKey: String?, coverArt: String?)],
+                               limit: Int = 4) -> [String] {
+        var seen = Set<String>()
+        var ids: [String] = []
+        for song in songs {
+            guard let art = song.coverArt else { continue }
+            let key = song.albumKey ?? art
+            guard seen.insert(key).inserted else { continue }
+            ids.append(art)
+            if ids.count == limit { break }
+        }
+        return ids
+    }
+
     /// TF2 (pure, tested): drop junk playlists. Some Subsonic servers return
     /// `getPlaylists` entries whose `name` is just the raw id (or is empty),
     /// with 0 songs — F5 would render each as an empty-mosaic card, a wall of

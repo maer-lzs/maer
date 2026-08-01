@@ -397,13 +397,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private func playlistMosaicCoverIDs(playlistRawId: String) async -> [String] {
         if let cached = playlistMosaicCache[playlistRawId] { return cached }
         guard let client, let pl = try? await client.playlist(id: playlistRawId) else { return [] }
-        var seen = Set<String>()
-        var ids: [String] = []
-        for song in pl.entry ?? [] {
-            guard let art = song.coverArt, seen.insert(art).inserted else { continue }
-            ids.append(art)
-            if ids.count == 4 { break }
-        }
+        // Korrektur 01.08: unique per ALBUM (pure, tested) — per-song cover
+        // ids built mosaics of three identical images.
+        let ids = PlaylistPresentation.mosaicCoverIDs(
+            (pl.entry ?? []).map { (albumKey: $0.albumId ?? $0.album, coverArt: $0.coverArt) })
         playlistMosaicCache[playlistRawId] = ids
         return ids
     }

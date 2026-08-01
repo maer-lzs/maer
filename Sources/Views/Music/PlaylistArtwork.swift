@@ -13,6 +13,9 @@ struct PlaylistArtwork: View {
     let playlistID: String
     /// Up to four album cover URLs, in order.
     let coverURLs: [URL]
+    /// Korrektur 01.08: the card row embeds the mosaic flush inside a larger
+    /// rounded card — corner 0 there; standalone uses keep the default.
+    var cornerRadius: CGFloat = 10
 
     var body: some View {
         // Kursänderung 26.07: ONE portrait format for every card (~2:3, the
@@ -44,7 +47,7 @@ struct PlaylistArtwork: View {
         // shared SQUARE tile geometry — same card size as the other libraries'
         // card rows (MediaTile family); mosaic + text-in-card idiom stay.
         .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
     /// Slot 0 = the big bottom square (first cover, most prominent);

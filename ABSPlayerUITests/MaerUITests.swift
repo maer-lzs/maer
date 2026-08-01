@@ -476,14 +476,21 @@ nonisolated final class MaerUITests: XCTestCase {
         // cards, off-screen right). The create-flow ALERT presentation is
         // verified on device (the owner'ss design loop) — presenting a text-field
         // alert from a mounted-but-tab-switched view is unreliable in XCUITest.
+        // Korrektur 01.08: with full-size cards the New card starts far
+        // off-screen — `isHittable` THROWS there ("activation point invalid"),
+        // so reachability is judged by frame containment instead.
+        func newCardOnScreen() -> Bool {
+            let f = newCard.frame
+            return !f.isEmpty && f.minX >= 0 && f.maxX <= app.frame.maxX + 1
+        }
         var tries = 0
-        while !newCard.isHittable && tries < 6 {
+        while !newCardOnScreen() && tries < 8 {
             let a = app.staticTexts["Seed Playlist Two"].firstMatch
             let b = app.staticTexts["Seed Playlist"].firstMatch
-            (a.isHittable ? a : b).swipeLeft()
+            (a.exists ? a : b).swipeLeft()
             tries += 1
         }
-        XCTAssertTrue(newCard.isHittable, "the New Playlist card must scroll into reach")
+        XCTAssertTrue(newCardOnScreen(), "the New Playlist card must scroll into reach")
         snap(app, "music-playlist-cards")
         app.terminate()
     }
@@ -595,6 +602,33 @@ nonisolated final class MaerUITests: XCTestCase {
         // Home here — "Seed Book One" — after the first bump).
         XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 10),
                       "tab selection must survive transient source loss (Y37 hardening)")
+    }
+
+    /// Such-Freeze diagnosis (01.08): measured FIRST search open + first query
+    /// with the FrameProbe running — the long-frame counters around the open/
+    /// type moments are the before/after evidence. Gated like the hitch probes.
+    func testSearchFreezeProbe() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["HITCH_PROBE"] == "1",
+                          "measurement probe; set HITCH_PROBE=1 to run")
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-bulk", "-uitest-frameprobe"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 15))
+        books.tap()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].firstMatch.waitForExistence(timeout: 15))
+        sleep(2)   // settle → clean probe window
+        let search = app.buttons["global-search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()   // ← the frozen moment on device
+        let field = app.textFields["global-search-field"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        sleep(2)
+        field.tap()
+        field.typeText("a")   // ← first query
+        sleep(3)
+        app.terminate()
     }
 
     // MARK: - iPad hitch probes (28.07 diagnosis package — measurement, no assert on values)

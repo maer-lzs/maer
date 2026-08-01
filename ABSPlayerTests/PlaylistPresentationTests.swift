@@ -66,5 +66,43 @@ struct PlaylistPresentationTests {
         ]
         #expect(PlaylistPresentation.realPlaylists(input).map(\.id) == ["pl-1", "pl-2"])
     }
+
+    // MARK: - Mosaic cover selection (Korrektur 01.08 — duplicates hard-forbidden)
+
+    @Test("Regression: per-song cover ids of ONE album collapse to one tile")
+    func sameAlbumCollapsesToOneTile() {
+        // Navidrome hands every song its own coverArt id (mf-…) — three songs
+        // of the same album must yield ONE mosaic tile, never three copies.
+        let songs: [(albumKey: String?, coverArt: String?)] = [
+            ("al-1", "mf-1"), ("al-1", "mf-2"), ("al-1", "mf-3"),
+        ]
+        #expect(PlaylistPresentation.mosaicCoverIDs(songs) == ["mf-1"])
+    }
+
+    @Test("unique albums fill up to the limit, in playlist order")
+    func uniqueAlbumsFill() {
+        let songs: [(albumKey: String?, coverArt: String?)] = [
+            ("al-1", "c1"), ("al-2", "c2"), ("al-1", "c1b"), ("al-3", "c3"),
+            ("al-4", "c4"), ("al-5", "c5"),
+        ]
+        #expect(PlaylistPresentation.mosaicCoverIDs(songs) == ["c1", "c2", "c3", "c4"])
+    }
+
+    @Test("no album key: the cover id itself is the identity; nil covers skip")
+    func fallbackKeys() {
+        let songs: [(albumKey: String?, coverArt: String?)] = [
+            (nil, "c1"), (nil, "c1"), (nil, nil), (nil, "c2"),
+        ]
+        #expect(PlaylistPresentation.mosaicCoverIDs(songs) == ["c1", "c2"])
+    }
+
+    @Test("hard invariant: the selection NEVER contains duplicate album keys")
+    func selectionNeverDuplicates() {
+        let songs: [(albumKey: String?, coverArt: String?)] =
+            (0..<40).map { ("al-\($0 % 3)", "mf-\($0)") }
+        let ids = PlaylistPresentation.mosaicCoverIDs(songs)
+        #expect(ids.count == Set(ids).count)
+        #expect(ids.count == 3)
+    }
 }
 #endif
