@@ -564,7 +564,16 @@ struct LibraryView: View {
         // Vollplayer → Quellseiten (Gate 2, 8913feb): registered on the ONE
         // central router — environment wiring was fragile across player
         // presentation contexts (silent no-op when the env was missing).
-        .onAppear { registerPlayerSourceRouter() }
+        .onAppear {
+            registerPlayerSourceRouter()
+            #if DEBUG
+            // Screenshot/diagnosis hook: jump straight into drive mode (the
+            // -uitest seed provides the active player).
+            if ProcessInfo.processInfo.arguments.contains("-uitest-drivemode") {
+                DriveModeController.shared.enter()
+            }
+            #endif
+        }
         // Full player as an overlay OVER the library (instead of push).
         .overlay {
             if isShowingFullPlayer {

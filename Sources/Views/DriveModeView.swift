@@ -7,10 +7,15 @@ import SwiftUI
 /// Drive-mode LAYOUT — a variant of the full player over the SAME view model
 /// (no duplicated playback state). Glanceable, not readable: huge center
 /// play/pause, big ±skip left/right, two lines of text max, a thin
-/// NON-scrubbable progress bar, sleep timer as one cycling button, a clear
-/// exit. Deliberately absent: library, search, lists, queue, chapter list,
-/// settings, big cover, glass effects (glare + render cost). Dark, maximum
-/// contrast, portrait AND landscape, media-type neutral.
+/// NON-scrubbable progress bar, a clear exit. Deliberately absent: library,
+/// search, lists, queue, chapter list, settings, glass effects (glare +
+/// render cost). Sleep timer removed by decision (0693e05) — it stays in the
+/// normal full player. 9941a9a: the cover is shown (portrait above the
+/// title, landscape left of the controls — variant A; variant B renders it
+/// as a darkened full background, DEBUG-selectable for the screenshot
+/// decision). Dark, maximum contrast, portrait AND landscape, media-type
+/// neutral; the transport row SCALES to fit portrait widths (it used to
+/// overflow: 110+180+110 + spacing = 464 pt row on a ~345 pt column).
 struct DriveModeView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject var controller = DriveModeController.shared
@@ -19,6 +24,16 @@ struct DriveModeView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+            // 9941a9a variant B: the cover as a darkened full background —
+            // content and button sizes stay EXACTLY as in variant A.
+            if coverAsBackground, coordinator.activeItem != nil {
+                CachedAsyncImage(url: coverURL) { image in
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: { Color.black }
+                .ignoresSafeArea()
+                .overlay(Color.black.opacity(0.65).ignoresSafeArea())
+                .accessibilityHidden(true)
+            }
             if let vm = coordinator.viewModel, coordinator.activeItem != nil {
                 playback(vm)
             } else {
@@ -41,20 +56,64 @@ struct DriveModeView: View {
 
     // MARK: - Playback layout
 
+    /// Variant B ("cover as darkened background") for the screenshot
+    /// decision — DEBUG launch arg; default is variant A (cover as element).
+    private var coverAsBackground: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-uitest-drivecover-bg")
+        #else
+        false
+        #endif
+    }
+
+    private var coverURL: URL? {
+        coordinator.activeItem.flatMap { AppSession.shared.coverURL(forItemId: $0.id) }
+    }
+
     private func playback(_ vm: PlayerViewModel) -> some View {
         GeometryReader { geo in
             let landscape = geo.size.width > geo.size.height
-            VStack(spacing: landscape ? 10 : 24) {
-                Spacer(minLength: 0)
-                titleBlock(vm)
-                transport(vm, landscape: landscape)
-                progressBar(vm)
-                sleepButton(vm)
-                Spacer(minLength: 0)
+            // 9941a9a variant A (landscape): the cover sits LEFT of the
+            // button field — its width comes off the controls' budget.
+            let coverSide = landscape && !coverAsBackground
+                ? min(geo.size.height - 48, 200) : 0
+            let scale = DriveModeView.transportScale(
+                availableWidth: geo.size.width - 48 - (coverSide > 0 ? coverSide + 24 : 0),
+                landscape: landscape)
+            HStack(spacing: 24) {
+                if coverSide > 0 { coverView(side: coverSide) }
+                VStack(spacing: landscape ? 10 : 20) {
+                    Spacer(minLength: 0)
+                    if !landscape, !coverAsBackground {
+                        // Variant A (portrait): cover top-center above the title
+                        // — the slot freed by the removed sleep button; the
+                        // transport surfaces do NOT shrink for it.
+                        coverView(side: min(geo.size.width * 0.38, 160))
+                    }
+                    titleBlock(vm)
+                    transport(vm, landscape: landscape, scale: scale)
+                    progressBar(vm)
+                    Spacer(minLength: 0)
+                }
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    /// The cover as a rounded tile (variant A). Decorative — no tap target.
+    private func coverView(side: CGFloat) -> some View {
+        CachedAsyncImage(url: coverURL) { image in
+            image.resizable().aspectRatio(contentMode: .fill)
+        } placeholder: {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(.white.opacity(0.08))
+                .overlay(Image(systemName: "music.note").font(.largeTitle)
+                    .foregroundStyle(.white.opacity(0.4)))
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityHidden(true)
     }
 
     private func titleBlock(_ vm: PlayerViewModel) -> some View {
@@ -73,40 +132,55 @@ struct DriveModeView: View {
         .multilineTextAlignment(.center)
     }
 
-    private func transport(_ vm: PlayerViewModel, landscape: Bool) -> some View {
-        HStack(spacing: landscape ? 60 : 32) {
-            skipButton(vm, forward: false)
+    private func transport(_ vm: PlayerViewModel, landscape: Bool, scale: CGFloat) -> some View {
+        HStack(spacing: (landscape ? 60 : 32) * scale) {
+            skipButton(vm, forward: false, scale: scale)
             Button {
                 vm.togglePlayPause()
                 controller.touched()
             } label: {
                 Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: landscape ? 84 : 96, weight: .heavy))
-                    .frame(width: landscape ? 160 : 180, height: landscape ? 160 : 180)
+                    .font(.system(size: (landscape ? 84 : 96) * scale, weight: .heavy))
+                    .frame(width: (landscape ? 160 : 180) * scale,
+                           height: (landscape ? 160 : 180) * scale)
                     .background(Color.white.opacity(0.12), in: Circle())
             }
             .accessibilityIdentifier("drive-play-pause")
-            skipButton(vm, forward: true)
+            skipButton(vm, forward: true, scale: scale)
         }
         .foregroundStyle(.white)
         .buttonStyle(.plain)
     }
 
-    private func skipButton(_ vm: PlayerViewModel, forward: Bool) -> some View {
+    private func skipButton(_ vm: PlayerViewModel, forward: Bool, scale: CGFloat) -> some View {
         Button {
             vm.skip(by: forward ? vm.skipInterval : -vm.skipInterval)
             controller.touched()
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: forward ? "goforward" : "gobackward")
-                    .font(.system(size: 52, weight: .semibold))
+                    .font(.system(size: 52 * scale, weight: .semibold))
                 Text(verbatim: "\(Int(vm.skipInterval))")
                     .font(.headline.monospacedDigit())
             }
-            .frame(width: 110, height: 110)
+            .frame(width: 110 * scale, height: 110 * scale)
             .background(Color.white.opacity(0.08), in: Circle())
         }
         .accessibilityIdentifier(forward ? "drive-skip-forward" : "drive-skip-back")
+    }
+
+    /// Pure (tested): shrink factor so the three-button transport row FITS the
+    /// available column width in BOTH orientations (it overflowed portrait
+    /// phones before — 464 pt row on a ~345 pt column ⇒ clipped skip buttons).
+    /// 1.0 when the natural sizes fit; never below 0.55 (the tap surfaces
+    /// stay ≥ 60 pt — glanceable minimum on every supported phone).
+    nonisolated static func transportScale(availableWidth: CGFloat, landscape: Bool) -> CGFloat {
+        guard availableWidth > 0 else { return 1 }
+        let play: CGFloat = landscape ? 160 : 180
+        let spacing: CGFloat = landscape ? 60 : 32
+        let needed = play + 2 * 110 + 2 * spacing
+        guard needed > availableWidth else { return 1 }
+        return max(availableWidth / needed, 0.55)
     }
 
     /// Thin, NOT scrubbable — aiming at a bar while driving is an illusion.
@@ -125,39 +199,6 @@ struct DriveModeView: View {
         let remaining = max(vm.duration - vm.currentTime, 0)
         let h = Int(remaining) / 3600, m = (Int(remaining) % 3600) / 60
         return h > 0 ? "-\(h):\(String(format: "%02d", m)) h" : "-\(m) min"
-    }
-
-    /// One button, fixed steps: off → 15 → 30 → 60 → off.
-    private func sleepButton(_ vm: PlayerViewModel) -> some View {
-        Button {
-            let next = DriveModeView.nextSleepStep(active: vm.sleepTimerRemaining != nil,
-                                                   current: vm.sleepTimerRemaining)
-            if let minutes = next { vm.startSleepTimer(minutes: Double(minutes)) }
-            else { vm.cancelSleepTimer() }
-            controller.touched()
-        } label: {
-            Label(vm.sleepTimerRemaining != nil
-                    ? String(localized: "Sleep timer on")
-                    : String(localized: "Sleep timer"),
-                  systemImage: "moon.zzz.fill")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(vm.sleepTimerRemaining != nil ? .black : .white)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 14)
-                .background(vm.sleepTimerRemaining != nil ? Color.white : Color.white.opacity(0.12),
-                            in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("drive-sleep")
-    }
-
-    /// Pure (tested): cycle off→15→30→60→off based on the running timer.
-    nonisolated static func nextSleepStep(active: Bool, current: Double?) -> Int? {
-        guard active, let current else { return 15 }
-        let minutes = current / 60
-        if minutes <= 16 { return 30 }
-        if minutes <= 31 { return 60 }
-        return nil
     }
 
     // MARK: - Idle: continue tiles (only when nothing plays)

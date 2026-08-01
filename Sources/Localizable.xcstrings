@@ -1005,6 +1005,26 @@
         }
       }
     },
+    "Start automatically when %@ connects" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch starten, wenn %@ verbindet"
+          }
+        }
+      }
+    },
+    "With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground — iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit aktivem Schalter startet der Fahrmodus, wenn das gewählte Audiogerät verbindet, während die App läuft oder in den Vordergrund kommt — iOS startet Apps bei einer Bluetooth-Verbindung nicht von selbst. Er lässt sich jederzeit aus dem Player starten. Er ist ein Groß-Tasten-Layout, keine Sicherheitsfunktion."
+          }
+        }
+      }
+    },
     "Car audio" : {
       "localizations" : {
         "de" : {
@@ -1663,16 +1683,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fahrmodus"
-          }
-        }
-      }
-    },
-    "Drive mode starts automatically when this audio output connects, and can always be started from the player. It is a big-button layout, not a safety feature." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Der Fahrmodus startet automatisch, wenn sich dieser Audio-Ausgang verbindet, und lässt sich jederzeit aus dem Player starten. Er ist ein Großtasten-Layout, kein Sicherheitsmerkmal."
           }
         }
       }
@@ -4732,26 +4742,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sleep"
-          }
-        }
-      }
-    },
-    "Sleep timer" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sleeptimer"
-          }
-        }
-      }
-    },
-    "Sleep timer on" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sleeptimer an"
           }
         }
       }

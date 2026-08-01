@@ -679,6 +679,82 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source-pushed")
     }
 
+    /// Fahrmodus 9941a9a: PORTRAIT must work — the fixed transport row used to
+    /// overflow the portrait column (464 pt row on ~345 pt), clipping the skip
+    /// buttons. All three transport buttons must be hittable and INSIDE the
+    /// window in both orientations; screenshots feed the cover-variant choice.
+    func testDriveModePortraitAndLandscape() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = launchSeeded(withActivePlayer: true)
+        let mini = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 20))
+        mini.tap()
+        let drive = app.buttons["player-drive-mode"].firstMatch
+        XCTAssertTrue(drive.waitForExistence(timeout: 15))
+        drive.tap()
+        let play = app.buttons["drive-play-pause"].firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 10), "drive mode must open")
+        let window = app.windows.firstMatch.frame
+        for id in ["drive-skip-back", "drive-play-pause", "drive-skip-forward"] {
+            let b = app.buttons[id].firstMatch
+            XCTAssertTrue(b.exists, "\(id) must exist")
+            XCTAssertTrue(window.contains(b.frame),
+                          "\(id) must fit the PORTRAIT window — was \(b.frame) in \(window)")
+        }
+        // The sleep button left by decision (0693e05).
+        XCTAssertFalse(app.buttons["drive-sleep"].exists, "sleep button must be gone")
+        snap(app, "drive-portrait-cover-element")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        // Rotation settles asynchronously — poll until the WINDOW is actually
+        // wide (a snap mid-animation shows the old orientation's layout).
+        let deadline = Date().addingTimeInterval(10)
+        while Date() < deadline {
+            let f = app.windows.firstMatch.frame
+            if f.width > f.height { break }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        XCTAssertTrue(app.windows.firstMatch.frame.width > app.windows.firstMatch.frame.height,
+                      "window must settle in landscape")
+        XCTAssertTrue(play.waitForExistence(timeout: 5))
+        let lWindow = app.windows.firstMatch.frame
+        for id in ["drive-skip-back", "drive-play-pause", "drive-skip-forward"] {
+            XCTAssertTrue(lWindow.contains(app.buttons[id].firstMatch.frame),
+                          "\(id) must fit the LANDSCAPE window")
+        }
+        // Relative geometry proves the landscape layout machine-checkably
+        // (the XCTAttachment screenshot mis-rotates in landscape — sim
+        // artifact): the three buttons sit in a horizontal row, ordered.
+        let back = app.buttons["drive-skip-back"].firstMatch.frame
+        let playF = app.buttons["drive-play-pause"].firstMatch.frame
+        let fwd = app.buttons["drive-skip-forward"].firstMatch.frame
+        XCTAssertLessThan(back.midX, playF.midX, "row order back < play")
+        XCTAssertLessThan(playF.midX, fwd.midX, "row order play < forward")
+        XCTAssertEqual(back.midY, fwd.midY, accuracy: 4, "buttons on ONE row")
+        XCTAssertEqual(back.midY, playF.midY, accuracy: 8, "buttons on ONE row")
+        snap(app, "drive-landscape-cover-element")
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    /// Cover variant B (darkened full background) — screenshot for the owner's
+    /// picture-based choice; the transport must fit exactly like variant A.
+    func testDriveModeCoverBackgroundVariant() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-drivecover-bg"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let mini = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 20))
+        mini.tap()
+        let drive = app.buttons["player-drive-mode"].firstMatch
+        XCTAssertTrue(drive.waitForExistence(timeout: 15))
+        drive.tap()
+        let play = app.buttons["drive-play-pause"].firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.windows.firstMatch.frame.contains(play.frame))
+        snap(app, "drive-portrait-cover-background")
+    }
+
     /// Release-Gate 1 (30b2a32): the search must work when opened from a
     /// PUSHED page — the deck/search state lived on the library root and the
     /// gap had zero test coverage. One push level per tab.

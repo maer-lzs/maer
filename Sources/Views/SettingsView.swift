@@ -427,8 +427,10 @@ struct SettingsView: View {
 
 
     /// Drive mode: choose the ONE car audio output (from the currently
-    /// connected routes) that auto-activates the mode — never guessed.
+    /// connected routes); 9357955: auto-start is an explicit opt-in toggle,
+    /// default OFF — without it the mode only starts from the player button.
     @State private var carRouteName = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? ""
+    @AppStorage(AppStorageKeys.driveModeAutoStart) private var driveModeAutoStart = false
     private var driveModeSection: some View {
         Section {
             if !carRouteName.isEmpty {
@@ -436,6 +438,9 @@ struct SettingsView: View {
                     Text(carRouteName)
                 } label: {
                     Label("Car audio", systemImage: "car.fill")
+                }
+                Toggle(isOn: $driveModeAutoStart) {
+                    Text("Start automatically when \(carRouteName) connects")
                 }
                 Button("Forget car audio") {
                     UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteUID)
@@ -462,7 +467,10 @@ struct SettingsView: View {
         } header: {
             Text("Drive Mode")
         } footer: {
-            Text("Drive mode starts automatically when this audio output connects, and can always be started from the player. It is a big-button layout, not a safety feature.")
+            // Honest limit (9357955): iOS does not launch apps on a Bluetooth
+            // connect — auto-start works while the app runs / comes to the
+            // foreground. No false promises.
+            Text("With the toggle on, drive mode starts when the chosen audio output connects while the app is running or returns to the foreground — iOS does not launch apps on a Bluetooth connection. It can always be started from the player. It is a big-button layout, not a safety feature.")
         }
     }
 

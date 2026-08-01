@@ -222,6 +222,8 @@ nonisolated enum AppStorageKeys {
     /// the connected outputs; empty = no auto-activation) + its display name.
     static let driveModeCarRouteUID = "driveModeCarRouteUID"
     static let driveModeCarRouteName = "driveModeCarRouteName"
+    /// 9357955: explicit auto-start opt-in (default OFF — bool(forKey:)).
+    static let driveModeAutoStart = "driveModeAutoStart"
 
     /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
     /// server images always win, off just means color circles).

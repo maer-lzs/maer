@@ -72,18 +72,47 @@ final class DriveModeController: ObservableObject {
         }
     }
 
+    /// 9357955: auto-start is an EXPLICIT opt-in (default OFF) — nothing
+    /// starts by itself just because a Bluetooth device connects.
+    var autoStartEnabled: Bool {
+        UserDefaults.standard.bool(forKey: AppStorageKeys.driveModeAutoStart)
+    }
+
     /// Route change hook (wired to AVAudioSession.routeChangeNotification):
-    /// auto-enter when the remembered car route connects; on disconnect the
-    /// mode EXITS (decision: leaving the car ends the drive — reported).
+    /// auto-enter ONLY with the opt-in toggle on AND the remembered car route
+    /// connecting; on disconnect an active mode EXITS (decision: leaving the
+    /// car ends the drive — reported). The decision itself is pure (tested):
+    /// matching is STRICTLY the chosen device UID, never "any A2DP".
     func handleRouteChange() {
-        guard let uid = rememberedCarRouteUID, !uid.isEmpty else { return }
         let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
-        let connected = outputs.contains { $0.uid == uid }
-        if connected, !isActive {
-            enter()
-        } else if !connected, isActive {
-            exit()
+        switch DriveModeController.routeChangeAction(
+            autoStartEnabled: autoStartEnabled,
+            rememberedUID: rememberedCarRouteUID,
+            connectedUIDs: outputs.map(\.uid),
+            isActive: isActive) {
+        case .enter: enter()
+        case .exit: exit()
+        case nil: break
         }
+    }
+
+    nonisolated enum RouteAction { case enter, exit }
+
+    /// Pure (tested): what a route change means. No remembered UID (or an
+    /// orphaned empty one) → NEVER anything, regardless of what connects; the
+    /// UID must match EXACTLY (a different A2DP device is a stranger); enter
+    /// additionally requires the opt-in toggle. Exit on disconnect stays
+    /// toggle-independent — an active mode tied to the chosen device ends
+    /// when that device goes away.
+    nonisolated static func routeChangeAction(autoStartEnabled: Bool,
+                                              rememberedUID: String?,
+                                              connectedUIDs: [String],
+                                              isActive: Bool) -> RouteAction? {
+        guard let uid = rememberedUID, !uid.isEmpty else { return nil }
+        let connected = connectedUIDs.contains(uid)
+        if connected, !isActive, autoStartEnabled { return .enter }
+        if !connected, isActive { return .exit }
+        return nil
     }
 
     /// The currently connected outputs, for the settings picker ("choose your
