@@ -55,6 +55,11 @@ protocol MusicProvider: AudioProvider {
     /// Alphabetical page of the whole song library (music tab "Titles" list).
     func songPage(offset: Int, size: Int) async throws -> [MusicTopSong]
 
+    /// M6: per-track play counts of the LAST detail fetch for this item —
+    /// basis for the client-side album/playlist "Top Songs" section (empty
+    /// when the server ships no counts; the section then hides silently).
+    func trackPlayCounts(forItemId itemId: String) -> [Int?]
+
     // MARK: Playlists
     func allPlaylists() async throws -> [MusicPlaylist]
     /// Create a server playlist; returns its namespaced item id when the

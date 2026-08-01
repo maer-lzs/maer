@@ -30,6 +30,13 @@ struct MusicAlbumView: View {
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
+    /// M6: track indices ranked by play count (pure, tested); empty hides
+    /// the section. Reads the provider's per-detail cache — plain read.
+    private var topSongIndices: [Int] {
+        guard detail != nil else { return [] }
+        return MusicPopularity.topIndices(
+            playCounts: AppSession.shared.musicProvider.trackPlayCounts(forItemId: item.id))
+    }
     // Playlist basics: rename/delete with confirmation; server truth = reload.
     @State private var showRename = false
     @State private var renameText = ""
@@ -46,6 +53,35 @@ struct MusicAlbumView: View {
                 header
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+            }
+            // M6: client-side "Top Songs" over the play counts the detail
+            // already carries — small section ABOVE the track list, hidden
+            // silently when the server ships no counts (plain Subsonic).
+            if !topSongIndices.isEmpty {
+                Section {
+                    ForEach(Array(topSongIndices.enumerated()), id: \.element) { rank, trackIndex in
+                        if tracks.indices.contains(trackIndex) {
+                            Button {
+                                Task { await play(fromTrackAt: tracks[trackIndex].start) }
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Text("\(rank + 1)")
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: trackNumberWidth, alignment: .trailing)
+                                    Text(tracks[trackIndex].title).lineLimit(1)
+                                    Spacer()
+                                    Image(systemName: "play.circle")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } header: {
+                    Text("Top Songs")
+                }
             }
             if !tracks.isEmpty {
                 Section {

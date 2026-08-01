@@ -65,6 +65,22 @@ nonisolated enum MusicShelf {
     case newest, frequent, recent, byArtist, alphabetical
 }
 
+/// M6 (pure, tested): client-side "Top Songs" ranking over the play counts
+/// a detail fetch already carries — NO extra server request. Only counts > 0
+/// rank; ties keep track order; an all-nil/zero list yields [] (the section
+/// then disappears silently — honest capability behaviour on plain servers).
+nonisolated enum MusicPopularity {
+    static func topIndices(playCounts: [Int?], limit: Int = 5) -> [Int] {
+        let ranked = playCounts.enumerated()
+            .compactMap { idx, count -> (index: Int, count: Int)? in
+                guard let count, count > 0 else { return nil }
+                return (idx, count)
+            }
+            .sorted { $0.count != $1.count ? $0.count > $1.count : $0.index < $1.index }
+        return ranked.prefix(limit).map(\.index)
+    }
+}
+
 /// Shared pure assembly of a multi-song music item's player material: songs →
 /// per-song tracks (stream id in `contentUrl`) plus one chapter per song, so
 /// "next chapter" = "next song" (Regel 2 — both music providers build their

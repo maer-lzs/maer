@@ -191,10 +191,13 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let size: Int64?
     let suffix: String?
     let contentType: String?
+    /// M6: play count (OpenSubsonic/Navidrome) — basis for the client-side
+    /// "Top Songs" ranking on album/playlist pages. nil on plain servers.
+    let playCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, title, album, albumId, artist, track, discNumber, duration, coverArt,
-             size, suffix, contentType
+             size, suffix, contentType, playCount
     }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -210,6 +213,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
         size = try c.decodeIfPresent(Int64.self, forKey: .size)
         suffix = try c.decodeIfPresent(String.self, forKey: .suffix)
         contentType = try c.decodeIfPresent(String.self, forKey: .contentType)
+        playCount = try c.decodeIfPresent(Int.self, forKey: .playCount)
     }
 }
 

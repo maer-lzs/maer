@@ -31,6 +31,12 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     private var lastScrobbledSong: [String: String] = [:]
     private var favoriteAlbumIds: Set<String>?
     private var playlistMosaicCache: [String: [String]] = [:]
+    /// M6: per-track play counts of the last detail fetch, by item id.
+    private var playCountsByItemId: [String: [Int?]] = [:]
+
+    func trackPlayCounts(forItemId itemId: String) -> [Int?] {
+        playCountsByItemId[itemId] ?? []
+    }
 
     var providerId: String { "jf" }
     var mediaType: MediaType { .music }
@@ -143,6 +149,9 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
         lastScrobbledSong[itemId] = nil
+        // M6: per-track play counts (UserData.PlayCount) for the client-side
+        // "Top Songs" ranking.
+        playCountsByItemId[itemId] = songs.map { $0.userData?.playCount }
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: title, authorName: artist, narratorName: nil,

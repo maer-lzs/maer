@@ -36,6 +36,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var lastBookmarkedSong: [String: String] = [:]
     /// Short-lived cache of the server's bookmarks (invalidated on our own write).
     private var bookmarksCache: [SubsonicBookmark]?
+    /// M6: per-track play counts of the last detail fetch, by item id.
+    private var playCountsByItemId: [String: [Int?]] = [:]
+
+    func trackPlayCounts(forItemId itemId: String) -> [Int?] {
+        playCountsByItemId[itemId] ?? []
+    }
 
     /// Albums the user starred (favorites), loaded lazily from the server.
     private var starredAlbumIds: Set<String>?
@@ -218,6 +224,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // Remember the songs + offsets so playback can scrobble each one.
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
         lastScrobbledSong[itemId] = nil
+        // M6: per-track play counts ride along the detail — the album/playlist
+        // "Top Songs" section ranks them client-side, no extra request.
+        playCountsByItemId[itemId] = songs.map(\.playCount)
         let media = LibraryItemMedia(
             metadata: LibraryItemMetadata(
                 title: title, authorName: artist, narratorName: nil,

@@ -78,4 +78,21 @@ struct ArtistPortraitLookupTests {
         #expect(thumb.absoluteString.contains("Special:FilePath/Kraftwerk.jpg"))
     }
 }
+
+/// M6: client-side "Top Songs" ranking (pure).
+struct MusicPopularityTests {
+    @Test("ranks by count desc, ties keep track order, zeros/nils drop")
+    func ranking() {
+        #expect(MusicPopularity.topIndices(playCounts: [3, nil, 7, 0, 7, 1]) == [2, 4, 0, 5])
+        #expect(MusicPopularity.topIndices(playCounts: [nil, nil, 0]) == [])
+        #expect(MusicPopularity.topIndices(playCounts: []) == [])
+    }
+
+    @Test("limit caps the section")
+    func limit() {
+        let counts: [Int?] = Array(1...20).map { $0 }
+        #expect(MusicPopularity.topIndices(playCounts: counts, limit: 5)
+                == [19, 18, 17, 16, 15])
+    }
+}
 #endif
