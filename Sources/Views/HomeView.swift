@@ -44,6 +44,10 @@ struct HomeView: View {
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
+    /// M4: recently PLAYED music albums ("Zuletzt gehört (Musik)") — the
+    /// provider's `.recent` shelf; empty (no music server / nothing played)
+    /// hides the section.
+    @State private var recentMusicItems: [LibraryItem] = []
     /// TF4/E3: the Discover row's subscribed-Set + excluding-subscribed filter,
     /// computed off the body (only when subscriptions/recommendations change)
     /// instead of on every render.
@@ -96,6 +100,7 @@ struct HomeView: View {
                     radioSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
+                    recentMusicSection
                     recentlyAddedSection
                     if isEmpty { emptyState }
                 }
@@ -359,6 +364,27 @@ struct HomeView: View {
         }
     }
 
+    /// M4 "Zuletzt gehört (Musik)": the provider's recently-played album
+    /// shelf as a horizontal AlbumCell row — the SAME shelf mechanics and
+    /// cell as Recently Added (Regel 2: no Home-specific tile).
+    @ViewBuilder
+    private var recentMusicSection: some View {
+        if !recentMusicItems.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Recently Played (Music)").font(.title3).bold().padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(recentMusicItems) { item in
+                            AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
+                                .frame(width: 150, alignment: .top)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+        }
+    }
+
     /// A recently-added id resolves to a library book → the book grid cell,
     /// otherwise (an album) → the album cell.
     @ViewBuilder
@@ -429,6 +455,8 @@ struct HomeView: View {
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
         let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
+        // M4: recently played music — the ONE provider access point again.
+        let recentMusic = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 
@@ -453,6 +481,7 @@ struct HomeView: View {
             musicContinueProgress = musicProgress
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems
+            recentMusicItems = recentMusic
             rediscoverPicks = rediscover
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
         }

@@ -4139,6 +4139,16 @@
         }
       }
     },
+    "Recently Played (Music)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gehört (Musik)"
+          }
+        }
+      }
+    },
     "Recently Played" : {
       "localizations" : {
         "de" : {
