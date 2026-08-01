@@ -29,6 +29,8 @@ nonisolated enum RadioBrowserClient {
         case byTag(tag: String, limit: Int)
         /// The available states (Kantone/Bundesländer) of a country.
         case states(countryName: String)
+        /// All countries with station counts (explicit country choice).
+        case countries
         /// Stations of ONE state, by votes (the REAL region section).
         case byState(state: String, limit: Int)
 
@@ -46,6 +48,8 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/bytagexact/\(Self.pathEscaped(tag))"
             case .states(let country):
                 return "/json/states/\(Self.pathEscaped(country))/"
+            case .countries:
+                return "/json/countries/"
             case .byState(let state, _):
                 return "/json/stations/bystateexact/\(Self.pathEscaped(state))"
             }
@@ -67,7 +71,7 @@ nonisolated enum RadioBrowserClient {
                     .init(name: "limit", value: String(limit)),
                     .init(name: "hidebroken", value: "true"),
                 ]
-            case .states:
+            case .states, .countries:
                 return [.init(name: "hidebroken", value: "true")]
             case .byRegion(_, let limit), .byTag(_, let limit), .byState(_, let limit):
                 return [
@@ -104,12 +108,29 @@ nonisolated enum RadioBrowserClient {
         try await stations(.byState(state: state, limit: limit))
     }
 
-    /// State NAMES of a country (Radio Browser /json/states/{country}).
-    static func states(countryName: String) async throws -> [String] {
-        struct RBState: Decodable { let name: String? }
+    /// Raw state entries of a country (name + stationcount — the pure
+    /// `RadioBrowseCuration` turns them into the display list).
+    static func states(countryName: String) async throws -> [RadioBrowseEntry] {
+        struct RBState: Decodable { let name: String?; let stationcount: Int? }
         return try await request(.states(countryName: countryName)) { data in
             let decoded = (try? JSONDecoder().decode([RBState].self, from: data)) ?? []
-            return Array(Set(decoded.compactMap { $0.name?.isEmpty == false ? $0.name : nil })).sorted()
+            return decoded.compactMap { entry in
+                guard let name = entry.name, !name.isEmpty else { return nil }
+                return RadioBrowseEntry(name: name, stationCount: entry.stationcount ?? 0)
+            }
+        }
+    }
+
+    /// All countries (name + ISO code + stationcount) for the explicit
+    /// country choice (b1ab99d cascade step a).
+    struct RBCountry: Decodable, Sendable {
+        let name: String?
+        let iso_3166_1: String?
+        let stationcount: Int?
+    }
+    static func countries() async throws -> [RBCountry] {
+        try await request(.countries) { data in
+            (try? JSONDecoder().decode([RBCountry].self, from: data)) ?? []
         }
     }
 

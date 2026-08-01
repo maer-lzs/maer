@@ -225,6 +225,17 @@ nonisolated enum AppStorageKeys {
     /// 9357955: explicit auto-start opt-in (default OFF — bool(forKey:)).
     static let driveModeAutoStart = "driveModeAutoStart"
 
+    // Radio-Picker-Kuratierung (b942da6/b1ab99d)
+    /// ALL raw name variants of the chosen region (the by-state query runs
+    /// against every one; [String] via UserDefaults array).
+    static let radioRegionQueryNames = "radioRegionQueryNames"
+    /// Country implied by the chosen region (cascade step b).
+    static let radioRegionCountryCode = "radioRegionCountryCode"
+    static let radioRegionCountryName = "radioRegionCountryName"
+    /// Explicitly chosen country (cascade step a — beats every guess).
+    static let radioChosenCountryCode = "radioChosenCountryCode"
+    static let radioChosenCountryName = "radioChosenCountryName"
+
     /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
     /// server images always win, off just means color circles).
     static let musicArtistImagesOnline = "musicArtistImagesOnline"

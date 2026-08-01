@@ -1035,6 +1035,26 @@
         }
       }
     },
+    "Change Country" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land ändern"
+          }
+        }
+      }
+    },
+    "Could not load the country list. Check your connection and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Länderliste konnte nicht geladen werden. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
     "Change region" : {
       "localizations" : {
         "de" : {

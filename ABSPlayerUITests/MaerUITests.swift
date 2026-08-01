@@ -579,8 +579,19 @@ nonisolated final class MaerUITests: XCTestCase {
         while !change.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
         XCTAssertTrue(change.waitForExistence(timeout: 10), "the chosen-region section must offer Change region")
         change.tap()
-        XCTAssertTrue(app.buttons["radio-region-picker"].firstMatch.waitForExistence(timeout: 10),
+        let picker = app.buttons["radio-region-picker"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 10),
                       "after Change region the picker must appear immediately (no dead section)")
+        // b942da6/b1ab99d: the picker is a SHEET now — curated list with the
+        // country-change layer; choosing binds to an existing entry.
+        picker.tap()
+        XCTAssertTrue(app.buttons["radio-country-change"].firstMatch.waitForExistence(timeout: 10),
+                      "the sheet must offer the Change-Country layer")
+        let region = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seed Region Two")).firstMatch
+        XCTAssertTrue(region.waitForExistence(timeout: 10), "curated region rows must list the states")
+        region.tap()
+        XCTAssertTrue(app.staticTexts["Seed Region Two"].firstMatch.waitForExistence(timeout: 10),
+                      "choosing a region must show its section")
     }
 
     /// Y37 hardening (01.08): a sources-changed bump with TRANSIENT podcast

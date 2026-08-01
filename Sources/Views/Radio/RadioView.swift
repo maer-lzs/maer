@@ -23,18 +23,44 @@ struct RadioView: View {
     @State private var popular: [RadioStation] = []
     @State private var regional: [RadioStation] = []
     @State private var discoveryLoaded = false
-    private let regionCode = RadioCatalog.deviceRegionCode()
+    private let localeCode = RadioCatalog.deviceRegionCode()
     /// The ONE user-chosen state (persisted); nil = not chosen yet. Plain
     /// state + manual defaults I/O (an optional-String @AppStorage misbehaved
     /// in the harness bisect).
     @State private var chosenState: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionState)
-    @State private var availableStates: [String] = []
+    /// Curated picker list (b942da6): merged variants, noise filtered,
+    /// sorted by station count.
+    @State private var availableStates: [RadioBrowseCuration.Curated] = []
+    @State private var showRegionPicker = false
+    /// b1ab99d cascade: explicit country choice (a) and the country implied
+    /// by the chosen region (b); locale stays the last fallback (c).
+    @State private var chosenCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryCode)
+    @State private var chosenCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryName)
+    @State private var impliedCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryCode)
     #if DEBUG
     @State private var seedRegionApplied = false
     #endif
-    /// "Popular in Switzerland" — country name from the locale, localized.
+
+    /// USER CHOICE BEATS GUESSING (b1ab99d): the ONE country code feeding
+    /// "Popular in …" and the region list.
+    private var effectiveCountryCode: String? {
+        RadioCountryCascade.effectiveCode(explicit: chosenCountryCode,
+                                          regionImplied: impliedCountryCode,
+                                          locale: localeCode)
+    }
+
+    /// English country name for the Radio Browser states path.
+    private var effectiveCountryName: String? {
+        if let chosenCountryName, !chosenCountryName.isEmpty { return chosenCountryName }
+        if let implied = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryName),
+           !implied.isEmpty { return implied }
+        guard let code = effectiveCountryCode else { return nil }
+        return Locale(identifier: "en_US").localizedString(forRegionCode: code)
+    }
+
+    /// "Popular in Switzerland" — follows the country cascade, localized.
     private var nationalTitle: String {
-        guard let code = regionCode,
+        guard let code = effectiveCountryCode,
               let name = Locale.current.localizedString(forRegionCode: code) else {
             return String(localized: "Popular Stations")
         }
@@ -42,7 +68,7 @@ struct RadioView: View {
     }
 
     private var showsPopular: Bool { RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
-    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionCode, regional: regional) }
+    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: effectiveCountryCode, regional: regional) }
     private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
     private var hasAnyContent: Bool {
         !mostPlayed.isEmpty || !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
@@ -89,6 +115,18 @@ struct RadioView: View {
             reload()
             await loadDiscovery()
         }
+        // b1ab99d: region picker as a sheet (search field + country layer).
+        .sheet(isPresented: $showRegionPicker) {
+            RadioRegionPickerSheet(states: availableStates,
+                                   countryTitle: nationalCountryDisplayName,
+                                   onChooseRegion: chooseRegion,
+                                   onChooseCountry: chooseCountry)
+        }
+    }
+
+    /// Localized display name of the effective country (sheet subtitle).
+    private var nationalCountryDisplayName: String? {
+        effectiveCountryCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }
     }
 
     // MARK: - Sections
@@ -182,6 +220,7 @@ struct RadioView: View {
                     Button {
                         self.chosenState = nil
                         UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionState)
+                        UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionQueryNames)
                         regional = []
                         // Refill the picker list immediately — without this the
                         // section went DEAD until restart (confirmed regression).
@@ -199,14 +238,10 @@ struct RadioView: View {
         } else if !availableStates.isEmpty, networkMonitor.isConnected {
             VStack(alignment: .leading, spacing: 8) {
                 Text("From Your Region").font(.title3).bold().padding(.horizontal)
-                Menu {
-                    ForEach(availableStates, id: \.self) { state in
-                        Button(state) {
-                            chosenState = state
-                            UserDefaults.standard.set(state, forKey: AppStorageKeys.radioRegionState)
-                            Task { await loadDiscovery(force: true) }
-                        }
-                    }
+                // b1ab99d: the picker is a SHEET now — a Menu cannot carry the
+                // required search field or the country layer.
+                Button {
+                    showRegionPicker = true
                 } label: {
                     Label("Choose your region", systemImage: "mappin.and.ellipse")
                         .padding(.horizontal)
@@ -214,6 +249,42 @@ struct RadioView: View {
                 .accessibilityIdentifier("radio-region-picker")
             }
         }
+    }
+
+    /// Region choice: persist display name + ALL merged raw names (the query
+    /// runs against every variant) + the implied country (cascade step b).
+    private func chooseRegion(_ entry: RadioBrowseCuration.Curated) {
+        chosenState = entry.display
+        UserDefaults.standard.set(entry.display, forKey: AppStorageKeys.radioRegionState)
+        UserDefaults.standard.set(entry.queryNames, forKey: AppStorageKeys.radioRegionQueryNames)
+        if let code = effectiveCountryCode {
+            impliedCountryCode = code
+            UserDefaults.standard.set(code, forKey: AppStorageKeys.radioRegionCountryCode)
+        }
+        if let name = effectiveCountryName {
+            UserDefaults.standard.set(name, forKey: AppStorageKeys.radioRegionCountryName)
+        }
+        showRegionPicker = false
+        Task { await loadDiscovery(force: true) }
+    }
+
+    /// Explicit country choice (cascade step a): persists, clears the old
+    /// country's region choice and refills the picker list.
+    private func chooseCountry(code: String, name: String) {
+        chosenCountryCode = code
+        chosenCountryName = name
+        UserDefaults.standard.set(code, forKey: AppStorageKeys.radioChosenCountryCode)
+        UserDefaults.standard.set(name, forKey: AppStorageKeys.radioChosenCountryName)
+        // The old country's region makes no sense anymore.
+        chosenState = nil
+        impliedCountryCode = nil
+        for key in [AppStorageKeys.radioRegionState, AppStorageKeys.radioRegionQueryNames,
+                    AppStorageKeys.radioRegionCountryCode, AppStorageKeys.radioRegionCountryName] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        regional = []
+        availableStates = []
+        Task { await loadDiscovery(force: true) }
     }
 
     private func loadDiscovery(force: Bool = false) async {
@@ -230,25 +301,30 @@ struct RadioView: View {
                 chosenState = "Seed Region"
                 seedRegionApplied = true
             }
-            availableStates = ["Seed Region", "Seed Region Two"]   // picker testable
+            availableStates = [
+                RadioBrowseCuration.Curated(display: "Seed Region", queryNames: ["Seed Region"], stationCount: 3),
+                RadioBrowseCuration.Curated(display: "Seed Region Two", queryNames: ["Seed Region Two"], stationCount: 2),
+            ]   // picker testable
             discoveryLoaded = true
             return
         }
         #endif
         // National (the owner 26.07.): country top-votes instead of world —
-        // less foreign-language noise; search covers the exotics.
-        async let topTask = Self.nationalPopular(regionCode)
+        // less foreign-language noise; search covers the exotics. b1ab99d:
+        // the country follows the cascade (choice beats guess).
+        async let topTask = Self.nationalPopular(effectiveCountryCode)
         async let regionTask = Self.stateStations(chosenState)
         let topResult = await topTask
         let regionResult = await regionTask
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
-        // The state list of the device country (once per session) — a country
-        // without states leaves the region section silently hidden.
+        // The state list of the effective country (once per session) — a
+        // country without states leaves the region section silently hidden.
         // Decoupled from chosenState (fixlet 4575a76): a returner with a
         // persisted state must still get the picker list when changing.
-        if availableStates.isEmpty, let code = regionCode,
-           let countryName = Locale(identifier: "en_US").localizedString(forRegionCode: code) {
-            availableStates = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
+        // b942da6: raw entries run through the pure curation (merge/filter/sort).
+        if availableStates.isEmpty, let countryName = effectiveCountryName {
+            let raw = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
+            availableStates = RadioBrowseCuration.curated(raw)
         }
         // Layout-shift: the discovery sections land as whole-section inserts —
         // apply through the shared calm gate, never mid-scroll.
@@ -268,8 +344,21 @@ struct RadioView: View {
 
     /// The REAL region: stations of the user-chosen state (never guessed,
     /// never located — same choose-once pattern as the drive-mode BT device).
+    /// b942da6: the query runs against ALL merged name variants (persisted at
+    /// choice time) — otherwise the other spelling's stations vanish; results
+    /// dedupe by station id, first (best-voted of the winner name) stays.
     private static func stateStations(_ state: String?) async -> [RadioStation] {
         guard let state, !state.isEmpty else { return [] }
-        return (try? await RadioBrowserClient.byState(state: state)) ?? []
+        let names = (UserDefaults.standard.array(forKey: AppStorageKeys.radioRegionQueryNames) as? [String])
+            .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
+        var seen = Set<String>()
+        var merged: [RadioStation] = []
+        for name in names {
+            let batch = (try? await RadioBrowserClient.byState(state: name)) ?? []
+            for station in batch where seen.insert(station.id).inserted {
+                merged.append(station)
+            }
+        }
+        return merged
     }
 }

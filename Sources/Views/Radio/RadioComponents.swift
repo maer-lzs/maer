@@ -153,3 +153,133 @@ struct RadioCardRow: View {
         }
     }
 }
+
+/// b942da6/b1ab99d: the region picker sheet — curated state list with a
+/// search field (typing filters; free text without a hit selects nothing),
+/// plus the "Change Country" layer (explicit country choice, cascade step a).
+/// Counts render as plain numerals (no new catalog strings).
+struct RadioRegionPickerSheet: View {
+    let states: [RadioBrowseCuration.Curated]
+    /// Localized name of the country whose states are listed (subtitle).
+    let countryTitle: String?
+    let onChooseRegion: (RadioBrowseCuration.Curated) -> Void
+    let onChooseCountry: (_ code: String, _ name: String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if let countryTitle {
+                    Section {
+                        NavigationLink {
+                            RadioCountryPickerList(onChoose: onChooseCountry)
+                        } label: {
+                            Label {
+                                LabeledContent { Text(countryTitle) } label: {
+                                    Text("Change Country")
+                                }
+                            } icon: {
+                                Image(systemName: "globe")
+                            }
+                        }
+                        .accessibilityIdentifier("radio-country-change")
+                    }
+                }
+                Section {
+                    ForEach(RadioBrowseCuration.filtered(states, query: query)) { entry in
+                        Button {
+                            onChooseRegion(entry)
+                        } label: {
+                            LabeledContent {
+                                Text(verbatim: "\(entry.stationCount)")
+                                    .foregroundStyle(.secondary)
+                            } label: {
+                                Text(entry.display)
+                            }
+                        }
+                        .tint(.primary)
+                    }
+                }
+            }
+            .searchable(text: $query)
+            .navigationTitle(Text("Choose your region"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+/// The country layer: all Radio Browser countries (station counts, same
+/// curation rules — no hardcoded lists), searchable; choosing persists the
+/// explicit country and resets the old country's region choice.
+struct RadioCountryPickerList: View {
+    let onChoose: (_ code: String, _ name: String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+    @State private var countries: [(code: String, name: String, count: Int)] = []
+    @State private var loadFailed = false
+
+    var body: some View {
+        List {
+            ForEach(filtered, id: \.code) { country in
+                Button {
+                    onChoose(country.code, country.name)
+                    dismiss()
+                } label: {
+                    LabeledContent {
+                        Text(verbatim: "\(country.count)")
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        // Localized display; the English name is what the
+                        // states endpoint needs and is what gets persisted.
+                        Text(Locale.current.localizedString(forRegionCode: country.code) ?? country.name)
+                    }
+                }
+                .tint(.primary)
+            }
+            if countries.isEmpty {
+                // Rule 3: a failed load is VISIBLE, never a silent empty list.
+                if loadFailed {
+                    Text("Could not load the country list. Check your connection and try again.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
+                }
+            }
+        }
+        .searchable(text: $query)
+        .navigationTitle(Text("Change Country"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard countries.isEmpty else { return }
+            let raw = (try? await RadioBrowserClient.countries()) ?? []
+            let mapped = raw.compactMap { entry -> (String, String, Int)? in
+                guard let code = entry.iso_3166_1, !code.isEmpty,
+                      let name = entry.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !name.isEmpty else { return nil }
+                return (code.uppercased(), name, entry.stationcount ?? 0)
+            }
+            // Same rules as the states: threshold, count-desc, then name.
+            let curatedList = mapped
+                .filter { $0.2 >= 2 }
+                .sorted { $0.2 == $1.2 ? $0.1 < $1.1 : $0.2 > $1.2 }
+                .map { (code: $0.0, name: $0.1, count: $0.2) }
+            countries = curatedList
+            loadFailed = curatedList.isEmpty
+        }
+    }
+
+    private var filtered: [(code: String, name: String, count: Int)] {
+        let q = RadioBrowseCuration.mergeKey(query)
+        guard !q.isEmpty else { return countries }
+        return countries.filter {
+            RadioBrowseCuration.mergeKey($0.name).contains(q)
+                || RadioBrowseCuration.mergeKey(Locale.current.localizedString(forRegionCode: $0.code) ?? "").contains(q)
+        }
+    }
+}

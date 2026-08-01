@@ -399,6 +399,97 @@ nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
     var id: String { tag }
 }
 
+/// Radio-Picker-Kuratierung (b942da6): one raw name+stationcount entry of the
+/// Radio Browser `states`/`countries` lists (community data — variants,
+/// junk, cities next to real regions).
+nonisolated struct RadioBrowseEntry: Equatable, Sendable {
+    let name: String
+    let stationCount: Int
+}
+
+/// Pure curation of the raw Radio Browser region/country lists (tested with
+/// the real Swiss fixture). Rules — deliberately COUNTRY-AGNOSTIC, no
+/// hardcoded canton list:
+/// 1. Noise filter: empty/whitespace, purely numeric names, and entries whose
+///    MERGED station count stays below the threshold are dropped.
+/// 2. Variant merge: case- and diacritic-insensitive (and whitespace-trimmed)
+///    dedupe — "Zürich"/"Zurich"/" Zürich" collapse; the variant with the
+///    most stations names the entry, the by-state query then runs against
+///    ALL merged raw names (otherwise the other spelling's stations vanish).
+/// 3. Sort: merged station count descending (most relevant region first),
+///    ties alphabetically.
+nonisolated enum RadioBrowseCuration {
+    struct Curated: Equatable, Identifiable, Sendable {
+        /// Display name (the variant with the most stations).
+        let display: String
+        /// ALL raw names of the merged variants — every one is queried.
+        let queryNames: [String]
+        /// Sum of the merged variants' station counts.
+        let stationCount: Int
+        var id: String { display }
+    }
+
+    /// Case-/diacritic-insensitive, trimmed merge key.
+    static func mergeKey(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+    }
+
+    static func curated(_ raw: [RadioBrowseEntry], minStations: Int = 2) -> [Curated] {
+        var groups: [String: [RadioBrowseEntry]] = [:]
+        var order: [String] = []
+        for entry in raw {
+            let trimmed = entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            guard trimmed.rangeOfCharacter(from: CharacterSet.decimalDigits.inverted) != nil else { continue }
+            let key = mergeKey(trimmed)
+            if groups[key] == nil { order.append(key) }
+            // Keep the RAW name — `bystateexact` matches byte-exactly, a
+            // trimmed " Zürich" would silently lose that variant's stations.
+            groups[key, default: []].append(entry)
+        }
+        return order.compactMap { key -> Curated? in
+            guard let variants = groups[key] else { return nil }
+            let total = variants.reduce(0) { $0 + $1.stationCount }
+            guard total >= minStations else { return nil }
+            let winner = variants.max { a, b in
+                a.stationCount == b.stationCount ? a.name > b.name : a.stationCount < b.stationCount
+            }!
+            var seenNames = Set<String>()
+            return Curated(display: winner.name.trimmingCharacters(in: .whitespacesAndNewlines),
+                           queryNames: variants.map(\.name).filter { seenNames.insert($0).inserted },
+                           stationCount: total)
+        }
+        .sorted { a, b in
+            a.stationCount == b.stationCount
+                ? a.display.localizedCaseInsensitiveCompare(b.display) == .orderedAscending
+                : a.stationCount > b.stationCount
+        }
+    }
+
+    /// Picker search filter (pure): case-/diacritic-insensitive substring —
+    /// free text without a hit selects NOTHING (choice stays bound to
+    /// existing entries).
+    static func filtered(_ entries: [Curated], query: String) -> [Curated] {
+        let q = mergeKey(query)
+        guard !q.isEmpty else { return entries }
+        return entries.filter { mergeKey($0.display).contains(q) }
+    }
+}
+
+/// b1ab99d point 3: which country feeds "Popular in …" and the region list.
+/// USER CHOICE BEATS GUESSING — pure cascade: explicitly chosen country →
+/// country implied by the chosen region → locale country. No location access.
+nonisolated enum RadioCountryCascade {
+    static func effectiveCode(explicit: String?, regionImplied: String?, locale: String?) -> String? {
+        if let explicit, !explicit.isEmpty { return explicit }
+        if let regionImplied, !regionImplied.isEmpty { return regionImplied }
+        if let locale, !locale.isEmpty { return locale }
+        return nil
+    }
+}
+
 /// F4-discovery: the catalog browse layer for the radio tab — a CURATED genre
 /// set (the raw tag cloud is too noisy) plus the pure offline/section-gating
 /// rules. Extendable: add rows to `genres`.
