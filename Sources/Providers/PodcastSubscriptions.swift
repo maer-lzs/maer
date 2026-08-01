@@ -129,11 +129,25 @@ final class PodcastSubscriptions: ObservableObject {
     private init() {
         let url = fileURL
         bootstrapTask = Task { [weak self] in
-            let decoded = await Task.detached(priority: .userInitiated) { () -> [PodcastShow] in
-                guard let data = try? Data(contentsOf: url) else { return [] }
-                return (try? JSONDecoder().decode([PodcastShow].self, from: data)) ?? []
+            // V2 audit fix: "file missing" (fresh install) and "file present
+            // but UNDECODABLE" (corruption) must not look the same — the old
+            // ?? [] made a corrupt store start empty, and the NEXT persist()
+            // silently overwrote the recoverable data with that empty list.
+            // A corrupt file is preserved as .corrupt and loudly logged.
+            let decoded = await Task.detached(priority: .userInitiated) { () -> [PodcastShow]? in
+                guard let data = try? Data(contentsOf: url) else { return [] }   // missing → fresh
+                if let shows = try? JSONDecoder().decode([PodcastShow].self, from: data) {
+                    return shows
+                }
+                let backup = url.appendingPathExtension("corrupt")
+                try? FileManager.default.removeItem(at: backup)
+                try? FileManager.default.moveItem(at: url, to: backup)
+                return nil
             }.value
-            guard let self, !decoded.isEmpty else { return }
+            if decoded == nil {
+                Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
+            }
+            guard let self, let decoded, !decoded.isEmpty else { return }
             self.shows = self.migrated(decoded)
             // Listen log: one-time backfill so the history of the CURRENT
             // subscriptions survives later unsubscribes/rotation.

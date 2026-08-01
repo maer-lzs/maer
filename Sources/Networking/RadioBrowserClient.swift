@@ -108,17 +108,23 @@ nonisolated enum RadioBrowserClient {
         try await stations(.byState(state: state, limit: limit))
     }
 
+    struct RBState: Decodable { let name: String?; let stationcount: Int? }
+
+    /// V2 audit fix: decode failures THROW (like the stations path) instead
+    /// of collapsing to [] — inside the mirror loop a broken mirror then
+    /// fails over to the next one; a total failure surfaces to the caller.
+    /// Pure (tested against the wire corpus).
+    nonisolated static func decodeStates(_ data: Data) throws -> [RadioBrowseEntry] {
+        try JSONDecoder().decode([RBState].self, from: data).compactMap { entry in
+            guard let name = entry.name, !name.isEmpty else { return nil }
+            return RadioBrowseEntry(name: name, stationCount: entry.stationcount ?? 0)
+        }
+    }
+
     /// Raw state entries of a country (name + stationcount — the pure
     /// `RadioBrowseCuration` turns them into the display list).
     static func states(countryName: String) async throws -> [RadioBrowseEntry] {
-        struct RBState: Decodable { let name: String?; let stationcount: Int? }
-        return try await request(.states(countryName: countryName)) { data in
-            let decoded = (try? JSONDecoder().decode([RBState].self, from: data)) ?? []
-            return decoded.compactMap { entry in
-                guard let name = entry.name, !name.isEmpty else { return nil }
-                return RadioBrowseEntry(name: name, stationCount: entry.stationcount ?? 0)
-            }
-        }
+        try await request(.states(countryName: countryName)) { try decodeStates($0) }
     }
 
     /// All countries (name + ISO code + stationcount) for the explicit
@@ -128,10 +134,15 @@ nonisolated enum RadioBrowserClient {
         let iso_3166_1: String?
         let stationcount: Int?
     }
+
+    /// V2 audit fix: throws like `decodeStates` (mirror failover, no silent
+    /// empty country list). Pure (tested against the wire corpus).
+    nonisolated static func decodeCountries(_ data: Data) throws -> [RBCountry] {
+        try JSONDecoder().decode([RBCountry].self, from: data)
+    }
+
     static func countries() async throws -> [RBCountry] {
-        try await request(.countries) { data in
-            (try? JSONDecoder().decode([RBCountry].self, from: data)) ?? []
-        }
+        try await request(.countries) { try decodeCountries($0) }
     }
 
     /// Stations for an exact tag, by votes (genre drilldown).
