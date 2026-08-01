@@ -1055,6 +1055,116 @@
         }
       }
     },
+    "Business" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wirtschaft"
+          }
+        }
+      }
+    },
+    "Comedy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comedy"
+          }
+        }
+      }
+    },
+    "Education" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bildung"
+          }
+        }
+      }
+    },
+    "Fiction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiktion"
+          }
+        }
+      }
+    },
+    "Health & Fitness" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesundheit & Fitness"
+          }
+        }
+      }
+    },
+    "History" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geschichte"
+          }
+        }
+      }
+    },
+    "Science" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wissenschaft"
+          }
+        }
+      }
+    },
+    "Society & Culture" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesellschaft & Kultur"
+          }
+        }
+      }
+    },
+    "Sports" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sport"
+          }
+        }
+      }
+    },
+    "Technology" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Technologie"
+          }
+        }
+      }
+    },
+    "True Crime" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "True Crime"
+          }
+        }
+      }
+    },
     "Change Country" : {
       "localizations" : {
         "de" : {

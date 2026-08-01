@@ -599,6 +599,23 @@ extension JellyfinProvider: SearchableProvider {
                 out.append(SearchResult(
                     id: item.id, kind: .song, title: name,
                     subtitle: hit.artists?.first, coverURL: coverURL(forItemId: item.id)))
+            case "Playlist":
+                // M5: Jellyfin ships playlist hits SERVER-side (unlike
+                // Subsonic's local filter — honest asymmetry, reported).
+                let pid = itemId(playlistId: hit.id)
+                if itemsById[pid] == nil {
+                    itemsById[pid] = LibraryItem(
+                        id: pid,
+                        media: LibraryItemMedia(
+                            metadata: LibraryItemMetadata(
+                                title: name, authorName: nil, narratorName: nil,
+                                seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                            duration: nil, chapters: nil, tracks: nil),
+                        addedAt: nil)
+                }
+                out.append(SearchResult(
+                    id: pid, kind: .playlist, title: name,
+                    coverURL: coverURL(forItemId: pid)))
             default:
                 continue
             }

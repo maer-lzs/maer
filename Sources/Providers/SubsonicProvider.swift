@@ -860,6 +860,27 @@ extension SubsonicProvider: SearchableProvider {
                 id: id, kind: .song, title: title, subtitle: song.artist,
                 coverURL: coverURL(forItemId: id)))
         }
+        // M5: search3 ships NO playlists — filter the (junk-cleaned) playlist
+        // list LOCALLY over the same match rule the podcast search uses.
+        // Honest limit: this is a client-side name filter, not a server hit.
+        let lists = PlaylistPresentation.realPlaylists((try? await allPlaylists()) ?? [])
+            .filter { PodcastLocalSearch.matches($0.name ?? "", query) }
+        for list in lists {
+            let pid = Self.itemId(playlistId: list.id)
+            if itemsById[pid] == nil {
+                itemsById[pid] = LibraryItem(
+                    id: pid,
+                    media: LibraryItemMedia(
+                        metadata: LibraryItemMetadata(
+                            title: list.name, authorName: nil, narratorName: nil,
+                            seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                        duration: list.duration, chapters: nil, tracks: nil),
+                    addedAt: nil)
+            }
+            out.append(SearchResult(
+                id: pid, kind: .playlist, title: list.name ?? "",
+                coverURL: coverURL(forItemId: pid)))
+        }
         return out
     }
 

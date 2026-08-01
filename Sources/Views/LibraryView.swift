@@ -810,6 +810,14 @@ struct LibraryView: View {
             } else {
                 searchResultUnavailable()
             }
+        case .playlist:
+            // M5: playlist detail = the SAME MusicRoute.album path the F5
+            // cards push (playlist item id; no second detail mechanism).
+            if let item = AppSession.shared.libraryItem(forId: result.id) {
+                navigationPath.append(MusicRoute.album(item))
+            } else {
+                searchResultUnavailable()
+            }
         case .artist:
             let music = AppSession.shared.musicProvider
             if let rawId = music.artistId(fromItemId: result.id),

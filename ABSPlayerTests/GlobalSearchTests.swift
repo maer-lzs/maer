@@ -13,7 +13,7 @@ struct SearchRankingTests {
     @Test("context ranking: the active tab's sections lead, catalog is always last")
     func contextMatrix() {
         #expect(SearchRanking.sectionOrder(activeTab: .audiobooks).first == .book)
-        #expect(SearchRanking.sectionOrder(activeTab: .music).prefix(3) == [.album, .artist, .song])
+        #expect(SearchRanking.sectionOrder(activeTab: .music).prefix(4) == [.album, .artist, .song, .playlist])
         #expect(SearchRanking.sectionOrder(activeTab: .podcasts).prefix(2) == [.show, .episode])
         for tab in [MediaType.home, .audiobooks, .podcasts, .music] {
             let order = SearchRanking.sectionOrder(activeTab: tab)
@@ -54,7 +54,7 @@ struct SearchRankingTests {
         #expect(SearchScope.podcasts.kinds == [.show, .episode])
         #expect(SearchScope.podcasts.includesCatalog)
         #expect(SearchScope.audiobooks.kinds == [.book, .author, .series])
-        #expect(SearchScope.music.kinds == [.album, .artist, .song])
+        #expect(SearchScope.music.kinds == [.album, .artist, .song, .playlist])
         #expect(!SearchScope.audiobooks.includesCatalog && !SearchScope.music.includesCatalog)
         // The search opens in the scope of the tab it was started from.
         #expect(SearchScope.initial(for: .audiobooks) == .audiobooks)

@@ -28,6 +28,8 @@ struct SearchScreen: View {
         case groups(title: String, groups: [(name: String, entries: [LibraryEntry])])
         case entries(title: String, entries: [LibraryEntry])
         case artists(title: String, artists: [MusicArtist])
+        /// M5: catalog shows of ONE podcast genre (iTunes genre chart).
+        case catalogShows(title: String, results: [SearchResult])
     }
 
     @State private var drill: [DeckDrill] = []
@@ -443,6 +445,16 @@ struct SearchScreen: View {
                 ForEach(entries) { entry in
                     bookEntryRow(entry)
                 }
+            case .catalogShows(_, let results):
+                // The SAME result row the typed search uses for catalog shows
+                // (subscribe/preview routing via onOpen — no second row idiom).
+                if results.isEmpty {
+                    Text("No results.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 120)
+                } else {
+                    ForEach(results) { resultRow($0) }
+                }
             case .artists(_, let artists):
                 ForEach(artists) { artist in
                     deckEntryRow(title: artist.name ?? "—", count: artist.albumCount ?? 0) {
@@ -485,7 +497,8 @@ struct SearchScreen: View {
 
     private var drillTitle: String {
         switch drill.last {
-        case .groups(let title, _), .entries(let title, _), .artists(let title, _):
+        case .groups(let title, _), .entries(let title, _), .artists(let title, _),
+             .catalogShows(let title, _):
             return title
         case nil:
             return ""
@@ -668,6 +681,7 @@ struct SearchScreen: View {
         case .audiobooks:
             audiobookRaster
         case .podcasts:
+            podcastGenreChips
             showRaster
         case .music:
             albumRaster
@@ -675,6 +689,49 @@ struct SearchScreen: View {
             EmptyView()   // radio browses on its own tab; search is the catalog
         case .library:
             EmptyView()   // the mixed tier IS the library deck
+        }
+    }
+
+    /// M5: podcast genre chips — the SAME CategoryTile grid as the deck tier
+    /// and the music genres (one chip idiom). Tap loads the KEYLESS iTunes
+    /// genre chart and drills into catalog-show rows; a failed/empty load
+    /// shows "No results" in the drill (visible, rule 3).
+    @State private var loadingGenreId: Int?
+    private var podcastGenreChips: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("By Genre").font(.headline).padding(.horizontal, 16)
+            LazyVGrid(columns: Self.tierColumns, spacing: 12) {
+                ForEach(PodcastGenres.curated) { genre in
+                    CategoryTile(title: genre.title, systemImage: genre.systemImage,
+                                 accessibilityId: "podcast-genre-\(genre.itunesGenreId)") {
+                        openPodcastGenre(genre)
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if loadingGenreId == genre.itunesGenreId {
+                            ProgressView().padding(10)
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .padding(.bottom, 12)
+    }
+
+    private func openPodcastGenre(_ genre: PodcastGenre) {
+        guard loadingGenreId == nil else { return }
+        loadingGenreId = genre.itunesGenreId
+        Task {
+            let hits = (try? await ITunesDirectory().topPodcasts(genreId: genre.itunesGenreId, limit: 30)) ?? []
+            let results = hits.map { hit in
+                SearchResult(id: hit.feedURL, kind: .catalogShow, title: hit.title,
+                             subtitle: hit.author,
+                             coverURL: hit.artworkURL.flatMap(URL.init(string:)))
+            }
+            loadingGenreId = nil
+            withAnimation(.snappy(duration: 0.2)) {
+                drill.append(.catalogShows(title: genre.title, results: results))
+            }
         }
     }
 
@@ -836,6 +893,7 @@ struct SearchScreen: View {
         case .album: return String(localized: "Albums")
         case .artist: return String(localized: "Artists")
         case .song: return String(localized: "Songs")
+        case .playlist: return String(localized: "Playlists")
         case .catalogShow: return String(localized: "New Shows")
         case .radioStation: return String(localized: "Radio Stations")
         }
@@ -847,6 +905,7 @@ struct SearchScreen: View {
         case .author: return "person"
         case .show, .episode, .catalogShow: return "mic"
         case .album, .song: return "music.note"
+        case .playlist: return "music.note.list"
         case .artist: return "music.mic"
         case .radioStation: return "dot.radiowaves.left.and.right"
         }

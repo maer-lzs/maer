@@ -9,6 +9,9 @@ import Foundation
 nonisolated struct SearchResult: Identifiable, Equatable {
     enum Kind: String, CaseIterable {
         case book, author, series, show, episode, album, song, artist
+        /// M5: a music playlist hit (search3 ships none — the providers
+        /// filter the playlist list LOCALLY; honestly reported).
+        case playlist
         /// Catalog source "New Shows" — NOT a provider capability; results are
         /// unsubscribed shows whose id is the feed URL.
         case catalogShow
@@ -33,7 +36,7 @@ nonisolated enum SearchRanking {
     /// The FIXED base order of the typed sections; the catalog section is
     /// always last (clearly a catalog, not the user's own content).
     static let baseOrder: [SearchResult.Kind] = [
-        .book, .author, .series, .show, .episode, .album, .artist, .song, .radioStation, .catalogShow
+        .book, .author, .series, .show, .episode, .album, .artist, .song, .playlist, .radioStation, .catalogShow
     ]
 
     /// Kinds that belong to a tab — its sections lead while that tab is active.
@@ -41,7 +44,7 @@ nonisolated enum SearchRanking {
         switch tab {
         case .audiobooks: return [.book, .author, .series]
         case .podcasts: return [.show, .episode]
-        case .music: return [.album, .artist, .song]
+        case .music: return [.album, .artist, .song, .playlist]
         case .radio: return [.radioStation]
         default: return []
         }
@@ -139,7 +142,7 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
         case .library: return Set(SearchResult.Kind.allCases).subtracting([.catalogShow])
         case .audiobooks: return [.book, .author, .series]
         case .podcasts: return [.show, .episode]
-        case .music: return [.album, .artist, .song]
+        case .music: return [.album, .artist, .song, .playlist]
         case .radio: return [.radioStation]
         }
     }

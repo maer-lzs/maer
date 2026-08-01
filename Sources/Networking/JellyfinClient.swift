@@ -335,7 +335,7 @@ final class JellyfinClient {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [
             "searchTerm": term, "Recursive": "true",
-            "IncludeItemTypes": "MusicAlbum,Audio,MusicArtist",
+            "IncludeItemTypes": "MusicAlbum,Audio,MusicArtist,Playlist",
             "Limit": String(limit),
         ], as: JFItemsResult.self)
         return result.items ?? []

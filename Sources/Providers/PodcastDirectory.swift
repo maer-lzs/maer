@@ -23,6 +23,33 @@ protocol PodcastDirectory {
     func search(_ term: String) async throws -> [PodcastSearchResult]
 }
 
+/// M5: curated podcast genres for the search browse chips. Charts come from
+/// the KEYLESS iTunes genre charts (works regardless of which directory the
+/// user configured for text search — honest capability: always available).
+nonisolated struct PodcastGenre: Identifiable, Equatable {
+    let itunesGenreId: Int
+    let title: String
+    let systemImage: String
+    var id: Int { itunesGenreId }
+}
+
+nonisolated enum PodcastGenres {
+    static let curated: [PodcastGenre] = [
+        PodcastGenre(itunesGenreId: 1303, title: String(localized: "Comedy"), systemImage: "face.smiling"),
+        PodcastGenre(itunesGenreId: 1489, title: String(localized: "News"), systemImage: "newspaper"),
+        PodcastGenre(itunesGenreId: 1488, title: String(localized: "True Crime"), systemImage: "magnifyingglass"),
+        PodcastGenre(itunesGenreId: 1324, title: String(localized: "Society & Culture"), systemImage: "person.2"),
+        PodcastGenre(itunesGenreId: 1545, title: String(localized: "Sports"), systemImage: "sportscourt"),
+        PodcastGenre(itunesGenreId: 1318, title: String(localized: "Technology"), systemImage: "cpu"),
+        PodcastGenre(itunesGenreId: 1321, title: String(localized: "Business"), systemImage: "briefcase"),
+        PodcastGenre(itunesGenreId: 1512, title: String(localized: "Health & Fitness"), systemImage: "heart"),
+        PodcastGenre(itunesGenreId: 1533, title: String(localized: "Science"), systemImage: "atom"),
+        PodcastGenre(itunesGenreId: 1487, title: String(localized: "History"), systemImage: "building.columns"),
+        PodcastGenre(itunesGenreId: 1304, title: String(localized: "Education"), systemImage: "graduationcap"),
+        PodcastGenre(itunesGenreId: 1483, title: String(localized: "Fiction"), systemImage: "theatermasks"),
+    ]
+}
+
 // MARK: - iTunes / Apple (no key)
 
 /// Apple's podcast search — keyless, returns the feed URL directly.
@@ -53,8 +80,14 @@ struct ITunesDirectory: PodcastDirectory {
     /// Top charts (fallback for "Discover" when no PodcastIndex key is set):
     /// iTunes top list → resolve feed URLs via batch lookup.
     func topPodcasts(limit: Int = 40) async throws -> [PodcastSearchResult] {
+        try await topPodcasts(genreId: nil, limit: limit)
+    }
+
+    /// M5: the same top chart narrowed to ONE iTunes genre (nil = all).
+    func topPodcasts(genreId: Int?, limit: Int = 40) async throws -> [PodcastSearchResult] {
         let region = (Locale.current.region?.identifier ?? "US").lowercased()
-        guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)/json") else { return [] }
+        let genrePart = genreId.map { "/genre=\($0)" } ?? ""
+        guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)\(genrePart)/json") else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: chartURL))
         let ids = (try JSONDecoder().decode(ChartResponse.self, from: data)).feed.entry.map { $0.id.attributes.imId }
         guard !ids.isEmpty else { return [] }
