@@ -366,23 +366,38 @@ private struct PlaylistCard: View {
 private struct NewPlaylistCard: View {
     let onTap: () -> Void
 
+    // b9898dd Fix 2: the ghost card mirrors the playlist cards' EXACT
+    // anatomy (square face + caption/title/sub reserves + pill reserve) so
+    // the row has ONE height — same scaled metrics as PlaylistCard.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 0) {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [6]))
                     .foregroundStyle(.secondary)
                     .aspectRatio(1, contentMode: .fit)
                     .overlay(Image(systemName: "plus").font(.title).foregroundStyle(.secondary))
-                Text("New Playlist")
-                    .font(.caption.weight(.medium))
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(verbatim: " ").font(.caption).lineLimit(1)
+                    Text("New Playlist")
+                        .font(.headline)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
+                    Text(verbatim: " ").font(.subheadline).lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: metaMinHeight, alignment: .topLeading)
+                }
+                .padding(14)
+                .padding(.bottom, pillReserve)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            // Korrektur 01.08: same card footprint as the playlist cards.
             .frame(width: CardMetrics.featuredCardWidth)
         }
         .buttonStyle(.plain)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .accessibilityIdentifier("new-playlist-card")
     }
 }
