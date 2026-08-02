@@ -9,6 +9,10 @@ import Foundation
 /// timestamp (no heuristics). This core merges id/timestamp pairs from several
 /// sources; the view resolves the ids back to items via AppSession.
 nonisolated enum HomeSections {
+    /// 6c52b67: max music entries in the Continue row — a constant, not a
+    /// setting (kein Options-Zoo).
+    static let continueMusicCap = 2
+
     /// Newest-first, de-duplicated by id, capped. An id appearing in several
     /// sources keeps its most recent timestamp. Used for "Weiterhören" (by last
     /// played) and "Neu" (by added time).
@@ -24,6 +28,28 @@ nonisolated enum HomeSections {
         }
         .prefix(limit)
         .map(\.key)
+    }
+
+    /// 6c52b67: cap ONE group's share of an already-ranked row — music
+    /// entries (albums+playlists) accrue progress far more often than books/
+    /// episodes and would dominate the Continue row. The newest `cap` capped
+    /// ids stay, the freed slots go to the others by recency. EXCEPTION
+    /// (explicit): a row containing ONLY capped ids keeps them all — an
+    /// emptier row would be worse than a music-heavy one.
+    static func cappedShare(_ ranked: [String], capped: Set<String>,
+                            cap: Int, limit: Int) -> [String] {
+        let hasOthers = ranked.contains { !capped.contains($0) }
+        var cappedCount = 0
+        var out: [String] = []
+        for id in ranked {
+            if hasOthers, capped.contains(id) {
+                guard cappedCount < cap else { continue }
+                cappedCount += 1
+            }
+            out.append(id)
+            if out.count == limit { break }
+        }
+        return out
     }
 
     /// Fair round-robin merge of several already-ordered id lists, capped. Each

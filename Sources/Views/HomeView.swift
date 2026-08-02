@@ -436,7 +436,12 @@ struct HomeView: View {
                 return (kind == .playlist || kind == .album) && value.isStarted
             }
             .map { (id: $0.key, ts: $0.value.lastUpdate) }
-        let rankedContinue = HomeSections.byRecency([books, episodes, music], limit: 8)
+        // 6c52b67/a9ad69e: row limit 10 (landscape/iPad show 4–5 cards),
+        // music share capped at 2 via the pure rule (exception inside).
+        let musicIds = Set(music.map(\.id))
+        let rankedContinue = HomeSections.cappedShare(
+            HomeSections.byRecency([books, episodes, music], limit: 24),
+            capped: musicIds, cap: HomeSections.continueMusicCap, limit: 10)
 
         // Radio on Home: cheap sync read; empty when the source is off, so the
         // pure gating hides the section (no placeholder). Applied with the

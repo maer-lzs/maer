@@ -147,16 +147,36 @@ struct DriveModeView: View {
             vm.skip(by: forward ? vm.skipInterval : -vm.skipInterval)
             controller.touched()
         } label: {
-            VStack(spacing: 2) {
-                Image(systemName: forward ? "goforward" : "gobackward")
-                    .font(.system(size: 52 * scale, weight: .semibold))
-                Text(verbatim: "\(Int(vm.skipInterval))")
-                    .font(.headline.monospacedDigit())
+            Group {
+                // a74c903: the standard glyph WITH the number inside the
+                // arrow (gobackward.15/30/60) — hit surface unchanged, only
+                // the glyph. An interval without a matching SF symbol (server-
+                // side custom values) falls back to the old two-line form.
+                if let glyph = DriveModeView.skipGlyphName(interval: vm.skipInterval, forward: forward) {
+                    Image(systemName: glyph)
+                        .font(.system(size: 56 * scale, weight: .semibold))
+                } else {
+                    VStack(spacing: 2) {
+                        Image(systemName: forward ? "goforward" : "gobackward")
+                            .font(.system(size: 52 * scale, weight: .semibold))
+                        Text(verbatim: "\(Int(vm.skipInterval))")
+                            .font(.headline.monospacedDigit())
+                    }
+                }
             }
             .frame(width: 110 * scale, height: 110 * scale)
             .background(Color.white.opacity(0.08), in: Circle())
         }
         .accessibilityIdentifier(forward ? "drive-skip-forward" : "drive-skip-back")
+    }
+
+    /// Pure (tested): the numbered SF skip glyph, nil when SF has no symbol
+    /// for the interval (then the caller keeps the two-line fallback).
+    nonisolated static func skipGlyphName(interval: Double, forward: Bool) -> String? {
+        let supported: Set<Int> = [5, 10, 15, 30, 45, 60, 75, 90]
+        let seconds = Int(interval)
+        guard Double(seconds) == interval, supported.contains(seconds) else { return nil }
+        return (forward ? "goforward." : "gobackward.") + String(seconds)
     }
 
     /// Pure (tested): shrink factor so the three-button transport row FITS the

@@ -66,6 +66,16 @@ struct DriveModeTests {
             connectedUIDs: ["car-1"], isActive: true) == nil)
     }
 
+    @Test("a74c903: numbered skip glyph for SF-supported intervals, nil else")
+    func skipGlyphs() {
+        #expect(DriveModeView.skipGlyphName(interval: 30, forward: true) == "goforward.30")
+        #expect(DriveModeView.skipGlyphName(interval: 15, forward: false) == "gobackward.15")
+        #expect(DriveModeView.skipGlyphName(interval: 60, forward: true) == "goforward.60")
+        // No SF symbol → nil (caller falls back to the two-line form).
+        #expect(DriveModeView.skipGlyphName(interval: 20, forward: true) == nil)
+        #expect(DriveModeView.skipGlyphName(interval: 12.5, forward: false) == nil)
+    }
+
     @Test("Transport row fits portrait phone widths (it overflowed before)")
     func transportFits() {
         // Natural sizes fit → no scaling (landscape column, wide portrait/iPad).
