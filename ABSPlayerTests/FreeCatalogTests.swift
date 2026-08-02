@@ -71,6 +71,16 @@ struct FreeCatalogTests {
         #expect(tracks[1].startOffset == 30)
     }
 
+    @Test("f374330: ISO-639-3 clause — variants ORed, unmapped codes drop, none maps → nil")
+    func languageClause() {
+        #expect(FreeCatalog.archiveLanguageClause(codes: ["de"])
+                == "(language:\"deu\" OR language:\"ger\")")
+        #expect(FreeCatalog.archiveLanguageClause(codes: ["de", "en"])
+                == "(language:\"deu\" OR language:\"ger\" OR language:\"eng\")")
+        #expect(FreeCatalog.archiveLanguageClause(codes: ["xx"]) == nil)
+        #expect(FreeCatalog.archiveLanguageClause(codes: []) == nil)
+    }
+
     @Test("Identifier + cover derivation from url_iarchive")
     func identifiers() {
         #expect(FreeCatalog.iarchiveIdentifier(from: "https://www.archive.org/details/art_of_war_librivox")

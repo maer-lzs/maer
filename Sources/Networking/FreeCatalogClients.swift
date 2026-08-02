@@ -71,8 +71,15 @@ nonisolated enum ArchiveOrgClient {
     static let classicalQuery = "collection:georgeblood AND subject:classical"
 
     /// Most-downloaded LibriVox items (the keyless popularity source).
-    static func popularLibriVox(rows: Int) async throws -> [ArchivePopularDoc] {
-        try await popular(query: "collection:librivoxaudio", rows: rows)
+    /// f374330: language filters SERVER-side (ISO-639-3 clause); an empty
+    /// language result falls back to unfiltered (rule unchanged).
+    static func popularLibriVox(rows: Int, languageCodes: [String] = []) async throws -> [ArchivePopularDoc] {
+        if let clause = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
+            let filtered = try await popular(
+                query: "collection:librivoxaudio AND \(clause)", rows: rows)
+            if !filtered.isEmpty { return filtered }
+        }
+        return try await popular(query: "collection:librivoxaudio", rows: rows)
     }
 
     /// E3: popular free classical recordings (same client, Regel 2).

@@ -100,6 +100,37 @@ nonisolated enum FreeCatalog {
         return filtered.isEmpty ? books : filtered
     }
 
+    /// f374330: suggestion-language code → ISO-639-3 variants as archive.org
+    /// stores them (probed: librivoxaudio carries "deu" [840] with 2 "ger"
+    /// stragglers; plain names score 0) — the popular row filters SERVER-side.
+    static func iso639_3(for code: String) -> [String] {
+        switch code.lowercased() {
+        case "de": return ["deu", "ger"]
+        case "en": return ["eng"]
+        case "fr": return ["fra", "fre"]
+        case "es": return ["spa"]
+        case "it": return ["ita"]
+        case "nl": return ["nld", "dut"]
+        case "pt": return ["por"]
+        case "pl": return ["pol"]
+        case "ja": return ["jpn"]
+        case "sv": return ["swe"]
+        case "no": return ["nor"]
+        case "da": return ["dan"]
+        case "fi": return ["fin"]
+        case "ko": return ["kor"]
+        default: return []
+        }
+    }
+
+    /// The language clause for advancedsearch — OR over every ISO variant of
+    /// every selected code; nil when nothing maps (then no filter, honest).
+    static func archiveLanguageClause(codes: [String]) -> String? {
+        let variants = codes.flatMap { iso639_3(for: $0) }
+        guard !variants.isEmpty else { return nil }
+        return "(" + variants.map { "language:\"\($0)\"" }.joined(separator: " OR ") + ")"
+    }
+
     /// The archive.org identifier out of `url_iarchive` (last path component).
     static func iarchiveIdentifier(from url: String?) -> String? {
         guard let url, let last = url.split(separator: "/").last, !last.isEmpty else { return nil }
