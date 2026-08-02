@@ -125,6 +125,16 @@ struct PlayerView: View {
         // e3dabb3: the task id carries the opt-out — a flip re-evaluates
         // IMMEDIATELY (off drops cached web lyrics, no app restart).
         .task(id: "\(viewModel.currentMusicSong?.id ?? "-")-\(lyricsOnline)") {
+            #if DEBUG
+            // 84acc50: harness hook — force the FULL six-item extras row
+            // (lyrics+transcript present) for the German-overflow screenshot.
+            if ProcessInfo.processInfo.arguments.contains("-uitest-fullrow") {
+                let dummy = SongLyrics(synced: false, lines: [LyricsLine(start: nil, text: "-")])
+                songLyrics = dummy
+                transcript = dummy
+                return
+            }
+            #endif
             guard let song = viewModel.currentMusicSong else { songLyrics = nil; return }
             songLyrics = await LyricsService.shared.lyrics(
                 songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
@@ -797,25 +807,23 @@ struct PlayerView: View {
     /// SOLO mittig darunter (Apple-Position). Radio läuft über dieselbe
     /// Struktur (weniger Einträge, AirPlay mittig passt überall). D2: bei
     /// AX-Größen fällt die Extras-Reihe in ein 2-Spalten-Grid.
+    /// 84acc50: drive mode + mark-finished moved OUT of the "…" menu into
+    /// the row — the menu emptied and is GONE. Overflow (the German-labels
+    /// worst case with a full six-item row): ViewThatFits tries the labeled
+    /// row first; when it cannot fit, the SAME buttons render icon-only
+    /// (a11y labels intact) — never the jagged two-column grid again. With
+    /// G8-gated entries missing (no lyrics/transcript), labels usually fit.
     private var tertiaryControls: some View {
         VStack(spacing: 18) {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 36) {
                     extrasItems
                 }
-                Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
-                    GridRow {
-                        queueControl
-                        bookmarksControl
-                    }
-                    GridRow {
-                        lyricsControl
-                        transcriptControl
-                    }
-                    GridRow {
-                        moreMenu
-                    }
+                HStack(spacing: 28) {
+                    extrasItems
                 }
+                .labelStyle(.iconOnly)
+                .font(.body)
             }
             airPlayControl
         }
@@ -828,26 +836,25 @@ struct PlayerView: View {
         bookmarksControl
         lyricsControl
         transcriptControl
-        moreMenu
+        driveModeControl
+        markFinishedControl
     }
 
-    /// The „…" menu absorbs the rare once-per-session actions so the row
-    /// holds ≤5 peers (a50134c sort principle: frequent grabs stay out).
-    private var moreMenu: some View {
-        Menu {
-            Button { DriveModeController.shared.enter() } label: {
-                Label("Drive Mode", systemImage: "car.fill")
-            }
-            .accessibilityIdentifier("player-drive-mode")
-            Button { Task { await viewModel.toggleFinished() } } label: {
-                Label(viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
-                      systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle")
-            }
-        } label: {
-            Image(systemName: "ellipsis.circle").font(.body)
+    private var driveModeControl: some View {
+        Button { DriveModeController.shared.enter() } label: {
+            Label("Drive Mode", systemImage: "car.fill")
         }
         .font(.footnote)
-        .accessibilityIdentifier("player-more")
+        .accessibilityIdentifier("player-drive-mode")
+    }
+
+    private var markFinishedControl: some View {
+        Button { Task { await viewModel.toggleFinished() } } label: {
+            Label(viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
+                  systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle")
+        }
+        .font(.footnote)
+        .accessibilityIdentifier("player-mark-finished")
     }
 
     /// V7: transcript — podcast episodes only, and only when the feed's

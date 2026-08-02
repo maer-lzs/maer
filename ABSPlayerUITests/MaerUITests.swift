@@ -863,12 +863,9 @@ nonisolated final class MaerUITests: XCTestCase {
         let mini = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
-        // a50134c variant A: drive mode lives in the "…" More menu now.
-        let more = app.buttons["player-more"].firstMatch
-        XCTAssertTrue(more.waitForExistence(timeout: 15), "More menu must exist (variant A)")
-        more.tap()
+        // 84acc50: drive mode sits DIRECTLY in the extras row (More menu gone).
         let drive = app.buttons["player-drive-mode"].firstMatch
-        XCTAssertTrue(drive.waitForExistence(timeout: 10), "Drive Mode must be a More-menu item")
+        XCTAssertTrue(drive.waitForExistence(timeout: 15), "Drive Mode must sit in the extras row")
         drive.tap()
         let play = app.buttons["drive-play-pause"].firstMatch
         XCTAssertTrue(play.waitForExistence(timeout: 10), "drive mode must open")
@@ -1035,10 +1032,10 @@ nonisolated final class MaerUITests: XCTestCase {
         // The tap opens the FULL player. Under full-suite load a tap can
         // land inside a settle animation and fizzle — one deliberate retry
         // (same hardening as the drive-mode journey).
-        if !app.buttons["player-more"].firstMatch.waitForExistence(timeout: 12) {
+        if !app.buttons["player-queue"].firstMatch.waitForExistence(timeout: 12) {
             row.tap()
         }
-        XCTAssertTrue(app.buttons["player-more"].firstMatch.waitForExistence(timeout: 20),
+        XCTAssertTrue(app.buttons["player-queue"].firstMatch.waitForExistence(timeout: 20),
                       "the full player must open from the row tap")
         // Identity + G8 in one: the tappable title source entry must exist
         // AND carry the tapped station's name (chevron renders only when
@@ -1059,6 +1056,40 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// 84acc50: the FULL six-item extras row on the German sim (worst-case
+    /// labels) must fit WITHOUT the jagged two-column grid — either the
+    /// labeled row fits or the icon-only fallback renders; both are ONE
+    /// horizontal row, asserted via frame containment (all items share one
+    /// baseline band and stay inside the window).
+    func testPlayerRowFullGerman() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-fullrow"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let mini = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 20))
+        mini.tap()
+        let queue = app.buttons["player-queue"].firstMatch
+        XCTAssertTrue(queue.waitForExistence(timeout: 15))
+        let window = app.windows.firstMatch.frame
+        let ids = ["player-queue", "player-drive-mode", "player-mark-finished"]
+        var minYs: [CGFloat] = []
+        for id in ids {
+            let b = app.buttons[id].firstMatch
+            XCTAssertTrue(b.exists, "\(id) must sit directly in the extras row")
+            XCTAssertTrue(window.contains(b.frame),
+                          "\(id) must fit the window — was \(b.frame)")
+            minYs.append(b.frame.minY)
+        }
+        // One row: every item shares the same vertical band (±8 pt).
+        if let lo = minYs.min(), let hi = minYs.max() {
+            XCTAssertLessThan(hi - lo, 8, "extras must form ONE row, not a grid")
+        }
+        XCTAssertFalse(app.buttons["player-more"].exists, "the More menu is gone")
+        snap(app, "player-row-full-german")
+        app.terminate()
+    }
+
     /// 6b3a35d: drive mode with a LIVE station — no skip buttons (G8, no
     /// seek buffer), the shared LIVE row instead of "-0 min", play/pause
     /// stays. Hero-gate rendering is visual (device loop); the structure
@@ -1073,16 +1104,13 @@ nonisolated final class MaerUITests: XCTestCase {
         let row = app.staticTexts["Seed Radio One"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         row.tap()
-        let more = app.buttons["player-more"].firstMatch
-        if !more.waitForExistence(timeout: 12) {
+        let drive = app.buttons["player-drive-mode"].firstMatch
+        if !drive.waitForExistence(timeout: 12) {
             // First-test-in-run: a tap can land inside a launch/settle
             // animation and fizzle — one deliberate retry.
             row.tap()
         }
-        XCTAssertTrue(more.waitForExistence(timeout: 20), "full player must open")
-        more.tap()
-        let drive = app.buttons["player-drive-mode"].firstMatch
-        XCTAssertTrue(drive.waitForExistence(timeout: 10))
+        XCTAssertTrue(drive.waitForExistence(timeout: 20), "full player must open")
         drive.tap()
         XCTAssertTrue(app.buttons["drive-play-pause"].firstMatch.waitForExistence(timeout: 10),
                       "drive mode must open with play/pause")
