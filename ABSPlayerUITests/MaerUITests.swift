@@ -831,6 +831,32 @@ nonisolated final class MaerUITests: XCTestCase {
     /// overflow the portrait column (464 pt row on ~345 pt), clipping the skip
     /// buttons. All three transport buttons must be hittable and INSIDE the
     /// window in both orientations; screenshots feed the cover-variant choice.
+    /// af3ec41: average brightness of the left+right margin strips in the
+    /// band below the hero (45–80 % height) — pure black backdrop stays ~0;
+    /// a bleeding artwork layer lifts it far above the threshold.
+    private func assertDriveMarginsDark(_ image: UIImage) {
+        guard let cg = image.cgImage,
+              let data = cg.dataProvider?.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            XCTFail("screenshot pixels unavailable"); return
+        }
+        let w = cg.width, h = cg.height
+        let bpr = cg.bytesPerRow, bpp = cg.bitsPerPixel / 8
+        var total = 0, count = 0
+        for y in stride(from: Int(Double(h) * 0.45), to: Int(Double(h) * 0.80), by: 4) {
+            for xr in [0..<(w / 12), (w - w / 12)..<w] {
+                for x in stride(from: xr.lowerBound, to: xr.upperBound, by: 4) {
+                    let p = y * bpr + x * bpp
+                    total += Int(bytes[p]) + Int(bytes[p + 1]) + Int(bytes[p + 2])
+                    count += 3
+                }
+            }
+        }
+        let avg = Double(total) / Double(max(count, 1))
+        XCTAssertLessThan(avg, 24,
+                          "control-area margins must be black — avg brightness \(avg) hints a bleeding artwork layer (af3ec41)")
+    }
+
     func testDriveModePortraitAndLandscape() {
         XCUIDevice.shared.orientation = .portrait
         let app = launchSeeded(withActivePlayer: true)
@@ -868,6 +894,10 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(remaining.exists && window.contains(remaining.frame),
                       "progress line must stay on screen below the hero")
         snap(app, "drive-portrait-hero")
+        // af3ec41: below the hero seam ONLY black — a foreign artwork layer
+        // (the stale-image class) brightens the SIDE MARGINS of the control
+        // area (title/buttons are centered; the margins must stay dark).
+        assertDriveMarginsDark(app.screenshot().image)
         XCUIDevice.shared.orientation = .landscapeLeft
         // Rotation settles asynchronously — poll until the WINDOW is actually
         // wide (a snap mid-animation shows the old orientation's layout).

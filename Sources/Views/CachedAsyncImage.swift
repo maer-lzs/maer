@@ -34,6 +34,13 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             }
         }
         .task(id: url) {
+            // af3ec41: a URL CHANGE on a long-lived view (drive-mode hero,
+            // full-player cover) kept the PREVIOUS image on screen — forever
+            // when the new load failed ("foreign cover bleeds through").
+            // Drop the stale image first; the warm-cache peek still renders
+            // the new url's thumbnail frame-1 where cached, cold cells show
+            // the placeholder (honest) instead of a wrong cover.
+            if uiImage != nil { uiImage = nil }
             await load()
         }
     }
