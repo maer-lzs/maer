@@ -313,7 +313,8 @@ struct PlayerView: View {
                 // else branch radio never reaches. Same wrapper now (G8:
                 // plain again when the station cannot be resolved).
                 sourceTappable(target: titleTarget, a11yId: "player-source-title") {
-                    Text(viewModel.stationName)
+                    // 6b3a35d (4): pipe-junk trimmed for display everywhere.
+                    Text(RadioMapping.displayName(viewModel.stationName))
                         .font(.title3).bold()
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
@@ -517,10 +518,7 @@ struct PlayerView: View {
     /// quality menu appears when the station ships codec/bitrate variants.
     private var liveRow: some View {
         HStack(spacing: 8) {
-            Circle().fill(.red).frame(width: 8, height: 8)
-            Text(verbatim: "LIVE")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
+            LiveBadge()
             Spacer()
             if let station = liveStation { qualityMenu(for: station) }
             Text(format(viewModel.currentTime))

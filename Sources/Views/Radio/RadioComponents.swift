@@ -122,6 +122,19 @@ struct RadioFavoriteButton: View {
     }
 }
 
+/// 6b3a35d (3): the ONE live marker — red dot + LIVE. Shared by the full
+/// player's live row and the drive-mode progress line (no second pattern).
+struct LiveBadge: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(.red).frame(width: 8, height: 8)
+            Text(verbatim: "LIVE")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(.white)
+        }
+    }
+}
+
 enum RadioPlay {
     /// The recent-ring records centrally in `RadioProvider.fetchItemDetail`.
     @MainActor

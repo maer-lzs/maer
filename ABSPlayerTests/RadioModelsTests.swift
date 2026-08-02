@@ -380,5 +380,15 @@ struct RadioStateQueryTests {
         #expect(!RadioDiagnostics.roughlyMatches(
             expectedName: "ROCK ANTENNE", icyName: "Radio Studio Piu Italia"))
     }
+
+    @Test("6b3a35d: display name — pipe junk trimmed, short heads keep the full name")
+    func displayNames() {
+        #expect(RadioMapping.displayName("Deutschlandfunk Kultur | DLF | 128k")
+                == "Deutschlandfunk Kultur")
+        #expect(RadioMapping.displayName("SWR3 • Pop") == "SWR3")
+        #expect(RadioMapping.displayName("Radio Bern") == "Radio Bern")
+        // A too-short head keeps the raw name (never truncate to junk).
+        #expect(RadioMapping.displayName("A | Station") == "A | Station")
+    }
 }
 #endif

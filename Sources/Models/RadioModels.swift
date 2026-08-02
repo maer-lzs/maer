@@ -171,6 +171,21 @@ nonisolated enum RadioMapping {
         return bucket == station
     }
 
+    /// 6b3a35d (4): DISPLAY name — station names carry pipe-separated junk
+    /// ("Deutschlandfunk Kultur | DLF | …"): cut at the first hard separator
+    /// when a real name remains. Display only (keys keep the full fold);
+    /// ONE function for every player-context title.
+    static func displayName(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        for separator in ["|", "•", "–", "—"] {
+            if let idx = trimmed.range(of: separator)?.lowerBound {
+                let head = trimmed[..<idx].trimmingCharacters(in: .whitespaces)
+                if head.count >= 3 { return head }
+            }
+        }
+        return trimmed
+    }
+
     /// Strip codec/bitrate decorations and separators so variants of a station
     /// share a grouping key ("Deutschlandfunk | DLF | MP3 128k" →
     /// "deutschlandfunk dlf").

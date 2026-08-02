@@ -996,41 +996,74 @@ nonisolated final class MaerUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         app.buttons["tab-radio"].firstMatch.tap()
-        let tile = app.staticTexts["Seed Popular Station"].firstMatch
-        XCTAssertTrue(tile.waitForExistence(timeout: 10))
-        // Full-suite ordering: earlier radio journeys persist region/recents
-        // rows that push the Popular row below the fold — an off-screen tap
-        // lands nowhere (frame-containment rule, not isHittable: that throws
-        // off-screen). Scroll until the tile is really inside the window.
-        func tileOnScreen() -> Bool {
-            let f = tile.frame
-            return !f.isEmpty && f.minY >= 0 && f.maxY <= app.frame.maxY - 80
+        // Full-suite hardening: the discovery card rows shift with persisted
+        // region/recents state AND live-network Home rows — the FAVORITES
+        // list row ("Seed Radio One") is the stable anchor at the top.
+        let row = app.staticTexts["Seed Radio One"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        // The tap opens the FULL player. Under full-suite load a tap can
+        // land inside a settle animation and fizzle — one deliberate retry
+        // (same hardening as the drive-mode journey).
+        if !app.buttons["player-more"].firstMatch.waitForExistence(timeout: 12) {
+            row.tap()
         }
-        var swipes = 0
-        while !tileOnScreen() && swipes < 8 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(tileOnScreen(), "the Popular tile must be scrollable into view")
-        tile.tap()
-        // The tap opens the FULL player. Wait for the player chrome first —
-        // under full-suite load the open animation can lag; querying the
-        // title button too early failed a run.
         XCTAssertTrue(app.buttons["player-more"].firstMatch.waitForExistence(timeout: 20),
-                      "the full player must open from the tile tap")
+                      "the full player must open from the row tap")
         // Identity + G8 in one: the tappable title source entry must exist
         // AND carry the tapped station's name (chevron renders only when
         // the target resolves).
         let title = app.buttons["player-source-title"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 15),
                       "the radio title must be tappable (target derivation broken otherwise)")
-        XCTAssertTrue(title.label.contains("Seed Popular Station"),
-                      "the tapped tile's station must be the one playing")
+        XCTAssertTrue(title.label.contains("Seed Radio One"),
+                      "the tapped row's station must be the one playing")
         title.tap()
         // Station detail open, playback untouched (mini bar still there —
         // detail text + mini-bar button both carry the name, so ≥2 matches).
-        XCTAssertTrue(app.staticTexts["Seed Popular Station"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10),
                       "the station detail must open from the title tap")
-        XCTAssertTrue(app.buttons["Seed Popular Station"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(app.buttons["Seed Radio One"].firstMatch.waitForExistence(timeout: 10),
                       "playback must keep running")
         snap(app, "radio-title-tap-detail")
+        app.terminate()
+    }
+
+    /// 6b3a35d: drive mode with a LIVE station — no skip buttons (G8, no
+    /// seek buffer), the shared LIVE row instead of "-0 min", play/pause
+    /// stays. Hero-gate rendering is visual (device loop); the structure
+    /// asserts here.
+    func testDriveModeRadioLive() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        app.buttons["tab-radio"].firstMatch.tap()
+        // Favorites row as the stable anchor (see the identity journey).
+        let row = app.staticTexts["Seed Radio One"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let more = app.buttons["player-more"].firstMatch
+        if !more.waitForExistence(timeout: 12) {
+            // First-test-in-run: a tap can land inside a launch/settle
+            // animation and fizzle — one deliberate retry.
+            row.tap()
+        }
+        XCTAssertTrue(more.waitForExistence(timeout: 20), "full player must open")
+        more.tap()
+        let drive = app.buttons["player-drive-mode"].firstMatch
+        XCTAssertTrue(drive.waitForExistence(timeout: 10))
+        drive.tap()
+        XCTAssertTrue(app.buttons["drive-play-pause"].firstMatch.waitForExistence(timeout: 10),
+                      "drive mode must open with play/pause")
+        // Live: skips gone, LIVE row present.
+        XCTAssertFalse(app.buttons["drive-skip-forward"].firstMatch.exists,
+                       "±skip must vanish on a live stream")
+        XCTAssertFalse(app.buttons["drive-skip-back"].firstMatch.exists)
+        XCTAssertTrue(app.otherElements["drive-live-row"].firstMatch.exists
+                      || app.staticTexts["LIVE"].firstMatch.exists,
+                      "the LIVE row must replace the remaining-time line")
+        snap(app, "drive-mode-radio-live")
         app.terminate()
     }
 

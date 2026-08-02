@@ -51,6 +51,28 @@ struct DriveModeView: View {
         coordinator.activeItem.flatMap { AppSession.shared.coverURL(forItemId: $0.id) }
     }
 
+    /// 6b3a35d: the radio branch — live items route the hero through the
+    /// SAME favicon gate as player/detail and drop the pointless skips.
+    private var liveItemId: String? {
+        guard let id = coordinator.activeItem?.id, id.hasPrefix("radio:") else { return nil }
+        return id
+    }
+
+    @ViewBuilder
+    private var heroStage: some View {
+        if let id = liveItemId {
+            // Gate chain (Regel 2): reject → gradient+initials, never the
+            // upscaled favicon mash.
+            CoverHeroStage(url: nil, fadeTo: .black,
+                           coverOverride: RadioArtwork(
+                               stationID: id, faviconURL: coverURL,
+                               name: coordinator.activeItem?.title ?? "",
+                               isHero: true))
+        } else {
+            CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+        }
+    }
+
     /// 8d54582 hero layout. Portrait: the cover is a full-width STAGE at the
     /// top (book-detail anatomy via the shared `CoverHeroStage`), fading into
     /// the black control area; height capped at 32 % of the screen so the
@@ -66,7 +88,7 @@ struct DriveModeView: View {
                 // majority of the width (big buttons never displaced).
                 let heroWidth = min(geo.size.width * 0.42, geo.size.height)
                 HStack(spacing: 0) {
-                    CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+                    heroStage
                         .frame(width: heroWidth)
                         .ignoresSafeArea(edges: [.leading, .vertical])
                     controlsColumn(vm, landscape: true,
@@ -75,7 +97,7 @@ struct DriveModeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 VStack(spacing: 0) {
-                    CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+                    heroStage
                         // cda2bea: portrait cap raised ~32 % → 40 % (device
                         // judgement); still relative, buttons keep their room.
                         .frame(height: min(geo.size.width, geo.size.height * 0.40))
@@ -108,7 +130,11 @@ struct DriveModeView: View {
 
     private func titleBlock(_ vm: PlayerViewModel) -> some View {
         VStack(spacing: 4) {
-            Text(coordinator.activeItem?.title ?? "")
+            // 6b3a35d (4): the shared display normalization trims the
+            // pipe-separated name junk for live stations.
+            Text(liveItemId != nil
+                 ? RadioMapping.displayName(coordinator.activeItem?.title ?? "")
+                 : (coordinator.activeItem?.title ?? ""))
                 .font(.title.weight(.bold))
                 .lineLimit(1)
             if let chapter = vm.currentChapter?.title {
@@ -124,7 +150,10 @@ struct DriveModeView: View {
 
     private func transport(_ vm: PlayerViewModel, landscape: Bool, scale: CGFloat) -> some View {
         HStack(spacing: (landscape ? 60 : 32) * scale) {
-            skipButton(vm, forward: false, scale: scale)
+            // 6b3a35d (2): ±skip on a LIVE stream is a lie (no seek buffer) —
+            // G8: the buttons go, play/pause stays centered and the row
+            // closes up (scale then resolves to 1 → the button grows).
+            if liveItemId == nil { skipButton(vm, forward: false, scale: scale) }
             Button {
                 vm.togglePlayPause()
                 controller.touched()
@@ -136,7 +165,7 @@ struct DriveModeView: View {
                     .background(Color.white.opacity(0.12), in: Circle())
             }
             .accessibilityIdentifier("drive-play-pause")
-            skipButton(vm, forward: true, scale: scale)
+            if liveItemId == nil { skipButton(vm, forward: true, scale: scale) }
         }
         .foregroundStyle(.white)
         .buttonStyle(.plain)
@@ -194,15 +223,34 @@ struct DriveModeView: View {
     }
 
     /// Thin, NOT scrubbable — aiming at a bar while driving is an illusion.
+    @ViewBuilder
     private func progressBar(_ vm: PlayerViewModel) -> some View {
-        VStack(spacing: 6) {
-            ProgressView(value: vm.duration > 0 ? min(max(vm.currentTime / vm.duration, 0), 1) : 0)
-                .tint(.white)
-            Text(remainingText(vm))
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(.white.opacity(0.7))
+        if liveItemId != nil {
+            // 6b3a35d (3): "-0 min" was nonsense for a stream — the shared
+            // LIVE marker plus the elapsed time (the only honest number).
+            HStack(spacing: 12) {
+                LiveBadge()
+                Text(elapsedText(vm))
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .accessibilityIdentifier("drive-live-row")
+        } else {
+            VStack(spacing: 6) {
+                ProgressView(value: vm.duration > 0 ? min(max(vm.currentTime / vm.duration, 0), 1) : 0)
+                    .tint(.white)
+                Text(remainingText(vm))
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.horizontal, 12)
         }
-        .padding(.horizontal, 12)
+    }
+
+    private func elapsedText(_ vm: PlayerViewModel) -> String {
+        let seconds = Int(max(vm.currentTime, 0))
+        let h = seconds / 3600, m = (seconds % 3600) / 60
+        return h > 0 ? String(format: "%d:%02d h", h, m) : "\(m) min"
     }
 
     private func remainingText(_ vm: PlayerViewModel) -> String {
