@@ -368,5 +368,17 @@ struct RadioStateQueryTests {
         #expect(byState.queryItems.contains(.init(name: "order", value: "votes")))
         #expect(byState.queryItems.contains(.init(name: "limit", value: "40")))
     }
+
+    @Test("86cf180: icy-name rough match — folded containment, slogans pass, absence passes")
+    func icyRoughMatch() {
+        #expect(RadioDiagnostics.roughlyMatches(
+            expectedName: "ROCK ANTENNE", icyName: "ROCK ANTENNE - der beste Rock nonstop"))
+        #expect(RadioDiagnostics.roughlyMatches(expectedName: "Radio Bern", icyName: "radiobern"))
+        #expect(RadioDiagnostics.roughlyMatches(expectedName: "SWR3", icyName: nil))
+        #expect(RadioDiagnostics.roughlyMatches(expectedName: "SWR3", icyName: "  "))
+        // A truly foreign stream announces itself — this is the loud line.
+        #expect(!RadioDiagnostics.roughlyMatches(
+            expectedName: "ROCK ANTENNE", icyName: "Radio Studio Piu Italia"))
+    }
 }
 #endif

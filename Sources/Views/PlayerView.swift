@@ -308,10 +308,16 @@ struct PlayerView: View {
                 // F2/ICY: radio shows the STATION as the big title, with the
                 // current ICY song underneath (in-app arrangement; the lock
                 // screen stays song-first per Apple's convention).
-                Text(viewModel.stationName)
-                    .font(.title3).bold()
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                // 0aa18b7 ROOT CAUSE: this live branch rendered the station
+                // as PLAIN text — the V10 tappable title only lived in the
+                // else branch radio never reaches. Same wrapper now (G8:
+                // plain again when the station cannot be resolved).
+                sourceTappable(target: titleTarget, a11yId: "player-source-title") {
+                    Text(viewModel.stationName)
+                        .font(.title3).bold()
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
                 if let nowPlaying = viewModel.icyDisplayLine {
                     Text(nowPlaying)
                         .font(.subheadline)
@@ -685,18 +691,23 @@ struct PlayerView: View {
         }
     }
 
+    /// d0dc536: G8 rule for row 2 — no chapters/parts ⇒ NO chapters button
+    /// (a disabled ghost was a broken promise); the row closes up. Speed/
+    /// skip/sleep are universal and stay.
+    private var hasChapterEntry: Bool { !viewModel.chapters.isEmpty }
+
     private var regularSecondaryControls: some View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 32) {
                 speedControl
-                chaptersControl
+                if hasChapterEntry { chaptersControl }
                 skipIntervalControl
                 sleepControl
             }
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                 GridRow {
                     speedControl
-                    chaptersControl
+                    if hasChapterEntry { chaptersControl }
                 }
                 GridRow {
                     skipIntervalControl
@@ -734,7 +745,6 @@ struct PlayerView: View {
                                                  isFallback: viewModel.chaptersAreFallback),
                       systemImage: "list.bullet")
             }
-            .disabled(viewModel.chapters.isEmpty)
     }
 
     private var skipIntervalControl: some View {

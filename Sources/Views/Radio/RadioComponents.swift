@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 /// F4: THE radio station row — shared by the favorites/recents lists and the
 /// genre drilldown (Regel 2). Plays directly (F3: play replaces the active
@@ -125,6 +126,9 @@ enum RadioPlay {
     /// The recent-ring records centrally in `RadioProvider.fetchItemDetail`.
     @MainActor
     static func play(_ station: RadioStation, playerCoordinator: PlayerCoordinator) {
+        // 86cf180 log-first: the tap line — together with the play line in
+        // fetchItemDetail one glance shows a tile↔stream swap.
+        Logger.library.notice("RADIO tap uuid=\(station.id, privacy: .public) name=\(station.name, privacy: .public) stream=\(station.streamURL, privacy: .public)")
         RadioProvider.shared.remember([station])   // keep catalog hits resolvable
         Task { await playerCoordinator.open(item: RadioProvider.libraryItem(for: station)) }
     }

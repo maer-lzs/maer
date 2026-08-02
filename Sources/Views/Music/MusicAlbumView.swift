@@ -83,7 +83,8 @@ struct MusicAlbumView: View {
                         }
                     }
                 } header: {
-                    Text("Top Songs")
+                    // 9ac20e5: per-user play counts — labeled as PERSONAL.
+                    Text("Your most played")
                 }
             }
             if !tracks.isEmpty {

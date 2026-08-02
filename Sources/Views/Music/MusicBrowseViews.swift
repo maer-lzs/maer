@@ -225,7 +225,8 @@ struct MusicArtistView: View {
     private var topSongsSection: some View {
         if !topSongs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Top Songs").font(.title3).bold().padding(.horizontal)
+                // 9ac20e5: server topSongs (global charts) — honest label.
+                Text("Popular Songs").font(.title3).bold().padding(.horizontal)
                 ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, entry in
                     Button {
                         Task { await playerCoordinator.open(item: entry.item) }

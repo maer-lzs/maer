@@ -983,6 +983,57 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// 0aa18b7 + 86cf180: radio play identity + the full-player title tap.
+    /// (1) Tapping a NAMED catalog tile plays THAT station — the mini bar
+    /// carries the same name (tile↔stream identity; UUIDs ride the RADIO
+    /// tap/play log pair). (2) With radio running, the player's title tap
+    /// opens the station DETAIL page and playback keeps running — the radio
+    /// case was missing from the source-page journeys, which is how the
+    /// device defect slipped through.
+    func testRadioPlayIdentityAndTitleTap() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        app.buttons["tab-radio"].firstMatch.tap()
+        let tile = app.staticTexts["Seed Popular Station"].firstMatch
+        XCTAssertTrue(tile.waitForExistence(timeout: 10))
+        // Full-suite ordering: earlier radio journeys persist region/recents
+        // rows that push the Popular row below the fold — an off-screen tap
+        // lands nowhere (frame-containment rule, not isHittable: that throws
+        // off-screen). Scroll until the tile is really inside the window.
+        func tileOnScreen() -> Bool {
+            let f = tile.frame
+            return !f.isEmpty && f.minY >= 0 && f.maxY <= app.frame.maxY - 80
+        }
+        var swipes = 0
+        while !tileOnScreen() && swipes < 8 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(tileOnScreen(), "the Popular tile must be scrollable into view")
+        tile.tap()
+        // The tap opens the FULL player. Wait for the player chrome first —
+        // under full-suite load the open animation can lag; querying the
+        // title button too early failed a run.
+        XCTAssertTrue(app.buttons["player-more"].firstMatch.waitForExistence(timeout: 20),
+                      "the full player must open from the tile tap")
+        // Identity + G8 in one: the tappable title source entry must exist
+        // AND carry the tapped station's name (chevron renders only when
+        // the target resolves).
+        let title = app.buttons["player-source-title"].firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 15),
+                      "the radio title must be tappable (target derivation broken otherwise)")
+        XCTAssertTrue(title.label.contains("Seed Popular Station"),
+                      "the tapped tile's station must be the one playing")
+        title.tap()
+        // Station detail open, playback untouched (mini bar still there —
+        // detail text + mini-bar button both carry the name, so ≥2 matches).
+        XCTAssertTrue(app.staticTexts["Seed Popular Station"].firstMatch.waitForExistence(timeout: 10),
+                      "the station detail must open from the title tap")
+        XCTAssertTrue(app.buttons["Seed Popular Station"].firstMatch.waitForExistence(timeout: 10),
+                      "playback must keep running")
+        snap(app, "radio-title-tap-detail")
+        app.terminate()
+    }
+
     /// 5034add: the free-catalogs MASTER switch — off greys the subordinate
     /// area toggle and removes the (net-independent) music browse entry.
     /// Ids only, never labels (de-sim trap); master back ON at the end so

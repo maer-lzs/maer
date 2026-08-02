@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
+import OSLog
 
 /// F1: internet radio as an AudioProvider — namespace `radio:`. Sources: the
 /// open Radio Browser catalog (search) + user-entered stream URLs (managed on
@@ -44,6 +45,13 @@ final class RadioProvider: AudioProvider {
         // Teil 1: honor the user's per-station variant choice (else the best).
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
+        // 86cf180 log-first: what actually plays (vs the tap line above) +
+        // the permanent icy-name check against the tile name (log only) —
+        // catches app-side swaps AND hijacked catalog entries.
+        let isVariantChoice = streamURL != station.streamURL
+        Logger.library.notice("RADIO play id=\(itemId, privacy: .public) name=\(station.name, privacy: .public) stream=\(streamURL, privacy: .public) variant=\(isVariantChoice ? "chosen" : "default", privacy: .public)")
+        RadioDiagnostics.compareICYName(streamURL: streamURL, expectedName: station.name,
+                                        stationID: station.id)
         // One "track" pointing at the live stream; no duration, no chapters.
         return LibraryItemDetail(
             id: station.id,
