@@ -53,8 +53,9 @@ nonisolated enum ArchiveOrgClient {
     }
     nonisolated struct MetadataResponse: Decodable {
         struct Meta: Decodable {
-            let title: String?
-            let creator: String?
+            // 3ac9183: same list-capable fields on the metadata endpoint.
+            let title: ArchiveStringList?
+            let creator: ArchiveStringList?
         }
         let files: [ArchiveFile]?
         let metadata: Meta?
@@ -68,18 +69,20 @@ nonisolated enum ArchiveOrgClient {
     /// project with the classical subject (4k+ clean single titles with
     /// composer metadata; probed against 78rpm/musopen/europeanlibraries —
     /// one good collection beats three noisy ones).
-    static let classicalQuery = "collection:georgeblood AND subject:classical"
+    static let classicalQuery = "collection:georgeblood AND subject:classical AND mediatype:(audio)"
 
     /// Most-downloaded LibriVox items (the keyless popularity source).
     /// f374330: language filters SERVER-side (ISO-639-3 clause); an empty
     /// language result falls back to unfiltered (rule unchanged).
-    static func popularLibriVox(rows: Int, languageCodes: [String] = []) async throws -> [ArchivePopularDoc] {
+    static func popularLibriVox(rows: Int, languageCodes: [String] = [], page: Int = 1) async throws -> [ArchivePopularDoc] {
         if let clause = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
             let filtered = try await popular(
-                query: "collection:librivoxaudio AND \(clause)", rows: rows)
+                query: "collection:librivoxaudio AND \(clause)", rows: rows, page: page)
             if !filtered.isEmpty { return filtered }
+            // Fallback only on the FIRST page — deeper pages legitimately end.
+            guard page == 1 else { return [] }
         }
-        return try await popular(query: "collection:librivoxaudio", rows: rows)
+        return try await popular(query: "collection:librivoxaudio AND mediatype:(audio)", rows: rows, page: page)
     }
 
     /// E3: popular free classical recordings (same client, Regel 2).
@@ -105,7 +108,11 @@ nonisolated enum ArchiveOrgClient {
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
-        return try decodePopular(data)
+        // aed5d25: shared artifact filter for BOTH rows (books + classical) —
+        // dropped docs are logged upstream via the count difference.
+        return try decodePopular(data).filter {
+            !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
+        }
     }
 
     /// Item metadata (files with lengths → direct stream URLs).

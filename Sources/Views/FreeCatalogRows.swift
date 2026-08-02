@@ -18,20 +18,15 @@ struct FreeCatalogRows: View {
     /// view below the fold never ran its .task reliably (the third suspect);
     /// loading lives in HomeView's compute() pass (always runs, calm-gated)
     /// via `FreeCatalogLoader`.
-    let newBooks: [LibraryItem]
-    let popularBooks: [LibraryItem]
+    /// 7edb21b: the two audiobook rows LEFT Home — the books mix into the
+    /// Discover section instead (moderate share) and live in their own
+    /// audiobooks-tab area; only classical + free music remain as rows.
     let freeMusic: [LibraryItem]
     let classical: [LibraryItem]
     @State private var detailItem: LibraryItem?
 
     var body: some View {
         Group {
-            if !newBooks.isEmpty {
-                row(title: "New Free Audiobooks", items: newBooks)
-            }
-            if !popularBooks.isEmpty {
-                row(title: "Popular Free Audiobooks", items: popularBooks)
-            }
             if !classical.isEmpty {
                 // 50f4751: the teaser POINTS INTO the separate area — the
                 // header row navigates to the music-tab browse page.
@@ -102,11 +97,15 @@ struct FreeCatalogRows: View {
 @MainActor
 enum FreeCatalogLoader {
     struct Rows {
-        var newBooks: [LibraryItem] = []
-        var popularBooks: [LibraryItem] = []
+        /// 7edb21b: LibriVox books for the DISCOVER mix (moderate share).
+        var discoverBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
         var classical: [LibraryItem] = []
     }
+
+    /// Moderate share (Fortsetzen-Deckel-Denke): at most this many LibriVox
+    /// tiles mix into Discover; constant, not a setting.
+    static let discoverBookCap = 3
 
     static func load() async -> Rows {
         var rows = Rows()
@@ -118,25 +117,16 @@ enum FreeCatalogLoader {
         let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
         let jamendoOn = UserDefaults.standard.object(forKey: AppStorageKeys.jamendoRowEnabled) as? Bool ?? true
 
-        if librivoxOn {
+        let areaOn = UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true
+        if librivoxOn && areaOn {
             do {
                 let books = try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40)
                 let codes = SuggestionLanguages.current()
                 let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
-                Logger.library.notice("FREECAT librivox loaded=\(books.count) filtered=\(filtered.count) codes=\(codes.joined(separator: ","), privacy: .public)")
-                rows.newBooks = filtered.prefix(12).map { provider.remember(book: $0) }
+                Logger.library.notice("FREECAT discover-books loaded=\(books.count) filtered=\(filtered.count) codes=\(codes.joined(separator: ","), privacy: .public)")
+                rows.discoverBooks = filtered.prefix(Self.discoverBookCap).map { provider.remember(book: $0) }
             } catch {
-                Logger.library.error("FREECAT librivox FAILED: \(String(describing: error), privacy: .public)")
-            }
-        }
-        if archiveOn {
-            do {
-                let docs = try await ArchiveOrgClient.popularLibriVox(
-                    rows: 12, languageCodes: SuggestionLanguages.current())
-                Logger.library.notice("FREECAT archive-popular loaded=\(docs.count)")
-                rows.popularBooks = docs.compactMap { provider.remember(popular: $0) }
-            } catch {
-                Logger.library.error("FREECAT archive-popular FAILED: \(String(describing: error), privacy: .public)")
+                Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
             }
         }
         let classicalOn = (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true) && archiveOn
@@ -179,6 +169,8 @@ struct FreeCatalogDetailSheet: View {
     @State private var showLibraryPicker = false
     @State private var showWiFiWarning = false
     @State private var localSubscribed = false
+    /// b395e5f: hi-res cover once resolved (thumb → hires upgrade).
+    @State private var hiresCover: URL?
 
     private var isJamendo: Bool { item.id.hasPrefix(FreeCatalog.jamendoPrefix) }
     private var jamendoTrack: JamendoTrack? {
@@ -191,7 +183,9 @@ struct FreeCatalogDetailSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: item.id)) { image in
+                // b395e5f: thumb first, hi-res swapped in once resolved
+                // (soft crossfade; ImageCache persists both).
+                CachedAsyncImage(url: hiresCover ?? AppSession.shared.coverURL(forItemId: item.id)) { image in
                     image.resizable().aspectRatio(contentMode: .fit)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 12).fill(.quaternary)
@@ -200,6 +194,7 @@ struct FreeCatalogDetailSheet: View {
                 }
                 .frame(maxHeight: 220)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .animation(.easeInOut(duration: 0.25), value: hiresCover)
 
                 VStack(spacing: 4) {
                     Text(item.title).font(.headline).multilineTextAlignment(.center)
@@ -266,6 +261,7 @@ struct FreeCatalogDetailSheet: View {
         }
         .task {
             if item.id.hasPrefix(FreeCatalog.librivoxPrefix) {
+                hiresCover = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: item.id)
                 absLibraries = await LibriVoxImporter.audiobookLibraries()
             }
         }

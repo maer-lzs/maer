@@ -102,6 +102,25 @@ final class LibriVoxImporter: ObservableObject {
         }
 
         if Task.isCancelled { phase = .idle; activeBookId = nil; return }
+        // b395e5f: send the SAME cover the app shows along with the upload
+        // (hi-res via itunes:image, thumb fallback) — resolves the ABS
+        // cover reservation; a failed cover never fails the import.
+        let itemId = FreeCatalog.librivoxPrefix + book.id
+        let coverRemote = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: itemId)
+            ?? FreeCatalogProvider.shared.coverURL(forItemId: itemId)
+        if let coverRemote {
+            do {
+                let (downloaded, _) = try await URLSession.shared.download(from: coverRemote)
+                let local = tempDir.appendingPathComponent("cover.jpg")
+                try? FileManager.default.removeItem(at: local)
+                try FileManager.default.moveItem(at: downloaded, to: local)
+                files.append((filename: "cover.jpg", url: local))
+            } catch {
+                Logger.library.notice("LIBRIVOX import cover skipped: \(String(describing: error), privacy: .public)")
+            }
+        }
+
+        if Task.isCancelled { phase = .idle; activeBookId = nil; return }
         phase = .uploading
         do {
             let pd = String(localized: "Public-domain recording from LibriVox.")

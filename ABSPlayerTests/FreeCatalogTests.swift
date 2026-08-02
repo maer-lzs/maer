@@ -90,6 +90,70 @@ struct FreeCatalogTests {
                 == "https://archive.org/services/img/abc")
     }
 
+    @Test("7edb21b: discover mix — moderate interleave, cap respected, leftovers trail")
+    func discoverMixing() {
+        let recs = ["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"]
+        let books = ["b1", "b2", "b3"]
+        let mixed = FreeCatalog.discoverMix(recommendations: recs, books: books)
+        // After every 4th recommendation one book; order preserved.
+        let flat = mixed.map { $0.rec ?? $0.book ?? "?" }
+        #expect(flat == ["r1", "r2", "r3", "r4", "b1", "r5", "r6", "r7", "r8", "b2", "b3"])
+        // No books → pure recommendations; no recommendations → books only.
+        #expect(FreeCatalog.discoverMix(recommendations: recs, books: [String]()).count == recs.count)
+        #expect(FreeCatalog.discoverMix(recommendations: [String](), books: books).count == books.count)
+    }
+
+    @Test("b395e5f: itunes:image extraction — one tag scan, no full parse")
+    func itunesImage() {
+        let rss = """
+        <?xml version="1.0"?><rss><channel><title>X</title>
+        <itunes:image href="https://www.archive.org/download/x/cover.jpg" />
+        </channel></rss>
+        """
+        #expect(FreeCatalog.extractItunesImage(Data(rss.utf8))
+                == "https://www.archive.org/download/x/cover.jpg")
+        // Missing tag, malformed href, non-http scheme → nil (thumb stays).
+        #expect(FreeCatalog.extractItunesImage(Data("<rss></rss>".utf8)) == nil)
+        #expect(FreeCatalog.extractItunesImage(Data("<itunes:image nohref='x'/>".utf8)) == nil)
+        #expect(FreeCatalog.extractItunesImage(Data("<itunes:image href=\"ftp://x\"/>".utf8)) == nil)
+    }
+
+    @Test("aed5d25: artifact deny — meta items drop, real books pass")
+    func artifactFilter() {
+        #expect(FreeCatalog.isArtifactDoc(identifier: "cdcoverartarchive", title: nil))
+        #expect(FreeCatalog.isArtifactDoc(identifier: "librivox_test_item", title: nil))
+        #expect(FreeCatalog.isArtifactDoc(identifier: "x", title: "The Complete Collection Vol 1"))
+        #expect(FreeCatalog.isArtifactDoc(identifier: "pride_m4b_bundle", title: nil))
+        #expect(!FreeCatalog.isArtifactDoc(identifier: "art_of_war_librivox", title: "The Art of War"))
+        #expect(!FreeCatalog.isArtifactDoc(identifier: nil, title: nil))
+    }
+
+    @Test("aed5d25: track-count plausibility bounds")
+    func trackPlausibility() {
+        #expect(FreeCatalog.trackCountPlausible(1))
+        #expect(FreeCatalog.trackCountPlausible(200))
+        #expect(!FreeCatalog.trackCountPlausible(0))
+        #expect(!FreeCatalog.trackCountPlausible(201))
+    }
+
+    @Test("3ac9183: creator String OR Array — both decode, first leads, join for detail")
+    func creatorArray() throws {
+        let data = try CorpusFixture.data("creator-array", ext: "json", subdirectory: "WireCorpus")
+        let docs = try ArchiveOrgClient.decodePopular(data)
+        #expect(docs.count == 2)
+        // Array case: composer first for rows, everyone joined for the detail.
+        #expect(docs[0].creator?.first == "Sergei Rachmaninoff")
+        #expect(docs[0].creator?.joined == "Sergei Rachmaninoff, Philadelphia Orchestra, Eugene Ormandy")
+        #expect(docs[0].title?.first == "Piano Concerto No. 2")
+        // String case unchanged.
+        #expect(docs[1].creator?.first == "Sun Tzu")
+        // Any OTHER type still throws (wire discipline unchanged).
+        let broken = Data("""
+        {"response":{"docs":[{"identifier":"x","creator":42}]}}
+        """.utf8)
+        #expect(throws: (any Error).self) { _ = try ArchiveOrgClient.decodePopular(broken) }
+    }
+
     @Test("Decoders throw on the wire corpus (no silent empty rows)")
     func decodersThrow() throws {
         for (name, ext) in [("portal", "html"), ("half", "json"), ("empty", "json")] {

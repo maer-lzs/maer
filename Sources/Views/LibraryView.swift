@@ -301,6 +301,9 @@ struct LibraryView: View {
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
             // F4-discovery: radio genre drilldown on the same stack root.
             .radioNavigationDestinations(playerCoordinator: playerCoordinator)
+            .navigationDestination(for: FreeAudiobooksRoute.self) { _ in
+                FreeAudiobooksPage(playerCoordinator: playerCoordinator)
+            }
         }
         // Buttons inside List rows push routes over this callback instead of a
         // NavigationLink (which draws a disclosure chevron in a List). Set on
@@ -980,6 +983,36 @@ struct LibraryView: View {
         return (available - totalSpacing) / CGFloat(columnCount)
     }
 
+    /// 7edb21b: gate = feature toggle (audiobooks pill) AND the LibriVox
+    /// service opt-out (service off wins — two clean levels, Klassik-Muster).
+    private var freeAudiobooksArea: Bool {
+        (UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true)
+            && (UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true)
+    }
+
+    /// The AREA entry below the own library: linked title + separation line —
+    /// deliberately WITHOUT tiles here (a lazy below-the-fold view must not
+    /// load, the 34c36e1 lesson; the content lives on the pushed page).
+    private var freeAudiobooksSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            NavigationLink(value: FreeAudiobooksRoute.area) {
+                HStack(spacing: 6) {
+                    Text("Free Audiobooks").font(.title3).bold()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("free-audiobooks-entry")
+            Text("Free public-domain audiobooks from LibriVox — separate from your own library.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+        }
+    }
+
     /// Audiobook tab: loading/error/empty states and the actual list.
     @ViewBuilder
     private var audiobooksContent: some View {
@@ -1030,6 +1063,12 @@ struct LibraryView: View {
                         recentlyAddedGrid
                     }
                 allBooksSection
+                // 7edb21b ENTSCHIEDEN (kein Entwurf mehr): the Free-
+                // Audiobooks AREA entry lives below the own library —
+                // feature toggle (audiobooks pill) ∧ LibriVox service opt-out.
+                if freeAudiobooksArea {
+                    freeAudiobooksSection
+                }
                 if viewModel.isLoadingMore {
                     // Progressive loading is still running — subtle hint that
                     // more titles are on the way.

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Foundation
+import OSLog
 
 /// 0714d26: playback resolution for the free-catalog rows — owns the
 /// `lv:` (LibriVox book), `lva:` (archive.org item) and `jam:` (Jamendo
@@ -49,7 +50,9 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: doc.title, authorName: doc.creator, narratorName: nil,
+                    // 3ac9183: first entry leads (composer first); the
+                    // detail sheet names everyone via the joined form.
+                    title: doc.title?.first, authorName: doc.creator?.first, narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                 duration: nil, chapters: nil, tracks: nil),
             addedAt: nil)
@@ -103,13 +106,19 @@ final class FreeCatalogProvider: AudioProvider {
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
             let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
+            // aed5d25 (2): plausibility gate — a collection bundle with
+            // hundreds of parts is not a book; named in the log, never mute.
+            guard FreeCatalog.trackCountPlausible(tracks.count) else {
+                Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
+                throw URLError(.resourceUnavailable)
+            }
             let total = tracks.compactMap(\.duration).reduce(0, +)
             return LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
                     metadata: LibraryItemMetadata(
-                        title: meta.metadata?.title ?? itemsById[itemId]?.title,
-                        authorName: meta.metadata?.creator, narratorName: nil,
+                        title: meta.metadata?.title?.first ?? itemsById[itemId]?.title,
+                        authorName: meta.metadata?.creator?.joined, narratorName: nil,
                         seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                     duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
                 userMediaProgress: nil)
@@ -131,6 +140,34 @@ final class FreeCatalogProvider: AudioProvider {
                 userMediaProgress: nil)
         }
         throw URLError(.resourceUnavailable)
+    }
+
+    /// b395e5f: session cache id → hi-res cover (resolved lazily; nil result
+    /// is cached too so a broken feed is fetched only once).
+    private var hiresCovers: [String: URL?] = [:]
+
+    /// b395e5f: resolve the HI-RES cover behind a LibriVox book — ONE light
+    /// tag scan of the book's `url_rss` (itunes:image; no full feed parse),
+    /// redirects followed by URLSession. Falls back to nil → callers keep
+    /// the archive thumb; failures stay silent by spec (log only).
+    func hiresCoverURL(forItemId itemId: String) async -> URL? {
+        if let cached = hiresCovers[itemId] { return cached }
+        guard itemId.hasPrefix(FreeCatalog.librivoxPrefix),
+              let rss = librivoxBooks[itemId]?.url_rss, let url = URL(string: rss) else {
+            return nil
+        }
+        var request = URLRequest(url: url)
+        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        do {
+            let (data, _) = try await RequestRetryPolicy.fetch(request)
+            let resolved = FreeCatalog.extractItunesImage(data).flatMap { URL(string: $0) }
+            hiresCovers[itemId] = resolved
+            return resolved
+        } catch {
+            Logger.library.notice("FREECAT hires-cover failed (thumb stays): \(String(describing: error), privacy: .public)")
+            hiresCovers[itemId] = URL?.none
+            return nil
+        }
     }
 
     func coverURL(forItemId itemId: String) -> URL? {

@@ -426,8 +426,13 @@ final class APIClient {
         try writeField("library", libraryId)
         try writeField("folder", folderId)
         for (index, file) in files.enumerated() {
+            // b395e5f: the cover file rides in the same upload — content
+            // type by extension (jpg/png), everything else stays MP3.
+            let ext = (file.filename as NSString).pathExtension.lowercased()
+            let contentType = ext == "jpg" || ext == "jpeg" ? "image/jpeg"
+                : ext == "png" ? "image/png" : "audio/mpeg"
             try handle.write(contentsOf: Data(
-                "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(index)\"; filename=\"\(file.filename)\"\r\nContent-Type: audio/mpeg\r\n\r\n".utf8))
+                "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(index)\"; filename=\"\(file.filename)\"\r\nContent-Type: \(contentType)\r\n\r\n".utf8))
             let data = try Data(contentsOf: file.url, options: .mappedIfSafe)
             try handle.write(contentsOf: data)
             try handle.write(contentsOf: Data("\r\n".utf8))

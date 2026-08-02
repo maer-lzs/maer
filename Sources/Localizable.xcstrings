@@ -1535,6 +1535,16 @@
         }
       }
     },
+    "Show free audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörbücher anzeigen"
+          }
+        }
+      }
+    },
     "Show Free Classical" : {
       "localizations" : {
         "de" : {
@@ -1645,6 +1655,16 @@
         }
       }
     },
+    "Public domain · LibriVox" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei · LibriVox"
+          }
+        }
+      }
+    },
     "Public-domain recording from LibriVox." : {
       "localizations" : {
         "de" : {
@@ -1711,6 +1731,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lade auf deinen Server hoch …"
+          }
+        }
+      }
+    },
+    "Free Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörbücher"
+          }
+        }
+      }
+    },
+    "Free public-domain audiobooks from LibriVox — separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie gemeinfreie Hörbücher von LibriVox — getrennt von deiner eigenen Bibliothek."
+          }
+        }
+      }
+    },
+    "New at LibriVox" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu bei LibriVox"
           }
         }
       }
@@ -3582,12 +3632,12 @@
         }
       }
     },
-    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically." : {
+    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte."
+            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte. Freie Hörbücher ergänzt einen gemeinfreien LibriVox-Bereich, getrennt von deiner Bibliothek."
           }
         }
       }

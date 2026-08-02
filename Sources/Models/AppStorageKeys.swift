@@ -242,6 +242,9 @@ nonisolated enum AppStorageKeys {
     /// 3125a42: remembered ABS import target (library picker on first use).
     static let librivoxImportLibraryId = "librivoxImportLibraryId"
     static let librivoxImportFolderId = "librivoxImportFolderId"
+    /// 7edb21b: the "Free Audiobooks" AREA toggle (feature level, audiobooks
+    /// pill); the LibriVox service opt-out stays superior.
+    static let freeAudiobooksEnabled = "freeAudiobooksEnabled"
 
     // Radio-Picker-Kuratierung (b942da6/b1ab99d)
     /// ALL raw name variants of the chosen region (the by-state query runs

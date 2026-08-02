@@ -40,10 +40,32 @@ nonisolated struct LibriVoxFeed: Decodable, Sendable {
 
 // MARK: - archive.org wire
 
+/// 3ac9183: archive.org list-capable fields — the georgeblood classical
+/// docs deliver `creator` as an ARRAY (composer + orchestra + conductor),
+/// LibriVox docs as a plain string; title/subject can do the same. ONE
+/// shared tolerant decode (lenientID spirit): both shapes accepted, any
+/// OTHER type still throws (wire discipline unchanged).
+nonisolated struct ArchiveStringList: Decodable, Sendable {
+    let values: [String]
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let single = try? container.decode(String.self) {
+            values = [single]
+        } else {
+            values = try container.decode([String].self)
+        }
+    }
+    init(_ values: [String]) { self.values = values }
+    /// Row display: the FIRST entry leads (archive.org puts the composer first).
+    var first: String? { values.first }
+    /// Detail display: everyone named, comma-joined.
+    var joined: String? { values.isEmpty ? nil : values.joined(separator: ", ") }
+}
+
 nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     let identifier: String?
-    let title: String?
-    let creator: String?
+    let title: ArchiveStringList?
+    let creator: ArchiveStringList?
     let downloads: Int?
 }
 
@@ -129,6 +151,61 @@ nonisolated enum FreeCatalog {
         let variants = codes.flatMap { iso639_3(for: $0) }
         guard !variants.isEmpty else { return nil }
         return "(" + variants.map { "language:\"\($0)\"" }.joined(separator: " OR ") + ")"
+    }
+
+    /// 7edb21b: mix LibriVox books into the Discover row at a MODERATE
+    /// share — after every `interval` recommendations one book, hard-capped
+    /// (pure, tested; the Fortsetzen-Deckel-Denke).
+    static func discoverMix<R, B>(recommendations: [R], books: [B],
+                                  interval: Int = 4) -> [(rec: R?, book: B?)] {
+        var out: [(rec: R?, book: B?)] = []
+        var bookIndex = 0
+        for (index, rec) in recommendations.enumerated() {
+            out.append((rec: rec, book: nil))
+            if (index + 1) % interval == 0, bookIndex < books.count {
+                out.append((rec: nil, book: books[bookIndex]))
+                bookIndex += 1
+            }
+        }
+        // Leftover books trail when recommendations run short (never lost).
+        while bookIndex < books.count {
+            out.append((rec: nil, book: books[bookIndex]))
+            bookIndex += 1
+        }
+        return out
+    }
+
+    /// b395e5f: pull the `itunes:image` href out of a book RSS WITHOUT a
+    /// full feed parse (one tag scan; the hi-res cover behind it is a real
+    /// archive.org scan, ~100 KB, reached via redirect — URLSession follows).
+    static func extractItunesImage(_ rssData: Data) -> String? {
+        guard let text = String(data: rssData, encoding: .utf8) else { return nil }
+        guard let tagRange = text.range(of: "<itunes:image") else { return nil }
+        let after = text[tagRange.upperBound...]
+        guard let hrefRange = after.range(of: "href=\"") else { return nil }
+        let start = after[hrefRange.upperBound...]
+        guard let end = start.firstIndex(of: "\"") else { return nil }
+        let url = String(start[..<end])
+        return url.hasPrefix("http") ? url : nil
+    }
+
+    /// aed5d25: known artifact classes the downloads sort washes up —
+    /// cover-art dumps, m4b/complete-collection bundles, thumbs, test items.
+    /// Deny patterns match identifier OR title (folded); list extendable.
+    static let artifactPatterns: [String] = [
+        "cdcoverart", "thumbs", "m4b", "complete collection",
+        "complete_collection", "librivox_test", "test_item",
+    ]
+
+    static func isArtifactDoc(identifier: String?, title: String?) -> Bool {
+        let hay = ((identifier ?? "") + " " + (title ?? "")).lowercased()
+        return artifactPatterns.contains { hay.contains($0) }
+    }
+
+    /// aed5d25 (2): plausibility bounds for an archive item's track list —
+    /// a real audiobook has SOME parts; hundreds mean a collection bundle.
+    static func trackCountPlausible(_ count: Int) -> Bool {
+        count >= 1 && count <= 200
     }
 
     /// The archive.org identifier out of `url_iarchive` (last path component).

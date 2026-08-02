@@ -401,6 +401,7 @@ struct SettingsView: View {
 
     // MARK: - Audiobooks
 
+    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
     private var playbackSection: some View {
         Section {
             Picker(selection: $skipInterval) {
@@ -442,10 +443,17 @@ struct SettingsView: View {
             .onChange(of: autoPlayNext) { _, newValue in
                 UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
             }
+
+            // 7edb21b: FEATURE level for the whole free-audiobooks area
+            // (tab entry + Discover mix) — the classical-toggle pattern;
+            // the LibriVox service opt-out on the network-services page
+            // stays superior (service off wins).
+            Toggle("Show free audiobooks", isOn: $freeAudiobooks)
+                .accessibilityIdentifier("books-free-audiobooks-toggle")
         } header: {
             Text("Playback")
         } footer: {
-            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
+            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library.")
         }
     }
 

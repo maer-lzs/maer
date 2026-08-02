@@ -48,6 +48,8 @@ struct HomeView: View {
     /// compute() (retry rides the recompute token like everything else).
     @State private var freeCatalogRows = FreeCatalogLoader.Rows()
     @State private var freeCatalogLoaded = false
+    /// 7edb21b: tapped Discover book → detail sheet (PD badge + takeover).
+    @State private var discoverBookDetail: LibraryItem?
 
     /// M4: recently PLAYED music albums ("Zuletzt gehört (Musik)") — the
     /// provider's `.recent` shelf; empty (no music server / nothing played)
@@ -105,8 +107,6 @@ struct HomeView: View {
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
                     FreeCatalogRows(playerCoordinator: playerCoordinator,
-                                    newBooks: freeCatalogRows.newBooks,
-                                    popularBooks: freeCatalogRows.popularBooks,
                                     freeMusic: freeCatalogRows.freeMusic,
                                     classical: freeCatalogRows.classical)
                     upNextSection
@@ -133,6 +133,9 @@ struct HomeView: View {
         }
         // E3: recompute the Discover filter only when its inputs change.
         .task(id: discoverToken) { recomputeDiscover() }
+        .sheet(item: $discoverBookDetail) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
     }
 
     private var isEmpty: Bool {
@@ -253,14 +256,31 @@ struct HomeView: View {
                 // its tap opens the temporary show preview.
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(shown) { result in
-                            RecommendationTile(
-                                result: result,
-                                subtitle: reasonText(recommendations.reason(for: result)))
-                                // Kachel-Auftrag: screen-relative slots + peek.
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
-                                    span: 1, spacing: 12)
+                        // 7edb21b: LibriVox books mix in at a moderate share
+                        // (pure discoverMix, cap 3) with the honest Discover-
+                        // style reason line; tap opens the detail sheet.
+                        let mixed = FreeCatalog.discoverMix(
+                            recommendations: shown, books: freeCatalogRows.discoverBooks)
+                        ForEach(Array(mixed.enumerated()), id: \.offset) { _, slot in
+                            Group {
+                                if let result = slot.rec {
+                                    RecommendationTile(
+                                        result: result,
+                                        subtitle: reasonText(recommendations.reason(for: result)))
+                                } else if let book = slot.book {
+                                    MediaTile(
+                                        title: book.title,
+                                        subtitle: String(localized: "Public domain · LibriVox"),
+                                        coverURL: AppSession.shared.coverURL(forItemId: book.id),
+                                        placeholderSystemImage: "book.closed",
+                                        onTap: { discoverBookDetail = book }
+                                    )
+                                }
+                            }
+                            // Kachel-Auftrag: screen-relative slots + peek.
+                            .containerRelativeFrame(.horizontal,
+                                count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
+                                span: 1, spacing: 12)
                         }
                     }
                     .padding(.horizontal)
@@ -480,7 +500,7 @@ struct HomeView: View {
         // the next recompute instead of deciding forever, Y37 class).
         if !freeCatalogLoaded, NetworkMonitor.shared.isConnected {
             let loadedRows = await FreeCatalogLoader.load()
-            freeCatalogLoaded = !loadedRows.newBooks.isEmpty || !loadedRows.popularBooks.isEmpty
+            freeCatalogLoaded = !loadedRows.discoverBooks.isEmpty
                 || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty
             BottomBarState.shared.runWhenCalm { freeCatalogRows = loadedRows }
         }
