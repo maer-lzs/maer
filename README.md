@@ -55,6 +55,9 @@ Mär started as a private replacement for a client that regularly lost playback 
 - **Bookmarks** per book (position + title) synced through the Audiobookshelf bookmark API, created from the player, with offline queueing — bookmarks created or deleted without a connection are sent automatically once it returns
 - Settings screen: sources and per-service sync in one tab-independent place, skip interval, default playback speed for new books, **Smart Rewind** (resume a little earlier after longer pauses), **auto-play the next unfinished book of a series**, appearance override (system/light/dark), Wi-Fi download warning toggle, storage management, notifications, listening statistics, and the app version
 - **Sync history** in the settings — one list across every service (Audiobookshelf progress, gpodder, iCloud, music library), with a per-service “last checked” line and a ring of the actual changes, errors, and mass-delete guard events; a clean run that changed nothing stays visible without cluttering the ring
+- **Drive mode**: a big-button full-screen layout for the car mount — manual or automatic entry when your chosen car audio route connects (no extra permissions); screen stays awake, Siri shortcut included
+- **Listen log**: a per-person podcast listening history that survives unsubscribing and feed rotation
+- The app restarts on the **last selected tab**, and a temporarily unreachable server never throws you off your tab
 - **Siri & Shortcuts**: “Continue listening in Mär” and “Play *book* in Mär” (book names come from the offline library cache), plus a home-screen quick action that resumes the last played book
 - **CarPlay**: audiobook tabs (Continue Listening / Downloaded / Library), plus a Podcasts tab and a Music tab once those sources are set up, each with cover thumbnails and the system Now Playing screen, sharing the phone's playback session — works on a cold start in the car, falling back to the offline cache; testable in the simulator out of the box, real cars need Apple's CarPlay audio entitlement (developer.apple.com/contact/carplay)
 - Adaptive light and dark design with a **dark-gray brand accent**; each media type carries its own color on the tab selector — audiobooks orange, podcasts purple, music red, radio cyan. The Liquid Glass chrome (mini player, search, toolbar buttons) takes a soft pastel wash of the current cover color in light mode, and the mini player dips off-screen and springs back when switching books
@@ -80,7 +83,10 @@ Version 2.0 makes Mär a full **podcast client** alongside audiobooks. Podcasts 
 
 Version 2.1 adds **music** as a third media type, for **Subsonic / OpenSubsonic**-compatible servers (Navidrome, Gonic, Airsonic). Like podcasts it sits behind the same provider protocol, so audiobook and podcast playback stay untouched; a Music tab appears once a server is configured under Settings → Music.
 
-- **Media-type-specific browsing** (not the audiobook grid): shelves for recently added and most played, browse rows for artists and playlists, and the full album grid, paged in the background. An album is one multi-track item — tapping a track plays the whole album from that point through the same player as everything else.
+- **Media-type-specific browsing** (not the audiobook grid): full-size playlist cards with a real cover mosaic on top, a grouped library list (Artists · Albums · Songs · Playlists · Downloaded), and "Recently Played" / "Recently Added" shelves. An album is one multi-track item — tapping a track plays the whole album from that point through the same player as everything else.
+- **Playlists**: create, rename, and delete server playlists; add songs or whole albums from any context menu ("Add to Playlist", with a new-playlist flow); remove rows index-precisely. Continue-listening works for playlists AND albums (server bookmarks on Subsonic, cross-device).
+- **Jellyfin (beta)** as a second music backend behind the same surface — albums, artists, playlists, search, lyrics, favorites; active when it is the only configured music source. Still in verification against a real server.
+- **Booksonic mode**: mark a Subsonic source as audiobooks and its albums become books (chapters, progress, continue-listening) in the audiobook tab.
 - **Artist pages** (OpenSubsonic): artist image and biography, top songs (tap to play), and similar artists limited to those that actually exist in your own library. All best-effort — a server without a metadata agent simply shows fewer sections.
 - **Album detail**: notes, year · genre, a favorite (star) toggle, and offline download of the whole album. A high-resolution front cover is fetched from the **Cover Art Archive** when the album carries a MusicBrainz ID (respecting its User-Agent and 1 request/second policy).
 - **Lyrics in the player**: server-first (`getLyricsBySongId`), with the open **LRCLIB** service as a fallback (a ±5 s duration check guards its fuzzy matching); synced lyrics highlight the current line and follow playback with tap-to-seek, unsynced lyrics render as static text. Results — including negative hits — are cached on disk, so the button and panel stay instant and work offline.
@@ -91,7 +97,8 @@ Version 2.1 adds **music** as a third media type, for **Subsonic / OpenSubsonic*
 
 Mär also plays **internet radio**, a fourth media type behind the same provider protocol. A Radio tab appears once the source is enabled under Settings → Sources → Radio.
 
-- **Two sources:** the open **[Radio Browser](https://www.radio-browser.info/)** catalog (searchable, no account) and your **own stream URLs** (e.g. an AzuraCast mount) added by hand. Codec/bitrate variants of the same station in the catalog are folded to a single result (the highest bitrate).
+- **Two sources:** the open **[Radio Browser](https://www.radio-browser.info/)** catalog (searchable, no account) and your **own stream URLs** (e.g. an AzuraCast mount) added by hand. Codec/bitrate variants of the same station are folded to a single result, with a quality picker on the station page and in the live player.
+- **National & regional discovery**: popular stations of your own country plus a state/region picker; station detail pages (homepage, bitrate, codec, tags, similar stations) via the context menu.
 - **Honest live abstraction:** a live stream has no duration, no seek, no progress, and no download, so the player switches to a live layout — a LIVE marker instead of a scrubber, play/pause only, and a clock-based sleep timer. None of the progress machinery runs, and radio never enters the up-next queue.
 - **ICY now-playing:** the current song from the stream's ICY metadata shows in the player (under the station name) and on the lock screen.
 - **Favorites, your own stations, and a recent ring**, stored on the device; a station-colored artwork placeholder (with the station favicon when the stream ships one) is shared between the rows and the player, so it never upscales a tiny favicon on the big player.
@@ -100,12 +107,15 @@ Mär also plays **internet radio**, a fourth media type behind the same provider
 
 Mär talks to servers through their standard APIs, so it works with more than one implementation of each. Only what has actually been verified is stated as such; “should work” means standard-compatible but not tested here — no compatibility promises for servers that haven't been tried.
 
-- **Audiobookshelf** — audiobooks and podcasts (verified).
-- **Subsonic / OpenSubsonic** music servers — verified against **Navidrome**; other Subsonic-compatible servers (Gonic, Airsonic, …) should work but aren't individually tested.
-- **gpodder / mygpo** podcast sync — verified against **oPodSync**; other gpodder-compatible backends should work.
+- **Audiobookshelf** — audiobooks and podcasts (verified, daily use).
+- **Navidrome** (Subsonic/OpenSubsonic) — verified: daily use plus an automated 9/9 protocol probe (ping, artists, albums, search, cover art, streaming, playlists).
+- **oPodSync** (gpodder/mygpo) — verified, including the device registration stricter servers require.
+- **Booksonic** — should work via the audiobooks mode of a Subsonic source; the client negotiates the older API version automatically (books live in the folder the web UI exposes). Not yet verified against a live Booksonic server.
+- **Funkwhale** — should work: its Subsonic dialect ships numeric IDs and partial endpoints (handled leniently); sign in with a Funkwhale **application token** as the password. Not yet verified against a live Funkwhale instance.
+- **Jellyfin** — built in as a second music backend, currently **in verification** against a real server; treat it as beta.
 - **RSS / Podcasting 2.0** feeds, the **PodcastIndex** directory, and the open **Radio Browser** catalog for stations.
 
-Jellyfin support is a possible future direction, not a current feature.
+Only rows the compatibility matrix actually covers are claimed as verified; everything else is "should work" at best.
 
 ## Core sync rule
 
@@ -117,7 +127,7 @@ Every progress write always sends a complete record (current time, duration, and
 
 ## Intentionally not included
 
-Multi-user support, metadata editing, and server/library administration. Also not built (today): creating or editing playlists, an equalizer, and an Apple Watch app.
+Multi-user support, metadata editing, and server/library administration. Also not built (today): an equalizer and an Apple Watch app.
 
 ## Requirements
 
