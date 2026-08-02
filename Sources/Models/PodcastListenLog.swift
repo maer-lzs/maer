@@ -178,12 +178,11 @@ final class PodcastListenLog {
         try? data.write(to: url, options: .atomic)
     }
 
-    #if DEBUG
-    /// Test seam: reset in-memory state (file untouched).
-    func _resetForTest() { entries = [:]; loaded = true }
-
     /// V6: the chronological history (pure, tested) — tombstoned entries
     /// (marked unplayed, no newer play) are hidden, newest play first.
+    /// c22d401: MUST live outside #if DEBUG — it landed inside the test-seam
+    /// block and broke the RELEASE archive (debug suites can never catch a
+    /// DEBUG-gate hole; the release-compile gate now exists for exactly this).
     nonisolated static func historyList(_ entries: [String: Entry]) -> [Entry] {
         entries.values.filter(\.isPlayed).sorted { $0.playedAt > $1.playedAt }
     }
@@ -193,5 +192,9 @@ final class PodcastListenLog {
         loadIfNeeded()
         return Self.historyList(entries)
     }
+
+    #if DEBUG
+    /// Test seam: reset in-memory state (file untouched).
+    func _resetForTest() { entries = [:]; loaded = true }
     #endif
 }
