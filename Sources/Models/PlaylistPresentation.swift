@@ -67,6 +67,32 @@ nonisolated enum PlaylistPresentation {
 
     /// Sort playlists newest-changed first; ones without a timestamp sort last,
     /// then stably by their existing order (index tiebreak).
+    /// 961a14e: the playlist's most frequent artists (by track count), pure.
+    /// Key is case-/diacritic-folded (display keeps the first-seen spelling);
+    /// ties keep first appearance; empties drop. The card renders the result
+    /// joined into ONE line with native truncation.
+    static func topArtists(_ names: [String?], limit: Int = 3) -> [String] {
+        var counts: [String: Int] = [:]
+        var display: [String: String] = [:]
+        var order: [String] = []
+        for raw in names {
+            guard let name = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty else { continue }
+            let key = name.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil).lowercased()
+            if counts[key] == nil { order.append(key); display[key] = name }
+            counts[key, default: 0] += 1
+        }
+        return order
+            .sorted { a, b in
+                let ca = counts[a] ?? 0, cb = counts[b] ?? 0
+                return ca == cb
+                    ? (order.firstIndex(of: a) ?? 0) < (order.firstIndex(of: b) ?? 0)
+                    : ca > cb
+            }
+            .prefix(limit)
+            .compactMap { display[$0] }
+    }
+
     static func sortedByChanged<T>(_ items: [T], changed: (T) -> Date?) -> [T] {
         items.enumerated().sorted { a, b in
             switch (changed(a.element), changed(b.element)) {

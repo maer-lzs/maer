@@ -419,6 +419,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// 2×2 mosaic (the server's single playlist cover is deliberately ignored).
     /// Best-effort, cached per session.
     private var playlistMosaicCache: [String: [String]] = [:]
+    private var playlistArtistCache: [String: [String]] = [:]
 
     /// MusicProvider shape: item-id-based — the UI never handles raw ids.
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String] {
@@ -435,6 +436,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             (pl.entry ?? []).map { (albumKey: $0.albumId ?? $0.album, coverArt: $0.coverArt) })
         playlistMosaicCache[playlistRawId] = ids
         return ids
+    }
+
+    /// 961a14e: per-song artist names of the playlist — SAME getPlaylist
+    /// fetch the mosaic uses, cached alongside it.
+    func playlistArtistNames(forItemId itemId: String) async -> [String] {
+        guard let rawId = Self.id(itemId, kind: "playlist") else { return [] }
+        if let cached = playlistArtistCache[rawId] { return cached }
+        guard let client, let pl = try? await client.playlist(id: rawId) else { return [] }
+        let names = (pl.entry ?? []).compactMap(\.artist)
+        playlistArtistCache[rawId] = names
+        return names
     }
 
     /// F5: cover URL for a raw cover-art id (mosaic tiles use these, not

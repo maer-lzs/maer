@@ -88,6 +88,10 @@ protocol MusicProvider: AudioProvider {
     func songId(forItemId itemId: String, trackIndex: Int) async -> String?
     /// Up to 4 distinct album cover-art ids for the 2×2 playlist mosaic.
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String]
+    /// 961a14e: the playlist's per-song artist names (raw, one per track —
+    /// the pure `PlaylistPresentation.topArtists` ranks them); [] when the
+    /// provider has no artist data (the card line then stays away).
+    func playlistArtistNames(forItemId itemId: String) async -> [String]
 
     // MARK: Covers
     /// Cover URL for a provider cover-art id (mosaic tiles — not item ids).

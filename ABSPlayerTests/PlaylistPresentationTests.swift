@@ -105,4 +105,23 @@ struct PlaylistPresentationTests {
         #expect(ids.count == 3)
     }
 }
+
+/// 961a14e: the playlist card's artist line — most frequent first, folded
+/// dedupe keeps the first-seen spelling, ties by appearance, empties drop.
+struct PlaylistTopArtistsTests {
+    @Test("Frequency ranks; folded spellings merge; first-seen display wins")
+    func ranking() {
+        let out = PlaylistPresentation.topArtists(
+            ["Anna B", "Cari D", "anna b", "Émil", "Emil", "Anna B", "Zed"])
+        #expect(out == ["Anna B", "Émil", "Cari D"])
+    }
+
+    @Test("Ties keep appearance order; limit applies; empties/nils drop")
+    func tiesAndLimit() {
+        #expect(PlaylistPresentation.topArtists(["B", "A", nil, " ", "C", "D"], limit: 3)
+                == ["B", "A", "C"])
+        #expect(PlaylistPresentation.topArtists([]) == [])
+        #expect(PlaylistPresentation.topArtists([nil, "  "]).isEmpty)
+    }
+}
 #endif

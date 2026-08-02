@@ -31,6 +31,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     private var lastScrobbledSong: [String: String] = [:]
     private var favoriteAlbumIds: Set<String>?
     private var playlistMosaicCache: [String: [String]] = [:]
+    private var playlistArtistCache: [String: [String]] = [:]
     /// M6: per-track play counts of the last detail fetch, by item id.
     private var playCountsByItemId: [String: [Int?]] = [:]
 
@@ -349,6 +350,17 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         if songsByItemId[itemId] == nil { _ = try? await fetchItemDetail(itemId: itemId) }
         guard let songs = songsByItemId[itemId], songs.indices.contains(trackIndex) else { return nil }
         return songs[trackIndex].id
+    }
+
+    /// 961a14e: per-song artist names — same playlistSongs fetch as the
+    /// mosaic, cached alongside it.
+    func playlistArtistNames(forItemId itemId: String) async -> [String] {
+        guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return [] }
+        if let cached = playlistArtistCache[rawId] { return cached }
+        guard let songs = try? await client.playlistSongs(playlistId: rawId) else { return [] }
+        let names = songs.compactMap { $0.artists?.first }
+        playlistArtistCache[rawId] = names
+        return names
     }
 
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String] {

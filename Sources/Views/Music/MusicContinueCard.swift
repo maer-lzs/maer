@@ -115,6 +115,20 @@ struct MusicContinueCard: View {
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: MusicRoute.album(item)).padding(12)
         }
+        // b594a7c: the SAME shuffle corner button as the playlist cards —
+        // second action only, the card TAP stays RESUME (the row's purpose);
+        // music cards only, books/episodes are never shuffled.
+        .overlay(alignment: .bottomTrailing) {
+            CardCornerButton(systemImage: "shuffle",
+                             accessibilityLabel: Text("Shuffle"),
+                             accessibilityId: "music-continue-shuffle") {
+                Task {
+                    let items = await AppSession.shared.musicProvider.songItems(forItemId: item.id)
+                    await playerCoordinator.shufflePlay(items: items)
+                }
+            }
+            .padding(12)
+        }
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider

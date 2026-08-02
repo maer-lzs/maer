@@ -222,6 +222,9 @@ private struct PlaylistCard: View {
     @State private var showDeleteConfirm = false
     @Environment(\.pushMusicRoute) private var pushRoute
     @State private var coverURLs: [URL] = []
+    /// 961a14e: the playlist's most frequent artists as ONE truncating line
+    /// (empty = no data → blank, height reserved so the card never jiggles).
+    @State private var artistNames: [String] = []
     /// b9898dd Fix 1: the mixed card color comes from the BOTTOM (big) mosaic
     /// cover — it borders the text block (color continuity). Cached per URL in
     /// CoverColorLoader; until extraction lands the deterministic tint shows,
@@ -279,6 +282,13 @@ private struct PlaylistCard: View {
                         .foregroundStyle(.white.opacity(0.85))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, minHeight: metaMinHeight, alignment: .topLeading)
+                    // 961a14e: 2–3 most frequent artists, ONE line, native
+                    // truncation — style of the Discover reason lines
+                    // (secondary/small); blank keeps the reserve (jank rule).
+                    Text(artistNames.isEmpty ? " " : artistNames.joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
                 }
                 .padding(14)
                 .padding(.bottom, pillReserve)
@@ -353,8 +363,12 @@ private struct PlaylistCard: View {
         // maxWidth + aspectRatio already) — no fixed width anymore.
         .task(id: playlist.id) {
             let music = AppSession.shared.musicProvider
-            let ids = await music.playlistMosaicCoverIDs(forItemId: music.itemId(playlistId: playlist.id))
+            let itemId = music.itemId(playlistId: playlist.id)
+            let ids = await music.playlistMosaicCoverIDs(forItemId: itemId)
             coverURLs = ids.compactMap { music.coverURL(coverArtId: $0) }
+            // 961a14e: same fetch family (cached with the mosaic), pure ranking.
+            artistNames = PlaylistPresentation.topArtists(
+                await music.playlistArtistNames(forItemId: itemId))
         }
     }
 
@@ -405,6 +419,7 @@ private struct NewPlaylistCard: View {
                         .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
                     Text(verbatim: " ").font(.subheadline).lineLimit(1)
                         .frame(maxWidth: .infinity, minHeight: metaMinHeight, alignment: .topLeading)
+                    Text(verbatim: " ").font(.caption2).lineLimit(1)
                 }
                 .padding(14)
                 .padding(.bottom, pillReserve)
