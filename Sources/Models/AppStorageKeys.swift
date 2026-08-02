@@ -236,6 +236,9 @@ nonisolated enum AppStorageKeys {
     static let jamendoRowEnabled = "jamendoRowEnabled"
     /// The user's OWN Jamendo client_id (beats the build-injected one).
     static let jamendoClientId = "jamendoClientId"
+    /// f18ec34: the "Free Classical" AREA toggle (feature level, Music pill);
+    /// the archive.org service opt-out stays superior.
+    static let freeClassicalEnabled = "freeClassicalEnabled"
 
     // Radio-Picker-Kuratierung (b942da6/b1ab99d)
     /// ALL raw name variants of the chosen region (the by-state query runs

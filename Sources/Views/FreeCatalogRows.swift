@@ -21,6 +21,7 @@ struct FreeCatalogRows: View {
     let newBooks: [LibraryItem]
     let popularBooks: [LibraryItem]
     let freeMusic: [LibraryItem]
+    let classical: [LibraryItem]
     @State private var detailItem: LibraryItem?
 
     var body: some View {
@@ -30,6 +31,24 @@ struct FreeCatalogRows: View {
             }
             if !popularBooks.isEmpty {
                 row(title: "Popular Free Audiobooks", items: popularBooks)
+            }
+            if !classical.isEmpty {
+                // 50f4751: the teaser POINTS INTO the separate area — the
+                // header row navigates to the music-tab browse page.
+                VStack(alignment: .leading, spacing: 10) {
+                    NavigationLink(value: MusicRoute.freeClassical) {
+                        HStack(spacing: 6) {
+                            Text("Free Classical").font(.title3).bold()
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("home-free-classical-link")
+                    tileRow(items: classical)
+                }
             }
             if !freeMusic.isEmpty {
                 row(title: "Free Music", items: freeMusic)
@@ -43,6 +62,11 @@ struct FreeCatalogRows: View {
     private func row(title: LocalizedStringKey, items: [LibraryItem]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.title3).bold().padding(.horizontal)
+            tileRow(items: items)
+        }
+    }
+
+    private func tileRow(items: [LibraryItem]) -> some View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(items) { item in
@@ -67,7 +91,6 @@ struct FreeCatalogRows: View {
                 .padding(.horizontal)
             }
             .scrollClipDisabled()
-        }
     }
 }
 
@@ -82,6 +105,7 @@ enum FreeCatalogLoader {
         var newBooks: [LibraryItem] = []
         var popularBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
+        var classical: [LibraryItem] = []
     }
 
     static func load() async -> Rows {
@@ -112,6 +136,16 @@ enum FreeCatalogLoader {
                 rows.popularBooks = docs.compactMap { provider.remember(popular: $0) }
             } catch {
                 Logger.library.error("FREECAT archive-popular FAILED: \(String(describing: error), privacy: .public)")
+            }
+        }
+        let classicalOn = (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true) && archiveOn
+        if classicalOn {
+            do {
+                let docs = try await ArchiveOrgClient.popularClassical(rows: 12)
+                Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
+                rows.classical = docs.compactMap { provider.remember(popular: $0) }
+            } catch {
+                Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
             }
         }
         if jamendoOn {
@@ -186,6 +220,12 @@ struct FreeCatalogDetailSheet: View {
                         if let url = librivoxURL {
                             Link(destination: url) {
                                 Label("View on LibriVox", systemImage: "arrow.up.right.square")
+                                    .font(.caption)
+                            }
+                        } else if item.id.hasPrefix(FreeCatalog.archivePrefix),
+                                  let url = URL(string: "https://archive.org/details/\(item.id.dropFirst(FreeCatalog.archivePrefix.count))") {
+                            Link(destination: url) {
+                                Label("View on Internet Archive", systemImage: "arrow.up.right.square")
                                     .font(.caption)
                             }
                         }

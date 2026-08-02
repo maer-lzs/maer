@@ -25,6 +25,9 @@ enum MusicRoute: Hashable {
     // M3: genre chip grid + one genre's albums/songs.
     case genres
     case genre(MusicGenre)
+    /// 50f4751: the SEPARATE free-classical catalog area (never mixed into
+    /// the personal library surfaces).
+    case freeClassical
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -33,7 +36,7 @@ enum MusicRoute: Hashable {
         case let (.artists(a), .artists(b)):     return a.map(\.id) == b.map(\.id)
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
-             (.genres, .genres):
+             (.genres, .genres), (.freeClassical, .freeClassical):
             return true
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
@@ -51,6 +54,7 @@ enum MusicRoute: Hashable {
         case .downloaded:       hasher.combine(6)
         case .genres:           hasher.combine(7)
         case .genre(let g):     hasher.combine(8); hasher.combine(g.name)
+        case .freeClassical:    hasher.combine(9)
         }
     }
 
@@ -67,6 +71,7 @@ enum MusicRoute: Hashable {
         case .downloaded: return "music-route-downloaded"
         case .genres:     return "music-route-genres"
         case .genre:      return "music-route-genre"
+        case .freeClassical: return "music-route-free-classical"
         }
     }
 }
@@ -124,6 +129,8 @@ extension View {
                 MusicGenresPage()
             case .genre(let genre):
                 MusicGenreDetailPage(genre: genre, playerCoordinator: playerCoordinator)
+            case .freeClassical:
+                FreeClassicalPage(playerCoordinator: playerCoordinator)
             }
         }
     }

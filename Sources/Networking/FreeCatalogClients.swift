@@ -64,17 +64,34 @@ nonisolated enum ArchiveOrgClient {
         try JSONDecoder().decode(SearchResponse.self, from: data).response?.docs ?? []
     }
 
+    /// E3: ONE curated classical query — the George-Blood 78rpm digitization
+    /// project with the classical subject (4k+ clean single titles with
+    /// composer metadata; probed against 78rpm/musopen/europeanlibraries —
+    /// one good collection beats three noisy ones).
+    static let classicalQuery = "collection:georgeblood AND subject:classical"
+
     /// Most-downloaded LibriVox items (the keyless popularity source).
     static func popularLibriVox(rows: Int) async throws -> [ArchivePopularDoc] {
+        try await popular(query: "collection:librivoxaudio", rows: rows)
+    }
+
+    /// E3: popular free classical recordings (same client, Regel 2).
+    static func popularClassical(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
+        try await popular(query: classicalQuery, rows: rows, page: page)
+    }
+
+    /// Shared advancedsearch (downloads sort) — one mechanism for both rows.
+    static func popular(query: String, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         var comp = URLComponents(string: "https://archive.org/advancedsearch.php")!
         comp.queryItems = [
-            URLQueryItem(name: "q", value: "collection:librivoxaudio"),
+            URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fl[]", value: "identifier"),
             URLQueryItem(name: "fl[]", value: "title"),
             URLQueryItem(name: "fl[]", value: "creator"),
             URLQueryItem(name: "fl[]", value: "downloads"),
             URLQueryItem(name: "sort[]", value: "downloads desc"),
             URLQueryItem(name: "rows", value: String(rows)),
+            URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "output", value: "json"),
         ]
         guard let url = comp.url else { return [] }

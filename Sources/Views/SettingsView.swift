@@ -460,12 +460,18 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
+    @AppStorage(AppStorageKeys.freeClassicalEnabled) private var freeClassical = true
     private var musicSection: some View {
         Section {
             Toggle("Look up lyrics online", isOn: $lyricsOnline)
                 .accessibilityIdentifier("music-lyrics-toggle")
             Toggle("Load artist images from the web", isOn: $artistImagesOnline)
             Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
+            // f18ec34: FEATURE level — the whole Free-Classical area (browse
+            // entry + Home teaser); the archive.org service opt-out on the
+            // network-services page stays superior (service off wins).
+            Toggle("Show Free Classical", isOn: $freeClassical)
+                .accessibilityIdentifier("music-free-classical-toggle")
         } header: {
             Text("Metadata")
         } footer: {

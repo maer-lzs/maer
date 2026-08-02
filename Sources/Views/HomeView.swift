@@ -107,7 +107,8 @@ struct HomeView: View {
                     FreeCatalogRows(playerCoordinator: playerCoordinator,
                                     newBooks: freeCatalogRows.newBooks,
                                     popularBooks: freeCatalogRows.popularBooks,
-                                    freeMusic: freeCatalogRows.freeMusic)
+                                    freeMusic: freeCatalogRows.freeMusic,
+                                    classical: freeCatalogRows.classical)
                     upNextSection
                     radioSection
                     latestEpisodesSection
@@ -480,7 +481,7 @@ struct HomeView: View {
         if !freeCatalogLoaded, NetworkMonitor.shared.isConnected {
             let loadedRows = await FreeCatalogLoader.load()
             freeCatalogLoaded = !loadedRows.newBooks.isEmpty || !loadedRows.popularBooks.isEmpty
-                || !loadedRows.freeMusic.isEmpty
+                || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty
             BottomBarState.shared.runWhenCalm { freeCatalogRows = loadedRows }
         }
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })

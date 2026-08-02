@@ -50,7 +50,7 @@ struct NetworkServicesView: View {
                 }
                 Toggle(isOn: $archivePopular) {
                     serviceLabel("Internet Archive",
-                                 purpose: "Popularity ranking and streams for the free audiobooks.")
+                                 purpose: "Popularity ranking and streams for the free audiobooks and the Free Classical area.")
                 }
                 Toggle(isOn: $jamendoRow) {
                     serviceLabel("Jamendo",

@@ -28,6 +28,13 @@ struct MusicView: View {
     @State private var newPlaylistName = ""
 
     /// F5: playlists newest-changed first (default sort).
+    /// 50f4751/f18ec34: area visible only with BOTH levels on — the
+    /// feature toggle (Music pill) and the archive.org service opt-out.
+    private var freeClassicalArea: Bool {
+        (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true)
+            && (UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+    }
+
     private var sortedPlaylists: [MusicPlaylist] {
         PlaylistPresentation.sortedByChanged(vm.playlists) {
             $0.changedAt.map { Date(timeIntervalSince1970: $0 / 1000) }
@@ -154,6 +161,13 @@ struct MusicView: View {
             // M3: sixth entry — the genre chip grid.
             browseRow("Genres", systemImage: "guitars", route: .genres)
             Divider().padding(.leading, 52)
+            // 50f4751: the SEPARATE free-classical catalog area — feature
+            // toggle (Music pill) AND the archive.org service opt-out gate it
+            // (service off wins, two clean levels).
+            if freeClassicalArea {
+                browseRow("Free Classical", systemImage: "music.quarternote.3", route: .freeClassical)
+                Divider().padding(.leading, 52)
+            }
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))

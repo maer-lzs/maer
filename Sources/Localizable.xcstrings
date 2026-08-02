@@ -1455,12 +1455,12 @@
         }
       }
     },
-    "Popularity ranking and streams for the free audiobooks." : {
+    "Popularity ranking and streams for the free audiobooks and the Free Classical area." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher."
+            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher und den Freie-Klassik-Bereich."
           }
         }
       }
@@ -1501,6 +1501,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Auf LibriVox ansehen"
+          }
+        }
+      }
+    },
+    "Could not load the catalog. Check your connection and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalog konnte nicht geladen werden. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
+    "Free Classical" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Klassik"
+          }
+        }
+      }
+    },
+    "Free public-domain recordings from the Internet Archive — separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie gemeinfreie Aufnahmen aus dem Internet Archive — getrennt von deiner eigenen Bibliothek."
+          }
+        }
+      }
+    },
+    "Show Free Classical" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Klassik anzeigen"
+          }
+        }
+      }
+    },
+    "View on Internet Archive" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Internet Archive ansehen"
           }
         }
       }
