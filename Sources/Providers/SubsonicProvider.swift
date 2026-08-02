@@ -569,6 +569,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// local per-second position backups. Albums are intentionally out of scope
     /// (the architecture works for them identically — same `sub:` mechanics).
     func fetchAllProgress() async throws -> [String: BookProgress] {
+        #if DEBUG
+        // bd66c5b: the mixed-continue journey needs a seeded music entry.
+        if UITestSeed.isActive { return UITestSeed.seedMusicContinue }
+        #endif
         guard client != nil else { return [:] }
         if let bookmarks = try? await loadBookmarks(), !bookmarks.isEmpty {
             let byPlaylist = await playlistProgress(from: bookmarks)
@@ -823,7 +827,17 @@ extension SubsonicProvider: SearchableProvider {
     @MainActor
     func search(query: String) async throws -> [SearchResult] {
         #if DEBUG
-        if UITestSeed.isActive { return offlineSearch(query) }   // seeded stock, no server
+        if UITestSeed.isActive {
+            // Seeded stock, no server — albums/songs from the item cache plus
+            // the seeded playlists through the SAME local name filter, so the
+            // journey can assert all four music sections.
+            return offlineSearch(query) + UITestSeed.seedPlaylists
+                .filter { PodcastLocalSearch.matches($0.name ?? "", query) }
+                .map { list in
+                    SearchResult(id: Self.itemId(playlistId: list.id), kind: .playlist,
+                                 title: list.name ?? "")
+                }
+        }
         #endif
         guard let client, NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
         let hits = try await client.search3(query: query)

@@ -201,6 +201,11 @@ struct LibraryView: View {
                             onOpen: { result in
                                 closeSearch()
                                 openSearchResult(result)
+                            },
+                            onOpenMusicRoute: { route in
+                                closeSearch()
+                                selectedMediaType = .music
+                                navigationPath.append(route)
                             }
                         )
                         .background(Color(.systemBackground).ignoresSafeArea())

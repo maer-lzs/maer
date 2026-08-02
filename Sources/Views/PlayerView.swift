@@ -385,8 +385,20 @@ struct PlayerView: View {
                                 @ViewBuilder content: () -> some View) -> some View {
         // G8: only offer the tap affordance when a route can actually be
         // taken — no target OR no registered router handler renders PLAIN.
+        // ccc41d5: a subtle chevron marks the navigable line (discoverability
+        // after the device-confirmed Gate 2); it exists ONLY together with
+        // the resolvable target — the same G8 condition, one branch.
         if let target, PlayerSourceRouter.shared.canRoute {
-            Button { openPlayerSource(target) } label: { content() }
+            Button {
+                openPlayerSource(target)
+            } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    content()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+            }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(a11yId)
                 .contextMenu { sourceMenu }

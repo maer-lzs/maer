@@ -51,9 +51,18 @@ nonisolated final class MaerUITests: XCTestCase {
                       "queued audiobook must render (T3/T5)")
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10),
                       "queued music album must render (T3/T5)")
-        XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.exists,
-                      "queued podcast episode must render")
-        snap(app, "mixed-queue-all-types")
+        // bd66c5b made the Continue row taller (music card in full Featured
+        // anatomy) — the episode row can start below the lazy render window.
+        let episode = app.staticTexts["Seed Episode One"].firstMatch
+        var episodeSwipes = 0
+        while !episode.exists && episodeSwipes < 4 { app.swipeUp(); episodeSwipes += 1 }
+        XCTAssertTrue(episode.exists, "queued podcast episode must render")
+        // bd66c5b: the Continue row renders the seeded in-progress ALBUM in
+        // the SAME Featured-card format as book/episode cards (one row, one
+        // format) — the music card carries its own a11y id.
+        XCTAssertTrue(app.buttons["music-continue-card"].firstMatch.waitForExistence(timeout: 10),
+                      "music continue entry must render as a Featured-format card")
+        snap(app, "mixed-continue-row")
     }
 
     /// Home journey: the Home tab is the start tab and aggregates sections; a
@@ -518,6 +527,10 @@ nonisolated final class MaerUITests: XCTestCase {
             tries += 1
         }
         XCTAssertTrue(newCardOnScreen(), "the New Playlist card must scroll into reach")
+        // 5219ea7: the two card controls exist — Details pill (bottom-left)
+        // and the shuffle corner button (bottom-right, badge anatomy).
+        XCTAssertTrue(app.buttons["playlist-shuffle-badge"].firstMatch.exists,
+                      "playlist card must carry the shuffle corner button")
         snap(app, "music-playlist-cards")
         app.terminate()
     }
@@ -709,6 +722,35 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source-pushed")
     }
 
+    /// M5-Nachbesserung (580e9c3): ONE term that hits album + song + playlist
+    /// must render ALL music sections (the device saw only artists — that was
+    /// Subsonic's per-entity matching on an artist-name query, not a missing
+    /// section; this pins the render path for every kind).
+    func testMusicSearchShowsAllSections() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let search = app.buttons["global-search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()
+        let musicScope = app.buttons["scope-music"].firstMatch
+        XCTAssertTrue(musicScope.waitForExistence(timeout: 10))
+        musicScope.tap()
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("Seed")
+        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10),
+                      "Albums section must render")
+        field.typeText("\n")   // dismiss keyboard for scrolling
+        for hit in ["Seed Song", "Seed Playlist"] {
+            let el = app.staticTexts[hit].firstMatch
+            var swipes = 0
+            while !el.exists && swipes < 5 { app.swipeUp(); swipes += 1 }
+            XCTAssertTrue(el.exists, "\(hit) section must render")
+        }
+        snap(app, "music-search-all-sections")
+    }
+
     /// Fahrmodus 9941a9a: PORTRAIT must work — the fixed transport row used to
     /// overflow the portrait column (464 pt row on ~345 pt), clipping the skip
     /// buttons. All three transport buttons must be hittable and INSIDE the
@@ -737,7 +779,15 @@ nonisolated final class MaerUITests: XCTestCase {
         }
         // The sleep button left by decision (0693e05).
         XCTAssertFalse(app.buttons["drive-sleep"].exists, "sleep button must be gone")
-        snap(app, "drive-portrait-default-bg")
+        // 8d54582/298d6b1 hero geometry: the capped hero must never displace
+        // the controls — play button sits in the lower ~2/3 and the progress
+        // line stays fully on screen.
+        XCTAssertGreaterThan(play.frame.minY, window.height * 0.30,
+                             "hero must stay capped above the transport row")
+        let remaining = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "-")).firstMatch
+        XCTAssertTrue(remaining.exists && window.contains(remaining.frame),
+                      "progress line must stay on screen below the hero")
+        snap(app, "drive-portrait-hero")
         XCUIDevice.shared.orientation = .landscapeLeft
         // Rotation settles asynchronously — poll until the WINDOW is actually
         // wide (a snap mid-animation shows the old orientation's layout).
@@ -765,33 +815,10 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertLessThan(playF.midX, fwd.midX, "row order play < forward")
         XCTAssertEqual(back.midY, fwd.midY, accuracy: 4, "buttons on ONE row")
         XCTAssertEqual(back.midY, playF.midY, accuracy: 8, "buttons on ONE row")
-        snap(app, "drive-landscape-default-bg")
+        snap(app, "drive-landscape-hero")
         XCUIDevice.shared.orientation = .portrait
     }
 
-    /// c7185db: variant B (background) is the DEFAULT now — the main drive
-    /// journey covers it; this one pins variant A (element) behind its flag
-    /// until the device verdict resolves the probation.
-    func testDriveModeCoverElementVariant() {
-        XCUIDevice.shared.orientation = .portrait
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-drivecover-element"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-        let mini = app.buttons["Now Playing Book"].firstMatch
-        XCTAssertTrue(mini.waitForExistence(timeout: 20))
-        mini.tap()
-        let more = app.buttons["player-more"].firstMatch
-        XCTAssertTrue(more.waitForExistence(timeout: 15))
-        more.tap()
-        let drive = app.buttons["player-drive-mode"].firstMatch
-        XCTAssertTrue(drive.waitForExistence(timeout: 10))
-        drive.tap()
-        let play = app.buttons["drive-play-pause"].firstMatch
-        XCTAssertTrue(play.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.windows.firstMatch.frame.contains(play.frame))
-        snap(app, "drive-portrait-cover-element-flag")
-    }
 
     /// Release-Gate 1 (30b2a32): the search must work when opened from a
     /// PUSHED page — the deck/search state lived on the library root and the

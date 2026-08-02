@@ -112,19 +112,9 @@ struct BookFeaturedCard: View {
     }
 
     /// The card itself is tap-to-play; the pill therefore does NOT play again but
-    /// opens the detail page (info).
+    /// opens the detail page (info). Shared anatomy (5219a7).
     private var infoPill: some View {
-        NavigationLink(value: entry.id) {
-            HStack(spacing: 6) {
-                Image(systemName: "info.circle").font(.caption)
-                Text("Details").font(.subheadline.weight(.medium))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .background(Capsule().fill(.white.opacity(0.22)))
-        }
-        .buttonStyle(.plain)
+        CardDetailPill(value: entry.id)
     }
 
     // MARK: - Rich card content

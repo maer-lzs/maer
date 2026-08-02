@@ -17,26 +17,29 @@ struct CategoryTile: View {
     let action: () -> Void
 
     var body: some View {
+        // b34966c: FLAT single-line anatomy (was a 92-pt stacked field) —
+        // glyph · title · count in one row, ~56 pt total: markedly flatter,
+        // still comfortably readable, tap target well above the 44-pt floor.
+        // One component — the search deck, podcast genre chips and music
+        // genres all flatten together.
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top) {
-                    Image(systemName: systemImage)
-                        .font(.title2)
-                        .foregroundStyle(AppTheme.accent)
-                    Spacer()
-                    if let count {
-                        Text("\(count)")
-                            .font(.subheadline).monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.body)
+                    .foregroundStyle(AppTheme.accent)
+                    .frame(width: 24)
                 Text(title)
-                    .font(.body.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 6)
+                if let count {
+                    Text("\(count)")
+                        .font(.footnote).monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
             }
-            .padding(14)
-            .frame(minHeight: 92, alignment: .topLeading)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 56)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.primary.opacity(0.06)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

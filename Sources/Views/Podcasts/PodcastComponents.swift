@@ -139,19 +139,8 @@ struct PodcastFeaturedCard: View {
     /// The card itself is tap-to-play; the pill therefore does NOT play again but
     /// opens the episode detail page (info).
     private var infoPill: some View {
-        NavigationLink(value: PodcastRoute.episode(itemId: item.id)) {
-            HStack(spacing: 6) {
-                Image(systemName: "info.circle").font(.caption)
-                Text("Details").font(.subheadline.weight(.medium))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            // Solid, semi-transparent capsule instead of material blur — blur is
-            // expensive per frame during horizontal scrolling.
-            .background(Capsule().fill(.white.opacity(0.22)))
-        }
-        .buttonStyle(.plain)
+        // Shared anatomy (5219a7) — one Details pill for every card family.
+        CardDetailPill(value: PodcastRoute.episode(itemId: item.id))
     }
 }
 

@@ -15,30 +15,80 @@ struct MusicContinueCard: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var coverURLs: [URL] = []
+    /// bd66c5b: EXACT Featured-card anatomy — the mixed Continue row holds
+    /// ONE card format (book · episode · album/playlist), so this card uses
+    /// the same width, cover face, tint block, line reserves and pill as
+    /// Book-/PodcastFeaturedCard; the mosaic/album cover simply fills the
+    /// same frame. Color from the (bottom) cover like the playlist cards.
+    @StateObject private var colorLoader = CoverColorLoader()
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var subMinHeight: CGFloat = 20
 
-    private static let width: CGFloat = 235
     private var mosaicKey: String { item.id }
+
+    private var tint: Color {
+        colorLoader.hasAccent ? colorLoader.accent : PlaylistArtwork.color(for: item.id)
+    }
+
+    /// Caption: progress percent · relative last-played (the Featured cards'
+    /// time-info slot); blank line reserves the height when unknown.
+    private var captionText: String {
+        var parts: [String] = []
+        if let fraction = progress?.fraction, fraction > 0 {
+            parts.append("\(Int((min(max(fraction, 0), 1)) * 100)) %")
+        }
+        if let ts = progress?.lastUpdate, ts > 0 {
+            parts.append(Date(timeIntervalSince1970: ts / 1000)
+                .formatted(.relative(presentation: .named)))
+        }
+        return parts.joined(separator: " · ")
+    }
 
     var body: some View {
         Button {
             Task { await playerCoordinator.open(item: item) }
         } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs)
-                    // Portrait card format (Kursänderung: 2:3 everywhere).
-                    .frame(width: Self.width, height: Self.width * 1.5)
-
-                Text(item.title).font(.headline).lineLimit(1, reservesSpace: true)
-                // Jank convention: the bar slot is always laid out (hidden
-                // when unstarted) so card heights don't depend on progress.
-                ProgressView(value: min(max(progress?.fraction ?? 0, 0), 1))
-                    .tint(.accentColor)
-                    .opacity((progress?.fraction ?? 0) > 0 ? 1 : 0)
+            VStack(alignment: .leading, spacing: 0) {
+                PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs, cornerRadius: 0)
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
+                    }
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(captionText.isEmpty ? " " : captionText)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                    Text(item.title)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
+                    Text(item.author ?? " ")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: subMinHeight, alignment: .topLeading)
+                }
+                .padding(14)
+                .padding(.bottom, pillReserve)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: Self.width, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("music-continue-card")
+        .frame(width: CardMetrics.featuredCardWidth)
+        .background(tint)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .overlay(alignment: .bottomLeading) {
+            CardDetailPill(value: MusicRoute.album(item)).padding(12)
+        }
+        .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider
             // M1: an ALBUM has one cover — skip the playlist mosaic lookup.

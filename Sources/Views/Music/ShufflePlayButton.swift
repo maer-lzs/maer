@@ -9,7 +9,7 @@ import SwiftUI
 /// only the `pool` closure differs (each supplies its own item set). The shared
 /// `PlayerCoordinator.shufflePlay` orders them with the pure `MediaShuffle`.
 struct ShufflePlayButton: View {
-    enum Style { case prominent, icon, coverBadge, menuItem }
+    enum Style { case prominent, icon, menuItem }
 
     @ObservedObject var playerCoordinator: PlayerCoordinator
     var style: Style = .prominent
@@ -37,21 +37,6 @@ struct ShufflePlayButton: View {
             }
             .disabled(busy)
             .accessibilityIdentifier("shuffle-play")
-        case .coverBadge:
-            // Playlist-Karten-Feinschliff (b9898dd): small round shuffle on
-            // the card's cover face — tap starts shuffle playback directly
-            // (no navigation). Sized/padded like the card-corner badge family.
-            Button(action: trigger) {
-                Image(systemName: "shuffle")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(9)
-                    .background(Circle().fill(.black.opacity(0.45)))
-            }
-            .buttonStyle(.plain)
-            .disabled(busy)
-            .accessibilityLabel(Text("Shuffle"))
-            .accessibilityIdentifier("playlist-shuffle-badge")
         case .menuItem:
             // The SAME action as a long-press menu entry (consistency slot).
             Button(action: trigger) {

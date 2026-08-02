@@ -102,7 +102,7 @@ enum UITestSeed {
         AppStorageKeys.subsonicUsernameValue = "seed"
         AppStorageKeys.subsonicEnabledValue = true
         SubsonicProvider.shared.reloadConfig()
-        SubsonicProvider.shared._seedForUITest(seedAlbums)
+        SubsonicProvider.shared._seedForUITest(seedAlbums + [seedSong])
 
         // F5: radio fixtures — favorites + catalog stations, only when the
         // journey switches the source on (`-radioEnabled 1` launch arg).
@@ -153,6 +153,18 @@ enum UITestSeed {
     ]
     // Scroll depth (hitch/threshold journeys) — see the book fillers.
     + (5...24).map { musicAlbum(id: "sub:album:seed-\($0)", title: "Filler Album \($0)", artist: "Backing Band") }
+
+    /// bd66c5b: in-progress music for the Home Continue row — the mixed-row
+    /// journey (book + episode + album in ONE card format) needs it.
+    static let seedMusicContinue: [String: BookProgress] = [
+        "sub:album:seed-1": BookmarkProgressMath.progress(
+            currentTime: 900, duration: 3600, lastUpdate: 1_784_541_600_000),
+    ]
+
+    /// M5-Nachbesserung: one seeded SONG so the search journey can assert the
+    /// Titles section (offlineSearch keys the kind off the sub:song: prefix).
+    static let seedSong: LibraryItem = musicAlbum(id: "sub:song:seed-song-1",
+                                                  title: "Seed Song", artist: "The Seeds")
 
     /// Fake artists/playlists so the Music tab shows the Artists/Playlists browse
     /// rows — the harness navigates through them to reach the artist page and

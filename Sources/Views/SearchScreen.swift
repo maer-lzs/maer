@@ -22,6 +22,10 @@ struct SearchScreen: View {
     @Binding var scope: SearchScope
     /// A result was chosen: the caller closes the search and navigates.
     let onOpen: (SearchResult) -> Void
+    /// b987483: category tiles navigate into the music LIBRARY pages
+    /// (albums/songs/playlists/genres) — the caller closes the search and
+    /// pushes the route on the music tab.
+    var onOpenMusicRoute: (MusicRoute) -> Void = { _ in }
 
     /// Y28: in-page drill levels of the browse deck.
     private enum DeckDrill {
@@ -583,14 +587,15 @@ struct SearchScreen: View {
         let id: String
         let title: String
         let systemImage: String
-        let count: Int
+        /// nil hides the numeral (pages whose stock the deck doesn't hold).
+        let count: Int?
         let action: () -> Void
     }
 
     private var deckEntries: [DeckEntry] {
         switch scope {
         case .audiobooks: return audiobookDeckEntries
-        case .music: return [artistDeckEntry]
+        case .music: return musicDeckEntries
         case .podcasts, .radio: return []
         case .library:
             return audiobookDeckEntries + [
@@ -601,6 +606,38 @@ struct SearchScreen: View {
                           systemImage: "square.stack.fill", count: deck.albums.count) { scope = .music },
             ]
         }
+    }
+
+    /// b987483: the music deck offers ALL library entry points as category
+    /// tiles — albums · songs · playlists · genres (the M3 discovery entry,
+    /// like the podcast genre chips) — plus the artist drill. Counts render
+    /// where the deck knows them; the pages themselves load fresh.
+    private var musicDeckEntries: [DeckEntry] {
+        [
+            artistDeckEntry,
+            DeckEntry(id: "music-albums", title: String(localized: "Albums"),
+                      systemImage: "square.stack.fill", count: deck.albums.count) {
+                onOpenMusicRoute(.albums)
+            },
+            DeckEntry(id: "music-songs", title: String(localized: "Songs"),
+                      systemImage: "music.note", count: nil) {
+                onOpenMusicRoute(.songs)
+            },
+            DeckEntry(id: "music-playlists", title: String(localized: "Playlists"),
+                      systemImage: "music.note.list", count: nil) {
+                // The route carries its list — fetched fresh via the ONE
+                // provider access point (junk-cleaned like everywhere).
+                Task { @MainActor in
+                    let lists = PlaylistPresentation.realPlaylists(
+                        (try? await AppSession.shared.musicProvider.allPlaylists()) ?? [])
+                    onOpenMusicRoute(.playlists(lists))
+                }
+            },
+            DeckEntry(id: "music-genres", title: String(localized: "Genres"),
+                      systemImage: "guitars", count: nil) {
+                onOpenMusicRoute(.genres)
+            },
+        ]
     }
 
     private var audiobookDeckEntries: [DeckEntry] {

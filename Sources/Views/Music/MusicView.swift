@@ -245,8 +245,11 @@ private struct PlaylistCard: View {
         // Korrektur 01.08: the SAME card format as BookFeaturedCard /
         // PodcastFeaturedCard (featuredCardWidth, cover face on top, text
         // block on the card color below, radius 20) — mosaic as the cover.
+        // 1b16f2c: the card TAP PLAYS the playlist in normal order (pill
+        // left = detail, corner right = shuffle) — same tap-to-play the
+        // Book/Podcast Featured cards use, so no deviation remains.
         Button {
-            pushRoute(.album(playlistLibraryItem(playlist)))
+            Task { await playerCoordinator.open(item: playlistLibraryItem(playlist)) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
                 PlaylistArtwork(
@@ -256,14 +259,6 @@ private struct PlaylistCard: View {
                         LinearGradient(colors: [.clear, tint],
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
-                    }
-                    // b9898dd Fix 3: shuffle badge on the COVER face (bottom
-                    // right) — starts shuffle playback of the playlist
-                    // directly; playlists only, never album cards.
-                    .overlay(alignment: .bottomTrailing) {
-                        ShufflePlayButton(playerCoordinator: playerCoordinator,
-                                          style: .coverBadge, pool: shufflePool)
-                            .padding(12)
                     }
                 // b9898dd Fix 2: the PodcastFeaturedCard text-block anatomy —
                 // caption line · headline with a 2-line reserve · sub line ·
@@ -298,6 +293,24 @@ private struct PlaylistCard: View {
         // ONE soft transition from the deterministic tint to the extracted
         // bottom-cover color (and none afterwards — the color is cached).
         .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
+        // 5219ea7: the SAME two card controls as the Featured cards, at the
+        // SAME positions — Details pill bottom-left, corner button bottom-right
+        // (shuffle instead of download; playlists only, albums untouched).
+        .overlay(alignment: .bottomLeading) {
+            CardDetailPill(value: MusicRoute.album(playlistLibraryItem(playlist)))
+                .padding(12)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            CardCornerButton(systemImage: "shuffle",
+                             accessibilityLabel: Text("Shuffle"),
+                             accessibilityId: "playlist-shuffle-badge") {
+                Task {
+                    let items = await shufflePool()
+                    await playerCoordinator.shufflePlay(items: items)
+                }
+            }
+            .padding(12)
+        }
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         // b9898dd Fix 1: extract the card color from the bottom (big) mosaic
         // cover — coverURLs[0] is the big bottom slot of PlaylistArtwork.

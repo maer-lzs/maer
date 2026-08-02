@@ -10,12 +10,13 @@ import SwiftUI
 /// NON-scrubbable progress bar, a clear exit. Deliberately absent: library,
 /// search, lists, queue, chapter list, settings, glass effects (glare +
 /// render cost). Sleep timer removed by decision (0693e05) — it stays in the
-/// normal full player. 9941a9a: the cover is shown (portrait above the
-/// title, landscape left of the controls — variant A behind the DEBUG flag
-/// `-uitest-drivecover-element`; variant B — darkened full background — is
-/// the DEFAULT on probation per c7185db). Dark, maximum contrast, portrait AND landscape, media-type
-/// neutral; the transport row SCALES to fit portrait widths (it used to
-/// overflow: 110+180+110 + spacing = 464 pt row on a ~345 pt column).
+/// normal full player. 8d54582: the cover is the HERO — the book-detail
+/// stage anatomy (shared `CoverHeroStage`), fading into the black control
+/// area; ONE cover, ONE frame, the lower area never renders its own. The
+/// hero height is CAPPED relative to the screen (298d6b1 — the 464-pt
+/// lesson: nothing fixed that overflows the next device); the transport row
+/// SCALES to fit (pure `transportScale`). Dark, maximum contrast, portrait
+/// AND landscape, media-type neutral.
 struct DriveModeView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject var controller = DriveModeController.shared
@@ -24,19 +25,6 @@ struct DriveModeView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            // 9941a9a variant B: the cover as a darkened full background —
-            // content and button sizes stay EXACTLY as in variant A.
-            if coverAsBackground, coordinator.activeItem != nil {
-                CachedAsyncImage(url: coverURL) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } placeholder: { Color.black }
-                .ignoresSafeArea()
-                // Kontrast-Absicherung (c7185db): strong enough for ANY
-                // bright cover — worst case pure-white artwork still leaves
-                // the white glyphs ≥ ~4.5:1. Glanceability beats aesthetics.
-                .overlay(Color.black.opacity(0.8).ignoresSafeArea())
-                .accessibilityHidden(true)
-            }
             if let vm = coordinator.viewModel, coordinator.activeItem != nil {
                 playback(vm)
             } else {
@@ -59,65 +47,58 @@ struct DriveModeView: View {
 
     // MARK: - Playback layout
 
-    /// ENTSCHEID c7185db (the owner 02.08.): variant B — cover as darkened
-    /// full background — is the DEFAULT, explicitly ON PROBATION (the sim
-    /// shots had no real artwork). Variant A (cover as element) stays behind
-    /// the DEBUG flag until the device verdict; then the loser leaves.
-    private var coverAsBackground: Bool {
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-uitest-drivecover-element") { return false }
-        #endif
-        return true
-    }
-
     private var coverURL: URL? {
         coordinator.activeItem.flatMap { AppSession.shared.coverURL(forItemId: $0.id) }
     }
 
+    /// 8d54582 hero layout. Portrait: the cover is a full-width STAGE at the
+    /// top (book-detail anatomy via the shared `CoverHeroStage`), fading into
+    /// the black control area; height capped at 32 % of the screen so the
+    /// big-button field is NEVER displaced (298d6b1 — everything relative,
+    /// nothing fixed). Landscape: the hero is the LEFT pane (width capped),
+    /// controls keep the remaining width and scale to fit.
     private func playback(_ vm: PlayerViewModel) -> some View {
         GeometryReader { geo in
             let landscape = geo.size.width > geo.size.height
-            // 9941a9a variant A (landscape): the cover sits LEFT of the
-            // button field — its width comes off the controls' budget.
-            let coverSide = landscape && !coverAsBackground
-                ? min(geo.size.height - 48, 200) : 0
-            let scale = DriveModeView.transportScale(
-                availableWidth: geo.size.width - 48 - (coverSide > 0 ? coverSide + 24 : 0),
-                landscape: landscape)
-            HStack(spacing: 24) {
-                if coverSide > 0 { coverView(side: coverSide) }
-                VStack(spacing: landscape ? 10 : 20) {
-                    Spacer(minLength: 0)
-                    if !landscape, !coverAsBackground {
-                        // Variant A (portrait): cover top-center above the title
-                        // — the slot freed by the removed sleep button; the
-                        // transport surfaces do NOT shrink for it.
-                        coverView(side: min(geo.size.width * 0.38, 160))
-                    }
-                    titleBlock(vm)
-                    transport(vm, landscape: landscape, scale: scale)
-                    progressBar(vm)
-                    Spacer(minLength: 0)
+            if landscape {
+                let heroWidth = min(geo.size.width * 0.35, geo.size.height)
+                HStack(spacing: 0) {
+                    CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+                        .frame(width: heroWidth)
+                        .ignoresSafeArea(edges: [.leading, .vertical])
+                    controlsColumn(vm, landscape: true,
+                                   availableWidth: geo.size.width - heroWidth - 48)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 0) {
+                    CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+                        .frame(height: min(geo.size.width, geo.size.height * 0.32))
+                        .frame(maxWidth: .infinity)
+                        .ignoresSafeArea(edges: .top)
+                    controlsColumn(vm, landscape: false,
+                                   availableWidth: geo.size.width - 48)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
-    /// The cover as a rounded tile (variant A). Decorative — no tap target.
-    private func coverView(side: CGFloat) -> some View {
-        CachedAsyncImage(url: coverURL) { image in
-            image.resizable().aspectRatio(contentMode: .fill)
-        } placeholder: {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.white.opacity(0.08))
-                .overlay(Image(systemName: "music.note").font(.largeTitle)
-                    .foregroundStyle(.white.opacity(0.4)))
+    /// Title · transport · progress — shared by both orientations; the
+    /// transport row scales to the width the hero leaves.
+    private func controlsColumn(_ vm: PlayerViewModel, landscape: Bool,
+                                availableWidth: CGFloat) -> some View {
+        let scale = DriveModeView.transportScale(availableWidth: availableWidth,
+                                                 landscape: landscape)
+        return VStack(spacing: landscape ? 10 : 20) {
+            Spacer(minLength: 0)
+            titleBlock(vm)
+            transport(vm, landscape: landscape, scale: scale)
+            progressBar(vm)
+            Spacer(minLength: 0)
         }
-        .frame(width: side, height: side)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .accessibilityHidden(true)
+        .padding(.horizontal, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func titleBlock(_ vm: PlayerViewModel) -> some View {
