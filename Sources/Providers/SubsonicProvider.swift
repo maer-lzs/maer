@@ -200,6 +200,24 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     #endif
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+        #if DEBUG
+        // 4ca91e6: playback journeys (shuffle badge) need a resolvable detail
+        // — one dummy track; the mini bar binds to the item, not the stream.
+        if UITestSeed.isActive, let item = itemsById[itemId] {
+            return LibraryItemDetail(
+                id: itemId,
+                media: LibraryItemMedia(
+                    metadata: LibraryItemMetadata(
+                        title: item.title, authorName: item.author, narratorName: nil,
+                        seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                    duration: 60,
+                    chapters: nil,
+                    tracks: [ABSAudioTrack(index: 0, startOffset: 0, duration: 60,
+                                           contentUrl: "https://seed.invalid/seed.mp3",
+                                           metadata: nil)]),
+                userMediaProgress: nil)
+        }
+        #endif
         guard let client else { throw SubsonicClient.SubsonicError.network }
         // Album or playlist — both become a multi-track item.
         let songs: [SubsonicSong]
@@ -502,6 +520,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// = one entry). A single song resolves to itself. Items are cached in
     /// `itemsById` so the queue's auto-continue can resolve each id.
     func songItems(forItemId itemId: String) async -> [LibraryItem] {
+        #if DEBUG
+        // 4ca91e6: the shuffle-badge journey needs a playable pool — the
+        // seeded song stands in for any album/playlist id.
+        if UITestSeed.isActive { return [UITestSeed.seedSong] }
+        #endif
         guard let client else { return [] }
         let songs: [SubsonicSong]
         if let albumId = Self.id(itemId, kind: "album") {

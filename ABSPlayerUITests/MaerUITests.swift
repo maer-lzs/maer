@@ -527,10 +527,24 @@ nonisolated final class MaerUITests: XCTestCase {
             tries += 1
         }
         XCTAssertTrue(newCardOnScreen(), "the New Playlist card must scroll into reach")
-        // 5219ea7: the two card controls exist — Details pill (bottom-left)
-        // and the shuffle corner button (bottom-right, badge anatomy).
-        XCTAssertTrue(app.buttons["playlist-shuffle-badge"].firstMatch.exists,
-                      "playlist card must carry the shuffle corner button")
+        // 5219ea7 + 4ca91e6 (#83): the shuffle badge is a nested button
+        // inside the card's play button — a real gesture-conflict blind spot.
+        // Tapping the BADGE must start playback WITHOUT navigating; the card
+        // remains on the tab (no pushed detail page).
+        // isHittable THROWS for off-screen elements ("activation point
+        // invalid") — frame containment instead, like newCardOnScreen above.
+        let badgeQuery = app.buttons.matching(identifier: "playlist-shuffle-badge")
+        let badge = badgeQuery.allElementsBoundByIndex.first { el in
+            let f = el.frame
+            return !f.isEmpty && f.minX >= 0 && f.maxX <= app.frame.maxX + 1
+        } ?? badgeQuery.firstMatch
+        XCTAssertTrue(badge.exists, "playlist card must carry the shuffle corner button")
+        badge.tap()
+        let miniShuffle = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Seed Song")).firstMatch
+        XCTAssertTrue(miniShuffle.waitForExistence(timeout: 10),
+                      "badge tap must START PLAYBACK (seeded song in the mini bar)")
+        XCTAssertTrue(app.buttons["music-route-albums"].firstMatch.exists,
+                      "badge tap must NOT navigate — the tab root stays visible")
         snap(app, "music-playlist-cards")
         app.terminate()
     }

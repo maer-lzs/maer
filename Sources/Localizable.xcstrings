@@ -1395,6 +1395,116 @@
         }
       }
     },
+    "Creative Commons — via Jamendo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creative Commons — via Jamendo"
+          }
+        }
+      }
+    },
+    "Creative-Commons music charts. Requires a client key; free API for non-commercial use." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creative-Commons-Musik-Charts. Braucht einen Client-Schlüssel; freie API für nicht-kommerzielle Nutzung."
+          }
+        }
+      }
+    },
+    "Free Music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Musik"
+          }
+        }
+      }
+    },
+    "New Free Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue freie Hörbücher"
+          }
+        }
+      }
+    },
+    "Own Jamendo client_id (optional)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eigene Jamendo client_id (optional)"
+          }
+        }
+      }
+    },
+    "Popular Free Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebte freie Hörbücher"
+          }
+        }
+      }
+    },
+    "Popularity ranking and streams for the free audiobooks." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher."
+          }
+        }
+      }
+    },
+    "Public Domain — free to listen and share" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Public Domain — frei hören und teilen"
+          }
+        }
+      }
+    },
+    "Public-domain audiobooks for the free Discover rows." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Hörbücher für die freien Entdecken-Reihen."
+          }
+        }
+      }
+    },
+    "View on Jamendo" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Jamendo ansehen"
+          }
+        }
+      }
+    },
+    "View on LibriVox" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf LibriVox ansehen"
+          }
+        }
+      }
+    },
     "Change Country" : {
       "localizations" : {
         "de" : {
@@ -5887,17 +5997,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut versuchen"
-          }
-        }
-      }
-    },
-    "Turn a whole tab off, or a single source. A source off makes zero server calls and hides its tab." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einen ganzen Tab abschalten oder eine einzelne Quelle. Eine Quelle aus macht null Server-Aufrufe und blendet ihren Tab aus."
           }
         }
       }
