@@ -21,6 +21,9 @@ struct MusicAlbumView: View {
     @State private var notesExpanded = false
     /// M6: high-res front cover from the Cover Art Archive (via release MBID).
     @State private var highResCover: UIImage?
+    /// e3dabb3: flip re-runs the load task — off drops the CAA image
+    /// IMMEDIATELY (server cover shows), cached files stay for re-enable.
+    @AppStorage(AppStorageKeys.musicHighResCovers) private var hiResCovers = true
     /// Package 1: the single song a user long-pressed to add to a playlist.
     @State private var addTarget: AddToPlaylistTarget?
     /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
@@ -233,7 +236,8 @@ struct MusicAlbumView: View {
                 }
             }
         }
-        .task(id: item.id) {
+        .task(id: "\(item.id)-\(hiResCovers)") {
+            if !hiResCovers { highResCover = nil }
             await loadDetail()
             if isPlaylist {
                 // Same mosaic path as the cards — no second artwork builder.

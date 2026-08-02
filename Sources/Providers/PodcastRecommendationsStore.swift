@@ -58,6 +58,13 @@ final class PodcastRecommendationsStore: ObservableObject {
         "government", "religion & spirituality", "kids & family"
     ]
 
+    /// 784aceb: a suggestion-language change must bite WITHOUT an app
+    /// restart — drop the freshness stamp so the next refresh recomputes;
+    /// current results stay visible until the calm-gated replacement lands.
+    func invalidateForLanguageChange() {
+        loadedAt = nil
+    }
+
     /// Only load if empty or older than 6 h. Best effort (error → silent).
     func refreshIfNeeded() async {
         guard !isLoading else { return }

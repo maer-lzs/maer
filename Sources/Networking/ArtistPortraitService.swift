@@ -34,9 +34,12 @@ actor ArtistPortraitService {
             cache[artistId] = serverImageURL
             return serverImageURL
         }
+        // e3dabb3: opt-out means NEITHER load NOR show — with the toggle off
+        // only the server image above may pass; cached WEB portraits stay on
+        // disk (toggle back on ⇒ instantly back, no re-fetch) but never render.
+        guard AppStorageKeys.musicArtistImagesOnlineValue else { return nil }
         if let cached = cache[artistId] { return cached }
-        guard AppStorageKeys.musicArtistImagesOnlineValue,
-              await NetworkMonitor.shared.isConnected else { return nil }
+        guard await NetworkMonitor.shared.isConnected else { return nil }
 
         let resolved = await resolveViaChain(name: name, musicBrainzId: musicBrainzId)
         cache[artistId] = resolved   // negatives too — no re-search per render

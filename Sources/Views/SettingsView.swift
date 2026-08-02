@@ -192,7 +192,7 @@ struct SettingsView: View {
         } header: {
             Text("Free Catalogs")
         } footer: {
-            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic.")
+            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
     }
 
@@ -476,7 +476,7 @@ struct SettingsView: View {
             Text("Playback")
         } footer: {
             freeCatalogsMaster
-                ? Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library.")
+                ? Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain area, separate from your library. Sources: \(NetworkServiceNames.librivox) · \(NetworkServiceNames.internetArchive).")
                 : Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free catalogs are switched off entirely under General.")
         }
     }
@@ -508,9 +508,11 @@ struct SettingsView: View {
         } header: {
             Text("Metadata")
         } footer: {
+            // 0b7a9ff: every toggle names its exact services — the SAME
+            // shared strings the network-services page shows (one truth).
             freeCatalogsMaster
-                ? Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
-                : Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts. Free catalogs are switched off entirely under General.")
+                ? Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers) · Free Classical — \(NetworkServiceNames.internetArchive).")
+                : Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers) · Free Classical — \(NetworkServiceNames.internetArchive). Free catalogs are switched off entirely under General.")
         }
     }
 
@@ -544,7 +546,7 @@ struct SettingsView: View {
         } header: {
             Text("Home")
         } footer: {
-            Text("Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it.")
+            Text("Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it. Source: \(NetworkServiceNames.appleCatalog).")
         }
     }
 

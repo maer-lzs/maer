@@ -24,36 +24,36 @@ struct NetworkServicesView: View {
         Form {
             Section {
                 Toggle(isOn: $artistImagesOnline) {
-                    serviceLabel("MusicBrainz · Wikidata · Commons",
+                    serviceLabel(NetworkServiceNames.artistImages,
                                  purpose: "Artist portraits and identities for your music library.")
                 }
                 Toggle(isOn: $highResCovers) {
-                    serviceLabel("Cover Art Archive",
+                    serviceLabel(NetworkServiceNames.hiResCovers,
                                  purpose: "High-resolution album covers for albums with a MusicBrainz ID.")
                 }
                 Toggle(isOn: $lyricsOnline) {
-                    serviceLabel("LRCLIB",
+                    serviceLabel(NetworkServiceNames.lyrics,
                                  purpose: "Open lyrics lookup when your server has none.")
                 }
                 Toggle(isOn: $homeRecommendations) {
-                    serviceLabel("Apple Podcasts catalog",
+                    serviceLabel(NetworkServiceNames.appleCatalog,
                                  purpose: "Discover and Rediscover suggestions; searching the catalog and genre charts stays on demand.")
                 }
                 .accessibilityIdentifier("network-itunes-toggle")
                 Toggle(isOn: $radioEnabled) {
-                    serviceLabel("Radio Browser",
+                    serviceLabel(NetworkServiceNames.radioBrowser,
                                  purpose: "The community station catalog behind the Radio tab.")
                 }
                 Toggle(isOn: $librivoxRows) {
-                    serviceLabel("LibriVox",
+                    serviceLabel(NetworkServiceNames.librivox,
                                  purpose: "Public-domain audiobooks for the free Discover rows.")
                 }
                 Toggle(isOn: $archivePopular) {
-                    serviceLabel("Internet Archive",
+                    serviceLabel(NetworkServiceNames.internetArchive,
                                  purpose: "Popularity ranking and streams for the free audiobooks and the Free Classical area.")
                 }
                 Toggle(isOn: $jamendoRow) {
-                    serviceLabel("Jamendo",
+                    serviceLabel(NetworkServiceNames.jamendo,
                                  purpose: "Creative-Commons music charts. Requires a client key; free API for non-commercial use.")
                 }
                 if jamendoRow {
@@ -127,5 +127,15 @@ struct SuggestionLanguagesView: View {
             selected.insert(code)
         }
         UserDefaults.standard.set(Array(selected).sorted(), forKey: AppStorageKeys.suggestionLanguages)
+        // 784aceb: bite WITHOUT an app restart — invalidate the two caches
+        // that hold language-shaped results and recompute right away (the
+        // stores apply calm-gated; genre chips and catalog searches read the
+        // key live and need no reset).
+        PodcastRecommendationsStore.shared.invalidateForLanguageChange()
+        FreeCatalogStore.shared.invalidateForLanguageChange()
+        Task {
+            await PodcastRecommendationsStore.shared.refreshIfNeeded()
+            await FreeCatalogStore.shared.ensureLoaded()
+        }
     }
 }

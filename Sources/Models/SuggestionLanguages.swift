@@ -9,6 +9,23 @@ import Foundation
 /// charts, PI `lang`). MULTI-select; the device locale is the default; the
 /// explicit choice beats the guess (the radio country-cascade principle).
 /// Deliberately NOT the app language (that stays the iOS system setting).
+/// 0b7a9ff: THE service-name truth — every network-feature toggle names its
+/// exact external services in its footnote, with the SAME strings the
+/// network-services page shows (shared data, never typed twice). Transparency
+/// at the point of decision.
+nonisolated enum NetworkServiceNames {
+    static let artistImages = "MusicBrainz · Wikidata · Wikimedia Commons"
+    static let hiResCovers = "Cover Art Archive"
+    static let lyrics = "LRCLIB"
+    static let appleCatalog = "Apple Podcasts catalog"
+    static let radioBrowser = "Radio Browser"
+    static let librivox = "LibriVox"
+    static let internetArchive = "Internet Archive"
+    static let jamendo = "Jamendo"
+    /// Catalog master: everything the free-catalog surfaces may talk to.
+    static let freeCatalogs = "\(librivox) · \(internetArchive) · \(jamendo)"
+}
+
 nonisolated enum SuggestionLanguages {
     /// The choosable set — common podcast catalog languages; the device
     /// language is merged in even when exotic.

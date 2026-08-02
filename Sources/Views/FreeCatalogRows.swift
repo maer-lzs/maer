@@ -178,6 +178,12 @@ final class FreeCatalogStore: ObservableObject {
     private(set) var loaded = false
     private var loading = false
 
+    /// 784aceb: language change ⇒ reload on the next compute pass; the old
+    /// rows stay visible until the calm-gated replacement arrives.
+    func invalidateForLanguageChange() {
+        loaded = false
+    }
+
     /// The single load pass (34c36e1 discipline: called from compute(),
     /// never from a lazily mounted empty view's own task).
     func ensureLoaded() async {

@@ -2919,16 +2919,6 @@
         }
       }
     },
-    "Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Songtexte kommen zuerst von deinem Server; LRCLIB dient als offener Fallback. Hochauflösende Cover lädt das Cover Art Archive für Alben mit MusicBrainz-ID. Beide Dienste sind offen und brauchen kein Konto."
-          }
-        }
-      }
-    },
     "Manage subscription" : {
       "localizations" : {
         "de" : {
@@ -3238,16 +3228,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neues Lesezeichen"
-          }
-        }
-      }
-    },
-    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte. Freie Hörbücher ergänzt einen gemeinfreien LibriVox-Bereich, getrennt von deiner Bibliothek."
           }
         }
       }
@@ -5102,6 +5082,56 @@
         }
       }
     },
+    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain area, separate from your library. Sources: %@ · %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte. Freie Hörbücher ergänzt einen gemeinfreien Bereich, getrennt von deiner Bibliothek. Quellen: %1$@ · %2$@."
+          }
+        }
+      }
+    },
+    "Your server always comes first. Sources: lyrics — %@ · artist images — %@ · high-res covers — %@ · Free Classical — %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server kommt immer zuerst. Quellen: Songtexte — %1$@ · Künstlerbilder — %2$@ · Hi-Res-Cover — %3$@ · Freie Klassik — %4$@."
+          }
+        }
+      }
+    },
+    "Your server always comes first. Sources: lyrics — %@ · artist images — %@ · high-res covers — %@ · Free Classical — %@. Free catalogs are switched off entirely under General." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server kommt immer zuerst. Quellen: Songtexte — %1$@ · Künstlerbilder — %2$@ · Hi-Res-Cover — %3$@ · Freie Klassik — %4$@. Freie Kataloge sind unter Allgemein komplett ausgeschaltet."
+          }
+        }
+      }
+    },
+    "Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Sources: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Hörbücher, klassische Aufnahmen und freie Musik — klar getrennt von deiner Bibliothek. Aus blendet alle Katalog-Flächen aus und stoppt deren Netzverkehr. Quellen: %@."
+          }
+        }
+      }
+    },
+    "Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it. Source: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt die Bereiche Wiederentdecken und Entdecken auf Start. Vorschläge werden auf diesem Gerät berechnet; kein Hörprofil verlässt es. Quelle: %@."
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {
@@ -5122,32 +5152,12 @@
         }
       }
     },
-    "Free public-domain audiobooks, classical recordings and free music \u2014 clearly separated from your own library. Off hides every catalog surface and stops its network traffic." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfreie H\u00f6rb\u00fccher, klassische Aufnahmen und freie Musik \u2014 klar getrennt von deiner Bibliothek. Aus blendet alle Katalog-Fl\u00e4chen aus und stoppt deren Netzverkehr."
-          }
-        }
-      }
-    },
     "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free catalogs are switched off entirely under General." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue B\u00fccher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer l\u00e4ngeren Pause etwas fr\u00fcher wieder ein. Endet ein Serienbuch, startet automatisch das n\u00e4chste ungeh\u00f6rte. Freie Kataloge sind unter Allgemein komplett ausgeschaltet."
-          }
-        }
-      }
-    },
-    "Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts. Free catalogs are switched off entirely under General." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Songtexte kommen zuerst von deinem Server; LRCLIB dient als offener Fallback. Hochaufl\u00f6sende Cover l\u00e4dt das Cover Art Archive f\u00fcr Alben mit MusicBrainz-ID. Beides offene Dienste ohne Konto. Freie Kataloge sind unter Allgemein komplett ausgeschaltet."
           }
         }
       }
@@ -5242,16 +5252,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sendungen"
-          }
-        }
-      }
-    },
-    "Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeigt die Sektionen „Wiederentdecken“ und „Entdecken“ auf der Startseite. Vorschläge werden auf diesem Gerät berechnet; kein Hörprofil verlässt es."
           }
         }
       }

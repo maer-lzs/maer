@@ -89,6 +89,9 @@ struct ArtistPortraitCircle: View {
     /// Reports whether a REAL image resolved (feeds the C row).
     var onResolved: ((Bool) -> Void)? = nil
     @State private var imageURL: URL?
+    /// e3dabb3: the flip re-runs the task (id below) — off swaps to the
+    /// color circle IMMEDIATELY, no app restart.
+    @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var webImages = true
 
     var body: some View {
         ZStack {
@@ -104,7 +107,7 @@ struct ArtistPortraitCircle: View {
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
-        .task(id: artist.id) {
+        .task(id: "\(artist.id)-\(webImages)") {
             let serverURL = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
             let resolved = await ArtistPortraitService.shared.portraitURL(
                 artistId: artist.id, name: artist.name,

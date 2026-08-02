@@ -90,5 +90,21 @@ struct LyricsTests {
         #expect(CoverArtArchive.userAgent.contains("Maer/"))
         #expect(CoverArtArchive.userAgent.contains("http"))
     }
+
+    @Test("e3dabb3: fromWeb survives the cache roundtrip; old entries decode as server")
+    func fromWebRoundtrip() throws {
+        var lyrics = SongLyrics(synced: false, lines: [LyricsLine(start: nil, text: "x")])
+        lyrics.fromWeb = true
+        let data = try JSONEncoder().encode(lyrics)
+        let back = try JSONDecoder().decode(SongLyrics.self, from: data)
+        #expect(back.fromWeb == true)
+        // Pre-e3dabb3 disk entries carry no source → nil → treated as server
+        // (never hidden by the LRCLIB opt-out; ages out via TTL).
+        let legacy = Data("""
+        {"synced":false,"lines":[{"text":"y"}]}
+        """.utf8)
+        let old = try JSONDecoder().decode(SongLyrics.self, from: legacy)
+        #expect(old.fromWeb == nil)
+    }
 }
 #endif

@@ -29,6 +29,7 @@ struct PlayerView: View {
     @State private var showQueue = false
     /// M4: lyrics of the CURRENT song (nil = none/still loading) + panel state.
     @State private var songLyrics: SongLyrics?
+    @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @State private var showLyrics = false
     /// V7: transcript of the CURRENT episode (nil = no tag/unparseable).
     @State private var transcript: SongLyrics?
@@ -121,7 +122,9 @@ struct PlayerView: View {
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         // M4: fetch lyrics per song change (cached; nil hides the button).
-        .task(id: viewModel.currentMusicSong?.id) {
+        // e3dabb3: the task id carries the opt-out — a flip re-evaluates
+        // IMMEDIATELY (off drops cached web lyrics, no app restart).
+        .task(id: "\(viewModel.currentMusicSong?.id ?? "-")-\(lyricsOnline)") {
             guard let song = viewModel.currentMusicSong else { songLyrics = nil; return }
             songLyrics = await LyricsService.shared.lyrics(
                 songId: song.id, artist: song.artist, title: song.title, duration: song.duration)
