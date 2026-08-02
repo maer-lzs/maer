@@ -15,6 +15,10 @@ struct NetworkServicesView: View {
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     @AppStorage(AppStorageKeys.radioEnabled) private var radioEnabled = false
+    @AppStorage(AppStorageKeys.librivoxRowsEnabled) private var librivoxRows = true
+    @AppStorage(AppStorageKeys.archivePopularEnabled) private var archivePopular = true
+    @AppStorage(AppStorageKeys.jamendoRowEnabled) private var jamendoRow = true
+    @AppStorage(AppStorageKeys.jamendoClientId) private var jamendoClientId = ""
 
     var body: some View {
         Form {
@@ -39,6 +43,24 @@ struct NetworkServicesView: View {
                 Toggle(isOn: $radioEnabled) {
                     serviceLabel("Radio Browser",
                                  purpose: "The community station catalog behind the Radio tab.")
+                }
+                Toggle(isOn: $librivoxRows) {
+                    serviceLabel("LibriVox",
+                                 purpose: "Public-domain audiobooks for the free Discover rows.")
+                }
+                Toggle(isOn: $archivePopular) {
+                    serviceLabel("Internet Archive",
+                                 purpose: "Popularity ranking and streams for the free audiobooks.")
+                }
+                Toggle(isOn: $jamendoRow) {
+                    serviceLabel("Jamendo",
+                                 purpose: "Creative-Commons music charts. Requires a client key; free API for non-commercial use.")
+                }
+                if jamendoRow {
+                    TextField("Own Jamendo client_id (optional)", text: $jamendoClientId)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .font(.caption)
                 }
             } footer: {
                 Text("Your servers come first — these services only fill gaps. None of them requires an account; requests carry no identifiers beyond the query itself. PodcastIndex is used only when you configured your own key on the podcast source page.")

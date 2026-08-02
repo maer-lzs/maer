@@ -86,7 +86,7 @@ final class AppSession: ObservableObject {
     /// All active sources.
     var allProviders: [any AudioProvider] {
         [provider, localProvider, rssProvider, absPodcastProvider, subsonicProvider,
-         jellyfinProvider, radioProvider]
+         jellyfinProvider, radioProvider, FreeCatalogProvider.shared]
     }
 
     /// Routes an item to its source by id prefix. This is the ONLY place allowed
@@ -98,6 +98,9 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("sub:") { return subsonicProvider }
         if itemId.hasPrefix("jf:") { return jellyfinProvider }
         if itemId.hasPrefix("radio:") { return radioProvider }
+        if itemId.hasPrefix("lv:") || itemId.hasPrefix("lva:") || itemId.hasPrefix("jam:") {
+            return FreeCatalogProvider.shared
+        }
         return provider
     }
 
@@ -128,6 +131,9 @@ final class AppSession: ObservableObject {
         }
         if itemId.hasPrefix("radio:") {
             return radioProvider.libraryItem(forId: itemId)
+        }
+        if itemId.hasPrefix("lv:") || itemId.hasPrefix("lva:") || itemId.hasPrefix("jam:") {
+            return FreeCatalogProvider.shared.libraryItem(forId: itemId)
         }
         // Audiobooks / local titles from the loaded library list.
         return libraryViewModel.libraryItem(forId: itemId)

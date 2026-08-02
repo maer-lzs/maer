@@ -96,6 +96,9 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     if recommendationsEnabled { discoverSection }
+                    // 0714d26: free-catalog rows (LibriVox/archive.org/
+                    // Jamendo) — self-loading, net-gated, own opt-outs.
+                    FreeCatalogRows(playerCoordinator: playerCoordinator)
                     upNextSection
                     radioSection
                     latestEpisodesSection

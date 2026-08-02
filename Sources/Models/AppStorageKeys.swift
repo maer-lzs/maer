@@ -229,6 +229,14 @@ nonisolated enum AppStorageKeys {
     /// unset = device locale (SuggestionLanguages.effective).
     static let suggestionLanguages = "suggestionLanguages"
 
+    // 0714d26: free-catalog Discover rows (each an own opt-out on the
+    // network-services page; defaults ON — object(forKey:)-checked).
+    static let librivoxRowsEnabled = "librivoxRowsEnabled"
+    static let archivePopularEnabled = "archivePopularEnabled"
+    static let jamendoRowEnabled = "jamendoRowEnabled"
+    /// The user's OWN Jamendo client_id (beats the build-injected one).
+    static let jamendoClientId = "jamendoClientId"
+
     // Radio-Picker-Kuratierung (b942da6/b1ab99d)
     /// ALL raw name variants of the chosen region (the by-state query runs
     /// against every one; [String] via UserDefaults array).
