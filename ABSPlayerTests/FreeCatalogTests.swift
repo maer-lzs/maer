@@ -199,6 +199,38 @@ struct FreeCatalogTests {
         #expect(!FreeCatalogActivation.effective(master: true, feature: true, service: false))
     }
 
+    @Test("31974ef: importer state — failed stays at ITS book, cancel is neutral, busy refuses")
+    @MainActor
+    func importerState() async throws {
+        let importer = LibriVoxImporter.shared
+        importer.cancel()   // clean slate
+        #expect(!importer.busy)
+        // A book without downloadable sections fails WITHOUT network — the
+        // terminal state keeps the book id (foreign sheets gate on it).
+        let empty = LibriVoxBook(id: "42", title: "T", language: nil,
+                                 totaltimesecs: nil, url_iarchive: nil,
+                                 url_librivox: nil, url_rss: nil,
+                                 authors: nil, sections: [])
+        importer.start(book: empty, itemId: "lv:42", libraryId: "L", folderId: "F")
+        // The run task is async — poll briefly for the terminal phase.
+        for _ in 0..<50 {
+            if case .failed = importer.phase { break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        guard case .failed = importer.phase else {
+            Issue.record("expected .failed, got \(importer.phase)"); return
+        }
+        #expect(importer.activeBookId == "lv:42")
+        #expect(!importer.busy)
+        // Retry path: reset returns to a clean idle.
+        importer.reset()
+        #expect(importer.activeBookId == nil)
+        if case .idle = importer.phase {} else { Issue.record("reset must yield idle") }
+        // Cancel is ALWAYS neutral, never an error.
+        importer.cancel()
+        if case .idle = importer.phase {} else { Issue.record("cancel must yield idle") }
+    }
+
     @Test("Decoders throw on the wire corpus (no silent empty rows)")
     func decodersThrow() throws {
         for (name, ext) in [("portal", "html"), ("half", "json"), ("empty", "json")] {

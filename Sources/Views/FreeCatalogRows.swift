@@ -358,16 +358,28 @@ struct FreeCatalogDetailSheet: View {
                 Text("Uploading to your server…")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        case .done:
+        // 31974ef (3): terminal states belong to THEIR book only — a
+        // foreign sheet falls through to the menu below.
+        case .done where importer.activeBookId == item.id:
             Label("Added to your library.", systemImage: "checkmark.circle.fill")
                 .font(.caption).foregroundStyle(.green)
-        case .duplicate(let existing):
+        case .duplicate(let existing) where importer.activeBookId == item.id:
             Label("Already in that library: \(existing)", systemImage: "info.circle")
                 .font(.caption).foregroundStyle(.secondary)
-        case .failed(let message):
-            Label(message, systemImage: "exclamationmark.triangle")
-                .font(.caption).foregroundStyle(.orange)
+        case .failed(let message) where importer.activeBookId == item.id:
+            // 31974ef (2): the retry path — back to the menu on demand.
+            VStack(spacing: 6) {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange)
+                Button("Try Again") { importer.reset() }
+                    .font(.caption)
+            }
         default:
+            if importer.busy {
+                // A second import while one runs: clear refusal, no ghost UI.
+                Label("Another import is already running.", systemImage: "hourglass")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
             Menu {
                 if !absLibraries.isEmpty {
                     Button {
@@ -390,6 +402,7 @@ struct FreeCatalogDetailSheet: View {
             }
             .disabled(localSubscribed)
             .accessibilityIdentifier("librivox-import-menu")
+            }
         }
     }
 

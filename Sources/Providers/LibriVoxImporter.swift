@@ -27,9 +27,21 @@ final class LibriVoxImporter: ObservableObject {
         case failed(String)
     }
 
+    /// 31974ef: the phase belongs to ONE book — `activeBookId` stays set
+    /// through done/duplicate/failed so foreign sheets never inherit the
+    /// state; a cancel resets to a clean idle (an abort is NOT an error).
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var activeBookId: String?
     private var task: Task<Void, Never>?
+
+    /// A second import while one runs is REFUSED with a visible hint (no
+    /// ghost state, no silent parallel uploads).
+    var busy: Bool {
+        if case .checking = phase { return true }
+        if case .downloading = phase { return true }
+        if case .uploading = phase { return true }
+        return false
+    }
 
     /// Audiobook libraries of the connected ABS source ([] = target 2 hidden).
     static func audiobookLibraries() async -> [ABSLibrary] {
@@ -40,19 +52,63 @@ final class LibriVoxImporter: ObservableObject {
     func cancel() {
         task?.cancel()
         task = nil
+        // Abort ⇒ neutral start state, never an error; run() sees the
+        // cancellation and returns without touching the phase again.
         phase = .idle
         activeBookId = nil
+    }
+
+    /// After done/duplicate/failed at the OWN book: back to the menu (retry).
+    func reset() {
+        guard !busy else { return }
+        phase = .idle
+        activeBookId = nil
+    }
+
+    /// Recursive on-disk size of a file or directory (sweep accounting).
+    nonisolated private static func itemSize(at url: URL, fm: FileManager) -> Int64 {
+        var total: Int64 = 0
+        if let file = try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]),
+           let size = file.totalFileAllocatedSize {
+            total += Int64(size)
+        }
+        if let children = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: [.totalFileAllocatedSizeKey]) {
+            for child in children { total += itemSize(at: child, fm: fm) }
+        }
+        return total
     }
 
     /// Start the import; the caller has already passed the Wi-Fi gate and
     /// picked the target library (remembered choice).
     func start(book: LibriVoxBook, itemId: String, libraryId: String, folderId: String) {
-        guard task == nil else { return }
+        guard !busy else { return }
         activeBookId = itemId
         phase = .checking
         task = Task { [weak self] in
             await self?.run(book: book, libraryId: libraryId, folderId: folderId)
             self?.task = nil
+        }
+    }
+
+    /// 5d46c8a (4): orphan sweep at app start — partial downloads and upload
+    /// bodies of a KILLED import must not rot in tmp ("no invisible MB");
+    /// the freed size lands in the log. Never runs while an import is live.
+    nonisolated static func sweepOrphanTemp() {
+        Task.detached(priority: .utility) {
+            let fm = FileManager.default
+            let tmp = fm.temporaryDirectory
+            guard let entries = try? fm.contentsOfDirectory(
+                at: tmp, includingPropertiesForKeys: [.totalFileAllocatedSizeKey, .isDirectoryKey]) else { return }
+            var freed: Int64 = 0
+            for entry in entries {
+                let name = entry.lastPathComponent
+                guard name.hasPrefix("librivox-import-") || (name.hasPrefix("upload-") && name.hasSuffix(".body")) else { continue }
+                freed += Self.itemSize(at: entry, fm: fm)
+                try? fm.removeItem(at: entry)
+            }
+            if freed > 0 {
+                Logger.library.notice("LIBRIVOX temp sweep freed \(ByteCountFormatter.string(fromByteCount: freed, countStyle: .file), privacy: .public)")
+            }
         }
     }
 
@@ -65,14 +121,12 @@ final class LibriVoxImporter: ObservableObject {
                $0.title.compare(title, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
            }) {
             phase = .duplicate(existingTitle: hit.title)
-            activeBookId = nil
             return
         }
 
         let sections = (book.sections ?? []).filter { !($0.listen_url ?? "").isEmpty }
         guard !sections.isEmpty else {
             phase = .failed(String(localized: "This book has no downloadable audio."))
-            activeBookId = nil
             return
         }
 
@@ -83,7 +137,7 @@ final class LibriVoxImporter: ObservableObject {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         for (index, section) in sections.enumerated() {
-            if Task.isCancelled { phase = .idle; activeBookId = nil; return }
+            if Task.isCancelled { return }
             phase = .downloading(section: index + 1, of: sections.count)
             guard let remote = URL(string: section.listen_url ?? "") else { continue }
             do {
@@ -94,14 +148,17 @@ final class LibriVoxImporter: ObservableObject {
                 try FileManager.default.moveItem(at: downloaded, to: local)
                 files.append((filename: name, url: local))
             } catch {
+                // 31974ef (1): a USER abort is not an error — the cancel()
+                // path already reset the state; never overwrite it.
+                if Task.isCancelled || error is CancellationError
+                    || (error as? URLError)?.code == .cancelled { return }
                 Logger.library.error("LIBRIVOX import download failed: \(String(describing: error), privacy: .public)")
                 phase = .failed(String(localized: "Download failed. Check your connection and try again."))
-                activeBookId = nil
                 return
             }
         }
 
-        if Task.isCancelled { phase = .idle; activeBookId = nil; return }
+        if Task.isCancelled { return }
         // b395e5f: send the SAME cover the app shows along with the upload
         // (hi-res via itunes:image, thumb fallback) — resolves the ABS
         // cover reservation; a failed cover never fails the import.
@@ -120,7 +177,7 @@ final class LibriVoxImporter: ObservableObject {
             }
         }
 
-        if Task.isCancelled { phase = .idle; activeBookId = nil; return }
+        if Task.isCancelled { return }
         phase = .uploading
         do {
             let pd = String(localized: "Public-domain recording from LibriVox.")
@@ -132,9 +189,12 @@ final class LibriVoxImporter: ObservableObject {
                 files: files)
             phase = .done
         } catch {
+            if Task.isCancelled || error is CancellationError
+                || (error as? URLError)?.code == .cancelled { return }
             Logger.library.error("LIBRIVOX import upload failed: \(String(describing: error), privacy: .public)")
             phase = .failed(String(localized: "Upload failed. Check the server and try again."))
         }
-        activeBookId = nil
+        // 31974ef (3): activeBookId stays — done/duplicate/failed belong to
+        // THIS book; reset()/cancel() clears.
     }
 }

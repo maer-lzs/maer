@@ -97,6 +97,9 @@ struct ABSPlayerApp: App {
         UITestSeed.applySetupProbeIfRequested()
         FrameProbe.shared.startIfRequested()
         #endif
+        // 5d46c8a (4): clear orphaned import temp (partial downloads/upload
+        // bodies of a killed import) — no invisible MB; freed size in the log.
+        LibriVoxImporter.sweepOrphanTemp()
     }
 
     var body: some Scene {

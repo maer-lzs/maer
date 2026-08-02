@@ -5202,6 +5202,16 @@
         }
       }
     },
+    "Another import is already running." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es läuft bereits eine Übernahme."
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {
