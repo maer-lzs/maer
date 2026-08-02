@@ -99,6 +99,16 @@ struct PodcastSourceView: View {
         .onChange(of: absPodcastsEnabled) { _, _ in
             Task { await absPodcast.refresh() }
         }
+        // bb89772: the visible exclusion hint — safe default, deliberate
+        // opt-in as the second step (own-backup case).
+        .confirmationDialog(
+            Text("\(opmlExcludedCount) premium feeds not exported — they contain personal access links."),
+            isPresented: $opmlPremiumHintShown, titleVisibility: .visible
+        ) {
+            Button("Export without premium feeds") { performExport(includePremium: false) }
+            Button("Include anyway", role: .destructive) { performExport(includePremium: true) }
+            Button("Cancel", role: .cancel) {}
+        }
         .sheet(isPresented: Binding(get: { opmlShareURL != nil },
                                     set: { if !$0 { opmlShareURL = nil } })) {
             if let opmlShareURL {
@@ -428,9 +438,29 @@ struct PodcastSourceView: View {
 
     /// a449534 (5): write the OPML to a temp file and hand it to the share
     /// sheet (a file shares/saves cleanly everywhere; string items don't).
+    /// bb89772 SECURITY: premium/token feeds stay OUT of the export by
+    /// default (a shared OPML would give the access away). Entry point: with
+    /// premium feeds present the visible hint dialog takes over — exporting
+    /// continues from there (safe default, or "include anyway" as a
+    /// deliberate second step for the own-backup case).
     private func exportOPML() {
         let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
-        let doc = OPMLExport.document(shows: shows, generatedAt: Date())
+        let excluded = OPMLExport.partition(
+            shows: shows, isPremium: { PodcastSubscriptions.isPremiumFeed($0) }).excluded
+        if excluded.isEmpty {
+            performExport(includePremium: false)
+        } else {
+            opmlExcludedCount = excluded.count
+            opmlPremiumHintShown = true
+        }
+    }
+
+    private func performExport(includePremium: Bool) {
+        let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
+        let split = OPMLExport.partition(shows: shows,
+                                         isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+        let doc = OPMLExport.document(shows: includePremium ? shows : split.safe,
+                                      generatedAt: Date())
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("maer-subscriptions.opml")
         do {
@@ -442,6 +472,10 @@ struct PodcastSourceView: View {
     }
 
     // MARK: - Import
+
+    /// bb89772: premium-exclusion dialog state.
+    @State private var opmlExcludedCount = 0
+    @State private var opmlPremiumHintShown = false
 
     @ViewBuilder
     private var importSection: some View {

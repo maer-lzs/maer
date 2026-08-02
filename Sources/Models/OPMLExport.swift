@@ -7,6 +7,26 @@ import Foundation
 /// a449534 point 5: subscriptions as an OPML document — the export
 /// counterpart of the importer. Pure builder (tested); no network.
 nonisolated enum OPMLExport {
+    /// bb89772 SECURITY: premium/token feeds are EXCLUDED from the export by
+    /// default — a shared OPML must never give the access away. Detection:
+    /// the caller's premium marking (S22 management) PLUS the defensive
+    /// secret-parameter net (token/freebie/auth/key/secret) as a second
+    /// layer. Pure; the count feeds the visible hint.
+    static func partition(shows: [(title: String, feedURL: String)],
+                          isPremium: (String) -> Bool) -> (safe: [(title: String, feedURL: String)],
+                                                           excluded: [(title: String, feedURL: String)]) {
+        var safe: [(title: String, feedURL: String)] = []
+        var excluded: [(title: String, feedURL: String)] = []
+        for show in shows {
+            if isPremium(show.feedURL) || PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
+                excluded.append(show)
+            } else {
+                safe.append(show)
+            }
+        }
+        return (safe, excluded)
+    }
+
     /// One outline per show: title + xmlUrl (the feed). XML-escaped; shows
     /// without a feed URL cannot round-trip and are skipped.
     static func document(shows: [(title: String, feedURL: String)],

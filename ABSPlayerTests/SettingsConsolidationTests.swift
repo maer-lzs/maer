@@ -49,5 +49,29 @@ struct SettingsConsolidationTests {
         // Round-trip sanity: the export parses as XML.
         #expect(XMLParser(data: Data(doc.utf8)).parse())
     }
+
+    @Test("bb89772 SECURITY: OPML export excludes premium/token feeds by default")
+    func opmlPremiumExclusion() {
+        let zeit = "https://premium-feed.zeit.de/podcast/abo?freebie=SECRETTOKEN123"
+        let shows = [
+            (title: "Free Show", feedURL: "https://example.org/feed.xml"),
+            (title: "ZEIT Premium", feedURL: zeit),
+            (title: "Patreon Show", feedURL: "https://www.patreon.com/rss/show?auth=abc"),
+        ]
+        // Marking-based premium (S22) is injected; the secret-parameter net
+        // catches the ZEIT freebie class EVEN without a marking.
+        let split = OPMLExport.partition(shows: shows, isPremium: { $0.contains("patreon") })
+        #expect(split.safe.map(\.title) == ["Free Show"])
+        #expect(split.excluded.count == 2)
+        // The default document carries NO token URL.
+        let doc = OPMLExport.document(shows: split.safe, generatedAt: Date(timeIntervalSince1970: 0))
+        #expect(!doc.contains("SECRETTOKEN123"))
+        #expect(!doc.contains("freebie"))
+        #expect(doc.contains("example.org/feed.xml"))
+        // freebie is a first-class secret parameter now (detection + masking).
+        #expect(PodcastSubscriptions.isTokenFeedURL(zeit))
+        #expect(PodcastSubscriptions.maskedFeedURL(zeit).contains("freebie=••••"))
+        #expect(!PodcastSubscriptions.maskedFeedURL(zeit).contains("SECRETTOKEN123"))
+    }
 }
 #endif

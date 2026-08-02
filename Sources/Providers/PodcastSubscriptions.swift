@@ -231,8 +231,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// Y52: query parameters whose VALUES are access secrets — a feed carrying
     /// one is the token-URL premium class (access baked into the URL, no login).
     /// ONE source: the identity set below builds on this, no duplication.
+    /// bb89772: "freebie" joined after the ZEIT leak finding (their premium
+    /// class uses `freebie=<token>`) — ONE set feeds detection, masking AND
+    /// the OPML-export guard.
     nonisolated static let secretQueryParams: Set<String> =
-        ["token", "auth", "key", "secret"]
+        ["token", "auth", "key", "secret", "freebie"]
 
     nonisolated private static let identityQueryParams: Set<String> =
         secretQueryParams.union(["id", "show", "feed", "user", "podcast"])

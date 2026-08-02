@@ -5152,6 +5152,36 @@
         }
       }
     },
+    "%lld premium feeds not exported — they contain personal access links." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Premium-Feeds nicht exportiert — sie enthalten persönliche Zugangs-Links."
+          }
+        }
+      }
+    },
+    "Export without premium feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Premium-Feeds exportieren"
+          }
+        }
+      }
+    },
+    "Include anyway" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trotzdem einschließen"
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {
