@@ -722,6 +722,68 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source-pushed")
     }
 
+    /// a449534: the consolidated settings — the Music pill's toggles WORK
+    /// (persist), the suggestion-language row exists and multi-selects, and
+    /// the Network-Services page flips the SAME key the feature home shows
+    /// (second access point, one truth).
+    func testSettingsConsolidation() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let settings = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 10))
+        settings.tap()
+        // Music pill exists and carries the moved metadata toggles.
+        let pill = app.buttons["settings-tab-music"].firstMatch
+        XCTAssertTrue(pill.waitForExistence(timeout: 10), "Music pill must exist")
+        pill.tap()
+        // Locale-independent handle (de: "Songtexte …" — label queries trap).
+        let lyrics = app.switches["music-lyrics-toggle"].firstMatch
+        XCTAssertTrue(lyrics.waitForExistence(timeout: 10), "lyrics toggle must live on the Music pill")
+        let before = lyrics.value as? String
+        lyrics.tap()
+        // SwiftUI switch values update asynchronously — poll for the flip;
+        // fall back to a coordinate tap on the switch knob once.
+        var flipDeadline = Date().addingTimeInterval(3)
+        while (lyrics.value as? String) == before && Date() < flipDeadline {
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        if (lyrics.value as? String) == before {
+            lyrics.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            flipDeadline = Date().addingTimeInterval(3)
+            while (lyrics.value as? String) == before && Date() < flipDeadline {
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+        }
+        let after = lyrics.value as? String
+        XCTAssertNotEqual(after, before, "the Music-pill lyrics toggle must actually flip")
+        // Network-Services page flips the SAME key: navigate there and check
+        // the LRCLIB toggle mirrors the changed state.
+        // Ids, never labels — a label match found the TAB pill behind the
+        // sheet (firstMatch) and the tap fizzled on the sheet surface.
+        let generalPill = app.buttons["settings-tab-general"].firstMatch
+        XCTAssertTrue(generalPill.waitForExistence(timeout: 5)); generalPill.tap()
+        let network = app.buttons["settings-network-services"].firstMatch
+        var swipes = 0
+        while !network.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(network.waitForExistence(timeout: 10)); network.tap()
+        let lrclib = app.switches.matching(NSPredicate(format: "label CONTAINS %@", "LRCLIB")).firstMatch
+        XCTAssertTrue(lrclib.waitForExistence(timeout: 10), "LRCLIB row must exist on the services page")
+        XCTAssertEqual(lrclib.value as? String, after,
+                       "the services toggle must mirror the SAME key the Music pill changed")
+        app.navigationBars.buttons.firstMatch.tap()
+        // Suggestion languages: row exists, list multi-selects (second pick).
+        let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
+        XCTAssertTrue(podcastsPill.waitForExistence(timeout: 5)); podcastsPill.tap()
+        let langRow = app.buttons["settings-suggestion-languages"].firstMatch
+        XCTAssertTrue(langRow.waitForExistence(timeout: 10)); langRow.tap()
+        let en = app.buttons["suggestion-lang-en"].firstMatch
+        let deRow = app.buttons["suggestion-lang-de"].firstMatch
+        XCTAssertTrue(en.waitForExistence(timeout: 10) && deRow.exists,
+                      "language list must offer the choices")
+        en.tap(); deRow.tap()   // multi-select: both on (order-independent)
+        snap(app, "settings-consolidated")
+    }
+
     /// M5-Nachbesserung (580e9c3): ONE term that hits album + song + playlist
     /// must render ALL music sections (the device saw only artists — that was
     /// Subsonic's per-entity matching on an artist-name query, not a missing

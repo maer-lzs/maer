@@ -1255,6 +1255,146 @@
         }
       }
     },
+    "Artist portraits and identities for your music library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Künstler-Porträts und -Identitäten für deine Musikbibliothek."
+          }
+        }
+      }
+    },
+    "Delete Downloads…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads löschen …"
+          }
+        }
+      }
+    },
+    "Delete downloads?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloads löschen?"
+          }
+        }
+      }
+    },
+    "Discover and Rediscover suggestions; searching the catalog and genre charts stays on demand." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entdecken- und Wiederentdecken-Vorschläge; Katalogsuche und Genre-Charts nur auf Anfrage."
+          }
+        }
+      }
+    },
+    "Export OPML" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML exportieren"
+          }
+        }
+      }
+    },
+    "High-resolution album covers for albums with a MusicBrainz ID." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hochauflösende Album-Cover für Alben mit MusicBrainz-ID."
+          }
+        }
+      }
+    },
+    "Network Services & Privacy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Netzdienste & Datenschutz"
+          }
+        }
+      }
+    },
+    "Open lyrics lookup when your server has none." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offene Lyrics-Suche, wenn dein Server keine hat."
+          }
+        }
+      }
+    },
+    "Share OPML" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OPML teilen"
+          }
+        }
+      }
+    },
+    "Suggestion Languages" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschlagssprachen"
+          }
+        }
+      }
+    },
+    "Suggestions and catalog results prefer these languages (several mix fairly). This does not change the app language — that follows your iOS system setting." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vorschläge und Katalog-Ergebnisse bevorzugen diese Sprachen (mehrere mischen fair). Die App-Sprache ändert das nicht — sie folgt deiner iOS-Systemeinstellung."
+          }
+        }
+      }
+    },
+    "The community station catalog behind the Radio tab." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Community-Senderkatalog hinter dem Radio-Tab."
+          }
+        }
+      }
+    },
+    "Your servers come first — these services only fill gaps. None of them requires an account; requests carry no identifiers beyond the query itself. PodcastIndex is used only when you configured your own key on the podcast source page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Server kommen zuerst — diese Dienste füllen nur Lücken. Keiner braucht ein Konto; Anfragen tragen keine Kennungen über die Abfrage hinaus. PodcastIndex wird nur genutzt, wenn du auf der Podcast-Quellenseite einen eigenen Schlüssel hinterlegt hast."
+          }
+        }
+      }
+    },
+    "Your subscriptions as OPML" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Abos als OPML"
+          }
+        }
+      }
+    },
     "Change Country" : {
       "localizations" : {
         "de" : {

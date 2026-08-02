@@ -67,9 +67,15 @@ struct ITunesDirectory: PodcastDirectory {
 
     func search(_ term: String) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://itunes.apple.com/search")!
+        // f79c40c: the FIRST selected suggestion language sets the search
+        // storefront (a per-keystroke multi-storefront fan-out would be
+        // wasteful — honest simplification, reported; charts DO interleave).
+        let storefront = SuggestionLanguages.storefront(
+            for: SuggestionLanguages.current().first ?? "en")
         components.queryItems = [
             URLQueryItem(name: "media", value: "podcast"),
             URLQueryItem(name: "term", value: term),
+            URLQueryItem(name: "country", value: storefront),
             URLQueryItem(name: "limit", value: "25")
         ]
         guard let url = components.url else { return [] }
@@ -83,11 +89,33 @@ struct ITunesDirectory: PodcastDirectory {
         try await topPodcasts(genreId: nil, limit: limit)
     }
 
-    /// M5: the same top chart narrowed to ONE iTunes genre (nil = all).
-    func topPodcasts(genreId: Int?, limit: Int = 40) async throws -> [PodcastSearchResult] {
-        let region = (Locale.current.region?.identifier ?? "US").lowercased()
+    /// Pure (tested): the chart URL per storefront/genre — the suggestion-
+    /// language wiring hangs off this one builder.
+    nonisolated static func chartURL(storefront: String, genreId: Int?, limit: Int) -> URL? {
         let genrePart = genreId.map { "/genre=\($0)" } ?? ""
-        guard let chartURL = URL(string: "https://itunes.apple.com/\(region)/rss/toppodcasts/limit=\(limit)\(genrePart)/json") else { return [] }
+        return URL(string: "https://itunes.apple.com/\(storefront)/rss/toppodcasts/limit=\(limit)\(genrePart)/json")
+    }
+
+    /// M5 + f79c40c: the top chart narrowed to ONE genre (nil = all) — one
+    /// storefront per SELECTED suggestion language (iTunes is storefront-
+    /// bound), results fairly interleaved and deduped by feed.
+    func topPodcasts(genreId: Int?, limit: Int = 40) async throws -> [PodcastSearchResult] {
+        let languages = SuggestionLanguages.current()
+        var perLanguage: [[PodcastSearchResult]] = []
+        for language in languages.prefix(3) {
+            let storefront = SuggestionLanguages.storefront(for: language)
+            perLanguage.append((try? await topPodcasts(storefront: storefront,
+                                                       genreId: genreId, limit: limit)) ?? [])
+        }
+        var seen = Set<String>()
+        let mergedIds = HomeSections.interleave(perLanguage.map { $0.map(\.feedURL) }, limit: limit)
+        let byFeed = Dictionary(perLanguage.flatMap { $0 }.map { ($0.feedURL, $0) },
+                                uniquingKeysWith: { a, _ in a })
+        return mergedIds.compactMap { seen.insert($0).inserted ? byFeed[$0] : nil }
+    }
+
+    private func topPodcasts(storefront: String, genreId: Int?, limit: Int) async throws -> [PodcastSearchResult] {
+        guard let chartURL = ITunesDirectory.chartURL(storefront: storefront, genreId: genreId, limit: limit) else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: chartURL))
         let ids = (try JSONDecoder().decode(ChartResponse.self, from: data)).feed.entry.map { $0.id.attributes.imId }
         guard !ids.isEmpty else { return [] }

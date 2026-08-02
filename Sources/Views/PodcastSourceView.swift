@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 import UniformTypeIdentifiers
 
 /// Subscribe to podcasts (Settings → Sources → Podcasts): search by name
@@ -37,6 +38,7 @@ struct PodcastSourceView: View {
     @State private var urlError: String?
 
     @State private var showOPMLImporter = false
+    @State private var opmlShareURL: URL?
     @State private var showAppleImporter = false
     @State private var importMessage: String?
     @State private var isImporting = false
@@ -96,6 +98,25 @@ struct PodcastSourceView: View {
         // Toggling takes effect immediately: ABS probes or clears its state.
         .onChange(of: absPodcastsEnabled) { _, _ in
             Task { await absPodcast.refresh() }
+        }
+        .sheet(isPresented: Binding(get: { opmlShareURL != nil },
+                                    set: { if !$0 { opmlShareURL = nil } })) {
+            if let opmlShareURL {
+                // Minimal share host — ShareLink needs a stable view context.
+                NavigationStack {
+                    VStack(spacing: 16) {
+                        Text("Your subscriptions as OPML")
+                            .font(.headline)
+                        ShareLink(item: opmlShareURL) {
+                            Label("Share OPML", systemImage: "square.and.arrow.up")
+                                .font(.body.weight(.semibold))
+                        }
+                        .accessibilityIdentifier("opml-share-link")
+                    }
+                    .padding()
+                    .presentationDetents([.height(180)])
+                }
+            }
         }
         .fileImporter(
             isPresented: $showOPMLImporter,
@@ -405,6 +426,21 @@ struct PodcastSourceView: View {
         }
     }
 
+    /// a449534 (5): write the OPML to a temp file and hand it to the share
+    /// sheet (a file shares/saves cleanly everywhere; string items don't).
+    private func exportOPML() {
+        let shows = PodcastSubscriptions.shared.shows.map { (title: $0.title, feedURL: $0.feedURL) }
+        let doc = OPMLExport.document(shows: shows, generatedAt: Date())
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("maer-subscriptions.opml")
+        do {
+            try doc.write(to: url, atomically: true, encoding: .utf8)
+            opmlShareURL = url
+        } catch {
+            Logger.rss.error("OPML export failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     // MARK: - Import
 
     @ViewBuilder
@@ -416,6 +452,15 @@ struct PodcastSourceView: View {
                 Label("Import OPML", systemImage: "square.and.arrow.down")
             }
             .disabled(isImporting)
+            // a449534 (5): the export counterpart — subscriptions as OPML via
+            // the share sheet (pure builder, no network).
+            Button {
+                exportOPML()
+            } label: {
+                Label("Export OPML", systemImage: "square.and.arrow.up")
+            }
+            .disabled(PodcastSubscriptions.shared.shows.isEmpty)
+            .accessibilityIdentifier("opml-export")
             Button {
                 showAppleImporter = true
             } label: {

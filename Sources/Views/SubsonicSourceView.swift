@@ -14,10 +14,6 @@ struct SubsonicSourceView: View {
     @State private var password = AppStorageKeys.subsonicPasswordValue
     @State private var enabled = AppStorageKeys.subsonicEnabledValue
     @State private var isAudiobooks = AppStorageKeys.subsonicIsAudiobooksValue
-    @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
-    @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
-    @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
-
     @State private var isTesting = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
@@ -66,16 +62,8 @@ struct SubsonicSourceView: View {
                 Text("When on, your albums, artists and playlists appear in a Music tab in the library.")
             }
 
-            Section {
-                Toggle("Look up lyrics online", isOn: $lyricsOnline)
-                Toggle("Load artist images from the web", isOn: $artistImagesOnline)
-                Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
-            } header: {
-                Text("Metadata")
-            } footer: {
-                Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
-            }
-
+            // a449534: the metadata feature toggles moved to the MUSIC pill in
+            // Settings (provider-wide, not source access) — see musicSection.
             Section {
                 Button {
                     save()

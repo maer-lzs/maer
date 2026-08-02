@@ -27,13 +27,14 @@ struct SettingsView: View {
         // Podcasts (recommendations); Music and Radio have no tab-level
         // settings yet (their specifics live on the source pages), so they
         // get no pill — an empty tab would be worse than none.
-        case general, audiobooks, podcasts
+        case general, audiobooks, podcasts, music
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
             case .general: return "General"
             case .audiobooks: return "Audiobooks"
             case .podcasts: return "Podcasts"
+            case .music: return "Music"
             }
         }
     }
@@ -45,6 +46,7 @@ struct SettingsView: View {
         var tabs: [Tab] = [.general]
         if audiobooksTab { tabs.append(.audiobooks) }
         if podcastsTab { tabs.append(.podcasts) }
+        if musicTab { tabs.append(.music) }
         return tabs
     }
 
@@ -103,11 +105,14 @@ struct SettingsView: View {
                     driveModeSection
                     appearanceSection
                     statsSection
+                    networkServicesSection
                     aboutSection
                 case .audiobooks:
                     playbackSection
                 case .podcasts:
                     recommendationsSection
+                case .music:
+                    musicSection
                 }
             }
             .bottomBarClearance()
@@ -185,37 +190,74 @@ struct SettingsView: View {
         }
     }
 
+    /// a449534 (6): downloads broken down per media type (each clearable) —
+    /// classification via the pure PlayerSourceTargets id rules; the total
+    /// line stays. Section follows the button RULEBOOK: facts → toggles →
+    /// actions → ONE destructive row (dialog carries the per-type choices).
+    private var downloadsByType: [(label: String, ids: [String])] {
+        let ids = downloadManager.downloadedItemIds
+        return [
+            (String(localized: "Audiobooks"), ids.filter { PlayerSourceTargets.isBook($0) }),
+            (String(localized: "Podcasts"), ids.filter { PlayerSourceTargets.isPodcast($0) }),
+            (String(localized: "Music"), ids.filter { PlayerSourceTargets.isMusic($0) }),
+        ]
+    }
+
+    @State private var showDeleteDownloadsDialog = false
     private var storageSection: some View {
         Section {
+            // Facts
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
+            } label: {
+                Label("Downloads", systemImage: "arrow.down.circle")
+            }
+            ForEach(downloadsByType, id: \.label) { group in
+                LabeledContent {
+                    Text(ByteCountFormatter.string(
+                        fromByteCount: group.ids.reduce(0) { $0 + downloadManager.downloadSize(forItemId: $1) },
+                        countStyle: .file))
+                } label: {
+                    Text(group.label).padding(.leading, 28)
+                }
+                .font(.subheadline)
+            }
+            LabeledContent {
+                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
+            } label: {
+                Label("Cover Cache", systemImage: "photo.on.rectangle")
+            }
+            // Toggles
             Toggle(isOn: $warnCellular) {
                 Label("Warn When Not on Wi-Fi", systemImage: "wifi")
             }
             .onChange(of: warnCellular) { _, newValue in
                 UserDefaults.standard.set(newValue, forKey: AppStorageKeys.warnCellularDownload)
             }
-
-            LabeledContent {
-                Text(ByteCountFormatter.string(fromByteCount: downloadManager.totalDownloadsSize, countStyle: .file))
-            } label: {
-                Label("Downloads", systemImage: "arrow.down.circle")
-            }
-            Button(role: .destructive) {
-                showDeleteAllDownloads = true
-            } label: {
-                Label("Delete All Downloads", systemImage: "trash")
-            }
-            .disabled(downloadManager.downloadedItemIds.isEmpty)
-
-            LabeledContent {
-                Text(ByteCountFormatter.string(fromByteCount: coverCacheBytes, countStyle: .file))
-            } label: {
-                Label("Cover Cache", systemImage: "photo.on.rectangle")
-            }
+            // Actions
             Button {
                 ImageCache.shared.clearCache()
                 coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
+            }
+            // Destructive — ONE row, the dialog offers all/per-type.
+            Button(role: .destructive) {
+                showDeleteDownloadsDialog = true
+            } label: {
+                Label("Delete Downloads…", systemImage: "trash")
+            }
+            .disabled(downloadManager.downloadedItemIds.isEmpty)
+            .confirmationDialog("Delete downloads?", isPresented: $showDeleteDownloadsDialog,
+                                titleVisibility: .visible) {
+                Button("Delete All Downloads", role: .destructive) { showDeleteAllDownloads = true }
+                ForEach(downloadsByType.filter { !$0.ids.isEmpty }, id: \.label) { group in
+                    Button(role: .destructive) {
+                        for id in group.ids { downloadManager.deleteDownload(itemId: id) }
+                    } label: {
+                        Text(verbatim: "\(group.label) (\(group.ids.count))")
+                    }
+                }
             }
         } header: {
             Text("Storage")
@@ -412,11 +454,52 @@ struct SettingsView: View {
     /// Variante b: recommendations live on the Podcasts pill (the Discover
     /// engine is podcast-driven). Still ONE opt-out for both Home sections
     /// (Rediscover + Discover) — key unchanged.
+    /// a449534 (1): the provider-WIDE music feature toggles — moved off the
+    /// Subsonic SOURCE page (feature ≠ access; they apply to Jellyfin too).
+    /// Same AppStorage keys, one truth.
+    @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
+    @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
+    @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
+    private var musicSection: some View {
+        Section {
+            Toggle("Look up lyrics online", isOn: $lyricsOnline)
+                .accessibilityIdentifier("music-lyrics-toggle")
+            Toggle("Load artist images from the web", isOn: $artistImagesOnline)
+            Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
+        } header: {
+            Text("Metadata")
+        } footer: {
+            Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
+        }
+    }
+
+    /// a449534 (4): ONE page listing every external service with its purpose
+    /// and the REAL opt-out switch (same keys as the feature homes — a second
+    /// access point, never a second truth).
+    private var networkServicesSection: some View {
+        Section {
+            NavigationLink {
+                NetworkServicesView()
+            } label: {
+                Label("Network Services & Privacy", systemImage: "network.badge.shield.half.filled")
+            }
+            .accessibilityIdentifier("settings-network-services")
+        }
+    }
+
     private var recommendationsSection: some View {
         Section {
             Toggle(isOn: $homeRecommendations) {
                 Label("Recommendations", systemImage: "sparkles")
             }
+            // f79c40c: the MULTI-select suggestion language — explicit choice
+            // beats the locale guess; catalog/recommendation requests only.
+            NavigationLink {
+                SuggestionLanguagesView()
+            } label: {
+                Label("Suggestion Languages", systemImage: "globe")
+            }
+            .accessibilityIdentifier("settings-suggestion-languages")
         } header: {
             Text("Home")
         } footer: {
@@ -442,10 +525,13 @@ struct SettingsView: View {
                 Toggle(isOn: $driveModeAutoStart) {
                     Text("Start automatically when \(carRouteName) connects")
                 }
-                Button("Forget car audio") {
+                // Rulebook: destructive-class action, red, LAST row.
+                Button(role: .destructive) {
                     UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteUID)
                     UserDefaults.standard.removeObject(forKey: AppStorageKeys.driveModeCarRouteName)
                     carRouteName = ""
+                } label: {
+                    Text("Forget car audio")
                 }
             } else {
                 let outputs = DriveModeController.currentOutputs()

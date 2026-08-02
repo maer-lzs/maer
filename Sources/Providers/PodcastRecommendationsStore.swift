@@ -68,7 +68,13 @@ final class PodcastRecommendationsStore: ObservableObject {
         let listening = listeningByShow()                 // showId → seconds listened
         let topAuthors = weightedAuthors(listening)        // most-listened authors
         let topCats = weightedCategories(listening)        // gewichtete Kategorien
-        let lang = dominantLanguage()
+        // f79c40c: the EXPLICIT suggestion-language choice beats the guessed
+        // dominant feed language (radio-cascade principle); unset keeps the
+        // device-locale default via SuggestionLanguages.effective.
+        let chosen = SuggestionLanguages.current()
+        let lang = UserDefaults.standard.stringArray(forKey: AppStorageKeys.suggestionLanguages) != nil
+            ? SuggestionLanguages.podcastIndexLangParameter(chosen)
+            : dominantLanguage()
 
         let piConfigured = AppStorageKeys.podcastIndexConfigured
         let directory: PodcastDirectory = piConfigured
