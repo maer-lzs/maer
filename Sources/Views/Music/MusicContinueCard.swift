@@ -15,6 +15,9 @@ struct MusicContinueCard: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var coverURLs: [URL] = []
+    /// 7ade0cf: the text-block color comes from the cover EDGE the block
+    /// touches — the SAME cached CoverColorLoader extraction the playlist
+    /// cards use (one mechanism, deterministic fallback without a cover).
     /// bd66c5b: EXACT Featured-card anatomy — the mixed Continue row holds
     /// ONE card format (book · episode · album/playlist), so this card uses
     /// the same width, cover face, tint block, line reserves and pill as
@@ -26,6 +29,7 @@ struct MusicContinueCard: View {
     @ScaledMetric(relativeTo: .subheadline) private var subMinHeight: CGFloat = 20
 
     private var mosaicKey: String { item.id }
+    private var isAlbum: Bool { AppSession.shared.musicProvider.kind(of: item.id) == .album }
 
     private var tint: Color {
         colorLoader.hasAccent ? colorLoader.accent : PlaylistArtwork.color(for: item.id)
@@ -50,7 +54,30 @@ struct MusicContinueCard: View {
             Task { await playerCoordinator.open(item: item) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs, cornerRadius: 0)
+                // c58585e/7ade0cf: an ALBUM fills the WHOLE cover face
+                // (aspectFill, top-aligned crop — exactly like the other
+                // Featured cards; the mosaic path rendered its big-bottom/
+                // tint-top layout here, which read as an inverted color band).
+                // Playlists keep the F5 mosaic — that IS their cover.
+                Group {
+                    if isAlbum {
+                        CachedAsyncImage(url: coverURLs.first) { image in
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Rectangle().fill(tint)
+                                .overlay(Image(systemName: "music.note")
+                                    .font(.largeTitle).foregroundStyle(.white.opacity(0.5)))
+                        }
+                        .frame(width: CardMetrics.featuredCardWidth,
+                               height: CardMetrics.featuredCardWidth, alignment: .top)
+                        .clipped()
+                    } else {
+                        PlaylistArtwork(playlistID: mosaicKey, coverURLs: coverURLs, cornerRadius: 0)
+                    }
+                }
+                    // Scrim only at the SEAM into the text block (edge
+                    // continuity like every Featured card) — nothing tints
+                    // the cover face itself.
                     .overlay(alignment: .bottom) {
                         LinearGradient(colors: [.clear, tint],
                                        startPoint: .top, endPoint: .bottom)

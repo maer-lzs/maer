@@ -13,7 +13,7 @@ import SwiftUI
 /// normal full player. 8d54582: the cover is the HERO — the book-detail
 /// stage anatomy (shared `CoverHeroStage`), fading into the black control
 /// area; ONE cover, ONE frame, the lower area never renders its own. The
-/// hero height is CAPPED relative to the screen (298d6b1 — the 464-pt
+/// hero height is CAPPED relative to the screen (cda2bea: 40 % portrait, 42 % landscape width) (298d6b1 — the 464-pt
 /// lesson: nothing fixed that overflows the next device); the transport row
 /// SCALES to fit (pure `transportScale`). Dark, maximum contrast, portrait
 /// AND landscape, media-type neutral.
@@ -61,7 +61,10 @@ struct DriveModeView: View {
         GeometryReader { geo in
             let landscape = geo.size.width > geo.size.height
             if landscape {
-                let heroWidth = min(geo.size.width * 0.35, geo.size.height)
+                // cda2bea: the hero may take more room — width raised (~42 %),
+                // still capped by height and always leaving the controls the
+                // majority of the width (big buttons never displaced).
+                let heroWidth = min(geo.size.width * 0.42, geo.size.height)
                 HStack(spacing: 0) {
                     CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
                         .frame(width: heroWidth)
@@ -73,7 +76,9 @@ struct DriveModeView: View {
             } else {
                 VStack(spacing: 0) {
                     CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
-                        .frame(height: min(geo.size.width, geo.size.height * 0.32))
+                        // cda2bea: portrait cap raised ~32 % → 40 % (device
+                        // judgement); still relative, buttons keep their room.
+                        .frame(height: min(geo.size.width, geo.size.height * 0.40))
                         .frame(maxWidth: .infinity)
                         .ignoresSafeArea(edges: .top)
                     controlsColumn(vm, landscape: false,

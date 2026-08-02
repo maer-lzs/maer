@@ -782,8 +782,12 @@ nonisolated final class MaerUITests: XCTestCase {
         // 8d54582/298d6b1 hero geometry: the capped hero must never displace
         // the controls — play button sits in the lower ~2/3 and the progress
         // line stays fully on screen.
-        XCTAssertGreaterThan(play.frame.minY, window.height * 0.30,
+        // cda2bea: hero raised to ~40 % — the transport must still sit fully
+        // BELOW it and inside the window (buttons never displaced/shrunk).
+        XCTAssertGreaterThan(play.frame.minY, window.height * 0.38,
                              "hero must stay capped above the transport row")
+        XCTAssertLessThan(play.frame.maxY, window.height,
+                          "play button must remain fully on screen under the larger hero")
         let remaining = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "-")).firstMatch
         XCTAssertTrue(remaining.exists && window.contains(remaining.frame),
                       "progress line must stay on screen below the hero")
