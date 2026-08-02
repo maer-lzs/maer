@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import Combine
 import OSLog
 
 /// 0714d26: the free-catalog Discover rows on Home — "New free audiobooks"
@@ -99,6 +100,8 @@ enum FreeCatalogLoader {
     struct Rows {
         /// 7edb21b: LibriVox books for the DISCOVER mix (moderate share).
         var discoverBooks: [LibraryItem] = []
+        /// cb99bf6: the audiobooks-tab tile row (same fetch, wider cut).
+        var tabBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
         var classical: [LibraryItem] = []
     }
@@ -108,6 +111,11 @@ enum FreeCatalogLoader {
     static let discoverBookCap = 3
 
     static func load() async -> Rows {
+        // 5034add: master off ⇒ nothing loads, nothing fetches — the whole
+        // catalog feature is dark (UI gates hide the surfaces separately).
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else {
+            return Rows()
+        }
         var rows = Rows()
         #if DEBUG
         if UITestSeed.isActive { return rows }   // no external calls in the harness
@@ -124,7 +132,10 @@ enum FreeCatalogLoader {
                 let codes = SuggestionLanguages.current()
                 let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
                 Logger.library.notice("FREECAT discover-books loaded=\(books.count) filtered=\(filtered.count) codes=\(codes.joined(separator: ","), privacy: .public)")
-                rows.discoverBooks = filtered.prefix(Self.discoverBookCap).map { provider.remember(book: $0) }
+                let items = filtered.map { provider.remember(book: $0) }
+                rows.discoverBooks = Array(items.prefix(Self.discoverBookCap))
+                // cb99bf6: ONE fetch, two cuts — the tab row shows more.
+                rows.tabBooks = Array(items.prefix(12))
             } catch {
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
             }
@@ -153,6 +164,30 @@ enum FreeCatalogLoader {
             }
         }
         return rows
+    }
+}
+
+/// cb99bf6: the ONE shared home of the loaded catalog rows — Home's
+/// compute() pass fills it (retry-while-empty stays there); the audiobooks
+/// tab row observes the SAME store instead of loading a second time.
+@MainActor
+final class FreeCatalogStore: ObservableObject {
+    static let shared = FreeCatalogStore()
+    private init() {}
+    @Published private(set) var rows = FreeCatalogLoader.Rows()
+    private(set) var loaded = false
+    private var loading = false
+
+    /// The single load pass (34c36e1 discipline: called from compute(),
+    /// never from a lazily mounted empty view's own task).
+    func ensureLoaded() async {
+        guard !loaded, !loading, NetworkMonitor.shared.isConnected else { return }
+        loading = true
+        defer { loading = false }
+        let loadedRows = await FreeCatalogLoader.load()
+        loaded = !loadedRows.discoverBooks.isEmpty
+            || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.rows = loadedRows }
     }
 }
 

@@ -99,6 +99,7 @@ struct SettingsView: View {
                 case .general:
                     sourcesSection
                     librariesSection
+                    freeCatalogsSection
                     globalSyncSection
                     storageSection
                     notificationsSection
@@ -176,6 +177,24 @@ struct SettingsView: View {
     }
 
     // MARK: - Allgemein
+
+    /// 5034add: the MASTER switch over everything public-domain/catalog —
+    /// prominent on General (not buried on the network-services subpage).
+    /// Hierarchy: master > area toggles (pills, greyed while off) > service
+    /// opt-outs (network page). Off means OFF: surfaces AND traffic.
+    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    private var freeCatalogsSection: some View {
+        Section {
+            Toggle(isOn: $freeCatalogsMaster) {
+                Label("Show free catalogs", systemImage: "books.vertical")
+            }
+            .accessibilityIdentifier("settings-free-catalogs-master")
+        } header: {
+            Text("Free Catalogs")
+        } footer: {
+            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic.")
+        }
+    }
 
     private var appearanceSection: some View {
         Section("Appearance") {
@@ -450,10 +469,15 @@ struct SettingsView: View {
             // stays superior (service off wins).
             Toggle("Show free audiobooks", isOn: $freeAudiobooks)
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
+                // 5034add: master off greys the area toggle — visibly
+                // subordinate, no silent double state.
+                .disabled(!freeCatalogsMaster)
         } header: {
             Text("Playback")
         } footer: {
-            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library.")
+            freeCatalogsMaster
+                ? Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain LibriVox area, separate from your library.")
+                : Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free catalogs are switched off entirely under General.")
         }
     }
 
@@ -480,10 +504,13 @@ struct SettingsView: View {
             // network-services page stays superior (service off wins).
             Toggle("Show Free Classical", isOn: $freeClassical)
                 .accessibilityIdentifier("music-free-classical-toggle")
+                .disabled(!freeCatalogsMaster)
         } header: {
             Text("Metadata")
         } footer: {
-            Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
+            freeCatalogsMaster
+                ? Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts.")
+                : Text("Lyrics come from your server first; LRCLIB is used as an open fallback. High-res covers load from the Cover Art Archive for albums with a MusicBrainz ID. Both are open services without accounts. Free catalogs are switched off entirely under General.")
         }
     }
 

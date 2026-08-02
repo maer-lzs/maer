@@ -28,11 +28,16 @@ struct MusicView: View {
     @State private var newPlaylistName = ""
 
     /// F5: playlists newest-changed first (default sort).
-    /// 50f4751/f18ec34: area visible only with BOTH levels on — the
-    /// feature toggle (Music pill) and the archive.org service opt-out.
+    /// 5034add: master flip re-renders the browse deck live.
+    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+
+    /// 50f4751/f18ec34/5034add: ONE pure gate — master > feature toggle
+    /// (Music pill) > archive.org service opt-out.
     private var freeClassicalArea: Bool {
-        (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true)
-            && (UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+        FreeCatalogActivation.effective(
+            master: freeCatalogsMaster,
+            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true,
+            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
     }
 
     private var sortedPlaylists: [MusicPlaylist] {

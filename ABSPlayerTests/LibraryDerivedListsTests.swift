@@ -262,14 +262,22 @@ struct LibraryDerivedListsTests {
         }
     }
 
-    @Test("cb1f658: cell meta line — author · status, single parts alone, empty keeps reserve")
-    func metaLine() {
-        #expect(bookMetaLine(author: "Haruki Murakami", status: "4 hr 57 min left")
-                == "Haruki Murakami · 4 hr 57 min left")
-        #expect(bookMetaLine(author: "Haruki Murakami", status: nil) == "Haruki Murakami")
-        #expect(bookMetaLine(author: nil, status: "Completed") == "Completed")
-        #expect(bookMetaLine(author: nil, status: "") == " ")
-        #expect(bookMetaLine(author: nil, status: nil) == " ")
+    @Test("66f974c: time line ALWAYS filled — remaining when started, total runtime otherwise")
+    func timeLine() {
+        // Locale-robust (the suite runs on the de sim): assert the NUMBERS
+        // and non-emptiness, not localized words.
+        let started = BookProgress(fraction: 0.5, isFinished: false, lastUpdate: 0, currentTime: 15_660)
+        let remaining = bookTimeLine(progress: started, duration: 31_320)
+        #expect(remaining.contains("4") && remaining.contains("21"))
+        // Unstarted (the ~95 % case): TOTAL runtime instead of an empty line.
+        let total = bookTimeLine(progress: nil, duration: 31_260)
+        #expect(total.contains("8") && total.contains("41"))
+        #expect(total != remaining)
+        #expect(bookTimeLine(progress: nil, duration: 2_460).contains("41"))
+        let done = BookProgress(fraction: 1, isFinished: true, lastUpdate: 0, currentTime: 100)
+        #expect(!bookTimeLine(progress: done, duration: 100).trimmingCharacters(in: .whitespaces).isEmpty)
+        // No duration known at all → space keeps the reserve.
+        #expect(bookTimeLine(progress: nil, duration: nil) == " ")
     }
 }
 #endif

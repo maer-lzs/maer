@@ -983,16 +983,27 @@ struct LibraryView: View {
         return (available - totalSpacing) / CGFloat(columnCount)
     }
 
-    /// 7edb21b: gate = feature toggle (audiobooks pill) AND the LibriVox
-    /// service opt-out (service off wins — two clean levels, Klassik-Muster).
+    /// cb99bf6: store feeds the tab tile row (fill via Home's compute pass).
+    @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    @State private var freeBookDetail: LibraryItem?
+
+    /// 5034add: master rides as @AppStorage so a settings flip re-renders
+    /// the tab live (a plain UserDefaults read would not invalidate).
+    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+
+    /// 7edb21b/5034add: ONE pure gate — master > feature toggle (audiobooks
+    /// pill) > LibriVox service opt-out.
     private var freeAudiobooksArea: Bool {
-        (UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true)
-            && (UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true)
+        FreeCatalogActivation.effective(
+            master: freeCatalogsMaster,
+            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true,
+            service: UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true)
     }
 
-    /// The AREA entry below the own library: linked title + separation line —
-    /// deliberately WITHOUT tiles here (a lazy below-the-fold view must not
-    /// load, the 34c36e1 lesson; the content lives on the pushed page).
+    /// cb99bf6: the tile ROW above "All Books" — linked title into the area
+    /// page, "New at LibriVox" tiles (MediaTile format, tap plays, context
+    /// menu opens the license sheet), catalog≠library marking kept. The row
+    /// hides entirely while the store is empty (service/toggle off, offline).
     private var freeAudiobooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             NavigationLink(value: FreeAudiobooksRoute.area) {
@@ -1010,6 +1021,32 @@ struct LibraryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(freeCatalogStore.rows.tabBooks) { item in
+                        MediaTile(
+                            title: item.title,
+                            subtitle: item.author,
+                            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                            placeholderSystemImage: "book.closed",
+                            onTap: { Task { await playerCoordinator.open(item: item) } }
+                        )
+                        .contextMenu {
+                            Button {
+                                freeBookDetail = item
+                            } label: { Label("Details", systemImage: "info.circle") }
+                        }
+                        .containerRelativeFrame(.horizontal,
+                                                count: CardMetrics.recommendationColumns(regularWidth: false),
+                                                spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+        }
+        .sheet(item: $freeBookDetail) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
     }
 
@@ -1062,13 +1099,15 @@ struct LibraryView: View {
                     if !viewModel.recentlyAdded.isEmpty {
                         recentlyAddedGrid
                     }
-                allBooksSection
-                // 7edb21b ENTSCHIEDEN (kein Entwurf mehr): the Free-
-                // Audiobooks AREA entry lives below the own library —
-                // feature toggle (audiobooks pill) ∧ LibriVox service opt-out.
-                if freeAudiobooksArea {
+                // cb99bf6 KORREKTUR: the Free-Audiobooks tile row sits ABOVE
+                // "All Books" — below it, the entry drowned behind the whole
+                // library scroll. Above the fold the row always materializes,
+                // so the 34c36e1 lazy rule does not bite; the FILL still comes
+                // from the one central compute() pass (shared store).
+                if freeAudiobooksArea && !freeCatalogStore.rows.tabBooks.isEmpty {
                     freeAudiobooksSection
                 }
+                allBooksSection
                 if viewModel.isLoadingMore {
                     // Progressive loading is still running — subtle hint that
                     // more titles are on the way.

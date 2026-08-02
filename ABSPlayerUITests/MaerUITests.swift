@@ -983,6 +983,61 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
+    /// 5034add: the free-catalogs MASTER switch — off greys the subordinate
+    /// area toggle and removes the (net-independent) music browse entry.
+    /// Ids only, never labels (de-sim trap); master back ON at the end so
+    /// later journeys see the default state.
+    func testFreeCatalogsMasterSwitch() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        app.buttons["tab-music"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["music-route-free-classical"].firstMatch.waitForExistence(timeout: 10),
+                      "classical browse entry must exist while the master is on")
+
+        func flip(_ toggle: XCUIElement) {
+            let before = toggle.value as? String
+            toggle.tap()
+            var deadline = Date().addingTimeInterval(3)
+            while (toggle.value as? String) == before && Date() < deadline {
+                Thread.sleep(forTimeInterval: 0.2)
+            }
+            if (toggle.value as? String) == before {
+                toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+                deadline = Date().addingTimeInterval(3)
+                while (toggle.value as? String) == before && Date() < deadline {
+                    Thread.sleep(forTimeInterval: 0.2)
+                }
+            }
+            XCTAssertNotEqual(toggle.value as? String, before, "master toggle must flip")
+        }
+
+        app.buttons["open-settings"].firstMatch.tap()
+        // The General list is LAZY — below-the-fold rows are absent from the
+        // a11y tree until scrolled to (same class as the seed-episode trap).
+        let master = app.switches["settings-free-catalogs-master"].firstMatch
+        var scrolls = 0
+        while !master.exists && scrolls < 6 { app.swipeUp(); scrolls += 1 }
+        XCTAssertTrue(master.waitForExistence(timeout: 10), "master must sit on the General pill")
+        flip(master)
+        // Subordinate area toggle greys out — visible hierarchy, no double state.
+        app.buttons["settings-tab-music"].firstMatch.tap()
+        let area = app.switches["music-free-classical-toggle"].firstMatch
+        XCTAssertTrue(area.waitForExistence(timeout: 10))
+        XCTAssertFalse(area.isEnabled, "area toggle must grey out while the master is off")
+        app.buttons["settings-done"].firstMatch.tap()
+        // Surface gone.
+        XCTAssertFalse(app.buttons["music-route-free-classical"].firstMatch.waitForExistence(timeout: 3),
+                       "classical browse entry must vanish with the master off")
+        snap(app, "free-catalogs-master-off")
+        // Clean up: master back on for whoever runs next.
+        app.buttons["open-settings"].firstMatch.tap()
+        scrolls = 0
+        while !master.exists && scrolls < 6 { app.swipeUp(); scrolls += 1 }
+        XCTAssertTrue(master.waitForExistence(timeout: 10))
+        flip(master)
+        app.buttons["settings-done"].firstMatch.tap()
+    }
+
     // MARK: - iPad hitch probes (28.07 diagnosis package — measurement, no assert on values)
 
     /// Measured collapse-scroll probe: repeated fast scroll cycles across the

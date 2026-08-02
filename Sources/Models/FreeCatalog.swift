@@ -73,6 +73,9 @@ nonisolated struct ArchiveFile: Decodable, Sendable {
     let name: String?
     let length: String?
     let title: String?
+    /// 37e4a23: archive.org's rendition label ("VBR MP3", "64Kbps MP3", …) —
+    /// the format PREFERENCE chain picks by this, not by filename suffix.
+    let format: String?
 }
 
 // MARK: - Jamendo wire
@@ -88,6 +91,17 @@ nonisolated struct JamendoTrack: Decodable, Sendable {
 }
 
 // MARK: - Pure mappers
+
+/// 5034add: THE gate hierarchy for every free-catalog surface — master
+/// (General pill) > area feature toggles (audiobooks/music pill) > service
+/// opt-outs (network-services page). ONE pure function all catalog paths
+/// ask (Regel 2 — never five copied checks); master off means OFF: no UI
+/// surface and no network traffic.
+nonisolated enum FreeCatalogActivation {
+    static func effective(master: Bool, feature: Bool, service: Bool) -> Bool {
+        master && feature && service
+    }
+}
 
 nonisolated enum FreeCatalog {
     static let librivoxPrefix = "lv:"
@@ -258,17 +272,51 @@ nonisolated enum FreeCatalog {
 
     /// archive.org files → tracks: the 64kb MP3 rendition, name-sorted (the
     /// LibriVox naming carries the order), direct download URLs.
+    /// 37e4a23: format PREFERENCE chain per item instead of the hard 64kb
+    /// filter — georgeblood classical items carry ONLY "VBR MP3" (+ 24bit
+    /// FLAC), so the 64kb-derived URL pointed nowhere (NSURLError -1008).
+    /// Chain: 64kb MP3 → 128kb MP3 → VBR MP3 → M4A/AAC. Ogg is NOT in the
+    /// chain (AVPlayer cannot play Vorbis); FLAC deliberately left out
+    /// (AVPlayer capability unconfirmed here, and 24-bit 78rpm FLACs are
+    /// huge — named in the report, not silently). Empty result falls under
+    /// the existing plausibility gate at the call site.
+    static let formatPreference: [String] = ["64kbps mp3", "128kbps mp3", "vbr mp3", "aac", "m4a"]
+
+    static func preferredAudioFiles(_ files: [ArchiveFile]) -> [ArchiveFile] {
+        for wanted in formatPreference {
+            let group = files.filter { ($0.format ?? "").lowercased() == wanted }
+            if !group.isEmpty { return group }
+        }
+        // format field missing entirely (older items): the legacy 64kb
+        // filename suffix keeps those playable.
+        return files.filter { ($0.name ?? "").hasSuffix("64kb.mp3") }
+    }
+
+    /// 37e4a23 (2): hard path-segment encoding — archive.org filenames carry
+    /// spaces, umlauts, brackets, apostrophes ("Der Rosenkavalier - Richard
+    /// Strauss - …-restored.mp3"). Only unreserved characters survive; the
+    /// SAME encoder covers LibriVox and classical items (one path, Regel 2).
+    static let pathSegmentAllowed: CharacterSet = {
+        var set = CharacterSet.alphanumerics
+        set.insert(charactersIn: "-._~")
+        return set
+    }()
+
+    static func encodedPathSegment(_ segment: String) -> String {
+        segment.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowed) ?? segment
+    }
+
     static func archiveTracks(identifier: String, files: [ArchiveFile]) -> [ABSAudioTrack] {
         var start: Double = 0
         var out: [ABSAudioTrack] = []
-        let mp3s = files
-            .filter { ($0.name ?? "").hasSuffix("64kb.mp3") }
+        let playable = preferredAudioFiles(files)
             .sorted { ($0.name ?? "") < ($1.name ?? "") }
-        let encodedId = identifier.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? identifier
-        for file in mp3s {
-            guard let name = file.name,
-                  let encoded = name.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-            else { continue }
+        let encodedId = encodedPathSegment(identifier)
+        for file in playable {
+            guard let name = file.name else { continue }
+            let encoded = name.split(separator: "/", omittingEmptySubsequences: false)
+                .map { encodedPathSegment(String($0)) }
+                .joined(separator: "/")
             let duration = seconds(file.length)
             out.append(ABSAudioTrack(
                 index: out.count, startOffset: start, duration: duration,

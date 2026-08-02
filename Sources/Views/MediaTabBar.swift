@@ -38,7 +38,10 @@ struct MediaTabBar: View {
     /// was tried and is NOT usable here: resolving it inside the bar broke the
     /// bottom bar reproducibly — the capsule identity above makes it
     /// unnecessary anyway.)
-    private static let pillGap: CGFloat = 6
+    /// e053f53: 6 → 5 — the pill breathes a touch taller inside the SAME
+    /// bar height (the gap is the pill's vertical inset; smaller gap =
+    /// taller pill, bar metrics and morph untouched).
+    private static let pillGap: CGFloat = 5
 
     var body: some View {
         HStack(spacing: 4) {
@@ -59,6 +62,9 @@ struct MediaTabBar: View {
                     // Selected → the type's own tint; unselected → neutral. The
                     // colour appears only on the active selector, never always.
                     .foregroundStyle(selected == type ? type.tint : Color.primary)
+                    // e053f53: noticeable horizontal air between the label
+                    // cluster and the pill edge (vertical stays — bar height).
+                    .padding(.horizontal, 8)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background {

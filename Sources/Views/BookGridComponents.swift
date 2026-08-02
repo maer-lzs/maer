@@ -19,12 +19,22 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     return ""
 }
 
-/// cb1f658 (1): ONE meta line under the title — "Author · 4 hr 57 min left".
-/// The third cell line died; without progress only the author stands, and a
-/// cell with neither keeps a space so grid rows stay equally tall. Pure.
-nonisolated func bookMetaLine(author: String?, status: String?) -> String {
-    let parts = [author, status].compactMap { $0 }.filter { !$0.isEmpty }
-    return parts.isEmpty ? " " : parts.joined(separator: " · ")
+/// 66f974c KORREKTUR: the third line is BACK and ALWAYS filled — the mixed
+/// line made the time vanish for the ~95 % unstarted majority. Started →
+/// remaining ("4 hr 57 min left"); unstarted → the TOTAL duration
+/// ("8 hr 41 min"); finished → Completed. No empty reserve possible, and a
+/// runtime→remaining switch only changes TEXT, never height. Pure.
+nonisolated func bookTimeLine(progress: BookProgress?, duration: Double?) -> String {
+    if let progress {
+        if progress.isFinished { return String(localized: "Completed") }
+        if progress.isStarted, let t = progress.remainingText(bookDuration: duration) { return t }
+    }
+    guard let duration, duration > 0 else { return " " }
+    let totalMinutes = Int(duration) / 60
+    let hours = totalMinutes / 60
+    let minutes = totalMinutes % 60
+    if hours > 0 { return String(localized: "\(hours) hr \(minutes) min") }
+    return String(localized: "\(minutes) min")
 }
 
 // MARK: - Context menu (Haptic Touch)
@@ -252,13 +262,14 @@ struct BookGridCell: View {
                     .font(.caption)
                     .foregroundStyle(.primary)
                     .lineLimit(2, reservesSpace: true)
-                // cb1f658 (1): author and remaining time share ONE meta
-                // line (dot separator, native truncation) — the third line's
-                // reserve is gone, the grid packs evenly. Jank-free by
-                // construction: no element grows in later.
-                Text(bookMetaLine(
-                    author: entry.item.author,
-                    status: entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) }))
+                Text(entry.item.author ?? " ")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1, reservesSpace: true)
+                // 66f974c: the time line is ALWAYS filled — remaining when
+                // started, total runtime otherwise (evenly dense grid, no
+                // grow-in jank: only the text changes, never the height).
+                Text(bookTimeLine(progress: entry.progress, duration: entry.item.media?.duration))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1, reservesSpace: true)

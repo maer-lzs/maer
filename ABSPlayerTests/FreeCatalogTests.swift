@@ -59,10 +59,10 @@ struct FreeCatalogTests {
     @Test("Archive tracks: 64kb rendition only, name order, encoded URLs")
     func archiveTracks() {
         let files: [ArchiveFile] = [
-            .init(name: "b_02_64kb.mp3", length: "1:00", title: nil),
-            .init(name: "b_01_64kb.mp3", length: "30", title: nil),
-            .init(name: "b_01.ogg", length: "30", title: nil),
-            .init(name: "cover.jpg", length: nil, title: nil),
+            .init(name: "b_02_64kb.mp3", length: "1:00", title: nil, format: nil),
+            .init(name: "b_01_64kb.mp3", length: "30", title: nil, format: nil),
+            .init(name: "b_01.ogg", length: "30", title: nil, format: nil),
+            .init(name: "cover.jpg", length: nil, title: nil, format: nil),
         ]
         let tracks = FreeCatalog.archiveTracks(identifier: "item x", files: files)
         #expect(tracks.count == 2)
@@ -152,6 +152,51 @@ struct FreeCatalogTests {
         {"response":{"docs":[{"identifier":"x","creator":42}]}}
         """.utf8)
         #expect(throws: (any Error).self) { _ = try ArchiveOrgClient.decodePopular(broken) }
+    }
+
+    @Test("37e4a23: format chain — VBR-only georgeblood plays, FLAC/thumb skipped, 64kb still first")
+    func formatChain() throws {
+        let data = try CorpusFixture.data("georgeblood-vbr", ext: "json", subdirectory: "WireCorpus")
+        let meta = try JSONDecoder().decode(ArchiveOrgClient.MetadataResponse.self, from: data)
+        let tracks = FreeCatalog.archiveTracks(identifier: "78_der-rosenkavalier_gbia0000083b",
+                                               files: meta.files ?? [])
+        // VBR MP3 group wins (no 64/128kb rendition exists); FLAC + thumb drop.
+        #expect(tracks.count == 2)
+        // Real georgeblood names: spaces, brackets, hyphens — hard-encoded,
+        // nothing but unreserved characters survives raw.
+        let url = try #require(tracks.first?.contentUrl)
+        #expect(url == "https://archive.org/download/78_der-rosenkavalier_gbia0000083b/Der%20Rosenkavalier%20-%20Richard%20Strauss%20-%20Walzerfolge%20%28Teil%201%29-restored.mp3")
+        #expect(URL(string: url) != nil)
+        // 64kb stays the FIRST preference when present.
+        let mixed = [
+            ArchiveFile(name: "a_vbr.mp3", length: "10", title: nil, format: "VBR MP3"),
+            ArchiveFile(name: "a_64kb.mp3", length: "10", title: nil, format: "64Kbps MP3"),
+        ]
+        #expect(FreeCatalog.preferredAudioFiles(mixed).map(\.name) == ["a_64kb.mp3"])
+        // No format field at all → legacy 64kb filename fallback.
+        let legacy = [ArchiveFile(name: "x_64kb.mp3", length: "5", title: nil, format: nil),
+                      ArchiveFile(name: "x.png", length: nil, title: nil, format: nil)]
+        #expect(FreeCatalog.preferredAudioFiles(legacy).map(\.name) == ["x_64kb.mp3"])
+        // Nothing streamable → empty (plausibility gate at the call site).
+        let none = [ArchiveFile(name: "x.flac", length: "5", title: nil, format: "24bit Flac")]
+        #expect(FreeCatalog.preferredAudioFiles(none).isEmpty)
+    }
+
+    @Test("37e4a23: path-segment encoding — umlauts, apostrophes, brackets, spaces")
+    func pathEncoding() {
+        #expect(FreeCatalog.encodedPathSegment("Grieg - Solveig's Lied (Solvejgs sang).mp3")
+                == "Grieg%20-%20Solveig%27s%20Lied%20%28Solvejgs%20sang%29.mp3")
+        #expect(FreeCatalog.encodedPathSegment("Höhle der Löwen.mp3")
+                == "H%C3%B6hle%20der%20L%C3%B6wen.mp3")
+        #expect(FreeCatalog.encodedPathSegment("plain_64kb.mp3") == "plain_64kb.mp3")
+    }
+
+    @Test("5034add: activation hierarchy — master beats feature beats service")
+    func activation() {
+        #expect(FreeCatalogActivation.effective(master: true, feature: true, service: true))
+        #expect(!FreeCatalogActivation.effective(master: false, feature: true, service: true))
+        #expect(!FreeCatalogActivation.effective(master: true, feature: false, service: true))
+        #expect(!FreeCatalogActivation.effective(master: true, feature: true, service: false))
     }
 
     @Test("Decoders throw on the wire corpus (no silent empty rows)")

@@ -46,8 +46,11 @@ struct HomeView: View {
     @State private var recentlyAddedItems: [LibraryItem] = []
     /// 34c36e1: free-catalog row data — loaded once per session in
     /// compute() (retry rides the recompute token like everything else).
-    @State private var freeCatalogRows = FreeCatalogLoader.Rows()
-    @State private var freeCatalogLoaded = false
+    /// cb99bf6: shared store — the audiobooks tab row reads the same fill.
+    @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    /// 5034add: master flip hides the Home surfaces live (loaded rows stay
+    /// in the store; the render gate wins).
+    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     /// 7edb21b: tapped Discover book → detail sheet (PD badge + takeover).
     @State private var discoverBookDetail: LibraryItem?
 
@@ -106,9 +109,11 @@ struct HomeView: View {
                     // 0714d26/34c36e1: free-catalog rows — data loads in
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
-                    FreeCatalogRows(playerCoordinator: playerCoordinator,
-                                    freeMusic: freeCatalogRows.freeMusic,
-                                    classical: freeCatalogRows.classical)
+                    if freeCatalogsMaster {
+                        FreeCatalogRows(playerCoordinator: playerCoordinator,
+                                        freeMusic: freeCatalogStore.rows.freeMusic,
+                                        classical: freeCatalogStore.rows.classical)
+                    }
                     upNextSection
                     radioSection
                     latestEpisodesSection
@@ -260,7 +265,8 @@ struct HomeView: View {
                         // (pure discoverMix, cap 3) with the honest Discover-
                         // style reason line; tap opens the detail sheet.
                         let mixed = FreeCatalog.discoverMix(
-                            recommendations: shown, books: freeCatalogRows.discoverBooks)
+                            recommendations: shown,
+                            books: freeCatalogsMaster ? freeCatalogStore.rows.discoverBooks : [])
                         ForEach(Array(mixed.enumerated()), id: \.offset) { _, slot in
                             Group {
                                 if let result = slot.rec {
@@ -498,12 +504,8 @@ struct HomeView: View {
         // 34c36e1: free-catalog rows load HERE (compute always runs) — once
         // per session, but retried while empty (a failed first pass heals on
         // the next recompute instead of deciding forever, Y37 class).
-        if !freeCatalogLoaded, NetworkMonitor.shared.isConnected {
-            let loadedRows = await FreeCatalogLoader.load()
-            freeCatalogLoaded = !loadedRows.discoverBooks.isEmpty
-                || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty
-            BottomBarState.shared.runWhenCalm { freeCatalogRows = loadedRows }
-        }
+        // cb99bf6: the fill lives in the shared store now.
+        await freeCatalogStore.ensureLoaded()
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 

@@ -1,0 +1,27 @@
+{
+  "metadata" : {
+    "title" : "Der Rosenkavalier",
+    "creator" : [ "Richard Strauss", "Orchester der Staatsoper Berlin" ]
+  },
+  "files" : [
+    {
+      "name" : "Der Rosenkavalier - Richard Strauss - Walzerfolge (Teil 1)-restored.mp3",
+      "format" : "VBR MP3",
+      "length" : "03:14"
+    },
+    {
+      "name" : "Der Rosenkavalier - Richard Strauss - Walzerfolge (Teil 2)-restored.mp3",
+      "format" : "VBR MP3",
+      "length" : "02:58"
+    },
+    {
+      "name" : "Der Rosenkavalier - Richard Strauss - Walzerfolge (Teil 1)-restored.flac",
+      "format" : "24bit Flac",
+      "length" : "03:14"
+    },
+    {
+      "name" : "__ia_thumb.jpg",
+      "format" : "Item Tile"
+    }
+  ]
+}
