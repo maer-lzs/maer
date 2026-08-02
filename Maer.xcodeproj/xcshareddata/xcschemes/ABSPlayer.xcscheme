@@ -30,8 +30,14 @@
       shouldUseLaunchSchemeArgsEnv = "YES"
       shouldAutocreateTestPlan = "YES">
       <Testables>
+         <!-- 8b4327c-Runde/the owner-Go 03.08.: the unit suite runs ONLY in the
+              ABSPlayerTests scheme — inside the UI scheme it was a pure
+              duplicate that doubled every full run (~470 tests twice).
+              skipped=YES keeps the reference visible and the intent
+              documented; thoroughness is unchanged (both schemes stay
+              mandatory gates). -->
          <TestableReference
-            skipped = "NO"
+            skipped = "YES"
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"

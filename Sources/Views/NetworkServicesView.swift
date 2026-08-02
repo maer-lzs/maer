@@ -35,6 +35,7 @@ struct NetworkServicesView: View {
                     serviceLabel(NetworkServiceNames.lyrics,
                                  purpose: "Open lyrics lookup when your server has none.")
                 }
+                .accessibilityIdentifier("network-lrclib-toggle")
                 Toggle(isOn: $homeRecommendations) {
                     serviceLabel(NetworkServiceNames.appleCatalog,
                                  purpose: "Discover and Rediscover suggestions; searching the catalog and genre charts stays on demand.")

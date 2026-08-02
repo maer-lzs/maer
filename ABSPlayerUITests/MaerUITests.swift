@@ -780,10 +780,15 @@ nonisolated final class MaerUITests: XCTestCase {
         var swipes = 0
         while !network.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
         XCTAssertTrue(network.waitForExistence(timeout: 10)); network.tap()
-        let lrclib = app.switches.matching(NSPredicate(format: "label CONTAINS %@", "LRCLIB")).firstMatch
+        // 8b4327c: id instead of the label predicate the comment above bans.
+        let lrclib = app.switches["network-lrclib-toggle"].firstMatch
         XCTAssertTrue(lrclib.waitForExistence(timeout: 10), "LRCLIB row must exist on the services page")
         XCTAssertEqual(lrclib.value as? String, after,
                        "the services toggle must mirror the SAME key the Music pill changed")
+        // 8b4327c: the itunes toggle id gets a REAL assertion (same one-truth
+        // rule — it shares homeRecommendations with the Podcasts pill).
+        let itunes = app.switches["network-itunes-toggle"].firstMatch
+        XCTAssertTrue(itunes.exists, "the Apple-catalog toggle must carry its id")
         app.navigationBars.buttons.firstMatch.tap()
         // Suggestion languages: row exists, list multi-selects (second pick).
         let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
@@ -1053,6 +1058,50 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Seed Radio One"].firstMatch.waitForExistence(timeout: 10),
                       "playback must keep running")
         snap(app, "radio-title-tap-detail")
+        app.terminate()
+    }
+
+    /// 8b4327c (2): the playlist-card shuffle badge is a nested button
+    /// inside the navigation button — the regression class is a tap that
+    /// NAVIGATES instead of playing. Badge tap ⇒ playback starts, the
+    /// detail page does NOT open.
+    func testPlaylistShuffleBadgePlaysWithoutNavigating() {
+        let app = launchSeeded()
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15))
+        music.tap()
+        XCTAssertTrue(app.staticTexts["Seed Playlist"].firstMatch.waitForExistence(timeout: 15))
+        let badge = app.buttons["playlist-shuffle-badge"].firstMatch
+        XCTAssertTrue(badge.waitForExistence(timeout: 10), "the shuffle badge must exist on the card")
+        badge.tap()
+        // Playback bound to the item: the mini bar appears with the seeded
+        // song ("Seed Song" — the mini bar's a11y label is the item title).
+        XCTAssertTrue(app.buttons["Seed Song"].firstMatch.waitForExistence(timeout: 15),
+                      "the badge tap must start playback")
+        // …and the card tap did NOT navigate (no pushed detail nav bar).
+        XCTAssertFalse(app.navigationBars["Seed Playlist"].exists,
+                       "the badge tap must not open the playlist detail")
+        app.terminate()
+    }
+
+    /// 8b4327c (4): the OPML-export micro path — freshly security-changed
+    /// (1d4c348), so the entry is anchored: source page → export → share
+    /// link appears. The system share sheet is where the assertion ends.
+    func testOPMLExportPath() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        app.buttons["open-settings"].firstMatch.tap()
+        let source = app.buttons["settings-podcast-source"].firstMatch
+        var swipes = 0
+        while !source.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
+        let export = app.buttons["opml-export"].firstMatch
+        swipes = 0
+        while !export.exists && swipes < 8 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(export.waitForExistence(timeout: 10), "export entry must exist (seed has real subscriptions)")
+        export.tap()
+        XCTAssertTrue(app.buttons["opml-share-link"].firstMatch.waitForExistence(timeout: 10),
+                      "the share link must appear after export")
         app.terminate()
     }
 
