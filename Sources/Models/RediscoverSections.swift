@@ -24,6 +24,9 @@ nonisolated enum RediscoverSections {
         case unheardSince(added: Date)
         /// Volume N of a series whose predecessor is finished.
         case nextInSeries(volume: Int)
+        /// 5dcbf21: a subscribed show long unheard that still has unplayed
+        /// episodes ("Lange nicht gehört · zuletzt vor N Wochen").
+        case showDormant(weeks: Int)
     }
 
     struct Pick: Equatable {
@@ -33,10 +36,15 @@ nonisolated enum RediscoverSections {
 
     /// Inputs are plain value tuples so every caller (books, episodes, albums)
     /// can feed the same shapes; timestamps in seconds since 1970.
+    /// 5dcbf21: share cap for the NEW show source — sinngemäß the 2-of-10
+    /// continue rule: shows never displace books/episodes beyond a fifth.
+    static func showCap(limit: Int) -> Int { max(2, limit / 5) }
+
     static func picks(
         paused: [(id: String, lastPlayed: TimeInterval)],
         unheard: [(id: String, addedAt: TimeInterval)],
         seriesNext: [(id: String, volume: Int)],
+        showsDormant: [(id: String, lastPlayed: TimeInterval)] = [],
         now: Date,
         daySeed: Int,
         limit: Int
@@ -52,13 +60,20 @@ nonisolated enum RediscoverSections {
             .map { Pick(id: $0.id, reason: .unheardSince(added: Date(timeIntervalSince1970: $0.addedAt))) }
         let seriesPicks: [Pick] = seriesNext
             .map { Pick(id: $0.id, reason: .nextInSeries(volume: $0.volume)) }
+        // 5dcbf21: dormant shows share the paused threshold (one anchor, no
+        // second constant) — "long unheard" means the same everywhere.
+        let showPicks: [Pick] = showsDormant
+            .filter { nowT - $0.lastPlayed > pausedAfter && $0.lastPlayed > 0 }
+            .map { Pick(id: $0.id, reason: .showDormant(weeks: Int((nowT - $0.lastPlayed) / (7 * 24 * 3600)))) }
 
         // Deterministic daily rotation: seeded shuffle per source (stable within
         // a day), then round-robin across the sources in priority order.
-        let sources = [pausedPicks, unheardPicks, seriesPicks]
+        let sources = [pausedPicks, unheardPicks, seriesPicks, showPicks]
             .enumerated()
             .map { shuffled($0.element, seed: UInt64(bitPattern: Int64(daySeed)) &+ UInt64($0.offset &* 7919)) }
 
+        let cap = showCap(limit: limit)
+        var shows = 0
         var out: [Pick] = []
         var seen = Set<String>()
         var index = 0
@@ -66,7 +81,10 @@ nonisolated enum RediscoverSections {
             var appended = false
             for source in sources where index < source.count {
                 let pick = source[index]
+                // Share cap: shows above their fifth are skipped, never queued.
+                if case .showDormant = pick.reason, shows >= cap { appended = true; continue }
                 if seen.insert(pick.id).inserted {
+                    if case .showDormant = pick.reason { shows += 1 }
                     out.append(pick)
                     if out.count == limit { return out }
                 }

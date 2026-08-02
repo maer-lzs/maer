@@ -142,5 +142,21 @@ struct PodcastListenLogTests {
         log.noteIfPlayed(guid: guid2, duration: 600, episodeTitle: "E2", showTitle: "S", feedURL: "")
         #expect(log.entries[guid2] == nil)
     }
+
+    @Test("01fab43: car-audio candidates — external routes only, built-ins drop")
+    func carCandidates() {
+        let outputs = [
+            (uid: "bt1", name: "VW Golf", portType: "BluetoothA2DPOutput"),
+            (uid: "sp", name: "Speaker", portType: "Speaker"),
+            (uid: "rc", name: "Receiver", portType: "Receiver"),
+            (uid: "cp", name: "CarPlay", portType: "CarAudio"),
+            (uid: "hfp", name: "Old Kit", portType: "BluetoothHFP"),
+        ]
+        let picked = DriveModeController.carAudioCandidates(outputs)
+        #expect(picked.map(\.uid) == ["bt1", "cp", "hfp"])
+        // Nothing external connected → empty (the settings show the hint).
+        #expect(DriveModeController.carAudioCandidates(
+            [(uid: "sp", name: "Speaker", portType: "Speaker")]).isEmpty)
+    }
 }
 #endif

@@ -119,5 +119,32 @@ struct AuthorPortraitRuleTests {
         #expect(LibraryViewModel.authorFilterEnabled(workCount: 2))
         #expect(LibraryViewModel.authorFilterEnabled(workCount: 12))
     }
+
+    @Test("5dcbf21: dormant shows join with a share cap and the shared threshold")
+    func dormantShows() {
+        let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
+        let old = now.timeIntervalSince1970 - 30 * 24 * 3600   // > pausedAfter
+        let fresh = now.timeIntervalSince1970 - 2 * 24 * 3600  // recently heard
+        let shows = (0..<8).map { (id: "show-\($0)", lastPlayed: old) }
+            + [(id: "show-fresh", lastPlayed: fresh)]
+        let picks = RediscoverSections.picks(
+            paused: (0..<10).map { (id: "book-\($0)", lastPlayed: old) },
+            unheard: [], seriesNext: [],
+            showsDormant: shows,
+            now: now, daySeed: 42, limit: 10)
+        let showPicks = picks.filter { if case .showDormant = $0.reason { return true }; return false }
+        // Share cap: max limit/5 = 2 of 10 — books are never displaced.
+        #expect(showPicks.count == RediscoverSections.showCap(limit: 10))
+        #expect(showPicks.count == 2)
+        // Recently heard shows never qualify (shared pausedAfter threshold).
+        #expect(!picks.contains { $0.id == "show-fresh" })
+        // Weeks ride in the reason for the honest subtitle.
+        if case .showDormant(let weeks) = showPicks[0].reason { #expect(weeks >= 4) }
+        // Without shows the behavior is untouched (default parameter).
+        let plain = RediscoverSections.picks(
+            paused: [(id: "b", lastPlayed: old)], unheard: [], seriesNext: [],
+            now: now, daySeed: 42, limit: 10)
+        #expect(plain.map(\.id) == ["b"])
+    }
 }
 #endif

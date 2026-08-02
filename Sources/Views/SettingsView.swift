@@ -577,9 +577,15 @@ struct SettingsView: View {
                     Text("Forget car audio")
                 }
             } else {
-                let outputs = DriveModeController.currentOutputs()
+                // 01fab43: EXTERNAL routes only (the built-in speaker used to
+                // crowd the list as a pointless choice) + log-first
+                // enumeration; connected device → ONE prominent remember tap.
+                let outputs = DriveModeController.pickerCandidates()
                 if outputs.isEmpty {
-                    Text("Connect your car audio, then choose it here.")
+                    // The honest iOS limit, made actionable: apps cannot list
+                    // paired-but-disconnected devices (and CoreBluetooth
+                    // stays taboo — zero-permission rule).
+                    Text("Connect your car audio once — it will appear here to remember.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(outputs, id: \.uid) { output in
@@ -588,8 +594,10 @@ struct SettingsView: View {
                             UserDefaults.standard.set(output.name, forKey: AppStorageKeys.driveModeCarRouteName)
                             carRouteName = output.name
                         } label: {
-                            Label(output.name, systemImage: "speaker.wave.2")
+                            Label("Remember \(output.name) as car audio", systemImage: "car.fill")
+                                .font(.body.weight(.semibold))
                         }
+                        .accessibilityIdentifier("drive-remember-route")
                     }
                 }
             }

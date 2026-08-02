@@ -120,4 +120,38 @@ final class DriveModeController: ObservableObject {
     nonisolated static func currentOutputs() -> [(uid: String, name: String)] {
         AVAudioSession.sharedInstance().currentRoute.outputs.map { ($0.uid, $0.portName) }
     }
+
+    /// 01fab43 (1): pure candidate filter — the picker offers EXTERNAL routes
+    /// only. The built-in speaker/receiver were listed before (a pointless
+    /// "car audio" choice that crowded the real device out); every Bluetooth
+    /// flavor plus CarPlay/USB/headphone ports stays in.
+    nonisolated static let carPortTypes: Set<String> = [
+        AVAudioSession.Port.bluetoothA2DP.rawValue,
+        AVAudioSession.Port.bluetoothHFP.rawValue,
+        AVAudioSession.Port.bluetoothLE.rawValue,
+        AVAudioSession.Port.carAudio.rawValue,
+        AVAudioSession.Port.usbAudio.rawValue,
+        AVAudioSession.Port.headphones.rawValue,
+    ]
+
+    nonisolated static func carAudioCandidates(
+        _ outputs: [(uid: String, name: String, portType: String)]
+    ) -> [(uid: String, name: String)] {
+        outputs.filter { carPortTypes.contains($0.portType) }.map { ($0.uid, $0.name) }
+    }
+
+    /// 01fab43 (1): the connected-route candidates for the picker, plus the
+    /// LOG-FIRST enumeration — every route with its portType lands in the
+    /// log, so a device report shows exactly what iOS enumerates.
+    nonisolated static func pickerCandidates() -> [(uid: String, name: String)] {
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+            .map { (uid: $0.uid, name: $0.portName, portType: $0.portType.rawValue) }
+        for output in outputs {
+            Logger.library.notice("DRIVEMODE route: \(output.name, privacy: .public) type=\(output.portType, privacy: .public)")
+        }
+        let inputs = (AVAudioSession.sharedInstance().availableInputs ?? [])
+            .map { "\($0.portName)=\($0.portType.rawValue)" }
+        Logger.library.notice("DRIVEMODE availableInputs: \(inputs.joined(separator: ", "), privacy: .public)")
+        return carAudioCandidates(outputs)
+    }
 }

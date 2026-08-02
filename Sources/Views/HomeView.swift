@@ -333,7 +333,19 @@ struct HomeView: View {
     private func rediscoverTile(_ pick: RediscoverSections.Pick) -> some View {
         // TF4/E1: the shared scope is the ONE observer of download/network state
         // for the tile; MediaTile stays value-driven off its `unavailable`.
-        if let entry = libraryViewModel.entry(id: pick.id) {
+        // 5dcbf21: show picks open the SHOW page (no single item behind them).
+        if pick.id.hasPrefix(Self.showPickPrefix) {
+            let feedURL = String(pick.id.dropFirst(Self.showPickPrefix.count))
+            if let show = PodcastSubscriptions.shared.shows.first(where: { $0.feedURL == feedURL }) {
+                MediaTile(
+                    title: show.title,
+                    subtitle: rediscoverSubtitle(pick.reason),
+                    coverURL: show.artworkURL.flatMap { URL(string: $0) },
+                    placeholderSystemImage: "mic",
+                    onTap: { pushRoute(.show(feedURL: feedURL)) }
+                )
+            }
+        } else if let entry = libraryViewModel.entry(id: pick.id) {
             MediaAvailabilityScope(itemId: entry.id) { unavailable in
                 MediaTile(
                     title: entry.item.title,
@@ -373,6 +385,8 @@ struct HomeView: View {
             return volume > 0
                 ? String(localized: "Volume \(volume) of your series")
                 : String(localized: "Next volume of your series")
+        case .showDormant(let weeks):
+            return String(localized: "Long unheard · last \(weeks) weeks ago")
         }
     }
 
@@ -566,12 +580,30 @@ struct HomeView: View {
                       !(next.progress?.isStarted ?? false) else { return nil }
                 return (next.id, RediscoverSections.volume(fromSeriesName: next.item.media?.metadata?.seriesName) ?? 0)
             }
+        // 5dcbf21 (d): subscribed shows LONG unheard that still hold unplayed
+        // episodes — last listen per feed from the local listen log (the same
+        // "no profile leaves the device" base), threshold shared in picks().
+        let log = PodcastListenLog.shared.entries
+        var lastByFeed: [String: Double] = [:]
+        for entry in log.values where !entry.feedURL.isEmpty {
+            lastByFeed[entry.feedURL] = max(lastByFeed[entry.feedURL] ?? 0, entry.playedAt)
+        }
+        let showsDormant = PodcastSubscriptions.shared.shows.compactMap { show -> (id: String, lastPlayed: Double)? in
+            guard let last = lastByFeed[show.feedURL],
+                  show.episodes.contains(where: { log[$0.guid]?.isPlayed != true })
+            else { return nil }
+            return (Self.showPickPrefix + show.feedURL, Self.seconds(last))
+        }
         let now = Date()
         return RediscoverSections.picks(
             paused: paused, unheard: unheard, seriesNext: seriesNext,
+            showsDormant: showsDormant,
             now: now, daySeed: RediscoverSections.daySeed(for: now),
             limit: Self.rediscoverPoolLimit)
     }
+
+    /// 5dcbf21: show picks ride the feed URL behind a marker prefix.
+    private static let showPickPrefix = "rediscover-show:"
 
     /// Y4a: the horizontal row carries the full pool, capped sanely.
     private static let rediscoverPoolLimit = 24
