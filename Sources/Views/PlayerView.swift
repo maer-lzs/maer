@@ -247,7 +247,9 @@ struct PlayerView: View {
                     // station-color field carries a small, sharp logo (or the SF
                     // symbol). Shared with the station rows via `RadioArtwork`.
                     RadioArtwork(stationID: viewModel.item?.id ?? "",
-                                 faviconURL: coverURL, isHero: true)
+                                 faviconURL: coverURL,
+                                 name: viewModel.item?.media.metadata?.title ?? "",
+                                 isHero: true)
                         .aspectRatio(1, contentMode: .fit)
                 }
             } else {

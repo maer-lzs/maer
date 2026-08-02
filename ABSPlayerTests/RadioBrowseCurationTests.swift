@@ -80,6 +80,60 @@ struct RadioBrowseCurationTests {
         #expect(RadioBrowseCuration.filtered(curated, query: " ").count == curated.count)
     }
 
+    @Test("cd5cc4a: DE canon — aliases pool onto one entry, raw names kept for bystateexact")
+    func canonAliases() {
+        let raw = [
+            RadioBrowseEntry(name: "NRW", stationCount: 12),
+            RadioBrowseEntry(name: "North Rhine-Westphalia", stationCount: 20),
+            RadioBrowseEntry(name: "Nordrhein-Westfalen", stationCount: 8),
+            RadioBrowseEntry(name: "Nordrhein Westfalen", stationCount: 2),
+            RadioBrowseEntry(name: "Bavaria", stationCount: 15),
+            RadioBrowseEntry(name: "Germany", stationCount: 99),
+            RadioBrowseEntry(name: "Elsass", stationCount: 3),
+        ]
+        let curated = RadioRegionCanon.curated(raw, countryCode: "DE", otherLabel: "Other")!
+        // NRW pools all four variants; every RAW name survives for bystateexact.
+        let nrw = curated.first { $0.display == "Nordrhein-Westfalen" }
+        #expect(nrw?.stationCount == 42)
+        #expect(Set(nrw?.queryNames ?? []) == ["NRW", "North Rhine-Westphalia", "Nordrhein-Westfalen", "Nordrhein Westfalen"])
+        #expect(curated.first { $0.display == "Bayern" }?.queryNames == ["Bavaria"])
+        // Nationwide pseudo-state drops entirely; unmapped pools into Other (last).
+        #expect(!curated.contains { $0.queryNames.contains("Germany") })
+        #expect(curated.last?.display == "Other")
+        #expect(curated.last?.queryNames == ["Elsass"])
+        // Count-desc among canon entries.
+        #expect(curated.first?.display == "Nordrhein-Westfalen")
+    }
+
+    @Test("cd5cc4a: canon fallback — no table means nil (generic curation stays)")
+    func canonFallback() {
+        let raw = [RadioBrowseEntry(name: "Bretagne", stationCount: 5)]
+        #expect(RadioRegionCanon.curated(raw, countryCode: "FR", otherLabel: "Other") == nil)
+        #expect(RadioRegionCanon.curated(raw, countryCode: nil, otherLabel: "Other") == nil)
+        // CH umlaut/language variants meet their canton.
+        let ch = RadioRegionCanon.curated([
+            RadioBrowseEntry(name: "Geneva", stationCount: 4),
+            RadioBrowseEntry(name: "Genève", stationCount: 6),
+            RadioBrowseEntry(name: " Zürich", stationCount: 9),
+        ], countryCode: "CH", otherLabel: "Other")!
+        #expect(ch.first { $0.display == "Genf" }?.stationCount == 10)
+        #expect(ch.first { $0.display == "Zürich" }?.queryNames == [" Zürich"])
+    }
+
+    @Test("cd5cc4a: favicon gate — size bounds and placeholder initials")
+    func faviconGate() {
+        #expect(RadioFaviconGate.acceptable(pixelWidth: 64, pixelHeight: 64))
+        #expect(RadioFaviconGate.acceptable(pixelWidth: 512, pixelHeight: 64))
+        #expect(!RadioFaviconGate.acceptable(pixelWidth: 63, pixelHeight: 512))
+        #expect(!RadioFaviconGate.acceptable(pixelWidth: 16, pixelHeight: 16))
+        #expect(RadioFaviconGate.initials(for: "Radio Paradise") == "RP")
+        #expect(RadioFaviconGate.initials(for: "104.6 RTL") == "1R")
+        #expect(RadioFaviconGate.initials(for: "SWR3") == "S")
+        #expect(RadioFaviconGate.initials(for: "rock-antenne/hamburg") == "RA")
+        #expect(RadioFaviconGate.initials(for: "  ") == nil)
+        #expect(RadioFaviconGate.initials(for: "***") == nil)
+    }
+
     @Test("Country cascade: explicit choice > region-implied > locale")
     func countryCascade() {
         #expect(RadioCountryCascade.effectiveCode(explicit: "CH", regionImplied: "DE", locale: "DE") == "CH")

@@ -34,7 +34,8 @@ struct RadioStationRow: View {
                 placeholderSystemImage: "dot.radiowaves.left.and.right",
                 coverOverride: RadioArtwork(
                     stationID: station.id,
-                    faviconURL: station.faviconURL.flatMap { URL(string: $0) })
+                    faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                    name: station.name)
             )
             .padding(.horizontal)
             .contentShape(Rectangle())
@@ -66,7 +67,8 @@ struct RadioStationCard: View {
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 RadioArtwork(stationID: station.id,
-                             faviconURL: station.faviconURL.flatMap { URL(string: $0) })
+                             faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                             name: station.name)
                     .frame(width: Self.width, height: Self.width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 Text(station.name)

@@ -481,6 +481,178 @@ nonisolated enum RadioBrowseCuration {
 /// b1ab99d point 3: which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING — pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
+/// cd5cc4a (2): canonical region tables for the CORE countries — DE/AT
+/// Bundesländer, CH Kantone. This deliberately overrides the "no country
+/// lists" rule: raw Radio-Browser state names (any language, abbreviation,
+/// or typo variant) map onto ONE canon entry via aliases, the by-state
+/// query then runs against ALL mapped raw names (existing merge mechanic).
+/// Unmapped names pool into ONE trailing "Other" entry; nationwide
+/// pseudo-states DROP (the "Popular in <country>" section carries them).
+/// Countries without a table fall back to the generic curation. Pure data —
+/// extending a table is data entry, never new code.
+nonisolated enum RadioRegionCanon {
+    struct Entry {
+        let display: String
+        let aliases: [String]
+        init(_ display: String, _ aliases: [String] = []) {
+            self.display = display
+            self.aliases = aliases
+        }
+    }
+
+    /// Canon key: the curation merge key PLUS hyphen→space folding, so
+    /// "Nordrhein Westfalen" and "Nordrhein-Westfalen" meet.
+    static func canonKey(_ name: String) -> String {
+        RadioBrowseCuration.mergeKey(name)
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ").joined(separator: " ")
+    }
+
+    static let tables: [String: [Entry]] = [
+        "DE": [
+            Entry("Baden-Württemberg", ["BW", "Schwaben"]),
+            Entry("Bayern", ["Bavaria", "BY"]),
+            Entry("Berlin", ["BE"]),
+            Entry("Brandenburg", ["BB"]),
+            Entry("Bremen", ["HB"]),
+            Entry("Hamburg", ["HH"]),
+            Entry("Hessen", ["Hesse", "HE"]),
+            Entry("Mecklenburg-Vorpommern", ["Mecklenburg-Western Pomerania", "MV", "Mecklenburg"]),
+            Entry("Niedersachsen", ["Lower Saxony", "NI"]),
+            Entry("Nordrhein-Westfalen", ["NRW", "North Rhine-Westphalia", "Northrhine Westphalia", "NW", "Westfalen", "Rheinland"]),
+            Entry("Rheinland-Pfalz", ["Rhineland-Palatinate", "RLP", "RP", "Pfalz"]),
+            Entry("Saarland", ["SL"]),
+            Entry("Sachsen", ["Saxony", "SN"]),
+            Entry("Sachsen-Anhalt", ["Saxony-Anhalt", "ST"]),
+            Entry("Schleswig-Holstein", ["SH"]),
+            Entry("Thüringen", ["Thuringia", "TH"]),
+        ],
+        "AT": [
+            Entry("Burgenland"),
+            Entry("Kärnten", ["Carinthia"]),
+            Entry("Niederösterreich", ["Lower Austria"]),
+            Entry("Oberösterreich", ["Upper Austria"]),
+            Entry("Salzburg"),
+            Entry("Steiermark", ["Styria"]),
+            Entry("Tirol", ["Tyrol"]),
+            Entry("Vorarlberg"),
+            Entry("Wien", ["Vienna"]),
+        ],
+        "CH": [
+            Entry("Zürich", ["ZH"]),
+            Entry("Bern", ["Berne", "BE"]),
+            Entry("Luzern", ["Lucerne", "LU"]),
+            Entry("Uri", ["UR"]),
+            Entry("Schwyz", ["SZ"]),
+            Entry("Obwalden", ["OW"]),
+            Entry("Nidwalden", ["NW"]),
+            Entry("Glarus", ["GL"]),
+            Entry("Zug", ["ZG"]),
+            Entry("Freiburg", ["Fribourg", "FR"]),
+            Entry("Solothurn", ["SO"]),
+            Entry("Basel-Stadt", ["Basel City", "BS", "Basel"]),
+            Entry("Basel-Landschaft", ["Baselland", "BL"]),
+            Entry("Schaffhausen", ["SH"]),
+            Entry("Appenzell Ausserrhoden", ["AR"]),
+            Entry("Appenzell Innerrhoden", ["AI"]),
+            Entry("St. Gallen", ["Sankt Gallen", "St.Gallen", "SG"]),
+            Entry("Graubünden", ["Grisons", "Grigioni", "GR"]),
+            Entry("Aargau", ["Argovia", "AG"]),
+            Entry("Thurgau", ["TG"]),
+            Entry("Tessin", ["Ticino", "TI"]),
+            Entry("Waadt", ["Vaud", "VD"]),
+            Entry("Wallis", ["Valais", "VS"]),
+            Entry("Neuenburg", ["Neuchâtel", "NE"]),
+            Entry("Genf", ["Geneva", "Genève", "GE"]),
+            Entry("Jura", ["JU"]),
+        ],
+    ]
+
+    /// Nationwide pseudo-states: dropped, never pooled into "Other".
+    static let nationalAliases: [String: [String]] = [
+        "DE": ["Germany", "Deutschland", "bundesweit", "deutschlandweit", "national"],
+        "AT": ["Austria", "Österreich", "österreichweit", "national"],
+        "CH": ["Switzerland", "Schweiz", "Suisse", "Svizzera", "Svizra", "national"],
+    ]
+
+    /// nil = no table for this country → callers use the generic curation.
+    /// Canon entries keep the count-desc order of the generic path (only
+    /// REPRESENTED regions appear — a zero-station tap helps nobody);
+    /// "Other" always trails.
+    static func curated(_ raw: [RadioBrowseEntry], countryCode: String?,
+                        otherLabel: String) -> [RadioBrowseCuration.Curated]? {
+        guard let code = countryCode?.uppercased(), let table = tables[code] else { return nil }
+        var aliasToCanon: [String: String] = [:]
+        for entry in table {
+            aliasToCanon[canonKey(entry.display)] = entry.display
+            for alias in entry.aliases { aliasToCanon[canonKey(alias)] = entry.display }
+        }
+        let national = Set((nationalAliases[code] ?? []).map(canonKey))
+
+        var byCanon: [String: [RadioBrowseEntry]] = [:]
+        var other: [RadioBrowseEntry] = []
+        for entry in raw {
+            let trimmed = entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            let key = canonKey(trimmed)
+            if national.contains(key) { continue }
+            if let canon = aliasToCanon[key] {
+                byCanon[canon, default: []].append(entry)
+            } else {
+                other.append(entry)
+            }
+        }
+
+        var out: [RadioBrowseCuration.Curated] = table.compactMap { entry in
+            guard let variants = byCanon[entry.display] else { return nil }
+            var seen = Set<String>()
+            return RadioBrowseCuration.Curated(
+                display: entry.display,
+                queryNames: variants.map(\.name).filter { seen.insert($0).inserted },
+                stationCount: variants.reduce(0) { $0 + $1.stationCount })
+        }
+        out.sort { a, b in
+            a.stationCount == b.stationCount
+                ? a.display.localizedCaseInsensitiveCompare(b.display) == .orderedAscending
+                : a.stationCount > b.stationCount
+        }
+        if !other.isEmpty {
+            var seen = Set<String>()
+            out.append(RadioBrowseCuration.Curated(
+                display: otherLabel,
+                queryNames: other.map(\.name).filter { seen.insert($0).inserted },
+                stationCount: other.reduce(0) { $0 + $1.stationCount }))
+        }
+        return out
+    }
+}
+
+/// cd5cc4a (1): the favicon QUALITY GATE — Radio-Browser favicons are
+/// notoriously missing, tiny, or broken. A favicon is used only when it
+/// actually decoded AND its shortest side is big enough; everything else
+/// falls back to ONE placeholder design everywhere (deterministic station
+/// gradient + initials). Pure and tested.
+nonisolated enum RadioFaviconGate {
+    /// Below this shortest side a favicon becomes a stretched stamp.
+    static let minSide = 64
+
+    static func acceptable(pixelWidth: Int, pixelHeight: Int) -> Bool {
+        min(pixelWidth, pixelHeight) >= minSide
+    }
+
+    /// Station initials for the placeholder: first character of the first
+    /// two words that start alphanumerically ("Radio Paradise" → "RP",
+    /// "104.6 RTL" → "1R"). Nothing usable → nil (callers show the glyph).
+    static func initials(for name: String) -> String? {
+        let words = name.split(whereSeparator: { $0.isWhitespace || $0 == "-" || $0 == "/" })
+        let letters = words.compactMap { word -> Character? in
+            word.first(where: { $0.isLetter || $0.isNumber })
+        }
+        guard !letters.isEmpty else { return nil }
+        return String(letters.prefix(2)).uppercased()
+    }
+}
+
 nonisolated enum RadioCountryCascade {
     static func effectiveCode(explicit: String?, regionImplied: String?, locale: String?) -> String? {
         if let explicit, !explicit.isEmpty { return explicit }

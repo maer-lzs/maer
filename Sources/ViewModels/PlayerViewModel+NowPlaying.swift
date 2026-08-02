@@ -168,14 +168,30 @@ extension PlayerViewModel {
     }
 
     func loadArtwork(coverURL: URL?) {
+        // cd5cc4a (1): radio favicons pass the same quality gate as the
+        // in-app tiles; missing/broken/tiny → the SAME deterministic
+        // gradient+initials placeholder — one design through to the lock
+        // screen and CarPlay.
+        if isLiveStream {
+            let stationID = item?.id ?? ""
+            let name = item?.media.metadata?.title ?? ""
+            Task { [weak self] in
+                let favicon = await RadioArtwork.gatedImage(for: coverURL, stationID: stationID)
+                let image = favicon ?? RadioArtwork.placeholderImage(stationID: stationID, name: name)
+                await MainActor.run {
+                    guard let self, self.isLiveStream else { return }
+                    self.artworkImage = image
+                    self.stationArtwork = image
+                    self.updateNowPlayingInfo()
+                }
+            }
+            return
+        }
         guard let coverURL else { return }
         Task { [weak self] in
             guard let image = await Self.loadImage(for: coverURL) else { return }
             await MainActor.run {
                 self?.artworkImage = image
-                // Teil 2: remember the station logo so the ICY cover can fall
-                // back to it between songs / on a lookup miss.
-                if self?.isLiveStream == true { self?.stationArtwork = image }
                 self?.updateNowPlayingInfo()
                 // X9/V8: write the RELIABLY-loaded cover to the shared app-group
                 // file the home widget reads, then refresh it. The old path wrote

@@ -327,7 +327,13 @@ struct RadioView: View {
         // b942da6: raw entries run through the pure curation (merge/filter/sort).
         if availableStates.isEmpty, let countryName = effectiveCountryName {
             let raw = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
-            availableStates = RadioBrowseCuration.curated(raw)
+            // cd5cc4a (2): core countries (DE/CH/AT) show their CANONICAL
+            // regions (aliases pooled, nationwide names dropped, unmapped
+            // pooled into "Other"); everyone else keeps the generic curation.
+            availableStates = RadioRegionCanon.curated(
+                raw, countryCode: effectiveCountryCode,
+                otherLabel: String(localized: "Other regions"))
+                ?? RadioBrowseCuration.curated(raw)
         }
         // Layout-shift: the discovery sections land as whole-section inserts —
         // apply through the shared calm gate, never mid-scroll.

@@ -382,7 +382,14 @@ struct SearchScreen: View {
                     // Y25: catalog hits say WHAT they are (today only podcast
                     // shows; a LibriVox source will add audiobooks later).
                     meta: result.kind == .catalogShow ? String(localized: "Podcast") : nil,
-                    placeholderSystemImage: Self.placeholder(result.kind)
+                    placeholderSystemImage: Self.placeholder(result.kind),
+                    // cd5cc4a (1): radio hits share the ONE gated artwork
+                    // (gradient+initials fallback) instead of the gray box.
+                    coverOverride: result.kind == .radioStation
+                        ? RadioArtwork(stationID: result.id,
+                                       faviconURL: result.coverURL,
+                                       name: result.title)
+                        : nil
                 )
                 if result.kind == .author || result.kind == .series {
                     Image(systemName: "chevron.right")
