@@ -283,12 +283,32 @@ final class PodcastSubscriptions: ObservableObject {
         ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access"]
 
     /// THE premium test: stored basic-auth credentials OR the token-URL class
-    /// OR a known members-only host. Used by the tab grouping and management.
+    /// OR a known members-only host OR a MANUAL user marking (92e25d6 — the
+    /// escape hatch for unknown patterns; one truth feeds management, tab
+    /// grouping, badges, the replace dialog AND the OPML-export guard).
     nonisolated static func isPremiumFeed(_ feedURL: String) -> Bool {
         if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
         if isTokenFeedURL(feedURL) { return true }
+        if manualPremiumFeedKeys().contains(feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
         return premiumHosts.contains { lower.contains($0) }
+    }
+
+    /// 92e25d6: manual premium markings (persisted feed keys).
+    nonisolated static func manualPremiumFeedKeys(defaults: UserDefaults = .standard) -> Set<String> {
+        Set(defaults.stringArray(forKey: AppStorageKeys.premiumMarkedFeeds) ?? [])
+    }
+
+    nonisolated static func isManuallyMarkedPremium(_ feedURL: String,
+                                                    defaults: UserDefaults = .standard) -> Bool {
+        manualPremiumFeedKeys(defaults: defaults).contains(feedKey(feedURL))
+    }
+
+    nonisolated static func setManualPremium(_ marked: Bool, feedURL: String,
+                                             defaults: UserDefaults = .standard) {
+        var keys = manualPremiumFeedKeys(defaults: defaults)
+        if marked { keys.insert(feedKey(feedURL)) } else { keys.remove(feedKey(feedURL)) }
+        defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.premiumMarkedFeeds)
     }
 
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {
@@ -412,13 +432,15 @@ final class PodcastSubscriptions: ObservableObject {
             shows[idx] = Self.merge(shows[idx], show)
         } else {
             shows.insert(show, at: 0)
-            // Y51: a NEW premium feed (credentials stored for its feedKey) that
-            // looks like an existing credential-free subscription → offer the
-            // replacement. Conservative same-show test; the user decides.
-            if PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey(show.feedURL)),
+            // Y51→97b1f7c: a NEW premium feed of ANY class (credentials,
+            // token URL, members host, manual mark — the ZEIT case never
+            // triggered because only credentials counted) that looks like an
+            // existing free subscription → offer the replacement.
+            // Conservative same-show test; the user decides.
+            if Self.isPremiumFeed(show.feedURL),
                let free = shows.first(where: {
                    $0.id != show.id
-                       && !PodcastFeedAuth.hasCredentials(feedKey: Self.feedKey($0.feedURL))
+                       && !Self.isPremiumFeed($0.feedURL)
                        && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
                }) {
                 pendingPremiumReplacement = PremiumReplacementOffer(

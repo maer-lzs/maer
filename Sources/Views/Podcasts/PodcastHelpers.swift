@@ -84,6 +84,20 @@ extension View {
                     podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
                 }
             } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
+            // 92e25d6: the manual premium marking right at the show — the
+            // escape hatch for unknown URL patterns, same truth as the
+            // management section.
+            if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
+                Button {
+                    PodcastSubscriptions.setManualPremium(false, feedURL: show.feedURL)
+                    PodcastSubscriptions.shared.objectWillChange.send()
+                } label: { Label("Remove premium marking", systemImage: "lock.slash") }
+            } else if !PodcastSubscriptions.isPremiumFeed(show.feedURL) {
+                Button {
+                    PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
+                    PodcastSubscriptions.shared.objectWillChange.send()
+                } label: { Label("Mark as Premium", systemImage: "lock") }
+            }
             Button(role: .destructive) {
                 podcastUnsubscribe(show)
             } label: { Label("Unsubscribe", systemImage: "minus.circle") }

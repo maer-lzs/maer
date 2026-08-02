@@ -186,6 +186,18 @@ struct RecentShowTile: View {
                             .padding(8)
                     }
                 }
+                // 92e25d6: premium badge — one truth with the management.
+                .overlay(alignment: .bottomTrailing) {
+                    if PodcastSubscriptions.isPremiumFeed(info.show.feedURL) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Circle().fill(.black.opacity(0.55)))
+                            .padding(6)
+                            .accessibilityLabel(Text("Premium feed"))
+                    }
+                }
 
                 if info.newCount > 0 {
                     Text("\(info.newCount)")
@@ -220,6 +232,18 @@ struct ShowTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
+                // 92e25d6: same premium badge as the recent-shows grid.
+                .overlay(alignment: .bottomTrailing) {
+                    if PodcastSubscriptions.isPremiumFeed(show.feedURL) {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.white)
+                            .padding(5)
+                            .background(Circle().fill(.black.opacity(0.55)))
+                            .padding(6)
+                            .accessibilityLabel(Text("Premium feed"))
+                    }
+                }
             Text(show.title)
                 .font(.caption)
                 // Jank convention: reserved lines — a short title must not

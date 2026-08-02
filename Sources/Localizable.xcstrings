@@ -5212,6 +5212,106 @@
         }
       }
     },
+    "%@ exists as a free AND a premium subscription." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist frei UND als Premium abonniert."
+          }
+        }
+      }
+    },
+    "Remove free subscription — progress moves over" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frei-Abo entfernen — Fortschritt wird übernommen"
+          }
+        }
+      }
+    },
+    "No premium feeds yet. Feeds with a login, an access token in the URL or a members host are detected automatically — or mark one manually below." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Premium-Feeds. Feeds mit Login, Zugangs-Token in der URL oder Members-Host werden automatisch erkannt — oder markiere unten einen manuell."
+          }
+        }
+      }
+    },
+    "Mark a feed as premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feed als Premium markieren"
+          }
+        }
+      }
+    },
+    "Token feeds carry their access in the URL — they are never shown unmasked, never synced to a gpodder server and left out of OPML exports by default." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token-Feeds tragen ihren Zugang in der URL — sie werden nie unmaskiert gezeigt, nie zu einem gpodder-Server synchronisiert und standardmäßig aus OPML-Exporten ausgelassen."
+          }
+        }
+      }
+    },
+    "Remove %@?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ entfernen?"
+          }
+        }
+      }
+    },
+    "Remove premium marking" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Markierung entfernen"
+          }
+        }
+      }
+    },
+    "Mark as Premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Premium markieren"
+          }
+        }
+      }
+    },
+    "Marked" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markiert"
+          }
+        }
+      }
+    },
+    "Premium feed" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Feed"
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {

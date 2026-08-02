@@ -84,3 +84,24 @@ nonisolated enum PodcastPremiumMatch {
         return result
     }
 }
+
+extension PodcastPremiumMatch {
+    /// 97b1f7c: free+premium TWINS in the existing stock (the "Servus.
+    /// Grüezi. Hallo." case — a detection hole let both live side by side).
+    /// Pure: same-show title match, exactly one side premium; the repair
+    /// path offers the one-tap cleanup on each pair.
+    nonisolated static func twins(
+        shows: [(id: String, title: String, feedURL: String)],
+        isPremium: (String) -> Bool
+    ) -> [(freeId: String, premiumId: String, title: String)] {
+        var out: [(freeId: String, premiumId: String, title: String)] = []
+        let premium = shows.filter { isPremium($0.feedURL) }
+        let free = shows.filter { !isPremium($0.feedURL) }
+        for p in premium {
+            for f in free where sameShow(titleA: f.title, titleB: p.title) {
+                out.append((freeId: f.id, premiumId: p.id, title: p.title))
+            }
+        }
+        return out
+    }
+}

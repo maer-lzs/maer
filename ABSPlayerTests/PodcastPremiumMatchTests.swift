@@ -104,5 +104,36 @@ struct PodcastTokenFeedTests {
         #expect(PodcastSubscriptions.isPremiumFeed("https://www.patreon.com/rss/show"))
         #expect(!PodcastSubscriptions.isPremiumFeed("https://h.example/feed"))
     }
+
+    @Test("97b1f7c: twins in the stock — free+premium of the same show pair up")
+    func twinDetection() {
+        let shows = [
+            (id: "f1", title: "Servus. Grüezi. Hallo.", feedURL: "https://feeds.simplecast.com/abc"),
+            (id: "p1", title: "Servus. Grüezi. Hallo.", feedURL: "https://premium-feed.zeit.de/x/rss-podcatcher?freebie=TOKEN"),
+            (id: "o1", title: "Other Show", feedURL: "https://example.org/feed"),
+        ]
+        let twins = PodcastPremiumMatch.twins(shows: shows,
+                                              isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+        #expect(twins.count == 1)
+        #expect(twins.first?.freeId == "f1")
+        #expect(twins.first?.premiumId == "p1")
+        // The real ZEIT podcatcher pattern IS detected now (7dba2b1 root):
+        // `freebie` joined the secret-parameter set with the OPML fix.
+        #expect(PodcastSubscriptions.isTokenFeedURL(
+            "https://premium-feed.zeit.de/x/rss-podcatcher?freebie=TOKEN"))
+    }
+
+    @Test("92e25d6: manual marking feeds the ONE premium truth")
+    func manualMarking() {
+        let defaults = UserDefaults(suiteName: "premium-marking-test")!
+        defaults.removePersistentDomain(forName: "premium-marking-test")
+        let url = "https://example.org/hidden-premium/feed.xml"
+        #expect(!PodcastSubscriptions.isManuallyMarkedPremium(url, defaults: defaults))
+        PodcastSubscriptions.setManualPremium(true, feedURL: url, defaults: defaults)
+        #expect(PodcastSubscriptions.isManuallyMarkedPremium(url, defaults: defaults))
+        #expect(PodcastSubscriptions.manualPremiumFeedKeys(defaults: defaults).count == 1)
+        PodcastSubscriptions.setManualPremium(false, feedURL: url, defaults: defaults)
+        #expect(PodcastSubscriptions.manualPremiumFeedKeys(defaults: defaults).isEmpty)
+    }
 }
 #endif

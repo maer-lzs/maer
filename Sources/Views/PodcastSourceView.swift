@@ -47,7 +47,6 @@ struct PodcastSourceView: View {
     @State private var syncMessage: String?
 
     /// S22: the premium feed being edited (credentials sheet).
-    @State private var premiumEditTarget: PodcastShow?
 
     var body: some View {
         List {
@@ -164,11 +163,6 @@ struct PodcastSourceView: View {
             Button("Keep Both", role: .cancel) { subs.pendingPremiumReplacement = nil }
         } message: { offer in
             Text("“\(offer.showTitle)” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?")
-        }
-        // S22: credentials editor for a premium feed.
-        .sheet(item: $premiumEditTarget) { show in
-            NavigationStack { PremiumFeedEditor(show: show) }
-                .presentationDetents([.medium])
         }
         // Debounce: wait briefly after typing, then search.
         .task(id: searchText) {
@@ -335,48 +329,11 @@ struct PodcastSourceView: View {
     /// S22: THE management surface for premium feeds — which feeds have a
     /// login, which are the token-URL class, change/delete credentials (until
     /// now only possible at subscribe time). URLs render MASKED (Y52).
-    @ViewBuilder
+    /// 92e25d6: the shared always-visible management (provider groups,
+    /// manual marking, twin repair) — same view as on the Podcasts pill
+    /// (second access point, one truth).
     private var premiumManagementSection: some View {
-        let premium = subs.shows.filter { PodcastSubscriptions.isPremiumFeed($0.feedURL) }
-        if !premium.isEmpty {
-            Section {
-                ForEach(premium) { show in
-                    Button {
-                        premiumEditTarget = show
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack {
-                                Text(show.title).lineLimit(1)
-                                Spacer()
-                                Text(premiumClassLabel(show))
-                                    .font(.caption2)
-                                    .padding(.horizontal, 6).padding(.vertical, 2)
-                                    .background(Capsule().fill(Color.primary.opacity(0.08)))
-                            }
-                            Text(PodcastSubscriptions.maskedFeedURL(show.feedURL))
-                                .font(.caption).foregroundStyle(.secondary)
-                                .lineLimit(1).truncationMode(.middle)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            } header: {
-                Label("Premium Feeds", systemImage: "lock.fill")
-            } footer: {
-                Text("Token feeds carry their access in the URL — they are never shown unmasked and never synced to a gpodder server.")
-            }
-        }
-    }
-
-    private func premiumClassLabel(_ show: PodcastShow) -> String {
-        if PodcastFeedAuth.hasCredentials(feedKey: PodcastSubscriptions.feedKey(show.feedURL)) {
-            return String(localized: "Login")
-        }
-        if PodcastSubscriptions.isTokenFeedURL(show.feedURL) {
-            return String(localized: "Token URL")
-        }
-        return String(localized: "Members")
+        PremiumFeedsSection()
     }
 
     @ViewBuilder

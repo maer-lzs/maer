@@ -244,6 +244,9 @@ nonisolated enum AppStorageKeys {
     static let librivoxImportFolderId = "librivoxImportFolderId"
     /// 7edb21b: the "Free Audiobooks" AREA toggle (feature level, audiobooks
     /// pill); the LibriVox service opt-out stays superior.
+    /// 92e25d6: feed keys the user MARKED as premium manually (the escape
+    /// hatch for unknown URL patterns) — feeds the ONE premium truth.
+    static let premiumMarkedFeeds = "premiumMarkedFeeds"
     /// 5034add: MASTER switch over every free-catalog surface + its traffic.
     static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
     static let freeAudiobooksEnabled = "freeAudiobooksEnabled"

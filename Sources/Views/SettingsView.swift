@@ -112,6 +112,8 @@ struct SettingsView: View {
                     playbackSection
                 case .podcasts:
                     recommendationsSection
+                    // 92e25d6: premium management ALWAYS visible on the pill.
+                    PremiumFeedsSection()
                 case .music:
                     musicSection
                 }
