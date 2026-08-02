@@ -44,6 +44,11 @@ struct HomeView: View {
     /// W2 "Recently Added": newly added books + albums, mixed by added time —
     /// each rendered with its own tab's tile (BookGridCell / AlbumCell).
     @State private var recentlyAddedItems: [LibraryItem] = []
+    /// 34c36e1: free-catalog row data — loaded once per session in
+    /// compute() (retry rides the recompute token like everything else).
+    @State private var freeCatalogRows = FreeCatalogLoader.Rows()
+    @State private var freeCatalogLoaded = false
+
     /// M4: recently PLAYED music albums ("Zuletzt gehört (Musik)") — the
     /// provider's `.recent` shelf; empty (no music server / nothing played)
     /// hides the section.
@@ -96,9 +101,13 @@ struct HomeView: View {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
                     if recommendationsEnabled { discoverSection }
-                    // 0714d26: free-catalog rows (LibriVox/archive.org/
-                    // Jamendo) — self-loading, net-gated, own opt-outs.
-                    FreeCatalogRows(playerCoordinator: playerCoordinator)
+                    // 0714d26/34c36e1: free-catalog rows — data loads in
+                    // compute() (a lazy below-the-fold view never ran its
+                    // own task reliably), rows render dumb.
+                    FreeCatalogRows(playerCoordinator: playerCoordinator,
+                                    newBooks: freeCatalogRows.newBooks,
+                                    popularBooks: freeCatalogRows.popularBooks,
+                                    freeMusic: freeCatalogRows.freeMusic)
                     upNextSection
                     radioSection
                     latestEpisodesSection
@@ -465,6 +474,15 @@ struct HomeView: View {
         let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
         // M4: recently played music — the ONE provider access point again.
         let recentMusic = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
+        // 34c36e1: free-catalog rows load HERE (compute always runs) — once
+        // per session, but retried while empty (a failed first pass heals on
+        // the next recompute instead of deciding forever, Y37 class).
+        if !freeCatalogLoaded, NetworkMonitor.shared.isConnected {
+            let loadedRows = await FreeCatalogLoader.load()
+            freeCatalogLoaded = !loadedRows.newBooks.isEmpty || !loadedRows.popularBooks.isEmpty
+                || !loadedRows.freeMusic.isEmpty
+            BottomBarState.shared.runWhenCalm { freeCatalogRows = loadedRows }
+        }
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
 

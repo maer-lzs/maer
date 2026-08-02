@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 /// 0714d26: the free-catalog Discover rows on Home — "New free audiobooks"
 /// (LibriVox, keyless) · "Popular free audiobooks" (archive.org downloads
@@ -13,23 +14,14 @@ import SwiftUI
 /// network-services page; rows are net-gated and hide silently when empty.
 struct FreeCatalogRows: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var networkMonitor = NetworkMonitor.shared
-
-    @State private var newBooks: [LibraryItem] = []
-    @State private var popularBooks: [LibraryItem] = []
-    @State private var freeMusic: [LibraryItem] = []
-    @State private var loaded = false
+    /// 34c36e1: the rows are DUMB now — a lazily-mounted, initially EMPTY
+    /// view below the fold never ran its .task reliably (the third suspect);
+    /// loading lives in HomeView's compute() pass (always runs, calm-gated)
+    /// via `FreeCatalogLoader`.
+    let newBooks: [LibraryItem]
+    let popularBooks: [LibraryItem]
+    let freeMusic: [LibraryItem]
     @State private var detailItem: LibraryItem?
-
-    private var librivoxOn: Bool {
-        UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
-    }
-    private var archiveOn: Bool {
-        UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
-    }
-    private var jamendoOn: Bool {
-        UserDefaults.standard.object(forKey: AppStorageKeys.jamendoRowEnabled) as? Bool ?? true
-    }
 
     var body: some View {
         Group {
@@ -41,30 +33,6 @@ struct FreeCatalogRows: View {
             }
             if !freeMusic.isEmpty {
                 row(title: "Free Music", items: freeMusic)
-            }
-        }
-        .task {
-            guard !loaded, networkMonitor.isConnected else { return }
-            loaded = true
-            #if DEBUG
-            if UITestSeed.isActive { return }   // no external calls in the harness
-            #endif
-            let provider = FreeCatalogProvider.shared
-            if librivoxOn {
-                let books = (try? await LibriVoxClient.newBooks(sinceDays: 120, limit: 40)) ?? []
-                let filtered = FreeCatalog.filterByLanguages(books, codes: SuggestionLanguages.current())
-                let items = filtered.prefix(12).map { provider.remember(book: $0) }
-                BottomBarState.shared.runWhenCalm { newBooks = Array(items) }
-            }
-            if archiveOn {
-                let docs = (try? await ArchiveOrgClient.popularLibriVox(rows: 12)) ?? []
-                let items = docs.compactMap { provider.remember(popular: $0) }
-                BottomBarState.shared.runWhenCalm { popularBooks = items }
-            }
-            if jamendoOn {
-                let tracks = (try? await JamendoClient.popularTracks(limit: 12)) ?? []
-                let items = tracks.compactMap { provider.remember(track: $0) }
-                BottomBarState.shared.runWhenCalm { freeMusic = items }
             }
         }
         .sheet(item: $detailItem) { item in
@@ -100,6 +68,66 @@ struct FreeCatalogRows: View {
             }
             .scrollClipDisabled()
         }
+    }
+}
+
+/// 34c36e1: the ONE loader — called from HomeView.compute() (always runs,
+/// no lazy-mount dependency). WireCorpus discipline at the call sites: a
+/// throwing client is CAUGHT and LOGGED with the actual error (never a
+/// silent try?-collapse to empty); the per-row log line names loaded/
+/// filtered counts and the reason when a row stays empty.
+@MainActor
+enum FreeCatalogLoader {
+    struct Rows {
+        var newBooks: [LibraryItem] = []
+        var popularBooks: [LibraryItem] = []
+        var freeMusic: [LibraryItem] = []
+    }
+
+    static func load() async -> Rows {
+        var rows = Rows()
+        #if DEBUG
+        if UITestSeed.isActive { return rows }   // no external calls in the harness
+        #endif
+        let provider = FreeCatalogProvider.shared
+        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
+        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+        let jamendoOn = UserDefaults.standard.object(forKey: AppStorageKeys.jamendoRowEnabled) as? Bool ?? true
+
+        if librivoxOn {
+            do {
+                let books = try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40)
+                let codes = SuggestionLanguages.current()
+                let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
+                Logger.library.notice("FREECAT librivox loaded=\(books.count) filtered=\(filtered.count) codes=\(codes.joined(separator: ","), privacy: .public)")
+                rows.newBooks = filtered.prefix(12).map { provider.remember(book: $0) }
+            } catch {
+                Logger.library.error("FREECAT librivox FAILED: \(String(describing: error), privacy: .public)")
+            }
+        }
+        if archiveOn {
+            do {
+                let docs = try await ArchiveOrgClient.popularLibriVox(rows: 12)
+                Logger.library.notice("FREECAT archive-popular loaded=\(docs.count)")
+                rows.popularBooks = docs.compactMap { provider.remember(popular: $0) }
+            } catch {
+                Logger.library.error("FREECAT archive-popular FAILED: \(String(describing: error), privacy: .public)")
+            }
+        }
+        if jamendoOn {
+            if JamendoClient.clientId() == nil {
+                Logger.library.notice("FREECAT jamendo EMPTY: no client key")
+            } else {
+                do {
+                    let tracks = try await JamendoClient.popularTracks(limit: 12)
+                    Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
+                    rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
+                } catch {
+                    Logger.library.error("FREECAT jamendo FAILED: \(String(describing: error), privacy: .public)")
+                }
+            }
+        }
+        return rows
     }
 }
 

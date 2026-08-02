@@ -26,6 +26,11 @@ struct FreeCatalogTests {
         #expect(FreeCatalog.filterByLanguages(books, codes: ["xx"]).count == 3)
         // Mapped but zero hits → unfiltered fallback (same principle).
         #expect(FreeCatalog.filterByLanguages(books, codes: ["ja"]).count == 3)
+        // bb6e509 Verdacht 2 explizit: de with ZERO German hits (LibriVox
+        // ships few new German books) must fall back to unfiltered — the
+        // row shows English instead of vanishing.
+        let noGerman = [book("English"), book("French")]
+        #expect(FreeCatalog.filterByLanguages(noGerman, codes: ["de"]).count == 2)
     }
 
     @Test("Durations: SS / MM:SS / H:MM:SS / plain seconds")
