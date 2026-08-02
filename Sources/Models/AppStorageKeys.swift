@@ -239,6 +239,9 @@ nonisolated enum AppStorageKeys {
     /// f18ec34: the "Free Classical" AREA toggle (feature level, Music pill);
     /// the archive.org service opt-out stays superior.
     static let freeClassicalEnabled = "freeClassicalEnabled"
+    /// 3125a42: remembered ABS import target (library picker on first use).
+    static let librivoxImportLibraryId = "librivoxImportLibraryId"
+    static let librivoxImportFolderId = "librivoxImportFolderId"
 
     // Radio-Picker-Kuratierung (b942da6/b1ab99d)
     /// ALL raw name variants of the chosen region (the by-state query runs

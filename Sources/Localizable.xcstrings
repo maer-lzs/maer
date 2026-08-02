@@ -1555,6 +1555,166 @@
         }
       }
     },
+    "Add to Library…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In die Bibliothek übernehmen …"
+          }
+        }
+      }
+    },
+    "Added to your library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In deine Bibliothek übernommen."
+          }
+        }
+      }
+    },
+    "Already in that library: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon in dieser Bibliothek: %@"
+          }
+        }
+      }
+    },
+    "Audiobooks are large (often several hundred MB). Continue on cellular data?" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbücher sind groß (oft mehrere hundert MB). Über Mobilfunk fortfahren?"
+          }
+        }
+      }
+    },
+    "Choose the target library" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziel-Bibliothek wählen"
+          }
+        }
+      }
+    },
+    "Continue on Cellular" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über Mobilfunk fortfahren"
+          }
+        }
+      }
+    },
+    "Download failed. Check your connection and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download fehlgeschlagen. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
+    "Downloading part %lld of %lld…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade Teil %1$lld von %2$lld …"
+          }
+        }
+      }
+    },
+    "Not on Wi-Fi" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein WLAN"
+          }
+        }
+      }
+    },
+    "Public-domain recording from LibriVox." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Aufnahme von LibriVox."
+          }
+        }
+      }
+    },
+    "Subscribe as feed (local only)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Feed abonnieren (nur lokal)"
+          }
+        }
+      }
+    },
+    "Subscribed locally — no server sync" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lokal abonniert — kein Server-Sync"
+          }
+        }
+      }
+    },
+    "This book has no downloadable audio." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieses Buch hat kein ladbares Audio."
+          }
+        }
+      }
+    },
+    "To my server (Audiobookshelf)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf meinen Server (Audiobookshelf)"
+          }
+        }
+      }
+    },
+    "Upload failed. Check the server and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upload fehlgeschlagen. Prüfe den Server und versuch es erneut."
+          }
+        }
+      }
+    },
+    "Uploading to your server…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lade auf deinen Server hoch …"
+          }
+        }
+      }
+    },
     "Change Country" : {
       "localizations" : {
         "de" : {

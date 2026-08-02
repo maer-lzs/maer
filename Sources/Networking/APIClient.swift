@@ -402,6 +402,52 @@ final class APIClient {
         return baseURL.appendingPathComponent(cleanPath)
     }
 
+    /// 3125a42: upload a complete audiobook (POST /api/upload, multipart).
+    /// The body is assembled ON DISK (books run 100–500 MB — never in RAM)
+    /// and sent via uploadTask(fromFile:). Files are (filename, localURL)
+    /// pairs; metadata rides as form fields. Throws visibly on any non-2xx.
+    func uploadAudiobook(libraryId: String, folderId: String,
+                         title: String, author: String?, description: String?,
+                         files: [(filename: String, url: URL)]) async throws {
+        let boundary = "maer-upload-\(UUID().uuidString)"
+        let bodyURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("upload-\(UUID().uuidString).body")
+        FileManager.default.createFile(atPath: bodyURL.path, contents: nil)
+        let handle = try FileHandle(forWritingTo: bodyURL)
+        defer { try? handle.close(); try? FileManager.default.removeItem(at: bodyURL) }
+
+        func writeField(_ name: String, _ value: String) throws {
+            try handle.write(contentsOf: Data(
+                "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
+        }
+        try writeField("title", title)
+        if let author { try writeField("author", author) }
+        if let description { try writeField("description", description) }
+        try writeField("library", libraryId)
+        try writeField("folder", folderId)
+        for (index, file) in files.enumerated() {
+            try handle.write(contentsOf: Data(
+                "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(index)\"; filename=\"\(file.filename)\"\r\nContent-Type: audio/mpeg\r\n\r\n".utf8))
+            let data = try Data(contentsOf: file.url, options: .mappedIfSafe)
+            try handle.write(contentsOf: data)
+            try handle.write(contentsOf: Data("\r\n".utf8))
+        }
+        try handle.write(contentsOf: Data("--\(boundary)--\r\n".utf8))
+        try handle.close()
+
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/upload"))
+        request.httpMethod = "POST"
+        request.timeoutInterval = 3600
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        if let token, !token.isEmpty {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let (_, response) = try await URLSession.shared.upload(for: request, fromFile: bodyURL)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw APIError.http((response as? HTTPURLResponse)?.statusCode ?? -1, "upload failed")
+        }
+    }
+
     // MARK: - Low-Level-Helfer
 
     private func get(path: String, query: [URLQueryItem] = []) async throws -> Data {
