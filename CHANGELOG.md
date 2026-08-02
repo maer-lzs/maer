@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.7.1 (Build 18)
+
+- Fix: the podcast listening history page failed to compile in Release
+  builds (API stuck inside a debug-only block) — v2.7 could not be
+  archived for TestFlight. No functional changes.
+
 ## v2.7 (Build 17)
 
 160 commits since v2.6 — the "reach everything" release: the app now drives
