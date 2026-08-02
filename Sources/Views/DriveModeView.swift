@@ -11,9 +11,9 @@ import SwiftUI
 /// search, lists, queue, chapter list, settings, glass effects (glare +
 /// render cost). Sleep timer removed by decision (0693e05) — it stays in the
 /// normal full player. 9941a9a: the cover is shown (portrait above the
-/// title, landscape left of the controls — variant A; variant B renders it
-/// as a darkened full background, DEBUG-selectable for the screenshot
-/// decision). Dark, maximum contrast, portrait AND landscape, media-type
+/// title, landscape left of the controls — variant A behind the DEBUG flag
+/// `-uitest-drivecover-element`; variant B — darkened full background — is
+/// the DEFAULT on probation per c7185db). Dark, maximum contrast, portrait AND landscape, media-type
 /// neutral; the transport row SCALES to fit portrait widths (it used to
 /// overflow: 110+180+110 + spacing = 464 pt row on a ~345 pt column).
 struct DriveModeView: View {
@@ -31,7 +31,10 @@ struct DriveModeView: View {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: { Color.black }
                 .ignoresSafeArea()
-                .overlay(Color.black.opacity(0.65).ignoresSafeArea())
+                // Kontrast-Absicherung (c7185db): strong enough for ANY
+                // bright cover — worst case pure-white artwork still leaves
+                // the white glyphs ≥ ~4.5:1. Glanceability beats aesthetics.
+                .overlay(Color.black.opacity(0.8).ignoresSafeArea())
                 .accessibilityHidden(true)
             }
             if let vm = coordinator.viewModel, coordinator.activeItem != nil {
@@ -56,14 +59,15 @@ struct DriveModeView: View {
 
     // MARK: - Playback layout
 
-    /// Variant B ("cover as darkened background") for the screenshot
-    /// decision — DEBUG launch arg; default is variant A (cover as element).
+    /// ENTSCHEID c7185db (the owner 02.08.): variant B — cover as darkened
+    /// full background — is the DEFAULT, explicitly ON PROBATION (the sim
+    /// shots had no real artwork). Variant A (cover as element) stays behind
+    /// the DEBUG flag until the device verdict; then the loser leaves.
     private var coverAsBackground: Bool {
         #if DEBUG
-        ProcessInfo.processInfo.arguments.contains("-uitest-drivecover-bg")
-        #else
-        false
+        if ProcessInfo.processInfo.arguments.contains("-uitest-drivecover-element") { return false }
         #endif
+        return true
     }
 
     private var coverURL: URL? {

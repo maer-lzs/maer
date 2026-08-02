@@ -719,8 +719,12 @@ nonisolated final class MaerUITests: XCTestCase {
         let mini = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
+        // a50134c variant A: drive mode lives in the "…" More menu now.
+        let more = app.buttons["player-more"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 15), "More menu must exist (variant A)")
+        more.tap()
         let drive = app.buttons["player-drive-mode"].firstMatch
-        XCTAssertTrue(drive.waitForExistence(timeout: 15))
+        XCTAssertTrue(drive.waitForExistence(timeout: 10), "Drive Mode must be a More-menu item")
         drive.tap()
         let play = app.buttons["drive-play-pause"].firstMatch
         XCTAssertTrue(play.waitForExistence(timeout: 10), "drive mode must open")
@@ -733,7 +737,7 @@ nonisolated final class MaerUITests: XCTestCase {
         }
         // The sleep button left by decision (0693e05).
         XCTAssertFalse(app.buttons["drive-sleep"].exists, "sleep button must be gone")
-        snap(app, "drive-portrait-cover-element")
+        snap(app, "drive-portrait-default-bg")
         XCUIDevice.shared.orientation = .landscapeLeft
         // Rotation settles asynchronously — poll until the WINDOW is actually
         // wide (a snap mid-animation shows the old orientation's layout).
@@ -761,28 +765,32 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertLessThan(playF.midX, fwd.midX, "row order play < forward")
         XCTAssertEqual(back.midY, fwd.midY, accuracy: 4, "buttons on ONE row")
         XCTAssertEqual(back.midY, playF.midY, accuracy: 8, "buttons on ONE row")
-        snap(app, "drive-landscape-cover-element")
+        snap(app, "drive-landscape-default-bg")
         XCUIDevice.shared.orientation = .portrait
     }
 
-    /// Cover variant B (darkened full background) — screenshot for the owner's
-    /// picture-based choice; the transport must fit exactly like variant A.
-    func testDriveModeCoverBackgroundVariant() {
+    /// c7185db: variant B (background) is the DEFAULT now — the main drive
+    /// journey covers it; this one pins variant A (element) behind its flag
+    /// until the device verdict resolves the probation.
+    func testDriveModeCoverElementVariant() {
         XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-drivecover-bg"]
+        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-drivecover-element"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
         let mini = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
+        let more = app.buttons["player-more"].firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout: 15))
+        more.tap()
         let drive = app.buttons["player-drive-mode"].firstMatch
-        XCTAssertTrue(drive.waitForExistence(timeout: 15))
+        XCTAssertTrue(drive.waitForExistence(timeout: 10))
         drive.tap()
         let play = app.buttons["drive-play-pause"].firstMatch
         XCTAssertTrue(play.waitForExistence(timeout: 10))
         XCTAssertTrue(app.windows.firstMatch.frame.contains(play.frame))
-        snap(app, "drive-portrait-cover-background")
+        snap(app, "drive-portrait-cover-element-flag")
     }
 
     /// Release-Gate 1 (30b2a32): the search must work when opened from a
