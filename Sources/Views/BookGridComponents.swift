@@ -19,6 +19,14 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     return ""
 }
 
+/// cb1f658 (1): ONE meta line under the title — "Author · 4 hr 57 min left".
+/// The third cell line died; without progress only the author stands, and a
+/// cell with neither keeps a space so grid rows stay equally tall. Pure.
+nonisolated func bookMetaLine(author: String?, status: String?) -> String {
+    let parts = [author, status].compactMap { $0 }.filter { !$0.isEmpty }
+    return parts.isEmpty ? " " : parts.joined(separator: " · ")
+}
+
 // MARK: - Context menu (Haptic Touch)
 
 /// Menu items: play, download control matching the phase, played status.
@@ -244,11 +252,13 @@ struct BookGridCell: View {
                     .font(.caption)
                     .foregroundStyle(.primary)
                     .lineLimit(2, reservesSpace: true)
-                Text(entry.item.author ?? " ")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1, reservesSpace: true)
-                Text(entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) } ?? " ")
+                // cb1f658 (1): author and remaining time share ONE meta
+                // line (dot separator, native truncation) — the third line's
+                // reserve is gone, the grid packs evenly. Jank-free by
+                // construction: no element grows in later.
+                Text(bookMetaLine(
+                    author: entry.item.author,
+                    status: entry.progress.map { bookStatusText($0, duration: entry.item.media?.duration) }))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1, reservesSpace: true)

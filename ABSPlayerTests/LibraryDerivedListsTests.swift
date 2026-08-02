@@ -261,5 +261,15 @@ struct LibraryDerivedListsTests {
             #expect(sig.contains("series:Alpha:m1,m2"))
         }
     }
+
+    @Test("cb1f658: cell meta line — author · status, single parts alone, empty keeps reserve")
+    func metaLine() {
+        #expect(bookMetaLine(author: "Haruki Murakami", status: "4 hr 57 min left")
+                == "Haruki Murakami · 4 hr 57 min left")
+        #expect(bookMetaLine(author: "Haruki Murakami", status: nil) == "Haruki Murakami")
+        #expect(bookMetaLine(author: nil, status: "Completed") == "Completed")
+        #expect(bookMetaLine(author: nil, status: "") == " ")
+        #expect(bookMetaLine(author: nil, status: nil) == " ")
+    }
 }
 #endif

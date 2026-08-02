@@ -1217,6 +1217,13 @@ struct LibraryView: View {
 
     // MARK: All Books
 
+    /// cb1f658 (2): staged paging for the big grid — the albums-page
+    /// pattern. DISPLAY limit only: search/filter/sort keep working over
+    /// the FULL corpus (sortedFilteredEntries), the grid just materializes
+    /// in pages while scrolling. Local data → no loading foot needed.
+    @State private var visibleBookCount = LibraryView.bookPageSize
+    private static let bookPageSize = 60
+
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("All Books")
@@ -1225,16 +1232,25 @@ struct LibraryView: View {
             if viewModel.sortOption == .serie {
                 seriesGrid
             } else {
-                bookGrid(viewModel.sortedFilteredEntries)
+                bookGrid(Array(viewModel.sortedFilteredEntries.prefix(visibleBookCount)),
+                         pagedTotal: viewModel.sortedFilteredEntries.count)
             }
         }
+        // Sort/search changes reset the display window (a fresh order starts
+        // at the top anyway; keeps early pages small after narrowing).
+        .onChange(of: viewModel.sortOption) { _, _ in visibleBookCount = Self.bookPageSize }
+        .onChange(of: viewModel.sortAscending) { _, _ in visibleBookCount = Self.bookPageSize }
+        .onChange(of: viewModel.filterOption) { _, _ in visibleBookCount = Self.bookPageSize }
     }
 
     /// Grid under series sorting: series as stacks, single books normal.
+    /// cb1f658 (2): same staged display window as the flat grid.
     private var seriesGrid: some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
+        let grouped = viewModel.seriesGroupedEntries
+        let shown = Array(grouped.prefix(visibleBookCount))
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-            ForEach(viewModel.seriesGroupedEntries) { gridEntry in
+            ForEach(shown) { gridEntry in
                 switch gridEntry {
                 case .single(let entry):
                     // Same top spacing as the fan headroom of the stack tiles —
@@ -1260,6 +1276,10 @@ struct LibraryView: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+            if shown.count < grouped.count {
+                Color.clear.frame(height: 1)
+                    .onAppear { visibleBookCount += Self.bookPageSize }
             }
         }
         .padding(.horizontal)
@@ -1458,7 +1478,9 @@ struct LibraryView: View {
     /// size are now guaranteed to use the same value, so they can never diverge
     /// (neither too narrow with overlap, nor unnecessarily few columns on a
     /// narrow iPhone).
-    private func bookGrid(_ entries: [LibraryEntry]) -> some View {
+    /// `pagedTotal` > entries.count arms the staged-paging advance sentinel
+    /// (cb1f658 2); callers with full lists (series detail) pass nothing.
+    private func bookGrid(_ entries: [LibraryEntry], pagedTotal: Int? = nil) -> some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(entries) { entry in
@@ -1470,6 +1492,10 @@ struct LibraryView: View {
                     playerCoordinator: playerCoordinator,
                     libraryViewModel: viewModel
                 )
+            }
+            if let pagedTotal, entries.count < pagedTotal {
+                Color.clear.frame(height: 1)
+                    .onAppear { visibleBookCount += Self.bookPageSize }
             }
         }
         .padding(.horizontal)
