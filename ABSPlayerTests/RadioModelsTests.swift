@@ -74,13 +74,13 @@ struct RadioModelsTests {
         #expect(withEmpty.count == 2)
     }
 
-    @Test("Y57: equal bitrate prefers MP3; different country is not merged")
+    @Test("Y57→e4bd910: equal bitrate prefers AAC (Nachtrag FINAL); different country is not merged")
     func collapseTieBreakAndCountry() {
         let tie = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:a", name: "Radio X AAC", streamURL: "https://s/a", countryCode: "DE", bitrate: 128, codec: "AAC"),
             RadioStation(id: "radio:rb:b", name: "Radio X MP3", streamURL: "https://s/b", countryCode: "DE", bitrate: 128, codec: "MP3"),
         ])
-        #expect(tie.map(\.id) == ["radio:rb:b"])   // MP3 wins the tie
+        #expect(tie.map(\.id) == ["radio:rb:a"])   // AAC wins the tie (agreed final)
 
         let byCountry = RadioMapping.collapseVariants([
             RadioStation(id: "radio:rb:de", name: "Radio X", streamURL: "https://s/de", countryCode: "DE"),
@@ -418,6 +418,59 @@ struct RadioStateQueryTests {
         #expect(RadioLogoLookup.extractTouchIcon(html: "<head></head>", baseURL: base) == nil)
         #expect(RadioLogoLookup.conventionTouchIconURL(homepage: base)?.absoluteString
                 == "https://www.rockantenne.de/apple-touch-icon.png")
+    }
+
+    @Test("e4bd910: display dedupe — variants fold by name+domain, foreigners and siblings never")
+    func displayDedupe() {
+        func st(_ id: String, _ name: String, _ home: String?, bitrate: Int?, codec: String?) -> RadioStation {
+            RadioStation(id: id, name: name, streamURL: "https://cdn\(id).example/stream",
+                         faviconURL: nil, homepage: home, countryCode: "DE",
+                         tags: [], bitrate: bitrate, codec: codec)
+        }
+        let stations = [
+            st("1", "ROCK ANTENNE", "https://www.rockantenne.de", bitrate: 128, codec: "MP3"),
+            st("2", "ROCK ANTENNE AAC 192k", "https://rockantenne.de", bitrate: 192, codec: "AAC"),
+            st("3", "ROCK ANTENNE", "https://radiostudio.it", bitrate: 320, codec: "MP3"),
+            st("4", "1LIVE", "https://www1.wdr.de", bitrate: 128, codec: "MP3"),
+            st("5", "1LIVE Dance Hits", "https://www1.wdr.de", bitrate: 128, codec: "MP3"),
+        ]
+        let deduped = RadioMapping.dedupeForDisplay(stations)
+        // Real variants fold (name-after-trim + domain); AAC wins the bundle,
+        // the loser rides as a detail variant.
+        let rock = deduped.first { PodcastSubscriptions.feedHost($0.homepage ?? "") == "rockantenne.de" }
+        #expect(deduped.count == 4)
+        #expect(rock?.id == "2")
+        #expect(rock?.variants?.count == 1)
+        // The same-named FOREIGN station (other domain) stays separate…
+        #expect(deduped.contains { $0.id == "3" })
+        // …and program siblings never fold (name differs).
+        #expect(deduped.contains { $0.id == "4" } && deduped.contains { $0.id == "5" })
+    }
+
+    @Test("e4bd910: rotation — socket constant, same seed identical, new day differs")
+    func rotation() {
+        func st(_ id: String) -> RadioStation {
+            RadioStation(id: id, name: "S\(id)", streamURL: "https://h\(id).example/s",
+                         faviconURL: nil, homepage: "https://h\(id).example", countryCode: "DE",
+                         tags: [], bitrate: nil, codec: nil)
+        }
+        let votes = (1...30).map { st("v\($0)") }
+        let trend = (1...30).map { st("t\($0)") }
+        let a = RadioRotation.compose(votes: votes, clicktrend: trend,
+                                      seed: RadioRotation.seed(day: 20_260_803, countryCode: "DE"), limit: 12)
+        let b = RadioRotation.compose(votes: votes, clicktrend: trend,
+                                      seed: RadioRotation.seed(day: 20_260_803, countryCode: "DE"), limit: 12)
+        let c = RadioRotation.compose(votes: votes, clicktrend: trend,
+                                      seed: RadioRotation.seed(day: 20_260_804, countryCode: "DE"), limit: 12)
+        // Socket: seats 1–3 are ALWAYS the clicktrend top.
+        #expect(a.prefix(3).map(\.id) == ["t1", "t2", "t3"])
+        #expect(c.prefix(3).map(\.id) == ["t1", "t2", "t3"])
+        // Same seed ⇒ identical row; new day ⇒ a different mix.
+        #expect(a.map(\.id) == b.map(\.id))
+        #expect(a.map(\.id) != c.map(\.id))
+        #expect(a.count == 12)
+        // Country changes the seed too.
+        #expect(RadioRotation.seed(day: 1, countryCode: "DE") != RadioRotation.seed(day: 1, countryCode: "AT"))
     }
 }
 #endif

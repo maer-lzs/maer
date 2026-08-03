@@ -5302,6 +5302,16 @@
         }
       }
     },
+    "Change country" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Land ändern"
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {

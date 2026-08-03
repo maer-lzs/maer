@@ -210,10 +210,58 @@ nonisolated enum RadioMapping {
     private static func prefers(_ a: RadioStation, over b: RadioStation) -> Bool {
         let ba = a.bitrate ?? 0, bb = b.bitrate ?? 0
         if ba != bb { return ba > bb }
-        // Equal/unknown bitrate → prefer an MP3 stream (widest compatibility).
-        let aMP3 = a.codec?.lowercased().contains("mp3") == true
-        let bMP3 = b.codec?.lowercased().contains("mp3") == true
-        return aMP3 && !bMP3
+        // e4bd910 Nachtrag (FINAL): codec preference AAC > MP3.
+        let aAAC = a.codec?.lowercased().contains("aac") == true
+        let bAAC = b.codec?.lowercased().contains("aac") == true
+        return aAAC && !bAAC
+    }
+
+    /// e4bd910 Sender-Dedupe: RB serves the same station multiply (stream
+    /// variants, stale twins). Identity = display-normalized name PLUS the
+    /// homepage/stream DOMAIN as the second key — a same-named FOREIGN
+    /// station (different domain) never folds in (the Rock-Antenne-Italy
+    /// class); real program siblings (1LIVE vs 1LIVE Dance Hits) differ by
+    /// name and never fold either. The best member wins (bitrate, AAC>MP3);
+    /// the losers ride as `variants` so the detail page offers them as
+    /// further streams instead of throwing them away.
+    static func dedupeForDisplay(_ stations: [RadioStation]) -> [RadioStation] {
+        var buckets: [String: RadioStation] = [:]
+        var order: [String] = []
+        for station in stations {
+            var flat = station
+            let key = displayIdentityKey(station)
+            if var existing = buckets[key] {
+                var variants = existing.variants ?? []
+                if prefers(flat, over: existing) {
+                    let loser = existing
+                    flat.variants = variants + [strippedVariant(loser)] + (loser.variants ?? [])
+                    buckets[key] = flat
+                } else {
+                    variants.append(strippedVariant(flat))
+                    existing.variants = variants
+                    buckets[key] = existing
+                }
+            } else {
+                flat.variants = flat.variants ?? nil
+                buckets[key] = flat
+                order.append(key)
+            }
+        }
+        return order.compactMap { buckets[$0] }
+    }
+
+    private static func strippedVariant(_ station: RadioStation) -> RadioStation {
+        var flat = station
+        flat.variants = nil   // never nest
+        return flat
+    }
+
+    /// Identity key: folded display name + comparable domain (homepage
+    /// preferred — CDN stream hosts differ between real variants).
+    static func displayIdentityKey(_ station: RadioStation) -> String {
+        let name = RadioBrowseCuration.mergeKey(displayName(station.name))
+        let domainSource = station.homepage?.isEmpty == false ? station.homepage! : station.streamURL
+        return name + "|" + PodcastSubscriptions.feedHost(domainSource)
     }
 
     /// A user-entered stream (name + URL) — nil when the URL is unusable.
@@ -503,6 +551,72 @@ nonisolated enum RadioBrowseCuration {
 /// b1ab99d point 3: which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING — pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
+/// e4bd910 Nachtrag FINAL: "Beliebt in …" mit Sockel + Tages-Rotation —
+/// the eternal votes list never changed. Pool = top votes + top clicktrend
+/// (deduped); seats 1–3 = the CURRENT clicktrend top (the socket); the rest
+/// drawn weighted with a DATE-seeded RNG (stable within the day — calm-gate
+/// spirit — freshly mixed daily). Pure + tested; same mechanic for the
+/// regional section.
+nonisolated enum RadioRotation {
+    /// yyyymmdd + country code → the day-stable seed.
+    static func seed(day: Int, countryCode: String?) -> UInt64 {
+        var hash: UInt64 = 1_469_598_103_934_665_603
+        for byte in (countryCode ?? "").lowercased().utf8 {
+            hash = (hash ^ UInt64(byte)) &* 1_099_511_628_211
+        }
+        return UInt64(bitPattern: Int64(day)) &* 100_003 &+ hash
+    }
+
+    static let socketSize = 3
+
+    static func compose(votes: [RadioStation], clicktrend: [RadioStation],
+                        seed: UInt64, limit: Int) -> [RadioStation] {
+        guard limit > 0 else { return [] }
+        // Deduped pool with the best RANK from either list as the weight base.
+        var rank: [String: Int] = [:]
+        var byKey: [String: RadioStation] = [:]
+        var order: [String] = []
+        for (list, offset) in [(clicktrend, 0), (votes, 0)] {
+            for (index, station) in list.enumerated() {
+                let key = RadioMapping.displayIdentityKey(station)
+                let r = index + offset
+                if let existing = rank[key] {
+                    rank[key] = min(existing, r)
+                } else {
+                    rank[key] = r
+                    byKey[key] = station
+                    order.append(key)
+                }
+            }
+        }
+        // Socket: the current clicktrend top (deduped, in trend order).
+        var socketKeys: [String] = []
+        for station in clicktrend {
+            let key = RadioMapping.displayIdentityKey(station)
+            if !socketKeys.contains(key) { socketKeys.append(key) }
+            if socketKeys.count == socketSize { break }
+        }
+        var out = socketKeys.compactMap { byKey[$0] }
+        // Rest: weighted draw without replacement, day-seeded.
+        var candidates = order.filter { !socketKeys.contains($0) }
+        var generator = RediscoverSections.SplitMix64(seed: seed)
+        let poolMax = (candidates.map { rank[$0] ?? 0 }.max() ?? 0) + 1
+        while out.count < limit, !candidates.isEmpty {
+            let weights = candidates.map { UInt64(poolMax - (rank[$0] ?? 0)) }
+            let total = weights.reduce(0, +)
+            var pick = generator.next() % max(total, 1)
+            var chosen = 0
+            for (index, weight) in weights.enumerated() {
+                if pick < weight { chosen = index; break }
+                pick -= weight
+            }
+            let key = candidates.remove(at: chosen)
+            if let station = byKey[key] { out.append(station) }
+        }
+        return out
+    }
+}
+
 /// cd5cc4a (2): canonical region tables for the CORE countries — DE/AT
 /// Bundesländer, CH Kantone. This deliberately overrides the "no country
 /// lists" rule: raw Radio-Browser state names (any language, abbreviation,

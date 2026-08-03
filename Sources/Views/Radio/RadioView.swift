@@ -32,6 +32,7 @@ struct RadioView: View {
     /// sorted by station count.
     @State private var availableStates: [RadioBrowseCuration.Curated] = []
     @State private var showRegionPicker = false
+    @State private var showCountryPicker = false
     /// b1ab99d cascade: explicit country choice (a) and the country implied
     /// by the chosen region (b); locale stays the last fallback (c).
     @State private var chosenCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryCode)
@@ -91,7 +92,23 @@ struct RadioView: View {
                     cardRow(title: String(localized: "Recently Played"), stations: recents)
                 }
                 if showsPopular {
-                    cardRow(title: nationalTitle, stations: popular)
+                    VStack(alignment: .leading, spacing: 4) {
+                        cardRow(title: nationalTitle, stations: popular)
+                        // e4bd910 Zuschnitts-Korrektur: the country switch
+                        // follows the REGION pattern exactly — a "Change
+                        // country" link under the section (no ▾ on the
+                        // title), same style/position as "Change region";
+                        // ONE mechanism (the existing cascade) behind both.
+                        Button {
+                            showCountryPicker = true
+                        } label: {
+                            Text("Change country")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .accessibilityIdentifier("radio-country-change-inline")
+                    }
                 }
                 regionSection
                 if showsGenres {
@@ -116,6 +133,14 @@ struct RadioView: View {
             await loadDiscovery()
         }
         // b1ab99d: region picker as a sheet (search field + country layer).
+        .sheet(isPresented: $showCountryPicker) {
+            NavigationStack {
+                RadioCountryPickerList { code, name in
+                    showCountryPicker = false
+                    chooseCountry(code: code, name: name)
+                }
+            }
+        }
         .sheet(isPresented: $showRegionPicker) {
             RadioRegionPickerSheet(states: availableStates,
                                    countryTitle: nationalCountryDisplayName,
@@ -344,11 +369,28 @@ struct RadioView: View {
         discoveryLoaded = true
     }
 
+    /// e4bd910 FINAL: socket + daily rotation — pool = votes + clicktrend
+    /// (deduped, losers ride as detail variants), seats 1–3 = clicktrend top,
+    /// rest day-seeded. Deterministic in the UI harness (fixed test day).
+    private static func rotationDay() -> Int {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-uitest") { return 20_260_101 }
+        #endif
+        return RediscoverSections.daySeed(for: Date())
+    }
+
     private static func nationalPopular(_ countryCode: String?) async -> [RadioStation] {
         guard let countryCode else {
-            return (try? await RadioBrowserClient.popular()) ?? []   // no locale → world
+            let world = RadioMapping.dedupeForDisplay((try? await RadioBrowserClient.popular()) ?? [])
+            return world
         }
-        return (try? await RadioBrowserClient.byRegion(countryCode: countryCode)) ?? []
+        async let votesList = (try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: 30)) ?? []
+        async let trendList = (try? await RadioBrowserClient.byRegionClicktrend(countryCode: countryCode, limit: 30)) ?? []
+        return RadioRotation.compose(
+            votes: RadioMapping.dedupeForDisplay(await votesList),
+            clicktrend: RadioMapping.dedupeForDisplay(await trendList),
+            seed: RadioRotation.seed(day: rotationDay(), countryCode: countryCode),
+            limit: 12)
     }
 
     /// The REAL region: stations of the user-chosen state (never guessed,
@@ -361,13 +403,21 @@ struct RadioView: View {
         let names = (UserDefaults.standard.array(forKey: AppStorageKeys.radioRegionQueryNames) as? [String])
             .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
         var seen = Set<String>()
-        var merged: [RadioStation] = []
+        var votesMerged: [RadioStation] = []
+        var trendMerged: [RadioStation] = []
         for name in names {
             let batch = (try? await RadioBrowserClient.byState(state: name)) ?? []
             for station in batch where seen.insert(station.id).inserted {
-                merged.append(station)
+                votesMerged.append(station)
             }
+            let trend = (try? await RadioBrowserClient.byStateClicktrend(state: name)) ?? []
+            trendMerged.append(contentsOf: trend)
         }
-        return merged
+        // e4bd910: same socket+rotation mechanic as the national section.
+        return RadioRotation.compose(
+            votes: RadioMapping.dedupeForDisplay(votesMerged),
+            clicktrend: RadioMapping.dedupeForDisplay(trendMerged),
+            seed: RadioRotation.seed(day: rotationDay(), countryCode: state),
+            limit: 12)
     }
 }

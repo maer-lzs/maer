@@ -33,6 +33,9 @@ nonisolated enum RadioBrowserClient {
         case countries
         /// Stations of ONE state, by votes (the REAL region section).
         case byState(state: String, limit: Int)
+        /// e4bd910 rotation: current click-trend — nationwide or per state.
+        case byRegionClicktrend(countryCode: String, limit: Int)
+        case byStateClicktrend(state: String, limit: Int)
 
         /// Path relative to a mirror host. Region/tag go into the PATH (exact-
         /// match endpoints), percent-encoded.
@@ -51,6 +54,10 @@ nonisolated enum RadioBrowserClient {
             case .countries:
                 return "/json/countries/"
             case .byState(let state, _):
+                return "/json/stations/bystateexact/\(Self.pathEscaped(state))"
+            case .byRegionClicktrend(let cc, _):
+                return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
+            case .byStateClicktrend(let state, _):
                 return "/json/stations/bystateexact/\(Self.pathEscaped(state))"
             }
         }
@@ -80,6 +87,13 @@ nonisolated enum RadioBrowserClient {
                     .init(name: "limit", value: String(limit)),
                     .init(name: "hidebroken", value: "true"),
                 ]
+            case .byRegionClicktrend(_, let limit), .byStateClicktrend(_, let limit):
+                return [
+                    .init(name: "order", value: "clicktrend"),
+                    .init(name: "reverse", value: "true"),
+                    .init(name: "limit", value: String(limit)),
+                    .init(name: "hidebroken", value: "true"),
+                ]
             }
         }
 
@@ -102,6 +116,14 @@ nonisolated enum RadioBrowserClient {
     /// Stations for an exact ISO country code, by votes ("From your region").
     static func byRegion(countryCode: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
         try await stations(.byRegion(countryCode: countryCode, limit: limit))
+    }
+
+    static func byRegionClicktrend(countryCode: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
+        try await stations(.byRegionClicktrend(countryCode: countryCode, limit: limit))
+    }
+
+    static func byStateClicktrend(state: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
+        try await stations(.byStateClicktrend(state: state, limit: limit))
     }
 
     static func byState(state: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
