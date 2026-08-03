@@ -733,12 +733,12 @@
         }
       }
     },
-    "Artist portraits and identities for your music library." : {
+    "Artist portraits and identities for your music library. Portraits from your own server stay visible." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Künstler-Porträts und -Identitäten für deine Musikbibliothek."
+            "value" : "Künstler-Porträts und -Identitäten für deine Musikbibliothek. Porträts von deinem eigenen Server bleiben sichtbar."
           }
         }
       }

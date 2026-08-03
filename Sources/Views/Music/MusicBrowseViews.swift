@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 /// Artists, decided variant B+C (the owner 26.07.): an ENRICHED LIST — every
 /// row carries a round thumbnail (server image, else the deterministic color
@@ -108,13 +109,20 @@ struct ArtistPortraitCircle: View {
         .frame(width: size, height: size)
         .clipShape(Circle())
         .task(id: "\(artist.id)-\(webImages)") {
-            let serverURL = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
+            let info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
             let resolved = await ArtistPortraitService.shared.portraitURL(
                 artistId: artist.id, name: artist.name,
-                serverImageURL: serverURL?.imageURL,
-                musicBrainzId: serverURL?.musicBrainzId)
-            imageURL = resolved
-            onResolved?(resolved != nil)
+                serverImageURL: info?.imageURL,
+                musicBrainzId: info?.musicBrainzId)
+            // bdfe8dc: ONE policy decides what renders (and names the source
+            // in the log) — the surfaces no longer each reason about it.
+            let source = ArtistImagePolicy.source(serverImageURL: info?.imageURL,
+                                                  webImageURL: resolved, webEnabled: webImages)
+            Logger.music.notice(
+                "MUSICART surface=\(size >= 64 ? "strip" : "list", privacy: .public) source=\(source.rawValue, privacy: .public) host=\(resolved?.host ?? "-", privacy: .public) webToggle=\(webImages)")
+            imageURL = ArtistImagePolicy.rendered(serverImageURL: info?.imageURL,
+                                                  webImageURL: resolved, webEnabled: webImages)
+            onResolved?(imageURL != nil)
         }
     }
 
@@ -171,6 +179,8 @@ struct MusicArtistView: View {
             albums = (try? await AppSession.shared.musicProvider.artistAlbums(artistId: artist.id)) ?? []
             loading = false
             info = await AppSession.shared.musicProvider.artistInfo(artistId: artist.id)
+            Logger.music.notice(
+                "MUSICART surface=detail source=\(info?.imageURL == nil ? "none" : "server", privacy: .public) host=\(info?.imageURL?.host ?? "-", privacy: .public)")
             topSongs = await AppSession.shared.musicProvider.topSongs(artistId: artist.id)
             // Similar artists limited to those present in the own library —
             // foreign names without library content would dead-end.
@@ -187,9 +197,16 @@ struct MusicArtistView: View {
     @ViewBuilder
     private var header: some View {
         let bio = strippedBio
-        if info?.imageURL != nil || bio != nil {
+        // bdfe8dc: the artist PAGE renders the library server's own image —
+        // the open-source chain never feeds this surface (webImageURL: nil
+        // states that), so the web opt-out has nothing to gate here. Routed
+        // through the shared policy anyway: ONE decision, one place to change
+        // should a server-image switch ever be wanted.
+        let headerImage = ArtistImagePolicy.rendered(serverImageURL: info?.imageURL,
+                                                     webImageURL: nil, webEnabled: false)
+        if headerImage != nil || bio != nil {
             VStack(alignment: .leading, spacing: 10) {
-                if let url = info?.imageURL {
+                if let url = headerImage {
                     // Sizing lives on the LOADED image: servers hand out image
                     // URLs even for artists without pictures — an outer frame
                     // held a 180pt hole open in that case.

@@ -95,4 +95,40 @@ struct MusicPopularityTests {
                 == [19, 18, 17, 16, 15])
     }
 }
+
+/// bdfe8dc/7b061c4: which artist image a surface renders — ONE pure decision
+/// (the opt-out governs the WEB chain, never the library server's own image).
+struct ArtistImagePolicyTests {
+    private let server = URL(string: "https://navidrome.example/rest/getCoverArt?id=ar-1")!
+    private let web = URL(string: "https://upload.wikimedia.org/portrait.jpg")!
+
+    @Test("server image always wins and is never gated by the web opt-out")
+    func serverWins() {
+        for enabled in [true, false] {
+            #expect(ArtistImagePolicy.source(serverImageURL: server, webImageURL: web,
+                                             webEnabled: enabled) == .server)
+            #expect(ArtistImagePolicy.rendered(serverImageURL: server, webImageURL: web,
+                                               webEnabled: enabled) == server)
+        }
+    }
+
+    @Test("web image renders only with the opt-in; off means NOT shown, not just not loaded")
+    func webGated() {
+        #expect(ArtistImagePolicy.rendered(serverImageURL: nil, webImageURL: web,
+                                           webEnabled: true) == web)
+        // The e3dabb3 rule: a cached web portrait must not render while off.
+        #expect(ArtistImagePolicy.rendered(serverImageURL: nil, webImageURL: web,
+                                           webEnabled: false) == nil)
+        #expect(ArtistImagePolicy.source(serverImageURL: nil, webImageURL: web,
+                                         webEnabled: false) == .none)
+    }
+
+    @Test("nothing anywhere → none (the color circle case)")
+    func nothing() {
+        #expect(ArtistImagePolicy.source(serverImageURL: nil, webImageURL: nil,
+                                         webEnabled: true) == .none)
+        #expect(ArtistImagePolicy.rendered(serverImageURL: nil, webImageURL: nil,
+                                           webEnabled: true) == nil)
+    }
+}
 #endif

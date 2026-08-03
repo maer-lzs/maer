@@ -19,6 +19,33 @@ nonisolated struct MusicArtist: Identifiable, Hashable {
     let albumCount: Int?
 }
 
+/// bdfe8dc/7b061c4: the ONE decision "which artist image does a surface
+/// render" — pure, so every surface (list row, portrait strip, artist page
+/// header) answers it identically and the answer is testable instead of
+/// re-derived per view. The opt-out `musicArtistImagesOnline` governs the
+/// OPEN-SOURCE chain (MusicBrainz→Wikidata→Commons); an image the library
+/// server itself hands out is a library fact and stays — the toggle's own
+/// wording names the web services, not the server.
+nonisolated enum ArtistImagePolicy {
+    enum Source: String {
+        case server, web, none
+    }
+
+    /// `webURL` = the chain's result (nil when it found nothing or was off).
+    static func source(serverImageURL: URL?, webImageURL: URL?, webEnabled: Bool) -> Source {
+        if serverImageURL != nil { return .server }
+        return (webEnabled && webImageURL != nil) ? .web : .none
+    }
+
+    static func rendered(serverImageURL: URL?, webImageURL: URL?, webEnabled: Bool) -> URL? {
+        switch source(serverImageURL: serverImageURL, webImageURL: webImageURL, webEnabled: webEnabled) {
+        case .server: return serverImageURL
+        case .web: return webImageURL
+        case .none: return nil
+        }
+    }
+}
+
 /// A playlist row/card. `changedAt` is epoch ms (parsed at the provider
 /// boundary), so the F5 "recently changed first" sort needs no wire format.
 nonisolated struct MusicPlaylist: Identifiable, Hashable {

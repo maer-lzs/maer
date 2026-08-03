@@ -25,8 +25,12 @@ struct NetworkServicesView: View {
         Form {
             Section {
                 Toggle(isOn: $artistImagesOnline) {
+                    // bdfe8dc: name the boundary — switching this off stops
+                    // the WEB chain; portraits your own server delivers are a
+                    // library fact and keep showing (that difference is what
+                    // made the switch look ineffective).
                     serviceLabel(NetworkServiceNames.artistImages,
-                                 purpose: "Artist portraits and identities for your music library.")
+                                 purpose: "Artist portraits and identities for your music library. Portraits from your own server stay visible.")
                 }
                 Toggle(isOn: $highResCovers) {
                     serviceLabel(NetworkServiceNames.hiResCovers,
