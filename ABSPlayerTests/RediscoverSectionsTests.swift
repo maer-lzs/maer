@@ -146,5 +146,44 @@ struct AuthorPortraitRuleTests {
             now: now, daySeed: 42, limit: 10)
         #expect(plain.map(\.id) == ["b"])
     }
+
+    @Test("49dc2c3: unknown last listen means DORMANT, never excluded; proven pauses rank first")
+    func dormantUnknownJoins() {
+        let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
+        let fresh = now.timeIntervalSince1970 - 2 * 24 * 3600     // heard recently
+        let old = now.timeIntervalSince1970 - 35 * 24 * 3600      // 5 weeks ago
+        // the reviewer's matrix: (a) freshly heard, (b) long ago, (c) never logged,
+        // (d) backfill-stamped ⇒ reaches picks() as unknown, like (c).
+        let picks = RediscoverSections.picks(
+            paused: [], unheard: [], seriesNext: [],
+            showsDormant: [(id: "a-fresh", lastPlayed: fresh),
+                           (id: "b-old", lastPlayed: old),
+                           (id: "c-never", lastPlayed: nil),
+                           (id: "d-backfill", lastPlayed: nil)],
+            // limit 20 ⇒ share cap 4, so the cap is not what this test measures.
+            now: now, daySeed: 5, limit: 20)
+        #expect(!picks.contains { $0.id == "a-fresh" })
+        #expect(Set(picks.map(\.id)) == ["b-old", "c-never", "d-backfill"])
+        // Proven pause before never-observed.
+        #expect(picks.first?.id == "b-old")
+        #expect(picks.first?.reason == .showDormant(weeks: 5))
+        // The unknown ones carry no invented week count.
+        #expect(picks.dropFirst().allSatisfy { $0.reason == .showDormantUnknown })
+    }
+
+    @Test("49dc2c3: unknown shows count against the SAME share cap")
+    func unknownSharesTheCap() {
+        let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
+        let old = now.timeIntervalSince1970 - 30 * 24 * 3600
+        let picks = RediscoverSections.picks(
+            paused: (0..<10).map { (id: "book-\($0)", lastPlayed: old) },
+            unheard: [], seriesNext: [],
+            showsDormant: (0..<8).map { (id: "show-\($0)", lastPlayed: nil) },
+            now: now, daySeed: 42, limit: 10)
+        let showPicks = picks.filter { $0.reason == .showDormantUnknown }
+        #expect(showPicks.count == RediscoverSections.showCap(limit: 10))
+        // Books keep their places — the new source never displaces them.
+        #expect(picks.count == 10)
+    }
 }
 #endif

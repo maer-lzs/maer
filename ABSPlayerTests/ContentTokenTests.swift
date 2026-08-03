@@ -143,6 +143,30 @@ struct PodcastListenLogTests {
         #expect(log.entries[guid2] == nil)
     }
 
+    @Test("49dc2c3: bulk-booked entries answer no WHEN; a real transition upgrades them")
+    func synthesizedStamps() {
+        let log = PodcastListenLog.shared
+        log._resetForTest()
+        let guid = "rss:test-log-synth"
+        defer { UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(guid)) }
+        write(guid, time: 600, ts: 1_000)
+        // The bulk pass (backfill/rescan) books the fact, not a listen time.
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "S",
+                         feedURL: "https://f", synthesized: true)
+        #expect(log.entries[guid]?.isPlayed == true)
+        #expect(log.entries[guid]?.hasObservedTime == false)
+        // A later REAL transition (newer stamp) upgrades the entry…
+        write(guid, time: 600, ts: 5_000)
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "S",
+                         feedURL: "https://f")
+        #expect(log.entries[guid]?.hasObservedTime == true)
+        // …and a later bulk pass never downgrades it back.
+        write(guid, time: 600, ts: 9_000)
+        log.noteIfPlayed(guid: guid, duration: 600, episodeTitle: "Ep", showTitle: "S",
+                         feedURL: "https://f", synthesized: true)
+        #expect(log.entries[guid]?.hasObservedTime == true)
+    }
+
     @Test("01fab43: car-audio candidates — external routes only, built-ins drop")
     func carCandidates() {
         let outputs = [

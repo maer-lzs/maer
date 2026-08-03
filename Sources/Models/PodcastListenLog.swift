@@ -30,8 +30,18 @@ final class PodcastListenLog {
         /// NEWER play-through flips it back (an old reconciled position
         /// must not resurrect "played").
         var unplayedAt: Double?
+        /// 49dc2c3: `playedAt` is BOOKKEEPING, not an observed listen time —
+        /// set by the BULK passes (backfill/rescan), which only write down
+        /// what the position store already knew. The entry keeps the fact
+        /// "heard", but answers no honest WHEN. Optional for entries written
+        /// before the flag existed; those are migrated on load.
+        var synthesizedAt: Bool?
 
         var isPlayed: Bool { unplayedAt.map { playedAt > $0 } ?? true }
+
+        /// Does `playedAt` answer "when"? Only stamped transitions do —
+        /// dormancy ranking asks THIS, never `playedAt > 0`.
+        var hasObservedTime: Bool { !(synthesizedAt ?? false) }
     }
 
     /// guid → entry (dedup; the latest transition wins).
@@ -48,13 +58,17 @@ final class PodcastListenLog {
     /// Record a LOCAL played-transition candidate: evaluates the CURRENT
     /// stored state via the existing threshold logic and upserts on `.played`.
     /// Cheap + idempotent — callers may invoke it on every position write.
+    /// `synthesized`: the caller is a BULK pass (backfill/rescan) that merely
+    /// books what the position store already knew — the resulting timestamp
+    /// dates the bookkeeping, not a listen (49dc2c3).
     func noteIfPlayed(guid: String, duration: Double, episodeTitle: String,
-                      showTitle: String, feedURL: String) {
+                      showTitle: String, feedURL: String, synthesized: Bool = false) {
         guard case .played = PodcastProgressStore.shared.state(guid: guid, duration: duration) else { return }
         let ts = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double])?
             .last ?? Date().timeIntervalSince1970 * 1000
         upsertPlayed(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle,
-                     feedURL: feedURL, duration: duration, playedAt: ts)
+                     feedURL: feedURL, duration: duration, playedAt: ts,
+                     synthesized: synthesized)
     }
 
     /// Explicit "mark unplayed": tombstone the entry (kept, flagged) — the
@@ -108,19 +122,22 @@ final class PodcastListenLog {
             for episode in show.episodes {
                 noteIfPlayed(guid: episode.guid, duration: episode.duration,
                              episodeTitle: episode.title, showTitle: show.title,
-                             feedURL: show.feedURL)
+                             feedURL: show.feedURL, synthesized: true)
             }
         }
     }
 
     private func upsertPlayed(guid: String, episodeTitle: String, showTitle: String,
-                              feedURL: String, duration: Double, playedAt: Double) {
+                              feedURL: String, duration: Double, playedAt: Double,
+                              synthesized: Bool = false) {
         loadIfNeeded()
         if var existing = entries[guid] {
             // Latest transition wins; a tombstone yields only to a NEWER play.
             guard playedAt > existing.playedAt || existing.unplayedAt != nil else { return }
             if let unplayedAt = existing.unplayedAt, playedAt <= unplayedAt { return }
             existing.playedAt = max(existing.playedAt, playedAt)
+            // A stamped transition upgrades a synthesized one (never back).
+            existing.synthesizedAt = (existing.synthesizedAt ?? false) && synthesized
             existing.episodeTitle = episodeTitle.isEmpty ? existing.episodeTitle : episodeTitle
             existing.showTitle = showTitle.isEmpty ? existing.showTitle : showTitle
             existing.feedURL = feedURL.isEmpty ? existing.feedURL : feedURL
@@ -129,7 +146,7 @@ final class PodcastListenLog {
         } else {
             entries[guid] = Entry(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle,
                                   feedURL: feedURL, duration: duration, playedAt: playedAt,
-                                  unplayedAt: nil)
+                                  unplayedAt: nil, synthesizedAt: synthesized)
         }
         persist()
     }
@@ -146,7 +163,7 @@ final class PodcastListenLog {
             for episode in show.episodes {
                 noteIfPlayed(guid: episode.guid, duration: episode.duration,
                              episodeTitle: episode.title, showTitle: show.title,
-                             feedURL: show.feedURL)
+                             feedURL: show.feedURL, synthesized: true)
             }
         }
         UserDefaults.standard.set(true, forKey: AppStorageKeys.listenLogBackfilled)
@@ -177,6 +194,19 @@ final class PodcastListenLog {
             return
         }
         entries = decoded
+        migrateSynthesizedFlag()
+    }
+
+    /// 49dc2c3: entries written before the flag existed cannot be told apart
+    /// anymore — and the log's whole first generation IS the backfill. They
+    /// are therefore marked time-unknown (conservative: a show loses its week
+    /// count for a while, but nothing is falsely "recently heard"). Runs once
+    /// per load, in memory; the next persist carries it along.
+    private func migrateSynthesizedFlag() {
+        let stale = entries.filter { $0.value.synthesizedAt == nil }
+        guard !stale.isEmpty else { return }
+        for guid in stale.keys { entries[guid]?.synthesizedAt = true }
+        Logger.rss.notice("listen log: \(stale.count) pre-flag entries marked as time-unknown")
     }
 
     private func persist() {

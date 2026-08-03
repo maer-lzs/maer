@@ -387,6 +387,10 @@ struct HomeView: View {
                 : String(localized: "Next volume of your series")
         case .showDormant(let weeks):
             return String(localized: "Long unheard · last \(weeks) weeks ago")
+        case .showDormantUnknown:
+            // 49dc2c3: no observed listen — name no week count rather than
+            // inventing one from the backfill moment.
+            return String(localized: "Long unheard")
         }
     }
 
@@ -584,15 +588,19 @@ struct HomeView: View {
         // episodes — last listen per feed from the local listen log (the same
         // "no profile leaves the device" base), threshold shared in picks().
         let log = PodcastListenLog.shared.entries
+        // 49dc2c3: only OBSERVED listens (stamped transitions) date a feed —
+        // backfill bookkeeping does not, otherwise every backfilled show
+        // looks freshly heard for weeks.
         var lastByFeed: [String: Double] = [:]
-        for entry in log.values where !entry.feedURL.isEmpty {
+        for entry in log.values where !entry.feedURL.isEmpty && entry.hasObservedTime {
             lastByFeed[entry.feedURL] = max(lastByFeed[entry.feedURL] ?? 0, entry.playedAt)
         }
-        let showsDormant = PodcastSubscriptions.shared.shows.compactMap { show -> (id: String, lastPlayed: Double)? in
-            guard let last = lastByFeed[show.feedURL],
-                  show.episodes.contains(where: { log[$0.guid]?.isPlayed != true })
-            else { return nil }
-            return (Self.showPickPrefix + show.feedURL, Self.seconds(last))
+        // 49dc2c3: the qualifying condition is UNPLAYED EPISODES, not the
+        // presence of a log entry — a show never heard since the log exists
+        // rides along with an unknown date instead of being dropped.
+        let showsDormant = PodcastSubscriptions.shared.shows.compactMap { show -> (id: String, lastPlayed: Double?)? in
+            guard show.episodes.contains(where: { log[$0.guid]?.isPlayed != true }) else { return nil }
+            return (Self.showPickPrefix + show.feedURL, lastByFeed[show.feedURL].map(Self.seconds))
         }
         let now = Date()
         return RediscoverSections.picks(

@@ -2955,6 +2955,16 @@
         }
       }
     },
+    "Long unheard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lange nicht gehört"
+          }
+        }
+      }
+    },
     "Long unheard · last %lld weeks ago" : {
       "localizations" : {
         "de" : {

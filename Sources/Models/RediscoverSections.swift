@@ -27,6 +27,10 @@ nonisolated enum RediscoverSections {
         /// 5dcbf21: a subscribed show long unheard that still has unplayed
         /// episodes ("Lange nicht gehört · zuletzt vor N Wochen").
         case showDormant(weeks: Int)
+        /// 49dc2c3: the same, but WITHOUT an observed last listen — a show
+        /// never heard since the log exists (or only backfill-stamped). The
+        /// subtitle names no week count instead of inventing one.
+        case showDormantUnknown
     }
 
     struct Pick: Equatable {
@@ -44,7 +48,11 @@ nonisolated enum RediscoverSections {
         paused: [(id: String, lastPlayed: TimeInterval)],
         unheard: [(id: String, addedAt: TimeInterval)],
         seriesNext: [(id: String, volume: Int)],
-        showsDormant: [(id: String, lastPlayed: TimeInterval)] = [],
+        /// 49dc2c3: `lastPlayed == nil` means "never observed", NOT
+        /// "excluded" — a show with unplayed episodes and no listen record is
+        /// the most dormant candidate there is. The old signature silently
+        /// dropped exactly those (and every user in the log's first weeks).
+        showsDormant: [(id: String, lastPlayed: TimeInterval?)] = [],
         now: Date,
         daySeed: Int,
         limit: Int
@@ -62,15 +70,28 @@ nonisolated enum RediscoverSections {
             .map { Pick(id: $0.id, reason: .nextInSeries(volume: $0.volume)) }
         // 5dcbf21: dormant shows share the paused threshold (one anchor, no
         // second constant) — "long unheard" means the same everywhere.
-        let showPicks: [Pick] = showsDormant
-            .filter { nowT - $0.lastPlayed > pausedAfter && $0.lastPlayed > 0 }
-            .map { Pick(id: $0.id, reason: .showDormant(weeks: Int((nowT - $0.lastPlayed) / (7 * 24 * 3600)))) }
+        // 49dc2c3: an observed listen must be OLDER than the threshold; an
+        // absent one qualifies immediately (nothing to compare against).
+        let observedShows: [Pick] = showsDormant
+            .compactMap { entry in
+                guard let last = entry.lastPlayed, last > 0, nowT - last > pausedAfter else { return nil }
+                return Pick(id: entry.id, reason: .showDormant(weeks: Int((nowT - last) / (7 * 24 * 3600))))
+            }
+        let unknownShows: [Pick] = showsDormant
+            .filter { ($0.lastPlayed ?? 0) <= 0 }
+            .map { Pick(id: $0.id, reason: .showDormantUnknown) }
 
         // Deterministic daily rotation: seeded shuffle per source (stable within
         // a day), then round-robin across the sources in priority order.
-        let sources = [pausedPicks, unheardPicks, seriesPicks, showPicks]
+        let showSeed = UInt64(bitPattern: Int64(daySeed)) &+ UInt64(3 &* 7919)
+        // Rank inside the show source: a PROVEN long pause beats "never
+        // observed" — each group rotates on its own, the groups don't mix.
+        let showPicks = shuffled(observedShows, seed: showSeed)
+            + shuffled(unknownShows, seed: showSeed &+ 104_729)
+        let sources = [pausedPicks, unheardPicks, seriesPicks]
             .enumerated()
             .map { shuffled($0.element, seed: UInt64(bitPattern: Int64(daySeed)) &+ UInt64($0.offset &* 7919)) }
+            + [showPicks]
 
         let cap = showCap(limit: limit)
         var shows = 0
@@ -82,9 +103,9 @@ nonisolated enum RediscoverSections {
             for source in sources where index < source.count {
                 let pick = source[index]
                 // Share cap: shows above their fifth are skipped, never queued.
-                if case .showDormant = pick.reason, shows >= cap { appended = true; continue }
+                if isShow(pick), shows >= cap { appended = true; continue }
                 if seen.insert(pick.id).inserted {
-                    if case .showDormant = pick.reason { shows += 1 }
+                    if isShow(pick) { shows += 1 }
                     out.append(pick)
                     if out.count == limit { return out }
                 }
@@ -94,6 +115,14 @@ nonisolated enum RediscoverSections {
             index += 1
         }
         return out
+    }
+
+    /// Both show reasons count against the same share cap (49dc2c3).
+    private static func isShow(_ pick: Pick) -> Bool {
+        switch pick.reason {
+        case .showDormant, .showDormantUnknown: return true
+        case .paused, .unheardSince, .nextInSeries: return false
+        }
     }
 
     /// Volume number from a full ABS series name ("… #5" convention) — nil
