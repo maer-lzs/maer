@@ -72,7 +72,15 @@ struct FreeCatalogRows: View {
                             coverURL: AppSession.shared.coverURL(forItemId: item.id),
                             placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
                                 ? "music.note" : "book.closed",
-                            onTap: { Task { await playerCoordinator.open(item: item) } }
+                            // ea6e002: card standard — ONE title line and the
+                            // library's time line (blank where the source has
+                            // no runtime; the slot stays reserved).
+                            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
+                            titleLineLimit: 1,
+                            onTap: { Task { await playerCoordinator.open(item: item) } },
+                            // fbcff9f: the running import rides the standard
+                            // corner slot (nothing drawn while idle).
+                            corner: { FreeCatalogImportBadge(itemId: item.id) }
                         )
                         .containerRelativeFrame(.horizontal,
                                                 count: CardMetrics.recommendationColumns(regularWidth: false),
@@ -87,6 +95,33 @@ struct FreeCatalogRows: View {
                 .padding(.horizontal)
             }
             .scrollClipDisabled()
+    }
+}
+
+/// fbcff9f: the LibriVox import shows its progress where every other
+/// download does — in the tile's corner slot, through the SHARED
+/// `UnifiedDownloadRing`. Self-observing like `CardDownloadBadge`, so only
+/// this small view re-renders per progress tick; nothing at all is drawn
+/// while no import runs for THIS item (the corner slot collapses).
+struct FreeCatalogImportBadge: View {
+    let itemId: String
+    @ObservedObject private var importer = LibriVoxImporter.shared
+    @ScaledMetric(relativeTo: .subheadline) private var ringSize: CGFloat = 17
+
+    var body: some View {
+        if importer.activeBookId == itemId,
+           let fraction = LibriVoxImporter.ringFraction(importer.phase) {
+            Button { importer.cancel() } label: {
+                ZStack {
+                    Circle().fill(.black.opacity(0.45))
+                        .frame(width: ringSize + 10, height: ringSize + 10)
+                    UnifiedDownloadRing(fraction: fraction, lineWidth: 2.5, tint: .white)
+                        .frame(width: ringSize, height: ringSize)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text("Cancel Download"))
+        }
     }
 }
 
@@ -128,14 +163,21 @@ enum FreeCatalogLoader {
         let areaOn = UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true
         if librivoxOn && areaOn {
             do {
-                let books = try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40)
+                // 938aebc: the row used to fetch LibriVox's SINCE feed (new
+                // additions) — which is why it showed obscure newcomers and
+                // never the classics. It now rides the downloads sort, one
+                // query PER active language, interleaved.
                 let codes = SuggestionLanguages.current()
-                let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
-                Logger.library.notice("FREECAT discover-books loaded=\(books.count) filtered=\(filtered.count) codes=\(codes.joined(separator: ","), privacy: .public)")
-                let items = filtered.map { provider.remember(book: $0) }
+                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
+                    rowsPerLanguage: 12, languageCodes: codes, limit: 12)
+                Logger.library.notice("FREECAT discover-books sort=downloads codes=\(codes.isEmpty ? "-" : codes.joined(separator: ","), privacy: .public) loaded=\(docs.count)")
+                if docs.isEmpty {
+                    Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
+                }
+                let items = docs.compactMap { provider.remember(popular: $0) }
                 rows.discoverBooks = Array(items.prefix(Self.discoverBookCap))
                 // cb99bf6: ONE fetch, two cuts — the tab row shows more.
-                rows.tabBooks = Array(items.prefix(12))
+                rows.tabBooks = items
             } catch {
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
             }
@@ -346,7 +388,11 @@ struct FreeCatalogDetailSheet: View {
         switch importer.phase {
         case .downloading(let section, let of) where importer.activeBookId == item.id:
             VStack(spacing: 6) {
-                ProgressView(value: Double(section), total: Double(of))
+                // fbcff9f: the detail shows the SAME ring as the tile (one
+                // progress language), the part line stays as the detail text.
+                UnifiedDownloadRing(fraction: LibriVoxImporter.ringFraction(importer.phase) ?? -1,
+                                    lineWidth: 3, tint: .accentColor)
+                    .frame(width: 34, height: 34)
                 Text("Downloading part \(section) of \(of)…")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Cancel", role: .cancel) { importer.cancel() }

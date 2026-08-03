@@ -241,4 +241,62 @@ struct FreeCatalogTests {
         }
     }
 }
+
+/// 938aebc/ea6e002: the free-audiobook row's SELECTION (per-language
+/// popularity, interleaved) and the card's runtime line.
+struct FreeCatalogSelectionTests {
+    @Test("runtime strings parse tolerantly; nonsense stays nil")
+    func runtimeParsing() {
+        #expect(FreeCatalog.runtimeSeconds("4:55:03") == Double(4 * 3600 + 55 * 60 + 3))
+        #expect(FreeCatalog.runtimeSeconds("2:50") == Double(2 * 60 + 50))
+        // Measured on archive.org: a dot instead of the last colon occurs.
+        #expect(FreeCatalog.runtimeSeconds("16:31.09") == Double(16 * 3600 + 31 * 60 + 9))
+        // A wrong duration is worse than none.
+        #expect(FreeCatalog.runtimeSeconds(nil) == nil)
+        #expect(FreeCatalog.runtimeSeconds("") == nil)
+        #expect(FreeCatalog.runtimeSeconds("unknown") == nil)
+        #expect(FreeCatalog.runtimeSeconds("1:75:00") == nil)   // minutes > 59
+        #expect(FreeCatalog.runtimeSeconds("12") == nil)        // no separator
+        #expect(FreeCatalog.runtimeSeconds("0:00") == nil)      // zero is no runtime
+    }
+
+    @Test("per-language results interleave fairly, dedupe, and respect the limit")
+    func interleave() {
+        let de = ["de1", "de2", "de3"]
+        let en = ["en1", "en2", "en3", "en4"]
+        let out = FreeCatalog.interleaveByLanguage([de, en], limit: 6) { $0 }
+        // Fair round-robin: no language may open the row alone.
+        #expect(out == ["de1", "en1", "de2", "en2", "de3", "en3"])
+        // The limit caps, the leftovers of the longer list trail.
+        #expect(FreeCatalog.interleaveByLanguage([de, en], limit: 8) { $0 }.count == 7)
+        // Same identifier in two languages appears once.
+        #expect(FreeCatalog.interleaveByLanguage([["x", "a"], ["x", "b"]], limit: 4) { $0 }
+                == ["x", "a", "b"])
+        // An empty language never blocks the round.
+        #expect(FreeCatalog.interleaveByLanguage([[], en], limit: 2) { $0 } == ["en1", "en2"])
+        #expect(FreeCatalog.interleaveByLanguage([[String]](), limit: 3) { $0 }.isEmpty)
+    }
+
+    @Test("fbcff9f: the ring reads the import phase; terminal states end it")
+    func ringFraction() {
+        #expect(LibriVoxImporter.ringFraction(.downloading(section: 1, of: 4)) == 0.25)
+        #expect(LibriVoxImporter.ringFraction(.downloading(section: 4, of: 4)) == 1)
+        // Guard against a nonsense total instead of dividing by zero.
+        #expect(LibriVoxImporter.ringFraction(.downloading(section: 1, of: 0)) == -1)
+        // Indeterminate phases keep the ring spinning honestly.
+        #expect(LibriVoxImporter.ringFraction(.checking) == -1)
+        #expect(LibriVoxImporter.ringFraction(.uploading) == -1)
+        // No frozen ring: cancel/idle and every terminal state end it.
+        #expect(LibriVoxImporter.ringFraction(.idle) == nil)
+        #expect(LibriVoxImporter.ringFraction(.done) == nil)
+        #expect(LibriVoxImporter.ringFraction(.duplicate(existingTitle: "X")) == nil)
+        #expect(LibriVoxImporter.ringFraction(.failed("x")) == nil)
+    }
+
+    @Test("the junk meta item stays filtered (the reviewer's Librivox M4b collection)")
+    func junkStaysFiltered() {
+        #expect(FreeCatalog.isArtifactDoc(identifier: "librivox_m4b_collection",
+                                          title: "Librivox M4b Collection Audiobooks Main"))
+    }
+}
 #endif

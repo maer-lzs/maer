@@ -1029,7 +1029,14 @@ struct LibraryView: View {
                             subtitle: item.author,
                             coverURL: AppSession.shared.coverURL(forItemId: item.id),
                             placeholderSystemImage: "book.closed",
-                            onTap: { Task { await playerCoordinator.open(item: item) } }
+                            // ea6e002: card standard, same as every other
+                            // free-catalog surface.
+                            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
+                            titleLineLimit: 1,
+                            onTap: { Task { await playerCoordinator.open(item: item) } },
+                            // fbcff9f: same corner ring as every other
+                            // download surface.
+                            corner: { FreeCatalogImportBadge(itemId: item.id) }
                         )
                         .contextMenu {
                             Button {

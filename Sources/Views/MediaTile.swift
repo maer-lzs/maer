@@ -26,6 +26,14 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     var cornerBadgeURL: URL? = nil
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
+    /// ea6e002: third text line (the library card's time line) — laid out
+    /// only when the CALLER opts in, so rows without it keep their height.
+    /// Pass an empty string to reserve the line without content.
+    var meta: String? = nil
+    /// ea6e002: card families that want the single-line title (the free
+    /// catalog rows) pass 1; the slot stays RESERVED either way, so cells
+    /// remain equally tall.
+    var titleLineLimit: Int = 2
     /// A3: unavailable content (offline, not downloaded) dims AND carries the
     /// white wifi.slash badge — dimming alone never carries the state.
     var unavailable: Bool = false
@@ -41,6 +49,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         meta: String? = nil, titleLineLimit: Int = 2,
          coverOverride: CoverOverride?,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.title = title
@@ -51,6 +60,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.cornerBadgeURL = cornerBadgeURL
         self.progress = progress
         self.unavailable = unavailable
+        self.meta = meta
+        self.titleLineLimit = titleLineLimit
         self.coverOverride = coverOverride
         self.onTap = onTap
         self.corner = corner
@@ -77,7 +88,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                         // default size, so grid rows went uneven at larger
                         // Dynamic Type (variable LazyVGrid row heights jump
                         // while scrolling, Apple Forums 685461).
-                        .lineLimit(2, reservesSpace: true)
+                        .lineLimit(titleLineLimit, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     // Jank convention: the subtitle slot is always laid out
                     // (invisible placeholder when nil) so tiles with and
@@ -87,6 +98,16 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    // ea6e002: the library card's time line, same rule —
+                    // always laid out where the row asks for it, so a title
+                    // without runtime never shrinks its cell.
+                    if let meta {
+                        Text(meta.isEmpty ? " " : meta)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1, reservesSpace: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -156,11 +177,13 @@ extension MediaTile where CoverOverride == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         meta: String? = nil, titleLineLimit: Int = 2,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable, coverOverride: nil,
+                  progress: progress, unavailable: unavailable,
+                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: nil,
                   onTap: onTap, corner: corner)
     }
 }
@@ -170,12 +193,14 @@ extension MediaTile where Corner == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         meta: String? = nil, titleLineLimit: Int = 2,
          coverOverride: CoverOverride,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable, coverOverride: coverOverride,
+                  progress: progress, unavailable: unavailable,
+                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: coverOverride,
                   onTap: onTap, corner: { EmptyView() })
     }
 }
@@ -185,11 +210,13 @@ extension MediaTile where Corner == EmptyView, CoverOverride == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         meta: String? = nil, titleLineLimit: Int = 2,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
-                  progress: progress, unavailable: unavailable, coverOverride: nil,
+                  progress: progress, unavailable: unavailable,
+                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: nil,
                   onTap: onTap, corner: { EmptyView() })
     }
 }

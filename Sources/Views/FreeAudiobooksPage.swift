@@ -100,7 +100,12 @@ struct FreeAudiobooksPage: View {
             subtitle: item.author,
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             placeholderSystemImage: "book.closed",
-            onTap: { Task { await playerCoordinator.open(item: item) } }
+            // ea6e002: same card language as the rows and the library.
+            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
+            titleLineLimit: 1,
+            onTap: { Task { await playerCoordinator.open(item: item) } },
+            // fbcff9f: same corner ring as every other download surface.
+            corner: { FreeCatalogImportBadge(itemId: item.id) }
         )
         .contextMenu {
             Button {
@@ -129,8 +134,11 @@ struct FreeAudiobooksPage: View {
             }
         }
         do {
-            let docs = try await ArchiveOrgClient.popularLibriVox(rows: pageSize, languageCodes: codes, page: page)
-            Logger.library.notice("FREECAT area-popular page=\(page) loaded=\(docs.count)")
+            // 938aebc: per-language popularity, interleaved — the combined
+            // clause let English bury every other language.
+            let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
+                rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
+            Logger.library.notice("FREECAT area-popular page=\(page) sort=downloads codes=\(codes.isEmpty ? "-" : codes.joined(separator: ","), privacy: .public) loaded=\(docs.count)")
             let new = docs.compactMap { provider.remember(popular: $0) }
             if new.isEmpty { reachedEnd = true } else {
                 var seen = Set(popular.map(\.id))

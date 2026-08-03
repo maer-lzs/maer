@@ -85,6 +85,30 @@ nonisolated enum ArchiveOrgClient {
         return try await popular(query: "collection:librivoxaudio AND mediatype:(audio)", rows: rows, page: page)
     }
 
+    /// 938aebc: popularity PER LANGUAGE, then interleaved. One combined
+    /// query ranks by absolute download counts, where English buries every
+    /// minority language — the measured effect behind "the row only ever
+    /// shows English". Queries run concurrently; a failing language drops
+    /// out instead of taking the row down with it.
+    static func popularLibriVoxByLanguage(rowsPerLanguage: Int, languageCodes: [String],
+                                          limit: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
+        let codes = languageCodes.isEmpty ? [""] : languageCodes
+        let lists: [[ArchivePopularDoc]] = await withTaskGroup(of: (Int, [ArchivePopularDoc]).self) { group in
+            for (index, code) in codes.enumerated() {
+                group.addTask {
+                    let docs = try? await popularLibriVox(
+                        rows: rowsPerLanguage,
+                        languageCodes: code.isEmpty ? [] : [code], page: page)
+                    return (index, docs ?? [])
+                }
+            }
+            var byIndex: [Int: [ArchivePopularDoc]] = [:]
+            for await (index, docs) in group { byIndex[index] = docs }
+            return codes.indices.map { byIndex[$0] ?? [] }
+        }
+        return FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
+    }
+
     /// E3: popular free classical recordings (same client, Regel 2).
     static func popularClassical(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popular(query: classicalQuery, rows: rows, page: page)
@@ -99,6 +123,8 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "fl[]", value: "title"),
             URLQueryItem(name: "fl[]", value: "creator"),
             URLQueryItem(name: "fl[]", value: "downloads"),
+            // ea6e002: the card's time line (present for most items).
+            URLQueryItem(name: "fl[]", value: "runtime"),
             URLQueryItem(name: "sort[]", value: "downloads desc"),
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),

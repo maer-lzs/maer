@@ -54,7 +54,9 @@ final class FreeCatalogProvider: AudioProvider {
                     // detail sheet names everyone via the joined form.
                     title: doc.title?.first, authorName: doc.creator?.first, narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
-                duration: nil, chapters: nil, tracks: nil),
+                // ea6e002: the search index carries the runtime for most
+                // items — the card's time line reads it from here.
+                duration: FreeCatalog.runtimeSeconds(doc.runtime), chapters: nil, tracks: nil),
             addedAt: nil)
         itemsById[id] = item
         return item

@@ -67,6 +67,10 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     let title: ArchiveStringList?
     let creator: ArchiveStringList?
     let downloads: Int?
+    /// ea6e002: the search index carries the total runtime as "H:MM:SS" for
+    /// most (NOT all) items — the card's time line reads it via
+    /// `FreeCatalog.runtimeSeconds`; absent stays honestly absent.
+    let runtime: String?
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {
@@ -165,6 +169,52 @@ nonisolated enum FreeCatalog {
         let variants = codes.flatMap { iso639_3(for: $0) }
         guard !variants.isEmpty else { return nil }
         return "(" + variants.map { "language:\"\($0)\"" }.joined(separator: " OR ") + ")"
+    }
+
+    /// ea6e002 (pure): archive.org's `runtime` string → seconds. The field
+    /// is user-entered metadata: "H:MM:SS", "MM:SS", and malformed variants
+    /// like "16:31.09" (a dot for the last separator) all occur. Anything
+    /// that does not read as a time is nil — a wrong duration is worse than
+    /// none (the card then reserves the line without content).
+    static func runtimeSeconds(_ raw: String?) -> Double? {
+        guard let raw else { return nil }
+        let parts = raw.split(whereSeparator: { $0 == ":" || $0 == "." })
+        guard (2...3).contains(parts.count) else { return nil }
+        var total = 0.0
+        for part in parts {
+            guard let value = Int(part), value >= 0 else { return nil }
+            total = total * 60 + Double(value)
+        }
+        // Minutes/seconds above 59 mean the string was not a duration.
+        if parts.count >= 2, let last = Int(parts[parts.count - 1]), last > 59 { return nil }
+        if parts.count == 3, let mid = Int(parts[1]), mid > 59 { return nil }
+        return total > 0 ? total : nil
+    }
+
+    /// 938aebc (pure): fair round-robin over per-language result lists —
+    /// ONE combined popularity query cannot work, English download counts
+    /// bury every minority language. Empty lists are skipped, the caller's
+    /// limit caps the row, duplicates (same identifier in two languages)
+    /// drop on first come.
+    static func interleaveByLanguage<T>(_ lists: [[T]], limit: Int,
+                                        key: (T) -> String) -> [T] {
+        var out: [T] = []
+        var seen = Set<String>()
+        var index = 0
+        while out.count < limit {
+            var progressed = false
+            for list in lists where index < list.count {
+                progressed = true
+                let candidate = list[index]
+                if seen.insert(key(candidate)).inserted {
+                    out.append(candidate)
+                    if out.count == limit { return out }
+                }
+            }
+            if !progressed { break }
+            index += 1
+        }
+        return out
     }
 
     /// 7edb21b: mix LibriVox books into the Discover row at a MODERATE

@@ -34,6 +34,23 @@ final class LibriVoxImporter: ObservableObject {
     @Published private(set) var activeBookId: String?
     private var task: Task<Void, Never>?
 
+    /// fbcff9f (pure): the phase as the SHARED download ring reads it —
+    /// nil = no ring at all, a fraction = the download part n of m, and -1 =
+    /// the indeterminate second phase (upload to the server; the ring keeps
+    /// spinning rather than pretending to know a percentage). Terminal
+    /// states (done/duplicate/failed) and idle end the animation — no frozen
+    /// ring after a cancel (f58908e semantics).
+    nonisolated static func ringFraction(_ phase: Phase) -> Double? {
+        switch phase {
+        case .checking: return -1
+        case .downloading(let section, let of):
+            guard of > 0 else { return -1 }
+            return min(1, Double(section) / Double(of))
+        case .uploading: return -1
+        case .idle, .done, .duplicate, .failed: return nil
+        }
+    }
+
     /// A second import while one runs is REFUSED with a visible hint (no
     /// ghost state, no silent parallel uploads).
     var busy: Bool {
