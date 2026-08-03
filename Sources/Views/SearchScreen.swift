@@ -33,7 +33,7 @@ struct SearchScreen: View {
         case entries(title: String, entries: [LibraryEntry])
         case artists(title: String, artists: [MusicArtist])
         /// M5: catalog shows of ONE podcast genre (iTunes genre chart).
-        case catalogShows(title: String, results: [SearchResult])
+        case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
     }
 
     @State private var drill: [DeckDrill] = []
@@ -456,7 +456,7 @@ struct SearchScreen: View {
                 ForEach(entries) { entry in
                     bookEntryRow(entry)
                 }
-            case .catalogShows(_, let results):
+            case .catalogShows(_, let results, let footer):
                 // The SAME result row the typed search uses for catalog shows
                 // (subscribe/preview routing via onOpen — no second row idiom).
                 if results.isEmpty {
@@ -465,6 +465,14 @@ struct SearchScreen: View {
                         .frame(maxWidth: .infinity, minHeight: 120)
                 } else {
                     ForEach(results) { resultRow($0) }
+                    // e4bd910/hoerspiele: honesty line (depublication).
+                    if let footer {
+                        Text(footer)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 8)
+                    }
                 }
             case .artists(_, let artists):
                 ForEach(artists) { artist in
@@ -509,7 +517,7 @@ struct SearchScreen: View {
     private var drillTitle: String {
         switch drill.last {
         case .groups(let title, _), .entries(let title, _), .artists(let title, _),
-             .catalogShows(let title, _):
+             .catalogShows(let title, _, _):
             return title
         case nil:
             return ""
@@ -761,6 +769,22 @@ struct SearchScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("By Genre").font(.headline).padding(.horizontal, 16)
             LazyVGrid(columns: Self.tierColumns, spacing: 12) {
+                // e4bd910/hoerspiele: the curated public-broadcast entry —
+                // same chip idiom, drills into the DATA list (verified
+                // feeds), preview/subscribe like any catalog row.
+                CategoryTile(title: String(localized: "Radio Plays"),
+                             systemImage: "waveform.and.mic",
+                             accessibilityId: "podcast-genre-hoerspiele") {
+                    let results = HoerspielCuration.feeds.map { entry in
+                        SearchResult(id: entry.feedURL, kind: .catalogShow,
+                                     title: entry.title, subtitle: entry.author)
+                    }
+                    withAnimation(.snappy(duration: 0.2)) {
+                        drill.append(.catalogShows(
+                            title: String(localized: "Radio Plays"), results: results,
+                            footer: String(localized: "Public-broadcast content can disappear after fixed periods — downloads keep your copies.")))
+                    }
+                }
                 ForEach(PodcastGenres.curated) { genre in
                     CategoryTile(title: genre.title, systemImage: genre.systemImage,
                                  accessibilityId: "podcast-genre-\(genre.itunesGenreId)") {

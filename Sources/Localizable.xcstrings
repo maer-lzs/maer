@@ -5312,6 +5312,26 @@
         }
       }
     },
+    "Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiele"
+          }
+        }
+      }
+    },
+    "Public-broadcast content can disappear after fixed periods — downloads keep your copies." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden — Downloads sichern deine Kopien."
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {
