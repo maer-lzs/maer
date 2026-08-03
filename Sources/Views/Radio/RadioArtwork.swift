@@ -56,7 +56,16 @@ struct RadioArtwork: View {
     private var thumbnail: some View {
         Group {
             if let image = gatedFavicon.flatMap({ $0 }) {
-                Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+                // Nachtrag (1): every logo sits on a TILE surface — a
+                // transparent PNG never floats on black; the deterministic
+                // tint doubles as the station identity behind it.
+                tint.opacity(0.35)
+                    .overlay(
+                        Image(uiImage: image)
+                            .resizable().aspectRatio(contentMode: .fit)
+                            .padding(6)
+                    )
+                    .background(.thinMaterial)
             } else {
                 placeholderFill
             }

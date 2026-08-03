@@ -387,6 +387,12 @@ struct RadioStateQueryTests {
                 == "Deutschlandfunk Kultur")
         #expect(RadioMapping.displayName("SWR3 • Pop") == "SWR3")
         #expect(RadioMapping.displayName("Radio Bern") == "Radio Bern")
+        // Nachtrag (4): codec/bitrate TAIL junk without separators.
+        #expect(RadioMapping.displayName("Deutschlandfunk AAC 192k") == "Deutschlandfunk")
+        #expect(RadioMapping.displayName("Antenne Bayern mp3 128kbps") == "Antenne Bayern")
+        #expect(RadioMapping.displayName("SWR3 Stream 2") == "SWR3")
+        // Genre words that LOOK like codecs stay (no mid-name stripping).
+        #expect(RadioMapping.displayName("Opus Klassik Radio") == "Opus Klassik Radio")
         // A too-short head keeps the raw name (never truncate to junk).
         #expect(RadioMapping.displayName("A | Station") == "A | Station")
     }

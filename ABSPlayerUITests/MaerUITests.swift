@@ -1175,15 +1175,26 @@ nonisolated final class MaerUITests: XCTestCase {
     }
 
     /// 5034add: the free-catalogs MASTER switch — off greys the subordinate
-    /// area toggle and removes the (net-independent) music browse entry.
+    /// area toggle and removes the (net-independent) classical DECK tile
+    /// (klassik-in-die-suche: the entry moved into the music search deck).
     /// Ids only, never labels (de-sim trap); master back ON at the end so
     /// later journeys see the default state.
     func testFreeCatalogsMasterSwitch() {
         let app = launchSeeded()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         app.buttons["tab-music"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["music-route-free-classical"].firstMatch.waitForExistence(timeout: 10),
-                      "classical browse entry must exist while the master is on")
+        // Surface check: the classical tile lives in the SEARCH deck now.
+        app.buttons["global-search"].firstMatch.tap()
+        let musicScope = app.buttons["scope-music"].firstMatch
+        XCTAssertTrue(musicScope.waitForExistence(timeout: 10)); musicScope.tap()
+        let tile = app.buttons["deck-tier-music-free-classical"].firstMatch
+        var deckSwipes = 0
+        while !tile.exists && deckSwipes < 6 { app.swipeUp(); deckSwipes += 1 }
+        XCTAssertTrue(tile.waitForExistence(timeout: 10),
+                      "classical deck tile must exist while the master is on")
+        // Close the search again before heading into settings (Y17: the
+        // search X — the global-search button morphs away in search mode).
+        app.buttons["search-close"].firstMatch.tap()
 
         func flip(_ toggle: XCUIElement) {
             let before = toggle.value as? String
@@ -1216,9 +1227,13 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(area.waitForExistence(timeout: 10))
         XCTAssertFalse(area.isEnabled, "area toggle must grey out while the master is off")
         app.buttons["settings-done"].firstMatch.tap()
-        // Surface gone.
-        XCTAssertFalse(app.buttons["music-route-free-classical"].firstMatch.waitForExistence(timeout: 3),
-                       "classical browse entry must vanish with the master off")
+        // Surface gone: the deck tile disappears with the master off.
+        app.buttons["global-search"].firstMatch.tap()
+        let musicScope2 = app.buttons["scope-music"].firstMatch
+        XCTAssertTrue(musicScope2.waitForExistence(timeout: 10)); musicScope2.tap()
+        XCTAssertFalse(app.buttons["deck-tier-music-free-classical"].firstMatch.waitForExistence(timeout: 3),
+                       "classical deck tile must vanish with the master off")
+        app.buttons["search-close"].firstMatch.tap()
         snap(app, "free-catalogs-master-off")
         // Clean up: master back on for whoever runs next.
         app.buttons["open-settings"].firstMatch.tap()

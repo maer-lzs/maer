@@ -645,6 +645,22 @@ struct SearchScreen: View {
                 onOpenMusicRoute(.genres)
             },
         ]
+        // UMZUG (e4bd910/klassik-in-die-suche): the catalog entry lives in
+        // the DISCOVER context (search deck), the library list stays personal
+        // — same CategoryTile, same route, same gates (pill toggle + master).
+        + (freeClassicalDeckVisible
+            ? [DeckEntry(id: "music-free-classical", title: String(localized: "Free Classical"),
+                         systemImage: "music.quarternote.3", count: nil) {
+                onOpenMusicRoute(.freeClassical)
+            }]
+            : [])
+    }
+
+    private var freeClassicalDeckVisible: Bool {
+        FreeCatalogActivation.effective(
+            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
+            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true,
+            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
     }
 
     private var audiobookDeckEntries: [DeckEntry] {

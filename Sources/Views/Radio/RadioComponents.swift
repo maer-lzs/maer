@@ -28,7 +28,7 @@ struct RadioStationRow: View {
             MediaRowContent(
                 coverURL: nil,
                 eyebrow: station.tags.first,
-                title: station.name,
+                title: RadioMapping.displayName(station.name),
                 titleDimmed: unavailable,
                 coverDimmed: unavailable,
                 offlineBadge: unavailable,
@@ -72,7 +72,7 @@ struct RadioStationCard: View {
                              name: station.name)
                     .frame(width: Self.width, height: Self.width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                Text(station.name)
+                Text(RadioMapping.displayName(station.name))
                     .font(.caption.weight(.medium))
                     // Layout-shift/a11y: reserve both lines at the CURRENT type
                     // size — the fixed 34 pt matched two caption lines only at

@@ -166,13 +166,10 @@ struct MusicView: View {
             // M3: sixth entry — the genre chip grid.
             browseRow("Genres", systemImage: "guitars", route: .genres)
             Divider().padding(.leading, 52)
-            // 50f4751: the SEPARATE free-classical catalog area — feature
-            // toggle (Music pill) AND the archive.org service opt-out gate it
-            // (service off wins, two clean levels).
-            if freeClassicalArea {
-                browseRow("Free Classical", systemImage: "music.quarternote.3", route: .freeClassical)
-                Divider().padding(.leading, 52)
-            }
+            // UMZUG (klassik-in-die-suche): the Free-Classical entry moved to
+            // the music SEARCH deck — the browse list stays the personal
+            // library (Katalog-Einstiege wohnen im Entdecken-Kontext); the
+            // Home teaser and both gates are untouched.
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))

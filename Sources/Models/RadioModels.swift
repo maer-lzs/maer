@@ -176,14 +176,21 @@ nonisolated enum RadioMapping {
     /// when a real name remains. Display only (keys keep the full fold);
     /// ONE function for every player-context title.
     static func displayName(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        var trimmed = raw.trimmingCharacters(in: .whitespaces)
         for separator in ["|", "•", "–", "—"] {
             if let idx = trimmed.range(of: separator)?.lowerBound {
                 let head = trimmed[..<idx].trimmingCharacters(in: .whitespaces)
-                if head.count >= 3 { return head }
+                if head.count >= 3 { trimmed = head; break }
             }
         }
-        return trimmed
+        // Nachtrag (4): codec/bitrate TAIL junk without a separator
+        // ("Deutschlandfunk AAC 192k") — strip trailing decorations only;
+        // the ORIGINAL name stays in detail/search.
+        let tailJunk = "((\\b(mp3|aac\\+?|he-?aac|opus|ogg|vorbis|flac|wma)\\b|\\b\\d{2,3}\\s?k(bps)?\\b|\\bstream\\s?\\d+\\b)[\\s.]*)+$"
+        let stripped = trimmed.replacingOccurrences(
+            of: tailJunk, with: "", options: [.regularExpression, .caseInsensitive])
+            .trimmingCharacters(in: .whitespaces)
+        return stripped.count >= 3 ? stripped : trimmed
     }
 
     /// Strip codec/bitrate decorations and separators so variants of a station
