@@ -271,6 +271,9 @@ struct PodcastEpisodeRow: View {
     /// lives in the observing EpisodeRowPlayButton leaf, live download state
     /// in PodcastDownloadButton.
     let playerCoordinator: PlayerCoordinator
+    /// f0b9c8a: the hosting SHOW page passes its title so the eyebrow can
+    /// drop when it merely repeats it; surfaces that mix shows pass nil.
+    var showTitle: String? = nil
     @Environment(\.pushPodcastRoute) private var pushRoute
 
     /// R1: text-only episode (kept, no enclosure) — plain read, one per render.
@@ -397,7 +400,8 @@ struct PodcastEpisodeRow: View {
         let inProgress: Double? = { if case .inProgress(let f, _) = state { return f } else { return nil } }()
         return MediaRowContent(
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
-            eyebrow: item.media?.metadata?.authorName,
+            eyebrow: PodcastWorkOrder.eyebrow(author: item.media?.metadata?.authorName,
+                                              showTitle: showTitle),
             title: item.title,
             titleDimmed: isPlayed || isTextOnly,
             coverDimmed: isPlayed || isOfflineUnavailable || isTextOnly,

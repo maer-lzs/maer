@@ -299,4 +299,122 @@ struct FreeCatalogSelectionTests {
                                           title: "Librivox M4b Collection Audiobooks Main"))
     }
 }
+
+/// c125ccd: the feed's CHANNEL artwork — read from the head, never from an
+/// episode (the first episode's cover must not masquerade as the show's).
+struct FeedArtworkLookupTests {
+    @Test("itunes:image on channel level wins; the episode image never does")
+    func channelBeatsEpisode() {
+        let head = """
+        <rss><channel><title>hr2 Hörspiel</title>
+        <itunes:image href="https://static.hr.de/podcast_bilder/hr2_Hoerspiel.jpg"/>
+        <item><title>Folge</title>
+        <itunes:image href="https://cdn.example/episode-cover.jpg"/></item>
+        """
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: head)?.absoluteString
+                == "https://static.hr.de/podcast_bilder/hr2_Hoerspiel.jpg")
+    }
+
+    @Test("an EPISODE-only image is not the show's artwork")
+    func episodeOnlyIsNoHit() {
+        let head = """
+        <rss><channel><title>Feed</title>
+        <item><itunes:image href="https://cdn.example/episode.jpg"/></item>
+        """
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: head) == nil)
+    }
+
+    @Test("plain RSS <image><url> is accepted; escaped ampersands survive")
+    func rssImageAndEscaping() {
+        let rss = """
+        <rss><channel><image><url>https://img.br.de/cover.jpeg?fm=jpg&amp;w=1800</url></image>
+        <item></item>
+        """
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: rss)?.absoluteString
+                == "https://img.br.de/cover.jpeg?fm=jpg&w=1800")
+        // Single quotes and attribute order vary between broadcasters.
+        let single = "<channel><itunes:image type='image/jpeg' href='https://orf.at/c.jpg'/>"
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: single)?.absoluteString
+                == "https://orf.at/c.jpg")
+    }
+
+    @Test("no image, non-http and junk stay nil (a wrong cover is worse than none)")
+    func misses() {
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: "<rss><channel><title>x</title>") == nil)
+        #expect(FeedArtworkLookup.channelImageURL(fromHead: "") == nil)
+        #expect(FeedArtworkLookup.channelImageURL(
+            fromHead: "<channel><itunes:image href=\"javascript:alert(1)\"/>") == nil)
+        #expect(FeedArtworkLookup.channelImageURL(
+            fromHead: "<channel><itunes:image/>") == nil)
+    }
+}
+
+/// f0b9c8a: container feeds in work order — pure recognition, contiguous
+/// blocks, ascending inside, single pieces untouched.
+struct PodcastWorkOrderTests {
+    private func titles(_ list: [String], newestFirst: Bool = true) -> [String] {
+        PodcastWorkOrder.ordered(list, newestFirst: newestFirst) { $0 }
+    }
+
+    @Test("part patterns of the real feeds are recognized; plain titles are not")
+    func recognition() {
+        #expect(PodcastWorkOrder.part(fromTitle: "Die drei Stigmata (2/2)")?.index == 2)
+        #expect(PodcastWorkOrder.part(fromTitle: "Die drei Stigmata (2/2)")?.total == 2)
+        #expect(PodcastWorkOrder.part(fromTitle: "Unearthing 1/8")?.index == 1)
+        #expect(PodcastWorkOrder.part(fromTitle: "Kummer aller Art – Teil 3 von 5")?.index == 3)
+        #expect(PodcastWorkOrder.part(fromTitle: "Kummer aller Art – Teil 3 von 5")?.total == 5)
+        #expect(PodcastWorkOrder.part(fromTitle: "Der Process – Folge 2")?.index == 2)
+        #expect(PodcastWorkOrder.part(fromTitle: "Der Process – Folge 2")?.total == nil)
+        // Conservative: no pattern, no stem, nonsense totals ⇒ single piece.
+        #expect(PodcastWorkOrder.part(fromTitle: "Ein Hörspiel ohne Teile") == nil)
+        #expect(PodcastWorkOrder.part(fromTitle: "(1/2)") == nil)
+        #expect(PodcastWorkOrder.part(fromTitle: "Werk (5/2)") == nil)
+    }
+
+    @Test("the stem folds separators, case and diacritics into one work")
+    func stemFolding() {
+        let a = PodcastWorkOrder.part(fromTitle: "Mariana Leky: Kummer aller Art (1/3)")
+        let b = PodcastWorkOrder.part(fromTitle: "MARIANA LEKY – Kummer aller Art (2/3)")
+        #expect(a?.stem == b?.stem)
+        // Different works never merge.
+        #expect(PodcastWorkOrder.part(fromTitle: "Unearthing (1/8)")?.stem
+                != PodcastWorkOrder.part(fromTitle: "Palmer Eldritch (1/2)")?.stem)
+    }
+
+    @Test("works become contiguous blocks, ascending inside, at the block's own place")
+    func blockOrdering() {
+        // The reported feed shape: interleaved, part 2 above part 1.
+        let feed = ["Palmer Eldritch (2/2)", "Unearthing (3/8)", "Palmer Eldritch (1/2)",
+                    "Einzelstück ohne Teile", "Unearthing (1/8)", "Unearthing (2/8)"]
+        #expect(titles(feed) == ["Palmer Eldritch (1/2)", "Palmer Eldritch (2/2)",
+                                 "Unearthing (1/8)", "Unearthing (2/8)", "Unearthing (3/8)",
+                                 "Einzelstück ohne Teile"])
+    }
+
+    @Test("below the density threshold NOTHING moves")
+    func densityGate() {
+        let mostlySingles = ["Thema A", "Thema B", "Thema C", "Thema D",
+                             "Thema E", "Thema F", "Reihe (2/2)", "Reihe (1/2)"]
+        #expect(PodcastWorkOrder.partDensity(titles: mostlySingles) < PodcastWorkOrder.containerThreshold)
+        #expect(titles(mostlySingles) == mostlySingles)
+        // A real container feed sits far above the threshold.
+        let container = ["A (1/2)", "A (2/2)", "B (1/3)", "B (2/3)", "B (3/3)", "Solo"]
+        #expect(PodcastWorkOrder.partDensity(titles: container) > PodcastWorkOrder.containerThreshold)
+    }
+
+    @Test("oldest-first keeps its chronology, blocks still ascend")
+    func oldestFirst() {
+        let feed = ["Werk (1/2)", "Solo", "Werk (2/2)"]
+        #expect(titles(feed, newestFirst: false) == ["Werk (1/2)", "Werk (2/2)", "Solo"])
+    }
+
+    @Test("the eyebrow drops only when it repeats the show title")
+    func eyebrowRule() {
+        #expect(PodcastWorkOrder.eyebrow(author: "ARD HÖRSPIEL", showTitle: "ARD Hörspiel") == nil)
+        #expect(PodcastWorkOrder.eyebrow(author: "WDR", showTitle: "ARD Hörspiel") == "WDR")
+        // Surfaces mixing shows pass nil and keep their eyebrow.
+        #expect(PodcastWorkOrder.eyebrow(author: "WDR", showTitle: nil) == "WDR")
+        #expect(PodcastWorkOrder.eyebrow(author: nil, showTitle: "X") == nil)
+    }
+}
 #endif

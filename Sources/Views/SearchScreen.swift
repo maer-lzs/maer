@@ -358,6 +358,15 @@ struct SearchScreen: View {
 
     // MARK: - Rows
 
+    /// c125ccd: the row's cover override — radio hits keep the gated
+    /// station artwork; a CATALOG show WITHOUT its own image resolves the
+    /// feed's channel artwork lazily (curated entries never pass the
+    /// directory search that hands out artwork URLs). Everything else keeps
+    /// the plain `coverURL` path.
+    private func catalogCover(_ result: SearchResult) -> SearchRowCover? {
+        SearchRowCover(result: result, placeholderSystemImage: Self.placeholder(result.kind))
+    }
+
     private func resultRow(_ result: SearchResult) -> some View {
         Button {
             switch result.kind {
@@ -385,11 +394,7 @@ struct SearchScreen: View {
                     placeholderSystemImage: Self.placeholder(result.kind),
                     // cd5cc4a (1): radio hits share the ONE gated artwork
                     // (gradient+initials fallback) instead of the gray box.
-                    coverOverride: result.kind == .radioStation
-                        ? RadioArtwork(stationID: result.id,
-                                       faviconURL: result.coverURL,
-                                       name: result.title)
-                        : nil
+                    coverOverride: catalogCover(result)
                 )
                 if result.kind == .author || result.kind == .series {
                     Image(systemName: "chevron.right")

@@ -50,10 +50,15 @@ struct PodcastShowView: View {
     /// Episodes of this show as LibraryItems, sorted by the toggle — lazy in the
     /// body (only when the page is actually shown).
     private var sortedItems: [LibraryItem] {
-        AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
+        let chronological = AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }
+        // f0b9c8a: container feeds (the radio-play pools) interleave many
+        // works — the parts of one work become a contiguous block, ascending
+        // inside, positioned where the block's first part already stood.
+        // Below the density threshold nothing moves at all.
+        return PodcastWorkOrder.ordered(chronological, newestFirst: newestFirst) { $0.title }
     }
 
     /// Bulk mark every episode of this show as played/unplayed. One iCloud
@@ -87,7 +92,11 @@ struct PodcastShowView: View {
                     }
                 }
             ForEach(sortedItems) { item in
-                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                // f0b9c8a (3): the row eyebrow repeating the show title is
+                // noise — the show page hands its title in, the pure rule
+                // decides (parity: other surfaces list MANY shows and keep it).
+                PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
+                                  showTitle: show.title)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
             }
