@@ -510,5 +510,32 @@ struct RadioStateQueryTests {
                                              seed: 1, limit: 5)
         #expect(national.prefix(3).map(\.id) == ["eifellounge", "teuto", "technolovers"])
     }
+
+    @Test("26b2c13: discovery cache round-trips the composed rows for frame 1")
+    func discoveryCache() {
+        let defaults = UserDefaults(suiteName: "discovery-cache-test")!
+        defaults.removePersistentDomain(forName: "discovery-cache-test")
+        // Nothing stored yet ⇒ nil, and the cold start simply stays empty.
+        #expect(RadioStore.cachedDiscovery(defaults: defaults) == nil)
+
+        let popular = [RadioStation(id: "radio:rb:p1", name: "WDR 2", streamURL: "https://s/1",
+                                    countryCode: "DE")]
+        let regional = [RadioStation(id: "radio:rb:r1", name: "Antenne", streamURL: "https://s/2",
+                                     countryCode: "DE")]
+        RadioStore.saveDiscovery(popular: popular, regional: regional,
+                                 day: 20_260_803, defaults: defaults)
+        let cached = RadioStore.cachedDiscovery(defaults: defaults)
+        #expect(cached?.popular.map(\.id) == ["radio:rb:p1"])
+        #expect(cached?.regional.map(\.id) == ["radio:rb:r1"])
+        // The day rides along so a stale day is recognizable (it is shown
+        // anyway — stale beats blank — and replaced by the fresh composition).
+        #expect(cached?.day == 20_260_803)
+
+        // A later composition overwrites in place (no growth, no merge).
+        RadioStore.saveDiscovery(popular: [], regional: regional,
+                                 day: 20_260_804, defaults: defaults)
+        #expect(RadioStore.cachedDiscovery(defaults: defaults)?.popular.isEmpty == true)
+        defaults.removePersistentDomain(forName: "discovery-cache-test")
+    }
 }
 #endif

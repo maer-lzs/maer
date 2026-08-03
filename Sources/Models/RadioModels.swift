@@ -378,6 +378,31 @@ nonisolated enum RadioStore {
             .first { $0.id == id }
     }
 
+    // MARK: - 26b2c13: last composed discovery rows (cold-start frame 1)
+
+    static let discoveryCacheKey = "radioDiscoveryCache"
+
+    nonisolated struct DiscoveryCache: Codable {
+        var popular: [RadioStation]
+        var regional: [RadioStation]
+        /// The rotation day the rows were composed for — a NEW day recomputes
+        /// (showing this stale state until the fresh one lands, never blank).
+        var day: Int
+    }
+
+    static func saveDiscovery(popular: [RadioStation], regional: [RadioStation],
+                              day: Int, defaults: UserDefaults = .standard) {
+        let cache = DiscoveryCache(popular: popular, regional: regional, day: day)
+        if let data = try? JSONEncoder().encode(cache) {
+            defaults.set(data, forKey: discoveryCacheKey)
+        }
+    }
+
+    static func cachedDiscovery(defaults: UserDefaults = .standard) -> DiscoveryCache? {
+        guard let data = defaults.data(forKey: discoveryCacheKey) else { return nil }
+        return try? JSONDecoder().decode(DiscoveryCache.self, from: data)
+    }
+
     // MARK: - Teil 3: play frequency
 
     static func playCounts(defaults: UserDefaults = .standard) -> [String: Int] {

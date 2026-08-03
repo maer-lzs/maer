@@ -325,6 +325,16 @@ struct RadioView: View {
     }
 
     private func loadDiscovery(force: Bool = false) async {
+        // 26b2c13: cold start ~10 s to ANY content — the last composed rows
+        // land in frame 1 (before any network), the fresh composition then
+        // replaces them calm-gated. Stale beats blank; the persisted day is
+        // informational (a new day recomputes right after).
+        if !force, popular.isEmpty, regional.isEmpty,
+           let cached = RadioStore.cachedDiscovery() {
+            popular = cached.popular
+            regional = cached.regional
+            RadioProvider.shared.remember(cached.popular + cached.regional)
+        }
         guard networkMonitor.isConnected else { return }
         if !force, discoveryLoaded { return }
         #if DEBUG
@@ -372,6 +382,11 @@ struct RadioView: View {
                 otherLabel: String(localized: "Other regions"))
                 ?? RadioBrowseCuration.curated(raw)
         }
+        // 26b2c13: persist the composed rows — the NEXT cold start shows
+        // them in frame 1 (day rides along; a new day recomputes but shows
+        // the stale state until the fresh one lands, never blank).
+        RadioStore.saveDiscovery(popular: topResult, regional: regionResult,
+                                 day: Self.rotationDay())
         // Layout-shift: the discovery sections land as whole-section inserts —
         // apply through the shared calm gate, never mid-scroll.
         BottomBarState.shared.runWhenCalm { [self] in
