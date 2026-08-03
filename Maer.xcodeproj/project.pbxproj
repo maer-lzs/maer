@@ -56,7 +56,6 @@
 		CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MaerWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		CF8BA0D43020FAEB0054E956 /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -181,11 +180,6 @@
 				CF68E6523002599A00C97B74 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		CF8BA0D83020FAEB0054E956 /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
 			sourceTree = "<group>";
 		};
 		CFE8E3FA3007EC2C007756AC /* Products */ = {
@@ -328,10 +322,6 @@
 				{
 					ProductGroup = CFE8E3FA3007EC2C007756AC /* Products */;
 					ProjectRef = CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */;
-				},
-				{
-					ProductGroup = CF8BA0D83020FAEB0054E956 /* Products */;
-					ProjectRef = CF8BA0D43020FAEB0054E956 /* Maer.xcodeproj */;
 				},
 			);
 			projectRoot = "";
