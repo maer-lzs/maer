@@ -141,5 +141,32 @@ struct RadioBrowseCurationTests {
         #expect(RadioCountryCascade.effectiveCode(explicit: "", regionImplied: nil, locale: "DE") == "DE")
         #expect(RadioCountryCascade.effectiveCode(explicit: nil, regionImplied: nil, locale: nil) == nil)
     }
+
+    @Test("eindampfen: measured DE list — Other share drops below 10 %")
+    func eindampfenMeasured() throws {
+        // The REAL Radio-Browser DE states list (fetched 03.08.2026,
+        // 167 entries / 3221 stations — the measurement IS the fixture).
+        let data = try CorpusFixture.data("de-states-live", ext: "json", subdirectory: "RadioCatalog")
+        struct Wire: Decodable { let name: String; let stationcount: Int }
+        let raw = try JSONDecoder().decode([Wire].self, from: data)
+            .map { RadioBrowseEntry(name: $0.name, stationCount: $0.stationcount) }
+        let total = raw.reduce(0) { $0 + $1.stationCount }
+        let curated = try #require(RadioRegionCanon.curated(raw, countryCode: "DE", otherLabel: "Other"))
+        let other = curated.first { $0.display == "Other" }?.stationCount ?? 0
+        // Measured before the subregion stage: 390/3221 = 12 %. Target < 10 %.
+        #expect(Double(other) / Double(total) < 0.10,
+                "Other holds \(other)/\(total) stations")
+        // Composed names assign to exactly ONE state…
+        let nrw = curated.first { $0.display == "Nordrhein-Westfalen" }
+        #expect(nrw?.queryNames.contains("Deutschland und NRW") == true)
+        let by = curated.first { $0.display == "Bayern" }
+        #expect(by?.queryNames.contains { $0.hasPrefix("Bayern, München") } == true)
+        // …ambiguous combos stay honestly in Other.
+        let otherNames = curated.first { $0.display == "Other" }?.queryNames ?? []
+        #expect(otherNames.contains("Berlin-Brandenburg"))
+        #expect(otherNames.contains("SN, ST, TH"))
+        // National-only decorations drop entirely.
+        #expect(!curated.flatMap(\.queryNames).contains("Deutschland (Germany)"))
+    }
 }
 #endif

@@ -639,16 +639,21 @@ nonisolated enum RadioRegionCanon {
     /// Canon key: the curation merge key PLUS hyphen→space folding, so
     /// "Nordrhein Westfalen" and "Nordrhein-Westfalen" meet.
     static func canonKey(_ name: String) -> String {
-        RadioBrowseCuration.mergeKey(name)
-            .replacingOccurrences(of: "-", with: " ")
-            .split(separator: " ").joined(separator: " ")
+        // eindampfen: punctuation folds to spaces so composed RB names
+        // ("Bayern, München, AAC" · "Moers/NRW" · "Hessen (Kassel)") token-
+        // ize cleanly for the subsequence match.
+        var key = RadioBrowseCuration.mergeKey(name)
+        for ch in ["-", ",", "/", "(", ")", ".", "|"] {
+            key = key.replacingOccurrences(of: ch, with: " ")
+        }
+        return key.split(separator: " ").joined(separator: " ")
     }
 
     static let tables: [String: [Entry]] = [
         "DE": [
             Entry("Baden-Württemberg", ["BW", "Schwaben"]),
             Entry("Bayern", ["Bavaria", "BY"]),
-            Entry("Berlin", ["BE"]),
+            Entry("Berlin", ["BE", "Berlim", "Берлин"]),
             Entry("Brandenburg", ["BB"]),
             Entry("Bremen", ["HB"]),
             Entry("Hamburg", ["HH"]),
@@ -704,12 +709,72 @@ nonisolated enum RadioRegionCanon {
         ],
     ]
 
+    /// e4bd910/sonstige-eindampfen: SUBREGION tables — cities/landscape
+    /// names mapped to their state, worked TOP-DOWN from the MEASURED
+    /// "Other" list (DE 03.08.: 390/3221 stations = 12 % in Other; the
+    /// entries below cover the measured head). Pure data, extendable;
+    /// ambiguous names (Berlin-Brandenburg, Romandie, "SN, ST, TH") stay
+    /// DELIBERATELY in Other — honestly other beats wrongly assigned.
+    static let subregions: [String: [String: [String]]] = [
+        "DE": [
+            "Bayern": ["München", "Munich", "Franken", "Würzburg", "Nürnberg", "Augsburg", "Regensburg", "Oberbayern", "Allgäu", "Babaria", "Beieren", "Günzburg", "Gersthofen", "Erlenbach"],
+            "Nordrhein-Westfalen": ["Köln", "Cologne", "Bochum", "Düsseldorf", "Dortmund", "Essen", "Ruhrgebiet", "Ostwestfalen", "Münster", "Aachen", "Bonn", "Wuppertal", "Bielefeld", "Sauerland", "Mönchengladbach", "Moers", "Viersen", "Witten", "Recklinghausen", "Herford", "Bad Munstereifel", "Bad Oeynhausen", "Monheim"],
+            "Sachsen": ["Leipzig", "Dresden", "Chemnitz", "Saxonia", "Sachsonia", "Sassonia", "Saxon", "Ore Mountains", "Spitzkunnersdorf"],
+            "Niedersachsen": ["Ostfriesland", "Hannover", "Oldenburg", "Braunschweig", "Niedersachcen", "NDS", "Bückeburg", "Fassberg"],
+            "Thüringen": ["Erfurt", "Jena", "Weimar", "Thueringen", "Thunringia"],
+            "Baden-Württemberg": ["Mannheim", "Konstanz", "Stuttgart", "Karlsruhe", "Freiburg", "Heidelberg", "Baden Wuertemberg", "Baden Wuerttemberg", "Bodensee", "Göppingen", "Radolfzell", "Sandhausen"],
+            "Hessen": ["Frankfurt", "Kassel", "Wiesbaden", "Darmstadt", "Waldeck-Frankenberg"],
+            "Sachsen-Anhalt": ["Magdeburg", "Halle"],
+            "Rheinland-Pfalz": ["Mainz", "Koblenz", "Trier", "Ludwigshafen"],
+            "Saarland": ["Saarbrücken", "Neunkirchen"],
+            "Mecklenburg-Vorpommern": ["Rostock", "Schwerin"],
+            "Schleswig-Holstein": ["Kiel", "Lübeck", "Flensburg", "Schleswig Holtstein", "Sylt"],
+            "Brandenburg": ["Potsdam", "Cottbus"],
+            "Bremen": ["Bremerhaven"],
+        ],
+        "AT": [
+            "Wien": ["Vienna"],
+            "Steiermark": ["Graz", "Styria"],
+            "Oberösterreich": ["Linz", "Upper Austria"],
+            "Niederösterreich": ["Lower Austria", "St. Pölten"],
+            "Tirol": ["Innsbruck", "Tyrol"],
+            "Kärnten": ["Klagenfurt", "Sankt Veit", "Carinthia"],
+        ],
+        "CH": [
+            "Aargau": ["Aarau"],
+            "Zürich": ["Winterthur"],
+            "Waadt": ["Lausanne", "Canton of Vaud"],
+            "Tessin": ["Lugano"],
+            "Bern": ["Kanton Bern"],
+        ],
+    ]
+
     /// Nationwide pseudo-states: dropped, never pooled into "Other".
     static let nationalAliases: [String: [String]] = [
         "DE": ["Germany", "Deutschland", "bundesweit", "deutschlandweit", "national"],
         "AT": ["Austria", "Österreich", "österreichweit", "national"],
         "CH": ["Switzerland", "Schweiz", "Suisse", "Svizzera", "Svizra", "national"],
     ]
+
+    /// Token-subsequence claim: which DISTINCT canon states match inside a
+    /// composed name (word-boundary sequence, not substring — "BE" never
+    /// fires inside "Berlin" because tokens compare whole words).
+    static func tokenMatches(nameKey: String, aliasToCanon: [String: String]) -> Set<String> {
+        let words = nameKey.split(separator: " ").map(String.init)
+        guard !words.isEmpty else { return [] }
+        var claims = Set<String>()
+        for (alias, canon) in aliasToCanon {
+            let aliasWords = alias.split(separator: " ").map(String.init)
+            guard !aliasWords.isEmpty, aliasWords.count <= words.count else { continue }
+            for start in 0...(words.count - aliasWords.count) {
+                if Array(words[start..<(start + aliasWords.count)]) == aliasWords {
+                    claims.insert(canon)
+                    break
+                }
+            }
+        }
+        return claims
+    }
 
     /// nil = no table for this country → callers use the generic curation.
     /// Canon entries keep the count-desc order of the generic path (only
@@ -725,6 +790,11 @@ nonisolated enum RadioRegionCanon {
         }
         let national = Set((nationalAliases[code] ?? []).map(canonKey))
 
+        // Subregion aliases fold into the exact-match map (pure data join).
+        for (canonName, places) in subregions[code] ?? [:] {
+            for place in places { aliasToCanon[canonKey(place)] = canonName }
+        }
+
         var byCanon: [String: [RadioBrowseEntry]] = [:]
         var other: [RadioBrowseEntry] = []
         for entry in raw {
@@ -734,6 +804,19 @@ nonisolated enum RadioRegionCanon {
             if national.contains(key) { continue }
             if let canon = aliasToCanon[key] {
                 byCanon[canon, default: []].append(entry)
+                continue
+            }
+            // eindampfen: COMPOSED names ("Deutschland und NRW", "Bayern,
+            // München, AAC", "Hessen (Kassel)") — token-subsequence match
+            // against every alias; EXACTLY ONE state may claim the entry
+            // (multi-matches like "SN, ST, TH" stay honestly in Other),
+            // national-only tokens drop.
+            let claimed = tokenMatches(nameKey: key, aliasToCanon: aliasToCanon)
+            if claimed.count == 1, let canon = claimed.first {
+                byCanon[canon, default: []].append(entry)
+            } else if claimed.isEmpty, national.contains(where: { key.contains($0) }),
+                      claimed.isEmpty {
+                continue   // "Deutschland (Germany)" class → national, drops
             } else {
                 other.append(entry)
             }
