@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import SwiftUI
+import OSLog
 
 /// F4: the radio tab. On top, the user's own stations (favorites + last-heard
 /// rows). Below, the catalog browse layer (F4-discovery): Popular, From your
@@ -239,7 +240,18 @@ struct RadioView: View {
     @ViewBuilder
     private var regionSection: some View {
         if let chosenState, !chosenState.isEmpty {
-            if !regional.isEmpty {
+            // 71b277f (A): the section NEVER vanishes while loading — right
+            // after the pick (regional still empty) the title stays with a
+            // small inline indicator instead of a seconds-long blank.
+            if regional.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        Text(chosenState).font(.title3).bold()
+                        ProgressView().controlSize(.small)
+                    }
+                    .padding(.horizontal)
+                }
+            } else {
                 VStack(alignment: .leading, spacing: 4) {
                     cardRow(title: chosenState, stations: regional)
                     Button {
@@ -402,22 +414,50 @@ struct RadioView: View {
         guard let state, !state.isEmpty else { return [] }
         let names = (UserDefaults.standard.array(forKey: AppStorageKeys.radioRegionQueryNames) as? [String])
             .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
-        var seen = Set<String>()
+        // 71b277f (A): PARALLEL fan-out with a politeness cap of 4 — the
+        // sequential 2×N roundtrips over all merged name variants took
+        // seconds for NRW after the Sonstige stage widened the name list.
         var votesMerged: [RadioStation] = []
         var trendMerged: [RadioStation] = []
-        for name in names {
-            let batch = (try? await RadioBrowserClient.byState(state: name)) ?? []
-            for station in batch where seen.insert(station.id).inserted {
-                votesMerged.append(station)
+        await withTaskGroup(of: (Int, [RadioStation], [RadioStation]).self) { group in
+            var active = 0
+            var index = 0
+            var results: [Int: ([RadioStation], [RadioStation])] = [:]
+            func launch(_ i: Int) {
+                let name = names[i]
+                group.addTask {
+                    async let v = (try? await RadioBrowserClient.byState(state: name)) ?? []
+                    async let c = (try? await RadioBrowserClient.byStateClicktrend(state: name)) ?? []
+                    return (i, await v, await c)
+                }
             }
-            let trend = (try? await RadioBrowserClient.byStateClicktrend(state: name)) ?? []
-            trendMerged.append(contentsOf: trend)
+            while index < min(4, names.count) { launch(index); index += 1; active += 1 }
+            while active > 0, let (i, v, c) = await group.next() {
+                results[i] = (v, c)
+                active -= 1
+                if index < names.count { launch(index); index += 1; active += 1 }
+            }
+            for i in results.keys.sorted() {
+                let (v, c) = results[i]!
+                votesMerged.append(contentsOf: v)
+                trendMerged.append(contentsOf: c)
+                // Log-first (71b277f): one line per name variant.
+                Logger.library.notice("RADIO regional name=\(names[i], privacy: .public) votes=\(v.count) trend=\(c.count)")
+            }
         }
-        // e4bd910: same socket+rotation mechanic as the national section.
-        return RadioRotation.compose(
-            votes: RadioMapping.dedupeForDisplay(votesMerged),
+        // 71b277f (B/Kandidat 2): order by VOTES before dedupe — survival is
+        // decided by vote mass, never by fetch order.
+        let votesOrdered = votesMerged.sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }
+        var seen = Set<String>()
+        let votesUnique = votesOrdered.filter { seen.insert($0.id).inserted }
+        // 71b277f (B, Screenshot-entschieden): regional socket sits on VOTES;
+        // clicktrend joins the pool only above a minimum-votes floor.
+        let composed = RadioRotation.compose(
+            votes: RadioMapping.dedupeForDisplay(votesUnique),
             clicktrend: RadioMapping.dedupeForDisplay(trendMerged),
             seed: RadioRotation.seed(day: rotationDay(), countryCode: state),
-            limit: 12)
+            limit: 12, socket: .votes, minTrendVotes: 50)
+        Logger.library.notice("RADIO regional composed pool=\(votesUnique.count)+\(trendMerged.count) out=\(composed.map { RadioMapping.displayName($0.name) }.joined(separator: " · "), privacy: .public)")
+        return composed
     }
 }

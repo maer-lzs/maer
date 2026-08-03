@@ -68,7 +68,12 @@ struct MiniPlayerBar: View {
                     // more room remains for the title text.
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(item.title)
+                        // 71b277f Mini 1: display-name parity — the trim
+                        // from e4a0822 applies to the mini bar too (pipe/
+                        // codec junk never reaches ANY surface).
+                        Text(item.id.hasPrefix("radio:")
+                             ? RadioMapping.displayName(item.title)
+                             : item.title)
                             .font(.body).bold()
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -131,6 +136,16 @@ private struct MiniPlayerSubtitle: View {
             }
             .font(.caption2)
             .foregroundStyle(.secondary)
+        } else if viewModel.isLiveStream {
+            // 71b277f Mini 2: "03:42 / 03:42" is nonsense for a stream — the
+            // shared LIVE marker plus the elapsed time (drive-mode parity).
+            HStack(spacing: 6) {
+                LiveBadgeInline()
+                Text(Self.shortTimer(viewModel.currentTime))
+                    .monospacedDigit()
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
         } else {
             Text(timeText)
                 .font(.caption2)
@@ -158,6 +173,18 @@ private struct MiniPlayerSubtitle: View {
             return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%02d:%02d", m, sec)
         }
         return "\(fmt(viewModel.currentTime)) / \(fmt(viewModel.duration))"
+    }
+}
+
+/// The LiveBadge sized for the caption line (the shared badge is caption-
+/// weight already; this variant just drops the fixed white for secondary
+/// surfaces — mini bar is light/dark adaptive, the player is always dark).
+private struct LiveBadgeInline: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().fill(.red).frame(width: 6, height: 6)
+            Text(verbatim: "LIVE").font(.caption2.weight(.bold))
+        }
     }
 }
 

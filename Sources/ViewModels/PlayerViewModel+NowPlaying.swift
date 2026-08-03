@@ -32,7 +32,7 @@ extension PlayerViewModel {
     /// title, with `icyDisplayLine` underneath (the lock screen stays song-first
     /// per Apple's convention, see `nowPlayingTitle`).
     var stationName: String {
-        item?.media.metadata?.title ?? String(localized: "Radio")
+        (item?.media.metadata?.title).map(RadioMapping.displayName) ?? String(localized: "Radio")
     }
 
     /// The current ICY song as one line ("Artist — Title", or just the title) —
@@ -51,7 +51,7 @@ extension PlayerViewModel {
         // otherwise the station name.
         if isLiveStream {
             if let icy = icyNowPlaying { return icy.title }
-            return item?.media.metadata?.title ?? String(localized: "Radio")
+            return stationName   // 71b277f: trimmed everywhere (one derivation)
         }
         return NowPlayingPresentation.title(
             isMusic: isMusicItem,
@@ -69,7 +69,7 @@ extension PlayerViewModel {
         // station name moves to the subtitle slot.
         if isLiveStream {
             if let icy = icyNowPlaying {
-                return icy.artist ?? item?.media.metadata?.title
+                return icy.artist ?? stationName
             }
             return nil
         }

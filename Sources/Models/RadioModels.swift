@@ -23,6 +23,8 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// name-based collapse.
     var bitrate: Int? = nil
     var codec: String? = nil
+    /// 71b277f: RB vote mass — the regional socket/floor decides on it.
+    var votes: Int? = nil
     /// Teil 1: the sibling codec/bitrate variants of this station (the collapse
     /// keeps the best as default and attaches ALL variants here, self included).
     /// Optional so already-persisted stations decode unchanged (no key → nil);
@@ -65,9 +67,10 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let tags: String?
     let bitrate: Int?
     let codec: String?
+    let votes: Int?
 
     enum CodingKeys: String, CodingKey {
-        case stationuuid, name, url, favicon, homepage, countrycode, tags, bitrate, codec
+        case stationuuid, name, url, favicon, homepage, countrycode, tags, bitrate, codec, votes
         case urlResolved = "url_resolved"
     }
 }
@@ -94,7 +97,8 @@ nonisolated enum RadioMapping {
                 countryCode: s.countrycode?.isEmpty == false ? s.countrycode : nil,
                 tags: (s.tags ?? "").split(separator: ",").map(String.init).filter { !$0.isEmpty },
                 bitrate: (s.bitrate ?? 0) > 0 ? s.bitrate : nil,
-                codec: s.codec?.isEmpty == false ? s.codec : nil))
+                codec: s.codec?.isEmpty == false ? s.codec : nil,
+                votes: s.votes))
         }
         return collapseVariants(result)
     }
@@ -569,9 +573,22 @@ nonisolated enum RadioRotation {
 
     static let socketSize = 3
 
+    /// 71b277f (Screenshot-entschieden): on STATE level clicktrend is noise-
+    /// dominated — a webradio's mini click spike beats WDR 2. The regional
+    /// socket therefore sits on VOTES (stable mass); clicktrend only joins
+    /// the draw pool when it clears a minimum-votes floor. National keeps
+    /// the clicktrend socket (proven correct on the device).
+    enum SocketSource { case clicktrend, votes }
+
     static func compose(votes: [RadioStation], clicktrend: [RadioStation],
-                        seed: UInt64, limit: Int) -> [RadioStation] {
+                        seed: UInt64, limit: Int,
+                        socket: SocketSource = .clicktrend,
+                        minTrendVotes: Int = 0) -> [RadioStation] {
         guard limit > 0 else { return [] }
+        // Votes floor for the trend ingredient (0 = off, national default).
+        let clicktrend = minTrendVotes > 0
+            ? clicktrend.filter { ($0.votes ?? 0) >= minTrendVotes }
+            : clicktrend
         // Deduped pool with the best RANK from either list as the weight base.
         var rank: [String: Int] = [:]
         var byKey: [String: RadioStation] = [:]
@@ -589,9 +606,10 @@ nonisolated enum RadioRotation {
                 }
             }
         }
-        // Socket: the current clicktrend top (deduped, in trend order).
+        // Socket: trend top (national) or votes top (regional, stable).
+        let socketList = socket == .clicktrend ? clicktrend : votes
         var socketKeys: [String] = []
-        for station in clicktrend {
+        for station in socketList {
             let key = RadioMapping.displayIdentityKey(station)
             if !socketKeys.contains(key) { socketKeys.append(key) }
             if socketKeys.count == socketSize { break }

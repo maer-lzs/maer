@@ -15,7 +15,7 @@ struct RadioModelsTests {
                      bitrate: Int? = nil, codec: String? = nil) -> RadioBrowserStation {
         RadioBrowserStation(stationuuid: uuid, name: name, url: url, urlResolved: resolved,
                             favicon: nil, homepage: nil, countrycode: country, tags: "jazz,news",
-                            bitrate: bitrate, codec: codec)
+                            bitrate: bitrate, codec: codec, votes: nil)
     }
 
     @Test("mapping de-dupes by stationuuid, prefers url_resolved, drops unusable")
@@ -471,6 +471,30 @@ struct RadioStateQueryTests {
         #expect(a.count == 12)
         // Country changes the seed too.
         #expect(RadioRotation.seed(day: 1, countryCode: "DE") != RadioRotation.seed(day: 1, countryCode: "AT"))
+    }
+
+    @Test("71b277f: regional socket sits on VOTES; trend needs the votes floor")
+    func regionalSocket() {
+        func st(_ id: String, votes: Int) -> RadioStation {
+            RadioStation(id: id, name: "S\(id)", streamURL: "https://h\(id).example/s",
+                         faviconURL: nil, homepage: "https://h\(id).example", countryCode: "DE",
+                         tags: [], bitrate: nil, codec: nil, votes: votes)
+        }
+        let votes = [st("wdr2", votes: 900), st("1live", votes: 800), st("wdr4", votes: 700),
+                     st("v4", votes: 100), st("v5", votes: 90)]
+        // The noise class: click-spike webradios with next to no vote mass.
+        let trend = [st("eifellounge", votes: 3), st("teuto", votes: 2), st("technolovers", votes: 1)]
+        let row = RadioRotation.compose(votes: votes, clicktrend: trend,
+                                        seed: RadioRotation.seed(day: 20_260_803, countryCode: "NRW"),
+                                        limit: 5, socket: .votes, minTrendVotes: 50)
+        // Socket = the stable vote mass, never the spikes.
+        #expect(row.prefix(3).map(\.id) == ["wdr2", "1live", "wdr4"])
+        // The floored trend spikes never enter the pool at all.
+        #expect(!row.contains { ["eifellounge", "teuto", "technolovers"].contains($0.id) })
+        // National keeps the clicktrend socket (device-proven correct).
+        let national = RadioRotation.compose(votes: votes, clicktrend: trend,
+                                             seed: 1, limit: 5)
+        #expect(national.prefix(3).map(\.id) == ["eifellounge", "teuto", "technolovers"])
     }
 }
 #endif

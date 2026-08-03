@@ -18,6 +18,39 @@ actor RadioLogoService {
     private var cache: [String: URL?] = [:]   // stationID → resolved logo URL (nil = negative)
     private var lastRequest = Date.distantPast
 
+    /// 275f379 (2): resolved chain results PERSIST — the 1-req/s politeness
+    /// queue is paid ONCE per station, not once per session. Negatives carry
+    /// a TTL (14 days) so a station that gains a logo is retried eventually.
+    private static let persistKey = "radioLogoChainResults"
+    private static let negativeTTL: TimeInterval = 14 * 24 * 3600
+    private var persistedLoaded = false
+
+    private struct Stored: Codable {
+        var url: String?          // nil = negative hit
+        var resolvedAt: Double    // epoch seconds
+    }
+
+    private func loadPersistedIfNeeded() {
+        guard !persistedLoaded else { return }
+        persistedLoaded = true
+        guard let data = UserDefaults.standard.data(forKey: Self.persistKey),
+              let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
+        let now = Date().timeIntervalSince1970
+        for (id, entry) in stored {
+            if entry.url == nil, now - entry.resolvedAt > Self.negativeTTL { continue }
+            cache[id] = entry.url.flatMap(URL.init(string:))
+        }
+    }
+
+    private func persistResult(stationID: String, url: URL?) {
+        var stored = (UserDefaults.standard.data(forKey: Self.persistKey))
+            .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
+        stored[stationID] = Stored(url: url?.absoluteString, resolvedAt: Date().timeIntervalSince1970)
+        if let data = try? JSONEncoder().encode(stored) {
+            UserDefaults.standard.set(data, forKey: Self.persistKey)
+        }
+    }
+
     private func politeDelay() async {
         let elapsed = Date().timeIntervalSince(lastRequest)
         if elapsed < 1.0 {
@@ -36,10 +69,12 @@ actor RadioLogoService {
     /// The resolved logo URL for a station, chain order fixed; every outcome
     /// (incl. nil) is session-cached.
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
+        loadPersistedIfNeeded()
         if let cached = cache[stationID] { return cached }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
         let resolved = await resolve(name: name, homepage: homepage)
         cache[stationID] = resolved
+        persistResult(stationID: stationID, url: resolved)
         if resolved == nil {
             Logger.library.notice("RADIO logo chain: no hit for \(name, privacy: .public)")
         }
