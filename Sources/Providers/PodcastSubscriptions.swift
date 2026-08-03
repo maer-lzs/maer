@@ -316,9 +316,31 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     /// Known members-only feed hosts (moved here from the podcast tab so the
-    /// premium test has ONE home).
+    /// premium test has ONE home). 6446a04: the membership hosters whose
+    /// personalised URLs carry the token in the PATH — pure data.
     nonisolated private static let premiumHosts =
-        ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access"]
+        ["patreon.com", "supercast", "supportingcast", "memberful", "acast.com/access",
+         "supportingcast.fm", "supercast.com", "memberful.com", "steadyhq.com"]
+
+    /// 6446a04: feeds whose CHANNEL states `<itunes:block>`/`<podcast:block>`
+    /// — the standard "do not list publicly" signal. Persisted per feed key,
+    /// filled while parsing (no extra request), and read by the premium test.
+    nonisolated static func blockedFeedKeys(defaults: UserDefaults = .standard) -> Set<String> {
+        Set(defaults.stringArray(forKey: AppStorageKeys.blockedFeedKeys) ?? [])
+    }
+
+    nonisolated static func noteFeedBlocked(_ feedURL: String,
+                                            defaults: UserDefaults = .standard) {
+        var keys = blockedFeedKeys(defaults: defaults)
+        guard keys.insert(feedKey(feedURL)).inserted else { return }
+        defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.blockedFeedKeys)
+        Logger.rss.notice("PREMIUM feed-blocked signal: \(maskedFeedURL(feedURL), privacy: .public)")
+    }
+
+    nonisolated static func isFeedBlocked(_ feedURL: String,
+                                          defaults: UserDefaults = .standard) -> Bool {
+        blockedFeedKeys(defaults: defaults).contains(feedKey(feedURL))
+    }
 
     /// THE premium test: stored basic-auth credentials OR the token-URL class
     /// OR a known members-only host OR a MANUAL user marking (92e25d6 — the
@@ -327,6 +349,9 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated static func isPremiumFeed(_ feedURL: String) -> Bool {
         if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
         if isTokenFeedURL(feedURL) { return true }
+        // 6446a04: the feed says it itself — catches the path-token class
+        // the query-param heuristic cannot see.
+        if isFeedBlocked(feedURL) { return true }
         if manualPremiumFeedKeys().contains(feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
         return premiumHosts.contains { lower.contains($0) }
@@ -874,6 +899,14 @@ final class PodcastSubscriptions: ObservableObject {
         // that survives the policy stays a nil result like before.
         guard let (data, http) = try? await RequestRetryPolicy.fetch(request) else { return nil }
         if let status = http?.statusCode, !(200...299).contains(status) { return nil }
+        // 6446a04: the channel-level block tag travels with the feed —
+        // record it while we hold the bytes (no second request). Only a
+        // POSITIVE finding is stored; an unreadable/short body must not
+        // clear an earlier one.
+        let head = String(decoding: data.prefix(FeedArtworkLookup.headByteCount), as: UTF8.self)
+        if PodcastFeedBlock.isBlocked(feedHead: head) {
+            noteFeedBlocked(feedURL.absoluteString)
+        }
         let parser = RSSFeedParser(feedURL: feedURL.absoluteString)
         return parser.parse(data)
     }

@@ -193,4 +193,58 @@ struct PodcastTokenFeedTests {
         #expect(offers.first?.freeId == "free")
     }
 }
+
+/// 6446a04: the in-feed "do not list publicly" signal — channel level only,
+/// both namespaces, case-tolerant; a platform-bounded block says nothing.
+struct PodcastFeedBlockTests {
+    @Test("itunes:block yes on channel level counts, case and whitespace tolerant")
+    func itunesBlock() {
+        #expect(PodcastFeedBlock.isBlocked(
+            feedHead: "<rss><channel><title>X</title><itunes:block>Yes</itunes:block>"))
+        #expect(PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><itunes:block>\n  yes\n</itunes:block>"))
+        #expect(!PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><itunes:block>no</itunes:block>"))
+        #expect(!PodcastFeedBlock.isBlocked(feedHead: "<channel><title>plain feed</title>"))
+    }
+
+    @Test("an EPISODE-level block means something else and never counts")
+    func episodeBlockIgnored() {
+        let feed = """
+        <rss><channel><title>Public show</title>
+        <item><title>Folge</title><itunes:block>yes</itunes:block></item>
+        """
+        #expect(!PodcastFeedBlock.isBlocked(feedHead: feed))
+    }
+
+    @Test("podcast:block: unbounded yes counts, a platform slug does not")
+    func podcastBlock() {
+        #expect(PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><podcast:block value=\"yes\"/>"))
+        #expect(PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><podcast:block>yes</podcast:block>"))
+        // Bounded to one directory ⇒ says nothing about the feed being private.
+        #expect(!PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><podcast:block value=\"yes\" platform=\"amazon\"/>"))
+        #expect(!PodcastFeedBlock.isBlocked(
+            feedHead: "<channel><podcast:block value=\"no\"/>"))
+    }
+
+    @Test("the premium test reads the recorded signal; membership hosts stay data")
+    func premiumTestUsesSignal() {
+        let defaults = UserDefaults(suiteName: "feed-block-test")!
+        defaults.removePersistentDomain(forName: "feed-block-test")
+        let feed = "https://feeds.example.com/private/abc123/feed.xml"
+        #expect(!PodcastSubscriptions.isFeedBlocked(feed, defaults: defaults))
+        PodcastSubscriptions.noteFeedBlocked(feed, defaults: defaults)
+        #expect(PodcastSubscriptions.isFeedBlocked(feed, defaults: defaults))
+        // The path-token class the query-param heuristic cannot see.
+        #expect(!PodcastSubscriptions.isTokenFeedURL(feed))
+        // Membership hosters are recognised by host alone.
+        #expect(PodcastSubscriptions.isPremiumFeed("https://steadyhq.com/feed/x"))
+        #expect(PodcastSubscriptions.isPremiumFeed("https://api.supportingcast.fm/feed/1"))
+        #expect(PodcastSubscriptions.isPremiumFeed("https://supercast.com/f/9"))
+        defaults.removePersistentDomain(forName: "feed-block-test")
+    }
+}
 #endif

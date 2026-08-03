@@ -18,6 +18,7 @@ struct PremiumFeedsSection: View {
     @ObservedObject var subs = PodcastSubscriptions.shared
     @State private var editTarget: PodcastShow?
     @State private var removeTarget: PodcastShow?
+    @State private var showMarkPicker = false
 
     private var premiumShows: [PodcastShow] {
         subs.shows.filter { PodcastSubscriptions.isPremiumFeed($0.feedURL) }
@@ -25,6 +26,14 @@ struct PremiumFeedsSection: View {
 
     private var freeShows: [PodcastShow] {
         subs.shows.filter { !PodcastSubscriptions.isPremiumFeed($0.feedURL) }
+    }
+
+    /// 87f1cf4: A→Z instead of subscription order — with 30+ feeds the
+    /// stock order is a finger hunt. Locale-aware, case/diacritic folded.
+    private var sortedFreeShows: [PodcastShow] {
+        freeShows.sorted {
+            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+        }
     }
 
     /// Provider grouping: comparable host, alphabetical, stable.
@@ -77,14 +86,13 @@ struct PremiumFeedsSection: View {
 
             // 7dba2b1: the manual escape hatch for unknown URL patterns —
             // feeds the SAME truth as the automatic detection.
+            // 87f1cf4/1fe3ad9: a bare iOS menu cannot carry an explaining
+            // line — and the owner of the app did not recognise WHAT the
+            // list was. So: a sheet with heading + purpose sentence and the
+            // plain sorted list (no new concept, "einfach die Liste").
             if !freeShows.isEmpty {
-                Menu {
-                    ForEach(freeShows) { show in
-                        Button(show.title) {
-                            PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
-                            subs.objectWillChange.send()
-                        }
-                    }
+                Button {
+                    showMarkPicker = true
                 } label: {
                     Label("Mark a feed as premium", systemImage: "lock.badge.plus")
                         .font(.subheadline)
@@ -98,6 +106,13 @@ struct PremiumFeedsSection: View {
         }
         .sheet(item: $editTarget) { show in
             PremiumFeedEditor(show: show)
+        }
+        .sheet(isPresented: $showMarkPicker) {
+            PremiumMarkPicker(shows: sortedFreeShows) { show in
+                PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
+                subs.objectWillChange.send()
+                showMarkPicker = false
+            }
         }
         .confirmationDialog(
             Text("Remove \(removeTarget?.title ?? "")?"),
@@ -154,9 +169,49 @@ struct PremiumFeedsSection: View {
         if PodcastSubscriptions.isTokenFeedURL(feedURL) {
             return String(localized: "Token URL")
         }
+        // 6446a04: the feed's own block signal — honestly "Private", not
+        // "Premium": a free UNLISTED feed carries the tag too, and the
+        // protective behaviour (export/sync exclusion) is right either way.
+        if PodcastSubscriptions.isFeedBlocked(feedURL) {
+            return String(localized: "Private")
+        }
         if PodcastSubscriptions.isManuallyMarkedPremium(feedURL) {
             return String(localized: "Marked")
         }
         return String(localized: "Members")
+    }
+}
+
+
+/// 1fe3ad9: the marking surface explains ITSELF — heading plus one purpose
+/// sentence in the idiom of the existing footnotes, then simply the list.
+/// (A menu can carry neither, which is why the menu became a sheet;
+/// the picker is the smallest form that works, not a new concept.)
+struct PremiumMarkPicker: View {
+    let shows: [PodcastShow]
+    let onPick: (PodcastShow) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(shows) { show in
+                        Button(show.title) { onPick(show) }
+                            .accessibilityIdentifier("premium-mark-pick")
+                    }
+                } footer: {
+                    Text("Your feeds classified as free — pick one whose premium access the automatic detection missed.")
+                }
+            }
+            .navigationTitle("Mark a feed as premium")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
