@@ -396,5 +396,28 @@ struct RadioStateQueryTests {
         // A too-short head keeps the raw name (never truncate to junk).
         #expect(RadioMapping.displayName("A | Station") == "A | Station")
     }
+
+    @Test("e4bd910: logo chain pure pieces — conservative entity match, P154, touch icon")
+    func logoLookup() throws {
+        // Conservative Wikidata match: label must fold-contain the name.
+        let search = Data("""
+        {"search":[{"id":"Q999","label":"Rock am Ring"},{"id":"Q42","label":"ROCK ANTENNE"}]}
+        """.utf8)
+        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search, stationName: "Rock Antenne") == "Q42")
+        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search, stationName: "Deutschlandfunk") == nil)
+        // P154 via the SHARED claim parser.
+        let entity = Data("""
+        {"entities":{"Q42":{"claims":{"P154":[{"mainsnak":{"datavalue":{"value":"Rock Antenne Logo.svg"}}}]}}}}
+        """.utf8)
+        #expect(RadioLogoLookup.p154FileName(fromEntityData: entity, entity: "Q42") == "Rock Antenne Logo.svg")
+        // Touch-icon extraction incl. relative href; convention fallback.
+        let base = try #require(URL(string: "https://www.rockantenne.de/player"))
+        let html = "<head><link rel=\"stylesheet\" href=\"a.css\"><link rel=\"apple-touch-icon\" href=\"/icons/touch.png\"></head>"
+        #expect(RadioLogoLookup.extractTouchIcon(html: html, baseURL: base)?.absoluteString
+                == "https://www.rockantenne.de/icons/touch.png")
+        #expect(RadioLogoLookup.extractTouchIcon(html: "<head></head>", baseURL: base) == nil)
+        #expect(RadioLogoLookup.conventionTouchIconURL(homepage: base)?.absoluteString
+                == "https://www.rockantenne.de/apple-touch-icon.png")
+    }
 }
 #endif

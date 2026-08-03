@@ -244,6 +244,12 @@ nonisolated enum AppStorageKeys {
     static let librivoxImportFolderId = "librivoxImportFolderId"
     /// 7edb21b: the "Free Audiobooks" AREA toggle (feature level, audiobooks
     /// pill); the LibriVox service opt-out stays superior.
+    /// e4bd910: the radio-logo fallback chain (Wikidata P154 → homepage
+    /// touch icon) behind the gated favicon — network-services opt-out.
+    static let radioLogoChainEnabled = "radioLogoChainEnabled"
+    nonisolated static var radioLogoChainEnabledValue: Bool {
+        UserDefaults.standard.object(forKey: radioLogoChainEnabled) as? Bool ?? true
+    }
     /// 593d177 R2: normalized feed URLs the USER unsubscribed — only these
     /// may propagate to the gpodder server without the two-sync confirmation.
     static let gpodderUserRemovedFeeds = "gpodderUserRemovedFeeds"

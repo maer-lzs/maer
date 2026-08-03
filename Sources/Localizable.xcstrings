@@ -5292,6 +5292,16 @@
         }
       }
     },
+    "Logos for stations without a usable favicon." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logos für Sender ohne brauchbares Favicon."
+          }
+        }
+      }
+    },
     "Show free catalogs" : {
       "localizations" : {
         "de" : {

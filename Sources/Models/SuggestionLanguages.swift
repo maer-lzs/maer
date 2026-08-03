@@ -22,6 +22,7 @@ nonisolated enum NetworkServiceNames {
     static let librivox = "LibriVox"
     static let internetArchive = "Internet Archive"
     static let jamendo = "Jamendo"
+    static let radioLogoChain = "Wikidata · Wikimedia Commons · Sender-Homepage"
     /// Catalog master: everything the free-catalog surfaces may talk to.
     static let freeCatalogs = "\(librivox) · \(internetArchive) · \(jamendo)"
 }

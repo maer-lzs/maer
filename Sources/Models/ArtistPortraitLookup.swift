@@ -81,12 +81,18 @@ nonisolated enum ArtistPortraitLookup {
     /// P18 (image) claim → the Commons file name, from the raw EntityData JSON
     /// (parsed structurally — the shape is deep but stable).
     static func p18FileName(fromEntityData data: Data, entity: String) -> String? {
+        claimFileName(fromEntityData: data, entity: entity, property: "P18")
+    }
+
+    /// Generalized claim-image extraction (P18 portraits, P154 logos — the
+    /// radio logo chain reuses the SAME parser, Regel 2).
+    static func claimFileName(fromEntityData data: Data, entity: String, property: String) -> String? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let entities = root["entities"] as? [String: Any],
               let ent = entities[entity] as? [String: Any],
               let claims = ent["claims"] as? [String: Any],
-              let p18 = claims["P18"] as? [[String: Any]],
-              let mainsnak = p18.first?["mainsnak"] as? [String: Any],
+              let claim = claims[property] as? [[String: Any]],
+              let mainsnak = claim.first?["mainsnak"] as? [String: Any],
               let datavalue = mainsnak["datavalue"] as? [String: Any],
               let value = datavalue["value"] as? String, !value.isEmpty else { return nil }
         return value

@@ -15,6 +15,7 @@ struct NetworkServicesView: View {
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
     @AppStorage(AppStorageKeys.radioEnabled) private var radioEnabled = false
+    @AppStorage(AppStorageKeys.radioLogoChainEnabled) private var radioLogoChain = true
     @AppStorage(AppStorageKeys.librivoxRowsEnabled) private var librivoxRows = true
     @AppStorage(AppStorageKeys.archivePopularEnabled) private var archivePopular = true
     @AppStorage(AppStorageKeys.jamendoRowEnabled) private var jamendoRow = true
@@ -44,6 +45,13 @@ struct NetworkServicesView: View {
                 Toggle(isOn: $radioEnabled) {
                     serviceLabel(NetworkServiceNames.radioBrowser,
                                  purpose: "The community station catalog behind the Radio tab.")
+                }
+                // e4bd910: the agreed logo fallback chain — ONE switch for
+                // both stages (Wikidata P154 first, then the homepage
+                // touch icon); off = placeholder right after the favicon.
+                Toggle(isOn: $radioLogoChain) {
+                    serviceLabel(NetworkServiceNames.radioLogoChain,
+                                 purpose: "Logos for stations without a usable favicon.")
                 }
                 Toggle(isOn: $librivoxRows) {
                     serviceLabel(NetworkServiceNames.librivox,

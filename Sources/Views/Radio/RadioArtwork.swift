@@ -38,19 +38,33 @@ struct RadioArtwork: View {
 
     /// Load through the shared ImageCache, then apply the pure gate.
     /// Rejections log the reason and stay silent toward the user (spec).
+    /// e4bd910: a rejected/missing favicon falls through the AGREED source
+    /// chain (Wikidata P154 → homepage touch icon, session-cached incl.
+    /// negatives) before the placeholder — every call site (tiles, hero,
+    /// lock screen/CarPlay) inherits the chain from this ONE resolver.
     static func gatedImage(for url: URL?, stationID: String) async -> UIImage? {
-        guard let url else { return nil }
-        guard let image = await ImageCache.shared.thumbnail(for: url) else {
-            Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
-            return nil
-        }
-        let width = Int(image.size.width * image.scale)
-        let height = Int(image.size.height * image.scale)
-        guard RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height) else {
+        if let url, let image = await ImageCache.shared.thumbnail(for: url) {
+            let width = Int(image.size.width * image.scale)
+            let height = Int(image.size.height * image.scale)
+            if RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height) {
+                return image
+            }
             Logger.library.notice("RADIO favicon rejected (\(width)×\(height)): \(stationID, privacy: .public)")
+        } else if url != nil {
+            Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
+        }
+        // Chain: the station record carries name + homepage.
+        guard let station = RadioProvider.shared.station(forId: stationID) else { return nil }
+        guard let logoURL = await RadioLogoService.shared.logoURL(
+            stationID: stationID, name: RadioMapping.displayName(station.name),
+            homepage: station.homepage) else { return nil }
+        guard let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
+        let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
+        guard RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) else {
+            Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
             return nil
         }
-        return image
+        return logo
     }
 
     private var thumbnail: some View {
