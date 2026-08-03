@@ -80,16 +80,25 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             return merge
         }
 
-        // 593d177 R1: the LOSS SIGNATURE — the local store is empty while
-        // prev AND server clearly hold a real state. That is a local data
-        // loss, not 44 unsubscribes: adopt the server wholesale (pull only,
-        // push NOTHING, delete NOTHING) instead of parking in a blocked
-        // warning state.
+        // 593d177 R1 (+486b293 Randfall): the LOSS SIGNATURE — the local
+        // store is empty while prev AND server hold a real state. But the
+        // emptiness only counts as LOSS where it is NOT explained by user
+        // intents: unsubscribing the LAST feed legitimately empties the
+        // store, and R1 must not resurrect it on every sync.
         if local.isEmpty, !prev.isEmpty, !server.isEmpty {
-            merge.addLocally = server
-            merge.recoveredFromServer = true
-            merge.warning = "local subscriptions were empty — recovered \(server.count) feeds from the server."
-            return merge
+            let explained = userRemovedLocally.intersection(prev)
+            let unexplained = server.subtracting(explained)
+            if unexplained.isEmpty {
+                // Fully user-explained → no recovery; fall through to the
+                // normal path, where the intent removes propagate.
+            } else {
+                merge.addLocally = unexplained
+                merge.recoveredFromServer = true
+                // The explained removes still go out (user intent, immediate).
+                merge.removeFromServer = explained.intersection(server)
+                merge.warning = "local subscriptions were empty — recovered \(unexplained.count) feeds from the server."
+                return merge
+            }
         }
 
         merge.addToServer = local.subtracting(server).subtracting(prev)
@@ -108,8 +117,11 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             merge.pendingRemoveLocally = c.pending
             if !c.pending.isEmpty { merge.mayUpdatePrevState = false }
         }
-        // Server side: same shape.
-        if removesImplausible(count: removeFromServer.count, of: server.count) {
+        // Server side: same shape — but USER-intended removes never count
+        // toward implausibility (unsubscribing all five feeds is a decision,
+        // not a glitch; 486b293).
+        let derivedServerRemoves = removeFromServer.subtracting(userRemovedLocally)
+        if removesImplausible(count: derivedServerRemoves.count, of: server.count) {
             let text = "local state would unsubscribe \(removeFromServer.count) of \(server.count) server feeds — skipped as implausible."
             merge.warning = merge.warning.map { $0 + " " + text } ?? "gpodder: " + text
             merge.mayUpdatePrevState = false

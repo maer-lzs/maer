@@ -159,6 +159,32 @@ struct GPodderMergeTests {
         #expect(!fresh.recoveredFromServer)
     }
 
+    @Test("486b293: R1 respects user intents — the last unsubscribe is never resurrected")
+    func recoveryRespectsIntent() {
+        // Last-feed unsubscribe: emptiness fully user-explained → NO recovery,
+        // the intent remove propagates instead (and only once).
+        let one = GPodderSubscriptionMerge.compute(
+            local: [], server: ["feedX"], prev: ["feedX"], userRemovedLocally: ["feedX"])
+        #expect(!one.recoveredFromServer)
+        #expect(one.addLocally.isEmpty)
+        #expect(one.removeFromServer == ["feedX"])
+        // Mixed: 44 on the server, 2 user-removed → recover the 42, push the 2.
+        let server = Set((1...44).map { "f\($0)" })
+        let mixed = GPodderSubscriptionMerge.compute(
+            local: [], server: server, prev: server, userRemovedLocally: ["f1", "f2"])
+        #expect(mixed.recoveredFromServer)
+        #expect(mixed.addLocally == server.subtracting(["f1", "f2"]))
+        #expect(mixed.removeFromServer == ["f1", "f2"])
+        // Mass user unsubscribe (5 of 5, all intended): the implausibility
+        // guard never blocks a decision.
+        let five = Set((1...5).map { "g\($0)" })
+        let all = GPodderSubscriptionMerge.compute(
+            local: [], server: five, prev: five, userRemovedLocally: five)
+        #expect(!all.recoveredFromServer)
+        #expect(all.removeFromServer == five)
+        #expect(all.warning == nil)
+    }
+
     @Test("593d177 R2: derived single removes wait for the second sync; user intent applies at once")
     func derivedSinglesPend() {
         // SERVER side: a derived single (state diff, no user intent) PENDS.
