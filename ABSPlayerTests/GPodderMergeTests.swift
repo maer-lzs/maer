@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #if canImport(Testing)
+import Foundation
 import Testing
 @testable import ABSPlayer
 
@@ -38,9 +39,15 @@ struct GPodderMergeTests {
         #expect(m.warning == nil)
         #expect(m.mayUpdatePrevState)
 
-        // Local dropped one feed → propagates to the server.
+        // 593d177 R2: a local drop WITHOUT user intent no longer touches
+        // the server at once — it pends (the derived-single loss class).
         var local = feeds; local.remove("feed3")
-        let m2 = GPodderSubscriptionMerge.compute(local: local, server: feeds, prev: feeds)
+        let derived = GPodderSubscriptionMerge.compute(local: local, server: feeds, prev: feeds)
+        #expect(derived.removeFromServer.isEmpty)
+        #expect(derived.pendingRemoveFromServer == ["feed3"])
+        // With USER intent (UI unsubscribe) it propagates immediately.
+        let m2 = GPodderSubscriptionMerge.compute(local: local, server: feeds, prev: feeds,
+                                                  userRemovedLocally: ["feed3"])
         #expect(m2.removeFromServer == ["feed3"])
         #expect(m2.warning == nil)
     }
@@ -134,6 +141,81 @@ struct GPodderMergeTests {
         #expect(m.removeLocally.isEmpty)
         #expect(m.pendingRemoveLocally.isEmpty)           // discarded, self-healed
         #expect(m.mayUpdatePrevState)
+    }
+
+    @Test("593d177 R1: loss signature adopts the server wholesale — pull only")
+    func lossSignatureRecovery() {
+        let server: Set<String> = Set((1...44).map { "feed\($0)" })
+        let merge = GPodderSubscriptionMerge.compute(local: [], server: server, prev: server)
+        #expect(merge.recoveredFromServer)
+        #expect(merge.addLocally == server)
+        // Pull ONLY: nothing pushed, nothing deleted, nowhere.
+        #expect(merge.addToServer.isEmpty)
+        #expect(merge.removeFromServer.isEmpty)
+        #expect(merge.removeLocally.isEmpty)
+        #expect(merge.pendingRemoveFromServer.isEmpty)
+        // A genuine fresh state (prev empty too) is NOT the signature.
+        let fresh = GPodderSubscriptionMerge.compute(local: [], server: server, prev: [])
+        #expect(!fresh.recoveredFromServer)
+    }
+
+    @Test("593d177 R2: derived single removes wait for the second sync; user intent applies at once")
+    func derivedSinglesPend() {
+        // SERVER side: a derived single (state diff, no user intent) PENDS.
+        let derived = GPodderSubscriptionMerge.confirmRemovals(
+            candidates: ["feedX"], prevPending: [], userIntent: [],
+            requireIntentForSingles: true)
+        #expect(derived.apply.isEmpty)
+        #expect(derived.pending == ["feedX"])
+        // Same single with USER intent: immediate.
+        let intended = GPodderSubscriptionMerge.confirmRemovals(
+            candidates: ["feedX"], prevPending: [], userIntent: ["feedX"],
+            requireIntentForSingles: true)
+        #expect(intended.apply == ["feedX"])
+        #expect(intended.pending.isEmpty)
+        // Second consecutive sync confirms a derived server remove.
+        let confirmed = GPodderSubscriptionMerge.confirmRemovals(
+            candidates: ["feedX"], prevPending: ["feedX"], userIntent: [],
+            requireIntentForSingles: true)
+        #expect(confirmed.apply == ["feedX"])
+        // LOCAL side unchanged: a single server-side removal converges at once.
+        let localSingle = GPodderSubscriptionMerge.confirmRemovals(
+            candidates: ["feedX"], prevPending: [])
+        #expect(localSingle.apply == ["feedX"])
+    }
+
+    @Test("593d177: wipe guard — an empty snapshot never overwrites data")
+    @MainActor
+    func wipeGuard() async throws {
+        let subs = PodcastSubscriptions.shared
+        await subs.ensureLoaded()
+        let show = PodcastShow(id: "wipe-test", title: "Wipe Test", author: nil,
+                               artworkURL: nil, description: nil,
+                               feedURL: "https://example.org/wipe.xml", episodes: [])
+        subs._testSetLoaded(true)
+        subs._testPersist([show])
+        // The write chain is async — wait until SOME non-empty state landed.
+        // (Behavioral assertions, not byte equality: Swift Testing runs
+        // in-process parallel and other suites touch the shared singleton.)
+        var landed = false
+        for _ in 0..<50 {
+            if let data = try? Data(contentsOf: subs._testFileURL),
+               let decoded = try? JSONDecoder().decode([PodcastShow].self, from: data),
+               !decoded.isEmpty { landed = true; break }
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+        #expect(landed, "seed state must land on disk first")
+        // The EMPTY snapshot without user intent must be REFUSED: the file
+        // keeps holding a decodable, NON-empty state and the tombstone note
+        // appears (log-first diagnosis).
+        subs._testPersist([])
+        try await Task.sleep(nanoseconds: 300_000_000)
+        let data = try Data(contentsOf: subs._testFileURL)
+        let decoded = try JSONDecoder().decode([PodcastShow].self, from: data)
+        #expect(!decoded.isEmpty, "empty snapshot must never wipe a non-empty store")
+        let tombstone = subs._testFileURL.appendingPathExtension("wipe-refused.txt")
+        #expect(FileManager.default.fileExists(atPath: tombstone.path),
+                "the refused wipe must leave a diagnosable tombstone")
     }
 }
 #endif

@@ -163,8 +163,19 @@ final class PodcastListenLog {
     private func loadIfNeeded() {
         guard !loaded else { return }
         loaded = true
-        guard let url = Self.fileURL, let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else { return }
+        guard let url = Self.fileURL, let data = try? Data(contentsOf: url) else { return }
+        guard let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else {
+            // 593d177 sweep: same corruption discipline as the subscription
+            // store — preserve the undecodable file instead of silently
+            // overwriting it on the next persist. (No async window here: the
+            // load is lazy-synchronous before every mutation, so the
+            // cold-start wipe race of the subscription store cannot occur.)
+            let backup = url.appendingPathExtension("corrupt")
+            try? FileManager.default.removeItem(at: backup)
+            try? FileManager.default.moveItem(at: url, to: backup)
+            Logger.rss.error("listen log undecodable — preserved as .corrupt, starting empty")
+            return
+        }
         entries = decoded
     }
 

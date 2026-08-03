@@ -24,6 +24,9 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     var pendingRemoveFromServer: Set<String> = []
     /// Human-readable reason when a plausibility guard fired (nil = clean run).
     var warning: String?
+    /// 593d177 R1: set when the LOSS SIGNATURE (local empty ∧ prev full ∧
+    /// server full) triggered the pure server adoption — the caller logs it.
+    var recoveredFromServer = false
     /// False when the guard fired: the last-synced state must stay untouched,
     /// otherwise the surviving feeds would be pushed to the server as "newly
     /// subscribed" on the next run and the incident would be papered over.
@@ -42,16 +45,30 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     /// from the PREVIOUS run (`prevPending`) to apply now — a first-time 2–3 diff
     /// is only held (returned as pending), so a one-off race/glitch self-heals
     /// next run instead of removing anything. Pure/tested.
-    static func confirmRemovals(candidates: Set<String>, prevPending: Set<String>)
+    /// Confirmation for removals. LOCAL side (server removed a feed —
+    /// cross-device convergence): a SINGLE applies at once, 2–3 need the
+    /// second consecutive sync (unchanged semantics).
+    /// 593d177 R2, SERVER side (`requireIntentForSingles`): a remove pushed
+    /// TOWARD the server applies immediately only with USER intent (UI
+    /// unsubscribe); DERIVED singles — the loss class that nibbled the
+    /// server copy — wait for the second consecutive confirmation too.
+    static func confirmRemovals(candidates: Set<String>, prevPending: Set<String>,
+                                userIntent: Set<String> = [],
+                                requireIntentForSingles: Bool = false)
         -> (apply: Set<String>, pending: Set<String>) {
-        if candidates.count <= 1 { return (candidates, []) }   // single: immediate
-        let apply = candidates.intersection(prevPending)       // seen last run → confirmed
-        return (apply, candidates.subtracting(apply))          // newcomers wait one cycle
+        if !requireIntentForSingles, candidates.count <= 1 {
+            return (candidates, [])   // local single: immediate (unchanged)
+        }
+        let intended = candidates.intersection(userIntent)
+        let confirmed = candidates.intersection(prevPending)
+        let apply = intended.union(confirmed)
+        return (apply, candidates.subtracting(apply))
     }
 
     static func compute(local: Set<String>, server: Set<String>, prev: Set<String>,
                         pendingRemoveLocally prevPendingLocal: Set<String> = [],
-                        pendingRemoveFromServer prevPendingServer: Set<String> = [])
+                        pendingRemoveFromServer prevPendingServer: Set<String> = [],
+                        userRemovedLocally: Set<String> = [])
         -> GPodderSubscriptionMerge {
         var merge = GPodderSubscriptionMerge()
 
@@ -60,6 +77,18 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         if server.isEmpty, !local.isEmpty, !prev.isEmpty {
             merge.warning = "gpodder returned an empty subscription list — sync skipped to protect \(local.count) local feeds."
             merge.mayUpdatePrevState = false
+            return merge
+        }
+
+        // 593d177 R1: the LOSS SIGNATURE — the local store is empty while
+        // prev AND server clearly hold a real state. That is a local data
+        // loss, not 44 unsubscribes: adopt the server wholesale (pull only,
+        // push NOTHING, delete NOTHING) instead of parking in a blocked
+        // warning state.
+        if local.isEmpty, !prev.isEmpty, !server.isEmpty {
+            merge.addLocally = server
+            merge.recoveredFromServer = true
+            merge.warning = "local subscriptions were empty — recovered \(server.count) feeds from the server."
             return merge
         }
 
@@ -86,7 +115,9 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             merge.mayUpdatePrevState = false
             merge.blockedRemoveFromServer = removeFromServer
         } else {
-            let c = confirmRemovals(candidates: removeFromServer, prevPending: prevPendingServer)
+            let c = confirmRemovals(candidates: removeFromServer, prevPending: prevPendingServer,
+                                    userIntent: userRemovedLocally,
+                                    requireIntentForSingles: true)
             merge.removeFromServer = c.apply
             merge.pendingRemoveFromServer = c.pending
             if !c.pending.isEmpty { merge.mayUpdatePrevState = false }

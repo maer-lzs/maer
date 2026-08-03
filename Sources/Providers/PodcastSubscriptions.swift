@@ -126,6 +126,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// episode index (session restore, CarPlay) await `ensureLoaded()`.
     private var bootstrapTask: Task<Void, Never>?
 
+    /// 593d177: true once the bootstrap disk load finished (EVERY path) —
+    /// save() refuses to persist before that, so a cold-start mutation can
+    /// never wipe the good file with the still-empty in-memory state.
+    private(set) var isLoaded = false
+
     private init() {
         let url = fileURL
         bootstrapTask = Task { [weak self] in
@@ -147,6 +152,14 @@ final class PodcastSubscriptions: ObservableObject {
             if decoded == nil {
                 Logger.rss.error("subscriptions store undecodable — preserved as .corrupt, starting empty")
             }
+            // 593d177 (5): startup diagnosis — a future loss must be READABLE
+            // from the log, not reconstructed.
+            let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+            let size = (attrs?[.size] as? Int) ?? 0
+            let mtime = (attrs?[.modificationDate] as? Date)?.description ?? "-"
+            let corruptExists = FileManager.default.fileExists(atPath: url.appendingPathExtension("corrupt").path)
+            Logger.rss.notice("SUBSTORE bootstrap: size=\(size)B mtime=\(mtime, privacy: .public) shows=\(decoded?.count ?? -1) corruptBackup=\(corruptExists)")
+            defer { self?.isLoaded = true }   // EVERY exit path unlocks save()
             guard let self, let decoded, !decoded.isEmpty else { return }
             self.shows = self.migrated(decoded)
             // Listen log: one-time backfill so the history of the CURRENT
@@ -175,7 +188,27 @@ final class PodcastSubscriptions: ObservableObject {
     /// affect an in-flight write.
     private let writeChain = SerializedWriteChain()
 
+    /// 593d177 (2): consumed one-shot flag — ONLY a user-initiated path
+    /// (last unsubscribe) may legitimately write an EMPTY store over a
+    /// non-empty file.
+    private var userInitiatedEmptyWrite = false
+
     private func persist(_ snapshot: [PodcastShow]) {
+        // 593d177: last line of defense — an EMPTY snapshot never overwrites
+        // a non-empty file unless the user explicitly emptied the list.
+        // Refuse loudly + drop a tombstone note so the NEXT incident is
+        // diagnosable instead of traceless (log-first).
+        if snapshot.isEmpty, !userInitiatedEmptyWrite {
+            let size = ((try? FileManager.default.attributesOfItem(atPath: fileURL.path))?[.size] as? Int) ?? 0
+            if size > 2 {   // "[]" is 2 bytes — anything bigger holds data
+                Logger.rss.error("SUBSTORE wipe REFUSED: empty snapshot over \(size)B file without user intent")
+                let note = "wipe refused at \(Date()) — empty snapshot, file \(size)B, isLoaded=\(isLoaded)\n"
+                let tombstone = fileURL.appendingPathExtension("wipe-refused.txt")
+                try? note.data(using: .utf8)?.write(to: tombstone)
+                return
+            }
+        }
+        userInitiatedEmptyWrite = false
         writeChain.write(to: fileURL) {
             try? JSONEncoder().encode(snapshot)
         }
@@ -196,6 +229,11 @@ final class PodcastSubscriptions: ObservableObject {
     #if DEBUG
     /// UI-test seeding only (see UITestSeed) — injects deterministic shows.
     func _seedForUITest(_ shows: [PodcastShow]) { self.shows = shows }
+    /// 593d177 test seams: drive the wipe guard + load gate deterministically.
+    func _testPersist(_ snapshot: [PodcastShow]) { persist(snapshot) }
+    func _testSetLoaded(_ value: Bool) { isLoaded = value }
+    func _testSave() { save() }
+    var _testFileURL: URL { fileURL }
     #endif
 
     // MARK: - Stable ids + dedup (migration)
@@ -423,6 +461,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// Subscribe to a feed (loads + parses immediately). Already-present feeds
     /// are only refreshed.
     func subscribe(urlString: String) async -> Bool {
+        await ensureLoaded()   // 593d177: no mutation before the disk load
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
         guard let show = await Self.fetchAndParse(feedURL: url) else { return false }
@@ -482,14 +521,40 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     func unsubscribe(id: String) {
+        // 593d177 (2)+(R2): a user unsubscribe may legitimately empty the
+        // store; the normalized URL joins the user-intent set so the gpodder
+        // sync may propagate THIS single remove immediately (derived removes
+        // wait for the two-sync confirmation instead).
+        if let show = shows.first(where: { $0.id == id }) {
+            Self.recordUserRemovedFeed(Self.normalizeFeedURL(show.feedURL))
+        }
         shows.removeAll { $0.id == id }
+        if shows.isEmpty { userInitiatedEmptyWrite = true }
         save()
+    }
+
+    /// R2: normalized URLs the USER unsubscribed — the only removes the
+    /// gpodder sync may push to the server without the two-sync confirmation.
+    nonisolated static func userRemovedFeeds(defaults: UserDefaults = .standard) -> Set<String> {
+        Set(defaults.stringArray(forKey: AppStorageKeys.gpodderUserRemovedFeeds) ?? [])
+    }
+
+    nonisolated static func recordUserRemovedFeed(_ norm: String, defaults: UserDefaults = .standard) {
+        var set = userRemovedFeeds(defaults: defaults)
+        set.insert(norm)
+        defaults.set(Array(set).sorted(), forKey: AppStorageKeys.gpodderUserRemovedFeeds)
+    }
+
+    nonisolated static func consumeUserRemovedFeeds(_ applied: Set<String>, defaults: UserDefaults = .standard) {
+        let rest = userRemovedFeeds(defaults: defaults).subtracting(applied)
+        defaults.set(Array(rest).sorted(), forKey: AppStorageKeys.gpodderUserRemovedFeeds)
     }
 
     /// Load a show's full history via PodcastIndex (if a key is set) and merge
     /// it into the persisted episodes. Same `rss:<feedKey>:<guid>` ids as the
     /// feed → dedup + shared progress key. Returns: number of NEW episodes added.
     func loadFullHistory(showId: String) async -> Int {
+        await ensureLoaded()   // 593d177
         guard AppStorageKeys.podcastIndexConfigured,
               let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
         let show = shows[idx]
@@ -630,6 +695,9 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// Reload all feeds (pull-to-refresh). Failed ones keep their cached state.
     func refreshAll() async {
+        // 593d177 (1): NEVER mutate before the disk load — the BGAppRefresh
+        // cold start hit exactly this window and wiped the store.
+        await ensureLoaded()
         // TF bib-toggles: RSS source off (podcast tab ∧ RSS toggle) → no feed
         // fetches from any caller (background refresh, tab load, pull-to-refresh).
         // THE one gate for the bulk RSS refresh; deliberate user actions
@@ -659,6 +727,7 @@ final class PodcastSubscriptions: ObservableObject {
     /// Trim to the latest N episodes (0 = unlimited) and discard downloads of
     /// the removed episodes. Directly from the per-show settings.
     func trimEpisodes(showId: String, keepLatest n: Int) async {
+        await ensureLoaded()   // 593d177
         guard let idx = shows.firstIndex(where: { $0.id == showId }) else { return }
         if applyLimit(&shows[idx], keepLatest: n) { save() }
     }
@@ -698,6 +767,15 @@ final class PodcastSubscriptions: ObservableObject {
     /// old implementation encoded and wrote the whole JSON synchronously on the
     /// main actor: a visible hitch on subscribe/refresh/import.
     private func save() {
+        // 593d177 (1): the central funnel — persisting before the bootstrap
+        // finished would write the still-empty RAM state over the good file
+        // (the cold-start BGAppRefresh race). The mutation stays in RAM; the
+        // callers below additionally await ensureLoaded() so this stays a
+        // last-resort trap, not the working path.
+        guard isLoaded else {
+            Logger.rss.error("SUBSTORE save SKIPPED before bootstrap (cold-start race trapped)")
+            return
+        }
         persist(shows)
     }
 

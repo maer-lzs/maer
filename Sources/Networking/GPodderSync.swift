@@ -288,7 +288,11 @@ final class GPodderSync {
         // additionally need a second consecutive confirmation before applying.
         let merge = GPodderSubscriptionMerge.compute(
             local: local, server: server, prev: prev,
-            pendingRemoveLocally: prevPendingLocal, pendingRemoveFromServer: prevPendingServer)
+            pendingRemoveLocally: prevPendingLocal, pendingRemoveFromServer: prevPendingServer,
+            userRemovedLocally: PodcastSubscriptions.userRemovedFeeds())
+        if merge.recoveredFromServer {
+            Logger.gpodder.error("gpodder RECOVERY: local store empty, prev=\(prev.count) server=\(server.count) — adopting the server wholesale (pull only)")
+        }
         // Persist the held (not-yet-confirmed) removals for the next run.
         defaults.set(Array(merge.pendingRemoveLocally), forKey: AppStorageKeys.gpodderPendingRemoveLocal)
         defaults.set(Array(merge.pendingRemoveFromServer), forKey: AppStorageKeys.gpodderPendingRemoveServer)
@@ -315,6 +319,8 @@ final class GPodderSync {
                 remove: merge.removeFromServer.compactMap { serverByNorm[$0] }
             )
             report.pushedToServer = merge.addToServer.count
+            // R2: applied user-intent removes are consumed (one-shot).
+            PodcastSubscriptions.consumeUserRemovedFeeds(merge.removeFromServer)
             for norm in merge.removeFromServer {
                 let raw = serverByNorm[norm] ?? norm
                 report.removedFromServer += 1
