@@ -418,6 +418,20 @@ struct RadioStateQueryTests {
         #expect(RadioLogoLookup.extractTouchIcon(html: "<head></head>", baseURL: base) == nil)
         #expect(RadioLogoLookup.conventionTouchIconURL(homepage: base)?.absoluteString
                 == "https://www.rockantenne.de/apple-touch-icon.png")
+        // Diagnose-getrieben: brand-stem variant finds "90s90s" for
+        // "90s90s Dance HQ"; the fold containment accepts the short label.
+        #expect(RadioLogoLookup.searchTerms(for: "90s90s Dance HQ") == ["90s90s Dance HQ", "90s90s"])
+        #expect(RadioLogoLookup.searchTerms(for: "MANGORADIO") == ["MANGORADIO"])
+        // Family suffix: the brand prefix before " - " joins the terms.
+        #expect(RadioLogoLookup.searchTerms(for: "Sunshine Live - Techno")
+                == ["Sunshine Live - Techno", "Sunshine Live", "Sunshine"])
+        #expect(RadioLogoLookup.searchTerms(for: "Hit Radio FFH - 80er")
+                == ["Hit Radio FFH - 80er", "Hit Radio FFH"])
+        let search90 = Data("""
+        {"search":[{"id":"Q105475115","label":"90s90s"}]}
+        """.utf8)
+        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search90,
+                                                stationName: "90s90s Dance HQ") == "Q105475115")
     }
 
     @Test("e4bd910: display dedupe — variants fold by name+domain, foreigners and siblings never")

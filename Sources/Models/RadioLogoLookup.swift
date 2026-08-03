@@ -12,18 +12,40 @@ import Foundation
 nonisolated enum RadioLogoLookup {
 
     /// Wikidata entity search by station name (wbsearchentities).
-    static func wikidataSearchURL(name: String) -> URL? {
+    static func wikidataSearchURL(name: String, language: String = "de") -> URL? {
         var comps = URLComponents(string: "https://www.wikidata.org/w/api.php")
         comps?.queryItems = [
             URLQueryItem(name: "action", value: "wbsearchentities"),
             URLQueryItem(name: "search", value: name),
-            URLQueryItem(name: "language", value: "de"),
-            URLQueryItem(name: "uselang", value: "de"),
+            URLQueryItem(name: "language", value: language),
+            URLQueryItem(name: "uselang", value: language),
             URLQueryItem(name: "type", value: "item"),
             URLQueryItem(name: "limit", value: "5"),
             URLQueryItem(name: "format", value: "json"),
         ]
         return comps?.url
+    }
+
+    /// 275f379 (Diagnose-getrieben): search-term variants — the full name in
+    /// de missed "90s90s Dance HQ" although Q105475115 ("90s90s", WITH a
+    /// P154 logo) exists. Order: full name, then the BRAND stem (first word,
+    /// ≥4 chars, only for multi-word names — "Rock Antenne" keeps both words
+    /// via the containment match anyway). The conservative fold-match stays
+    /// the safety net against wrong logos.
+    static func searchTerms(for name: String) -> [String] {
+        var terms = [name]
+        // Family suffix ("Sunshine Live - Techno", "Hit Radio FFH - 80er"):
+        // the brand prefix before " - " is the Wikidata-findable entity —
+        // measured on the DE top 50, most gate misses are these families.
+        if let dash = name.range(of: " - ") {
+            let prefix = name[..<dash.lowerBound].trimmingCharacters(in: .whitespaces)
+            if prefix.count >= 4, !terms.contains(prefix) { terms.append(prefix) }
+        }
+        let words = name.split(separator: " ")
+        if words.count >= 2, words[0].count >= 4, !terms.contains(String(words[0])) {
+            terms.append(String(words[0]))
+        }
+        return terms
     }
 
     private struct SearchResponse: Decodable {

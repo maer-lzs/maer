@@ -135,5 +135,62 @@ struct PodcastTokenFeedTests {
         PodcastSubscriptions.setManualPremium(false, feedURL: url, defaults: defaults)
         #expect(PodcastSubscriptions.manualPremiumFeedKeys(defaults: defaults).isEmpty)
     }
+
+    @Test("f4f1b46: token-rotation twins collapse at bootstrap — one survivor, progress moved")
+    func identityCollapse() {
+        func show(_ token: String, episodes: Int, played: Int = 0) -> PodcastShow {
+            let url = "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=\(token)"
+            let key = PodcastSubscriptions.feedKey(url)
+            return PodcastShow(id: "feed:\(key)", title: "Servus. Grüezi. Hallo.", author: nil,
+                               artworkURL: nil, description: nil, feedURL: url,
+                               episodes: (0..<episodes).map { i in
+                                   PodcastEpisode(guid: "rss:\(key):ep\(i)", title: "E\(i)",
+                                                  audioURL: "https://cdn.zeit.de/ep\(i).mp3",
+                                                  pubDate: Double(1000 + i), duration: 60)
+                               })
+        }
+        // Old entry (pre-rotation token, 3 episodes with history) + freshly
+        // born full-backlog entry (rotated token, 413 episodes).
+        let old = show("OLDTOKEN", episodes: 3)
+        let fresh = show("NEWTOKEN", episodes: 413)
+        var moves: [(String, String)] = []
+        let (result, changed) = PodcastSubscriptions.migrate([old, fresh],
+                                                             moveProgress: { moves.append(($0, $1)) })
+        #expect(changed)
+        #expect(result.count == 1, "the same masked identity must collapse to ONE entry")
+        // The fuller entry survives (its URL carries the current token)…
+        #expect(result.first?.feedURL.contains("NEWTOKEN") == true)
+        // …and the old entry's episodes were re-keyed (progress rides along).
+        let survivorKey = PodcastSubscriptions.feedKey(result.first!.feedURL)
+        #expect(moves.contains { $0.1.hasPrefix("rss:\(survivorKey):") })
+        // Episode union by original guid: 413 (old 3 are a subset).
+        #expect(result.first?.episodes.count == 413)
+        // Different masked identities never collapse (two providers).
+        let other = show("X", episodes: 5)
+        var otherShow = other
+        otherShow = PodcastShow(id: other.id, title: other.title, author: nil, artworkURL: nil,
+                                description: nil,
+                                feedURL: "https://other-provider.example/rss?freebie=X",
+                                episodes: other.episodes)
+        let (two, _) = PodcastSubscriptions.migrate([show("A", episodes: 3), otherShow],
+                                                    moveProgress: { _, _ in })
+        #expect(two.count == 2)
+    }
+
+    @Test("e4b1467: twin offer once per PAIR; suppressed while identity twins exist")
+    func twinOfferGuard() {
+        let free = (id: "free", title: "Servus. Grüezi. Hallo.", feedURL: "https://feeds.simplecast.com/sgh")
+        let p1 = (id: "p1", title: "Servus. Grüezi. Hallo.", feedURL: "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=AAA")
+        let p2 = (id: "p2", title: "Servus. Grüezi. Hallo.", feedURL: "https://premium-feed.zeit.de/sgh/rss-podcatcher?freebie=BBB")
+        // Two premium copies of the SAME masked identity → offer suppressed.
+        let guarded = PodcastPremiumMatch.twins(shows: [free, p1, p2],
+                                                isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+        #expect(guarded.isEmpty, "no repair offer while the identity twins are uncollapsed")
+        // After the collapse (one premium copy): exactly ONE offer.
+        let offers = PodcastPremiumMatch.twins(shows: [free, p1],
+                                               isPremium: { PodcastSubscriptions.isTokenFeedURL($0) })
+        #expect(offers.count == 1)
+        #expect(offers.first?.freeId == "free")
+    }
 }
 #endif

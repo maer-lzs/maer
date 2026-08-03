@@ -94,11 +94,25 @@ extension PodcastPremiumMatch {
         shows: [(id: String, title: String, feedURL: String)],
         isPremium: (String) -> Bool
     ) -> [(freeId: String, premiumId: String, title: String)] {
+        // e4b1467 Guard: while the SAME masked identity exists more than once
+        // (token-rotation twins not yet collapsed by the bootstrap migration),
+        // the repair offer is SUPPRESSED — accepting it could migrate the
+        // progress into the copy that will not survive the merge.
+        var maskedSeen = Set<String>()
+        for show in shows where isPremium(show.feedURL) {
+            if !maskedSeen.insert(PodcastSubscriptions.collapseKey(show.feedURL)).inserted {
+                return []
+            }
+        }
+        // e4b1467: ONE offer per twin PAIR — keyed by the free show, never
+        // repeated per premium copy.
         var out: [(freeId: String, premiumId: String, title: String)] = []
+        var offeredFree = Set<String>()
         let premium = shows.filter { isPremium($0.feedURL) }
         let free = shows.filter { !isPremium($0.feedURL) }
         for p in premium {
             for f in free where sameShow(titleA: f.title, titleB: p.title) {
+                guard offeredFree.insert(f.id).inserted else { continue }
                 out.append((freeId: f.id, premiumId: p.id, title: p.title))
             }
         }

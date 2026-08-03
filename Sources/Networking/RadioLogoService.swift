@@ -82,15 +82,23 @@ actor RadioLogoService {
     }
 
     private func resolve(name: String, homepage: String?) async -> URL? {
-        // Stage 1: Wikidata P154 (the agreed FIRST fallback).
-        if let searchURL = RadioLogoLookup.wikidataSearchURL(name: name),
-           let searchData = await fetch(searchURL),
-           let entity = RadioLogoLookup.matchedEntityId(fromSearchData: searchData, stationName: name),
-           let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity),
-           let entityData = await fetch(entityURL),
-           let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
-           let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName) {
-            return thumb
+        // Stage 1: Wikidata P154 — term variants (full name de/en, brand
+        // stem) because the de full-name search missed real entries
+        // (90s90s-Diagnose); the conservative fold-match guards each hit.
+        for term in RadioLogoLookup.searchTerms(for: name) {
+            for language in ["de", "en"] {
+                guard let searchURL = RadioLogoLookup.wikidataSearchURL(name: term, language: language),
+                      let searchData = await fetch(searchURL),
+                      let entity = RadioLogoLookup.matchedEntityId(fromSearchData: searchData, stationName: name)
+                else { continue }
+                if let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity),
+                   let entityData = await fetch(entityURL),
+                   let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
+                   let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName) {
+                    return thumb
+                }
+                break   // entity found but no P154 → deeper terms won't help this language pair
+            }
         }
         // Stage 2: homepage apple-touch-icon (first-party).
         guard let homepage, let pageURL = URL(string: homepage),

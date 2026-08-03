@@ -386,8 +386,22 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
+    /// f4f1b46: identity WITHOUT the secret VALUES — the ZEIT class rotates
+    /// its `freebie` token, and since the token joined the identity params
+    /// (bb89772) a rotated token spawned a TWIN of the same feed (the owner's
+    /// screenshot: two entries, identical masked URL). Same masked identity
+    /// ⇒ same resource on one device.
+    nonisolated static func collapseKey(_ feedURL: String) -> String {
+        stableHash(maskedFeedURL(normalizeFeedURL(feedURL)))
+    }
+
     /// Pure migration core (testable): re-key ids/guids, report every progress
-    /// move via `moveProgress(old, new)`, dedupe shows of the same feed.
+    /// move via `moveProgress(old, new)`, dedupe shows of the same feed —
+    /// stage 1 on the exact identity, stage 2 (f4f1b46) on the MASKED
+    /// identity so token rotations collapse too. The survivor of a stage-2
+    /// collision is the entry with MORE episodes (the freshly parsed full
+    /// feed carries the CURRENT token in its URL); the loser's episodes fold
+    /// in re-keyed, progress rides along via `moveProgress`.
     nonisolated static func migrate(
         _ decoded: [PodcastShow],
         moveProgress: (String, String) -> Void
@@ -421,7 +435,62 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
 
+        // Stage 2 (f4f1b46): collapse token-rotation twins (same MASKED id).
+        var byMasked: [String: String] = [:]   // collapseKey → surviving exact key
+        var removedKeys = Set<String>()
+        for key in order {
+            guard let show = byKey[key] else { continue }
+            let masked = collapseKey(show.feedURL)
+            guard let survivorKey = byMasked[masked] else {
+                byMasked[masked] = key
+                continue
+            }
+            guard var survivor = byKey[survivorKey], let loser = byKey[key] else { continue }
+            // The fuller entry survives (its URL carries the current token).
+            if loser.episodes.count > survivor.episodes.count {
+                var newSurvivor = loser
+                collapseInto(&newSurvivor, from: survivor, moveProgress: moveProgress)
+                byKey[key] = newSurvivor
+                byKey[survivorKey] = nil
+                byMasked[masked] = key
+                removedKeys.insert(survivorKey)
+            } else {
+                collapseInto(&survivor, from: loser, moveProgress: moveProgress)
+                byKey[survivorKey] = survivor
+                byKey[key] = nil
+                removedKeys.insert(key)
+            }
+            changed = true
+        }
+        if !removedKeys.isEmpty {
+            order.removeAll { removedKeys.contains($0) }
+        }
+
         return (order.compactMap { byKey[$0] }, changed)
+    }
+
+    /// Fold `loser` into `survivor`: episodes match by ORIGINAL guid, get
+    /// re-keyed to the survivor's feed key (progress rides along), unmatched
+    /// old episodes join the union. Logged loudly with MASKED urls.
+    private nonisolated static func collapseInto(
+        _ survivor: inout PodcastShow, from loser: PodcastShow,
+        moveProgress: (String, String) -> Void
+    ) {
+        let survivorKey = feedKey(survivor.feedURL)
+        var rekeyed = loser
+        rekeyed.episodes = loser.episodes.map { ep in
+            var e = ep
+            let newGuid = "rss:\(survivorKey):\(originalGuid(ep.guid))"
+            if newGuid != ep.guid {
+                moveProgress(ep.guid, newGuid)
+                e.guid = newGuid
+            }
+            return e
+        }
+        survivor = merge(survivor, rekeyed)
+        let loserMasked = maskedFeedURL(loser.feedURL)
+        let survivorMasked = maskedFeedURL(survivor.feedURL)
+        Logger.rss.notice("PREMIUM identity merge: \(loserMasked, privacy: .public) folded into \(survivorMasked, privacy: .public)")
     }
 
     /// Extract the original guid from `rss:<hash>:<original>` (which may itself
