@@ -839,6 +839,13 @@ nonisolated final class MaerUITests: XCTestCase {
     /// af3ec41: average brightness of the left+right margin strips in the
     /// band below the hero (45–80 % height) — pure black backdrop stays ~0;
     /// a bleeding artwork layer lifts it far above the threshold.
+    /// 206e552: the control area is no longer BLACK but the app-standard
+    /// tinted gradient, so "≈0 brightness" would break — and merely relaxing
+    /// the threshold would let the next bleeding artwork through. The
+    /// replacement measures what a GRADIENT is and an image is not:
+    /// (1) it stays heavily darkened (drive-mode legibility), and
+    /// (2) left and right margin at the same height are the SAME color — a
+    ///     vertical gradient is horizontally uniform, a bleeding cover is not.
     private func assertDriveMarginsDark(_ image: UIImage) {
         guard let cg = image.cgImage,
               let data = cg.dataProvider?.data,
@@ -847,19 +854,31 @@ nonisolated final class MaerUITests: XCTestCase {
         }
         let w = cg.width, h = cg.height
         let bpr = cg.bytesPerRow, bpp = cg.bitsPerPixel / 8
+        func pixel(_ x: Int, _ y: Int) -> (Int, Int, Int) {
+            let p = y * bpr + x * bpp
+            return (Int(bytes[p]), Int(bytes[p + 1]), Int(bytes[p + 2]))
+        }
         var total = 0, count = 0
+        var maxSideDelta = 0
         for y in stride(from: Int(Double(h) * 0.45), to: Int(Double(h) * 0.80), by: 4) {
             for xr in [0..<(w / 12), (w - w / 12)..<w] {
                 for x in stride(from: xr.lowerBound, to: xr.upperBound, by: 4) {
-                    let p = y * bpr + x * bpp
-                    total += Int(bytes[p]) + Int(bytes[p + 1]) + Int(bytes[p + 2])
+                    let (r, g, b) = pixel(x, y)
+                    total += r + g + b
                     count += 3
                 }
             }
+            // Mirror sample: same height, left vs right margin center.
+            let (lr, lg, lb) = pixel(w / 24, y)
+            let (rr, rg, rb) = pixel(w - w / 24, y)
+            maxSideDelta = max(maxSideDelta, abs(lr - rr) + abs(lg - rg) + abs(lb - rb))
         }
         let avg = Double(total) / Double(max(count, 1))
-        XCTAssertLessThan(avg, 24,
-                          "control-area margins must be black — avg brightness \(avg) hints a bleeding artwork layer (af3ec41)")
+        // Tinted darkness: clearly darker than any rendered cover area.
+        XCTAssertLessThan(avg, 70,
+                          "control-area margins must stay heavily darkened — avg brightness \(avg) hints a bleeding artwork layer (af3ec41/206e552)")
+        XCTAssertLessThan(maxSideDelta, 30,
+                          "left and right margin must match at every height (a vertical gradient does, artwork does not) — max delta \(maxSideDelta)")
     }
 
     func testDriveModePortraitAndLandscape() {

@@ -21,10 +21,13 @@ struct DriveModeView: View {
     @ObservedObject var coordinator: PlayerCoordinator
     @ObservedObject var controller = DriveModeController.shared
     @ObservedObject var libraryViewModel: LibraryViewModel
+    /// 206e552: the app-wide edge-color source (cards, book-detail hero) —
+    /// ONE color derivation, never a second one for drive mode.
+    @StateObject private var colorLoader = CoverColorLoader()
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            backdrop.ignoresSafeArea()
             if let vm = coordinator.viewModel, coordinator.activeItem != nil {
                 playback(vm)
             } else {
@@ -43,6 +46,51 @@ struct DriveModeView: View {
         .preferredColorScheme(.dark)
         .statusBarHidden()
         .animation(.easeInOut(duration: 0.4), value: controller.dimmed)
+        // 206e552: the tint follows the cover — one calm crossfade per item
+        // change, never a color jump mid-fade (the hero's own behaviour).
+        .animation(.easeInOut(duration: 0.5), value: colorLoader.bottomAccent)
+        .task(id: coordinator.activeItem?.id) {
+            // A live stream has no cover to sample — its deterministic
+            // placeholder tint IS the source (no side path, same rule).
+            if liveItemId == nil { await colorLoader.load(from: coverURL) }
+        }
+    }
+
+    /// 206e552: below the hero the standard tinted gradient instead of hard
+    /// black — the color comes from the cover's BOTTOM edge (or, for radio,
+    /// the station's placeholder tint). Drive-mode legibility rules: the
+    /// tint is heavily darkened ("tinted darkness", never full color) so the
+    /// controls keep their contrast at night.
+    private var backdrop: some View {
+        // Black stays the base — the tint is laid OVER it with low opacity,
+        // which is exactly what makes it a darkened shade of the same hue.
+        ZStack {
+            Color.black
+            LinearGradient(colors: [Self.driveTint(tintSource, strength: 0.34),
+                                    Self.driveTint(tintSource, strength: 0.10),
+                                    .clear],
+                           startPoint: .top, endPoint: .bottom)
+        }
+    }
+
+    /// The hero fades into the SAME top shade the backdrop starts with —
+    /// no visible seam between stage and control area.
+    private var heroFade: Color {
+        Self.driveTint(tintSource, strength: 0.34)
+    }
+
+    /// The tint source: the cover's bottom edge, or the station color for a
+    /// live stream (which renders the placeholder hero, not a cover).
+    private var tintSource: Color {
+        if let id = liveItemId { return RadioArtwork.color(for: id) }
+        return colorLoader.hasAccent ? colorLoader.bottomAccent : .black
+    }
+
+    /// Darkened tint: the color is kept, the light is taken away — pure
+    /// opacity over black, so every derived shade stays in the SAME hue
+    /// family (what the screenshot assert checks).
+    static func driveTint(_ color: Color, strength: Double) -> Color {
+        color.opacity(strength)
     }
 
     // MARK: - Playback layout
@@ -63,13 +111,13 @@ struct DriveModeView: View {
         if let id = liveItemId {
             // Gate chain (Regel 2): reject → gradient+initials, never the
             // upscaled favicon mash.
-            CoverHeroStage(url: nil, fadeTo: .black,
+            CoverHeroStage(url: nil, fadeTo: heroFade,
                            coverOverride: RadioArtwork(
                                stationID: id, faviconURL: coverURL,
                                name: coordinator.activeItem?.title ?? "",
                                isHero: true))
         } else {
-            CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: .black)
+            CoverHeroStage(url: coverURL, placeholderSymbol: "music.note", fadeTo: heroFade)
         }
     }
 
