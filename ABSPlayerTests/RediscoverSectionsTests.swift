@@ -186,4 +186,52 @@ struct AuthorPortraitRuleTests {
         #expect(picks.count == 10)
     }
 }
+
+/// 70dd0d8/d05124b: the categories must reach the QUERY — compound Apple
+/// names decompose for PodcastIndex, and map to genre ids for the keyless
+/// iTunes charts.
+struct PodcastCategoryMappingTests {
+    @Test("compound Apple names split into the separate PodcastIndex categories")
+    func compoundSplit() {
+        // The measured bug: "Society & Culture" does not exist in PI.
+        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Society & Culture"])
+                == ["Society", "Culture"])
+        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Health & Fitness"])
+                == ["Health", "Fitness"])
+        // Order kept, duplicates dropped across categories.
+        #expect(PodcastCategoryMapping.podcastIndexCategories(
+            for: ["History", "Society & Culture", "History"]) == ["History", "Society", "Culture"])
+        // "and" spelling and stray whitespace still map.
+        #expect(PodcastCategoryMapping.podcastIndexCategories(for: [" Society and Culture "])
+                == ["Society", "Culture"])
+    }
+
+    @Test("unknown categories yield nothing — no guessing")
+    func conservative() {
+        #expect(PodcastCategoryMapping.podcastIndexCategories(for: ["Völlig Unbekannt"]).isEmpty)
+        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["Völlig Unbekannt"]).isEmpty)
+        #expect(PodcastCategoryMapping.podcastIndexCategories(for: []).isEmpty)
+    }
+
+    @Test("genre ids for the keyless branch, and the reverse lookup for the reason")
+    func genreIds() {
+        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["History", "Fiction"]) == [1487, 1483])
+        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["Society & Culture"]) == [1324])
+        // Duplicates collapse (two categories, one chart).
+        #expect(PodcastCategoryMapping.itunesGenreIds(for: ["History", "History"]) == [1487])
+        // The reason names the category a hit actually came from.
+        #expect(PodcastCategoryMapping.appleCategory(forGenreId: 1487) == "history")
+        #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
+    }
+
+    @Test("the cap belongs AFTER the mapping — dead compounds must not eat slots")
+    func capAfterMapping() {
+        // Three compound categories used to occupy three slots and match
+        // nothing; mapped first, they produce six usable terms.
+        let raw = ["Society & Culture", "Health & Fitness", "TV & Film"]
+        let mapped = PodcastCategoryMapping.podcastIndexCategories(for: raw)
+        #expect(mapped.count == 6)
+        #expect(Array(mapped.prefix(3)) == ["Society", "Culture", "Health"])
+    }
+}
 #endif

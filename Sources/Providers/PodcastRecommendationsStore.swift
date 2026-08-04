@@ -4,6 +4,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// Recommendations for the podcast home tab, tied to your real usage: weighted
 /// by **listening time** (proxy: stored positions per show), plus **same
@@ -39,6 +40,8 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
     /// Provenance per normalized feed URL, recorded while building the pool.
     private var authorProvenance: [String: String] = [:]
+    /// 70dd0d8: normalized feed URL → the CATEGORY whose query produced it.
+    private var categoryProvenance: [String: String] = [:]
     /// Top categories of the LAST refresh — for the genre reason.
     private var lastTopCategories: [String] = []
 
@@ -46,6 +49,10 @@ final class PodcastRecommendationsStore: ObservableObject {
     func reason(for result: PodcastSearchResult) -> Reason {
         let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
         if let author = authorProvenance[n] { return .sameAuthor(author) }
+        // 70dd0d8 (5): a hit that CAME from a category query says so — the
+        // reason must not claim "popular" for something we fetched because
+        // the user listens to that category.
+        if let category = categoryProvenance[n] { return .genre(category) }
         if let cat = (result.categories ?? []).first(where: { lastTopCategories.contains($0) }) {
             return .genre(cat)
         }
@@ -105,20 +112,79 @@ final class PodcastRecommendationsStore: ObservableObject {
         }
         lastTopCategories = Array(topCats.prefix(6))
 
-        // 2. Thematically similar: trending by specific categories + language
-        //    (or iTunes top charts without a key).
+        // 2. Thematically similar. 70dd0d8/d05124b: the categories have to
+        //    reach the QUERY — the same class as the LibriVox bug, where the
+        //    wrong query (new arrivals instead of the download ranking) made
+        //    the ranking irrelevant.
+        categoryProvenance = [:]
+        var categoryHits = 0
         if let pi = directory as? PodcastIndexDirectory {
-            if let trend = try? await pi.trending(lang: lang, categories: Array(topCats.prefix(4))) {
-                pool += trend
+            // PI keeps compound Apple names apart ("Society" / "Culture"),
+            // so map FIRST and cap afterwards — otherwise dead compound
+            // terms use up the few slots.
+            let terms = Array(PodcastCategoryMapping.podcastIndexCategories(for: topCats).prefix(3))
+            // One query per term instead of one combined `cat` list: the
+            // AND/OR semantics of multiple values is not documented and I
+            // have no key to measure it. Separate queries are correct under
+            // BOTH readings — an intersection cannot silently starve the row.
+            for term in terms {
+                guard let trend = try? await pi.trending(lang: lang, categories: [term]) else {
+                    Logger.rss.notice("RECO pi-trending cat=\(term, privacy: .public) FAILED")
+                    continue
+                }
+                Logger.rss.notice("RECO pi-trending cat=\(term, privacy: .public) hits=\(trend.count)")
+                categoryHits += trend.count
+                for result in trend {
+                    pool.append(result)
+                    let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+                    if categoryProvenance[n] == nil { categoryProvenance[n] = term }
+                }
+            }
+            Logger.rss.notice("RECO branch=pi langs=\(chosen.joined(separator: ","), privacy: .public) raw=\(topCats.prefix(4).joined(separator: "|"), privacy: .public) mapped=\(terms.joined(separator: "|"), privacy: .public) hits=\(categoryHits)")
+            if categoryHits < Self.minCategoryHits {
+                // Honest fill-up, and the log says WHY it happened.
+                if let trend = try? await pi.trending(lang: lang, categories: []) {
+                    pool += trend
+                    Logger.rss.notice("RECO fill=generic reason=\(terms.isEmpty ? "no-mapped-categories" : "category-trending-thin", privacy: .public)")
+                }
             }
         } else if let it = directory as? ITunesDirectory {
-            if let top = try? await it.topPodcasts() { pool += top }
+            // 70dd0d8: without a key the row used to fetch the GENRELESS top
+            // chart — mainstream by construction, no matter how well ranked.
+            let genreIds = Array(PodcastCategoryMapping.itunesGenreIds(for: topCats).prefix(3))
+            for genreId in genreIds {
+                guard let top = try? await it.topPodcasts(genreId: genreId) else {
+                    Logger.rss.notice("RECO itunes-genre id=\(genreId) FAILED")
+                    continue
+                }
+                Logger.rss.notice("RECO itunes-genre id=\(genreId) hits=\(top.count)")
+                categoryHits += top.count
+                let category = PodcastCategoryMapping.appleCategory(forGenreId: genreId)
+                for result in top {
+                    pool.append(result)
+                    let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+                    if categoryProvenance[n] == nil, let category { categoryProvenance[n] = category }
+                }
+            }
+            Logger.rss.notice("RECO branch=itunes langs=\(chosen.joined(separator: ","), privacy: .public) raw=\(topCats.prefix(4).joined(separator: "|"), privacy: .public) genres=\(genreIds.map(String.init).joined(separator: "|"), privacy: .public) hits=\(categoryHits)")
+            if categoryHits < Self.minCategoryHits {
+                // No listening history (fresh install) ⇒ the generic chart is
+                // the HONEST answer, not a fallback for a broken query.
+                if let top = try? await it.topPodcasts() {
+                    pool += top
+                    Logger.rss.notice("RECO fill=generic reason=\(genreIds.isEmpty ? "no-mapped-categories" : "genre-charts-thin", privacy: .public)")
+                }
+            }
         }
 
         let filtered = excludeSubscribed(pool)
         results = rank(filtered, authorHits: authorHits, categoryWeights: topCats).prefix(30).map { $0 }
         loadedAt = Date()
     }
+
+    /// Below this many category hits the generic chart fills up — the row
+    /// must not stay half empty just because a category is thin.
+    private static let minCategoryHits = 10
 
     /// Remove from the list after subscribing.
     func remove(feedURL: String) {
