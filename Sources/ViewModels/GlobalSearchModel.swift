@@ -63,12 +63,14 @@ final class GlobalSearchModel: ObservableObject {
                                             secret: AppStorageKeys.podcastIndexSecretValue)
                     : ITunesDirectory()
                 let hits = try await directory.search(query)
-                let subscribed = Set(
-                    (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows)
-                        .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-                // Already subscribed shows never appear as catalog hits.
-                return PodcastRecommendationsStore
-                    .excludingSubscribed(hits, subscribedNormalizedFeeds: subscribed)
+                // fb94905 (3): SEARCH is the exception — someone typing a
+                // title wants to FIND it, even when they already have it.
+                // The row marks it instead (PodcastSubscribeBadge shows the
+                // green check for subscribed feeds), so nothing is hidden
+                // from a deliberate search. Duplicates still collapse.
+                var seenFeeds = Set<String>()
+                return hits
+                    .filter { seenFeeds.insert(PodcastSubscriptions.normalizeFeedURL($0.feedURL)).inserted }
                     .map { hit in
                         SearchResult(id: hit.feedURL, kind: .catalogShow, title: hit.title,
                                      subtitle: hit.author,

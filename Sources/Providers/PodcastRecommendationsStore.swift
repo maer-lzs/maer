@@ -298,24 +298,34 @@ final class PodcastRecommendationsStore: ObservableObject {
     }
 
     private func excludeSubscribed(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {
-        let subscribed = Set(
-            (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows)
-                .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }
-        )
-        return Self.excludingSubscribed(list, subscribedNormalizedFeeds: subscribed)
+        let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+        return Self.excludingSubscribed(
+            list,
+            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedTitles: shows.map(\.title))
     }
 
     /// Pure (tested): drop already-subscribed feeds + duplicates, order kept.
     /// A subscribed show must never appear as a recommendation — the Home
     /// Discover row filters through this too (subscriptions can happen after
     /// the pool was built).
+    ///
+    /// fb94905: the URL is not enough. The premium and the free variant of the
+    /// SAME show live on different URLs (podcatcher vs. Simplecast), so the
+    /// free twin of a premium subscription slipped through — same for a
+    /// hoster move or a network feed beside the own one. The show IDENTITY
+    /// decides too, via the existing conservative `sameShow` (exact title
+    /// after folding; no substring matching, so two genuinely different shows
+    /// with similar titles both stay).
     nonisolated static func excludingSubscribed(
-        _ list: [PodcastSearchResult], subscribedNormalizedFeeds: Set<String>
+        _ list: [PodcastSearchResult], subscribedNormalizedFeeds: Set<String>,
+        subscribedTitles: [String] = []
     ) -> [PodcastSearchResult] {
         var seen = Set<String>()
-        return list.filter {
-            let n = PodcastSubscriptions.normalizeFeedURL($0.feedURL)
-            return !subscribedNormalizedFeeds.contains(n) && seen.insert(n).inserted
+        return list.filter { candidate in
+            let n = PodcastSubscriptions.normalizeFeedURL(candidate.feedURL)
+            guard !subscribedNormalizedFeeds.contains(n), seen.insert(n).inserted else { return false }
+            return !subscribedTitles.contains { PodcastPremiumMatch.sameShow(titleA: $0, titleB: candidate.title) }
         }
     }
 }

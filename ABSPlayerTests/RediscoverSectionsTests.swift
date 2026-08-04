@@ -108,6 +108,41 @@ struct DiscoverFilterTests {
         let out = PodcastRecommendationsStore.excludingSubscribed(results, subscribedNormalizedFeeds: subscribed)
         #expect(out.map(\.title) == ["A", "C"])
     }
+
+    @Test("fb94905: the free twin of a premium subscription is excluded by SHOW identity")
+    func excludesByShowIdentity() {
+        // The reported case: premium feed subscribed (podcatcher URL), the
+        // free Simplecast variant shows up in the pool — different URL, same
+        // show. And the mirror image: free subscribed, premium recommended.
+        let pool = [
+            PodcastSearchResult(title: "Servus. Grüezi. Hallo.", author: "ZEIT",
+                                artworkURL: nil, feedURL: "https://feeds.simplecast.com/sgh"),
+            PodcastSearchResult(title: "Servus. Gruezi. Hallo.", author: "ZEIT",
+                                artworkURL: nil, feedURL: "https://other.example/sgh2"),
+            PodcastSearchResult(title: "Servus. Grüezi. Hallo. Spezial", author: "ZEIT",
+                                artworkURL: nil, feedURL: "https://other.example/spezial"),
+            PodcastSearchResult(title: "Ganz anderer Podcast", author: nil,
+                                artworkURL: nil, feedURL: "https://c.example/feed"),
+        ]
+        let out = PodcastRecommendationsStore.excludingSubscribed(
+            pool,
+            subscribedNormalizedFeeds: [PodcastSubscriptions.normalizeFeedURL(
+                "https://zeit.de/podcasts/servus-gruezi-hallo/rss-podcatcher?freebie=X")],
+            subscribedTitles: ["Servus. Grüezi. Hallo."])
+        // Both spellings of the same show drop (diacritics folded)…
+        #expect(!out.contains { $0.feedURL.contains("simplecast") })
+        #expect(!out.contains { $0.feedURL.contains("sgh2") })
+        // …while a SIMILAR but different title survives (no substring match).
+        #expect(out.map(\.title) == ["Servus. Grüezi. Hallo. Spezial", "Ganz anderer Podcast"])
+    }
+
+    @Test("without titles the behaviour is exactly as before")
+    func titlesAreOptional() {
+        let pool = [PodcastSearchResult(title: "X", author: nil, artworkURL: nil,
+                                        feedURL: "https://x.example/feed")]
+        #expect(PodcastRecommendationsStore.excludingSubscribed(
+            pool, subscribedNormalizedFeeds: []).count == 1)
+    }
 }
 
 /// F3: the author portrait's tap rule — several works ⇒ tappable filter, a
