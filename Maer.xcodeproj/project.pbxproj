@@ -617,6 +617,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -655,6 +656,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -687,6 +689,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.MaerWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -720,6 +723,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayer.MaerWidgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -743,6 +747,7 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -766,6 +771,7 @@
 				DEVELOPMENT_TEAM = WA68UQ6KAH;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 2.7;
+				OTHER_SWIFT_FLAGS = "$(inherited) -Werror ActorIsolatedCall";
 				PRODUCT_BUNDLE_IDENTIFIER = de.lzs.ABSPlayerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
