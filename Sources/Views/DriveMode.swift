@@ -140,18 +140,54 @@ final class DriveModeController: ObservableObject {
         outputs.filter { carPortTypes.contains($0.portType) }.map { ($0.uid, $0.name) }
     }
 
-    /// 01fab43 (1): the connected-route candidates for the picker, plus the
-    /// LOG-FIRST enumeration — every route with its portType lands in the
-    /// log, so a device report shows exactly what iOS enumerates.
+    /// b81949f (pure): the picker list — CONNECTED route outputs plus the
+    /// paired devices `availableInputs` reports, deduped by uid, the
+    /// connected ones first (they are what the user is most likely picking).
+    /// A remembered device stays in the list even when neither source names
+    /// it right now, so the choice never silently disappears.
+    nonisolated static func pickerList(
+        routeOutputs: [(uid: String, name: String, portType: String)],
+        availableInputs: [(uid: String, name: String, portType: String)],
+        remembered: (uid: String, name: String)?
+    ) -> [(uid: String, name: String)] {
+        var out: [(uid: String, name: String)] = []
+        var seen = Set<String>()
+        for candidate in carAudioCandidates(routeOutputs) + carAudioCandidates(availableInputs)
+        where seen.insert(candidate.uid).inserted {
+            out.append(candidate)
+        }
+        if let remembered, !remembered.uid.isEmpty, seen.insert(remembered.uid).inserted {
+            out.append(remembered)
+        }
+        return out
+    }
+
+    /// The picker candidates: no longer only the CONNECTED route — Apple
+    /// hands out the paired audio devices via `availableInputs` (Bluetooth
+    /// HFP ports carry `portName` and `uid`), without CoreBluetooth and
+    /// without any permission, so the zero-permission rule holds.
+    ///
+    /// Honest limit: `availableInputs` only lists devices with INPUT
+    /// capability (hands-free kits, headsets, car radios — the drive-mode
+    /// case is well covered); a pure A2DP speaker without a microphone can
+    /// be missing. That is why the connected route stays a source and the
+    /// footnote says devices appear once paired and in range.
     nonisolated static func pickerCandidates() -> [(uid: String, name: String)] {
-        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+        let session = AVAudioSession.sharedInstance()
+        let outputs = session.currentRoute.outputs
             .map { (uid: $0.uid, name: $0.portName, portType: $0.portType.rawValue) }
         for output in outputs {
             Logger.library.notice("DRIVEMODE route: \(output.name, privacy: .public) type=\(output.portType, privacy: .public)")
         }
-        let inputs = (AVAudioSession.sharedInstance().availableInputs ?? [])
-            .map { "\($0.portName)=\($0.portType.rawValue)" }
-        Logger.library.notice("DRIVEMODE availableInputs: \(inputs.joined(separator: ", "), privacy: .public)")
-        return carAudioCandidates(outputs)
+        let inputs = (session.availableInputs ?? [])
+            .map { (uid: $0.uid, name: $0.portName, portType: $0.portType.rawValue) }
+        let remembered = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteUID)
+            .flatMap { uid -> (uid: String, name: String)? in
+                let name = UserDefaults.standard.string(forKey: AppStorageKeys.driveModeCarRouteName) ?? uid
+                return uid.isEmpty ? nil : (uid: uid, name: name)
+            }
+        let list = pickerList(routeOutputs: outputs, availableInputs: inputs, remembered: remembered)
+        Logger.library.notice("DRIVE bt list available=\(inputs.count) route=\(outputs.count) remembered=\(remembered?.name ?? "-", privacy: .public) selected=\(list.count)")
+        return list
     }
 }

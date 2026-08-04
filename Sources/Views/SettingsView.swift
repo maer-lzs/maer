@@ -584,10 +584,10 @@ struct SettingsView: View {
                 // enumeration; connected device → ONE prominent remember tap.
                 let outputs = DriveModeController.pickerCandidates()
                 if outputs.isEmpty {
-                    // The honest iOS limit, made actionable: apps cannot list
-                    // paired-but-disconnected devices (and CoreBluetooth
-                    // stays taboo — zero-permission rule).
-                    Text("Connect your car audio once — it will appear here to remember.")
+                    // b81949f: the list now also carries the PAIRED devices
+                    // from availableInputs — so this only shows when nothing
+                    // is paired/in range at all.
+                    Text("Devices appear as soon as they are paired and in range.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(outputs, id: \.uid) { output in

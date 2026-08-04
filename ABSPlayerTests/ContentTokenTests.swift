@@ -167,6 +167,32 @@ struct PodcastListenLogTests {
         #expect(log.entries[guid]?.hasObservedTime == true)
     }
 
+    @Test("b81949f: the picker unites connected route, paired inputs and the remembered device")
+    func pickerList() {
+        let route = [(uid: "car-1", name: "VW Golf", portType: "CarAudio"),
+                     (uid: "spk", name: "Speaker", portType: "Speaker")]
+        let inputs = [(uid: "hfp-2", name: "Autoradio", portType: "BluetoothHFP"),
+                      (uid: "car-1", name: "VW Golf", portType: "BluetoothHFP"),
+                      (uid: "mic", name: "iPhone Mikrofon", portType: "MicrophoneBuiltIn")]
+        let list = DriveModeController.pickerList(
+            routeOutputs: route, availableInputs: inputs,
+            remembered: (uid: "old-3", name: "Altes Kit"))
+        // Connected first, paired devices next, remembered kept alive; the
+        // built-in speaker and microphone never appear.
+        #expect(list.map(\.uid) == ["car-1", "hfp-2", "old-3"])
+        // A remembered device that IS present is not duplicated.
+        let noDupe = DriveModeController.pickerList(
+            routeOutputs: route, availableInputs: [],
+            remembered: (uid: "car-1", name: "VW Golf"))
+        #expect(noDupe.map(\.uid) == ["car-1"])
+        // Nothing anywhere ⇒ empty (the settings then show the hint).
+        #expect(DriveModeController.pickerList(routeOutputs: [], availableInputs: [],
+                                               remembered: nil).isEmpty)
+        // An empty remembered uid is not an entry.
+        #expect(DriveModeController.pickerList(routeOutputs: [], availableInputs: [],
+                                               remembered: (uid: "", name: "")).isEmpty)
+    }
+
     @Test("01fab43: car-audio candidates — external routes only, built-ins drop")
     func carCandidates() {
         let outputs = [

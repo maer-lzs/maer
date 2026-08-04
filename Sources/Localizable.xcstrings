@@ -1329,12 +1329,12 @@
         }
       }
     },
-    "Connect your car audio once — it will appear here to remember." : {
+    "Devices appear as soon as they are paired and in range." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verbinde dein Auto-Audio einmal — dann erscheint es hier zum Merken."
+            "value" : "Geräte erscheinen, sobald sie gekoppelt und in Reichweite sind."
           }
         }
       }
