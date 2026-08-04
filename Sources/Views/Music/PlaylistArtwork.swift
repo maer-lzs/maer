@@ -76,7 +76,11 @@ struct PlaylistArtwork: View {
 
     /// Deterministic per-playlist tint (stable FNV-1a byte hash → hue) for the
     /// placeholder and loading tiles — like `RadioArtwork.color`.
-    static func color(for id: String) -> Color {
+    /// a49444d (sweep): pure and stateless ⇒ `nonisolated`, the same class as
+    /// its radio sibling. Nothing calls it off-main today, but a pure helper
+    /// that inherits MainActor is a Swift-6 error waiting for its first
+    /// background caller.
+    nonisolated static func color(for id: String) -> Color {
         var seed: UInt64 = 1_469_598_103_934_665_603
         for byte in id.utf8 { seed = (seed ^ UInt64(byte)) &* 1_099_511_628_211 }
         var generator = RediscoverSections.SplitMix64(seed: seed)

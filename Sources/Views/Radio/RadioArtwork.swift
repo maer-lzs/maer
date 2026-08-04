@@ -132,11 +132,16 @@ struct RadioArtwork: View {
     /// `String.hashValue` is per-run randomized, so the bytes are hashed
     /// explicitly for stability across launches. Fixed saturation/brightness
     /// keeps the white glyph legible.
-    static func color(for id: String) -> Color {
+    /// a49444d: `nonisolated` — pure, and reached from nonisolated code
+    /// (the lock-screen/CarPlay placeholder renderer). Under the Swift 6
+    /// language mode the inherited MainActor isolation would be an ERROR,
+    /// not a warning; it is also the Y32 class (MainActor inheritance in a
+    /// background context) that already cost us the nightly refresh.
+    nonisolated static func color(for id: String) -> Color {
         Color(hue: hue(for: id), saturation: 0.52, brightness: 0.58)
     }
 
-    private static func hue(for id: String) -> Double {
+    nonisolated private static func hue(for id: String) -> Double {
         var seed: UInt64 = 1_469_598_103_934_665_603
         for byte in id.utf8 { seed = (seed ^ UInt64(byte)) &* 1_099_511_628_211 }
         var generator = RediscoverSections.SplitMix64(seed: seed)
