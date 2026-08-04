@@ -537,5 +537,28 @@ struct RadioStateQueryTests {
         #expect(RadioStore.cachedDiscovery(defaults: defaults)?.popular.isEmpty == true)
         defaults.removePersistentDomain(forName: "discovery-cache-test")
     }
+
+    @Test("95c5c16: the frame-1 cache round-trip keeps favicon and homepage")
+    func discoveryCacheKeepsArtworkFields() {
+        let defaults = UserDefaults(suiteName: "discovery-roundtrip-test")!
+        defaults.removePersistentDomain(forName: "discovery-roundtrip-test")
+        let station = RadioStation(
+            id: "radio:rb:mango", name: "MANGORADIO",
+            streamURL: "https://stream/mango",
+            faviconURL: "https://mangoradio.de/favicon-192.webp",
+            homepage: "https://mangoradio.de",
+            countryCode: "DE", tags: ["pop"], bitrate: 128, codec: "MP3", votes: 500)
+        RadioStore.saveDiscovery(popular: [station], regional: [], day: 20_260_804,
+                                 defaults: defaults)
+        let restored = RadioStore.cachedDiscovery(defaults: defaults)?.popular.first
+        // Without these two the logo chain has NO first stage — the second
+        // suspect behind "all tiles are placeholders".
+        #expect(restored?.faviconURL == station.faviconURL)
+        #expect(restored?.homepage == station.homepage)
+        #expect(restored?.id == station.id)
+        #expect(restored?.bitrate == 128)
+        #expect(restored?.votes == 500)
+        defaults.removePersistentDomain(forName: "discovery-roundtrip-test")
+    }
 }
 #endif

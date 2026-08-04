@@ -25,7 +25,46 @@ actor RadioLogoService {
     private static let negativeTTL: TimeInterval = 14 * 24 * 3600
     private var persistedLoaded = false
 
-    private struct Stored: Codable {
+    /// 95c5c16: storage generation. The negatives written before the
+    /// error/no-hit distinction existed are WRONG — a single disturbed
+    /// phase (the RB outage on 03.08.) booked "no logo" for every station
+    /// rendered during it, for 14 days. Bumping this discards the old
+    /// NEGATIVES once on first launch; positives are kept (they were never
+    /// in doubt).
+    private static let storageVersionKey = "radioLogoChainVersion"
+    private static let storageVersion = 2
+    /// Testable mirror of the constant above.
+    nonisolated static var currentStorageVersion: Int { storageVersion }
+
+    /// The rule the poisoning broke, as a pure decision (95c5c16): a run that
+    /// FAILED says nothing about the station and must not be written down —
+    /// neither as a negative nor at all. Only a clean run may be booked.
+    nonisolated static func mayPersist(outcomeFailed: Bool, foundURL: URL?) -> Bool {
+        if outcomeFailed { return false }
+        _ = foundURL   // a clean run is bookable either way (hit or no-hit)
+        return true
+    }
+
+    /// One-shot migration of the poisoned generation — drops NEGATIVES only
+    /// and returns how many went. Pure over the given defaults so the zaun
+    /// test can drive it without touching the actor's state.
+    @discardableResult
+    nonisolated static func migratePersisted(defaults: UserDefaults, storedVersion: Int) -> Int {
+        guard storedVersion < storageVersion else { return 0 }
+        guard let data = defaults.data(forKey: persistKey),
+              let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else {
+            defaults.set(storageVersion, forKey: storageVersionKey)
+            return 0
+        }
+        let kept = stored.filter { $0.value.url != nil }
+        if let encoded = try? JSONEncoder().encode(kept) {
+            defaults.set(encoded, forKey: persistKey)
+        }
+        defaults.set(storageVersion, forKey: storageVersionKey)
+        return stored.count - kept.count
+    }
+
+    nonisolated fileprivate struct Stored: Codable {
         var url: String?          // nil = negative hit
         var resolvedAt: Double    // epoch seconds
     }
@@ -33,7 +72,15 @@ actor RadioLogoService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
-        guard let data = UserDefaults.standard.data(forKey: Self.persistKey),
+        let defaults = UserDefaults.standard
+        // 95c5c16 self-healing: the negatives written before the error/no-hit
+        // distinction existed are wrong — drop that generation ONCE.
+        let dropped = Self.migratePersisted(
+            defaults: defaults, storedVersion: defaults.integer(forKey: Self.storageVersionKey))
+        if dropped > 0 {
+            Logger.library.notice("RADIO logo cache: dropped \(dropped) stale negative(s) — error/no-hit distinction was missing")
+        }
+        guard let data = defaults.data(forKey: Self.persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
         for (id, entry) in stored {
@@ -59,11 +106,30 @@ actor RadioLogoService {
         lastRequest = Date()
     }
 
-    private func fetch(_ url: URL) async -> Data? {
+    /// 95c5c16: a fetch has THREE outcomes, and collapsing them into `nil`
+    /// is what poisoned the cache — a transport error looked exactly like
+    /// "this station has no logo" and got written down for 14 days.
+    private enum FetchResult {
+        case data(Data)
+        /// Reached the server, but nothing usable (non-2xx, empty body).
+        case empty
+        /// Never got an answer — says NOTHING about the station.
+        case failed
+    }
+
+    private func fetch(_ url: URL) async -> FetchResult {
         await politeDelay()
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        return try? await URLSession.shared.data(for: request).0
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                return http.statusCode >= 500 ? .failed : .empty
+            }
+            return data.isEmpty ? .empty : .data(data)
+        } catch {
+            return .failed
+        }
     }
 
     /// The resolved logo URL for a station, chain order fixed; every outcome
@@ -72,41 +138,79 @@ actor RadioLogoService {
         loadPersistedIfNeeded()
         if let cached = cache[stationID] { return cached }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
-        let resolved = await resolve(name: name, homepage: homepage)
-        cache[stationID] = resolved
-        persistResult(stationID: stationID, url: resolved)
-        if resolved == nil {
-            Logger.library.notice("RADIO logo chain: no hit for \(name, privacy: .public)")
+        // 95c5c16 (3): offline ⇒ do not run the chain at all. No result, no
+        // booking — otherwise a flight-mode session burns every station in.
+        guard await NetworkMonitor.shared.isConnected else { return nil }
+        let outcome = await resolve(name: name, homepage: homepage)
+        switch outcome {
+        case .hit(let url):
+            cache[stationID] = url
+            persistResult(stationID: stationID, url: url)
+            return url
+        case .noHit:
+            // Every stage ran cleanly and found nothing — THIS may be booked.
+            cache[stationID] = URL?.none
+            persistResult(stationID: stationID, url: nil)
+            Logger.library.notice("RADIO logo chain: no-hit for \(name, privacy: .public)")
+            return nil
+        case .failed(let stage):
+            // Nothing is stored — not even in the session cache, so the next
+            // appearance is free to try again.
+            Logger.library.notice("RADIO logo chain: fetch-failed stage=\(stage, privacy: .public) for \(name, privacy: .public)")
+            return nil
         }
-        return resolved
     }
 
-    private func resolve(name: String, homepage: String?) async -> URL? {
+    /// The chain's outcome, kept apart on purpose (95c5c16).
+    private enum ChainOutcome {
+        case hit(URL)
+        case noHit
+        case failed(String)
+    }
+
+    /// 95c5c16: the chain now REPORTS a failure instead of swallowing it.
+    /// Rule: a `.noHit` may only be returned when every stage that ran
+    /// answered cleanly; the first transport failure aborts with `.failed`,
+    /// so nothing gets written down on the strength of a broken network.
+    private func resolve(name: String, homepage: String?) async -> ChainOutcome {
         // Stage 1: Wikidata P154 — term variants (full name de/en, brand
         // stem) because the de full-name search missed real entries
         // (90s90s-Diagnose); the conservative fold-match guards each hit.
         for term in RadioLogoLookup.searchTerms(for: name) {
             for language in ["de", "en"] {
-                guard let searchURL = RadioLogoLookup.wikidataSearchURL(name: term, language: language),
-                      let searchData = await fetch(searchURL),
-                      let entity = RadioLogoLookup.matchedEntityId(fromSearchData: searchData, stationName: name)
+                guard let searchURL = RadioLogoLookup.wikidataSearchURL(name: term, language: language)
                 else { continue }
-                if let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity),
-                   let entityData = await fetch(entityURL),
+                let search = await fetch(searchURL)
+                if case .failed = search { return .failed("wikidata-search") }
+                guard case .data(let searchData) = search,
+                      let entity = RadioLogoLookup.matchedEntityId(fromSearchData: searchData,
+                                                                   stationName: name)
+                else { continue }
+                guard let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity) else { break }
+                let entityResult = await fetch(entityURL)
+                if case .failed = entityResult { return .failed("wikidata-entity") }
+                if case .data(let entityData) = entityResult,
                    let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
                    let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName) {
-                    return thumb
+                    return .hit(thumb)
                 }
                 break   // entity found but no P154 → deeper terms won't help this language pair
             }
         }
         // Stage 2: homepage apple-touch-icon (first-party).
         guard let homepage, let pageURL = URL(string: homepage),
-              pageURL.scheme?.hasPrefix("http") == true else { return nil }
-        if let html = await fetch(pageURL).flatMap({ String(data: $0, encoding: .utf8) }),
+              pageURL.scheme?.hasPrefix("http") == true else { return .noHit }
+        let page = await fetch(pageURL)
+        if case .failed = page { return .failed("homepage") }
+        if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
-            return icon
+            return .hit(icon)
         }
-        return RadioLogoLookup.conventionTouchIconURL(homepage: pageURL)
+        // The convention URL is a guess, not a finding — but a reachable one:
+        // it only follows a page we actually loaded (or an honest empty).
+        if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
+            return .hit(convention)
+        }
+        return .noHit
     }
 }
