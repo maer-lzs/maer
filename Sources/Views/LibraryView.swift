@@ -497,6 +497,15 @@ struct LibraryView: View {
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
                 }
+                // b4fdc36 (2): a session that has run far past the cap gets a
+                // pass at the next CALM moment — enforcement no longer waits
+                // for the next cold start, and never interrupts a scroll.
+                if ImageCache.shared.needsUrgentMaintenance() {
+                    BottomBarState.shared.runWhenCalm {
+                        ImageCache.shared.performMaintenance(
+                            activeDownloadIds: DownloadManager.shared.downloadedItemIds)
+                    }
+                }
             }
             // Offer the home-screen quick action for the last played book.
             if newPhase == .background {
@@ -1024,19 +1033,9 @@ struct LibraryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(freeCatalogStore.rows.tabBooks) { item in
-                        MediaTile(
-                            title: item.title,
-                            subtitle: item.author,
-                            coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                            placeholderSystemImage: "book.closed",
-                            // ea6e002: card standard, same as every other
-                            // free-catalog surface.
-                            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
-                            titleLineLimit: 1,
-                            onTap: { Task { await playerCoordinator.open(item: item) } },
-                            // fbcff9f: same corner ring as every other
-                            // download surface.
-                            corner: { FreeCatalogImportBadge(itemId: item.id) }
+                        FreeCatalogBookTile(
+                            item: item,
+                            onTap: { Task { await playerCoordinator.open(item: item) } }
                         )
                         .contextMenu {
                             Button {

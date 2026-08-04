@@ -294,7 +294,36 @@ final class ImageCache {
     /// deliberately path-stable and otherwise never invalidates).
     private let cacheTTL: TimeInterval = 30 * 24 * 3600
     /// Upper bound for the purgeable cover cache.
-    private let maxCacheBytes = 200 * 1024 * 1024
+    /// b4fdc36: the fixed 200 MB cap became adaptive. Reasoning behind the
+    /// numbers, and why the risk is asymmetric: the cache lives in Caches,
+    /// is excluded from backup and gets purged by iOS under pressure — too
+    /// large costs practically nothing, too small costs permanently (evict →
+    /// re-download → the reload stutter over uncached areas). At ~300–600 KB
+    /// per cover, 200 MB held only 400–600 covers: plenty for audiobooks,
+    /// too tight for a four-digit music library.
+    ///
+    /// Pure so it is testable without a device: the smaller of an upper
+    /// bound and a small share of the FREE space, never below the floor (a
+    /// full device must not shrink the cache to nothing).
+    nonisolated static func cacheCapBytes(freeBytes: Int64) -> Int64 {
+        let upper: Int64 = 500 * 1024 * 1024
+        let floor: Int64 = 150 * 1024 * 1024
+        let share = Int64(Double(max(freeBytes, 0)) * 0.05)
+        return max(floor, min(upper, share))
+    }
+
+    nonisolated static func freeDiskBytes() -> Int64 {
+        let url = URL(fileURLWithPath: NSHomeDirectory())
+        let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return Int64(values?.volumeAvailableCapacityForImportantUsage ?? 0)
+    }
+
+    private var maxCacheBytes: Int { Int(Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())) }
+
+    /// b4fdc36: enforcement no longer waits for the next app start when the
+    /// cache has run far past the cap — this is the factor that triggers an
+    /// extra pass at the next calm moment.
+    nonisolated static let enforcementOvershoot = 1.5
 
     /// Maintenance pass, once per app start:
     /// 1) Persistent covers without an associated download back into the cache.
@@ -306,7 +335,8 @@ final class ImageCache {
         let persistent = persistentDirectory
         let cache = diskDirectory
         let ttl = cacheTTL
-        let maxBytes = maxCacheBytes
+        let free = Self.freeDiskBytes()
+        let maxBytes = Int(Self.cacheCapBytes(freeBytes: free))
         Task.detached(priority: .utility) {
             let fm = FileManager.default
 
@@ -342,13 +372,28 @@ final class ImageCache {
                 }
             }
             var total = kept.reduce(0) { $0 + $1.size }
-            guard total > maxBytes else { return }
-            for entry in kept.sorted(by: { $0.date < $1.date }) {
-                try? fm.removeItem(at: entry.url)
-                total -= entry.size
-                if total <= maxBytes { break }
+            let startTotal = total
+            var evicted = 0
+            if total > maxBytes {
+                for entry in kept.sorted(by: { $0.date < $1.date }) {
+                    try? fm.removeItem(at: entry.url)
+                    total -= entry.size
+                    evicted += 1
+                    if total <= maxBytes { break }
+                }
             }
+            // b4fdc36 (3): measurable instead of guessed — size, current cap,
+            // free space and how many files went. "Too small" is a claim that
+            // needs this line.
+            Logger.library.notice("COVERCACHE size=\(startTotal / 1_048_576)MB cap=\(maxBytes / 1_048_576)MB free=\(free / 1_048_576)MB evicted=\(evicted)")
         }
+    }
+
+    /// b4fdc36 (2): a cheap check for the calm gate — true when the cache has
+    /// run far past its cap and deserves a pass before the next app start.
+    func needsUrgentMaintenance() -> Bool {
+        let cap = Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())
+        return cacheSizeBytes() > Int64(Double(cap) * Self.enforcementOvershoot)
     }
 
     /// Size of the purgeable cover cache in bytes (for the settings).
