@@ -4,6 +4,236 @@
     "" : {
       "shouldTranslate" : false
     },
+    "Adventure" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abenteuer"
+          }
+        }
+      }
+    },
+    "Also interesting: Free Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch interessant: Freie Hörbücher"
+          }
+        }
+      }
+    },
+    "Also interesting: Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch interessant: Hörspiele"
+          }
+        }
+      }
+    },
+    "Biographies" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biografien"
+          }
+        }
+      }
+    },
+    "Comedy Fiction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komödie"
+          }
+        }
+      }
+    },
+    "Crime" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krimi"
+          }
+        }
+      }
+    },
+    "Editorial picks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redaktionell ausgewählt"
+          }
+        }
+      }
+    },
+    "Fairy Tales" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Märchen"
+          }
+        }
+      }
+    },
+    "For Children" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für Kinder"
+          }
+        }
+      }
+    },
+    "Horror" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horror"
+          }
+        }
+      }
+    },
+    "Literature" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Literatur"
+          }
+        }
+      }
+    },
+    "Nothing in this genre right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In diesem Genre gerade nichts."
+          }
+        }
+      }
+    },
+    "Novels" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Romane"
+          }
+        }
+      }
+    },
+    "Philosophy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Philosophie"
+          }
+        }
+      }
+    },
+    "Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theaterstücke"
+          }
+        }
+      }
+    },
+    "Poetry" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lyrik"
+          }
+        }
+      }
+    },
+    "Public domain" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei"
+          }
+        }
+      }
+    },
+    "Radio Play" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiel"
+          }
+        }
+      }
+    },
+    "Radio Play Classics (English)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiel-Klassiker (englisch)"
+          }
+        }
+      }
+    },
+    "Romance" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liebesromane"
+          }
+        }
+      }
+    },
+    "Science Fiction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Science-Fiction"
+          }
+        }
+      }
+    },
+    "Short Stories" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzgeschichten"
+          }
+        }
+      }
+    },
+    "The charts could not be loaded. Check your connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Charts konnten nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
     "“%@” looks like the premium version of an existing subscription. Replace the free feed and carry over listening progress and downloads?" : {
       "comment" : "A confirmation dialog asking whether to replace a free podcast subscription with a premium one.",
       "isCommentAutoGenerated" : true,

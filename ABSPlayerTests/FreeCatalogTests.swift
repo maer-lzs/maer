@@ -482,4 +482,88 @@ struct PodcastWorkOrderTests {
         #expect(PodcastWorkOrder.eyebrow(author: nil, showTitle: "X") == nil)
     }
 }
+
+/// 8d49a8e: the two catalog pages' genre axes — chip → chart ids (derived
+/// from what the charts CONTAIN) and LibriVox genres → browsable shelves.
+struct CatalogGenreAxisTests {
+    @Test("radio-play chips map to the measured charts; True Crime stays out")
+    func hoerspielChips() {
+        let byKey = Dictionary(uniqueKeysWithValues:
+            CatalogGenreAxis.hoerspielChips.map { ($0.key, $0.genreIds) })
+        // Krimi rides DRAMA: that chart is headed by ARD Radio Tatort and
+        // Kriminalhörspiel. True Crime (1488) is documentary — including it
+        // would fill the chip with the wrong genre.
+        #expect(byKey["krimi"] == [1484])
+        #expect(!CatalogGenreAxis.hoerspielChips.contains { $0.genreIds.contains(1488) })
+        #expect(byKey["scifi"] == [1485])
+        #expect(byKey["komoedie"] == [1486])
+        // Literature bundles two charts (plays in Fiction, readings in Books).
+        #expect(byKey["literatur"] == [1483, 1482])
+        #expect(byKey["kinder"] == [1305])
+        // Every chip has at least one chart, keys are unique.
+        #expect(CatalogGenreAxis.hoerspielChips.allSatisfy { !$0.genreIds.isEmpty })
+        #expect(Set(CatalogGenreAxis.hoerspielChips.map(\.key)).count
+                == CatalogGenreAxis.hoerspielChips.count)
+    }
+
+    @Test("LibriVox genres fold onto shelves; EPOCHS never become one")
+    func librivoxShelves() {
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Literary Fiction"]) == ["fiction"])
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Detective Fiction"]) == ["crime"])
+        // The measured mix: genre AND epoch in one field — the epoch drops,
+        // so no year ends up between the shelves.
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Published 1800-1900"]).isEmpty)
+        #expect(CatalogGenreAxis.shelves(
+            forLibriVoxGenres: ["Published 1800-1900", "Science Fiction"]) == ["scifi"])
+        #expect(CatalogGenreAxis.isEpoch("Published 1800-1900"))
+        #expect(!CatalogGenreAxis.isEpoch("Science Fiction"))
+        // Unknown stays unknown — no guessing.
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Völlig Unbekannt"]).isEmpty)
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: []).isEmpty)
+        // Several genres → several shelves, deduped and in BROWSE order
+        // (not in the order the feed happened to list them).
+        let many = CatalogGenreAxis.shelves(
+            forLibriVoxGenres: ["Poetry", "Detective Fiction", "Literary Fiction", "Poetry"])
+        #expect(many == ["fiction", "crime", "poetry"])
+        // Case and whitespace tolerance (feeds are inconsistent).
+        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["  SCIENCE FICTION "]) == ["scifi"])
+    }
+
+    @Test("e948444: licence labels stay honest — no blanket 'public domain'")
+    func licenceLabels() {
+        #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-nd/2.5/")
+                == "CC BY-NC-ND")
+        #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-sa/3.0/us/")
+                == "CC BY-NC-SA")
+        #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/publicdomain/")
+                == String(localized: "Public domain"))
+        // An unknown form keeps its URL rather than being flattened to "free".
+        #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
+                == "https://example.org/some-licence")
+        #expect(FreeCatalog.licenceLabel(nil) == nil)
+        #expect(FreeCatalog.licenceLabel("") == nil)
+    }
+
+    @Test("e948444: the track bound is a parameter — series bundles are the unit there")
+    func trackCaps() {
+        // The measured reality: Gunsmoke 487, Suspense 911 episodes per item.
+        #expect(!FreeCatalog.trackCountPlausible(487))
+        #expect(FreeCatalog.trackCountPlausible(487, cap: FreeCatalog.seriesTrackCap))
+        #expect(FreeCatalog.trackCountPlausible(911, cap: FreeCatalog.seriesTrackCap))
+        // The default guard against ACCIDENTAL bundles is unchanged…
+        #expect(FreeCatalog.trackCountPlausible(200))
+        #expect(!FreeCatalog.trackCountPlausible(201))
+        // …and even the higher bound is not unlimited.
+        #expect(!FreeCatalog.trackCountPlausible(1_001, cap: FreeCatalog.seriesTrackCap))
+        #expect(!FreeCatalog.trackCountPlausible(0, cap: FreeCatalog.seriesTrackCap))
+    }
+
+    @Test("every shelf key in the axis has a display title")
+    func shelvesAreComplete() {
+        let titles = Set(CatalogGenreAxis.librivoxShelves.map(\.key))
+        for shelf in Set(CatalogGenreAxis.librivoxAxis.values) {
+            #expect(titles.contains(shelf), "shelf without title: \(shelf)")
+        }
+    }
+}
 #endif

@@ -25,8 +25,64 @@ struct FreeAudiobooksPage: View {
     @State private var reachedEnd = false
     @State private var detailItem: LibraryItem?
 
+    @Environment(\.pushPodcastRoute) private var pushPodcastRoute
+    @State private var selectedShelf: String?
+
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    /// The shelves the CURRENT stock fills (empty chips would be a lie).
+    private var shelves: [(key: String, title: String)] {
+        var present = Set<String>()
+        for item in popular + newBooks {
+            for shelf in CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item)) {
+                present.insert(shelf)
+            }
+        }
+        return CatalogGenreAxis.librivoxShelves.filter { present.contains($0.key) }
+    }
+
+    private func genres(of item: LibraryItem) -> [String] {
+        item.media?.metadata?.genres ?? []
+    }
+
+    /// The visible cut: everything, or one shelf.
+    private func onShelf(_ items: [LibraryItem]) -> [LibraryItem] {
+        guard let selectedShelf else { return items }
+        return items.filter {
+            CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: $0)).contains(selectedShelf)
+        }
+    }
+
+    private var shelfRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                shelfChip(key: nil, title: String(localized: "All"))
+                ForEach(shelves, id: \.key) { shelf in
+                    shelfChip(key: shelf.key, title: shelf.title)
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
+
+    private func shelfChip(key: String?, title: String) -> some View {
+        let selected = selectedShelf == key
+        let fill: AnyShapeStyle = selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary)
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) { selectedShelf = key }
+        } label: {
+            Text(title)
+                .font(.subheadline.weight(.medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(fill, in: Capsule())
+                .foregroundStyle(selected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("freebooks-shelf-\(key ?? "all")")
+    }
 
     var body: some View {
         Group {
@@ -51,11 +107,17 @@ struct FreeAudiobooksPage: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
+                        // 8d49a8e: the genre axis. LibriVox mixes genre and
+                        // EPOCH in one field ("Published 1800-1900") — the
+                        // pure mapping drops the epochs, so no year stands
+                        // between the shelves. Shelves appear only when the
+                        // loaded stock actually fills them (no empty chips).
+                        if !shelves.isEmpty { shelfRow }
                         if !newBooks.isEmpty {
                             Text("New at LibriVox").font(.title3).bold().padding(.horizontal)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(newBooks) { item in
+                                    ForEach(onShelf(newBooks)) { item in
                                         tile(item)
                                             .containerRelativeFrame(.horizontal,
                                                                     count: CardMetrics.recommendationColumns(regularWidth: false),
@@ -69,7 +131,7 @@ struct FreeAudiobooksPage: View {
                         if !popular.isEmpty {
                             Text("Popular").font(.title3).bold().padding(.horizontal)
                             CoverGrid(columns: columns) {
-                                ForEach(popular) { item in
+                                ForEach(onShelf(popular)) { item in
                                     tile(item)
                                         .onAppear {
                                             if item.id == popular.last?.id { Task { await load() } }
@@ -81,6 +143,23 @@ struct FreeAudiobooksPage: View {
                         if isLoading && !(newBooks.isEmpty && popular.isEmpty) {
                             ProgressView().frame(maxWidth: .infinity).padding()
                         }
+                        // 8d49a8e: cross-link to the other catalog page (G8 —
+                        // the target exists and is reachable from here).
+                        Button {
+                            pushPodcastRoute(.hoerspiele)
+                        } label: {
+                            HStack {
+                                Label("Also interesting: Radio Plays", systemImage: "waveform.and.mic")
+                                    .font(.subheadline)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption).foregroundStyle(.tertiary)
+                            }
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("freebooks-crosslink")
                     }
                     .padding(.top, TabContentLayout.topInset)
                     .bottomBarClearance()

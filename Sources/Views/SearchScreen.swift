@@ -36,6 +36,7 @@ struct SearchScreen: View {
         case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
     }
 
+    @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @State private var drill: [DeckDrill] = []
     /// Y15: explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
@@ -777,18 +778,13 @@ struct SearchScreen: View {
                 // e4bd910/hoerspiele: the curated public-broadcast entry —
                 // same chip idiom, drills into the DATA list (verified
                 // feeds), preview/subscribe like any catalog row.
+                // 8d49a8e: the tile leads to the OWN page (charts by genre +
+                // curated socket) instead of the flat curation list — the
+                // charts carry the bulk, the socket only what they miss.
                 CategoryTile(title: String(localized: "Radio Plays"),
                              systemImage: "waveform.and.mic",
                              accessibilityId: "podcast-genre-hoerspiele") {
-                    let results = HoerspielCuration.feeds.map { entry in
-                        SearchResult(id: entry.feedURL, kind: .catalogShow,
-                                     title: entry.title, subtitle: entry.author)
-                    }
-                    withAnimation(.snappy(duration: 0.2)) {
-                        drill.append(.catalogShows(
-                            title: String(localized: "Radio Plays"), results: results,
-                            footer: String(localized: "Public-broadcast content can disappear after fixed periods — downloads keep your copies.")))
-                    }
+                    pushPodcastRoute(.hoerspiele)
                 }
                 ForEach(PodcastGenres.curated) { genre in
                     CategoryTile(title: genre.title, systemImage: genre.systemImage,

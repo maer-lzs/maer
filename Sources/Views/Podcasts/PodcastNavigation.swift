@@ -16,6 +16,8 @@ enum PodcastRoute: Hashable {
     case showPreview(feedURL: String)
     /// V6: the chronological listen history (PodcastListenLog).
     case history
+    /// 8d49a8e: the radio-play page (charts by genre + curated socket).
+    case hoerspiele
 }
 
 extension View {
@@ -41,6 +43,8 @@ extension View {
                 PodcastShowPreviewView(feedURL: feedURL)
             case .history:
                 PodcastHistoryView(playerCoordinator: playerCoordinator)
+            case .hoerspiele:
+                HoerspielePage(playerCoordinator: playerCoordinator)
             }
         }
     }
