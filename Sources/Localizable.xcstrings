@@ -114,6 +114,16 @@
         }
       }
     },
+    "More free audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere freie Hörbücher"
+          }
+        }
+      }
+    },
     "Nothing in this genre right now." : {
       "localizations" : {
         "de" : {
@@ -963,12 +973,12 @@
         }
       }
     },
-    "Artist portraits and identities for your music library. Portraits from your own server stay visible." : {
+    "Artist portraits and identities for your music library. Portraits from your own server stay visible — your server may fetch them from external services itself; you control that there." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Künstler-Porträts und -Identitäten für deine Musikbibliothek. Porträts von deinem eigenen Server bleiben sichtbar."
+            "value" : "Künstler-Porträts und -Identitäten für deine Musikbibliothek. Porträts von deinem eigenen Server bleiben sichtbar — dein Server kann sie seinerseits von externen Diensten beziehen; das steuerst du dort."
           }
         }
       }
@@ -4228,12 +4238,12 @@
         }
       }
     },
-    "Open lyrics lookup when your server has none." : {
+    "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Offene Lyrics-Suche, wenn dein Server keine hat."
+            "value" : "Offene Liedtext-Suche, wenn dein Server keine hat — Texte, die dein Server schon mitbringt, bleiben, woher auch immer er sie hat."
           }
         }
       }

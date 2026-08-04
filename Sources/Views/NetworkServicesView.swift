@@ -25,12 +25,14 @@ struct NetworkServicesView: View {
         Form {
             Section {
                 Toggle(isOn: $artistImagesOnline) {
-                    // bdfe8dc: name the boundary — switching this off stops
-                    // the WEB chain; portraits your own server delivers are a
-                    // library fact and keep showing (that difference is what
-                    // made the switch look ineffective).
+                    // bdfe8dc/22cf822: name the boundary AND its second half.
+                    // Switching this off stops OUR web chain; portraits the
+                    // server delivers keep showing — and the server may fetch
+                    // those from external services itself (measured: 98 of
+                    // 1521 artists, 92 via Last.fm). Saying only the first
+                    // half would suggest no external service is involved.
                     serviceLabel(NetworkServiceNames.artistImages,
-                                 purpose: "Artist portraits and identities for your music library. Portraits from your own server stay visible.")
+                                 purpose: "Artist portraits and identities for your music library. Portraits from your own server stay visible — your server may fetch them from external services itself; you control that there.")
                 }
                 Toggle(isOn: $highResCovers) {
                     serviceLabel(NetworkServiceNames.hiResCovers,
@@ -38,7 +40,10 @@ struct NetworkServicesView: View {
                 }
                 Toggle(isOn: $lyricsOnline) {
                     serviceLabel(NetworkServiceNames.lyrics,
-                                 purpose: "Open lyrics lookup when your server has none.")
+                                 // 22cf822 parity: same half-truth applies —
+                                 // the server can carry lyrics from its own
+                                 // agents; our opt-out only gates OUR lookup.
+                                 purpose: "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them.")
                 }
                 .accessibilityIdentifier("network-lrclib-toggle")
                 Toggle(isOn: $homeRecommendations) {
