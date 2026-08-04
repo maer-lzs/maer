@@ -45,6 +45,58 @@ nonisolated enum SuggestionLanguages {
     /// iTunes is STOREFRONT-bound, not language-bound — one representative
     /// storefront per language (charts are fetched per selected language and
     /// fairly interleaved; honest approximation, documented).
+    /// 757e2eb: a language is NOT one market. Measured on the Drama chart
+    /// (1484, 50 entries each): GB deviates from the US chart in 15 of 50
+    /// entries, AU in 18, CA in 14, IE in 22 — and NZ in 28, i.e. 56 %. Only
+    /// asking `us` for "English" silently hides that half; the overlap sits
+    /// at the top (Sherlock, The Archers), the difference in the middle,
+    /// which is exactly where the interesting radio plays live.
+    ///
+    /// The FIRST entry stays the previous single storefront, so nothing
+    /// changes for languages with one market. Extending = a data entry.
+    static let storefrontsByLanguage: [String: [String]] = [
+        "de": ["de", "at", "ch"],
+        "en": ["us", "gb", "au", "nz", "ca", "ie"],
+        "fr": ["fr", "be", "ch", "ca"],
+        "es": ["es", "mx", "ar", "co", "cl"],
+        "pt": ["pt", "br"],
+        "it": ["it", "ch"],
+        "nl": ["nl", "be"],
+    ]
+
+    /// The storefronts of a language for THIS run: the primary market always,
+    /// plus a rotating window over the rest — the day rotation of the radio
+    /// rows, reused. Reason: languages × genres × storefronts grows fast; two
+    /// per run keeps the request count flat while the variety still arrives
+    /// over the week. `perRun` = 2 by default (primary + one rotating).
+    /// 8f0fc27/4ab17e8: the DEVICE REGION leads when it is in the language's
+    /// list — priority, not exclusivity. the owner lives in Switzerland, and
+    /// the Swiss chart deviates from the German one by 58 % (measured), with
+    /// content that is genuinely different: "Schreckmümpfeli" (the SRF
+    /// short-play institution) stands there and nowhere else. Notably, the
+    /// podcast route delivers exactly the Swiss material that the SRG API
+    /// denies us legally — without any grey zone.
+    ///
+    /// This reads the device REGION (same source the suggestion language
+    /// takes its default from), not a location — no permission involved.
+    static func storefronts(for language: String, perRun: Int = 2,
+                            daySeed: Int = RediscoverSections.daySeed(for: Date()),
+                            deviceRegion: String? = Locale.current.region?.identifier) -> [String] {
+        var all = storefrontsByLanguage[language.lowercased()] ?? [storefront(for: language)]
+        // Device region to the front when the language actually serves it.
+        if let region = deviceRegion?.lowercased(),
+           let index = all.firstIndex(of: region), index > 0 {
+            all.remove(at: index)
+            all.insert(region, at: 0)
+        }
+        guard all.count > 1, perRun > 1 else { return [all[0]] }
+        let others = Array(all.dropFirst())
+        let take = min(perRun - 1, others.count)
+        let offset = abs(daySeed) % others.count
+        let rotated = (0..<take).map { others[(offset + $0) % others.count] }
+        return [all[0]] + rotated
+    }
+
     static func storefront(for language: String) -> String {
         switch language.lowercased() {
         case "de": return "de"

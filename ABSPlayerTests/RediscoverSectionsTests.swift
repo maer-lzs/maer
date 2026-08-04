@@ -259,6 +259,61 @@ struct PodcastCategoryMappingTests {
         #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
     }
 
+    @Test("757e2eb: a language spans several storefronts, primary always first")
+    func storefronts() {
+        // English deviates by up to 56 % between US and NZ — asking only the
+        // US chart hid that half.
+        let en = SuggestionLanguages.storefronts(for: "en", perRun: 2, daySeed: 20_260_805,
+                                                 deviceRegion: "DE")
+        #expect(en.count == 2)
+        #expect(en[0] == "us")                       // primary market leads
+        #expect(en[1] != "us")                       // plus a rotating one
+        #expect(SuggestionLanguages.storefrontsByLanguage["en"]?.contains(en[1]) == true)
+
+        // The rotation moves with the day, so the variety arrives over the week…
+        let other = SuggestionLanguages.storefronts(for: "en", perRun: 2, daySeed: 20_260_806,
+                                                    deviceRegion: "DE")
+        #expect(other[0] == "us")
+        #expect(other[1] != en[1])
+        // …and the same day always yields the same request set.
+        #expect(SuggestionLanguages.storefronts(for: "en", perRun: 2, daySeed: 20_260_805,
+                                                deviceRegion: "DE") == en)
+
+        // A language with ONE market behaves exactly as before.
+        #expect(SuggestionLanguages.storefronts(for: "ja", perRun: 3, deviceRegion: "DE") == ["jp"])
+        // perRun 1 = the old behaviour, no extra requests.
+        #expect(SuggestionLanguages.storefronts(for: "en", perRun: 1, deviceRegion: "DE") == ["us"])
+        // More requested than available cannot duplicate entries.
+        let all = SuggestionLanguages.storefronts(for: "pt", perRun: 9, daySeed: 1, deviceRegion: "DE")
+        #expect(Set(all).count == all.count)
+        #expect(all.first == "pt")
+    }
+
+    @Test("8f0fc27/4ab17e8: the DEVICE REGION leads — priority, not exclusivity")
+    func deviceRegionLeads() {
+        // the owner's case: Swiss device, German suggestions. The Swiss chart
+        // deviates from the German one by 58 % and carries "Schreckmümpfeli";
+        // it must lead instead of being a rotating afterthought.
+        let de = SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 20_260_805,
+                                                 deviceRegion: "CH")
+        #expect(de.first == "ch")
+        // …but Germany still appears — priority, not exclusivity.
+        #expect(de.count == 2)
+        #expect(de.contains("de") || de.contains("at"))
+
+        // French on the same device: Switzerland leads there too.
+        #expect(SuggestionLanguages.storefronts(for: "fr", perRun: 2, daySeed: 1,
+                                                deviceRegion: "CH").first == "ch")
+        // A region the language does not serve changes nothing.
+        #expect(SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 1,
+                                                deviceRegion: "JP").first == "de")
+        #expect(SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 1,
+                                                deviceRegion: nil).first == "de")
+        // The measured lists themselves (4ab17e8).
+        #expect(SuggestionLanguages.storefrontsByLanguage["es"] == ["es", "mx", "ar", "co", "cl"])
+        #expect(SuggestionLanguages.storefrontsByLanguage["fr"] == ["fr", "be", "ch", "ca"])
+    }
+
     @Test("the cap belongs AFTER the mapping — dead compounds must not eat slots")
     func capAfterMapping() {
         // Three compound categories used to occupy three slots and match

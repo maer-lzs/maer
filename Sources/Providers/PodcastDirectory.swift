@@ -4,6 +4,7 @@
 
 import Foundation
 import CryptoKit
+import OSLog
 
 /// A podcast search result from a directory — holds the feed URL that
 /// `PodcastSubscriptions.subscribe(urlString:)` can subscribe to directly.
@@ -104,17 +105,25 @@ struct ITunesDirectory: PodcastDirectory {
         return URL(string: "https://itunes.apple.com/\(storefront)/rss/toppodcasts/limit=\(limit)\(genrePart)/json")
     }
 
-    /// M5 + f79c40c: the top chart narrowed to ONE genre (nil = all) — one
-    /// storefront per SELECTED suggestion language (iTunes is storefront-
-    /// bound), results fairly interleaved and deduped by feed.
+    /// M5 + f79c40c: the top chart narrowed to ONE genre (nil = all), results
+    /// fairly interleaved and deduped by feed.
+    ///
+    /// 757e2eb: a language now spans SEVERAL storefronts (English deviates by
+    /// up to 56 % between US and NZ), rotating per day so the request count
+    /// stays flat while the variety arrives over the week. Each storefront is
+    /// its own interleave lane — that way one market cannot dominate the row.
     func topPodcasts(genreId: Int?, limit: Int = 40) async throws -> [PodcastSearchResult] {
         let languages = SuggestionLanguages.current()
         var perLanguage: [[PodcastSearchResult]] = []
+        var queried: [String] = []
         for language in languages.prefix(3) {
-            let storefront = SuggestionLanguages.storefront(for: language)
-            perLanguage.append((try? await topPodcasts(storefront: storefront,
-                                                       genreId: genreId, limit: limit)) ?? [])
+            for storefront in SuggestionLanguages.storefronts(for: language) {
+                queried.append(storefront)
+                perLanguage.append((try? await topPodcasts(storefront: storefront,
+                                                           genreId: genreId, limit: limit)) ?? [])
+            }
         }
+        Logger.rss.notice("RECO charts genre=\(genreId.map(String.init) ?? "-", privacy: .public) storefronts=\(queried.joined(separator: ","), privacy: .public)")
         var seen = Set<String>()
         let mergedIds = HomeSections.interleave(perLanguage.map { $0.map(\.feedURL) }, limit: limit)
         let byFeed = Dictionary(perLanguage.flatMap { $0 }.map { ($0.feedURL, $0) },
