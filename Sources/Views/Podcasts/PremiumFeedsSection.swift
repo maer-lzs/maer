@@ -201,7 +201,11 @@ struct PremiumMarkPicker: View {
                             .accessibilityIdentifier("premium-mark-pick")
                     }
                 } footer: {
-                    Text("Your feeds classified as free — pick one whose premium access the automatic detection missed.")
+                    // 6bae86b (3): a sentence instead of a feature — after the
+                    // probe showed tokens are per SHOW, the honest help is
+                    // "fetch the per-show URL at your provider", not a
+                    // provider-wide token store that would not work anyway.
+                    Text("Your feeds classified as free — pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show.")
                 }
             }
             .navigationTitle("Mark a feed as premium")

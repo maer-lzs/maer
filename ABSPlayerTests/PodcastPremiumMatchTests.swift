@@ -247,4 +247,67 @@ struct PodcastFeedBlockTests {
         defaults.removePersistentDomain(forName: "feed-block-test")
     }
 }
+
+/// 6bae86b: the reduced provider-token scope — the probe DISPROVED the
+/// "one token for the whole provider" assumption (ZEIT hands out a token per
+/// SHOW), so nothing anbieterweit was built. What has to hold instead: a
+/// per-show podcatcher URL added by hand runs through the EXISTING chain.
+/// Verified on the ZEIT URL *structure*; the real token values never appear
+/// here (nor anywhere outside the device).
+struct ProviderTokenChainTests {
+    /// Same shape as the real thing, placeholder value.
+    private let zeitPremium =
+        "https://zeit.de/podcasts/servus-gruezi-hallo/rss-podcatcher?freebie=PLACEHOLDER"
+    private let zeitFree = "https://feeds.simplecast.com/servus-gruezi-hallo"
+
+    @Test("a per-show podcatcher URL is recognised and protected without any new mechanism")
+    func recognisedAndProtected() {
+        #expect(PodcastSubscriptions.isTokenFeedURL(zeitPremium))
+        #expect(PodcastSubscriptions.isPremiumFeed(zeitPremium))
+        #expect(!PodcastSubscriptions.isPremiumFeed(zeitFree))
+        // The token value never shows up unmasked.
+        #expect(!PodcastSubscriptions.maskedFeedURL(zeitPremium).contains("PLACEHOLDER"))
+        // OPML export leaves it out (the same guard gpodder sync uses).
+        let split = OPMLExport.partition(
+            shows: [(title: "Servus", feedURL: zeitPremium),
+                    (title: "Servus frei", feedURL: zeitFree)],
+            isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+        #expect(split.excluded.map(\.feedURL) == [zeitPremium])
+        #expect(split.safe.map(\.feedURL) == [zeitFree])
+    }
+
+    @Test("the free subscription of the same show gets the existing replace offer")
+    func twinOfferAgainstFreeShow() {
+        let offers = PodcastPremiumMatch.twins(
+            shows: [(id: "free", title: "Servus. Grüezi. Hallo.", feedURL: zeitFree),
+                    (id: "premium", title: "Servus. Grüezi. Hallo.", feedURL: zeitPremium)],
+            isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+        #expect(offers.count == 1)
+        #expect(offers.first?.freeId == "free")
+        #expect(offers.first?.premiumId == "premium")
+    }
+
+    @Test("c493143: no 'one feed = one token' assumption is wired in")
+    func formOpen() {
+        // TWO shows of the same provider with DIFFERENT tokens stay two
+        // independent premium feeds — the measured ZEIT form.
+        let other = "https://zeit.de/podcasts/wie-war-das-noch-mal/rss-podcatcher?freebie=OTHER"
+        #expect(PodcastSubscriptions.isPremiumFeed(other))
+        #expect(PodcastSubscriptions.feedKey(other) != PodcastSubscriptions.feedKey(zeitPremium))
+        // …and the OPPOSITE form (Patreon: one membership token, several
+        // shows) is not excluded either: the SAME token in two feed URLs
+        // yields two feeds, no collision, no merge.
+        let patreonA = "https://www.patreon.com/rss/creator?auth=SAMETOKEN&show=a"
+        let patreonB = "https://www.patreon.com/rss/creator?auth=SAMETOKEN&show=b"
+        #expect(PodcastSubscriptions.isPremiumFeed(patreonA))
+        #expect(PodcastSubscriptions.isPremiumFeed(patreonB))
+        #expect(PodcastSubscriptions.feedKey(patreonA) != PodcastSubscriptions.feedKey(patreonB))
+        // Neither form is a twin of the other (different shows, no offer).
+        let offers = PodcastPremiumMatch.twins(
+            shows: [(id: "a", title: "Show A", feedURL: patreonA),
+                    (id: "b", title: "Show B", feedURL: patreonB)],
+            isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
+        #expect(offers.isEmpty)
+    }
+}
 #endif

@@ -6862,12 +6862,12 @@
         }
       }
     },
-    "Your feeds classified as free — pick one whose premium access the automatic detection missed." : {
+    "Your feeds classified as free — pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deine frei eingestuften Abos — wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat."
+            "value" : "Deine frei eingestuften Abos — wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat. Bezahlte Feeds bekommst du meist als persönliche Podcatcher-URL, die du im Konto beim Anbieter kopierst und je Show hinzufügst."
           }
         }
       }
