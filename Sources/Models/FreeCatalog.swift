@@ -114,6 +114,8 @@ nonisolated enum FreeCatalog {
     static let librivoxPrefix = "lv:"
     static let archivePrefix = "lva:"
     static let jamendoPrefix = "jam:"
+    /// 0ce5df3: Project Gutenberg audiobook (`gut:<bookId>`).
+    static let gutenbergPrefix = "gut:"
 
     /// Suggestion-language code → the English language NAME LibriVox stores.
     /// The API ignores language parameters (probed) — filtering is client-side
@@ -231,6 +233,29 @@ nonisolated enum FreeCatalog {
         guard let range = lower.range(of: "creativecommons.org/licenses/") else { return url }
         let rest = lower[range.upperBound...].split(separator: "/").first.map(String.init) ?? ""
         return rest.isEmpty ? url : "CC " + rest.uppercased()
+    }
+
+    /// bca2d20 (pure): user-made compilations of LibriVox recordings sit in
+    /// `audio_bookspoetry` WITHOUT being in `collection:librivoxaudio` — the
+    /// query filter misses them, and the same content would stand twice in
+    /// the catalog (measured example: `LibriVoxHorror_2007-2017`). Identifier,
+    /// title and creator carry the name, so a fold match is enough; being
+    /// conservative here costs at most a duplicate-free false negative.
+    static func isNotLibriVoxDuplicate(_ doc: ArchivePopularDoc) -> Bool {
+        let haystack = [doc.identifier, doc.title?.joined, doc.creator?.joined]
+            .compactMap { $0 }.joined(separator: " ").lowercased()
+        return !haystack.contains("librivox")
+    }
+
+    /// 0ce5df3 (pure): is this Gutenberg audio a real AUDIOBOOK? Measured
+    /// on the full stock (1.124 entries): the readings live under
+    /// `/files/<id>/mp3/…` (885) and `/files/<id>/<id>-m/…` (184), while
+    /// `/files/<id>/<id>-h/audio/…` holds MUSIC EXAMPLES inside scholarly
+    /// texts ("Navaho Legends", "The Lhota Nagas") — those would go wrong in
+    /// an audiobook row. Same class as the LibriVox junk filter: the path
+    /// tells them apart, no guessing needed.
+    static func isGutenbergAudiobook(_ audioURL: String) -> Bool {
+        !audioURL.contains("-h/audio/")
     }
 
     /// 938aebc (pure): fair round-robin over per-language result lists —

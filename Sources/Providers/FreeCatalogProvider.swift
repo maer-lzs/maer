@@ -54,6 +54,31 @@ final class FreeCatalogProvider: AudioProvider {
 
     func licence(forItemId id: String) -> String? { licences[id] }
 
+    /// 0ce5df3: a Gutenberg audiobook as a library item. Non-audiobooks
+    /// (music examples inside scholarly texts) are filtered by path.
+    func remember(gutenberg book: GutenbergClient.Book) -> LibraryItem? {
+        guard let audio = book.formats?["audio/mpeg"],
+              FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
+        let id = FreeCatalog.gutenbergPrefix + String(book.id)
+        gutenbergAudio[id] = audio
+        let item = LibraryItem(
+            id: id,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: book.title ?? "—",
+                    authorName: book.authors?.compactMap(\.name).first,
+                    narratorName: nil, seriesName: nil, genres: nil,
+                    publishedYear: nil, description: nil),
+                duration: nil, chapters: nil, tracks: nil),
+            addedAt: nil)
+        itemsById[id] = item
+        return item
+    }
+
+    private var gutenbergAudio: [String: String] = [:]
+
+    func gutenbergAudioURL(forItemId id: String) -> String? { gutenbergAudio[id] }
+
     func remember(popular doc: ArchivePopularDoc) -> LibraryItem? {
         guard let identifier = doc.identifier else { return nil }
         let id = FreeCatalog.archivePrefix + identifier

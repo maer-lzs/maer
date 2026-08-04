@@ -558,6 +558,32 @@ struct CatalogGenreAxisTests {
         #expect(!FreeCatalog.trackCountPlausible(0, cap: FreeCatalog.seriesTrackCap))
     }
 
+    @Test("0ce5df3: Gutenberg path filter — readings in, music examples out")
+    func gutenbergAudiobookFilter() {
+        // Measured on the full stock: readings live under /mp3/ (885) and
+        // /<id>-m/ (184); music examples inside scholarly texts under
+        // /<id>-h/audio/ (the 6 outliers) would go wrong in a book row.
+        #expect(FreeCatalog.isGutenbergAudiobook("https://www.gutenberg.org/files/26471/mp3/26471-01.mp3"))
+        #expect(FreeCatalog.isGutenbergAudiobook("https://www.gutenberg.org/files/19942/19942-m/19942-m-01.mp3"))
+        #expect(!FreeCatalog.isGutenbergAudiobook("https://www.gutenberg.org/files/68074/68074-h/audio/mus196.mp3"))
+        #expect(!FreeCatalog.isGutenbergAudiobook("https://www.gutenberg.org/files/60165/60165-h/audio/p0288.mp3"))
+    }
+
+    @Test("bca2d20: LibriVox compilations are excluded — no content twice")
+    func libriVoxDuplicateFilter() {
+        func doc(_ id: String, title: String = "T", creator: String = "C") -> ArchivePopularDoc {
+            ArchivePopularDoc(identifier: id, title: ArchiveStringList([title]),
+                              creator: ArchiveStringList([creator]), downloads: 1,
+                              runtime: nil, licenseurl: "http://creativecommons.org/licenses/by/4.0/")
+        }
+        // The measured example that slips through NOT collection:librivoxaudio.
+        #expect(!FreeCatalog.isNotLibriVoxDuplicate(doc("LibriVoxHorror_2007-2017")))
+        #expect(!FreeCatalog.isNotLibriVoxDuplicate(doc("x", title: "Masters of Horror, as read by LibriVox Volunteers")))
+        #expect(!FreeCatalog.isNotLibriVoxDuplicate(doc("x", creator: "LibriVox Volunteers")))
+        // A genuinely different recording stays.
+        #expect(FreeCatalog.isNotLibriVoxDuplicate(doc("weird-tales-lovecraft", title: "Weird Tales from H. P. Lovecraft")))
+    }
+
     @Test("every shelf key in the axis has a display title")
     func shelvesAreComplete() {
         let titles = Set(CatalogGenreAxis.librivoxShelves.map(\.key))

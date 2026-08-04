@@ -27,6 +27,10 @@ struct FreeAudiobooksPage: View {
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @State private var selectedShelf: String?
+    /// 0ce5df3: Project Gutenberg audiobooks (own source, own section).
+    @State private var gutenberg: [LibraryItem] = []
+    /// bca2d20: licensed audiobooks on archive.org outside LibriVox.
+    @State private var archiveBooks: [LibraryItem] = []
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -140,6 +144,50 @@ struct FreeAudiobooksPage: View {
                             }
                             .padding(.horizontal)
                         }
+                        // bca2d20: audiobooks on archive.org OUTSIDE LibriVox
+                        // — own section with the licence visible per title
+                        // (they are CC-licensed, not public domain).
+                        if !archiveBooks.isEmpty {
+                            Text("More free audiobooks").font(.title3).bold().padding(.horizontal)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: 14) {
+                                    ForEach(onShelf(archiveBooks)) { item in
+                                        FreeCatalogBookTile(
+                                            item: item,
+                                            onTap: { Task { await playerCoordinator.open(item: item) } })
+                                        .containerRelativeFrame(
+                                            .horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                            .scrollClipDisabled()
+                        }
+                        // 0ce5df3: Project Gutenberg — own section, because it
+                        // is a different source with its own rights basis
+                        // (public domain, no conditions) and its own naming.
+                        if !gutenberg.isEmpty {
+                            // Eigenname, nicht übersetzbar (verbatim-Klasse) —
+                            // und die Quellennennung, die der Auftrag verlangt.
+                            Text(verbatim: "Project Gutenberg").font(.title3).bold().padding(.horizontal)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: 14) {
+                                    ForEach(onShelf(gutenberg)) { item in
+                                        FreeCatalogBookTile(
+                                            item: item,
+                                            onTap: { Task { await playerCoordinator.open(item: item) } })
+                                        .containerRelativeFrame(
+                                            .horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                            .scrollClipDisabled()
+                        }
                         if isLoading && !(newBooks.isEmpty && popular.isEmpty) {
                             ProgressView().frame(maxWidth: .infinity).padding()
                         }
@@ -168,6 +216,8 @@ struct FreeAudiobooksPage: View {
         }
         .navigationTitle(Text("Free Audiobooks"))
         .task { if newBooks.isEmpty && popular.isEmpty { await load(reset: true) } }
+        .task { await loadGutenberg() }
+        .task { await loadArchiveBooks() }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
@@ -183,6 +233,52 @@ struct FreeAudiobooksPage: View {
                 detailItem = item
             } label: { Label("Details", systemImage: "info.circle") }
         }
+    }
+
+    /// 0ce5df3: two pages are plenty for a row — the stock is 1.124 books,
+    /// but a shelf that never ends is not better than one that fits.
+    private func loadGutenberg() async {
+        guard gutenberg.isEmpty else { return }
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true
+        else { return }
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        let languages = SuggestionLanguages.current()
+        var books: [GutenbergClient.Book] = []
+        for page in 1...2 {
+            guard let hit = try? await GutenbergClient.audiobooks(languages: languages, page: page)
+            else {
+                Logger.library.notice("FREECAT gutenberg page=\(page) FAILED")
+                break
+            }
+            books += hit
+            if hit.isEmpty { break }
+        }
+        let provider = FreeCatalogProvider.shared
+        let items = books.compactMap { provider.remember(gutenberg: $0) }
+        Logger.library.notice("FREECAT gutenberg langs=\(languages.joined(separator: ","), privacy: .public) loaded=\(books.count) shown=\(items.count)")
+        gutenberg = items
+    }
+
+    private func loadArchiveBooks() async {
+        guard archiveBooks.isEmpty else { return }
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
+              UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+        else { return }
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        let languages = SuggestionLanguages.current()
+        guard let docs = try? await ArchiveOrgClient.audiobooksOutsideLibriVox(
+            rows: 12, languageCodes: languages) else {
+            Logger.library.notice("FREECAT archive-books FAILED")
+            return
+        }
+        let provider = FreeCatalogProvider.shared
+        let items = docs.compactMap { provider.remember(popular: $0) }
+        Logger.library.notice("FREECAT archive-books langs=\(languages.joined(separator: ","), privacy: .public) loaded=\(docs.count) shown=\(items.count)")
+        archiveBooks = items
     }
 
     private func load(reset: Bool = false) async {

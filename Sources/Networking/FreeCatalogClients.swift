@@ -46,6 +46,50 @@ nonisolated enum LibriVoxClient {
     }
 }
 
+/// 0ce5df3: Project Gutenberg audiobooks via Gutendex — keyless JSON, the
+/// audio formats ride in the answer. Rights situation is the friendliest we
+/// found (measured 05.08.): public domain in the US, explicitly WITHOUT
+/// purpose limitation, sharing ban or storage ban — the three clauses that
+/// killed SRG. Only the TRADEMARK "Project Gutenberg" may not be used for
+/// own works; naming the source is fine and we do it in the row.
+nonisolated enum GutenbergClient {
+    nonisolated struct Book: Decodable, Sendable {
+        let id: Int
+        let title: String?
+        let authors: [Author]?
+        let languages: [String]?
+        let formats: [String: String]?
+
+        nonisolated struct Author: Decodable, Sendable { let name: String? }
+    }
+
+    nonisolated struct Response: Decodable, Sendable {
+        let count: Int?
+        let results: [Book]?
+    }
+
+    nonisolated static func decode(_ data: Data) throws -> [Book] {
+        try JSONDecoder().decode(Response.self, from: data).results ?? []
+    }
+
+    /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
+    /// caller decides how many pages are worth it.
+    static func audiobooks(languages: [String], page: Int = 1) async throws -> [Book] {
+        var comp = URLComponents(string: "https://gutendex.com/books/")!
+        var items = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
+                     URLQueryItem(name: "page", value: String(page))]
+        if !languages.isEmpty {
+            items.append(URLQueryItem(name: "languages", value: languages.joined(separator: ",")))
+        }
+        comp.queryItems = items
+        guard let url = comp.url else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        return try decode(data)
+    }
+}
+
 nonisolated enum ArchiveOrgClient {
     nonisolated struct SearchResponse: Decodable {
         struct Body: Decodable { let docs: [ArchivePopularDoc]? }
@@ -117,6 +161,28 @@ nonisolated enum ArchiveOrgClient {
 
     static func popularOldTimeRadio(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popular(query: oldTimeRadioQuery, rows: rows, page: page)
+    }
+
+    /// bca2d20/0ce5df3: audiobooks in `audio_bookspoetry` OUTSIDE LibriVox.
+    /// The triple filter is not a quality guard but the CORRECT QUERY — the
+    /// same class as LibriVox new-arrivals and the genre-less charts:
+    /// `mediatype:(audio)` (without it the collection returns TEXT items —
+    /// Plato's "Republic" as EPUB, measured), a stated licence (we suggest
+    /// nothing whose rights are unknown), and the language.
+    ///
+    /// Entdopplung (the reviewer's measured finding): user-made compilations of
+    /// LibriVox recordings slip through `NOT collection:librivoxaudio` — the
+    /// identifier/creator carries "librivox", so it is excluded here rather
+    /// than showing the same content twice.
+    static func audiobooksOutsideLibriVox(rows: Int, languageCodes: [String],
+                                          page: Int = 1) async throws -> [ArchivePopularDoc] {
+        var clause = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
+            + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+        if let language = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
+            clause += " AND \(language)"
+        }
+        let docs = try await popular(query: clause, rows: rows, page: page)
+        return docs.filter { FreeCatalog.isNotLibriVoxDuplicate($0) }
     }
 
     /// E3: popular free classical recordings (same client, Regel 2).
