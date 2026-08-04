@@ -71,6 +71,9 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     /// most (NOT all) items — the card's time line reads it via
     /// `FreeCatalog.runtimeSeconds`; absent stays honestly absent.
     let runtime: String?
+    /// e948444: the stated licence — shown to the user, because a
+    /// CC-BY-NC-ND title is not the same as public domain.
+    let licenseurl: String?
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {
@@ -217,6 +220,19 @@ nonisolated enum FreeCatalog {
         return runtimeSeconds(raw)
     }
 
+    /// e948444 (pure): the licence URL as a short, honest label. Unknown
+    /// forms keep the raw URL rather than being flattened to "free".
+    static func licenceLabel(_ url: String?) -> String? {
+        guard let url, !url.isEmpty else { return nil }
+        let lower = url.lowercased()
+        if lower.contains("publicdomain") || lower.contains("mark/1.0") {
+            return String(localized: "Public domain")
+        }
+        guard let range = lower.range(of: "creativecommons.org/licenses/") else { return url }
+        let rest = lower[range.upperBound...].split(separator: "/").first.map(String.init) ?? ""
+        return rest.isEmpty ? url : "CC " + rest.uppercased()
+    }
+
     /// 938aebc (pure): fair round-robin over per-language result lists —
     /// ONE combined popularity query cannot work, English download counts
     /// bury every minority language. Empty lists are skipped, the caller's
@@ -294,8 +310,18 @@ nonisolated enum FreeCatalog {
 
     /// aed5d25 (2): plausibility bounds for an archive item's track list —
     /// a real audiobook has SOME parts; hundreds mean a collection bundle.
-    static func trackCountPlausible(_ count: Int) -> Bool {
-        count >= 1 && count <= 200
+    ///
+    /// e948444: the bound is a PARAMETER now, because the Old-Time-Radio
+    /// collection inverts the assumption: there a bundle IS the unit (the
+    /// Gunsmoke series item carries 487 episodes, Suspense 911), and seven of
+    /// the twelve most-downloaded items would be thrown away by the default.
+    /// The 200 stays the guard against ACCIDENTAL bundles in the generic
+    /// searches; a curated series collection passes its own, higher bound.
+    static let defaultTrackCap = 200
+    static let seriesTrackCap = 1_000
+
+    static func trackCountPlausible(_ count: Int, cap: Int = defaultTrackCap) -> Bool {
+        count >= 1 && count <= cap
     }
 
     /// The archive.org identifier out of `url_iarchive` (last path component).

@@ -109,6 +109,16 @@ nonisolated enum ArchiveOrgClient {
         return FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
     }
 
+    /// e948444: Old Time Radio — the curated radio-play collection, but ONLY
+    /// items with a stated licence. Measured 05.08.: 8.854 items total, 2.316
+    /// with `licenseurl` (26 %). We do not suggest anything whose rights
+    /// situation is unknown, and "no statement" is not "free".
+    static let oldTimeRadioQuery = "collection:oldtimeradio AND licenseurl:[* TO *]"
+
+    static func popularOldTimeRadio(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
+        try await popular(query: oldTimeRadioQuery, rows: rows, page: page)
+    }
+
     /// E3: popular free classical recordings (same client, Regel 2).
     static func popularClassical(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popular(query: classicalQuery, rows: rows, page: page)
@@ -123,6 +133,8 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "fl[]", value: "title"),
             URLQueryItem(name: "fl[]", value: "creator"),
             URLQueryItem(name: "fl[]", value: "downloads"),
+            // e948444: the licence rides along so the row can SHOW it.
+            URLQueryItem(name: "fl[]", value: "licenseurl"),
             // ea6e002: the card's time line (present for most items).
             URLQueryItem(name: "fl[]", value: "runtime"),
             URLQueryItem(name: "sort[]", value: "downloads desc"),

@@ -43,9 +43,21 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
+    /// e948444: identifiers that came from the Old-Time-Radio row — they
+    /// are series bundles by design and get the higher track bound.
+    private var oldTimeRadioIds: Set<String> = []
+
+    func rememberOldTimeRadio(_ identifier: String) { oldTimeRadioIds.insert(identifier) }
+
+    /// e948444: stated licence per item id, for the detail sheet.
+    private var licences: [String: String] = [:]
+
+    func licence(forItemId id: String) -> String? { licences[id] }
+
     func remember(popular doc: ArchivePopularDoc) -> LibraryItem? {
         guard let identifier = doc.identifier else { return nil }
         let id = FreeCatalog.archivePrefix + identifier
+        if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
@@ -110,7 +122,11 @@ final class FreeCatalogProvider: AudioProvider {
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
             // aed5d25 (2): plausibility gate — a collection bundle with
             // hundreds of parts is not a book; named in the log, never mute.
-            guard FreeCatalog.trackCountPlausible(tracks.count) else {
+            // e948444: a CURATED series collection (Old Time Radio) passes the
+            // higher bound — there the bundle is the unit, not an accident.
+            let cap = oldTimeRadioIds.contains(identifier)
+                ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
+            guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
                 Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
                 throw URLError(.resourceUnavailable)
             }

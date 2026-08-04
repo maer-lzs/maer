@@ -290,8 +290,16 @@ struct FreeCatalogDetailSheet: View {
                     }
                 } else {
                     VStack(spacing: 6) {
-                        Label("Public Domain — free to listen and share", systemImage: "checkmark.seal")
-                            .font(.caption).foregroundStyle(.secondary)
+                        // e948444: do not claim public domain for everything —
+                        // an Old-Time-Radio item can be CC-BY-NC-ND, and the
+                        // user should see WHICH licence, not a blanket badge.
+                        if let licence = FreeCatalogProvider.shared.licence(forItemId: item.id) {
+                            Label(licence, systemImage: "checkmark.seal")
+                                .font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Label("Public Domain — free to listen and share", systemImage: "checkmark.seal")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         if let url = librivoxURL {
                             Link(destination: url) {
                                 Label("View on LibriVox", systemImage: "arrow.up.right.square")
