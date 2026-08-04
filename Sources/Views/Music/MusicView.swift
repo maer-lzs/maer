@@ -228,8 +228,14 @@ struct MusicView: View {
 }
 
 /// F5: a playlist as a vertical poster card — the 2×2 mosaic (Y58 coverOverride
-/// slot) over the name and a metadata line "18 tracks · 1:12". Tapping opens the
-/// detail page (no direct playback).
+/// slot) over the name and a metadata line "18 tracks · 1:12".
+///
+/// 8203d12: the doc comment claimed the OPPOSITE of what the code does — it
+/// still carried the original F5 specification ("tap opens the detail page,
+/// no direct playback"), while `1b16f2c` had already switched the card to
+/// tap-to-play. the owner's decision (05.08.) confirms tap-to-play as the ONE
+/// card gesture; the detail page rides the `CardDetailPill`, shuffle the
+/// corner badge. Corrected here so the doc stops cementing a dead spec.
 private struct PlaylistCard: View {
     let playlist: MusicPlaylist
     @ObservedObject var playerCoordinator: PlayerCoordinator

@@ -274,13 +274,19 @@ struct HomeView: View {
                                         result: result,
                                         subtitle: reasonText(recommendations.reason(for: result)))
                                 } else if let book = slot.book {
-                                    MediaTile(
-                                        title: book.title,
-                                        subtitle: String(localized: "Public domain · LibriVox"),
-                                        coverURL: AppSession.shared.coverURL(forItemId: book.id),
-                                        placeholderSystemImage: "book.closed",
-                                        onTap: { discoverBookDetail = book }
-                                    )
+                                    // 8203d12 parity: the SAME free-catalog tile
+                                    // as the audiobook rows — tap plays. It used
+                                    // to open the detail sheet here and play
+                                    // there, for the identical content; the
+                                    // long-press menu keeps the detail path.
+                                    FreeCatalogBookTile(
+                                        item: book,
+                                        onTap: { Task { await playerCoordinator.open(item: book) } })
+                                    .contextMenu {
+                                        Button {
+                                            discoverBookDetail = book
+                                        } label: { Label("Details", systemImage: "info.circle") }
+                                    }
                                 }
                             }
                             // Kachel-Auftrag: screen-relative slots + peek.
