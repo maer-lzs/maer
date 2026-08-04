@@ -293,6 +293,71 @@ struct FreeCatalogSelectionTests {
         #expect(LibriVoxImporter.ringFraction(.failed("x")) == nil)
     }
 
+    @Test("b81949f: runtime from the item file list — largest format group wins")
+    func runtimeFromFiles() {
+        // The measured shape: only ONE derivative set carries lengths, the
+        // others ship without. Ogg and MP3 both complete ⇒ same total.
+        let files: [(format: String?, length: String?)] = [
+            (format: "128Kbps MP3", length: "1573.21"),
+            (format: "128Kbps MP3", length: "1573.00"),
+            (format: "VBR MP3", length: nil),
+            (format: "64Kbps MP3", length: nil),
+            (format: "JPEG", length: nil),
+        ]
+        #expect(FreeCatalog.runtimeSeconds(fromFiles: files) == 3146.21)
+        // Nothing usable ⇒ nil (and the caller must not book that as a
+        // finding if the fetch itself failed — 95c5c16 rule).
+        #expect(FreeCatalog.runtimeSeconds(fromFiles: [(format: "JPEG", length: nil)]) == nil)
+        #expect(FreeCatalog.runtimeSeconds(fromFiles: []) == nil)
+        // "MM:SS" lengths occur on some derivatives.
+        #expect(FreeCatalog.fileLength("2:30") == 150)
+        #expect(FreeCatalog.fileLength("1573.21") == 1573.21)
+        #expect(FreeCatalog.fileLength("nonsense") == nil)
+    }
+
+    @Test("b81949f: the shared resolution cache never stores a FAILED lookup")
+    func resolutionCacheRule() {
+        let suite = "resolution-cache-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ResolutionCacheStore<Double>(key: "testRuntimes")
+
+        #expect(store.store(.found(1234), for: "a", defaults: defaults))
+        #expect(store.store(.absent, for: "b", defaults: defaults))
+        // The rule that cost every radio logo once: a failure is not a finding.
+        #expect(!store.store(.failed, for: "c", defaults: defaults))
+
+        let loaded = store.load(defaults: defaults)
+        #expect(loaded["a"] == 1234)
+        #expect(loaded["b"] == Double?.none)   // known-absent, cached
+        #expect(loaded["c"] == nil)            // never stored at all
+        #expect(loaded.count == 2)
+
+        // TTLs: the negative expires earlier than the positive.
+        let later = Date().addingTimeInterval(8 * 24 * 3600)
+        let afterNegativeTTL = store.load(defaults: defaults, now: later)
+        #expect(afterNegativeTTL["a"] == 1234)
+        #expect(afterNegativeTTL.keys.contains("b") == false)
+    }
+
+    @Test("b4fdc36: the cover-cache cap adapts to free space, within bounds")
+    func adaptiveCacheCap() {
+        let mb: Int64 = 1024 * 1024
+        // Roomy device: 5 % of 40 GB = 2 GB ⇒ clamped to the 500 MB ceiling.
+        #expect(ImageCache.cacheCapBytes(freeBytes: 40 * 1024 * mb) == 500 * mb)
+        // Middle ground: 5 % of 6 GB ≈ 307 MB — used as is.
+        let sixGB = 6 * 1024 * mb
+        #expect(ImageCache.cacheCapBytes(freeBytes: sixGB) == Int64(Double(sixGB) * 0.05))
+        // Nearly full device: the floor keeps the cache usable.
+        #expect(ImageCache.cacheCapBytes(freeBytes: 500 * mb) == 150 * mb)
+        #expect(ImageCache.cacheCapBytes(freeBytes: 0) == 150 * mb)
+        // Nonsense input cannot produce a negative cap.
+        #expect(ImageCache.cacheCapBytes(freeBytes: -1) == 150 * mb)
+        // The old fixed value sits between floor and ceiling — the change is
+        // an ADJUSTMENT, not a new regime.
+        #expect(ImageCache.cacheCapBytes(freeBytes: 40 * 1024 * mb) > 200 * mb)
+    }
+
     @Test("the junk meta item stays filtered (the reviewer's Librivox M4b collection)")
     func junkStaysFiltered() {
         #expect(FreeCatalog.isArtifactDoc(identifier: "librivox_m4b_collection",

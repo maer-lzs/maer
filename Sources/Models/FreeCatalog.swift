@@ -191,6 +191,32 @@ nonisolated enum FreeCatalog {
         return total > 0 ? total : nil
     }
 
+    /// b81949f (pure): total runtime of an archive.org item from its file
+    /// list. archive.org carries the length on the audio DERIVATIVES, and
+    /// only some of them (the 128 kbps MP3 set is the reliable one; VBR/64k
+    /// entries often ship without `length`). Strategy: group by format, take
+    /// the group with the LARGEST total — that is the complete audio set —
+    /// and ignore everything without a usable length.
+    ///
+    /// Measured against LibriVox's own `totaltimesecs` (Klein Zaches):
+    /// 15731 s here vs. 15733 s there — a 2-second difference on 4:22 h.
+    static func runtimeSeconds(fromFiles files: [(format: String?, length: String?)]) -> Double? {
+        var byFormat: [String: Double] = [:]
+        for file in files {
+            guard let format = file.format, let raw = file.length,
+                  let seconds = fileLength(raw), seconds > 0 else { continue }
+            byFormat[format, default: 0] += seconds
+        }
+        return byFormat.values.max()
+    }
+
+    /// archive.org writes lengths as plain seconds ("1573.21") or as
+    /// "MM:SS"/"H:MM:SS" depending on the derivative.
+    static func fileLength(_ raw: String) -> Double? {
+        if let plain = Double(raw) { return plain > 0 ? plain : nil }
+        return runtimeSeconds(raw)
+    }
+
     /// 938aebc (pure): fair round-robin over per-language result lists —
     /// ONE combined popularity query cannot work, English download counts
     /// bury every minority language. Empty lists are skipped, the caller's

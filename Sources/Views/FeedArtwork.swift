@@ -71,3 +71,38 @@ struct SearchRowCover: View {
         }
     }
 }
+
+/// b81949f (Regel 2): THE free-catalog book tile — the four surfaces
+/// (Home-Discover mix, audiobooks-tab row, free-audiobooks area, classical)
+/// used to repeat the same MediaTile configuration; now they share one
+/// component. It also fills the card's time line: where the popularity
+/// search carried no `runtime`, the duration is resolved lazily from the
+/// item metadata and cached, so the third line is FILLED rather than
+/// reserved (the owner did not accept the empty reserve).
+struct FreeCatalogBookTile: View {
+    let item: LibraryItem
+    var placeholderSystemImage: String = "book.closed"
+    let onTap: () -> Void
+    @State private var resolvedDuration: Double?
+
+    private var duration: Double? { item.media?.duration ?? resolvedDuration }
+
+    var body: some View {
+        MediaTile(
+            title: item.title,
+            subtitle: item.author,
+            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+            placeholderSystemImage: placeholderSystemImage,
+            meta: bookTimeLine(progress: nil, duration: duration),
+            titleLineLimit: 1,
+            onTap: onTap,
+            corner: { FreeCatalogImportBadge(itemId: item.id) }
+        )
+        .task(id: item.id) {
+            guard item.media?.duration == nil,
+                  item.id.hasPrefix(FreeCatalog.archivePrefix) else { return }
+            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+            resolvedDuration = await ArchiveRuntimeService.shared.runtimeSeconds(identifier: identifier)
+        }
+    }
+}

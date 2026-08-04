@@ -95,17 +95,9 @@ struct FreeAudiobooksPage: View {
     }
 
     private func tile(_ item: LibraryItem) -> some View {
-        MediaTile(
-            title: item.title,
-            subtitle: item.author,
-            coverURL: AppSession.shared.coverURL(forItemId: item.id),
-            placeholderSystemImage: "book.closed",
-            // ea6e002: same card language as the rows and the library.
-            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
-            titleLineLimit: 1,
-            onTap: { Task { await playerCoordinator.open(item: item) } },
-            // fbcff9f: same corner ring as every other download surface.
-            corner: { FreeCatalogImportBadge(itemId: item.id) }
+        FreeCatalogBookTile(
+            item: item,
+            onTap: { Task { await playerCoordinator.open(item: item) } }
         )
         .contextMenu {
             Button {

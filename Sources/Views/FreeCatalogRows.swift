@@ -66,21 +66,11 @@ struct FreeCatalogRows: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(items) { item in
-                        MediaTile(
-                            title: item.title,
-                            subtitle: item.author,
-                            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                        FreeCatalogBookTile(
+                            item: item,
                             placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
                                 ? "music.note" : "book.closed",
-                            // ea6e002: card standard — ONE title line and the
-                            // library's time line (blank where the source has
-                            // no runtime; the slot stays reserved).
-                            meta: bookTimeLine(progress: nil, duration: item.media?.duration),
-                            titleLineLimit: 1,
-                            onTap: { Task { await playerCoordinator.open(item: item) } },
-                            // fbcff9f: the running import rides the standard
-                            // corner slot (nothing drawn while idle).
-                            corner: { FreeCatalogImportBadge(itemId: item.id) }
+                            onTap: { Task { await playerCoordinator.open(item: item) } }
                         )
                         .containerRelativeFrame(.horizontal,
                                                 count: CardMetrics.recommendationColumns(regularWidth: false),
