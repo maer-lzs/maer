@@ -228,6 +228,21 @@ nonisolated enum RadioMapping {
     /// name and never fold either. The best member wins (bitrate, AAC>MP3);
     /// the losers ride as `variants` so the detail page offers them as
     /// further streams instead of throwing them away.
+    /// a4e747e (pure): in a list fetched WITH a country filter, an entry
+    /// whose country code belongs to a DIFFERENT country is dropped. Empty
+    /// codes stay — Radio Browser reports countries patchily, and in this
+    /// context "empty" means "belongs to the queried country", not "fits
+    /// everything" (the Y59 merge reads it the second way, which is right
+    /// without a country context and wrong inside one).
+    static func keepingCountry(_ countryCode: String, in stations: [RadioStation]) -> [RadioStation] {
+        let wanted = countryCode.trimmingCharacters(in: .whitespaces).uppercased()
+        guard !wanted.isEmpty else { return stations }
+        return stations.filter { station in
+            let code = (station.countryCode ?? "").trimmingCharacters(in: .whitespaces).uppercased()
+            return code.isEmpty || code == wanted
+        }
+    }
+
     static func dedupeForDisplay(_ stations: [RadioStation]) -> [RadioStation] {
         var buckets: [String: RadioStation] = [:]
         var order: [String] = []

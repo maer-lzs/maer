@@ -560,5 +560,31 @@ struct RadioStateQueryTests {
         #expect(restored?.votes == 500)
         defaults.removePersistentDomain(forName: "discovery-roundtrip-test")
     }
+
+    @Test("a4e747e: a country-filtered list drops foreign entries, keeps empty codes")
+    func countryContext() {
+        let de = RadioStation(id: "radio:rb:de", name: "Rock Antenne",
+                              streamURL: "https://de/stream", countryCode: "DE",
+                              bitrate: 128, codec: "MP3")
+        let it = RadioStation(id: "radio:rb:it", name: "Rock Antenne",
+                              streamURL: "https://it/stream", countryCode: "IT",
+                              bitrate: 320, codec: "MP3")
+        let unknown = RadioStation(id: "radio:rb:x", name: "Rock Antenne",
+                                   streamURL: "https://x/stream", countryCode: nil,
+                                   bitrate: 64, codec: "MP3")
+        let kept = RadioMapping.keepingCountry("DE", in: [de, it, unknown])
+        // The Italian entry goes even though its bitrate is the best — in a
+        // DE list it must never become the default (the owner's report).
+        #expect(kept.map(\.id) == ["radio:rb:de", "radio:rb:x"])
+        // Lower case and stray whitespace behave the same.
+        #expect(RadioMapping.keepingCountry(" de ", in: [de, it]).map(\.id) == ["radio:rb:de"])
+        // WITHOUT a country context nothing is dropped (world list).
+        #expect(RadioMapping.keepingCountry("", in: [de, it, unknown]).count == 3)
+
+        // And the collapse afterwards can no longer pick the Italian variant,
+        // because it is not in the pool any more.
+        let collapsed = RadioMapping.collapseVariants(kept)
+        #expect(collapsed.allSatisfy { $0.id != "radio:rb:it" })
+    }
 }
 #endif

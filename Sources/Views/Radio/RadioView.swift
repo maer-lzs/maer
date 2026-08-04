@@ -408,14 +408,29 @@ struct RadioView: View {
 
     private static func nationalPopular(_ countryCode: String?) async -> [RadioStation] {
         guard let countryCode else {
+            // a4e747e: WITHOUT a country the list is the WORLD top-votes —
+            // measured: US/FR/IR/RU/GB in the first 40, one German station.
+            // That is the honest source of "a foreign stream in my list": not
+            // the variant merge (the DE query returns 400 stations, ALL with
+            // countrycode DE and German domains — measured), but this
+            // fallback. It stays, because a list beats an empty tab; the
+            // TITLE says "Popular Stations" instead of naming a country, and
+            // the log names it so a report is decidable.
             let world = RadioMapping.dedupeForDisplay((try? await RadioBrowserClient.popular()) ?? [])
+            Logger.library.notice("RADIO popular: NO country code — showing WORLD top-votes (\(world.count) stations)")
             return world
         }
         async let votesList = (try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: 30)) ?? []
         async let trendList = (try? await RadioBrowserClient.byRegionClicktrend(countryCode: countryCode, limit: 30)) ?? []
+        // a4e747e: the country context travels WITH the lists — a station
+        // carrying a DIFFERENT country's code has no business being the
+        // default in a country-filtered list, however good its bitrate.
+        let votes = RadioMapping.dedupeForDisplay(
+            RadioMapping.keepingCountry(countryCode, in: await votesList))
+        let trend = RadioMapping.dedupeForDisplay(
+            RadioMapping.keepingCountry(countryCode, in: await trendList))
         return RadioRotation.compose(
-            votes: RadioMapping.dedupeForDisplay(await votesList),
-            clicktrend: RadioMapping.dedupeForDisplay(await trendList),
+            votes: votes, clicktrend: trend,
             seed: RadioRotation.seed(day: rotationDay(), countryCode: countryCode),
             limit: 12)
     }
