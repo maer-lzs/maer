@@ -574,7 +574,8 @@ struct CatalogGenreAxisTests {
         func doc(_ id: String, title: String = "T", creator: String = "C") -> ArchivePopularDoc {
             ArchivePopularDoc(identifier: id, title: ArchiveStringList([title]),
                               creator: ArchiveStringList([creator]), downloads: 1,
-                              runtime: nil, licenseurl: "http://creativecommons.org/licenses/by/4.0/")
+                              runtime: nil, licenseurl: "http://creativecommons.org/licenses/by/4.0/",
+                              year: nil)
         }
         // The measured example that slips through NOT collection:librivoxaudio.
         #expect(!FreeCatalog.isNotLibriVoxDuplicate(doc("LibriVoxHorror_2007-2017")))
@@ -632,6 +633,23 @@ struct CatalogGenreAxisTests {
         // "Liste gepflegt" und "strukturell dicht".
         #expect(!ItemNamespace.isKnown("neuequelle:42"))
         #expect(!ItemNamespace.mayReachLibraryServer("neuequelle:42"))
+    }
+
+    // MARK: - 50aefa8: Rechtelage wird nicht geraten
+
+    /// Die Metazeile zeigt NUR, was die Quelle liefert. Fehlt das Jahr, steht
+    /// dort keins — georgeblood traegt bei etwa zwei Dritteln der Titel keins,
+    /// und ein geratenes Jahr waere bei einer Sammlung ohne Lizenzfeld die
+    /// zweite Falschaussage nach der Kapsel.
+    @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
+    func catalogMetaLine() {
+        #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")
+        // Jahr fuehrt, weil es die einzige Einordnungshilfe ist.
+        #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: nil) == "1927")
+        #expect(FreeCatalog.catalogMetaLine(year: nil, runtime: "42 min") == "42 min")
+        // Nichts bekannt: reservierte Leerzeile, keine Erfindung.
+        #expect(FreeCatalog.catalogMetaLine(year: nil, runtime: nil) == " ")
+        #expect(FreeCatalog.catalogMetaLine(year: "  ", runtime: "") == " ")
     }
 
 }

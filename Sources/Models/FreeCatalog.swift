@@ -74,6 +74,10 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     /// e948444: the stated licence — shown to the user, because a
     /// CC-BY-NC-ND title is not the same as public domain.
     let licenseurl: String?
+    /// 50aefa8: recording year where the index has one. For sources without a
+    /// licence field this is the user's only means of judging the age of a
+    /// recording — so it is shown, and its ABSENCE stays visible too.
+    let year: ArchiveStringList?
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {
@@ -266,6 +270,19 @@ nonisolated enum FreeCatalog {
     /// The cover that rides in Gutendex' `formats` map. Pure so the choice of
     /// key (and the https guard) is testable — measured 05.08.: every entry on
     /// page 1 carries `image/jpeg`.
+    /// 50aefa8: the tile's meta line — recording year and runtime, whichever
+    /// is known. Pure so the "absent stays absent" rule is testable: where the
+    /// source states no year we show none, we do not guess one. For sources
+    /// without a licence field the year is the user's ONLY means of judging a
+    /// recording's age, so it leads.
+    static func catalogMetaLine(year: String?, runtime: String?) -> String {
+        let parts = [year?.trimmingCharacters(in: .whitespaces), runtime]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+        // A reserved blank keeps the cell heights uniform (Jank-Regel).
+        return parts.isEmpty ? " " : parts.joined(separator: " · ")
+    }
+
     static func gutenbergCoverURL(formats: [String: String]?) -> URL? {
         guard let raw = formats?["image/jpeg"] ?? formats?["image/png"],
               let url = URL(string: raw), url.scheme == "https" else { return nil }

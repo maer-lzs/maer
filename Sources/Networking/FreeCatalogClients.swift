@@ -203,6 +203,11 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "fl[]", value: "licenseurl"),
             // ea6e002: the card's time line (present for most items).
             URLQueryItem(name: "fl[]", value: "runtime"),
+            // 50aefa8: the recording year is the ONLY hint the user gets for
+            // items whose rights status the source does not state (georgeblood
+            // carries no licenceurl at all). Present for about a third of them
+            // — measured, not assumed.
+            URLQueryItem(name: "fl[]", value: "year"),
             URLQueryItem(name: "sort[]", value: "downloads desc"),
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),

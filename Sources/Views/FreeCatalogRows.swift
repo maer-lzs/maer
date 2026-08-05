@@ -297,7 +297,18 @@ struct FreeCatalogDetailSheet: View {
                             Label(licence, systemImage: "checkmark.seal")
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
-                            Label("Public Domain — free to listen and share", systemImage: "checkmark.seal")
+                            // 50aefa8: the else branch USED to claim public
+                            // domain — for the classical row that hit all 4271
+                            // titles, of which at most 647 are old enough for
+                            // it and 782 provably are not. We claimed a legal
+                            // situation we do not know, in an app that
+                            // otherwise states rights carefully.
+                            //
+                            // The seal is dropped with the claim: a checkmark
+                            // IS an assertion. Unknown gets a question mark and
+                            // the link, so the user can check the source.
+                            Label("Rights status not stated by the source",
+                                  systemImage: "questionmark.circle")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         if let url = librivoxURL {

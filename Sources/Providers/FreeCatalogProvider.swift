@@ -102,7 +102,10 @@ final class FreeCatalogProvider: AudioProvider {
                     // 3ac9183: first entry leads (composer first); the
                     // detail sheet names everyone via the joined form.
                     title: doc.title?.first, authorName: doc.creator?.first, narratorName: nil,
-                    seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                    // 50aefa8: the recording year, where the index has one.
+                    seriesName: nil, genres: nil,
+                    publishedYear: doc.year?.first.map(LenientString.init),
+                    description: nil),
                 // ea6e002: the search index carries the runtime for most
                 // items — the card's time line reads it from here.
                 duration: FreeCatalog.runtimeSeconds(doc.runtime), chapters: nil, tracks: nil),

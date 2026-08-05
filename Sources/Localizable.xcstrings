@@ -4794,6 +4794,16 @@
         }
       }
     },
+    "Rights status not stated by the source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtelage von der Quelle nicht angegeben"
+          }
+        }
+      }
+    },
     "Public Domain — free to listen and share" : {
       "localizations" : {
         "de" : {

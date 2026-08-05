@@ -93,7 +93,12 @@ struct FreeCatalogBookTile: View {
             subtitle: item.author,
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             placeholderSystemImage: placeholderSystemImage,
-            meta: bookTimeLine(progress: nil, duration: duration),
+            // 50aefa8: year first, then runtime — for catalog items whose
+            // rights status the source does not state, the year is the only
+            // hint the user has.
+            meta: FreeCatalog.catalogMetaLine(
+                year: item.media?.metadata?.publishedYear?.value,
+                runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces)),
             titleLineLimit: 1,
             // 40b8f96: the LICENCE at a glance — the source follows from the
             // section a tile stands in, the rights situation from nothing.
