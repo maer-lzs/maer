@@ -13,6 +13,9 @@ import OSLog
 /// titles and (after the owner's picture choice) the tab entry.
 nonisolated enum FreeAudiobooksRoute: Hashable {
     case area
+    /// 1790dda: the endless browsing of the LibriVox popularity list — its
+    /// own page, so the overview stays an overview.
+    case allPopular
 }
 
 struct FreeAudiobooksPage: View {
@@ -51,10 +54,20 @@ struct FreeAudiobooksPage: View {
     }
 
     /// The visible cut: everything, or one shelf.
+    ///
+    /// 1790dda: a section WITHOUT genre data stays visible when a shelf is
+    /// chosen instead of emptying itself. Measured in the code: none of the
+    /// sources fills `genres` today (LibriVox included) — filtering them all
+    /// would have made the page emptier the more precisely one chooses, which
+    /// is the worst of the possible behaviours. Where the data arrives later,
+    /// the filter starts working on its own.
     private func onShelf(_ items: [LibraryItem]) -> [LibraryItem] {
         guard let selectedShelf else { return items }
+        let withGenres = items.filter { !genres(of: $0).isEmpty }
+        guard !withGenres.isEmpty else { return items }
         return items.filter {
-            CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: $0)).contains(selectedShelf)
+            let shelves = CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: $0))
+            return shelves.isEmpty || shelves.contains(selectedShelf)
         }
     }
 
@@ -107,7 +120,10 @@ struct FreeAudiobooksPage: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                        Text("Free public-domain audiobooks from LibriVox — separate from your own library.")
+                        // 1790dda: the page carries THREE sources with two
+                        // different rights bases now — the old sentence named
+                        // only LibriVox and claimed public domain for all.
+                        Text("Free audiobooks from LibriVox, Project Gutenberg and the Internet Archive — public domain or openly licensed, separate from your own library.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
@@ -132,23 +148,48 @@ struct FreeAudiobooksPage: View {
                             }
                             .scrollClipDisabled()
                         }
+                        // 1790dda: "Popular" WAS an endless grid in the MIDDLE
+                        // of the page — it grew while scrolling and buried
+                        // everything below it, so the two new sources were
+                        // practically unreachable. This page is an overview of
+                        // THREE sources, not the endless catalogue of one:
+                        // the row is horizontal like its neighbours now, and
+                        // full browsing moved to its own page (the pattern the
+                        // audiobook tab already uses).
                         if !popular.isEmpty {
-                            Text("Popular").font(.title3).bold().padding(.horizontal)
-                            CoverGrid(columns: columns) {
-                                ForEach(onShelf(popular)) { item in
-                                    tile(item)
-                                        .onAppear {
-                                            if item.id == popular.last?.id { Task { await load() } }
-                                        }
+                            HStack {
+                                Text("Popular at LibriVox").font(.title3).bold()
+                                Spacer()
+                                NavigationLink(value: FreeAudiobooksRoute.allPopular) {
+                                    HStack(spacing: 4) {
+                                        Text("Show all").font(.subheadline)
+                                        Image(systemName: "chevron.right").font(.caption)
+                                    }
                                 }
+                                .accessibilityIdentifier("freebooks-show-all")
                             }
                             .padding(.horizontal)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: 14) {
+                                    ForEach(onShelf(popular)) { item in
+                                        tile(item)
+                                            .containerRelativeFrame(.horizontal,
+                                                                    count: CardMetrics.recommendationColumns(regularWidth: false),
+                                                                    spacing: 14)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                            .scrollClipDisabled()
                         }
                         // bca2d20: audiobooks on archive.org OUTSIDE LibriVox
                         // — own section with the licence visible per title
                         // (they are CC-licensed, not public domain).
                         if !archiveBooks.isEmpty {
-                            Text("More free audiobooks").font(.title3).bold().padding(.horizontal)
+                            // 1790dda: name the SOURCE like the neighbouring
+                            // section does — "More free audiobooks" read like
+                            // a leftovers bin.
+                            Text(verbatim: "Internet Archive").font(.title3).bold().padding(.horizontal)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
                                     ForEach(onShelf(archiveBooks)) { item in
@@ -317,5 +358,67 @@ struct FreeAudiobooksPage: View {
             Logger.library.error("FREECAT area-popular FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = newBooks.isEmpty && popular.isEmpty
         }
+    }
+}
+
+/// 1790dda: the full LibriVox popularity list — endless loading belongs on
+/// its OWN page, not in the middle of a three-source overview.
+struct FreeAudiobooksAllPopularPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+    @State private var page = 1
+    @State private var isLoading = false
+    @State private var reachedEnd = false
+    @State private var detailItem: LibraryItem?
+
+    private let pageSize = 30
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(items) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        onTap: { Task { await playerCoordinator.open(item: item) } })
+                    .contextMenu {
+                        Button { detailItem = item } label: {
+                            Label("Details", systemImage: "info.circle")
+                        }
+                    }
+                    .onAppear {
+                        if item.id == items.last?.id { Task { await load() } }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            if isLoading { ProgressView().frame(maxWidth: .infinity).padding() }
+        }
+        .navigationTitle("Popular at LibriVox")
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
+        .task { if items.isEmpty { await load() } }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private func load() async {
+        guard !isLoading, !reachedEnd else { return }
+        isLoading = true
+        defer { isLoading = false }
+        #if DEBUG
+        if UITestSeed.isActive { reachedEnd = true; return }
+        #endif
+        let codes = SuggestionLanguages.current()
+        guard let docs = try? await ArchiveOrgClient.popularLibriVoxByLanguage(
+            rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
+        else { reachedEnd = true; return }
+        let provider = FreeCatalogProvider.shared
+        let new = docs.compactMap { provider.remember(popular: $0) }
+        var seen = Set(items.map(\.id))
+        items += new.filter { seen.insert($0.id).inserted }
+        page += 1
+        if docs.count < pageSize { reachedEnd = true }
     }
 }

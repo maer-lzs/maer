@@ -264,17 +264,24 @@ struct LibraryView: View {
                 // both glasses stack: a dark doubled circle with a tinted
                 // outline ring.
                 if #available(iOS 26.0, *) {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        sortFilterMenu
+                    // 7330cc4 (G8): no button where the menu would be empty.
+                    // The ITEM is conditional, not its content — a ToolbarItem
+                    // with an empty body still occupies its slot.
+                    if hasSortMenu {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            sortFilterMenu
+                        }
+                        .sharedBackgroundVisibility(.hidden)
                     }
-                    .sharedBackgroundVisibility(.hidden)
                     ToolbarItem(placement: .navigationBarTrailing) {
                         settingsLink
                     }
                     .sharedBackgroundVisibility(.hidden)
                 } else {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        sortFilterMenu
+                    if hasSortMenu {
+                        ToolbarItem(placement: .navigationBarLeading) {
+                            sortFilterMenu
+                        }
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         settingsLink
@@ -301,8 +308,13 @@ struct LibraryView: View {
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
             // F4-discovery: radio genre drilldown on the same stack root.
             .radioNavigationDestinations(playerCoordinator: playerCoordinator)
-            .navigationDestination(for: FreeAudiobooksRoute.self) { _ in
-                FreeAudiobooksPage(playerCoordinator: playerCoordinator)
+            .navigationDestination(for: FreeAudiobooksRoute.self) { route in
+                switch route {
+                case .area:
+                    FreeAudiobooksPage(playerCoordinator: playerCoordinator)
+                case .allPopular:
+                    FreeAudiobooksAllPopularPage(playerCoordinator: playerCoordinator)
+                }
             }
         }
         // Buttons inside List rows push routes over this callback instead of a
@@ -1391,10 +1403,27 @@ struct LibraryView: View {
         ]
     }
 
+    /// 7330cc4 (G8): the button is only DRAWN where the menu has content.
+    /// Radio and Home have no sortable library, so the menu was empty — a
+    /// control that looks like a function, can be tapped and does nothing.
+    /// Same rule that gated the chapter button and removed the chevrons.
+    /// The alternative (inventing a radio sort so the button may stay) is
+    /// the wrong direction; the layout does not jump, because the toolbar
+    /// places its items and this one simply is not among them.
+    private var hasSortMenu: Bool {
+        switch selectedMediaType {
+        case .audiobooks, .podcasts, .music: return true
+        case .home, .radio: return false
+        }
+    }
+
     private var sortFilterMenu: some View {
         Menu {
+            // 8be0e17 log-first: the reported "button does nothing" needs the
+            // state it was in — the menu content builds on tap, so this line
+            // fires exactly then.
+            let _ = Logger.library.notice("TOOLBAR sort tapped — barCollapsed=\(BottomBarState.shared.collapsed) tab=\(self.selectedMediaType.rawValue, privacy: .public)")
             // Teil 2: each tab gets its OWN sort/filter menu + persisted state.
-            // The button (position/glass styling) stays identical across tabs.
             switch selectedMediaType {
             case .audiobooks: audiobookSortMenu
             case .podcasts: podcastSortMenu

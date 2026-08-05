@@ -4,242 +4,42 @@
     "" : {
       "shouldTranslate" : false
     },
-    "Adventure" : {
+    "Curated public-broadcast plays, US audio drama and licensed classics." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abenteuer"
+            "value" : "Kuratierte ÖRR-Hörspiele, US-Audiodrama und lizenzierte Klassiker."
           }
         }
       }
     },
-    "Also interesting: Free Audiobooks" : {
+    "Free audiobooks from LibriVox, Project Gutenberg and the Internet Archive — public domain or openly licensed, separate from your own library." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auch interessant: Freie Hörbücher"
+            "value" : "Freie Hörbücher von LibriVox, Project Gutenberg und dem Internet Archive — gemeinfrei oder offen lizenziert, getrennt von deiner eigenen Bibliothek."
           }
         }
       }
     },
-    "Also interesting: Radio Plays" : {
+    "Popular at LibriVox" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Auch interessant: Hörspiele"
+            "value" : "Beliebt bei LibriVox"
           }
         }
       }
     },
-    "Biographies" : {
+    "Show all" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Biografien"
-          }
-        }
-      }
-    },
-    "Comedy Fiction" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Komödie"
-          }
-        }
-      }
-    },
-    "Crime" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Krimi"
-          }
-        }
-      }
-    },
-    "Editorial picks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Redaktionell ausgewählt"
-          }
-        }
-      }
-    },
-    "Fairy Tales" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Märchen"
-          }
-        }
-      }
-    },
-    "For Children" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für Kinder"
-          }
-        }
-      }
-    },
-    "Horror" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Horror"
-          }
-        }
-      }
-    },
-    "Literature" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Literatur"
-          }
-        }
-      }
-    },
-    "More free audiobooks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Weitere freie Hörbücher"
-          }
-        }
-      }
-    },
-    "Nothing in this genre right now." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In diesem Genre gerade nichts."
-          }
-        }
-      }
-    },
-    "Novels" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Romane"
-          }
-        }
-      }
-    },
-    "Philosophy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Philosophie"
-          }
-        }
-      }
-    },
-    "Plays" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Theaterstücke"
-          }
-        }
-      }
-    },
-    "Poetry" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lyrik"
-          }
-        }
-      }
-    },
-    "Public domain" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfrei"
-          }
-        }
-      }
-    },
-    "Radio Play" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörspiel"
-          }
-        }
-      }
-    },
-    "Radio Play Classics (English)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörspiel-Klassiker (englisch)"
-          }
-        }
-      }
-    },
-    "Romance" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Liebesromane"
-          }
-        }
-      }
-    },
-    "Science Fiction" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Science-Fiction"
-          }
-        }
-      }
-    },
-    "Short Stories" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kurzgeschichten"
-          }
-        }
-      }
-    },
-    "The charts could not be loaded. Check your connection." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Charts konnten nicht geladen werden. Prüfe deine Verbindung."
+            "value" : "Alle anzeigen"
           }
         }
       }
@@ -796,6 +596,16 @@
         }
       }
     },
+    "Adventure" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abenteuer"
+          }
+        }
+      }
+    },
     "Albums" : {
       "comment" : "Section title for albums in the car.",
       "isCommentAutoGenerated" : true,
@@ -884,6 +694,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Schon in dieser Bibliothek: %@"
+          }
+        }
+      }
+    },
+    "Also interesting: Free Audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch interessant: Freie Hörbücher"
+          }
+        }
+      }
+    },
+    "Also interesting: Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch interessant: Hörspiele"
           }
         }
       }
@@ -1195,6 +1025,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beste"
+          }
+        }
+      }
+    },
+    "Biographies" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Biografien"
           }
         }
       }
@@ -1529,6 +1369,16 @@
         }
       }
     },
+    "Comedy Fiction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Komödie"
+          }
+        }
+      }
+    },
     "Completed" : {
       "localizations" : {
         "de" : {
@@ -1565,16 +1415,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Mit Audiobookshelf verbinden"
-          }
-        }
-      }
-    },
-    "Devices appear as soon as they are paired and in range." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Geräte erscheinen, sobald sie gekoppelt und in Reichweite sind."
           }
         }
       }
@@ -1819,6 +1659,16 @@
         }
       }
     },
+    "Crime" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Krimi"
+          }
+        }
+      }
+    },
     "Culture" : {
       "localizations" : {
         "de" : {
@@ -2023,6 +1873,16 @@
         }
       }
     },
+    "Devices appear as soon as they are paired and in range." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geräte erscheinen, sobald sie gekoppelt und in Reichweite sind."
+          }
+        }
+      }
+    },
     "Direct stream URLs (e.g. from your AzuraCast or Icecast server) play like any catalog station." : {
       "localizations" : {
         "de" : {
@@ -2193,6 +2053,16 @@
         }
       }
     },
+    "Editorial picks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redaktionell ausgewählt"
+          }
+        }
+      }
+    },
     "Education" : {
       "localizations" : {
         "de" : {
@@ -2319,6 +2189,16 @@
         }
       }
     },
+    "Fairy Tales" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Märchen"
+          }
+        }
+      }
+    },
     "Favorites" : {
       "localizations" : {
         "de" : {
@@ -2375,6 +2255,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abgeschlossene Bücher"
+          }
+        }
+      }
+    },
+    "For Children" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für Kinder"
           }
         }
       }
@@ -2455,16 +2345,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Musik"
-          }
-        }
-      }
-    },
-    "Free public-domain audiobooks from LibriVox — separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie gemeinfreie Hörbücher von LibriVox — getrennt von deiner eigenen Bibliothek."
           }
         }
       }
@@ -2667,6 +2547,16 @@
         }
       }
     },
+    "Horror" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horror"
+          }
+        }
+      }
+    },
     "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page." : {
       "localizations" : {
         "de" : {
@@ -2809,16 +2699,6 @@
         }
       }
     },
-    "Jellyfin server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jellyfin-Server"
-          }
-        }
-      }
-    },
     "Jellyfin Server" : {
       "localizations" : {
         "de" : {
@@ -2951,16 +2831,6 @@
         }
       }
     },
-    "Last sync" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt synchronisiert"
-          }
-        }
-      }
-    },
     "Last Sync" : {
       "localizations" : {
         "de" : {
@@ -3057,6 +2927,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörzeit"
+          }
+        }
+      }
+    },
+    "Literature" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Literatur"
           }
         }
       }
@@ -3191,6 +3071,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Anmeldung fehlgeschlagen — bitte Benutzername und Passwort prüfen."
+          }
+        }
+      }
+    },
+    "Logos for stations without a usable favicon." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logos für Sender ohne brauchbares Favicon."
           }
         }
       }
@@ -3415,6 +3305,16 @@
         }
       }
     },
+    "More free audiobooks" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere freie Hörbücher"
+          }
+        }
+      }
+    },
     "Most Played" : {
       "comment" : "A heading for the most played albums.",
       "isCommentAutoGenerated" : true,
@@ -3463,16 +3363,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Musik-Bibliothek synchronisiert."
-          }
-        }
-      }
-    },
-    "Music server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik-Server"
           }
         }
       }
@@ -4026,6 +3916,16 @@
         }
       }
     },
+    "Nothing in this genre right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In diesem Genre gerade nichts."
+          }
+        }
+      }
+    },
     "Nothing playing yet" : {
       "localizations" : {
         "de" : {
@@ -4076,7 +3976,7 @@
         }
       }
     },
-    "Notify about new episodes" : {
+    "Notify About New Episodes" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4086,12 +3986,12 @@
         }
       }
     },
-    "Notify About New Episodes" : {
+    "Novels" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Über neue Folgen benachrichtigen"
+            "value" : "Romane"
           }
         }
       }
@@ -4422,6 +4322,16 @@
         }
       }
     },
+    "Philosophy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Philosophie"
+          }
+        }
+      }
+    },
     "Pick one or more audio files. Multiple files selected together become a single multi-part audiobook." : {
       "localizations" : {
         "de" : {
@@ -4548,6 +4458,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Playlists"
+          }
+        }
+      }
+    },
+    "Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Theaterstücke"
           }
         }
       }
@@ -4679,6 +4599,16 @@
         }
       }
     },
+    "Poetry" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lyrik"
+          }
+        }
+      }
+    },
     "Pop" : {
       "localizations" : {
         "de" : {
@@ -4750,17 +4680,6 @@
         }
       }
     },
-    "Private" : {
-      "comment" : "Class label for a feed the publisher marked as not publicly listable.",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Privat"
-          }
-        }
-      }
-    },
     "Premium" : {
       "comment" : "A label for premium content.",
       "isCommentAutoGenerated" : true,
@@ -4769,16 +4688,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Premium"
-          }
-        }
-      }
-    },
-    "Premium feed" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Premium-Feed"
           }
         }
       }
@@ -4829,6 +4738,17 @@
         }
       }
     },
+    "Private" : {
+      "comment" : "Class label for a feed the publisher marked as not publicly listable.",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privat"
+          }
+        }
+      }
+    },
     "Progress saved" : {
       "localizations" : {
         "de" : {
@@ -4849,6 +4769,16 @@
         }
       }
     },
+    "Public domain" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei"
+          }
+        }
+      }
+    },
     "Public Domain — free to listen and share" : {
       "localizations" : {
         "de" : {
@@ -4860,11 +4790,22 @@
       }
     },
     "Public domain · LibriVox" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gemeinfrei · LibriVox"
+          }
+        }
+      }
+    },
+    "Public-broadcast content can disappear after fixed periods — downloads keep your copies." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden — Downloads sichern deine Kopien."
           }
         }
       }
@@ -4928,6 +4869,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Radio"
+          }
+        }
+      }
+    },
+    "Radio Play" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiel"
+          }
+        }
+      }
+    },
+    "Radio Play Classics (English)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiel-Klassiker (englisch)"
+          }
+        }
+      }
+    },
+    "Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiele"
           }
         }
       }
@@ -5259,6 +5230,16 @@
         }
       }
     },
+    "Romance" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liebesromane"
+          }
+        }
+      }
+    },
     "RSS feeds" : {
       "localizations" : {
         "de" : {
@@ -5305,6 +5286,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wissenschaft"
+          }
+        }
+      }
+    },
+    "Science Fiction" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Science-Fiction"
           }
         }
       }
@@ -5533,6 +5524,16 @@
         }
       }
     },
+    "Short Stories" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzgeschichten"
+          }
+        }
+      }
+    },
     "Show All (%lld)" : {
       "localizations" : {
         "de" : {
@@ -5549,46 +5550,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Hörbücher anzeigen"
-          }
-        }
-      }
-    },
-    "Logos for stations without a usable favicon." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Logos für Sender ohne brauchbares Favicon."
-          }
-        }
-      }
-    },
-    "Change country" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Land ändern"
-          }
-        }
-      }
-    },
-    "Radio Plays" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hörspiele"
-          }
-        }
-      }
-    },
-    "Public-broadcast content can disappear after fixed periods — downloads keep your copies." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffentlich-rechtliche Inhalte können nach Fristen verschwinden — Downloads sichern deine Kopien."
           }
         }
       }
@@ -6372,6 +6333,16 @@
         }
       }
     },
+    "The charts could not be loaded. Check your connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Charts konnten nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
     "The community station catalog behind the Radio tab." : {
       "localizations" : {
         "de" : {
@@ -7102,16 +7073,6 @@
         }
       }
     },
-    "Your feeds classified as free — pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine frei eingestuften Abos — wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat. Bezahlte Feeds bekommst du meist als persönliche Podcatcher-URL, die du im Konto beim Anbieter kopierst und je Show hinzufügst."
-          }
-        }
-      }
-    },
     "You're not on Wi-Fi. This download may use cellular data." : {
       "localizations" : {
         "de" : {
@@ -7128,6 +7089,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Audiobookshelf-Zugangsdaten. Auf Servern mit dem neuen Token-System kann die Sitzung ablaufen — dort besser einen API-Key verwenden."
+          }
+        }
+      }
+    },
+    "Your feeds classified as free — pick one whose premium access the automatic detection missed. Paid feeds usually come as a personal podcatcher URL you copy from your provider's account page and add per show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine frei eingestuften Abos — wähle einen Feed, dessen Premium-Zugang die automatische Erkennung nicht erkannt hat. Bezahlte Feeds bekommst du meist als persönliche Podcatcher-URL, die du im Konto beim Anbieter kopierst und je Show hinzufügst."
           }
         }
       }
