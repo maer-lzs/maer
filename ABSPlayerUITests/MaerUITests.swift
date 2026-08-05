@@ -15,6 +15,17 @@ import XCTest
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
+    /// 7330cc4: leave the current detail page by its OWN back button. Using
+    /// `app.navigationBars.buttons` by index reaches across every bar in the
+    /// hierarchy — including the library's, whose leading button is present
+    /// only on tabs that have something to sort.
+    private func backOut(_ app: XCUIApplication) {
+        let bar = app.navigationBars.element(boundBy: app.navigationBars.count - 1)
+        let back = bar.buttons.element(boundBy: 0)
+        XCTAssertTrue(back.waitForExistence(timeout: 5), "the detail page must offer a way back")
+        back.tap()
+    }
+
     private func launchSeeded(withActivePlayer: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += ["-uitest"]
@@ -442,7 +453,12 @@ nonisolated final class MaerUITests: XCTestCase {
             XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
                                           timeout: 5), .completed, "the toggle must flip")
             // Back to the settings root (Done lives on ITS toolbar), then out.
-            app.navigationBars.buttons.element(boundBy: 0).tap()
+            // 7330cc4: anchor on the CURRENT navigation bar, not on index 0 of
+            // ALL bars — `app.navigationBars` also sees the library bar behind
+            // the sheet, whose button count varies per tab (the sort button
+            // only exists where there is something to sort). The index was
+            // always fragile; it merely happened to fit.
+            backOut(app)
             let done = app.buttons["settings-done"].firstMatch
             XCTAssertTrue(done.waitForExistence(timeout: 5))
             done.tap()
@@ -789,7 +805,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // rule — it shares homeRecommendations with the Podcasts pill).
         let itunes = app.switches["network-itunes-toggle"].firstMatch
         XCTAssertTrue(itunes.exists, "the Apple-catalog toggle must carry its id")
-        app.navigationBars.buttons.firstMatch.tap()
+        backOut(app)
         // Suggestion languages: row exists, list multi-selects (second pick).
         let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
         XCTAssertTrue(podcastsPill.waitForExistence(timeout: 5)); podcastsPill.tap()
@@ -801,6 +817,41 @@ nonisolated final class MaerUITests: XCTestCase {
                       "language list must offer the choices")
         en.tap(); deRow.tap()   // multi-select: both on (order-independent)
         snap(app, "settings-consolidated")
+    }
+
+    /// 24a220e: the premium management carried two test hooks that no test
+    /// used — and since the identity migration and the twin guard landed
+    /// (730c1cb), that surface deserves a fence. The marking sheet is the
+    /// part a seeded run can reach without a real premium feed: it must
+    /// OPEN (a menu could not carry the explaining line, which is why it
+    /// became a sheet) and list the free subscriptions A→Z.
+    func testPremiumMarkingSheetOpensSorted() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let gear = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(gear.waitForExistence(timeout: 15), "settings must be reachable")
+        gear.tap()
+        let podcastsPill = app.buttons["settings-tab-podcasts"].firstMatch
+        XCTAssertTrue(podcastsPill.waitForExistence(timeout: 10)); podcastsPill.tap()
+
+        let markEntry = app.buttons["premium-mark-menu"].firstMatch
+        guard markEntry.waitForExistence(timeout: 10) else {
+            // Honest skip: without free subscriptions the entry is absent BY
+            // DESIGN (nothing to mark) — that is not a failure, and asserting
+            // it would pin the seed instead of the behaviour.
+            snap(app, "premium-marking-absent")
+            return
+        }
+        markEntry.tap()
+        // The sheet, not a menu: heading + purpose line + the plain list.
+        let picks = app.buttons.matching(identifier: "premium-mark-pick")
+        XCTAssertTrue(picks.firstMatch.waitForExistence(timeout: 10),
+                      "the marking sheet must list the free subscriptions")
+        // A→Z: the visible titles come sorted (the old menu used stock order).
+        let titles = (0..<min(picks.count, 6)).map { picks.element(boundBy: $0).label }
+        XCTAssertEqual(titles, titles.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending },
+                       "the list must be alphabetical — it was stock order before")
+        snap(app, "premium-marking-sheet")
     }
 
     /// M5-Nachbesserung (580e9c3): ONE term that hits album + song + playlist
