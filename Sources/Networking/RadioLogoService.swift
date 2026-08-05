@@ -98,10 +98,20 @@ actor RadioLogoService {
         }
     }
 
+    /// bc11ed5: the 1 s spacing was inherited from the MusicBrainz manners,
+    /// but this chain talks to Wikidata/Commons and station homepages — none
+    /// of which asks for one request per second. Measured effect of the old
+    /// value: with a screen full of tiles the fourth station's turn came
+    /// minutes late, by which time SwiftUI had cancelled its `.task`. Still
+    /// polite, just not artificially slow.
+    private static let politeSpacing: TimeInterval = 0.34
+    /// Testable mirror of the spacing above.
+    nonisolated static var politeSpacingSeconds: TimeInterval { politeSpacing }
+
     private func politeDelay() async {
         let elapsed = Date().timeIntervalSince(lastRequest)
-        if elapsed < 1.0 {
-            try? await Task.sleep(nanoseconds: UInt64((1.0 - elapsed) * 1_000_000_000))
+        if elapsed < Self.politeSpacing {
+            try? await Task.sleep(nanoseconds: UInt64((Self.politeSpacing - elapsed) * 1_000_000_000))
         }
         lastRequest = Date()
     }
@@ -134,13 +144,33 @@ actor RadioLogoService {
 
     /// The resolved logo URL for a station, chain order fixed; every outcome
     /// (incl. nil) is session-cached.
+    /// bc11ed5: resolving must SURVIVE the caller. A tile's `.task` is
+    /// cancelled the moment it scrolls off screen — with the queue in front
+    /// of it, the work was thrown away just before it finished, over and
+    /// over, and nothing was ever written down. The chain therefore runs in
+    /// its own task; the caller may go, the result stays.
+    private var inFlight: [String: Task<URL?, Never>] = [:]
+
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
         if let cached = cache[stationID] { return cached }
+        if let running = inFlight[stationID] { return await running.value }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
         // 95c5c16 (3): offline ⇒ do not run the chain at all. No result, no
         // booking — otherwise a flight-mode session burns every station in.
         guard await NetworkMonitor.shared.isConnected else { return nil }
+        let task = Task { [weak self] () -> URL? in
+            guard let self else { return nil }
+            return await self.runChain(stationID: stationID, name: name, homepage: homepage)
+        }
+        inFlight[stationID] = task
+        let result = await task.value
+        inFlight[stationID] = nil
+        return result
+    }
+
+    /// The chain proper — deliberately NOT cancellable from the outside.
+    private func runChain(stationID: String, name: String, homepage: String?) async -> URL? {
         let outcome = await resolve(name: name, homepage: homepage)
         switch outcome {
         case .hit(let url):

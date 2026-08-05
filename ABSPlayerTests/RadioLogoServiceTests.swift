@@ -49,6 +49,17 @@ struct RadioLogoCacheTests {
         #expect(read(defaults).count == 1)
     }
 
+    @Test("bc11ed5: the politeness spacing leaves room for a screen full of tiles")
+    func politeSpacing() {
+        // The old 1 s came from the MusicBrainz manners; this chain talks to
+        // Wikidata/Commons. With a screenful of tiles the fourth station's
+        // turn came minutes late — long after SwiftUI cancelled its task.
+        #expect(RadioLogoService.politeSpacingSeconds < 0.5)
+        #expect(RadioLogoService.politeSpacingSeconds > 0.2)   // still polite
+        // A screen of ~12 tiles must drain in seconds, not minutes.
+        #expect(12 * RadioLogoService.politeSpacingSeconds < 5)
+    }
+
     @Test("a failed fetch is not a finding — only a clean no-hit may be booked")
     func failureIsNotANegative() {
         // The rule as a pure decision, so it holds independently of the network.

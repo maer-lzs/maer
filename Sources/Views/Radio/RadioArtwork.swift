@@ -29,7 +29,10 @@ struct RadioArtwork: View {
         Group {
             if isHero { hero } else { thumbnail }
         }
-        .task(id: faviconURL) {
+        // bc11ed5: the id keys on the STATION, not the favicon URL — a
+        // station without one is exactly the case that needs the chain, and
+        // keying on nil made every logo-less tile share one task identity.
+        .task(id: stationID) {
             gatedFavicon = .some(await RadioArtwork.gatedImage(for: faviconURL, stationID: stationID))
         }
     }
