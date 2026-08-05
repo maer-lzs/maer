@@ -43,6 +43,37 @@ struct OffMainDecodeTests {
         )
     }
 
+    /// df0b3bb: what lies untouched for weeks is not "Continue" any more, it is
+    /// a case for Rediscover — the SAME threshold (RediscoverSections.pausedAfter),
+    /// not a second constant. Plus the lesson from 49dc2c3: a missing or
+    /// placeholder stamp means UNKNOWN, and unknown must not be treated as old.
+    @Test("Continue drops genuinely stale entries but keeps undated ones")
+    func continueAgeCutoff() async {
+        let now = Date().timeIntervalSince1970
+        let items = [entry("fresh", title: "Fresh", added: 10),
+                     entry("stale", title: "Stale", added: 20),
+                     entry("undated", title: "Undated", added: 30)]
+        let progress = [
+            "fresh": BookProgress(fraction: 0.3, isFinished: false,
+                                  lastUpdate: now - 60),
+            // A REAL date, four weeks back — past the three-week threshold.
+            "stale": BookProgress(fraction: 0.3, isFinished: false,
+                                  lastUpdate: now - RediscoverSections.pausedAfter - 86_400 * 7),
+            // No date recorded at all: still started, so it stays.
+            "undated": BookProgress(fraction: 0.3, isFinished: false, lastUpdate: 0),
+        ]
+        let input = LibraryViewModel.RebuildInput(
+            items: items, progress: progress, queued: [:],
+            localCache: [], seedContinue: [], seedRecent: [],
+            sort: .titel, ascending: true, filter: .alle, downloadedIds: []
+        )
+        let output = await Task.detached { LibraryViewModel.computeRebuild(input) }.value
+        let ids = Set(output.continueListening.map(\.id))
+        #expect(ids.contains("fresh"))
+        #expect(ids.contains("undated"))
+        #expect(!ids.contains("stale"))
+    }
+
     @Test("computeRebuild output matches the on-main derivation rules")
     func rebuildSnapshotEquivalence() async {
         let items = [entry("b1", title: "Zeta", added: 10),

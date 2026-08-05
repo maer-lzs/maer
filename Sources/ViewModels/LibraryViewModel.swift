@@ -855,6 +855,10 @@ final class LibraryViewModel: ObservableObject {
     /// S6: the expensive part of a rebuild — makeEntry over every item, the
     /// Continue/Recently unions and sorts, AND the memoized derived lists — runs
     /// OFF the main actor over the snapshot; the main actor only assigns.
+    /// df0b3bb: below this a timestamp is a placeholder, not a date
+    /// (2000-01-01). Seeded and never-synced entries carry small values.
+    nonisolated static let plausibleTimestampFloor: Double = 946_684_800
+
     nonisolated static func computeRebuild(_ input: RebuildInput) -> RebuildOutput {
         let combined = input.items.map {
             makeEntry(item: $0, progress: input.progress, queued: input.queued)
@@ -875,7 +879,29 @@ final class LibraryViewModel: ObservableObject {
             let e = makeEntry(item: item, progress: input.progress, queued: input.queued)
             if e.progress?.isStarted ?? false { continueById[e.id] = e }
         }
+        // df0b3bb: two things were missing here, and their absence was not a
+        // concept — `recentlyAdded` two lines below has had a cap all along.
+        // (1) AGE: what has lain untouched for longer is not "continue" any
+        //     more, it is a case for Rediscover — which owns that mechanic
+        //     including the threshold. Same constant reused, no second one
+        //     invented, so a title cannot sit in both rows at once.
+        // (2) CAP: a row is the preview of a page (3a3b1aa); the complete
+        //     stock belongs behind the chevron.
+        let continueCutoff = Date().timeIntervalSince1970 - RediscoverSections.pausedAfter
         let continueListening = continueById.values
+            .filter { entry in
+                let last = entry.progress?.lastUpdate ?? 0
+                // Timestamps arrive in seconds or milliseconds (ABS) — the
+                // same normalisation the Rediscover source uses.
+                let seconds = last > 4_000_000_000 ? last / 1000 : last
+                // 49dc2c3's lesson, applied here: UNKNOWN is not OLD. A missing
+                // or implausible stamp (0, or anything before 2000 — seeds and
+                // entries the server never dated) means "no date recorded". A
+                // started book must not vanish from Continue just because
+                // nobody wrote down when. Only a REAL date can be too old.
+                guard seconds > Self.plausibleTimestampFloor else { return true }
+                return seconds >= continueCutoff
+            }
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
 
         var recentById = byId

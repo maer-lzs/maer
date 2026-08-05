@@ -36,7 +36,7 @@ struct LatestEpisodesGrid: View {
         let rows = expanded ? 6 : 2
         let shown = Array(items.prefix(cols * rows))
         VStack(alignment: .leading, spacing: 10) {
-            Text("Latest Episodes").font(.title3).bold().padding(.horizontal)
+            RowHeading.plain("Latest Episodes")
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: cols),
                 alignment: .leading, spacing: 14

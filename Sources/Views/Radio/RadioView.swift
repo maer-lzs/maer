@@ -178,7 +178,7 @@ struct RadioView: View {
 
     private var genreSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("By Genre").font(.title3).bold().padding(.horizontal)
+            RowHeading.plain("By Genre")
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
                       spacing: 12) {
                 ForEach(RadioCatalog.genres) { genre in
@@ -274,7 +274,7 @@ struct RadioView: View {
             }
         } else if !availableStates.isEmpty, networkMonitor.isConnected {
             VStack(alignment: .leading, spacing: 8) {
-                Text("From Your Region").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("From Your Region")
                 // b1ab99d: the picker is a SHEET now — a Menu cannot carry the
                 // required search field or the country layer.
                 Button {

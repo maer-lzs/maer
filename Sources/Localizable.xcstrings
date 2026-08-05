@@ -5648,6 +5648,16 @@
         }
       }
     },
+    "Shows the full list" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zeigt die vollständige Liste"
+          }
+        }
+      }
+    },
     "Shows the Rediscover and Discover sections on Home. Suggestions are computed on this device; no listening profile leaves it. Source: %@." : {
       "localizations" : {
         "de" : {

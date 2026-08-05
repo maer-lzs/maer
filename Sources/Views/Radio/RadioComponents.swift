@@ -162,7 +162,9 @@ struct RadioCardRow: View {
             Text(title).font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 14) {
-                    ForEach(stations) { station in
+                    // 6fcb301: the radio card rows ran UNCAPPED — part of why
+                    // the cold start felt sluggish (every station a cell).
+                    ForEach(RowPreview.cut(stations)) { station in
                         RadioStationCard(station: station, playerCoordinator: playerCoordinator,
                                          onFavoriteToggled: onFavoriteToggled)
                     }

@@ -297,7 +297,7 @@ struct MusicGenreDetailPage: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                         if !albums.isEmpty {
-                            Text("Albums").font(.title3).bold().padding(.horizontal)
+                            RowHeading.plain("Albums")
                             CoverGrid(columns: albumColumns) {
                                 ForEach(albums) { album in
                                     AlbumCell(item: album, playerCoordinator: playerCoordinator)
@@ -306,7 +306,7 @@ struct MusicGenreDetailPage: View {
                             .padding(.horizontal)
                         }
                         if !songs.isEmpty {
-                            Text("Songs").font(.title3).bold().padding(.horizontal)
+                            RowHeading.plain("Songs")
                             LazyVStack(alignment: .leading, spacing: 0) {
                                 ForEach(songs) { entry in
                                     MusicSongRow(entry: entry, playerCoordinator: playerCoordinator)

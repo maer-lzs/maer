@@ -134,7 +134,7 @@ struct FreeAudiobooksPage: View {
                         // loaded stock actually fills them (no empty chips).
                         if !shelves.isEmpty { shelfRow }
                         if !newBooks.isEmpty {
-                            Text("New at LibriVox").font(.title3).bold().padding(.horizontal)
+                            RowHeading.plain("New at LibriVox")
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
                                     ForEach(onShelf(newBooks)) { item in

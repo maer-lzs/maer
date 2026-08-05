@@ -243,7 +243,7 @@ struct MusicArtistView: View {
         if !topSongs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 // 9ac20e5: server topSongs (global charts) — honest label.
-                Text("Popular Songs").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Popular Songs")
                 ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, entry in
                     Button {
                         Task { await playerCoordinator.open(item: entry.item) }
@@ -279,7 +279,7 @@ struct MusicArtistView: View {
     private var similarSection: some View {
         if !similarInLibrary.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Similar Artists").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Similar Artists")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(similarInLibrary) { similar in

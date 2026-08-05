@@ -209,10 +209,11 @@ struct PodcastsView: View {
     private var nextUpSection: some View {
         if !nextUp.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Continue").font(.title2).bold().padding(.horizontal)
+                RowHeading.plain("Continue", font: .title2)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(nextUp) { item in
+                        // 6fcb301: preview cap for every row of this tab.
+                        ForEach(RowPreview.cut(nextUp)) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
                     }
@@ -268,10 +269,10 @@ struct PodcastsView: View {
         // conditional if-!isEmpty card-row insert IS the shift).
         if !recommendationItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Recommended").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Recommended")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(recommendationItems) { r in
+                        ForEach(RowPreview.cut(recommendationItems)) { r in
                             recommendationTile(r)
                                 // Kachel-Auftrag: screen-relative slots + peek
                                 // instead of the fixed 126 pt.
@@ -317,6 +318,11 @@ struct PodcastsView: View {
                     columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
                     alignment: .leading, spacing: 18
                 ) {
+                    // 6fcb301 gilt fuer VORSCHAU-Reihen — dieses Raster ist
+                    // keine: es IST die Abo-Sammlung des Tabs (die Sortierung
+                    // im Kopf wirkt genau hier), das Podcast-Gegenstueck zu
+                    // "Alle Buecher". Ein Deckel haette ab dem 13. Abo Feeds
+                    // unerreichbar gemacht — es gibt keine Flaeche dahinter.
                     ForEach(recentShows) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
                             RecentShowTile(info: info)
@@ -347,7 +353,7 @@ struct PodcastsView: View {
                     .font(.title3).bold().padding(.horizontal)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(shows) { show in
+                        ForEach(RowPreview.cut(shows)) { show in
                             NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
                                 ShowTile(show: show)
                             }
@@ -393,7 +399,7 @@ struct PodcastsView: View {
             let limit = horizontalSizeClass == .regular ? 6 : 3
             let shown = downloadedExpanded ? downloaded : Array(downloaded.prefix(limit))
             VStack(alignment: .leading, spacing: 8) {
-                Text("Downloaded").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Downloaded")
                 LazyVStack(spacing: 0) {
                     ForEach(shown) { item in
                         PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)

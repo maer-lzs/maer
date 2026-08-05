@@ -19,6 +19,11 @@ struct HomeView: View {
     /// matching FeaturedCard (book vs podcast) in the view (Regel 2: same cards
     /// as the library tabs, no Home-specific component).
     @State private var continueIds: [String] = []
+    /// 3a3b1aa: the row is a preview — its PAGE needs the uncapped stock. Kept
+    /// beside the row's list (not derived from it) because the row's own cap is
+    /// a curation (max 2 music cards), which a full list must not inherit.
+    @State private var continueIdsAll: [String] = []
+    @State private var recentlyAddedAll: [String] = []
     /// Package 3: progress per in-progress music playlist (id → progress), so a
     /// playlist continue card can show its bar and resume at the right spot.
     @State private var musicContinueProgress: [String: BookProgress] = [:]
@@ -132,6 +137,15 @@ struct HomeView: View {
         // Home hangs on the SHARED bottom bar like every tab — only the visible
         // one reports (active-gate). Transition/feedback edge untouched.
         .reportsBottomBarScroll(active: isActive)
+        // 3a3b1aa: a Home row's page. Registered HERE, not on the stack root,
+        // because the page needs Home's own state (the music progress map is
+        // fetched in compute() — the root has no access to it and re-fetching
+        // for a push would hit the network on a tap).
+        .navigationDestination(for: MixedRowRoute.self) { route in
+            MixedMediaPage(route: route, musicProgress: musicContinueProgress,
+                           playerCoordinator: playerCoordinator,
+                           libraryViewModel: libraryViewModel)
+        }
         .task(id: recomputeToken) {
             guard isActive else { return }
             await compute()
@@ -153,14 +167,23 @@ struct HomeView: View {
     /// the library tabs use — BookFeaturedCard for books, PodcastFeaturedCard for
     /// episodes — mixed in one horizontal carousel, ranked by last played. Cards
     /// mean "started"; the rows below (Up Next) mean "planned". No new component.
+
     @ViewBuilder
     private var continueSection: some View {
         if !continueIds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Continue").font(.title2).bold().padding(.horizontal)
+                // G8: chevron only when the page holds more than the row shows.
+                // `shown` is the ACTUAL visible count — Home's own cap (10)
+                // bites before RowPreview's (12), so deriving it is the only
+                // way the rule stays true when either number changes.
+                RowHeading(title: "Continue", font: .title2,
+                           total: continueIdsAll.count,
+                           shown: RowPreview.cut(continueIds).count,
+                           destination: MixedRowRoute.continueListening(continueIdsAll))
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(continueIds, id: \.self) { id in
+                        // 6fcb301: preview cap — the row is not the shelf.
+                        ForEach(RowPreview.cut(continueIds), id: \.self) { id in
                             continueCard(id)
                         }
                     }
@@ -176,22 +199,10 @@ struct HomeView: View {
     /// card, anything else (a podcast episode) → the podcast card.
     @ViewBuilder
     private func continueCard(_ id: String) -> some View {
-        if let entry = libraryViewModel.entry(id: id) {
-            BookFeaturedCard(entry: entry,
-                             playerCoordinator: playerCoordinator,
-                             libraryViewModel: libraryViewModel)
-        } else if AppSession.shared.musicProvider.owns(itemId: id),
-                  [.playlist, .album].contains(AppSession.shared.musicProvider.kind(of: id)),
-                  let item = AppSession.shared.libraryItem(forId: id) {
-            // Package 3 + M1: playlists AND albums resume here (mosaic for
-            // playlists, the album cover for albums — the card degrades to a
-            // single-cover fill on its own).
-            MusicContinueCard(item: item,
-                              progress: musicContinueProgress[id],
-                              playerCoordinator: playerCoordinator)
-        } else if let item = AppSession.shared.libraryItem(forId: id) {
-            PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
-        }
+        // The card itself lives in MixedMediaPage.swift — row and page share it.
+        HomeContinueCard(id: id, musicProgress: musicContinueProgress[id],
+                         playerCoordinator: playerCoordinator,
+                         libraryViewModel: libraryViewModel)
     }
 
     /// "Up Next" — the global PlayQueue, same row component as the queue page.
@@ -200,7 +211,7 @@ struct HomeView: View {
         let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Up Next").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Up Next")
                 LazyVStack(spacing: 0) {
                     ForEach(items.prefix(5)) { item in
                         PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
@@ -255,7 +266,7 @@ struct HomeView: View {
         let shown = discoverShown
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Discover").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Discover")
                 // Y2a: horizontally scrollable, the FULL recommendation pool —
                 // one shared tile with the podcast tab (RecommendationTile);
                 // its tap opens the temporary show preview.
@@ -316,10 +327,10 @@ struct HomeView: View {
     private var rediscoverSection: some View {
         if !rediscoverPicks.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Rediscover").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Rediscover")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(rediscoverPicks, id: \.id) { pick in
+                        ForEach(RowPreview.cut(rediscoverPicks), id: \.id) { pick in
                             rediscoverTile(pick)
                                 // Kachel-Auftrag: screen-relative slots + peek
                                 // instead of the fixed 140 pt.
@@ -408,7 +419,10 @@ struct HomeView: View {
     private var recentlyAddedSection: some View {
         if !recentlyAddedItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Recently Added").font(.title3).bold().padding(.horizontal)
+                RowHeading(title: "Recently Added",
+                           total: recentlyAddedAll.count,
+                           shown: RowPreview.cut(recentlyAddedItems).count,
+                           destination: MixedRowRoute.recentlyAdded(recentlyAddedAll))
                 ScrollView(.horizontal, showsIndicators: false) {
                     // TF4/E4: LazyHStack (was eager). The lazy variant used to freeze
                     // the shelf height on the first cell and clip taller ones — an
@@ -416,7 +430,7 @@ struct HomeView: View {
                     // the text block scales with Dynamic Type, so every cell is the
                     // same height and none clips.
                     LazyHStack(alignment: .top, spacing: 16) {
-                        ForEach(recentlyAddedItems) { item in
+                        ForEach(RowPreview.cut(recentlyAddedItems)) { item in
                             recentlyAddedTile(item)
                                 .frame(width: 150, height: recentlyAddedCellHeight, alignment: .top)
                         }
@@ -434,10 +448,10 @@ struct HomeView: View {
     private var recentMusicSection: some View {
         if !recentMusicItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Recently Played (Music)").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Recently Played (Music)")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {
-                        ForEach(recentMusicItems) { item in
+                        ForEach(RowPreview.cut(recentMusicItems)) { item in
                             AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
                                 .frame(width: 150, alignment: .top)
                         }
@@ -452,12 +466,8 @@ struct HomeView: View {
     /// otherwise (an album) → the album cell.
     @ViewBuilder
     private func recentlyAddedTile(_ item: LibraryItem) -> some View {
-        if let entry = libraryViewModel.entry(id: item.id) {
-            BookGridCell(entry: entry, width: 150,
-                         playerCoordinator: playerCoordinator, libraryViewModel: libraryViewModel)
-        } else {
-            AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
-        }
+        HomeRecentlyAddedTile(item: item, playerCoordinator: playerCoordinator,
+                              libraryViewModel: libraryViewModel)
     }
 
     private var emptyState: some View {
@@ -505,6 +515,9 @@ struct HomeView: View {
         let rankedContinue = HomeSections.cappedShare(
             HomeSections.byRecency([books, episodes, music], limit: 24),
             capped: musicIds, cap: HomeSections.continueMusicCap, limit: 10)
+        // 3a3b1aa: the same ranking WITHOUT the row's curation — the page shows
+        // everything that is actually in progress, the row shows a preview of it.
+        let allContinue = HomeSections.byRecency([books, episodes, music], limit: 200)
 
         // Radio on Home: cheap sync read; empty when the source is off, so the
         // pure gating hides the section (no placeholder). Applied with the
@@ -532,6 +545,9 @@ struct HomeView: View {
         await freeCatalogStore.ensureLoaded()
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
+        // Uncapped counterpart for the page behind the row (3a3b1aa).
+        let allAddedIds = HomeSections.interleave(
+            [bookItems.map(\.id), newAlbums.map(\.id)], limit: 200)
 
         // X26: precompute the continue-card accents before they render.
         for id in rankedContinue {
@@ -551,6 +567,8 @@ struct HomeView: View {
         let apply: @MainActor () -> Void = {
             radioRecents = radio
             continueIds = rankedContinue
+            continueIdsAll = allContinue
+            recentlyAddedAll = allAddedIds
             musicContinueProgress = musicProgress
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems

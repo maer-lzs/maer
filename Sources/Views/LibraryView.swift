@@ -308,6 +308,17 @@ struct LibraryView: View {
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
             // F4-discovery: radio genre drilldown on the same stack root.
             .radioNavigationDestinations(playerCoordinator: playerCoordinator)
+            // 3a3b1aa: a capped row's heading pushes its full list. The
+            // destination is the SHARED BrowseBooksScreen — same grid, same
+            // cell, same paging behaviour as the browse surfaces (Regel 2).
+            .navigationDestination(for: LibraryListRoute.self) { route in
+                BrowseBooksScreen(
+                    title: route.title,
+                    entries: entries(for: route),
+                    playerCoordinator: playerCoordinator,
+                    libraryViewModel: viewModel
+                )
+            }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
                 switch route {
                 case .area:
@@ -1181,12 +1192,16 @@ struct LibraryView: View {
 
     private var recentlyAddedGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Recently Added").font(.title3).bold().padding(.horizontal)
+            RowHeading(title: "Recently Added",
+                       total: viewModel.recentlyAdded.count,
+                       shown: RowPreview.cut(viewModel.recentlyAdded).count,
+                       destination: LibraryListRoute.recentlyAdded)
             ScrollView(.horizontal, showsIndicators: false) {
                 // Eager HStack: the lazy variant froze the shelf height on the
                 // first measured cell and clipped taller cells' last text line.
                 HStack(alignment: .top, spacing: 16) {
-                    ForEach(viewModel.recentlyAdded) { entry in
+                    // 6fcb301: this row was the last uncapped one in the tab.
+                    ForEach(RowPreview.cut(viewModel.recentlyAdded)) { entry in
                         BookGridCell(entry: entry, width: 180,
                                      playerCoordinator: playerCoordinator, libraryViewModel: viewModel)
                     }
@@ -1200,10 +1215,15 @@ struct LibraryView: View {
 
     private var continueFeaturedSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Continue").font(.title2).bold().padding(.horizontal)
+            // 6fcb301/3a3b1aa: the row is a PREVIEW — capped, and the chevron
+            // appears only when something is actually hidden behind it.
+            RowHeading(title: "Continue", font: .title2,
+                       total: viewModel.continueListening.count,
+                       shown: RowPreview.cut(viewModel.continueListening).count,
+                       destination: LibraryListRoute.continueListening)
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
-                    ForEach(viewModel.continueListening) { entry in
+                    ForEach(RowPreview.cut(viewModel.continueListening)) { entry in
                         BookFeaturedCard(entry: entry,
                                          playerCoordinator: playerCoordinator,
                                          libraryViewModel: viewModel)
@@ -1554,6 +1574,15 @@ struct LibraryView: View {
     /// narrow iPhone).
     /// `pagedTotal` > entries.count arms the staged-paging advance sentinel
     /// (cb1f658 2); callers with full lists (series detail) pass nothing.
+    /// The full list behind a capped row (3a3b1aa). Read live from the view
+    /// model, so the page tracks the same source its preview row does.
+    private func entries(for route: LibraryListRoute) -> [LibraryEntry] {
+        switch route {
+        case .continueListening: viewModel.continueListening
+        case .recentlyAdded:     viewModel.recentlyAdded
+        }
+    }
+
     private func bookGrid(_ entries: [LibraryEntry], pagedTotal: Int? = nil) -> some View {
         let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
         return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {

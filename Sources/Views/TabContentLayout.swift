@@ -19,6 +19,82 @@ enum TabContentLayout {
 /// surface (Regel 2 — the Featured card and the Recommended tile were each used
 /// at two sizes). First step only — a device-loop CANDIDATE; the owner tunes the
 /// exact factor on the device.
+/// 6fcb301: THE cap for horizontal preview rows. Until now caps were the
+/// exception — `prefix(` appeared once in HomeView, three times in
+/// LibraryView, once in PodcastsView and NOT AT ALL in Music and Radio, with
+/// scattered numbers (5, 15) that shared no basis. That explains several
+/// findings of this week at once: "Fortsetzen" grew without bound, the radio
+/// cold start was sluggish, the audiobook page loaded endlessly.
+///
+/// A row is the PREVIEW of a page (3a3b1aa) — the complete stock belongs
+/// behind the chevron, not in the preview.
+nonisolated enum RowPreview {
+    /// 12 shows four screens' worth on a phone (3 columns) and two on a
+    /// regular width (6) — enough to feel like a shelf, few enough to scroll
+    /// past in a flick. Deliberately BELOW the 15 that "Recently added"
+    /// happened to use, because that number was never chosen either.
+    static let limit = 12
+
+    /// G8: the chevron appears ONLY when there is more than the row shows.
+    /// A row of three radio recents out of three total stays plain — the
+    /// same rule the empty sort menu just failed.
+    static func showsChevron(total: Int, shown: Int = limit) -> Bool {
+        total > shown
+    }
+
+    /// The preview cut of a collection.
+    static func cut<T>(_ items: [T], to limit: Int = limit) -> [T] {
+        Array(items.prefix(limit))
+    }
+}
+
+/// 3a3b1aa/6fcb301: THE row heading, shared by every tab. Plain text while the
+/// row shows all there is; a tappable heading with a chevron as soon as
+/// something is hidden behind it (G8 — no affordance without a target).
+///
+/// One component instead of a per-tab rebuild (Regel 2), so the rule cannot
+/// drift apart between rows: whether a chevron appears is decided by
+/// `RowPreview.showsChevron`, never by the call site.
+struct RowHeading<Destination: Hashable>: View {
+    let title: LocalizedStringKey
+    var font: Font = .title3
+    /// The FULL stock behind the row — not the cut count.
+    var total: Int = 0
+    var shown: Int = RowPreview.limit
+    /// nil means "this row has no page" — then it stays plain even if the cap
+    /// bites, because a chevron that leads nowhere is the very thing G8 forbids.
+    var destination: Destination?
+
+    var body: some View {
+        if let destination, RowPreview.showsChevron(total: total, shown: shown) {
+            // Value-based push: the destination is registered once on the stack
+            // root, so the same heading works from Home and from a media tab.
+            NavigationLink(value: destination) {
+                HStack(spacing: 6) {
+                    Text(title).font(font).bold()
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(Text("Shows the full list"))
+        } else {
+            Text(title).font(font).bold().padding(.horizontal)
+        }
+    }
+}
+
+extension RowHeading where Destination == LibraryListRoute {
+    /// A row that already shows everything it has: heading only, no target.
+    /// Spelled out at the call site so "no chevron" reads as a decision.
+    static func plain(_ title: LocalizedStringKey, font: Font = .title3) -> Self {
+        RowHeading(title: title, font: font, total: 0, destination: nil)
+    }
+}
+
 enum CardMetrics {
     /// Large "Featured" continue-cards — books AND podcasts share this, so the
     /// two never drift apart (235 → 211, ×0.9).

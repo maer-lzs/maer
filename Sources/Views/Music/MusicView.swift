@@ -181,7 +181,9 @@ struct MusicView: View {
             Text(title).font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
-                    ForEach(items) { item in
+                    // 6fcb301: music shelves ran UNCAPPED — every shelf built
+                    // a cell per album of the library. A row is a preview.
+                    ForEach(RowPreview.cut(items)) { item in
                         AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
                     }
                 }
@@ -212,7 +214,7 @@ struct MusicView: View {
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
-            Text("Playlists").font(.title3).bold().padding(.horizontal)
+            RowHeading.plain("Playlists")
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     ForEach(sortedPlaylists) {

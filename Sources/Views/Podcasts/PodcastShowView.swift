@@ -264,7 +264,7 @@ struct PodcastShowView: View {
                 Text("All feed episodes are on the server.")
                     .font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
             } else {
-                Text("Available episodes").font(.title3).bold().padding(.horizontal)
+                RowHeading.plain("Available episodes")
                 LazyVStack(spacing: 0) {
                     ForEach(available) { ep in
                         // Tap = stream immediately from the original host (rss:

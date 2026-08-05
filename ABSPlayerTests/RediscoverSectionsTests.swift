@@ -259,6 +259,23 @@ struct PodcastCategoryMappingTests {
         #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
     }
 
+    @Test("6fcb301: one cap for every preview row, chevron only when there is more")
+    func rowPreview() {
+        #expect(RowPreview.limit == 12)
+        // The cut never grows the collection and never exceeds the cap.
+        #expect(RowPreview.cut(Array(1...50)).count == 12)
+        #expect(RowPreview.cut(Array(1...5)).count == 5)
+        #expect(RowPreview.cut([Int]()).isEmpty)
+        // G8: a chevron only where something is hidden.
+        #expect(RowPreview.showsChevron(total: 13))
+        #expect(!RowPreview.showsChevron(total: 12))
+        #expect(!RowPreview.showsChevron(total: 3))
+        #expect(!RowPreview.showsChevron(total: 0))
+        // Rows with their own cap pass it (radio recents ring = 8).
+        #expect(!RowPreview.showsChevron(total: 8, shown: 8))
+        #expect(RowPreview.showsChevron(total: 9, shown: 8))
+    }
+
     @Test("757e2eb: a language spans several storefronts, primary always first")
     func storefronts() {
         // English deviates by up to 56 % between US and NZ — asking only the
