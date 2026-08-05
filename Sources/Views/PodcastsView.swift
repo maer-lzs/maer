@@ -323,7 +323,12 @@ struct PodcastsView: View {
 
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
-        if !recentShows.isEmpty {
+        // fb21fbd Falle: the control now lives IN this section, so gating the
+        // section on a non-empty grid would hide the only way back out of a
+        // filter that matches nothing — and the filter is persisted, so it
+        // would survive a restart. The section therefore also shows while a
+        // filter is active, then with a reason instead of tiles.
+        if !recentShows.isEmpty || podcastFilter != .alle {
             VStack(alignment: .leading, spacing: 12) {
                 // Heading reflects the active grid sort (Teil 2); default sort's
                 // label is "Recently Updated", so the default look is unchanged.
@@ -360,6 +365,12 @@ struct PodcastsView: View {
                     }
                 }
                 .padding(.horizontal)
+                if recentShows.isEmpty {
+                    Text("No show matches this filter")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                }
             }
         }
     }

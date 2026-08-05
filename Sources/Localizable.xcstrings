@@ -3746,6 +3746,16 @@
         }
       }
     },
+    "No show matches this filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Sendung passt zu diesem Filter"
+          }
+        }
+      }
+    },
     "No music" : {
       "localizations" : {
         "de" : {
