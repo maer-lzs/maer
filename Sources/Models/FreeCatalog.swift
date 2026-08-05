@@ -254,6 +254,15 @@ nonisolated enum FreeCatalog {
     /// texts ("Navaho Legends", "The Lhota Nagas") — those would go wrong in
     /// an audiobook row. Same class as the LibriVox junk filter: the path
     /// tells them apart, no guessing needed.
+    /// The cover that rides in Gutendex' `formats` map. Pure so the choice of
+    /// key (and the https guard) is testable — measured 05.08.: every entry on
+    /// page 1 carries `image/jpeg`.
+    static func gutenbergCoverURL(formats: [String: String]?) -> URL? {
+        guard let raw = formats?["image/jpeg"] ?? formats?["image/png"],
+              let url = URL(string: raw), url.scheme == "https" else { return nil }
+        return url
+    }
+
     static func isGutenbergAudiobook(_ audioURL: String) -> Bool {
         !audioURL.contains("-h/audio/")
     }

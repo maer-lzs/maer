@@ -300,6 +300,23 @@ struct PodcastCategoryMappingTests {
         #expect(ContinueHidden.pruned(markers, progress: [:])["b1"] != nil)
     }
 
+    /// the owner 05.08. (Geraet): Gutenberg tiles had no covers. The url was in
+    /// the Gutendex answer all along — measured before the fix: 32/32 entries
+    /// carry image/jpeg, and the urls answer 200.
+    @Test("Gutenberg cover comes out of the formats map")
+    func gutenbergCover() {
+        let real = ["audio/mpeg": "https://x/a.mp3",
+                    "image/jpeg": "https://www.gutenberg.org/cache/epub/26471/pg26471.cover.medium.jpg"]
+        #expect(FreeCatalog.gutenbergCoverURL(formats: real)?.absoluteString.hasSuffix("medium.jpg") == true)
+        // png as the fallback key
+        #expect(FreeCatalog.gutenbergCoverURL(formats: ["image/png": "https://x/c.png"]) != nil)
+        // No image, no url, no guessing.
+        #expect(FreeCatalog.gutenbergCoverURL(formats: ["audio/mpeg": "https://x/a.mp3"]) == nil)
+        #expect(FreeCatalog.gutenbergCoverURL(formats: nil) == nil)
+        // Plain http is not accepted (ATS would block it anyway — silently).
+        #expect(FreeCatalog.gutenbergCoverURL(formats: ["image/jpeg": "http://x/c.jpg"]) == nil)
+    }
+
     @Test("6fcb301: one cap for every preview row, chevron only when there is more")
     func rowPreview() {
         #expect(RowPreview.limit == 12)

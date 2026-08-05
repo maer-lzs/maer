@@ -64,6 +64,13 @@ final class FreeCatalogProvider: AudioProvider {
               FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
         let id = FreeCatalog.gutenbergPrefix + String(book.id)
         gutenbergAudio[id] = audio
+        // the owner 05.08. (Geraet): the Gutenberg tiles came up WITHOUT covers.
+        // Cause: the cover url rode along in `formats` and was dropped here,
+        // and `coverURL(forItemId:)` had no gut: branch at all — so every
+        // Gutenberg tile fell back to the placeholder. Measured at gutendex
+        // before building: 32 of 32 entries on page 1 carry an image/jpeg, and
+        // the urls answer 200 image/jpeg (no hotlink block).
+        gutenbergCovers[id] = FreeCatalog.gutenbergCoverURL(formats: book.formats)
         licences[id] = String(localized: "Public domain")
         let item = LibraryItem(
             id: id,
@@ -80,6 +87,7 @@ final class FreeCatalogProvider: AudioProvider {
     }
 
     private var gutenbergAudio: [String: String] = [:]
+    private var gutenbergCovers: [String: URL] = [:]
 
     func gutenbergAudioURL(forItemId id: String) -> String? { gutenbergAudio[id] }
 
@@ -230,6 +238,9 @@ final class FreeCatalogProvider: AudioProvider {
         }
         if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
             return jamendoTracks[itemId]?.image.flatMap { URL(string: $0) }
+        }
+        if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
+            return gutenbergCovers[itemId]
         }
         return nil
     }
