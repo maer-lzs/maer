@@ -99,8 +99,13 @@ struct HomeView: View {
         BottomBarState.shared.runWhenCalm { discoverShown = fresh }
     }
 
+    /// df0b3bb 3: hiding a MUSIC or EPISODE entry changes none of the counts
+    /// below (they are book lists), so the token needs its own signal — without
+    /// it the card stayed on screen until the next unrelated recompute.
+    @State private var hiddenRevision = 0
+
     private var recomputeToken: String {
-        "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)"
+        "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)-\(hiddenRevision)"
     }
 
     var body: some View {
@@ -137,6 +142,9 @@ struct HomeView: View {
         // Home hangs on the SHARED bottom bar like every tab — only the visible
         // one reports (active-gate). Transition/feedback edge untouched.
         .reportsBottomBarScroll(active: isActive)
+        .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
+            hiddenRevision += 1
+        }
         // 3a3b1aa: a Home row's page. Registered HERE, not on the stack root,
         // because the page needs Home's own state (the music progress map is
         // fetched in compute() — the root has no access to it and re-fetching
@@ -495,9 +503,25 @@ struct HomeView: View {
         let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
 
         // Weiterhören: in-progress books + in-progress episodes, by last played.
+        let hidden = ContinueHiddenStore.markers()
         let books = libraryViewModel.continueListening.map {
             (id: $0.id, ts: $0.progress?.lastUpdate ?? 0)
         }
+        // Rediscover's "paused" source needs exactly what Continue DROPPED, so
+        // it reads the unfiltered list. Feeding it the filtered one (as it did
+        // between e46e7b4 and here) silently emptied that source: the age
+        // cutoff removed the old entries from Continue, and Rediscover never
+        // saw them either — the titles fell out of BOTH rows instead of moving
+        // from one to the other.
+        // Manually hidden titles stay out of Rediscover too: the user pushed
+        // them away on purpose, and a suggestion row would hand them straight
+        // back. What the AGE cutoff dropped is a different case — that is
+        // exactly what Rediscover is for.
+        let pausedCandidates = libraryViewModel.continueAll
+            .filter { !ContinueHidden.isHidden(id: $0.id,
+                                               lastUpdate: $0.progress?.lastUpdate ?? 0,
+                                               markers: hidden) }
+            .map { (id: $0.id, ts: $0.progress?.lastUpdate ?? 0) }
         let episodes = sections.nextUp.map { (id: $0.id, ts: localTimestamp($0.id)) }
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite — byRecency already takes N streams). Keep the progress map so
@@ -513,13 +537,23 @@ struct HomeView: View {
             .map { (id: $0.key, ts: $0.value.lastUpdate) }
         // 6c52b67/a9ad69e: row limit 10 (landscape/iPad show 4–5 cards),
         // music share capped at 2 via the pure rule (exception inside).
-        let musicIds = Set(music.map(\.id))
+        // df0b3bb 3 (Paritaet): the marker acts on the WHOLE mixed row, so
+        // hiding works the same for a book, an episode and an album. Books are
+        // already filtered in the view model; episodes and music are filtered
+        // here, where their streams meet.
+        let episodesShown = episodes.filter {
+            !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
+        }
+        let musicShown = music.filter {
+            !ContinueHidden.isHidden(id: $0.id, lastUpdate: $0.ts, markers: hidden)
+        }
+        let musicIds = Set(musicShown.map(\.id))
         let rankedContinue = HomeSections.cappedShare(
-            HomeSections.byRecency([books, episodes, music], limit: 24),
+            HomeSections.byRecency([books, episodesShown, musicShown], limit: 24),
             capped: musicIds, cap: HomeSections.continueMusicCap, limit: 10)
         // 3a3b1aa: the same ranking WITHOUT the row's curation — the page shows
         // everything that is actually in progress, the row shows a preview of it.
-        let allContinue = HomeSections.byRecency([books, episodes, music], limit: 200)
+        let allContinue = HomeSections.byRecency([books, episodesShown, musicShown], limit: 200)
 
         // Radio on Home: cheap sync read; empty when the source is off, so the
         // pure gating hides the section (no placeholder). Applied with the
@@ -561,7 +595,8 @@ struct HomeView: View {
         let rediscover: [RediscoverSections.Pick]
         if recommendationsEnabled {
             rediscover = computeRediscover(
-                bookContinue: books, episodeContinue: episodes, visibleContinue: Set(rankedContinue))
+                bookContinue: pausedCandidates, episodeContinue: episodesShown,
+                visibleContinue: Set(rankedContinue))
             await recommendations.refreshIfNeeded()
         } else {
             rediscover = []

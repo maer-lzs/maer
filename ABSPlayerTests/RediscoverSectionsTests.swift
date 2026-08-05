@@ -274,6 +274,32 @@ struct PodcastCategoryMappingTests {
         #expect(SortIndicator.part("X", ifNot: false) == "X")
     }
 
+    /// df0b3bb 3: hiding a title from Continue must not touch its position —
+    /// and must not banish it forever either. The marker holds the progress
+    /// stamp at the moment of hiding, so listening on brings the entry back.
+    @Test("Continue-hide marker releases as soon as progress moves on")
+    func continueHiddenMarker() {
+        var markers: [String: Double] = [:]
+        #expect(!ContinueHidden.isHidden(id: "b1", lastUpdate: 1_700_000_000, markers: markers))
+
+        markers = ContinueHidden.hiding(id: "b1", lastUpdate: 1_700_000_000, in: markers)
+        #expect(ContinueHidden.isHidden(id: "b1", lastUpdate: 1_700_000_000, markers: markers))
+        // Same position, restart: still hidden (it survives).
+        #expect(ContinueHidden.isHidden(id: "b1", lastUpdate: 1_699_999_000, markers: markers))
+        // Listened on → back on its own.
+        #expect(!ContinueHidden.isHidden(id: "b1", lastUpdate: 1_700_000_001, markers: markers))
+        // Milliseconds (ABS) are normalised, not misread as the far future.
+        #expect(ContinueHidden.isHidden(id: "b1", lastUpdate: 1_700_000_000_000, markers: markers))
+
+        // Untouched ids stay untouched.
+        #expect(!ContinueHidden.isHidden(id: "other", lastUpdate: 0, markers: markers))
+
+        // Pruning drops what has moved on, keeps the unknown.
+        let pruned = ContinueHidden.pruned(markers, progress: ["b1": 1_700_000_500])
+        #expect(pruned["b1"] == nil)
+        #expect(ContinueHidden.pruned(markers, progress: [:])["b1"] != nil)
+    }
+
     @Test("6fcb301: one cap for every preview row, chevron only when there is more")
     func rowPreview() {
         #expect(RowPreview.limit == 12)

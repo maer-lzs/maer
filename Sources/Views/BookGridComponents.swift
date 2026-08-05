@@ -44,6 +44,10 @@ struct BookContextMenuItems: View {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
+    /// df0b3bb 3: only the CONTINUE rows offer "don't show here any more" —
+    /// in the library grid the entry would be meaningless (the book is not
+    /// there because of Continue). The row decides, not the card.
+    var showsContinueHide = false
 
     /// A7: offline, playing needs a download and starting a download is
     /// impossible — gate the menu entries consistently with the detail page.
@@ -122,6 +126,16 @@ struct BookContextMenuItems: View {
                 isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
                 systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"
             )
+        }
+        if showsContinueHide {
+            Divider()
+            Button {
+                ContinueHiddenStore.hide(id: entry.id,
+                                         lastUpdate: entry.progress?.lastUpdate ?? 0)
+            } label: {
+                // Says exactly what happens — and what does NOT happen.
+                Label("Don't show under Continue", systemImage: "eye.slash")
+            }
         }
     }
 
@@ -216,13 +230,15 @@ struct BookCellContextMenu: ViewModifier {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
+    var showsContinueHide = false
 
     func body(content: Content) -> some View {
         content.contextMenu {
             BookContextMenuItems(
                 entry: entry,
                 playerCoordinator: playerCoordinator,
-                libraryViewModel: libraryViewModel
+                libraryViewModel: libraryViewModel,
+                showsContinueHide: showsContinueHide
             )
         } preview: {
             BookContextPreview(entry: entry, provider: playerCoordinator.provider)

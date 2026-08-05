@@ -428,6 +428,9 @@ nonisolated enum AppStorageKeys {
     }
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
+    /// df0b3bb 3: per-item markers for "don't show under Continue any more"
+    /// (the listening position stays untouched).
+    static let continueHiddenMarkers = "continueHiddenMarkers"
     static let librarySortOption = "librarySortOption"
     static let libraryFilterOption = "libraryFilterOption"
     static let librarySortAscending = "librarySortAscending"

@@ -51,6 +51,12 @@ enum UITestSeed {
 
     static func applyIfRequested() {
         guard isActive else { return }
+        // df0b3bb 3: the Continue-hide markers are PERSISTED by design (the
+        // decision must survive restarts). In the harness that turns into
+        // cross-journey pollution — one journey hides the seeded card and the
+        // next no longer finds it. Every seeded launch therefore starts with
+        // an empty marker set.
+        UserDefaults.standard.removeObject(forKey: AppStorageKeys.continueHiddenMarkers)
         let session = AppSession.shared
         session.authViewModel.isLoggedIn = true
         // F10: `isAvailable` is token-driven now — the harness needs one so

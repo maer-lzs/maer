@@ -542,6 +542,12 @@ struct LibraryView: View {
             ResumeRequest.pending = true
             Task { await handlePendingResumeRequest() }
         }
+        // df0b3bb 3: hiding a title from Continue takes effect at once — the
+        // rows rebuild locally, and Home follows because its recompute token
+        // watches the Continue count.
+        .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
+            Task { await viewModel.refreshContinueRows() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .resumeLastBookRequested)) { _ in
             // Fires when the app was ALREADY running (no scene-phase change).
             Task { await handlePendingResumeRequest() }

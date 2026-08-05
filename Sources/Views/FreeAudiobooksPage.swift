@@ -137,7 +137,7 @@ struct FreeAudiobooksPage: View {
                             RowHeading.plain("New at LibriVox")
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(onShelf(newBooks)) { item in
+                                    ForEach(RowPreview.cut(onShelf(newBooks))) { item in
                                         tile(item)
                                             .containerRelativeFrame(.horizontal,
                                                                     count: CardMetrics.recommendationColumns(regularWidth: false),
@@ -171,7 +171,7 @@ struct FreeAudiobooksPage: View {
                             .padding(.horizontal)
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(onShelf(popular)) { item in
+                                    ForEach(RowPreview.cut(onShelf(popular))) { item in
                                         tile(item)
                                             .containerRelativeFrame(.horizontal,
                                                                     count: CardMetrics.recommendationColumns(regularWidth: false),
@@ -189,10 +189,10 @@ struct FreeAudiobooksPage: View {
                             // 1790dda: name the SOURCE like the neighbouring
                             // section does — "More free audiobooks" read like
                             // a leftovers bin.
-                            Text(verbatim: "Internet Archive").font(.title3).bold().padding(.horizontal)
+                            RowHeading.plain(verbatim: "Internet Archive")
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(onShelf(archiveBooks)) { item in
+                                    ForEach(RowPreview.cut(onShelf(archiveBooks))) { item in
                                         FreeCatalogBookTile(
                                             item: item,
                                             onTap: { Task { await playerCoordinator.open(item: item) } })
@@ -212,10 +212,10 @@ struct FreeAudiobooksPage: View {
                         if !gutenberg.isEmpty {
                             // Eigenname, nicht übersetzbar (verbatim-Klasse) —
                             // und die Quellennennung, die der Auftrag verlangt.
-                            Text(verbatim: "Project Gutenberg").font(.title3).bold().padding(.horizontal)
+                            RowHeading.plain(verbatim: "Project Gutenberg")
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(alignment: .top, spacing: 14) {
-                                    ForEach(onShelf(gutenberg)) { item in
+                                    ForEach(RowPreview.cut(onShelf(gutenberg))) { item in
                                         FreeCatalogBookTile(
                                             item: item,
                                             onTap: { Task { await playerCoordinator.open(item: item) } })
@@ -336,7 +336,9 @@ struct FreeAudiobooksPage: View {
                 let books = try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40)
                 let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
                 Logger.library.notice("FREECAT area-new loaded=\(books.count) filtered=\(filtered.count)")
-                newBooks = filtered.prefix(12).map { provider.remember(book: $0) }
+                // 6fcb301 Nachzug: was die Reihe zeigt, entscheidet EINE Konstante —
+                // diese 12 stand hier zufaellig daneben.
+                newBooks = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
             } catch {
                 Logger.library.error("FREECAT area-new FAILED: \(String(describing: error), privacy: .public)")
             }

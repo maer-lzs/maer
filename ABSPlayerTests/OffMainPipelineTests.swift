@@ -72,6 +72,14 @@ struct OffMainDecodeTests {
         #expect(ids.contains("fresh"))
         #expect(ids.contains("undated"))
         #expect(!ids.contains("stale"))
+
+        // The cutoff MOVES a title to Rediscover, it does not erase it: what
+        // Continue drops must still be reachable for Rediscover's "paused"
+        // source, which reads `continueAll`. Feeding Rediscover the filtered
+        // list emptied that source silently — this expectation is the guard.
+        let all = Set(output.continueAll.map(\.id))
+        #expect(all.contains("stale"))
+        #expect(all.isSuperset(of: ids))
     }
 
     @Test("computeRebuild output matches the on-main derivation rules")

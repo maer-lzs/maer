@@ -129,6 +129,16 @@ struct MusicContinueCard: View {
             }
             .padding(12)
         }
+        // df0b3bb 3 (Paritaet): this card lives only in Continue contexts, so
+        // it carries the same "take it off this row" entry as the book and
+        // episode cards. The saved position is untouched.
+        .contextMenu {
+            Button {
+                ContinueHiddenStore.hide(id: item.id, lastUpdate: progress?.lastUpdate ?? 0)
+            } label: {
+                Label("Don't show under Continue", systemImage: "eye.slash")
+            }
+        }
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider

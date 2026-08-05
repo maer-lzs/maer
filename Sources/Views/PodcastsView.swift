@@ -42,6 +42,8 @@ struct PodcastsView: View {
     private var absPodcast: ABSPodcastProvider { ABSPodcastProvider.shared }
     // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage keys.
+    /// df0b3bb 3: see HomeView — hiding an episode must redraw this row.
+    @State private var hiddenRevision = 0
     @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
     @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
     /// D4/B3: more tile text lines at accessibility sizes.
@@ -84,7 +86,7 @@ struct PodcastsView: View {
     /// tab becomes visible again (isActive gates the actual work). The store
     /// part comes deduplicated from the scope.
     private var recomputeToken: String {
-        "\(isActive)-\(recomputeScope.token)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)"
+        "\(isActive)-\(recomputeScope.token)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(hiddenRevision)"
     }
 
     var body: some View {
@@ -129,6 +131,9 @@ struct PodcastsView: View {
             NavigationStack { PodcastSourceView() }
         }
         .reportsBottomBarScroll(active: isActive)   // only the visible tab reports
+        .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
+            hiddenRevision += 1
+        }
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
         // detail fetches) keeps running as a background task; the sections
@@ -205,15 +210,28 @@ struct PodcastsView: View {
 
     // MARK: - Up Next (large cards, one per show)
 
+    /// df0b3bb 3: the row without the manually hidden entries. Read at render
+    /// time (the marker store is cheap) so hiding takes effect at once.
+    private var nextUpShown: [LibraryItem] {
+        let markers = ContinueHiddenStore.markers()
+        guard !markers.isEmpty else { return nextUp }
+        return nextUp.filter { item in
+            let stamp = (UserDefaults.standard
+                .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+            return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
+        }
+    }
+
     @ViewBuilder
     private var nextUpSection: some View {
-        if !nextUp.isEmpty {
+        if !nextUpShown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 RowHeading.plain("Continue", font: .title2)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         // 6fcb301: preview cap for every row of this tab.
-                        ForEach(RowPreview.cut(nextUp)) { item in
+                        // df0b3bb 3: hidden entries are gone from this row too.
+                        ForEach(RowPreview.cut(nextUpShown)) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
                     }

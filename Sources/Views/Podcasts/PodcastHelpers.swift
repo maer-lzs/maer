@@ -28,8 +28,23 @@ extension View {
     /// Unified episode context menu (Force Touch / long-press) — the same
     /// everywhere: play, into the queue, played/unplayed, download/delete.
     @ViewBuilder
-    func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator) -> some View {
+    /// df0b3bb 3: `showsContinueHide` is set by the CONTINUE row only — on an
+    /// ordinary episode row the entry would have nothing to act on.
+    func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
+                            showsContinueHide: Bool = false) -> some View {
         contextMenu {
+            if showsContinueHide {
+                Button {
+                    // Same local stamp the Continue rows sort by (the last
+                    // saved position), so hide/return use ONE clock.
+                    let stamp = (UserDefaults.standard
+                        .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                    ContinueHiddenStore.hide(id: item.id, lastUpdate: stamp)
+                } label: {
+                    Label("Don't show under Continue", systemImage: "eye.slash")
+                }
+                Divider()
+            }
             // Offline, an episode without a download cannot start — hide the
             // play entries entirely instead of leaving them visible but dead.
             // R1: text-only episodes (no enclosure) NEVER get play/queue/

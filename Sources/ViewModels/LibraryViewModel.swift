@@ -97,6 +97,9 @@ final class LibraryViewModel: ObservableObject {
     /// `libraryItem(forId:)` when a shelf-only item must resolve too.
     func entry(id: String) -> LibraryEntry? { entriesById[id] }
     @Published var continueListening: [LibraryEntry] = []
+    /// Every started title, unfiltered by the Continue age cutoff — the source
+    /// Rediscover pulls its "paused" candidates from (see RebuildOutput).
+    @Published var continueAll: [LibraryEntry] = []
     @Published var recentlyAdded: [LibraryEntry] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -727,6 +730,7 @@ final class LibraryViewModel: ObservableObject {
         }
         clear(&entries)
         clear(&continueListening)
+        clear(&continueAll)
         clear(&recentlyAdded)
     }
 
@@ -770,6 +774,13 @@ final class LibraryViewModel: ObservableObject {
 
     /// Re-mix the list after importing/deleting local files — without querying
     /// the server again (uses the already-loaded server items).
+    /// df0b3bb 3: a title was taken off (or returned to) the Continue rows.
+    /// Purely local — rebuild from what is already loaded, no server round trip
+    /// for a decision the user just made on this device.
+    func refreshContinueRows() async {
+        await rebuild(items: cachedItems, progress: lastProgress)
+    }
+
     func refreshAfterLocalChange() async {
         await reloadLocalCache()
         // Offline/error: keep the last known progress — `?? [:]` used to blank
@@ -842,11 +853,18 @@ final class LibraryViewModel: ObservableObject {
         let ascending: Bool
         let filter: FilterOption
         let downloadedIds: Set<String>
+        /// df0b3bb 3: per-item "not under Continue any more" markers.
+        var hiddenMarkers: [String: Double] = [:]
     }
 
     nonisolated struct RebuildOutput: Sendable {
         let entries: [LibraryEntry]
         let continueListening: [LibraryEntry]
+        /// EVERY started title, including the ones the age cutoff removes from
+        /// the row above. Rediscover's "paused" source feeds from this — it
+        /// draws exactly the entries Continue drops, so the cutoff MOVES a
+        /// title from one row to the other instead of erasing it from both.
+        let continueAll: [LibraryEntry]
         let recentlyAdded: [LibraryEntry]
         let sorted: [LibraryEntry]
         let grouped: [GridEntry]
@@ -888,8 +906,15 @@ final class LibraryViewModel: ObservableObject {
         // (2) CAP: a row is the preview of a page (3a3b1aa); the complete
         //     stock belongs behind the chevron.
         let continueCutoff = Date().timeIntervalSince1970 - RediscoverSections.pausedAfter
+        let continueAll = continueById.values
+            .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
         let continueListening = continueById.values
             .filter { entry in
+                // df0b3bb 3: taken off this row by hand — the position is
+                // untouched, so it still counts as started everywhere else.
+                if ContinueHidden.isHidden(id: entry.id,
+                                           lastUpdate: entry.progress?.lastUpdate ?? 0,
+                                           markers: input.hiddenMarkers) { return false }
                 let last = entry.progress?.lastUpdate ?? 0
                 // Timestamps arrive in seconds or milliseconds (ABS) — the
                 // same normalisation the Rediscover source uses.
@@ -921,6 +946,7 @@ final class LibraryViewModel: ObservableObject {
         let grouped = seriesGrouped(entries: entries, ascending: input.ascending,
                                     filter: input.filter, downloadedIds: input.downloadedIds)
         return RebuildOutput(entries: entries, continueListening: continueListening,
+                             continueAll: continueAll,
                              recentlyAdded: recentlyAdded, sorted: sorted, grouped: grouped)
     }
 
@@ -944,7 +970,8 @@ final class LibraryViewModel: ObservableObject {
             seedContinue: librarySeed.continueListening,
             seedRecent: librarySeed.recentlyAdded,
             sort: sortOption, ascending: sortAscending, filter: filterOption,
-            downloadedIds: DownloadManager.shared.downloadedItemIds
+            downloadedIds: DownloadManager.shared.downloadedItemIds,
+            hiddenMarkers: ContinueHiddenStore.markers()
         )
         let output = await Task.detached(priority: .userInitiated) {
             // Regression guard: the library rebuild must stay off the main actor
@@ -961,6 +988,7 @@ final class LibraryViewModel: ObservableObject {
         let applyOutput: @MainActor () -> Void = { [self] in
             entries = output.entries   // didSet bumps entriesStamp
             continueListening = output.continueListening
+            continueAll = output.continueAll
             recentlyAdded = output.recentlyAdded
             // Warm the memo caches (key derived AFTER the entries assignment).
             let key = derivedKey()

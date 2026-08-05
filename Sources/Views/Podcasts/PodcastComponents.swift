@@ -63,7 +63,8 @@ struct PodcastFeaturedCard: View {
             })
             .padding(12)
         }
-        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
+        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
+                            showsContinueHide: true)
     }
 
     /// Last played (relative) from local/ABS progress.

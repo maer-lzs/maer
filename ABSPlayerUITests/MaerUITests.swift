@@ -825,6 +825,25 @@ nonisolated final class MaerUITests: XCTestCase {
     /// part a seeded run can reach without a real premium feed: it must
     /// OPEN (a menu could not carry the explaining line, which is why it
     /// became a sheet) and list the free subscriptions A→Z.
+
+    /// df0b3bb 3: take a title off the Continue row without losing its
+    /// position. Uses the seeded MUSIC continue card — the only started entry
+    /// the seed carries — which also proves the parity across media types.
+    func testHideFromContinueRemovesTheCard() {
+        let app = launchSeeded()
+        let card = app.buttons["music-continue-card"].firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 20), "the seeded continue card must show")
+
+        card.press(forDuration: 1.2)
+        let hide = app.buttons["Nicht mehr unter Fortsetzen zeigen"].firstMatch
+        XCTAssertTrue(hide.waitForExistence(timeout: 5),
+                      "the continue card must offer to leave the row")
+        hide.tap()
+
+        XCTAssertTrue(card.waitForNonExistence(timeout: 10),
+                      "the card must leave the row at once")
+    }
+
     /// fb21fbd/8be0e17: sorting moved OUT of the tab head to the surface it
     /// acts on. Two things must hold at once — the tab head no longer carries
     /// it, and the "All Books" section does.

@@ -67,7 +67,11 @@ struct BookFeaturedCard: View {
         .modifier(BookCellContextMenu(
             entry: entry,
             playerCoordinator: playerCoordinator,
-            libraryViewModel: libraryViewModel
+            libraryViewModel: libraryViewModel,
+            // df0b3bb 3: this card exists ONLY in Continue contexts (the
+            // audiobook row, Home's row and both full pages), so the entry
+            // belongs on it wherever it appears.
+            showsContinueHide: true
         ))
     }
 
