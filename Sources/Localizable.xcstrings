@@ -4794,6 +4794,16 @@
         }
       }
     },
+    "Recording from %@. Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufnahme von %@. Tonaufnahmen sind in der Schweiz nach 50 Jahren frei, in der EU nach 70 und in den USA nach 100."
+          }
+        }
+      }
+    },
     "Rights status not stated by the source" : {
       "localizations" : {
         "de" : {

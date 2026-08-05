@@ -275,6 +275,46 @@ nonisolated enum FreeCatalog {
     /// source states no year we show none, we do not guess one. For sources
     /// without a licence field the year is the user's ONLY means of judging a
     /// recording's age, so it leads.
+    /// 12753d8: what we may say about a catalog title's rights — as a PURE
+    /// decision, because it is the same question on every catalog surface.
+    ///
+    /// Protection terms for SOUND RECORDINGS differ by country, and that turns
+    /// a blanket plaque into a false statement somewhere: Switzerland 50 years
+    /// (Art. 39 URG), EU 70 (2011/77/EU), USA 100 for 1923–1946 (Music
+    /// Modernization Act). A 1945 recording is free in Zurich and protected in
+    /// New York — so "public domain" as a default was ungrounded, not merely
+    /// inaccurate.
+    ///
+    /// Measured for the classical row (4271 titles): 408 are ≤ 1925, 1021 are
+    /// later, 2842 carry no year at all.
+    nonisolated enum RightsNote: Equatable {
+        /// Published early enough that even the LONGEST term has expired —
+        /// true in every one of the three legal areas, so we may simply say it.
+        case publicDomain
+        /// A year is known, the answer depends on where the listener sits.
+        /// We state the TERMS, never a verdict about this title.
+        case termsApply(year: String)
+        /// No year, no licence field: we know nothing and say so.
+        case unknown
+    }
+
+    /// The last free year where all three terms have run out (2026 − 100 = 1926,
+    /// so 1925 is the last safe vintage). A constant, not a setting.
+    static let publicDomainCutoffYear = 1925
+
+    /// Note that the licence field OVERRIDES this — a stated CC licence is a
+    /// fact from the source and always wins (handled by the caller).
+    static func rightsNote(year: String?) -> RightsNote {
+        guard let raw = year?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else {
+            return .unknown
+        }
+        // Years arrive as "1945", sometimes as "1945-06-01" — take the leading
+        // four digits, and treat anything else as no year rather than guessing.
+        let digits = raw.prefix(4)
+        guard digits.count == 4, let value = Int(digits) else { return .unknown }
+        return value <= publicDomainCutoffYear ? .publicDomain : .termsApply(year: String(digits))
+    }
+
     static func catalogMetaLine(year: String?, runtime: String?) -> String {
         let parts = [year?.trimmingCharacters(in: .whitespaces), runtime]
             .compactMap { $0 }

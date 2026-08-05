@@ -623,6 +623,27 @@ struct CatalogGenreAxisTests {
         #expect(ItemNamespace.of(":leer") == nil)
     }
 
+    /// be087e4: der vorige Zaun prueft die REGEL — dieser prueft den WEG.
+    /// `mayReachLibraryServer` wurde nur von Tests gelesen, waehrend
+    /// `provider(for:)` bei unbekanntem Namensraum weiter den Bibliotheks-
+    /// Provider lieferte (11 Aufrufer, darunter die gespeicherte lastId im
+    /// PlayerCoordinator). Ein gruener Zaun um nichts.
+    @MainActor
+    @Test("Der ROUTER selbst gibt fremde Namensraeume nicht an die Bibliothek")
+    func routerRefusesUnknownNamespace() {
+        let session = AppSession.shared
+        // Unbekannte Quelle: weder Bibliothek noch Katalog.
+        let unknown = session.provider(for: "neuequelle:42")
+        #expect(unknown is UnknownSourceProvider)
+        #expect(unknown.coverURL(forItemId: "neuequelle:42") == nil)
+        #expect(!unknown.isAvailable)
+
+        // Bekannte Namensraeume gehen weiter an ihre Quelle …
+        #expect(session.provider(for: "gut:26471") is FreeCatalogProvider)
+        // … und eine kennzeichnungsfreie Id an die Bibliothek (NICHT refused).
+        #expect(!(session.provider(for: "li_9f3a") is UnknownSourceProvider))
+    }
+
     @Test("Nur kennzeichnungsfreie Ids duerfen an den Bibliotheks-Server")
     func libraryServerGuard() {
         #expect(ItemNamespace.mayReachLibraryServer("li_9f3a"))
@@ -641,6 +662,31 @@ struct CatalogGenreAxisTests {
     /// dort keins — georgeblood traegt bei etwa zwei Dritteln der Titel keins,
     /// und ein geratenes Jahr waere bei einer Sammlung ohne Lizenzfeld die
     /// zweite Falschaussage nach der Kapsel.
+    /// 12753d8: Schutzfristen sind ortsabhaengig — Schweiz 50, EU 70, USA 100
+    /// Jahre fuer Tonaufnahmen. Deshalb darf „gemeinfrei" nur stehen, wo auch
+    /// die LAENGSTE Frist abgelaufen ist (Veroeffentlichung bis 1925); dazwischen
+    /// nennen wir die Fristen und faellen kein Urteil ueber den Titel.
+    /// Gemessen an der Klassik-Reihe: 408 Titel bis 1925, 1021 spaeter, 2842
+    /// ganz ohne Jahr.
+    @Test("Rechtelage: gemeinfrei nur bis 1925, sonst Fristen statt Urteil")
+    func rightsNote() {
+        #expect(FreeCatalog.rightsNote(year: "1925") == .publicDomain)
+        #expect(FreeCatalog.rightsNote(year: "1900") == .publicDomain)
+        // 1926 ist der erste Jahrgang, bei dem die US-Frist noch laeuft.
+        #expect(FreeCatalog.rightsNote(year: "1926") == .termsApply(year: "1926"))
+        // the reviewer's Beispiele: in der Schweiz frei, in den USA geschuetzt —
+        // genau deshalb Fristen statt Urteil.
+        #expect(FreeCatalog.rightsNote(year: "1945") == .termsApply(year: "1945"))
+        #expect(FreeCatalog.rightsNote(year: "1953") == .termsApply(year: "1953"))
+        // Volldatum: fuehrende vier Ziffern zaehlen.
+        #expect(FreeCatalog.rightsNote(year: "1945-06-01") == .termsApply(year: "1945"))
+        // Kein Jahr, unlesbares Jahr: nichts behaupten, nicht raten.
+        #expect(FreeCatalog.rightsNote(year: nil) == .unknown)
+        #expect(FreeCatalog.rightsNote(year: "") == .unknown)
+        #expect(FreeCatalog.rightsNote(year: "circa") == .unknown)
+        #expect(FreeCatalog.rightsNote(year: "45") == .unknown)
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")

@@ -105,6 +105,13 @@ final class AppSession: ObservableObject {
         if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared
         }
+        // be087e4: the ROUTER now follows the rule too, not just the two
+        // callers that asked. An id whose namespace belongs to nobody gets a
+        // provider that refuses (and says so) — so all eleven callers, and any
+        // future one, are covered without making the return type optional.
+        guard ItemNamespace.mayReachLibraryServer(itemId) else {
+            return UnknownSourceProvider.shared
+        }
         return provider
     }
 

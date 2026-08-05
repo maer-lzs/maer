@@ -297,19 +297,35 @@ struct FreeCatalogDetailSheet: View {
                             Label(licence, systemImage: "checkmark.seal")
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
-                            // 50aefa8: the else branch USED to claim public
-                            // domain — for the classical row that hit all 4271
-                            // titles, of which at most 647 are old enough for
-                            // it and 782 provably are not. We claimed a legal
-                            // situation we do not know, in an app that
-                            // otherwise states rights carefully.
+                            // 50aefa8/12753d8: the else branch USED to claim
+                            // public domain for every title without a licence
+                            // field — 4271 of them in the classical row.
                             //
-                            // The seal is dropped with the claim: a checkmark
-                            // IS an assertion. Unknown gets a question mark and
-                            // the link, so the user can check the source.
-                            Label("Rights status not stated by the source",
-                                  systemImage: "questionmark.circle")
-                                .font(.caption).foregroundStyle(.secondary)
+                            // The claim is gone, and so is the seal: a
+                            // checkmark IS an assertion. What replaces it
+                            // depends on what the source actually tells us
+                            // (pure FreeCatalog.rightsNote).
+                            switch FreeCatalog.rightsNote(
+                                year: item.media?.metadata?.publishedYear?.value) {
+                            case .publicDomain:
+                                // ≤ 1925: expired even under the LONGEST of the
+                                // three terms, so it holds everywhere.
+                                Label("Public domain", systemImage: "checkmark.seal")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            case .termsApply(let year):
+                                // A fact about TERMS, never a verdict about
+                                // this title — the answer differs by country,
+                                // and the device region is not the listener's
+                                // jurisdiction (travel, foreign account, VPN).
+                                Label(String(localized: "Recording from \(year). Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA."),
+                                      systemImage: "clock")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            case .unknown:
+                                Label("Rights status not stated by the source",
+                                      systemImage: "questionmark.circle")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                         if let url = librivoxURL {
                             Link(destination: url) {
