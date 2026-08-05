@@ -98,6 +98,17 @@ struct PremiumFeedsSection: View {
                         .font(.subheadline)
                 }
                 .accessibilityIdentifier("premium-mark-menu")
+                // 24a220e: the sheet hangs on the ROW, not on the Section —
+                // a sheet attached to a Section inside a Form did not open
+                // (the new journey caught it on the first run). The row is a
+                // stable presentation anchor.
+                .sheet(isPresented: $showMarkPicker) {
+                    PremiumMarkPicker(shows: sortedFreeShows) { show in
+                        PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
+                        subs.objectWillChange.send()
+                        showMarkPicker = false
+                    }
+                }
             }
         } header: {
             Label("Premium Feeds", systemImage: "lock.fill")
@@ -107,13 +118,7 @@ struct PremiumFeedsSection: View {
         .sheet(item: $editTarget) { show in
             PremiumFeedEditor(show: show)
         }
-        .sheet(isPresented: $showMarkPicker) {
-            PremiumMarkPicker(shows: sortedFreeShows) { show in
-                PodcastSubscriptions.setManualPremium(true, feedURL: show.feedURL)
-                subs.objectWillChange.send()
-                showMarkPicker = false
-            }
-        }
+
         .confirmationDialog(
             Text("Remove \(removeTarget?.title ?? "")?"),
             isPresented: Binding(get: { removeTarget != nil },

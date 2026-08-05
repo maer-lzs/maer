@@ -120,6 +120,7 @@ final class BottomBarState: ObservableObject {
     /// S10: the scroll view reached `.idle` (finger up AND deceleration done).
     /// Schedule the auto-expand; a fresh drag cancels it via `setUserDragging`.
     func scrollDidRest() {
+        armCollapseWatchdog()
         flushCalmQueue()   // scroll settled → apply deferred content updates
         idleExpandTask?.cancel()
         guard collapsed else { return }
@@ -133,6 +134,28 @@ final class BottomBarState: ObservableObject {
     func expand() {
         forceExpanded = true
         applyCollapsed()
+    }
+
+    /// 8be0e17: WATCHDOG against a stuck collapse. The auto-expand hangs on
+    /// `scrollDidRest()`, which rides the scroll-phase change to `.idle`. If
+    /// that event never arrives — a surface that stops reporting mid-gesture,
+    /// a phase the system skips — `collapsed` stays true, and with it the
+    /// toolbar icons stay invisible AND untappable (`allowsHitTesting`). That
+    /// is the reported "the button does nothing" class, and it deserves a
+    /// belt rather than a hunt for the one missing event: after this long
+    /// without a drag, the bar expands regardless of who forgot to report.
+    private var watchdogTask: Task<Void, Never>?
+    private static let watchdogDelay = Duration.seconds(4)
+
+    func armCollapseWatchdog() {
+        watchdogTask?.cancel()
+        guard collapsed else { return }
+        watchdogTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.watchdogDelay)
+            guard let self, !Task.isCancelled, !self.userDragging, self.collapsed else { return }
+            Logger.library.notice("BOTTOMBAR watchdog: collapse stuck without a drag — expanding")
+            self.expand()
+        }
     }
 
     /// On a tab switch: expand (avoid the stale offset of the other surface).

@@ -103,7 +103,7 @@ struct RadioView: View {
                         Button {
                             showCountryPicker = true
                         } label: {
-                            Text("Change country")
+                            Text("Change Country")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

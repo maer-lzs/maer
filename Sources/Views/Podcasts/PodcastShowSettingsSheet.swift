@@ -36,7 +36,7 @@ struct PodcastShowSettingsSheet: View {
                         Text("Latest only").tag("latest")
                         Text("Off").tag("off")
                     }
-                    Toggle("Notify about new episodes", isOn: $notify)
+                    Toggle("Notify About New Episodes", isOn: $notify)
                 } header: {
                     Text("New Episodes")
                 } footer: {

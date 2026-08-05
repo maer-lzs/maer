@@ -410,6 +410,10 @@ private struct PlaylistCard: View {
     private var metaLine: String {
         let count = playlist.songCount ?? 0
         let duration = PlaylistPresentation.durationText(seconds: Int(playlist.duration ?? 0))
+        // 24a220e: "tracks" (klein) ist KEINE Casing-Dublette zu "Tracks" —
+        // dieses hier steht MITTEN im Satz ("18 tracks · 1:12"), jenes ist
+        // der Sheet-Titel. Zusammenziehen wuerde im Englischen sichtbar
+        // falsch grossschreiben; die beiden Keys bleiben getrennt.
         return "\(count) \(String(localized: "tracks")) · \(duration)"
     }
 }

@@ -195,7 +195,7 @@ struct RecentShowTile: View {
                             .padding(5)
                             .background(Circle().fill(.black.opacity(0.55)))
                             .padding(6)
-                            .accessibilityLabel(Text("Premium feed"))
+                            .accessibilityLabel(Text("Premium Feed"))
                     }
                 }
 
@@ -241,7 +241,7 @@ struct ShowTile: View {
                             .padding(5)
                             .background(Circle().fill(.black.opacity(0.55)))
                             .padding(6)
-                            .accessibilityLabel(Text("Premium feed"))
+                            .accessibilityLabel(Text("Premium Feed"))
                     }
                 }
             Text(show.title)

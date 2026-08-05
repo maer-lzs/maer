@@ -330,12 +330,12 @@ struct SettingsView: View {
         Section {
             sourceToggle("Music server (Subsonic)", isOn: $subsonicOn)
             NavigationLink { SubsonicSourceView() } label: {
-                Label("Music server", systemImage: "music.note")
+                Label("Music Server", systemImage: "music.note")
             }
             .accessibilityIdentifier("settings-music-source")
             sourceToggle("Jellyfin", isOn: $jellyfinOn)
             NavigationLink { JellyfinSourceView() } label: {
-                Label("Jellyfin server", systemImage: "music.note.house")
+                Label("Jellyfin Server", systemImage: "music.note.house")
             }
             .accessibilityIdentifier("settings-jellyfin-source")
         } header: { Text("Sources — Music") } footer: {

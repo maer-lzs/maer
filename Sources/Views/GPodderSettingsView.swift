@@ -100,7 +100,7 @@ struct GPodderSettingsView: View {
             // the mass-delete guard warning stays until the next clean sync.
             if let stored = storedReport {
                 Section {
-                    LabeledContent("Last sync",
+                    LabeledContent("Last Sync",
                                    value: stored.date.formatted(date: .abbreviated, time: .shortened))
                     if let warning = stored.warning {
                         Label(warning, systemImage: "exclamationmark.triangle.fill")
