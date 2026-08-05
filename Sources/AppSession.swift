@@ -4,6 +4,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// Process-wide playback/library session. Coordinator and LibraryViewModel used
 /// to live as @StateObject in LibraryView — on a CarPlay COLD START (the app is
@@ -98,7 +99,10 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("sub:") { return subsonicProvider }
         if itemId.hasPrefix("jf:") { return jellyfinProvider }
         if itemId.hasPrefix("radio:") { return radioProvider }
-        if itemId.hasPrefix("lv:") || itemId.hasPrefix("lva:") || itemId.hasPrefix("jam:") {
+        // c3ab12e: ask the SOURCE for its namespaces instead of repeating them
+        // here — the literal list is exactly what went stale when Gutenberg
+        // arrived.
+        if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared
         }
         return provider
@@ -107,7 +111,16 @@ final class AppSession: ObservableObject {
     /// Cover URL of any item via ITS source — views must never assume a fixed
     /// provider (else wrong/no cover for local files and podcast episodes).
     func coverURL(forItemId itemId: String) -> URL? {
-        provider(for: itemId).coverURL(forItemId: itemId)
+        // c3ab12e Strukturfix: an id from an unknown namespace must NEVER turn
+        // into a request to the library server. This is the path that produced
+        // the 404 storm (FeedArtwork → here → ABS, token in the query string),
+        // so the guard sits here, not only in the prefix list above.
+        guard ItemNamespace.isKnown(itemId) else {
+            Logger.library.warning(
+                "ROUTER: unknown namespace \(ItemNamespace.of(itemId) ?? "-", privacy: .public) — no cover request")
+            return nil
+        }
+        return provider(for: itemId).coverURL(forItemId: itemId)
     }
 
     /// Finds the `LibraryItem` for an id across ALL sources — for the global
@@ -132,9 +145,11 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("radio:") {
             return radioProvider.libraryItem(forId: itemId)
         }
-        if itemId.hasPrefix("lv:") || itemId.hasPrefix("lva:") || itemId.hasPrefix("jam:") {
+        if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared.libraryItem(forId: itemId)
         }
+        // An unknown namespace is nobody's — do not look it up in the library.
+        guard ItemNamespace.isKnown(itemId) else { return nil }
         // Audiobooks / local titles from the loaded library list.
         return libraryViewModel.libraryItem(forId: itemId)
     }

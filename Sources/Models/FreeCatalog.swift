@@ -117,6 +117,15 @@ nonisolated enum FreeCatalog {
     /// 0ce5df3: Project Gutenberg audiobook (`gut:<bookId>`).
     static let gutenbergPrefix = "gut:"
 
+    /// c3ab12e: THE list of catalog namespaces, kept BY THE SOURCE that owns
+    /// them. The router used to carry string literals of its own — so when
+    /// Gutenberg arrived, `gut:` was added here and forgotten there, and every
+    /// Gutenberg cover request went to the Audiobookshelf server (with the
+    /// access token in the query string) for a title that does not exist there.
+    /// 41 × 404 later CrowdSec read it as an attack and locked the owner out of
+    /// his own server. A new source now only has to appear in THIS list.
+    static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
+
     /// Suggestion-language code → the English language NAME LibriVox stores.
     /// The API ignores language parameters (probed) — filtering is client-side
     /// over the `language` field; unknown codes filter nothing (honest).

@@ -591,5 +591,48 @@ struct CatalogGenreAxisTests {
             #expect(titles.contains(shelf), "shelf without title: \(shelf)")
         }
     }
+    // MARK: - c3ab12e: der Zaun gegen den Namensraum-Fehler
+
+    /// Ein Namensraum-Fehler hat the owner aus seinem eigenen Server ausgesperrt:
+    /// `gut:`-Kennungen gingen an Audiobookshelf, 41 × 404, CrowdSec las das als
+    /// Angriff. Diese Tests werden rot, sobald eine Quelle ihren Namensraum
+    /// nicht anmeldet.
+    @Test("Jedes Katalog-Praefix ist ein bekannter Namensraum")
+    func catalogPrefixesRegistered() {
+        for prefix in FreeCatalog.allPrefixes {
+            #expect(ItemNamespace.known.contains(prefix),
+                    "Namensraum \(prefix) fehlt in ItemNamespace.known")
+            let id = prefix + "12345"
+            #expect(ItemNamespace.isKnown(id))
+            #expect(!ItemNamespace.mayReachLibraryServer(id),
+                    "\(prefix) wuerde an den Server gehen — der Ausloeser von c3ab12e")
+        }
+        // Gutenberg namentlich, weil genau er vergessen wurde.
+        #expect(ItemNamespace.known.contains("gut:"))
+    }
+
+    @Test("Namensraum ist nur ein FUEHRENDES Schema")
+    func namespaceExtraction() {
+        #expect(ItemNamespace.of("gut:26471") == "gut:")
+        #expect(ItemNamespace.of("sub:album:1") == "sub:")
+        #expect(ItemNamespace.of("abc123") == nil)
+        #expect(ItemNamespace.of("li_9f3a") == nil)
+        // Ein Doppelpunkt MITTEN im Pfad ist kein Namensraum.
+        #expect(ItemNamespace.of("/Users/x/a:b.mp3") == nil)
+        #expect(ItemNamespace.of(":leer") == nil)
+    }
+
+    @Test("Nur kennzeichnungsfreie Ids duerfen an den Bibliotheks-Server")
+    func libraryServerGuard() {
+        #expect(ItemNamespace.mayReachLibraryServer("li_9f3a"))
+        #expect(!ItemNamespace.mayReachLibraryServer("gut:1"))
+        #expect(!ItemNamespace.mayReachLibraryServer("sub:1"))
+        // Eine kuenftige Quelle, die noch niemand angemeldet hat: UNBEKANNT und
+        // trotzdem kein Server-Aufruf. Das ist der Unterschied zwischen
+        // "Liste gepflegt" und "strukturell dicht".
+        #expect(!ItemNamespace.isKnown("neuequelle:42"))
+        #expect(!ItemNamespace.mayReachLibraryServer("neuequelle:42"))
+    }
+
 }
 #endif
