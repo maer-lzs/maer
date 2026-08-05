@@ -259,6 +259,21 @@ struct PodcastCategoryMappingTests {
         #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
     }
 
+    /// fb21fbd: the header caption names only what DEVIATES from the default —
+    /// that is what makes an invisible filter visible without shouting.
+    @Test("Sort indicator names only deviations")
+    func sortIndicatorSummary() {
+        #expect(SortIndicator.summary([nil, nil]) == nil)
+        #expect(SortIndicator.summary([]) == nil)
+        // An empty string is not a deviation either.
+        #expect(SortIndicator.summary([""]) == nil)
+        #expect(SortIndicator.summary(["Titel A–Z", nil]) == "Titel A–Z")
+        #expect(SortIndicator.summary(["Titel A–Z", "Ungehörte"]) == "Titel A–Z · Ungehörte")
+
+        #expect(SortIndicator.part("X", ifNot: true) == nil)
+        #expect(SortIndicator.part("X", ifNot: false) == "X")
+    }
+
     @Test("6fcb301: one cap for every preview row, chevron only when there is more")
     func rowPreview() {
         #expect(RowPreview.limit == 12)

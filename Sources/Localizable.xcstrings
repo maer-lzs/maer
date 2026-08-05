@@ -5800,6 +5800,16 @@
         }
       }
     },
+    "Sort and filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortieren und filtern"
+          }
+        }
+      }
+    },
     "Sort By" : {
       "localizations" : {
         "de" : {

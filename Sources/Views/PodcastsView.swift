@@ -305,13 +305,41 @@ struct PodcastsView: View {
 
     // MARK: - Recently updated (show grid, 2 columns)
 
+    /// fb21fbd: the podcast sort/filter menu now lives WHERE it acts — the
+    /// tab's show grid — instead of in the shared toolbar. Content unchanged.
+    @ViewBuilder private var podcastSortMenu: some View {
+        Picker("Sort By", selection: $podcastSort) {
+            ForEach(PodcastSortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        Divider()
+        Picker("Filter", selection: $podcastFilter) {
+            ForEach(PodcastFilterOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+    }
+
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
         if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 // Heading reflects the active grid sort (Teil 2); default sort's
                 // label is "Recently Updated", so the default look is unchanged.
-                Text(podcastSort.label).font(.title3).bold().padding(.horizontal)
+                // fb21fbd: sort/filter sit AT this grid — it is the surface
+                // they act on. The HEADING already names the sort (Teil 2), so
+                // the caption beside the symbol carries only the filter; naming
+                // the sort twice in one line would be noise.
+                HStack(alignment: .firstTextBaseline) {
+                    RowHeading.plain(verbatim: podcastSort.label)
+                    Spacer(minLength: 12)
+                    SectionSortControl(
+                        activeLabel: SortIndicator.part(podcastFilter.label,
+                                                        ifNot: podcastFilter == .alle)
+                    ) { podcastSortMenu }
+                        .padding(.horizontal)
+                }
                 // D6/B5: adaptive columns instead of a fixed pair — on iPads the
                 // two flexible columns blew the tiles up to ~500pt covers.
                 LazyVGrid(

@@ -9,6 +9,28 @@ import SwiftUI
 /// are the three pages that had no own surface before. Albums reuses the
 /// full MusicViewModel pipeline (staged pages, sort, shuffle) — the grid
 /// moved here from the tab body unchanged.
+/// fb21fbd: THE music sort menu, at the surfaces it orders (albums + songs)
+/// instead of in the shared toolbar. Content unchanged, including the honest
+/// offline treatment: the sort is server-side (`search3` order), so offline it
+/// is disabled WITH a reason rather than silently doing nothing. A local sort
+/// over the loaded page would be a different order under the same name.
+struct MusicSortMenu: View {
+    @Binding var musicSort: MusicSortOption
+    @ObservedObject private var networkMonitor = NetworkMonitor.shared
+
+    var body: some View {
+        Picker("Sort By", selection: $musicSort) {
+            ForEach(MusicSortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        .disabled(!networkMonitor.isConnected)
+        if !networkMonitor.isConnected {
+            Text("Sorting needs a connection")
+        }
+    }
+}
+
 struct MusicAlbumsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     #if DEBUG
@@ -19,6 +41,8 @@ struct MusicAlbumsPage: View {
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    @ViewBuilder private var musicSortMenu: some View { MusicSortMenu(musicSort: $musicSort) }
 
     var body: some View {
         Group {
@@ -37,7 +61,14 @@ struct MusicAlbumsPage: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                        // fb21fbd: the sort sits AT the grid it orders — it
+                        // used to live in the shared tab toolbar, two screens
+                        // away from what it changed.
                         HStack {
+                            SectionSortControl(
+                                activeLabel: SortIndicator.part(musicSort.label,
+                                                                ifNot: musicSort == .nameAZ)
+                            ) { musicSortMenu }
                             Spacer()
                             ShufflePlayButton(playerCoordinator: playerCoordinator, style: .icon) {
                                 await AppSession.shared.musicProvider.shuffleLibrarySongItems()

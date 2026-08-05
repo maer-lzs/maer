@@ -82,9 +82,10 @@ struct LibraryView: View {
     @State private var selectedMediaType: MediaType = .home
     // Teil 2: per-tab sort/filter, shared with the tab content via the same
     // AppStorage keys (audiobooks keep using LibraryViewModel's own state).
-    @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
-    @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
-    @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
+    // fb21fbd: the podcast/music sort state no longer lives here — it moved to
+    // the surfaces that own it (PodcastsView, MusicAlbumsPage). LibraryView
+    // used to hold it only because the toolbar button sat here. Persistence and
+    // the keys are unchanged, so the stored preference survives the move.
     /// Downloaded shelf expanded past its capped count (F6/G19).
     @State private var downloadedExpanded = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -263,26 +264,18 @@ struct LibraryView: View {
                 // background hidden AND plain button style below), otherwise
                 // both glasses stack: a dark doubled circle with a tinted
                 // outline ring.
+                // fb21fbd/8be0e17: the sort/filter button is GONE from the tab
+                // head — sorting now sits at the surface it acts on (the "All
+                // Books" grid, the podcast show grid, the album grid). The
+                // 7330cc4 gate that hid it on Home/Radio goes with it: there is
+                // nothing left to hide. The cog keeps its position, so nothing
+                // the user aims at moves.
                 if #available(iOS 26.0, *) {
-                    // 7330cc4 (G8): no button where the menu would be empty.
-                    // The ITEM is conditional, not its content — a ToolbarItem
-                    // with an empty body still occupies its slot.
-                    if hasSortMenu {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            sortFilterMenu
-                        }
-                        .sharedBackgroundVisibility(.hidden)
-                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         settingsLink
                     }
                     .sharedBackgroundVisibility(.hidden)
                 } else {
-                    if hasSortMenu {
-                        ToolbarItem(placement: .navigationBarLeading) {
-                            sortFilterMenu
-                        }
-                    }
                     ToolbarItem(placement: .navigationBarTrailing) {
                         settingsLink
                     }
@@ -1301,11 +1294,29 @@ struct LibraryView: View {
     @State private var visibleBookCount = LibraryView.bookPageSize
     private static let bookPageSize = 60
 
+    /// fb21fbd: the audiobook sort/filter state as a caption — only what
+    /// DEVIATES from the default is named (pure `SortIndicator`).
+    private var audiobookSortLabel: String? {
+        SortIndicator.summary([
+            SortIndicator.part(viewModel.sortOption.label,
+                               ifNot: viewModel.sortOption == .titel
+                                   && viewModel.sortAscending == SortOption.titel.defaultAscending),
+            SortIndicator.part(viewModel.filterOption.label,
+                               ifNot: viewModel.filterOption == .alle),
+        ])
+    }
+
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("All Books")
-                .font(.title3).bold()
-                .padding(.horizontal)
+            // fb21fbd: heading left, sort/filter right — AT the surface it acts
+            // on. RowHeading brings its own horizontal padding, the control its
+            // own, so the row needs none of its own.
+            HStack(alignment: .firstTextBaseline) {
+                RowHeading.plain("All Books")
+                Spacer(minLength: 12)
+                SectionSortControl(activeLabel: audiobookSortLabel) { audiobookSortMenu }
+                    .padding(.horizontal)
+            }
             if viewModel.sortOption == .serie {
                 seriesGrid
             } else {
@@ -1423,44 +1434,7 @@ struct LibraryView: View {
         ]
     }
 
-    /// 7330cc4 (G8): the button is only DRAWN where the menu has content.
-    /// Radio and Home have no sortable library, so the menu was empty — a
-    /// control that looks like a function, can be tapped and does nothing.
-    /// Same rule that gated the chapter button and removed the chevrons.
-    /// The alternative (inventing a radio sort so the button may stay) is
-    /// the wrong direction; the layout does not jump, because the toolbar
-    /// places its items and this one simply is not among them.
-    private var hasSortMenu: Bool {
-        switch selectedMediaType {
-        case .audiobooks, .podcasts, .music: return true
-        case .home, .radio: return false
-        }
-    }
 
-    private var sortFilterMenu: some View {
-        Menu {
-            // 8be0e17 log-first: the reported "button does nothing" needs the
-            // state it was in — the menu content builds on tap, so this line
-            // fires exactly then.
-            let _ = Logger.library.notice("TOOLBAR sort tapped — barCollapsed=\(BottomBarState.shared.collapsed) tab=\(self.selectedMediaType.rawValue, privacy: .public)")
-            // Teil 2: each tab gets its OWN sort/filter menu + persisted state.
-            switch selectedMediaType {
-            case .audiobooks: audiobookSortMenu
-            case .podcasts: podcastSortMenu
-            case .music: musicSortMenu
-            case .home, .radio: EmptyView()   // no sortable library
-            }
-        } label: {
-            toolbarGlassIcon("line.3.horizontal.decrease")
-        }
-        // Opt out of the toolbar's automatic glass button style — our
-        // AdaptiveGlassBackground is the ONLY glass on this button.
-        .buttonStyle(.plain)
-        // The menu style tints its label ABOVE the label's own styling —
-        // without this the icon renders in the app accent (orange) instead
-        // of behaving like the other toolbar buttons.
-        .tint(.primary)
-    }
 
     /// Audiobooks — the reference menu, unchanged (LibraryViewModel state).
     @ViewBuilder private var audiobookSortMenu: some View {
@@ -1485,34 +1459,7 @@ struct LibraryView: View {
         }
     }
 
-    /// Podcasts — sort + filter the "Recently updated" show grid.
-    @ViewBuilder private var podcastSortMenu: some View {
-        Picker("Sort By", selection: $podcastSort) {
-            ForEach(PodcastSortOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-        Divider()
-        Picker("Filter", selection: $podcastFilter) {
-            ForEach(PodcastFilterOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-    }
 
-    /// Music — server-side album sort (no direction toggle). Offline the sort is
-    /// disabled with a hint instead of a silent no-op (it needs the server).
-    @ViewBuilder private var musicSortMenu: some View {
-        Picker("Sort By", selection: $musicSort) {
-            ForEach(MusicSortOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-        .disabled(!networkMonitor.isConnected)
-        if !networkMonitor.isConnected {
-            Text("Sorting needs a connection")
-        }
-    }
 
     private var settingsLink: some View {
         Button {

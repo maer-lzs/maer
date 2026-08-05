@@ -825,6 +825,42 @@ nonisolated final class MaerUITests: XCTestCase {
     /// part a seeded run can reach without a real premium feed: it must
     /// OPEN (a menu could not carry the explaining line, which is why it
     /// became a sheet) and list the free subscriptions A→Z.
+    /// fb21fbd/8be0e17: sorting moved OUT of the tab head to the surface it
+    /// acts on. Two things must hold at once — the tab head no longer carries
+    /// it, and the "All Books" section does.
+    func testSortControlLivesAtTheSection() {
+        let app = launchSeeded()
+        // "All Books" lives in the AUDIOBOOKS tab; launchSeeded lands on Home
+        // (the first diagnosis run dumped the hierarchy and showed exactly that).
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 20))
+        books.tap()
+
+        // "All Books" sits below the fold in a LazyVStack — scroll it into
+        // existence before looking for the control on its heading line.
+        let allBooks = app.staticTexts["Alle Bücher"].firstMatch
+        var swipes = 0
+        while !allBooks.exists && swipes < 8 {
+            app.swipeUp()
+            swipes += 1
+        }
+        // A Menu does not always surface as .button — match ANY descendant.
+        let control = app.descendants(matching: .any)["section-sort-control"].firstMatch
+        if !control.waitForExistence(timeout: 10) {
+            // Diagnosis kept in place (project rule): the hierarchy at the
+            // moment of failure says more than a rerun with a guessed query.
+            XCTFail("no sort control at the section. Hierarchy:\n\(app.debugDescription)")
+            return
+        }
+
+        // It opens the SAME menu as before the move.
+        control.tap()
+        let sortPicker = app.buttons["Sort By"].firstMatch
+        let anyOption = app.buttons["Titel"].firstMatch
+        XCTAssertTrue(sortPicker.waitForExistence(timeout: 5) || anyOption.waitForExistence(timeout: 5),
+                      "the control must open the sort menu")
+    }
+
     func testPremiumMarkingSheetOpensSorted() {
         let app = launchSeeded()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))

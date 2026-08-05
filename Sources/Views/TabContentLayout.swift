@@ -57,6 +57,9 @@ nonisolated enum RowPreview {
 /// `RowPreview.showsChevron`, never by the call site.
 struct RowHeading<Destination: Hashable>: View {
     let title: LocalizedStringKey
+    /// Already-localized text (e.g. a sort option's label). Kept apart from
+    /// `title` so a translated string is never looked up as a key again.
+    var verbatimTitle: String?
     var font: Font = .title3
     /// The FULL stock behind the row — not the cut count.
     var total: Int = 0
@@ -71,7 +74,7 @@ struct RowHeading<Destination: Hashable>: View {
             // root, so the same heading works from Home and from a media tab.
             NavigationLink(value: destination) {
                 HStack(spacing: 6) {
-                    Text(title).font(font).bold()
+                    label.font(font).bold()
                     Image(systemName: "chevron.right")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
@@ -82,8 +85,12 @@ struct RowHeading<Destination: Hashable>: View {
             .buttonStyle(.plain)
             .accessibilityHint(Text("Shows the full list"))
         } else {
-            Text(title).font(font).bold().padding(.horizontal)
+            label.font(font).bold().padding(.horizontal)
         }
+    }
+
+    private var label: Text {
+        if let verbatimTitle { Text(verbatimTitle) } else { Text(title) }
     }
 }
 
@@ -92,6 +99,11 @@ extension RowHeading where Destination == LibraryListRoute {
     /// Spelled out at the call site so "no chevron" reads as a decision.
     static func plain(_ title: LocalizedStringKey, font: Font = .title3) -> Self {
         RowHeading(title: title, font: font, total: 0, destination: nil)
+    }
+
+    /// Same, for a heading whose text is already localized (a sort label).
+    static func plain(verbatim title: String, font: Font = .title3) -> Self {
+        RowHeading(title: "", verbatimTitle: title, font: font, total: 0, destination: nil)
     }
 }
 
