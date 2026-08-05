@@ -77,6 +77,7 @@ struct PodcastsView: View {
     /// arrival routes through the calm gate (a whole-section insert is exactly
     /// the shift; empty→filled counts, no initial-fill exception per section).
     @State private var recommendationItems: [PodcastSearchResult] = []
+    @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Recompute when subscriptions, downloads or progress change — and when the
@@ -91,6 +92,7 @@ struct PodcastsView: View {
             if sectionsReady {
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     nextUpSection
+                    hoerspieleSection
                     recommendationsSection
                     latestEpisodesSection
                     premiumSection
@@ -223,6 +225,40 @@ struct PodcastsView: View {
     }
 
     // MARK: - Recommended (external popularity, below the cards)
+
+    /// cae18f5: the radio-play catalogue gets its entry HERE, not only in
+    /// the search deck — search is a place you go knowing what you want, a
+    /// catalogue is a place you browse. Form question answered by symmetry:
+    /// the audiobook tab already carries its catalogue as a LINKED SECTION
+    /// HEADING with a tile row (`freeAudiobooksSection`), and this tab uses
+    /// the same heading+row idiom for Recommended/Downloaded — so the same
+    /// shape here, no new idiom. The search tile stays as the second entrance
+    /// to the SAME page (NetworkServices pattern, no duplicate surface); a
+    /// third entrance on Home would be one too many.
+    ///
+    /// The master switch gates it: no door into an empty room.
+    @ViewBuilder
+    private var hoerspieleSection: some View {
+        if freeCatalogsMaster {
+            VStack(alignment: .leading, spacing: 10) {
+                NavigationLink(value: PodcastRoute.hoerspiele) {
+                    HStack(spacing: 6) {
+                        Text("Radio Plays").font(.title3).bold()
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("podcasts-hoerspiele-entry")
+                Text("Curated public-broadcast plays, US audio drama and licensed classics.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
+        }
+    }
 
     @ViewBuilder
     private var recommendationsSection: some View {

@@ -95,6 +95,10 @@ struct FreeCatalogBookTile: View {
             placeholderSystemImage: placeholderSystemImage,
             meta: bookTimeLine(progress: nil, duration: duration),
             titleLineLimit: 1,
+            // 40b8f96: the LICENCE at a glance — the source follows from the
+            // section a tile stands in, the rights situation from nothing.
+            // Unknown ⇒ no capsule (never guess).
+            badgeText: FreeCatalogProvider.shared.licence(forItemId: item.id),
             onTap: onTap,
             corner: { FreeCatalogImportBadge(itemId: item.id) }
         )

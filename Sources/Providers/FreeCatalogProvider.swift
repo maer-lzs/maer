@@ -30,6 +30,9 @@ final class FreeCatalogProvider: AudioProvider {
     func remember(book: LibriVoxBook) -> LibraryItem {
         let id = FreeCatalog.librivoxPrefix + book.id
         librivoxBooks[id] = book
+        // 40b8f96: LibriVox recordings are public domain — the capsule says so
+        // instead of leaving the class blank where we DO know it.
+        licences[id] = String(localized: "Public domain")
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
@@ -61,6 +64,7 @@ final class FreeCatalogProvider: AudioProvider {
               FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
         let id = FreeCatalog.gutenbergPrefix + String(book.id)
         gutenbergAudio[id] = audio
+        licences[id] = String(localized: "Public domain")
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(

@@ -55,5 +55,12 @@ nonisolated enum HoerspielCuration {
               feedURL: "https://feeds.captivate.fm/radio-drama-revival/", language: "en"),
         Entry(title: "The Truth", author: "The Truth",
               feedURL: "https://feeds.megaphone.fm/SBP9327453320", language: "en"),
+        // 0bbdf3e: Escape Pod was left out in the first round because the
+        // Apple entry pointed at a measurement redirect (rss.pdrl.fm/…), not
+        // the publisher's own address. the reviewer measured the original (300
+        // episodes) — the rule stands: take the FIRST-PARTY address, never a
+        // tracking wrapper, so the enclosures stay the publisher's.
+        Entry(title: "Escape Pod", author: "Escape Artists",
+              feedURL: "https://escapepod.org/feed/podcast/", language: "en"),
     ]
 }

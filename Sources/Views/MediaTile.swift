@@ -34,6 +34,13 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// catalog rows) pass 1; the slot stays RESERVED either way, so cells
     /// remain equally tall.
     var titleLineLimit: Int = 2
+    /// 40b8f96: short text capsule at the cover's BOTTOM-LEFT — the licence
+    /// class of a catalog item. Deliberately text, not a glyph: SF Symbols
+    /// carries no trademarks, and three invented signs would mean nothing.
+    /// Sits opposite the corner control (bottom-right), so the two never
+    /// stack, and rides ON the cover so the reserved text lines below stay
+    /// untouched (jank rule).
+    var badgeText: String? = nil
     /// A3: unavailable content (offline, not downloaded) dims AND carries the
     /// white wifi.slash badge — dimming alone never carries the state.
     var unavailable: Bool = false
@@ -49,7 +56,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
-         meta: String? = nil, titleLineLimit: Int = 2,
+         meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          coverOverride: CoverOverride?,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.title = title
@@ -62,6 +69,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.unavailable = unavailable
         self.meta = meta
         self.titleLineLimit = titleLineLimit
+        self.badgeText = badgeText
         self.coverOverride = coverOverride
         self.onTap = onTap
         self.corner = corner
@@ -78,6 +86,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
                 .overlay(alignment: .bottomLeading) { cornerBadge }
+                .overlay(alignment: .bottomLeading) { licenceCapsule }
 
             Button(action: onTap) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -111,6 +120,20 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                 }
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var licenceCapsule: some View {
+        if let badgeText, !badgeText.isEmpty {
+            Text(badgeText)
+                .font(.caption2.weight(.medium))
+                .lineLimit(1)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(.black.opacity(0.55), in: Capsule())
+                .foregroundStyle(.white)
+                .padding(6)
         }
     }
 
@@ -177,13 +200,13 @@ extension MediaTile where CoverOverride == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
-         meta: String? = nil, titleLineLimit: Int = 2,
+         meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
                   progress: progress, unavailable: unavailable,
-                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: nil,
+                  meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: nil,
                   onTap: onTap, corner: corner)
     }
 }
@@ -193,14 +216,14 @@ extension MediaTile where Corner == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
-         meta: String? = nil, titleLineLimit: Int = 2,
+         meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          coverOverride: CoverOverride,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
                   progress: progress, unavailable: unavailable,
-                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: coverOverride,
+                  meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: coverOverride,
                   onTap: onTap, corner: { EmptyView() })
     }
 }
@@ -210,13 +233,13 @@ extension MediaTile where Corner == EmptyView, CoverOverride == EmptyView {
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
-         meta: String? = nil, titleLineLimit: Int = 2,
+         meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          onTap: @escaping () -> Void) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
                   progress: progress, unavailable: unavailable,
-                  meta: meta, titleLineLimit: titleLineLimit, coverOverride: nil,
+                  meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: nil,
                   onTap: onTap, corner: { EmptyView() })
     }
 }
