@@ -23,7 +23,7 @@ struct HomeView: View {
     /// beside the row's list (not derived from it) because the row's own cap is
     /// a curation (max 2 music cards), which a full list must not inherit.
     @State private var continueIdsAll: [String] = []
-    @State private var recentlyAddedAll: [String] = []
+    @State private var recentlyAddedAll: [LibraryItem] = []
     /// Package 3: progress per in-progress music playlist (id → progress), so a
     /// playlist continue card can show its bar and resume at the right spot.
     @State private var musicContinueProgress: [String: BookProgress] = [:]
@@ -142,7 +142,9 @@ struct HomeView: View {
         // fetched in compute() — the root has no access to it and re-fetching
         // for a push would hit the network on a tap).
         .navigationDestination(for: MixedRowRoute.self) { route in
-            MixedMediaPage(route: route, musicProgress: musicContinueProgress,
+            MixedMediaPage(route: route,
+                           continueIds: continueIdsAll, addedItems: recentlyAddedAll,
+                           musicProgress: musicContinueProgress,
                            playerCoordinator: playerCoordinator,
                            libraryViewModel: libraryViewModel)
         }
@@ -179,7 +181,7 @@ struct HomeView: View {
                 RowHeading(title: "Continue", font: .title2,
                            total: continueIdsAll.count,
                            shown: RowPreview.cut(continueIds).count,
-                           destination: MixedRowRoute.continueListening(continueIdsAll))
+                           destination: MixedRowRoute.continueListening)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         // 6fcb301: preview cap — the row is not the shelf.
@@ -422,7 +424,7 @@ struct HomeView: View {
                 RowHeading(title: "Recently Added",
                            total: recentlyAddedAll.count,
                            shown: RowPreview.cut(recentlyAddedItems).count,
-                           destination: MixedRowRoute.recentlyAdded(recentlyAddedAll))
+                           destination: MixedRowRoute.recentlyAdded)
                 ScrollView(.horizontal, showsIndicators: false) {
                     // TF4/E4: LazyHStack (was eager). The lazy variant used to freeze
                     // the shelf height on the first cell and clip taller ones — an
@@ -548,6 +550,9 @@ struct HomeView: View {
         // Uncapped counterpart for the page behind the row (3a3b1aa).
         let allAddedIds = HomeSections.interleave(
             [bookItems.map(\.id), newAlbums.map(\.id)], limit: 200)
+        // Resolved through the SAME `byId` the row uses — one source, so the
+        // page can never come up shorter than its own preview.
+        let allAddedItems = allAddedIds.compactMap { byId[$0] }
 
         // X26: precompute the continue-card accents before they render.
         for id in rankedContinue {
@@ -568,7 +573,7 @@ struct HomeView: View {
             radioRecents = radio
             continueIds = rankedContinue
             continueIdsAll = allContinue
-            recentlyAddedAll = allAddedIds
+            recentlyAddedAll = allAddedItems
             musicContinueProgress = musicProgress
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems

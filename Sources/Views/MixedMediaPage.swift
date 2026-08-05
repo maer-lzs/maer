@@ -11,8 +11,8 @@ import SwiftUI
 /// silently drop the episodes and albums the row shows. Hence one page that
 /// renders exactly the row's own cards, carrying the ids it previews.
 nonisolated enum MixedRowRoute: Hashable {
-    case continueListening([String])
-    case recentlyAdded([String])
+    case continueListening
+    case recentlyAdded
 
     /// Same wording as the row — the page IS that row, unabridged.
     var title: String {
@@ -74,6 +74,13 @@ struct HomeRecentlyAddedTile: View {
 /// The page behind a Home row: the same cards, all of them, in a grid.
 struct MixedMediaPage: View {
     let route: MixedRowRoute
+    /// The uncapped lists, handed over by the row's OWN compute pass. The page
+    /// deliberately does not resolve ids itself: the row builds its items from
+    /// the freshly loaded pass, so a page resolving through the global session
+    /// cache could show FEWER entries than the preview above it — the exact
+    /// opposite of "the page is the row, unabridged".
+    let continueIds: [String]
+    let addedItems: [LibraryItem]
     let musicProgress: [String: BookProgress]
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
@@ -94,21 +101,21 @@ struct MixedMediaPage: View {
                 alignment: .leading, spacing: 20
             ) {
                 switch route {
-                case .continueListening(let ids):
-                    ForEach(ids, id: \.self) { id in
+                case .continueListening:
+                    // Continue cards resolve by id in the row as well — one
+                    // path, so row and page cannot disagree.
+                    ForEach(continueIds, id: \.self) { id in
                         HomeContinueCard(id: id, musicProgress: musicProgress[id],
                                          playerCoordinator: playerCoordinator,
                                          libraryViewModel: libraryViewModel)
                             .frame(width: cardWidth, alignment: .top)
                     }
-                case .recentlyAdded(let ids):
-                    ForEach(ids, id: \.self) { id in
-                        if let item = AppSession.shared.libraryItem(forId: id) {
-                            HomeRecentlyAddedTile(item: item,
-                                                  playerCoordinator: playerCoordinator,
-                                                  libraryViewModel: libraryViewModel)
-                                .frame(width: cardWidth, alignment: .top)
-                        }
+                case .recentlyAdded:
+                    ForEach(addedItems) { item in
+                        HomeRecentlyAddedTile(item: item,
+                                              playerCoordinator: playerCoordinator,
+                                              libraryViewModel: libraryViewModel)
+                            .frame(width: cardWidth, alignment: .top)
                     }
                 }
             }
