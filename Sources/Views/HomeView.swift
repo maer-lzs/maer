@@ -103,6 +103,8 @@ struct HomeView: View {
     /// below (they are book lists), so the token needs its own signal — without
     /// it the card stayed on screen until the next unrelated recompute.
     @State private var hiddenRevision = 0
+    /// Up-Next heading opens the queue sheet (RowHeading.action).
+    @State private var showQueueSheet = false
 
     private var recomputeToken: String {
         "\(isActive)-\(libraryViewModel.entries.count)-\(libraryViewModel.continueListening.count)-\(libraryViewModel.recentlyAdded.count)-\(queue.ids.count)-\(recommendationsEnabled)-\(hiddenRevision)"
@@ -162,6 +164,9 @@ struct HomeView: View {
         }
         // E3: recompute the Discover filter only when its inputs change.
         .task(id: discoverToken) { recomputeDiscover() }
+        .sheet(isPresented: $showQueueSheet) {
+            PlayQueueSheet(playerCoordinator: playerCoordinator)
+        }
         .sheet(item: $discoverBookDetail) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
@@ -221,7 +226,10 @@ struct HomeView: View {
         let items = queue.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                RowHeading.plain("Up Next")
+// 13c5094 GO: the heading OPENS the queue sheet (the row's
+                // existing home at the player) — the action variant, born for
+                // exactly this.
+RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                 LazyVStack(spacing: 0) {
                     ForEach(items.prefix(5)) { item in
                         PlayQueueRow(item: item, playerCoordinator: playerCoordinator)

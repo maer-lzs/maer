@@ -498,7 +498,10 @@ RowHeading(title: "Recommended",
             let limit = horizontalSizeClass == .regular ? 6 : 3
             let shown = downloadedExpanded ? downloaded : Array(downloaded.prefix(limit))
             VStack(alignment: .leading, spacing: 8) {
-                RowHeading.plain("Downloaded")
+RowHeading(title: "Downloaded",
+                           total: downloaded.count,
+                           shown: shown.count,
+                           destination: PodcastRoute.downloadsAll)
                 LazyVStack(spacing: 0) {
                     ForEach(shown) { item in
                         PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
@@ -667,5 +670,57 @@ struct RecommendationsPage: View {
         .navigationTitle(Text("Recommended"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await recommendations.refreshIfNeeded() }
+    }
+}
+
+
+/// Welle 3b: the FULL newest-per-show grid (the 2/6-row expansion on the tab
+/// is a preview, not a page — DIE REGEL). HOEREN class like the row.
+struct LatestEpisodesPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+
+    var body: some View {
+        ScrollView {
+            LatestEpisodesGrid(items: items, playerCoordinator: playerCoordinator,
+                               alwaysExpanded: true)
+                .bottomBarClearance()
+        }
+        .navigationTitle(Text("Latest Episodes"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            let shows = PodcastAutoContinue.allShows()
+            let ids = PodcastSections.newestPerShow(shows: shows, limit: 200)
+            items = ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        }
+    }
+}
+
+/// Welle 3b: every downloaded episode as a full list — the tab's shelf shows
+/// a capped, expandable cut. HOEREN rows (episode row plays).
+struct PodcastDownloadsPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var downloadManager = DownloadManager.shared
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+
+    private var items: [LibraryItem] {
+        (subs.shows + ABSPodcastProvider.shared.shows)
+            .flatMap(\.episodes)
+            .compactMap { AppSession.shared.libraryItem(forId: $0.guid) }
+            .filter { downloadManager.isDownloaded(itemId: $0.id) }
+            .sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(items) { item in
+                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                }
+            }
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Downloaded"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

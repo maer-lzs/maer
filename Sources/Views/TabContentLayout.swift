@@ -56,77 +56,133 @@ nonisolated enum RowPreview {
 /// drift apart between rows: whether a chevron appears is decided by
 /// `RowPreview.showsChevron`, never by the call site.
 struct RowHeading<Destination: Hashable>: View {
+    /// e268c70/13c5094 GO: three real variants made the number-bending
+    /// (total:1/shown:0) obsolete — the variant IS the decision now.
+    enum Variant {
+        /// Chevron by pure COUNTING (DIE REGEL): visible iff total > shown.
+        case counted(total: Int, shown: Int)
+        /// Area entry: the chevron is earned by the target's existence.
+        case entry
+        /// No target — plain heading, spelled out.
+        case none
+        /// Third variant (Up-Next): the heading performs an ACTION (opens the
+        /// queue sheet) instead of pushing a route — chevron always on.
+        case action(@MainActor () -> Void)
+    }
+
     let title: LocalizedStringKey
     /// Already-localized text (e.g. a sort option's label). Kept apart from
     /// `title` so a translated string is never looked up as a key again.
     var verbatimTitle: String?
     var font: Font = .title3
-    /// The FULL stock behind the row — not the cut count.
-    var total: Int = 0
-    var shown: Int = RowPreview.limit
-    /// nil means "this row has no page" — then it stays plain even if the cap
-    /// bites, because a chevron that leads nowhere is the very thing G8 forbids.
+    var variant: Variant = .none
     var destination: Destination?
 
     var body: some View {
-        if let destination, RowPreview.showsChevron(total: total, shown: shown) {
-            // Value-based push: the destination is registered once on the stack
-            // root, so the same heading works from Home and from a media tab.
-            NavigationLink(value: destination) {
-                HStack(spacing: 6) {
-                    label.font(font).bold()
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal)
-                .contentShape(.rect)
+        switch variant {
+        case .counted(let total, let shown):
+            if let destination, total > shown {
+                link(destination)
+            } else {
+                plainLabel
+            }
+        case .entry:
+            if let destination { link(destination) } else { plainLabel }
+        case .none:
+            plainLabel
+        case .action(let perform):
+            Button(action: perform) {
+                chevronLabel
             }
             .buttonStyle(.plain)
             .accessibilityHint(Text("Shows the full list"))
-        } else {
-            label.font(font).bold().padding(.horizontal)
         }
+    }
+
+    private func link(_ destination: Destination) -> some View {
+        NavigationLink(value: destination) {
+            chevronLabel
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(Text("Shows the full list"))
+    }
+
+    private var chevronLabel: some View {
+        HStack(spacing: 6) {
+            label.font(font).bold()
+            Image(systemName: "chevron.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal)
+        .contentShape(.rect)
+    }
+
+    private var plainLabel: some View {
+        label.font(font).bold().padding(.horizontal)
     }
 
     private var label: Text {
         if let verbatimTitle { Text(verbatimTitle) } else { Text(title) }
     }
+
+    /// Counted heading — the standard form (kept as the memberwise-style
+    /// entry point so existing call sites read unchanged).
+    init(title: LocalizedStringKey, verbatimTitle: String? = nil, font: Font = .title3,
+         total: Int, shown: Int = RowPreview.limit, destination: Destination?) {
+        self.title = title
+        self.verbatimTitle = verbatimTitle
+        self.font = font
+        self.variant = .counted(total: total, shown: shown)
+        self.destination = destination
+    }
+
+    init(title: LocalizedStringKey, verbatimTitle: String?, font: Font,
+         variant: Variant, destination: Destination?) {
+        self.title = title
+        self.verbatimTitle = verbatimTitle
+        self.font = font
+        self.variant = variant
+        self.destination = destination
+    }
 }
+
 
 extension RowHeading where Destination == LibraryListRoute {
     /// A row that already shows everything it has: heading only, no target.
     /// Spelled out at the call site so "no chevron" reads as a decision.
     static func plain(_ title: LocalizedStringKey, font: Font = .title3) -> Self {
-        RowHeading(title: title, font: font, total: 0, destination: nil)
+        RowHeading(title: title, verbatimTitle: nil, font: font, variant: .none, destination: nil)
     }
 
     /// Same, for a heading whose text is already localized (a sort label).
     static func plain(verbatim title: String, font: Font = .title3) -> Self {
-        RowHeading(title: "", verbatimTitle: title, font: font, total: 0, destination: nil)
+        RowHeading(title: "", verbatimTitle: title, font: font, variant: .none, destination: nil)
     }
 
+    /// The ACTION heading (Up-Next → queue sheet): no route, always a
+    /// chevron — the third variant the enum was rebuilt for (e268c70 GO).
+    static func action(_ title: LocalizedStringKey, font: Font = .title3,
+                       perform: @escaping @MainActor () -> Void) -> Self {
+        RowHeading(title: title, verbatimTitle: nil, font: font,
+                   variant: .action(perform), destination: nil)
+    }
 }
 
 extension RowHeading {
     /// An AREA ENTRY: the chevron is always earned because a whole page lies
-    /// behind it (the free-audiobooks area, the radio-play page) — G8 is
-    /// satisfied by the target's existence, not by a count. Spelled out so the
-    /// decision reads at the call site, like `plain`. Unconstrained on
-    /// Destination — entries push routes of every tab.
+    /// behind it — its own variant now, no number-bending (e268c70).
     static func entry(_ title: LocalizedStringKey, font: Font = .title3,
                       destination: Destination) -> Self {
-        RowHeading(title: title, font: font, total: 1, shown: 0, destination: destination)
+        RowHeading(title: title, verbatimTitle: nil, font: font,
+                   variant: .entry, destination: destination)
     }
 
-    /// Entry with an already-localized title (source proper names). Paket 3:
-    /// the catalog rows' chevron is earned by the SOURCE's stock (thousands
-    /// behind each 12-tile preview), not by the loaded count — a count-based
-    /// rule would hide the chevron exactly because preview and load size match.
+    /// Entry with an already-localized title (source proper names).
     static func entry(verbatim title: String, font: Font = .title3,
                       destination: Destination) -> Self {
-        RowHeading(title: "", verbatimTitle: title, font: font, total: 1, shown: 0,
-                   destination: destination)
+        RowHeading(title: "", verbatimTitle: title, font: font,
+                   variant: .entry, destination: destination)
     }
 }
 

@@ -20,6 +20,9 @@ struct LatestEpisodesGrid: View {
     // Front 2 fix 2: NO grid-level store observing — a download progress tick
     // used to re-render all ~30 tiles on TWO mounted tabs. Availability is
     // resolved per tile by the shared MediaAvailabilityScope (TF4/E1 pattern).
+    /// Welle 3b: the full page reuses THIS grid without the row cap —
+    /// Regel 2, one grid, two cuts.
+    var alwaysExpanded = false
     /// Y3a: 2 rows collapsed, up to 6 expanded — inline, not persisted.
     @State private var expanded = false
     @State private var width: CGFloat = 0
@@ -33,10 +36,17 @@ struct LatestEpisodesGrid: View {
 
     var body: some View {
         let cols = columns
-        let rows = expanded ? 6 : 2
+        // items.count instead of Int.max: cols * rows must not overflow.
+        let rows = alwaysExpanded ? max(items.count, 1) : (expanded ? 6 : 2)
         let shown = Array(items.prefix(cols * rows))
         VStack(alignment: .leading, spacing: 10) {
-            RowHeading.plain("Latest Episodes")
+            if !alwaysExpanded {
+                // Welle 3b: the heading carries the page chevron (counted —
+                // the expansion is a preview, the page is the stock).
+                RowHeading(title: "Latest Episodes",
+                           total: items.count, shown: shown.count,
+                           destination: PodcastRoute.latestAll)
+            }
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: cols),
                 alignment: .leading, spacing: 14
@@ -53,7 +63,7 @@ struct LatestEpisodesGrid: View {
             // so a withAnimation transaction there gives the identical curve in
             // both directions (Y45's goal) without the per-frame tracking.
             // Curve unchanged: Y62 `.easeInOut(0.35)` (no overshoot on collapse).
-            if items.count > cols * 2 {
+            if !alwaysExpanded, items.count > cols * 2 {
                 Button {
                     withAnimation(.easeInOut(duration: 0.35)) { expanded.toggle() }
                 } label: {

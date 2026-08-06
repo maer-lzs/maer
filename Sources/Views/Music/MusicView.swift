@@ -30,6 +30,9 @@ struct MusicView: View {
     /// F5: playlists newest-changed first (default sort).
     /// 5034add: master flip re-renders the browse deck live.
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
+    /// I1: same store rows as Home — no second fetch (Regel 2).
+    @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    @State private var freeDetailItem: LibraryItem?
 
     /// 50f4751/f18ec34/5034add: ONE pure gate — master > feature toggle
     /// (Music pill) > archive.org service opt-out.
@@ -75,6 +78,9 @@ struct MusicView: View {
                     // the bar stayed expanded (heavy/opaque look) and never
                     // collapsed. One binding, both symptoms.
                     .reportsBottomBarScroll(active: isActive)
+        .sheet(item: $freeDetailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
             }
         }
         .task {
@@ -150,6 +156,21 @@ struct MusicView: View {
             // no chevron on the page-sized cut, which is the rule working).
             if !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
             if !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
+            // 40f21b3 I1: the free-music areas are REACHABLE from the music
+            // tab again (tab parity) — same store rows as Home, no second
+            // fetch (Regel 2). I2: future free sources join THIS block.
+            if freeClassicalArea, !freeCatalogStore.rows.classical.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        RowHeading.entry("Free Classical", destination: MusicRoute.freeClassical)
+                        freeTileRow(freeCatalogStore.rows.classical)
+                    }
+            }
+            if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
+                        freeTileRow(freeCatalogStore.rows.freeMusic)
+                    }
+            }
         }
         .padding(.top, TabContentLayout.topInset)
     }
@@ -177,6 +198,31 @@ struct MusicView: View {
         }
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
+    }
+
+    /// I1: free-catalog tile row on the tab — NACHSCHLAGEN taps (detail
+    /// sheet with attribution), same tiles as Home.
+    private func freeTileRow(_ items: [LibraryItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(RowPreview.cut(items)) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: "music.note",
+                        onTap: { freeDetailItem = item })
+                    .containerRelativeFrame(.horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
     }
 
     private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem],

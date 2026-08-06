@@ -25,6 +25,10 @@ enum PodcastRoute: Hashable {
     /// Welle 3: the full recommendation pool — Home's Discover chevron and
     /// the podcast tab's Recommended chevron land on the SAME page (Regel 2).
     case recommendations
+    /// Welle 3b: full pages behind the expanding rows (DIE REGEL: an
+    /// expansion is not a page).
+    case latestAll
+    case downloadsAll
 }
 
 extension View {
@@ -54,6 +58,10 @@ extension View {
                 PodcastContinuePage(playerCoordinator: playerCoordinator)
             case .recommendations:
                 RecommendationsPage()
+            case .latestAll:
+                LatestEpisodesPage(playerCoordinator: playerCoordinator)
+            case .downloadsAll:
+                PodcastDownloadsPage(playerCoordinator: playerCoordinator)
             case .history:
                 PodcastHistoryView(playerCoordinator: playerCoordinator)
             }
