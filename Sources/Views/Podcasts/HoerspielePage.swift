@@ -84,7 +84,7 @@ struct HoerspielePage: View {
                 .padding(.horizontal)
         } else {
             ForEach(results, id: \.feedURL) { result in
-                catalogRow(result)
+                CatalogFeedRow(result: result)
             }
         }
     }
@@ -99,8 +99,9 @@ struct HoerspielePage: View {
                     .font(.headline)
                     .padding(.horizontal)
                 ForEach(HoerspielCuration.feeds) { entry in
-                    catalogRow(PodcastSearchResult(title: entry.title, author: entry.author,
-                                                   artworkURL: nil, feedURL: entry.feedURL))
+                    CatalogFeedRow(result: PodcastSearchResult(
+                        title: entry.title, author: entry.author,
+                        artworkURL: nil, feedURL: entry.feedURL))
                 }
             }
             .padding(.top, 6)
@@ -139,29 +140,6 @@ struct HoerspielePage: View {
         }
     }
 
-    private func catalogRow(_ result: PodcastSearchResult) -> some View {
-        Button {
-            pushRoute(.showPreview(feedURL: result.feedURL))
-        } label: {
-            HStack(spacing: 8) {
-                MediaRowContent(
-                    coverURL: result.artworkURL.flatMap { URL(string: $0) },
-                    eyebrow: result.author,
-                    title: result.title,
-                    meta: String(localized: "Podcast"),
-                    placeholderSystemImage: "waveform.and.mic",
-                    // c125ccd: a hit without artwork resolves it from the feed.
-                    coverOverride: result.artworkURL == nil
-                        ? FeedArtwork(feedURL: result.feedURL, placeholderSystemImage: "waveform.and.mic")
-                        : nil
-                )
-                PodcastSubscribeBadge(feedURL: result.feedURL)
-            }
-            .padding(.horizontal, 20)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
 
     /// G8: only offered because the target page really exists and is reachable.
     private var crossLink: some View {

@@ -2289,6 +2289,66 @@
         }
       }
     },
+    "Free Audiobooks & Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörbücher & Hörspiele"
+          }
+        }
+      }
+    },
+    "Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörspiele und Hörbücher — öffentlich-rechtliche Sender, unabhängige Produktionen und gemeinfreie Kataloge, getrennt von deiner eigenen Bibliothek."
+          }
+        }
+      }
+    },
+    "Public Broadcast Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentlich-rechtliche Hörspiele"
+          }
+        }
+      }
+    },
+    "Independent Audio Drama (USA)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unabhängige Hörspiel-Reihen (USA)"
+          }
+        }
+      }
+    },
+    "Could not load %@. Check your connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
+    "The catalogs need a connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Kataloge brauchen eine Verbindung."
+          }
+        }
+      }
+    },
     "Free Audiobooks" : {
       "localizations" : {
         "de" : {
