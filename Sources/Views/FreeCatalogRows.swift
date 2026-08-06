@@ -47,7 +47,12 @@ struct FreeCatalogRows: View {
                 }
             }
             if !freeMusic.isEmpty {
-                row(title: "Free Music", items: freeMusic)
+                // Welle 3: the row has its page now — entry chevron (the
+                // Jamendo stock behind the 12-tile preview is thousands).
+                VStack(alignment: .leading, spacing: 10) {
+                    RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
+                    tileRow(items: freeMusic)
+                }
             }
         }
         .sheet(item: $detailItem) { item in

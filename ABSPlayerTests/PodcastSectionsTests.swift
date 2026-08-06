@@ -37,7 +37,7 @@ struct PodcastSectionsTests {
 
     /// The FORMER three-pass logic, replicated as the reference oracle.
     private func referenceSections(shows: [PodcastShow], world: World) -> PodcastSectionsResult {
-        // Pass 1: nextUp (in-progress by last played, max 10).
+        // Pass 1: nextUp (in-progress by last played; 200 = sanity bound).
         var picks: [(item: LibraryItem, playedAt: Double)] = []
         for show in shows {
             for ep in show.episodes {
@@ -46,7 +46,7 @@ struct PodcastSectionsTests {
                 picks.append((item, world.ts(item.id)))
             }
         }
-        let nextUp = picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map(\.item)
+        let nextUp = picks.sorted { $0.playedAt > $1.playedAt }.prefix(200).map(\.item)
 
         // Pass 2: recently updated with new-episode count.
         var infos: [RecentShowInfo] = []
@@ -194,7 +194,10 @@ struct PodcastSectionsTests {
         #expect(detached.nextUp.map(\.id) == ["s1e3"])
     }
 
-    @Test func nextUpCapsAtTen() {
+    /// Welle 3 / C-Lehre: the SOURCE no longer culls (the row previews via
+    /// RowPreview, the page shows the full stock) — 200 is a sanity bound,
+    /// not a curation. This test used to pin the old 10-cap.
+    @Test func nextUpKeepsFullStock() {
         let episodes = (1...15).map { episode("e\($0)", pubDate: Double($0)) }
         let shows = [show("s", episodes: episodes)]
         var world = World()
@@ -203,7 +206,7 @@ struct PodcastSectionsTests {
             world.lastPlayed["e\(i)"] = Double(i)
         }
         let result = compute(shows: shows, world: world)
-        #expect(result.nextUp.count == 10)
+        #expect(result.nextUp.count == 15)
         // Most recently played first.
         #expect(result.nextUp.first?.id == "e15")
         expectEqual(result, referenceSections(shows: shows, world: world))

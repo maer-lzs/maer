@@ -185,7 +185,10 @@ enum PodcastSections {
         }
 
         return PodcastSectionsResult(
-            nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(10).map(\.item),
+            // Welle 3 / C-Lehre: the SOURCE no longer culls — the row caps
+            // its preview (RowPreview), the page shows the full stock. 200 is
+            // a sanity bound, not a curation.
+            nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(200).map(\.item),
             recentShows: arrange(infos, sort: sort, filter: filter),
             downloaded: downloadedItems.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
         )

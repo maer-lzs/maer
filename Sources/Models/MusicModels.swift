@@ -88,7 +88,7 @@ nonisolated struct MusicTopSong: Identifiable {
 /// Provider-neutral album-shelf vocabulary — the LAST Subsonic semantic in
 /// the protocol is gone: providers translate this enum into their own sort
 /// (Subsonic getAlbumList2 types, Jellyfin SortBy/SortOrder).
-nonisolated enum MusicShelf {
+nonisolated enum MusicShelf: Hashable {
     case newest, frequent, recent, byArtist, alphabetical
 }
 

@@ -276,7 +276,13 @@ struct HomeView: View {
         let shown = discoverShown
         if !shown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain("Discover")
+// Welle 3: Discover's page is the SAME recommendation pool
+                // page as the podcast tab's (Regel 2) — the book admixture is
+                // Discover's curation, the pool is the stock.
+                RowHeading(title: "Discover",
+                           total: recommendations.results.count,
+                           shown: discoverShown.count,
+                           destination: PodcastRoute.recommendations)
                 // Y2a: horizontally scrollable, the FULL recommendation pool —
                 // one shared tile with the podcast tab (RecommendationTile);
                 // its tap opens the temporary show preview.
@@ -461,7 +467,11 @@ struct HomeView: View {
     private var recentMusicSection: some View {
         if !recentMusicItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain("Recently Played (Music)")
+                // Welle 3: same page as the music tab's shelf (Regel 2).
+                RowHeading(title: "Recently Played (Music)",
+                           total: recentMusicItems.count,
+                           shown: RowPreview.cut(recentMusicItems).count,
+                           destination: MusicRoute.shelfPage(.recent))
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(RowPreview.cut(recentMusicItems)) { item in

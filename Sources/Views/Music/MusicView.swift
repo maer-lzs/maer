@@ -145,8 +145,11 @@ struct MusicView: View {
 
             libraryList
 
-            if !vm.recent.isEmpty { shelf("Recently Played", vm.recent) }
-            if !vm.newest.isEmpty { shelf("Recently Added", vm.newest) }
+            // Welle 3: shelves have their page now — chevron per COUNTING
+            // (the row source loads 20, shows 12; a 20-album library shows
+            // no chevron on the page-sized cut, which is the rule working).
+            if !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
+            if !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
         }
         .padding(.top, TabContentLayout.topInset)
     }
@@ -176,9 +179,11 @@ struct MusicView: View {
         .padding(.horizontal)
     }
 
-    private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem]) -> some View {
+    private func shelf(_ title: LocalizedStringKey, _ items: [LibraryItem],
+                       page: MusicRoute) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.title3).bold().padding(.horizontal)
+            RowHeading(title: title, total: items.count,
+                       shown: RowPreview.cut(items).count, destination: page)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 16) {
                     // 6fcb301: music shelves ran UNCAPPED — every shelf built

@@ -28,6 +28,12 @@ enum MusicRoute: Hashable {
     /// 50f4751: the SEPARATE free-classical catalog area (never mixed into
     /// the personal library surfaces).
     case freeClassical
+    /// Welle 3 (DIE REGEL): a shelf row's full page — recent/newest as a
+    /// grid. ONE parameterised page; Home's "Recently Played (Music)" row
+    /// targets the same .recent page (Regel 2: no duplicate surface).
+    case shelfPage(MusicShelf)
+    /// Welle 3: the free-music (Jamendo) full page behind Home's row.
+    case freeJamendo
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -36,8 +42,10 @@ enum MusicRoute: Hashable {
         case let (.artists(a), .artists(b)):     return a.map(\.id) == b.map(\.id)
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
-             (.genres, .genres), (.freeClassical, .freeClassical):
+             (.genres, .genres), (.freeClassical, .freeClassical),
+             (.freeJamendo, .freeJamendo):
             return true
+        case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
         }
@@ -55,6 +63,8 @@ enum MusicRoute: Hashable {
         case .genres:           hasher.combine(7)
         case .genre(let g):     hasher.combine(8); hasher.combine(g.name)
         case .freeClassical:    hasher.combine(9)
+        case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
+        case .freeJamendo:      hasher.combine(11)
         }
     }
 
@@ -72,6 +82,8 @@ enum MusicRoute: Hashable {
         case .genres:     return "music-route-genres"
         case .genre:      return "music-route-genre"
         case .freeClassical: return "music-route-free-classical"
+        case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
+        case .freeJamendo: return "music-route-free-jamendo"
         }
     }
 }
@@ -131,6 +143,10 @@ extension View {
                 MusicGenreDetailPage(genre: genre, playerCoordinator: playerCoordinator)
             case .freeClassical:
                 FreeClassicalPage(playerCoordinator: playerCoordinator)
+            case .shelfPage(let shelf):
+                MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
+            case .freeJamendo:
+                FreeJamendoPage(playerCoordinator: playerCoordinator)
             }
         }
     }

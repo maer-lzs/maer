@@ -226,7 +226,10 @@ struct PodcastsView: View {
     private var nextUpSection: some View {
         if !nextUpShown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain("Continue", font: .title2)
+RowHeading(title: "Continue", font: .title2,
+                           total: nextUpShown.count,
+                           shown: RowPreview.cut(nextUpShown).count,
+                           destination: PodcastRoute.nextUpAll)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
                         // 6fcb301: preview cap for every row of this tab.
@@ -301,7 +304,10 @@ struct PodcastsView: View {
         // conditional if-!isEmpty card-row insert IS the shift).
         if !recommendationItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain("Recommended")
+RowHeading(title: "Recommended",
+                           total: recommendationItems.count,
+                           shown: RowPreview.cut(recommendationItems).count,
+                           destination: PodcastRoute.recommendations)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(recommendationItems)) { r in
@@ -587,5 +593,79 @@ struct PremiumShowsPage: View {
         .navigationTitle(Text("Premium"))
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
+    }
+}
+
+
+/// Welle 3: the continue row's full page — HOEREN grid (F2/F3: the page
+/// inherits the row's tap class; tile tap PLAYS, progress on the tile).
+struct PodcastContinuePage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                ForEach(items) { item in
+                    MediaTile(title: item.title,
+                              subtitle: item.author,
+                              coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                              placeholderSystemImage: "waveform.and.mic",
+                              onTap: { Task { await playerCoordinator.open(item: item) } })
+                        .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator,
+                                            showsContinueHide: true)
+                }
+            }
+            .padding(.horizontal)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Continue"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            let shows = PodcastAutoContinue.allShows()
+            let snapshot = PodcastSections.snapshot(shows: shows)
+            let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
+            let markers = ContinueHiddenStore.markers()
+            items = sections.nextUp.filter { item in
+                let stamp = (UserDefaults.standard
+                    .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
+            }
+        }
+    }
+}
+
+/// Welle 3: the FULL recommendation pool — one page for Home's Discover and
+/// the podcast tab's Recommended (Regel 2). NACHSCHLAGEN: tap opens the show
+/// preview, subscribing lives there.
+struct RecommendationsPage: View {
+    @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
+
+    private var pool: [PodcastSearchResult] {
+        let shows = subs.shows + ABSPodcastProvider.shared.shows
+        return PodcastRecommendationsStore.excludingSubscribed(
+            recommendations.results,
+            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedTitles: shows.map(\.title))
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                ForEach(pool) { result in
+                    RecommendationTile(result: result)
+                }
+            }
+            .padding(.horizontal)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Recommended"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await recommendations.refreshIfNeeded() }
     }
 }

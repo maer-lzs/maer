@@ -381,3 +381,99 @@ struct MusicGenreDetailPage: View {
         if next.count < songPageSize { songsEnd = true }
     }
 }
+
+
+/// Welle 3 (DIE REGEL: every row has a page): ONE parameterised shelf page —
+/// the full grid behind "Recently Played" and "Recently Added". Loads a wider
+/// cut than the 20-item row source (the shelf API has no paging; 100 is the
+/// honest upper request, the server may return less). Tap class stays
+/// NACHSCHLAGEN (AlbumCell → album page), inherited from the row.
+struct MusicShelfPage: View {
+    let shelf: MusicShelf
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+    @State private var isLoading = false
+
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    private var title: LocalizedStringKey {
+        shelf == .recent ? "Recently Played" : "Recently Added"
+    }
+
+    var body: some View {
+        ScrollView {
+            if items.isEmpty && isLoading {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else if items.isEmpty {
+                ContentUnavailableView("No music", systemImage: "music.note")
+            } else {
+                CoverGrid(columns: columns) {
+                    ForEach(items) { album in
+                        AlbumCell(item: album, playerCoordinator: playerCoordinator)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .navigationTitle(Text(title))
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
+        .task {
+            guard items.isEmpty else { return }
+            isLoading = true
+            defer { isLoading = false }
+            items = (try? await AppSession.shared.musicProvider.albumShelf(shelf: shelf, size: 100)) ?? []
+        }
+    }
+}
+
+/// Welle 3: the free-music (Jamendo) page behind Home's row — tile grid,
+/// NACHSCHLAGEN tap (detail sheet carries the ToS-mandated attribution and
+/// the prominent Play).
+struct FreeJamendoPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+    @State private var isLoading = false
+    @State private var detailItem: LibraryItem?
+
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    var body: some View {
+        ScrollView {
+            if items.isEmpty && isLoading {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else if items.isEmpty {
+                ContentUnavailableView("Free Music", systemImage: "music.note")
+            } else {
+                CoverGrid(columns: columns) {
+                    ForEach(items) { item in
+                        FreeCatalogBookTile(
+                            item: item,
+                            placeholderSystemImage: "music.note",
+                            onTap: { detailItem = item })
+                        .contextMenu {
+                            Button {
+                                Task { await playerCoordinator.open(item: item) }
+                            } label: { Label("Play", systemImage: "play.fill") }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .navigationTitle(Text("Free Music"))
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
+        .task {
+            guard items.isEmpty else { return }
+            isLoading = true
+            defer { isLoading = false }
+            let provider = FreeCatalogProvider.shared
+            let tracks = (try? await JamendoClient.popularTracks(limit: 60)) ?? []
+            items = tracks.compactMap { provider.remember(track: $0) }
+        }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+}

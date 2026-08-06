@@ -20,6 +20,11 @@ enum PodcastRoute: Hashable {
     /// hinzugefuegt": heading -> full grid). The S22 management surface is NOT
     /// this page — this one browses, management stays where it is.
     case premium
+    /// Welle 3: the continue row's full page (HOEREN grid — tap plays).
+    case nextUpAll
+    /// Welle 3: the full recommendation pool — Home's Discover chevron and
+    /// the podcast tab's Recommended chevron land on the SAME page (Regel 2).
+    case recommendations
 }
 
 extension View {
@@ -45,6 +50,10 @@ extension View {
                 PodcastShowPreviewView(feedURL: feedURL)
             case .premium:
                 PremiumShowsPage(playerCoordinator: playerCoordinator)
+            case .nextUpAll:
+                PodcastContinuePage(playerCoordinator: playerCoordinator)
+            case .recommendations:
+                RecommendationsPage()
             case .history:
                 PodcastHistoryView(playerCoordinator: playerCoordinator)
             }
