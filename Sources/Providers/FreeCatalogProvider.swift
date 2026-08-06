@@ -143,6 +143,24 @@ final class FreeCatalogProvider: AudioProvider {
     func fetchLibraries() async throws -> [ABSLibrary] { [] }
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
 
+    /// 9081fa1 Strukturfix: detail metadata STARTS from the remembered item
+    /// and overrides only what the detail answer really knows better. Year and
+    /// genres were each forgotten here once — with this, a field added on the
+    /// remember side reaches the detail automatically, instead of being a
+    /// change at four places that is missed at three.
+    private func detailMetadata(itemId: String,
+                                title: String?, authorName: String?) -> LibraryItemMetadata {
+        let known = itemsById[itemId]?.media?.metadata
+        return LibraryItemMetadata(
+            title: title ?? known?.title,
+            authorName: authorName ?? known?.authorName,
+            narratorName: known?.narratorName,
+            seriesName: known?.seriesName,
+            genres: known?.genres,
+            publishedYear: known?.publishedYear,
+            description: known?.description)
+    }
+
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
             guard let book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
@@ -151,10 +169,8 @@ final class FreeCatalogProvider: AudioProvider {
             return LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
-                    metadata: LibraryItemMetadata(
-                        title: book.title, authorName: FreeCatalog.authorLine(book.authors),
-                        narratorName: nil, seriesName: nil, genres: nil,
-                        publishedYear: nil, description: nil),
+                    metadata: detailMetadata(itemId: itemId, title: book.title,
+                                             authorName: FreeCatalog.authorLine(book.authors)),
                     duration: book.totaltimesecs.map(Double.init), chapters: nil,
                     tracks: tracks),
                 userMediaProgress: nil)
@@ -178,10 +194,10 @@ final class FreeCatalogProvider: AudioProvider {
             return LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
-                    metadata: LibraryItemMetadata(
-                        title: meta.metadata?.title?.first ?? itemsById[itemId]?.title,
-                        authorName: meta.metadata?.creator?.joined, narratorName: nil,
-                        seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                    // The hand-rescued title fallback is covered by the helper.
+                    metadata: detailMetadata(itemId: itemId,
+                                             title: meta.metadata?.title?.first,
+                                             authorName: meta.metadata?.creator?.joined),
                     duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
                 userMediaProgress: nil)
         }
@@ -192,12 +208,30 @@ final class FreeCatalogProvider: AudioProvider {
             return LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
-                    metadata: LibraryItemMetadata(
-                        title: track.name, authorName: track.artist_name, narratorName: nil,
-                        seriesName: nil, genres: nil, publishedYear: nil, description: nil),
+                    metadata: detailMetadata(itemId: itemId, title: track.name,
+                                             authorName: track.artist_name),
                     duration: track.duration.map(Double.init), chapters: nil,
                     tracks: [ABSAudioTrack(index: 0, startOffset: 0,
                                            duration: track.duration.map(Double.init),
+                                           contentUrl: audio, metadata: nil)]),
+                userMediaProgress: nil)
+        }
+        if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
+            // FUND beim 9081fa1-Strukturfix: dieser Zweig FEHLTE — und
+            // gutenbergAudioURL hatte keinen einzigen Aufrufer. Ein Tap auf
+            // eine Gutenberg-Kachel lief also in resourceUnavailable: die
+            // Titel waren nie abspielbar, seit es die Reihe gibt.
+            guard let audio = gutenbergAudio[itemId] else {
+                throw URLError(.resourceUnavailable)
+            }
+            let known = itemsById[itemId]
+            return LibraryItemDetail(
+                id: itemId,
+                media: LibraryItemMedia(
+                    metadata: detailMetadata(itemId: itemId, title: nil, authorName: nil),
+                    duration: known?.media?.duration, chapters: nil,
+                    tracks: [ABSAudioTrack(index: 0, startOffset: 0,
+                                           duration: known?.media?.duration,
                                            contentUrl: audio, metadata: nil)]),
                 userMediaProgress: nil)
         }

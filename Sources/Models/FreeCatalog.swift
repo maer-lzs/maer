@@ -308,13 +308,27 @@ nonisolated enum FreeCatalog {
         case unknown
     }
 
-    /// The last free year where all three terms have run out (2026 − 100 = 1926,
-    /// so 1925 is the last safe vintage). A constant, not a setting.
-    static let publicDomainCutoffYear = 1925
+    /// 011827a Rest-Korn: the old constant (1925) silently AGED — on
+    /// 2027-01-01 the 1926 vintage joins the free set and the plaque would
+    /// have stayed one year too timid, forever. The US term is the longest of
+    /// the three, so its schedule (Music Modernization Act, pre-1972 sound
+    /// recordings) decides; computed from the CURRENT year:
+    /// before 1923 free since 2022 · 1923–1946 after 100 years ·
+    /// 1947–1956 after 110 · 1957–1972 protected until 2067.
+    static func usTermExpired(year: Int, currentYear: Int) -> Bool {
+        switch year {
+        case ..<1923:   return true
+        case ...1946:   return currentYear >= year + 101
+        case ...1956:   return currentYear >= year + 111
+        default:        return currentYear >= 2068
+        }
+    }
 
     /// Note that the licence field OVERRIDES this — a stated CC licence is a
     /// fact from the source and always wins (handled by the caller).
-    static func rightsNote(year: String?) -> RightsNote {
+    /// `currentYear` is injectable for tests; callers use the default.
+    static func rightsNote(year: String?,
+                           currentYear: Int = Calendar.current.component(.year, from: Date())) -> RightsNote {
         guard let raw = year?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else {
             return .unknown
         }
@@ -322,7 +336,8 @@ nonisolated enum FreeCatalog {
         // four digits, and treat anything else as no year rather than guessing.
         let digits = raw.prefix(4)
         guard digits.count == 4, let value = Int(digits) else { return .unknown }
-        return value <= publicDomainCutoffYear ? .publicDomain : .termsApply(year: String(digits))
+        return usTermExpired(year: value, currentYear: currentYear)
+            ? .publicDomain : .termsApply(year: String(digits))
     }
 
     static func catalogMetaLine(year: String?, runtime: String?) -> String {

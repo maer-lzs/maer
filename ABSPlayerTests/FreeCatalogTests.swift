@@ -689,23 +689,58 @@ struct CatalogGenreAxisTests {
     /// nennen wir die Fristen und faellen kein Urteil ueber den Titel.
     /// Gemessen an der Klassik-Reihe: 408 Titel bis 1925, 1021 spaeter, 2842
     /// ganz ohne Jahr.
-    @Test("Rechtelage: gemeinfrei nur bis 1925, sonst Fristen statt Urteil")
+    @Test("Rechtelage: gemeinfrei nur bei abgelaufener LAENGSTER Frist, sonst Fristen statt Urteil")
     func rightsNote() {
-        #expect(FreeCatalog.rightsNote(year: "1925") == .publicDomain)
-        #expect(FreeCatalog.rightsNote(year: "1900") == .publicDomain)
-        // 1926 ist der erste Jahrgang, bei dem die US-Frist noch laeuft.
-        #expect(FreeCatalog.rightsNote(year: "1926") == .termsApply(year: "1926"))
+        #expect(FreeCatalog.rightsNote(year: "1925", currentYear: 2026) == .publicDomain)
+        #expect(FreeCatalog.rightsNote(year: "1900", currentYear: 2026) == .publicDomain)
+        // 1926 ist 2026 der erste Jahrgang, bei dem die US-Frist noch laeuft.
+        #expect(FreeCatalog.rightsNote(year: "1926", currentYear: 2026) == .termsApply(year: "1926"))
+        // 011827a: die Grenze ALTERT MIT — am 1.1.2027 wird 1926 frei. Die
+        // alte Konstante waere fuer immer ein Jahr zu scheu geblieben.
+        #expect(FreeCatalog.rightsNote(year: "1926", currentYear: 2027) == .publicDomain)
+        // 1947er springen NICHT nach 100 Jahren (110er-Band des MMA) …
+        #expect(FreeCatalog.rightsNote(year: "1947", currentYear: 2048) == .termsApply(year: "1947"))
+        // … sondern erst 2058.
+        #expect(FreeCatalog.rightsNote(year: "1947", currentYear: 2058) == .publicDomain)
         // the reviewer's Beispiele: in der Schweiz frei, in den USA geschuetzt —
         // genau deshalb Fristen statt Urteil.
-        #expect(FreeCatalog.rightsNote(year: "1945") == .termsApply(year: "1945"))
-        #expect(FreeCatalog.rightsNote(year: "1953") == .termsApply(year: "1953"))
+        #expect(FreeCatalog.rightsNote(year: "1945", currentYear: 2026) == .termsApply(year: "1945"))
+        #expect(FreeCatalog.rightsNote(year: "1953", currentYear: 2026) == .termsApply(year: "1953"))
         // Volldatum: fuehrende vier Ziffern zaehlen.
-        #expect(FreeCatalog.rightsNote(year: "1945-06-01") == .termsApply(year: "1945"))
+        #expect(FreeCatalog.rightsNote(year: "1945-06-01", currentYear: 2026) == .termsApply(year: "1945"))
         // Kein Jahr, unlesbares Jahr: nichts behaupten, nicht raten.
         #expect(FreeCatalog.rightsNote(year: nil) == .unknown)
         #expect(FreeCatalog.rightsNote(year: "") == .unknown)
         #expect(FreeCatalog.rightsNote(year: "circa") == .unknown)
         #expect(FreeCatalog.rightsNote(year: "45") == .unknown)
+    }
+
+    /// 9081fa1: das Detail reichert die erinnerten Metadaten an, statt sie zu
+    /// verlieren — Jahr und Genres waren hier je einmal vergessen worden.
+    @MainActor
+    @Test("Detail keeps year and genres from the remembered item")
+    func detailKeepsRememberedMetadata() async throws {
+        let doc = ArchivePopularDoc(
+            identifier: "detailtest-1", title: ArchiveStringList(["T"]),
+            creator: ArchiveStringList(["C"]), downloads: 1,
+            runtime: "1:00:00", licenseurl: nil,
+            year: ArchiveStringList(["1927"]),
+            subject: ArchiveStringList(["Opera"]))
+        let provider = FreeCatalogProvider.shared
+        let item = try #require(provider.remember(popular: doc))
+        #expect(item.media?.metadata?.publishedYear?.value == "1927")
+        #expect(item.media?.metadata?.genres == ["Opera"])
+        // The detail path itself needs the network for lva:; the shared helper
+        // is exercised through the gut: branch, which resolves locally.
+        let gut = GutenbergClient.Book(
+            id: 9999, title: "G", authors: nil, languages: ["de"],
+            formats: ["audio/mpeg": "https://x/a.mp3",
+                      "image/jpeg": "https://x/c.jpg"],
+            subjects: ["Satire"])
+        let gutItem = try #require(provider.remember(gutenberg: gut))
+        let detail = try await provider.fetchItemDetail(itemId: gutItem.id)
+        #expect(detail.media.metadata?.genres == ["Satire"])
+        #expect(detail.media.tracks?.isEmpty == false)
     }
 
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
