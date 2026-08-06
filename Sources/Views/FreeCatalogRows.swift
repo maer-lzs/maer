@@ -66,16 +66,23 @@ struct FreeCatalogRows: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 14) {
                     ForEach(items) { item in
+                        // 174f855 Tap-Konvention: catalog tiles are class
+                        // NACHSCHLAGEN — the tap answers "what is that?", the
+                        // sheet's prominent Play answers "hear it" one tap
+                        // later. Long-press keeps Play as the shortcut.
                         FreeCatalogBookTile(
                             item: item,
                             placeholderSystemImage: item.id.hasPrefix(FreeCatalog.jamendoPrefix)
                                 ? "music.note" : "book.closed",
-                            onTap: { Task { await playerCoordinator.open(item: item) } }
+                            onTap: { detailItem = item }
                         )
                         .containerRelativeFrame(.horizontal,
                                                 count: CardMetrics.recommendationColumns(regularWidth: false),
                                                 spacing: 14)
                         .contextMenu {
+                            Button {
+                                Task { await playerCoordinator.open(item: item) }
+                            } label: { Label("Play", systemImage: "play.fill") }
                             Button {
                                 detailItem = item
                             } label: { Label("Details", systemImage: "info.circle") }

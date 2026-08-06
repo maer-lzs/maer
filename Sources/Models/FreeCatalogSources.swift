@@ -42,8 +42,11 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         // "Old Time Radio" and "Internet Archive" are collection/institution
         // names — verbatim like the publishers (733ac2a: the collection name
         // is precise and recognisable).
-        case .librivox, .gutenberg, .escapeArtists, .oldTimeRadio, .archiveBooks: return true
-        case .oerr, .usIndies: return false
+        case .librivox, .gutenberg, .oldTimeRadio, .archiveBooks: return true
+        // 9815608 D: "Escape Artists" is a PUBLISHER, not a content name —
+        // the row title names the content, the publisher stays the sender
+        // line on every tile (author field).
+        case .oerr, .usIndies, .escapeArtists: return false
         }
     }
 
@@ -52,7 +55,7 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .oerr:          String(localized: "Public Broadcast Radio Plays")
-        case .escapeArtists: "Escape Artists"
+        case .escapeArtists: String(localized: "Story Podcasts (English)")
         case .usIndies:      String(localized: "Independent Audio Drama (USA)")
         case .oldTimeRadio:  "Old Time Radio"
         case .librivox:      "LibriVox"

@@ -146,23 +146,37 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    /// A feed source: its curated entries as subscribe rows. Rows, not tiles —
-    /// the ACTION (subscribe) is the distinction the page keeps (Auflage 4).
+    /// 3d6b412 E: feed sources are TILE rows too — the list form belongs to
+    /// search, the surface speaks ONE tile language. The action distinction
+    /// lives in the tap convention now (tile tap = show preview =
+    /// NACHSCHLAGEN; subscribing happens there). Hang risk assessed by the reviewer:
+    /// this page is pushed, not a kept-alive tab root.
     @ViewBuilder
     private func feedSection(_ source: CatalogSource) -> some View {
         let feeds = source.curatedFeeds(forLanguages: languages)
         if !feeds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 RowHeading.plain(verbatim: source.title)
-                LazyVStack(spacing: 0) {
-                    ForEach(feeds) { entry in
-                        CatalogFeedRow(result: PodcastSearchResult(
-                            title: entry.title, author: entry.author,
-                            artworkURL: nil, feedURL: entry.feedURL))
-                    }
-                }
+                feedTileRow(feeds)
             }
         }
+    }
+
+    private func feedTileRow(_ feeds: [HoerspielCuration.Entry]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 12) {
+                ForEach(feeds) { entry in
+                    RecommendationTile(result: PodcastSearchResult(
+                        title: entry.title, author: entry.author,
+                        artworkURL: nil, feedURL: entry.feedURL))
+                        .containerRelativeFrame(.horizontal,
+                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                            span: 1, spacing: 12)
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
     }
 
     /// A catalog source: preview tile row. An EMPTY row with a recorded
@@ -263,7 +277,13 @@ struct FreeAudiobooksPage: View {
     @ViewBuilder
     private var chartsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            RowHeading.plain("Podcast Charts (Apple)")
+            // 12b5918: Apple is the SENDER (caption line), not a mechanic in
+            // the title; tiles like the rest of the page (list form = search).
+            RowHeading.plain("Popular Radio-Play Podcasts")
+            Text(verbatim: "Apple Podcasts")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
             chipRow
             if chartsLoading && chartResults.isEmpty {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
@@ -275,11 +295,18 @@ struct FreeAudiobooksPage: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(chartResults, id: \.feedURL) { result in
-                        CatalogFeedRow(result: result)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(chartResults, id: \.feedURL) { result in
+                            RecommendationTile(result: result)
+                                .containerRelativeFrame(.horizontal,
+                                    count: CardMetrics.recommendationColumns(regularWidth: false),
+                                    span: 1, spacing: 12)
+                        }
                     }
+                    .padding(.horizontal)
                 }
+                .scrollClipDisabled()
             }
         }
     }
@@ -312,15 +339,17 @@ struct FreeAudiobooksPage: View {
     }
 
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {
+        // 174f855: NACHSCHLAGEN — tap opens the detail (rights line + the
+        // prominent Play); long-press keeps Play as the shortcut.
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: placeholder,
-            onTap: { Task { await playerCoordinator.open(item: item) } }
+            onTap: { detailItem = item }
         )
         .contextMenu {
             Button {
-                detailItem = item
-            } label: { Label("Details", systemImage: "info.circle") }
+                Task { await playerCoordinator.open(item: item) }
+            } label: { Label("Play", systemImage: "play.fill") }
         }
     }
 }

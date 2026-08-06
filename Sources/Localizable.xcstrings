@@ -4851,6 +4851,26 @@
         }
       }
     },
+    "Story Podcasts (English)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erzähl-Podcasts (Englisch)"
+          }
+        }
+      }
+    },
+    "Popular Radio-Play Podcasts" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebte Hörspiel-Podcasts"
+          }
+        }
+      }
+    },
     "Public Broadcast Radio Plays" : {
       "localizations" : {
         "de" : {

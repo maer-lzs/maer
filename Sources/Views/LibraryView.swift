@@ -305,12 +305,25 @@ struct LibraryView: View {
             // destination is the SHARED BrowseBooksScreen — same grid, same
             // cell, same paging behaviour as the browse surfaces (Regel 2).
             .navigationDestination(for: LibraryListRoute.self) { route in
-                BrowseBooksScreen(
-                    title: route.title,
-                    entries: entries(for: route),
-                    playerCoordinator: playerCoordinator,
-                    libraryViewModel: viewModel
-                )
+                switch route {
+                case .continueListening:
+                    // 75add65 F3: Continue is a HOEREN page everywhere — the
+                    // same compact grid with play-tap as Home's (F2: the page
+                    // inherits the row's tap class; BrowseBooksScreen's cells
+                    // are NACHSCHLAGEN and stay for Recently Added).
+                    MixedMediaPage(route: .continueListening,
+                                   continueIds: viewModel.continueListening.map(\.id),
+                                   addedItems: [], musicProgress: [:],
+                                   playerCoordinator: playerCoordinator,
+                                   libraryViewModel: viewModel)
+                case .recentlyAdded:
+                    BrowseBooksScreen(
+                        title: route.title,
+                        entries: entries(for: route),
+                        playerCoordinator: playerCoordinator,
+                        libraryViewModel: viewModel
+                    )
+                }
             }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
                 switch route {
@@ -1056,9 +1069,13 @@ struct LibraryView: View {
                     ForEach(freeCatalogStore.rows.tabBooks) { item in
                         FreeCatalogBookTile(
                             item: item,
-                            onTap: { Task { await playerCoordinator.open(item: item) } }
+                            // 174f855: NACHSCHLAGEN — tap = detail.
+                            onTap: { freeBookDetail = item }
                         )
                         .contextMenu {
+                            Button {
+                                Task { await playerCoordinator.open(item: item) }
+                            } label: { Label("Play", systemImage: "play.fill") }
                             Button {
                                 freeBookDetail = item
                             } label: { Label("Details", systemImage: "info.circle") }

@@ -173,15 +173,16 @@ struct CatalogSourcePage: View {
     }
 
     private func tile(_ item: LibraryItem) -> some View {
+        // 174f855: NACHSCHLAGEN — tap = detail, long-press = Play shortcut.
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
-            onTap: { Task { await playerCoordinator.open(item: item) } }
+            onTap: { detailItem = item }
         )
         .contextMenu {
-            Button { detailItem = item } label: {
-                Label("Details", systemImage: "info.circle")
-            }
+            Button {
+                Task { await playerCoordinator.open(item: item) }
+            } label: { Label("Play", systemImage: "play.fill") }
         }
     }
 

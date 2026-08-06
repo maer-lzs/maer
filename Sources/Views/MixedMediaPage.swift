@@ -85,14 +85,9 @@ struct MixedMediaPage: View {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
-    /// Featured continue cards are wide; the added tiles are narrow. Both use
-    /// the widths their row uses, so a page never re-styles what it previews.
-    private var cardWidth: CGFloat {
-        switch route {
-        case .continueListening: CardMetrics.featuredCardWidth
-        case .recentlyAdded:     150
-        }
-    }
+    /// 75add65 F1: BOTH pages use the compact grid — the XXL continue cards
+    /// stacked single-column on a phone ("Blaupause Zuletzt hinzugefügt").
+    private var cardWidth: CGFloat { 150 }
 
     var body: some View {
         ScrollView {
@@ -102,12 +97,13 @@ struct MixedMediaPage: View {
             ) {
                 switch route {
                 case .continueListening:
-                    // Continue cards resolve by id in the row as well — one
-                    // path, so row and page cannot disagree.
+                    // 75add65 F2: the page INHERITS the row's tap class —
+                    // Continue is HOEREN, so the tile tap PLAYS (no detail in
+                    // between); progress rides on the tile. F3: this one grid
+                    // is THE form for every HOEREN full page (the audiobook
+                    // tab's continue route lands here too).
                     ForEach(continueIds, id: \.self) { id in
-                        HomeContinueCard(id: id, musicProgress: musicProgress[id],
-                                         playerCoordinator: playerCoordinator,
-                                         libraryViewModel: libraryViewModel)
+                        hearTile(id)
                             .frame(width: cardWidth, alignment: .top)
                     }
                 case .recentlyAdded:
@@ -124,5 +120,30 @@ struct MixedMediaPage: View {
         }
         .navigationTitle(route.title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// One compact HOEREN tile for all three media kinds: cover + title +
+    /// progress, tap plays. Long-press keeps the detail path for books.
+    @ViewBuilder
+    private func hearTile(_ id: String) -> some View {
+        if let entry = libraryViewModel.entry(id: id) {
+            MediaTile(title: entry.item.title,
+                      subtitle: entry.item.author,
+                      coverURL: AppSession.shared.coverURL(forItemId: id),
+                      placeholderSystemImage: "book.closed",
+                      progress: entry.progress?.fraction,
+                      onTap: { Task { await playerCoordinator.open(item: entry.item) } })
+                .modifier(BookCellContextMenu(
+                    entry: entry, playerCoordinator: playerCoordinator,
+                    libraryViewModel: libraryViewModel, showsContinueHide: true))
+        } else if let item = AppSession.shared.libraryItem(forId: id) {
+            MediaTile(title: item.title,
+                      subtitle: item.author,
+                      coverURL: AppSession.shared.coverURL(forItemId: id),
+                      placeholderSystemImage: AppSession.shared.musicProvider.owns(itemId: id)
+                          ? "music.note" : "waveform.and.mic",
+                      progress: musicProgress[id]?.fraction,
+                      onTap: { Task { await playerCoordinator.open(item: item) } })
+        }
     }
 }

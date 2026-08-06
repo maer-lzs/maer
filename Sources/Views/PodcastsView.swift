@@ -420,8 +420,30 @@ struct PodcastsView: View {
         let shows = allShows.filter { isPremium($0) }
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Premium", systemImage: "lock.fill")
-                    .font(.title3).bold().padding(.horizontal)
+                // DIE REGEL (5c646c6): every row has a page; the chevron is
+                // pure COUNTING (total > shown) — page stays even when nobody
+                // can reach it today, because other people's libraries are
+                // bigger. Ad-hoc heading (not RowHeading): the lock icon is a
+                // third variant — the moment RowHeading grows one more, it
+                // becomes the enum the reviewer noted (e268c70), and this call site
+                // folds in.
+                if shows.count > RowPreview.cut(shows).count {
+                    NavigationLink(value: PodcastRoute.premium) {
+                        HStack(spacing: 6) {
+                            Label("Premium", systemImage: "lock.fill")
+                                .font(.title3).bold()
+                            Image(systemName: "chevron.right")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal)
+                        .contentShape(.rect)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Label("Premium", systemImage: "lock.fill")
+                        .font(.title3).bold().padding(.horizontal)
+                }
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(shows)) { show in
@@ -531,5 +553,39 @@ final class PodcastsRecomputeScope: ObservableObject {
         let feeds = ContentToken.of(PodcastSubscriptions.shared.shows.map(\.feedURL))
         let downloads = ContentToken.of(DownloadManager.shared.downloadedItemIds)
         return "\(feeds)-\(downloads)-\(PodcastProgressStore.shared.changeToken)-\(ABSPodcastProvider.shared.changeToken)"
+    }
+}
+
+
+/// e96d396 B2: the premium shows as a browsable GRID — the row's page.
+/// Blaupause "Zuletzt hinzugefuegt" (the owner named it the target form):
+/// heading with chevron -> the full grid. Management (S22) stays separate.
+struct PremiumShowsPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+
+    private var shows: [PodcastShow] {
+        (subs.shows + ABSPodcastProvider.shared.shows)
+            .filter { PodcastSubscriptions.isPremiumFeed($0.feedURL) }
+    }
+
+    private let columns = [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)]
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(shows) { show in
+                    NavigationLink(value: PodcastRoute.show(feedURL: show.feedURL)) {
+                        ShowTile(show: show)
+                    }
+                    .buttonStyle(.plain)
+                    .podcastShowMenu(show)
+                }
+            }
+            .padding(.horizontal)
+        }
+        .navigationTitle(Text("Premium"))
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
     }
 }

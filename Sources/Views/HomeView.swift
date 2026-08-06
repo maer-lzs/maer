@@ -300,13 +300,16 @@ struct HomeView: View {
                                     // to open the detail sheet here and play
                                     // there, for the identical content; the
                                     // long-press menu keeps the detail path.
+                                    // 174f855: NACHSCHLAGEN — tap = detail
+                                    // (8203d12 is thereby reversed by the
+                                    // convention), long-press = Play shortcut.
                                     FreeCatalogBookTile(
                                         item: book,
-                                        onTap: { Task { await playerCoordinator.open(item: book) } })
+                                        onTap: { discoverBookDetail = book })
                                     .contextMenu {
                                         Button {
-                                            discoverBookDetail = book
-                                        } label: { Label("Details", systemImage: "info.circle") }
+                                            Task { await playerCoordinator.open(item: book) }
+                                        } label: { Label("Play", systemImage: "play.fill") }
                                     }
                                 }
                             }

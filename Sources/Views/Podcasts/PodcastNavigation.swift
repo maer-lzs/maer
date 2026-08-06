@@ -16,6 +16,10 @@ enum PodcastRoute: Hashable {
     case showPreview(feedURL: String)
     /// V6: the chronological listen history (PodcastListenLog).
     case history
+    /// e96d396 B2: the premium shows' full page (Blaupause "Zuletzt
+    /// hinzugefuegt": heading -> full grid). The S22 management surface is NOT
+    /// this page — this one browses, management stays where it is.
+    case premium
 }
 
 extension View {
@@ -39,6 +43,8 @@ extension View {
                 }
             case .showPreview(let feedURL):
                 PodcastShowPreviewView(feedURL: feedURL)
+            case .premium:
+                PremiumShowsPage(playerCoordinator: playerCoordinator)
             case .history:
                 PodcastHistoryView(playerCoordinator: playerCoordinator)
             }
