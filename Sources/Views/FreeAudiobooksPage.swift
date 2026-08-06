@@ -13,8 +13,11 @@ import OSLog
 nonisolated enum FreeAudiobooksRoute: Hashable {
     case area
     /// 1790dda: the endless browsing of the LibriVox popularity list — its
-    /// own page, so the overview stays an overview.
+    /// own page, so the overview stays an overview. Kept as an alias route:
+    /// it now lands on the parameterised source page (Paket 3).
     case allPopular
+    /// Paket 3: one source's full page (fundgrube + the axis that carries).
+    case source(CatalogSource)
 }
 
 /// Paket 2: the ONE feed row of the catalog surfaces — show-preview push +
@@ -55,69 +58,14 @@ struct FreeAudiobooksPage: View {
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
-    @State private var selectedShelf: String?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
 
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
 
-    /// The shelves the CURRENT stock fills (empty chips would be a lie).
-    /// Kept for Paket 3 (chips move to the source pages, b2b84ef: keep, don't
-    /// rebuild) — source is the store now.
-    private var shelves: [(key: String, title: String)] {
-        var present = Set<String>()
-        for item in rows.librivoxPopular + rows.librivoxNew {
-            for shelf in CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item)) {
-                present.insert(shelf)
-            }
-        }
-        return CatalogGenreAxis.librivoxShelves.filter { present.contains($0.key) }
-    }
-
-    private func genres(of item: LibraryItem) -> [String] {
-        item.media?.metadata?.genres ?? []
-    }
-
-    /// The visible cut: everything, or one shelf (see shelves — Paket 3 home).
-    private func onShelf(_ items: [LibraryItem]) -> [LibraryItem] {
-        guard let selectedShelf else { return items }
-        let withGenres = items.filter { !genres(of: $0).isEmpty }
-        guard !withGenres.isEmpty else { return items }
-        return items.filter {
-            let shelves = CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: $0))
-            return shelves.isEmpty || shelves.contains(selectedShelf)
-        }
-    }
-
-    private var shelfRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                shelfChip(key: nil, title: String(localized: "All"))
-                ForEach(shelves, id: \.key) { shelf in
-                    shelfChip(key: shelf.key, title: shelf.title)
-                }
-            }
-            .padding(.horizontal)
-        }
-        .scrollClipDisabled()
-    }
-
-    private func shelfChip(key: String?, title: String) -> some View {
-        let selected = selectedShelf == key
-        let fill: AnyShapeStyle = selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary)
-        return Button {
-            withAnimation(.snappy(duration: 0.2)) { selectedShelf = key }
-        } label: {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(fill, in: Capsule())
-                .foregroundStyle(selected ? Color.white : Color.primary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("freebooks-shelf-\(key ?? "all")")
-    }
+    // Paket 3: the genre-chip family moved to CatalogSourcePage — the
+    // control sits on the surface it acts on (48e786d decision), and the
+    // overview stays an overview.
 
     private var catalogRowsEmpty: Bool {
         rows.librivoxPopular.isEmpty && rows.archiveBooks.isEmpty
@@ -197,7 +145,8 @@ struct FreeAudiobooksPage: View {
                              placeholder: String = "book.closed") -> some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain(verbatim: source.title)
+                RowHeading.entry(verbatim: source.title,
+                                 destination: FreeAudiobooksRoute.source(source))
                 tileRow(items, placeholder: placeholder)
             }
         } else if rows.failures.contains(source) {
@@ -211,40 +160,18 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    /// LibriVox keeps its established full-list link (a journey holds it).
+    // Paket 3: the separate "Show all" link died with the heading chevron —
+    // one affordance, one target (no journey held the old identifier;
+    // the earlier comment claiming one was my own stale assumption).
     @ViewBuilder
     private var librivoxSection: some View {
-        if !rows.librivoxPopular.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    RowHeading.plain(verbatim: CatalogSource.librivox.title)
-                    Spacer()
-                    NavigationLink(value: FreeAudiobooksRoute.allPopular) {
-                        HStack(spacing: 4) {
-                            Text("Show all").font(.subheadline)
-                            Image(systemName: "chevron.right").font(.caption)
-                        }
-                    }
-                    .accessibilityIdentifier("freebooks-show-all")
-                }
-                .padding(.horizontal)
-                tileRow(rows.librivoxPopular, placeholder: "book.closed")
-            }
-        } else if rows.failures.contains(.librivox) {
-            VStack(alignment: .leading, spacing: 6) {
-                RowHeading.plain(verbatim: CatalogSource.librivox.title)
-                Text("Could not load \(CatalogSource.librivox.title). Check your connection.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-            }
-        }
+        tileSection(.librivox, items: rows.librivoxPopular)
     }
 
     private func tileRow(_ items: [LibraryItem], placeholder: String) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
-                ForEach(RowPreview.cut(onShelf(items))) { item in
+                ForEach(RowPreview.cut(items)) { item in
                     tile(item, placeholder: placeholder)
                         .containerRelativeFrame(.horizontal,
                                                 count: CardMetrics.recommendationColumns(regularWidth: false),
@@ -267,67 +194,5 @@ struct FreeAudiobooksPage: View {
                 detailItem = item
             } label: { Label("Details", systemImage: "info.circle") }
         }
-    }
-}
-
-/// 1790dda: the full LibriVox popularity list — endless loading belongs on
-/// its OWN page, not in the middle of a three-source overview.
-struct FreeAudiobooksAllPopularPage: View {
-    @ObservedObject var playerCoordinator: PlayerCoordinator
-    @State private var items: [LibraryItem] = []
-    @State private var page = 1
-    @State private var isLoading = false
-    @State private var reachedEnd = false
-    @State private var detailItem: LibraryItem?
-
-    private let pageSize = 30
-    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
-
-    var body: some View {
-        ScrollView {
-            CoverGrid(columns: columns) {
-                ForEach(items) { item in
-                    FreeCatalogBookTile(
-                        item: item,
-                        onTap: { Task { await playerCoordinator.open(item: item) } })
-                    .contextMenu {
-                        Button { detailItem = item } label: {
-                            Label("Details", systemImage: "info.circle")
-                        }
-                    }
-                    .onAppear {
-                        if item.id == items.last?.id { Task { await load() } }
-                    }
-                }
-            }
-            .padding(.horizontal)
-            if isLoading { ProgressView().frame(maxWidth: .infinity).padding() }
-        }
-        .navigationTitle("Popular at LibriVox")
-        .navigationBarTitleDisplayMode(.inline)
-        .bottomBarClearance()
-        .task { if items.isEmpty { await load() } }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
-    }
-
-    private func load() async {
-        guard !isLoading, !reachedEnd else { return }
-        isLoading = true
-        defer { isLoading = false }
-        #if DEBUG
-        if UITestSeed.isActive { reachedEnd = true; return }
-        #endif
-        let codes = SuggestionLanguages.current()
-        guard let docs = try? await ArchiveOrgClient.popularLibriVoxByLanguage(
-            rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
-        else { reachedEnd = true; return }
-        let provider = FreeCatalogProvider.shared
-        let new = docs.compactMap { provider.remember(popular: $0) }
-        var seen = Set(items.map(\.id))
-        items += new.filter { seen.insert($0.id).inserted }
-        page += 1
-        if docs.count < pageSize { reachedEnd = true }
     }
 }

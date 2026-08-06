@@ -613,6 +613,28 @@ struct CatalogGenreAxisTests {
             #expect(titles.contains(shelf), "shelf without title: \(shelf)")
         }
     }
+    // MARK: - Paket 3: EINE Achse fuer zwei Schreibfamilien
+
+    /// 9ef73a4: Gutenbergs LCSH-subjects landen auf DENSELBEN Regalen wie die
+    /// LibriVox-Genres — erweitert, nicht daneben gebaut. Die Faelle stammen
+    /// aus the reviewer's Messung der 1.124 Audio-Titel.
+    @Test("LCSH subjects map onto the shared shelves")
+    func lcshShelves() {
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Domestic fiction"]) == ["fiction"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Adventure stories"]) == ["adventure"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Bildungsromans"]) == ["fiction"])
+        // Vier standen woertlich schon in librivoxAxis — dieselbe Achse traegt.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Love stories"]) == ["romance"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Satire"]) == ["comedy"])
+        // Facettenschnitt: der Qualifier traegt das Genre.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["England -- Fiction"]) == ["fiction"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Paris (France) -- History -- Fiction"])
+                == ["fiction", "history"])
+        // Kuratier-Listen (bookshelves-Klasse) sind keine Genres: kein Regal.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Best Books Ever Listings"]).isEmpty)
+        #expect(CatalogGenreAxis.shelves(forSubjects: []).isEmpty)
+    }
+
     // MARK: - 11be262 Paket 1/4: Quellen-Aufteilung
 
     /// the owner's Bedingung "keine Kachel erscheint in beiden Tabs" haelt

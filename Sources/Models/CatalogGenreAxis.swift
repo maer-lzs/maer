@@ -106,6 +106,44 @@ nonisolated enum CatalogGenreAxis {
         ("philosophy", String(localized: "Philosophy")),
     ]
 
+    /// 9ef73a4: Gutenberg LCSH subjects → the SAME shelves. Regel 2: one
+    /// axis, extended — no GutenbergGenreAxis next to it. the reviewer's measurement of
+    /// the 1,124 audio titles drove the entries (Domestic fiction 15 · Love
+    /// stories 15 · Adventure stories 13 · Bildungsromans 9 · Satire 6 ·
+    /// Historical fiction 5); four of them already sat in librivoxAxis
+    /// verbatim. LCSH facets ("England -- Fiction") are split and each half
+    /// tried — the qualifier carries the genre.
+    static let lcshAxis: [String: String] = [
+        "fiction": "fiction",
+        "domestic fiction": "fiction",
+        "bildungsromans": "fiction",
+        "adventure stories": "adventure",
+        "sea stories": "adventure",
+        "war stories": "adventure",
+        "detective and mystery stories": "crime",
+        "horror tales": "horror",
+        "ghost stories": "horror",
+        "humorous stories": "comedy",
+        "children's stories": "children",
+        "juvenile fiction": "children",
+        "fairy tales": "fairytales",
+        "folklore": "fairytales",
+        "autobiography": "biography",
+        "biography": "biography",
+    ]
+
+    /// Gutenberg subjects → shelves, over BOTH spelling families.
+    static func shelves(forSubjects subjects: [String]) -> [String] {
+        var hit = Set<String>()
+        for raw in subjects {
+            for part in raw.components(separatedBy: " -- ") {
+                let key = part.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if let shelf = librivoxAxis[key] ?? lcshAxis[key] { hit.insert(shelf) }
+            }
+        }
+        return librivoxShelves.map(\.key).filter(hit.contains)
+    }
+
     /// A book's LibriVox genres → the shelves it belongs on (deduped, in
     /// browse order). Epochs and unknown entries drop out silently.
     static func shelves(forLibriVoxGenres genres: [String]) -> [String] {

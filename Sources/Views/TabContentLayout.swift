@@ -118,6 +118,16 @@ extension RowHeading {
                       destination: Destination) -> Self {
         RowHeading(title: title, font: font, total: 1, shown: 0, destination: destination)
     }
+
+    /// Entry with an already-localized title (source proper names). Paket 3:
+    /// the catalog rows' chevron is earned by the SOURCE's stock (thousands
+    /// behind each 12-tile preview), not by the loaded count — a count-based
+    /// rule would hide the chevron exactly because preview and load size match.
+    static func entry(verbatim title: String, font: Font = .title3,
+                      destination: Destination) -> Self {
+        RowHeading(title: "", verbatimTitle: title, font: font, total: 1, shown: 0,
+                   destination: destination)
+    }
 }
 
 enum CardMetrics {

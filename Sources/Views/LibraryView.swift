@@ -317,7 +317,10 @@ struct LibraryView: View {
                 case .area:
                     FreeAudiobooksPage(playerCoordinator: playerCoordinator)
                 case .allPopular:
-                    FreeAudiobooksAllPopularPage(playerCoordinator: playerCoordinator)
+                    // Alias: the old full-list route lands on the source page.
+                    CatalogSourcePage(source: .librivox, playerCoordinator: playerCoordinator)
+                case .source(let source):
+                    CatalogSourcePage(source: source, playerCoordinator: playerCoordinator)
                 }
             }
         }
