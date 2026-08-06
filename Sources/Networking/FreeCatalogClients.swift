@@ -179,12 +179,21 @@ nonisolated enum ArchiveOrgClient {
     /// than showing the same content twice.
     static func audiobooksOutsideLibriVox(rows: Int, languageCodes: [String],
                                           page: Int = 1) async throws -> [ArchivePopularDoc] {
-        var clause = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
+        let base = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
             + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+        // 9ef73a4 Befund 3: for German users this row was permanently EMPTY —
+        // every German audiobook in the collection is a LibriVox title
+        // (measured: (deu OR ger) with the NOT clause ⇒ 0, without ⇒ 844), and
+        // unlike the LibriVox row this one never fell back. Same rule now,
+        // same reasoning ("an empty row would be worse"), same shape as
+        // popularLibriVox: fall back to unfiltered on the FIRST page only —
+        // deeper pages legitimately end.
         if let language = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
-            clause += " AND \(language)"
+            let filtered = try await popular(query: base + " AND \(language)", rows: rows, page: page)
+            if !filtered.isEmpty { return filtered.filter { FreeCatalog.isNotLibriVoxDuplicate($0) } }
+            guard page == 1 else { return [] }
         }
-        let docs = try await popular(query: clause, rows: rows, page: page)
+        let docs = try await popular(query: base, rows: rows, page: page)
         return docs.filter { FreeCatalog.isNotLibriVoxDuplicate($0) }
     }
 

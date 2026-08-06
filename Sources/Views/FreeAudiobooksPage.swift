@@ -164,7 +164,12 @@ struct FreeAudiobooksPage: View {
                         // audiobook tab already uses).
                         if !popular.isEmpty {
                             HStack {
-                                Text("Popular at LibriVox").font(.title3).bold()
+                                // 9ef73a4 Kleinigkeit: the last old copy after
+                                // RowHeading became THE heading. The separate
+                                // "Show all" link stays — a journey holds it
+                                // (freebooks-show-all), and the row keeps its
+                                // established target.
+                                RowHeading.plain("Popular at LibriVox")
                                 Spacer()
                                 NavigationLink(value: FreeAudiobooksRoute.allPopular) {
                                     HStack(spacing: 4) {
@@ -301,6 +306,15 @@ struct FreeAudiobooksPage: View {
             }
             books += hit
             if hit.isEmpty { break }
+        }
+        // 9ef73a4: same fallback rule as LibriVox and the archive row — a
+        // language with no audiobooks at gutendex must not leave the row
+        // empty. German has 25 today (measured), but the rule must not depend
+        // on today's stock.
+        if books.isEmpty, !languages.isEmpty,
+           let unfiltered = try? await GutenbergClient.audiobooks(languages: [], page: 1) {
+            books = unfiltered
+            Logger.library.notice("FREECAT gutenberg fallback=unfiltered loaded=\(books.count)")
         }
         let provider = FreeCatalogProvider.shared
         let items = books.compactMap { provider.remember(gutenberg: $0) }

@@ -260,17 +260,11 @@ struct PodcastsView: View {
     private var hoerspieleSection: some View {
         if freeCatalogsMaster {
             VStack(alignment: .leading, spacing: 10) {
-                NavigationLink(value: PodcastRoute.hoerspiele) {
-                    HStack(spacing: 6) {
-                        Text("Radio Plays").font(.title3).bold()
-                        Image(systemName: "chevron.right")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("podcasts-hoerspiele-entry")
+                // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's
+                // chevron branch → the shared component (entry variant: the
+                // chevron is earned by the target, not by a count).
+                RowHeading.entry("Radio Plays", destination: PodcastRoute.hoerspiele)
+                    .accessibilityIdentifier("podcasts-hoerspiele-entry")
                 Text("Curated public-broadcast plays, US audio drama and licensed classics.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

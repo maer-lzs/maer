@@ -105,6 +105,19 @@ extension RowHeading where Destination == LibraryListRoute {
     static func plain(verbatim title: String, font: Font = .title3) -> Self {
         RowHeading(title: "", verbatimTitle: title, font: font, total: 0, destination: nil)
     }
+
+}
+
+extension RowHeading {
+    /// An AREA ENTRY: the chevron is always earned because a whole page lies
+    /// behind it (the free-audiobooks area, the radio-play page) — G8 is
+    /// satisfied by the target's existence, not by a count. Spelled out so the
+    /// decision reads at the call site, like `plain`. Unconstrained on
+    /// Destination — entries push routes of every tab.
+    static func entry(_ title: LocalizedStringKey, font: Font = .title3,
+                      destination: Destination) -> Self {
+        RowHeading(title: title, font: font, total: 1, shown: 0, destination: destination)
+    }
 }
 
 enum CardMetrics {

@@ -1037,17 +1037,10 @@ struct LibraryView: View {
     /// hides entirely while the store is empty (service/toggle off, offline).
     private var freeAudiobooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            NavigationLink(value: FreeAudiobooksRoute.area) {
-                HStack(spacing: 6) {
-                    Text("Free Audiobooks").font(.title3).bold()
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("free-audiobooks-entry")
+            // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's chevron
+            // branch → the shared entry variant.
+            RowHeading.entry("Free Audiobooks", destination: FreeAudiobooksRoute.area)
+                .accessibilityIdentifier("free-audiobooks-entry")
             Text("Free public-domain audiobooks from LibriVox — separate from your own library.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -1253,6 +1246,9 @@ struct LibraryView: View {
         let shown = downloadedExpanded ? entries : Array(entries.prefix(limit))
         return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
+                // Deliberately NOT RowHeading: this heading shares a padded
+                // line with the size menu and the expand button — the
+                // component's own horizontal padding would double up here.
                 Text("Downloaded").font(.title3).bold()
                 Menu {
                     Button(role: .destructive) {
