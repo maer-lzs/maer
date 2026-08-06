@@ -147,9 +147,16 @@ struct FreeCatalogTests {
         #expect(docs[0].title?.first == "Piano Concerto No. 2")
         // String case unchanged.
         #expect(docs[1].creator?.first == "Sun Tzu")
-        // Any OTHER type still throws (wire discipline unchanged).
-        let broken = Data("""
+        // 1fdcd40: NUMBERS are a tolerated wire form now — archive.org
+        // delivers `year` as int, and the throw on it killed every archive
+        // row at once. The old expectation here pinned exactly that bug.
+        let numeric = Data("""
         {"response":{"docs":[{"identifier":"x","creator":42}]}}
+        """.utf8)
+        #expect((try? ArchiveOrgClient.decodePopular(numeric))?.first?.creator?.first == "42")
+        // Genuinely foreign types (bool/object) still throw — wire discipline.
+        let broken = Data("""
+        {"response":{"docs":[{"identifier":"x","creator":{"a":1}}]}}
         """.utf8)
         #expect(throws: (any Error).self) { _ = try ArchiveOrgClient.decodePopular(broken) }
     }
@@ -250,6 +257,22 @@ struct FreeCatalogTests {
         #expect(!genres.isEmpty)
         // The epoch entry stays in — the axis filters it, not the transport.
         #expect(genres.allSatisfy { !$0.isEmpty })
+    }
+
+    /// 1fdcd40 — der Zaun der Wurzel von Befund A: archive.org liefert
+    /// `year` als ZAHL; die String-only-Toleranz warf typeMismatch und
+    /// killte ALLE archive-Reihen zugleich. Live-Fixture, nicht gebastelt.
+    @Test("Numeric year decodes (the type that killed every archive row)")
+    func numericYearDecodes() throws {
+        let data = try CorpusFixture.data("archive-year-numeric", ext: "json", subdirectory: "WireCorpus")
+        let docs = try ArchiveOrgClient.decodePopular(data)
+        #expect(!docs.isEmpty)
+        // Mindestens ein Jahr kommt als String-Wert durch.
+        #expect(docs.contains { !($0.year?.values.isEmpty ?? true) })
+        // Und die Fristen-Staffel kann damit rechnen.
+        if let year = docs.compactMap({ $0.year?.first }).first {
+            #expect(Int(year.prefix(4)) != nil)
+        }
     }
 
     @Test("Decoders throw on the wire corpus (no silent empty rows)")

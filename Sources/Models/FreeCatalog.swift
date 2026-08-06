@@ -58,6 +58,16 @@ nonisolated struct ArchiveStringList: Decodable, Sendable {
         let container = try decoder.singleValueContainer()
         if let single = try? container.decode(String.self) {
             values = [single]
+        } else if let number = try? container.decode(Int.self) {
+            // 1fdcd40 DRINGEND: archive.org delivers `year` as a NUMBER
+            // (measured on four queries) — the string-only tolerance threw
+            // typeMismatch and killed EVERY archive row at once, classical
+            // included. That was the owner's device finding A; the 429 suspicion
+            // is refuted (A3's decode-prefix line decided it). ONE place,
+            // number-tolerant, like the string/list split above.
+            values = [String(number)]
+        } else if let numbers = try? container.decode([Int].self) {
+            values = numbers.map(String.init)
         } else {
             values = try container.decode([String].self)
         }

@@ -646,6 +646,13 @@ struct RecommendationTile: View {
                 subtitle: subtitle,
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
                 unavailable: unavailable,
+                // 2e2c222 G: a result WITHOUT artwork resolves it from the
+                // feed — the c125ccd fallback the old LIST row had; without
+                // it every curated feed tile rendered gray (curation carries
+                // no artworkURL by design).
+                coverOverride: result.artworkURL == nil
+                    ? FeedArtwork(feedURL: result.feedURL, placeholderSystemImage: "waveform.and.mic")
+                    : nil,
                 onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
             ) {
                 PodcastSubscribeBadge(feedURL: result.feedURL)

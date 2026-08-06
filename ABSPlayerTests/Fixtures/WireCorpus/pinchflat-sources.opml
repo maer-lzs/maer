@@ -4,9 +4,9 @@
     <title>All Sources</title>
   </head>
   <body>
-    <outline type="rss" text="ETH Theorie" xmlUrl="https://pinchflat.example/sources/00000000-0000-0000-0000-000000000001/feed.xml" />
+    <outline type="rss" text="Channel One" xmlUrl="https://pinchflat.example/sources/00000000-0000-0000-0000-000000000001/feed.xml" />
 
-<outline type="rss" text="IDA " xmlUrl="https://pinchflat.example/sources/00000000-0000-0000-0000-000000000002/feed.xml" />
+<outline type="rss" text="Channel Two " xmlUrl="https://pinchflat.example/sources/00000000-0000-0000-0000-000000000002/feed.xml" />
 
   </body>
 </opml>
