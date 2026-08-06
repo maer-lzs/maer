@@ -132,7 +132,13 @@ struct FreeAudiobooksPage: View {
                         // pure mapping drops the epochs, so no year stands
                         // between the shelves. Shelves appear only when the
                         // loaded stock actually fills them (no empty chips).
-                        if !shelves.isEmpty { shelfRow }
+                        // 48e786d: genres ARRIVE now (Schritt 0) — which
+                        // would make this row render here for the first time.
+                        // The decision says otherwise: genre chips belong on
+                        // the SOURCE pages (Paket 3), the overview stays an
+                        // overview. Kept, not deleted (b2b84ef), so Paket 3
+                        // moves it instead of rebuilding it a third time.
+                        // if !shelves.isEmpty { shelfRow }
                         if !newBooks.isEmpty {
                             RowHeading.plain("New at LibriVox")
                             ScrollView(.horizontal, showsIndicators: false) {

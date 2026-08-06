@@ -32,6 +32,13 @@ nonisolated struct LibriVoxBook: Decodable, Sendable {
     let url_rss: String?
     let authors: [Author]?
     let sections: [Section]?
+    /// 48e786d Schritt 0: the API DOES deliver genres (objects with `name`) —
+    /// this type silently dropped them at decode time, which left the whole
+    /// genre axis dead: the provider had nothing to pass on, the shelf row
+    /// never rendered. Epoch entries ("Published 1800 -1900") stay in — the
+    /// axis filters them itself.
+    struct Genre: Decodable, Sendable { let name: String? }
+    let genres: [Genre]?
 }
 
 nonisolated struct LibriVoxFeed: Decodable, Sendable {
@@ -78,6 +85,9 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     /// licence field this is the user's only means of judging the age of a
     /// recording — so it is shown, and its ABSENCE stays visible too.
     let year: ArchiveStringList?
+    /// 48e786d: subjects (string or list, like title/creator) — the genre
+    /// axis' material for archive.org rows.
+    let subject: ArchiveStringList?
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {

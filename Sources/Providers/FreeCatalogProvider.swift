@@ -38,7 +38,10 @@ final class FreeCatalogProvider: AudioProvider {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: book.title, authorName: FreeCatalog.authorLine(book.authors),
-                    narratorName: nil, seriesName: nil, genres: nil,
+                    // 48e786d Schritt 0: pass the genres THROUGH — they were
+                    // decoded away for months while the axis waited for them.
+                    narratorName: nil, seriesName: nil,
+                    genres: book.genres?.compactMap(\.name),
                     publishedYear: nil, description: nil),
                 duration: book.totaltimesecs.map(Double.init), chapters: nil, tracks: nil),
             addedAt: nil)
@@ -78,7 +81,8 @@ final class FreeCatalogProvider: AudioProvider {
                 metadata: LibraryItemMetadata(
                     title: book.title ?? "—",
                     authorName: book.authors?.compactMap(\.name).first,
-                    narratorName: nil, seriesName: nil, genres: nil,
+                    narratorName: nil, seriesName: nil,
+                    genres: book.subjects,
                     publishedYear: nil, description: nil),
                 duration: nil, chapters: nil, tracks: nil),
             addedAt: nil)
@@ -103,7 +107,7 @@ final class FreeCatalogProvider: AudioProvider {
                     // detail sheet names everyone via the joined form.
                     title: doc.title?.first, authorName: doc.creator?.first, narratorName: nil,
                     // 50aefa8: the recording year, where the index has one.
-                    seriesName: nil, genres: nil,
+                    seriesName: nil, genres: doc.subject?.values,
                     publishedYear: doc.year?.first.map(LenientString.init),
                     description: nil),
                 // ea6e002: the search index carries the runtime for most

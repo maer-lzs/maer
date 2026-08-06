@@ -59,6 +59,9 @@ nonisolated enum GutenbergClient {
         let authors: [Author]?
         let languages: [String]?
         let formats: [String: String]?
+        /// 48e786d: gutendex delivers `subjects` as plain strings — passed on
+        /// so the genre axis has material here too.
+        let subjects: [String]?
 
         nonisolated struct Author: Decodable, Sendable { let name: String? }
     }
@@ -208,6 +211,9 @@ nonisolated enum ArchiveOrgClient {
             // carries no licenceurl at all). Present for about a third of them
             // — measured, not assumed.
             URLQueryItem(name: "fl[]", value: "year"),
+            // 48e786d: subjects ride along so the genre axis has material for
+            // the archive.org rows too (they were never requested before).
+            URLQueryItem(name: "fl[]", value: "subject"),
             URLQueryItem(name: "sort[]", value: "downloads desc"),
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),

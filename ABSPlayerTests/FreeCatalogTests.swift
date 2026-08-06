@@ -17,7 +17,7 @@ struct FreeCatalogTests {
         func book(_ lang: String) -> LibriVoxBook {
             LibriVoxBook(id: "1", title: "T", language: lang, totaltimesecs: nil,
                          url_iarchive: nil, url_librivox: nil, url_rss: nil,
-                         authors: nil, sections: nil)
+                         authors: nil, sections: nil, genres: nil)
         }
         let books = [book("German"), book("English"), book("French")]
         #expect(FreeCatalog.filterByLanguages(books, codes: ["de"]).map(\.language) == ["German"])
@@ -210,7 +210,7 @@ struct FreeCatalogTests {
         let empty = LibriVoxBook(id: "42", title: "T", language: nil,
                                  totaltimesecs: nil, url_iarchive: nil,
                                  url_librivox: nil, url_rss: nil,
-                                 authors: nil, sections: [])
+                                 authors: nil, sections: [], genres: nil)
         importer.start(book: empty, itemId: "lv:42", libraryId: "L", folderId: "F")
         // The run task is async — poll briefly for the terminal phase.
         for _ in 0..<50 {
@@ -229,6 +229,27 @@ struct FreeCatalogTests {
         // Cancel is ALWAYS neutral, never an error.
         importer.cancel()
         if case .idle = importer.phase {} else { Issue.record("cancel must yield idle") }
+    }
+
+    /// 48e786d Schritt 0 — der Zaun. Die Genre-Achse war TOTES HOLZ: die API
+    /// liefert Genres, aber LibriVoxBook decodierte sie nicht, der Provider
+    /// setzte an sieben Stellen nil, die Filterleiste renderte nie. Ein Feld,
+    /// das ueberall nil gesetzt wird, faellt beim naechsten Umbau wieder raus,
+    /// ohne dass etwas rot wird — dieser Test weist am ECHTEN Korpus nach,
+    /// dass mindestens ein Genre bis zum LibraryItem durchkommt.
+    @MainActor
+    @Test("Genres come through to the LibraryItem (LibriVox corpus)")
+    func genresReachTheItem() throws {
+        let data = try CorpusFixture.data("librivox-genres", ext: "json", subdirectory: "WireCorpus")
+        let books = try LibriVoxClient.decodeFeed(data)
+        let withGenres = books.first { !($0.genres ?? []).isEmpty }
+        let book = try #require(withGenres, "corpus must contain a book with genres")
+
+        let item = FreeCatalogProvider.shared.remember(book: book)
+        let genres = try #require(item.media?.metadata?.genres)
+        #expect(!genres.isEmpty)
+        // The epoch entry stays in — the axis filters it, not the transport.
+        #expect(genres.allSatisfy { !$0.isEmpty })
     }
 
     @Test("Decoders throw on the wire corpus (no silent empty rows)")
@@ -575,7 +596,7 @@ struct CatalogGenreAxisTests {
             ArchivePopularDoc(identifier: id, title: ArchiveStringList([title]),
                               creator: ArchiveStringList([creator]), downloads: 1,
                               runtime: nil, licenseurl: "http://creativecommons.org/licenses/by/4.0/",
-                              year: nil)
+                              year: nil, subject: nil)
         }
         // The measured example that slips through NOT collection:librivoxaudio.
         #expect(!FreeCatalog.isNotLibriVoxDuplicate(doc("LibriVoxHorror_2007-2017")))
