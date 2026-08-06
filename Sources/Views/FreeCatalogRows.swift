@@ -199,6 +199,102 @@ enum FreeCatalogLoader {
     }
 }
 
+/// Paket 1 (11be262): the load layer of the MERGED catalog page — one pass,
+/// all catalog sources in parallel, one visible failure per source. The
+/// per-view @State loaders of the two old pages collapse into this; the feed
+/// sources are static curation and need no loading at all.
+@MainActor
+enum CatalogSourceLoader {
+    struct SourceRows {
+        var librivoxNew: [LibraryItem] = []
+        var librivoxPopular: [LibraryItem] = []
+        var archiveBooks: [LibraryItem] = []
+        var gutenberg: [LibraryItem] = []
+        var oldTimeRadio: [LibraryItem] = []
+        /// Sources whose load FAILED — the page shows the reason where a row
+        /// would silently miss (Regel 3: no mute error). A set, so the visible
+        /// text is built localized at the surface.
+        var failures: Set<CatalogSource> = []
+    }
+
+    static func load() async -> SourceRows {
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else {
+            return SourceRows()
+        }
+        var rows = SourceRows()
+        #if DEBUG
+        if UITestSeed.isActive { return rows }
+        #endif
+        let provider = FreeCatalogProvider.shared
+        let codes = SuggestionLanguages.current()
+        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
+        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+
+        // ONE pass: the independent sources load concurrently; each failure
+        // lands in `failures` under its source instead of vanishing.
+        async let newTask: [LibriVoxBook]? = librivoxOn
+            ? (try? LibriVoxClient.newBooks(sinceDays: 120, limit: 40)) : nil
+        async let popularTask: [ArchivePopularDoc]? = librivoxOn
+            ? (try? ArchiveOrgClient.popularLibriVoxByLanguage(
+                rowsPerLanguage: 12, languageCodes: codes, limit: 12)) : nil
+        async let archiveTask: [ArchivePopularDoc]? = archiveOn
+            ? (try? ArchiveOrgClient.audiobooksOutsideLibriVox(rows: 12, languageCodes: codes)) : nil
+        async let otrTask: [ArchivePopularDoc]? = (archiveOn && codes.contains("en"))
+            ? (try? ArchiveOrgClient.popularOldTimeRadio(rows: 12)) : nil
+
+        if librivoxOn {
+            if let books = await newTask {
+                let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
+                rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
+            } else { rows.failures.insert(.librivox) }
+            if let docs = await popularTask {
+                rows.librivoxPopular = docs.compactMap { provider.remember(popular: $0) }
+            } else { rows.failures.insert(.librivox) }
+        }
+        if archiveOn {
+            if let docs = await archiveTask {
+                rows.archiveBooks = docs.compactMap { provider.remember(popular: $0) }
+            } else { rows.failures.insert(.archiveBooks) }
+            if codes.contains("en") {
+                if let docs = await otrTask {
+                    rows.oldTimeRadio = docs.compactMap { doc in
+                        guard let identifier = doc.identifier else { return nil }
+                        // Series bundles are the unit here — higher gate bound.
+                        provider.rememberOldTimeRadio(identifier)
+                        return provider.remember(popular: doc)
+                    }
+                } else { rows.failures.insert(.oldTimeRadio) }
+            }
+        }
+        // Gutenberg last (sequential): its own fallback ladder needs up to
+        // three requests and gutendex rate-limits politely.
+        if librivoxOn {
+            var books: [GutenbergClient.Book] = []
+            var failed = false
+            for page in 1...2 {
+                guard let hit = try? await GutenbergClient.audiobooks(languages: codes, page: page) else {
+                    failed = books.isEmpty
+                    break
+                }
+                books += hit
+                if hit.isEmpty { break }
+            }
+            // 9ef73a4: same fallback rule as the other rows.
+            if books.isEmpty, !failed, !codes.isEmpty,
+               let unfiltered = try? await GutenbergClient.audiobooks(languages: [], page: 1) {
+                books = unfiltered
+            }
+            if failed { rows.failures.insert(.gutenberg) }
+            rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
+        }
+        for source in rows.failures {
+            Logger.library.error("FREECAT source=\(source.rawValue, privacy: .public) FAILED")
+        }
+        Logger.library.notice("FREECAT sources lvNew=\(rows.librivoxNew.count) lvPop=\(rows.librivoxPopular.count) ia=\(rows.archiveBooks.count) gut=\(rows.gutenberg.count) otr=\(rows.oldTimeRadio.count)")
+        return rows
+    }
+}
+
 /// cb99bf6: the ONE shared home of the loaded catalog rows — Home's
 /// compute() pass fills it (retry-while-empty stays there); the audiobooks
 /// tab row observes the SAME store instead of loading a second time.
@@ -214,6 +310,24 @@ final class FreeCatalogStore: ObservableObject {
     /// rows stay visible until the calm-gated replacement arrives.
     func invalidateForLanguageChange() {
         loaded = false
+        sourcesLoaded = false
+    }
+
+    /// Paket 1: the merged page's source rows — loaded on first open of the
+    /// page (NOT in Home's compute pass; five extra network calls do not
+    /// belong to app start for a page that may never open this session).
+    @Published private(set) var sourceRows = CatalogSourceLoader.SourceRows()
+    private(set) var sourcesLoaded = false
+    private var sourcesLoading = false
+
+    func ensureSourcesLoaded() async {
+        guard !sourcesLoaded, !sourcesLoading, NetworkMonitor.shared.isConnected else { return }
+        sourcesLoading = true
+        defer { sourcesLoading = false }
+        let loaded = await CatalogSourceLoader.load()
+        sourcesLoaded = !loaded.librivoxPopular.isEmpty || !loaded.gutenberg.isEmpty
+            || !loaded.archiveBooks.isEmpty || !loaded.oldTimeRadio.isEmpty
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.sourceRows = loaded }
     }
 
     /// The single load pass (34c36e1 discipline: called from compute(),

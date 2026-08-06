@@ -613,6 +613,38 @@ struct CatalogGenreAxisTests {
             #expect(titles.contains(shelf), "shelf without title: \(shelf)")
         }
     }
+    // MARK: - 11be262 Paket 1/4: Quellen-Aufteilung
+
+    /// the owner's Bedingung "keine Kachel erscheint in beiden Tabs" haelt
+    /// STRUKTURELL: feed- und katalogbasierte Quellen sind disjunkte Mengen
+    /// EINES enums, und die Kuration verteilt jeden Feed auf genau eine Reihe.
+    @Test("Catalog sources split disjointly; every curated feed lands exactly once")
+    func catalogSourceSplit() {
+        let feed = CatalogSource.allCases.filter(\.isFeedBased)
+        let catalog = CatalogSource.allCases.filter { !$0.isFeedBased }
+        #expect(!feed.isEmpty && !catalog.isEmpty)
+        #expect(Set(feed).isDisjoint(with: Set(catalog)))
+
+        // Jeder kuratierte Feed gehoert zu GENAU einer Feed-Reihe (en aktiv,
+        // damit auch die englischen Eintraege verteilt werden).
+        let codes = ["de", "en"]
+        let all = HoerspielCuration.feeds(forLanguages: codes)
+        var seen: [String: Int] = [:]
+        for source in feed {
+            for entry in source.curatedFeeds(forLanguages: codes) {
+                seen[entry.feedURL, default: 0] += 1
+            }
+        }
+        #expect(seen.count == all.count, "every feed must land in a row")
+        #expect(seen.values.allSatisfy { $0 == 1 }, "no feed in two rows")
+
+        // Ohne en bleibt OERR uebrig — die anderen Reihen sind leer, nicht kaputt.
+        #expect(!CatalogSource.oerr.curatedFeeds(forLanguages: ["de"]).isEmpty)
+        #expect(CatalogSource.escapeArtists.curatedFeeds(forLanguages: ["de"]).isEmpty)
+        // Katalog-Quellen liefern nie Feeds.
+        #expect(CatalogSource.librivox.curatedFeeds(forLanguages: codes).isEmpty)
+    }
+
     // MARK: - c3ab12e: der Zaun gegen den Namensraum-Fehler
 
     /// Ein Namensraum-Fehler hat the owner aus seinem eigenen Server ausgesperrt:
