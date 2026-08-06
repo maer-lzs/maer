@@ -613,6 +613,25 @@ struct CatalogGenreAxisTests {
             #expect(titles.contains(shelf), "shelf without title: \(shelf)")
         }
     }
+    // MARK: - 0b72ac4 A1/A3/A4: Abbruch ist kein Fehler
+
+    /// Der GT-Befund: try? unter async let frass die Unterscheidung — eine
+    /// stornierte .task wurde als vier kaputte Quellen verbucht. Die pure
+    /// Klassifikation ist der Zaun: Abbruch ⇒ nil (kein failure-Eintrag),
+    /// alles andere ⇒ kurzer Grund fuer Log UND Fehlerzeile.
+    @Test("Cancellation classifies as nil; real failures carry a tellable reason")
+    func failureClassification() {
+        #expect(FreeCatalog.failureReason(CancellationError()) == nil)
+        #expect(FreeCatalog.failureReason(URLError(.cancelled)) == nil)
+        // 27f360b: EIN Blick unterscheidet 429 / HTML-Antwort / Transport.
+        #expect(FreeCatalog.failureReason(APIError.http(429, "slow down")) == "HTTP 429")
+        #expect(FreeCatalog.failureReason(URLError(.timedOut)) == "URLError \(URLError.Code.timedOut.rawValue)")
+        let decode = FreeCatalog.CatalogDecodeError(status: 200, answerPrefix: "<html><head>challenge")
+        #expect(FreeCatalog.failureReason(decode) == "decode (HTTP 200): <html><head>challenge")
+        #expect(FreeCatalog.failureReason(FreeCatalog.CatalogDecodeError(status: nil, answerPrefix: "x"))
+                == "decode (HTTP ?): x")
+    }
+
     // MARK: - Paket 3: EINE Achse fuer zwei Schreibfamilien
 
     /// 9ef73a4: Gutenbergs LCSH-subjects landen auf DENSELBEN Regalen wie die

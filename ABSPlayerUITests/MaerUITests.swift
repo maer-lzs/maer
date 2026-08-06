@@ -844,6 +844,20 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the card must leave the row at once")
     }
 
+    /// e96d396 C3 — der Zaun: ein Buch mit lastUpdate aelter als die
+    /// Wiederentdecken-Schwelle (Seed: 5 Wochen) MUSS unter Fortsetzen
+    /// sichtbar sein. Die Altersgrenze aus e46e7b4 hat genau das entfernt
+    /// ("harte Regression"); dieser Test macht ihre Wiederkehr rot.
+    func testContinueKeepsStaleStarts() {
+        let app = launchSeeded()
+        let books = app.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(books.waitForExistence(timeout: 20))
+        books.tap()
+        let stale = app.staticTexts["Seed Book Old"].firstMatch
+        XCTAssertTrue(stale.waitForExistence(timeout: 15),
+                      "a five-week-old start must stay in Continue")
+    }
+
     /// Paket 4 (11be262): the merged page "Freie Hörbücher & Hörspiele" is
     /// reachable from the podcast tab's preview entry, and its feed rows
     /// (static curation) render — end-to-end over the real navigation path.

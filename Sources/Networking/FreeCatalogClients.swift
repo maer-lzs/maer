@@ -140,19 +140,29 @@ nonisolated enum ArchiveOrgClient {
     static func popularLibriVoxByLanguage(rowsPerLanguage: Int, languageCodes: [String],
                                           limit: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         let codes = languageCodes.isEmpty ? [""] : languageCodes
-        let lists: [[ArchivePopularDoc]] = await withTaskGroup(of: (Int, [ArchivePopularDoc]).self) { group in
-            for (index, code) in codes.enumerated() {
-                group.addTask {
-                    let docs = try? await popularLibriVox(
-                        rows: rowsPerLanguage,
-                        languageCodes: code.isEmpty ? [] : [code], page: page)
-                    return (index, docs ?? [])
+        // e9cf3be A6: per-language errors are collected — if EVERY language
+        // fails, that is a row FAILURE and must throw, not collapse to [] (the
+        // row vanished silently, neither content nor error line). A partial
+        // failure stays best-effort: the surviving languages fill the row.
+        let results: [(Int, Result<[ArchivePopularDoc], Error>)] =
+            await withTaskGroup(of: (Int, Result<[ArchivePopularDoc], Error>).self) { group in
+                for (index, code) in codes.enumerated() {
+                    group.addTask {
+                        do {
+                            return (index, .success(try await popularLibriVox(
+                                rows: rowsPerLanguage,
+                                languageCodes: code.isEmpty ? [] : [code], page: page)))
+                        } catch { return (index, .failure(error)) }
+                    }
                 }
+                var all: [(Int, Result<[ArchivePopularDoc], Error>)] = []
+                for await entry in group { all.append(entry) }
+                return all
             }
-            var byIndex: [Int: [ArchivePopularDoc]] = [:]
-            for await (index, docs) in group { byIndex[index] = docs }
-            return codes.indices.map { byIndex[$0] ?? [] }
-        }
+        let byIndex = Dictionary(uniqueKeysWithValues: results)
+        let failures = results.compactMap { if case .failure(let e) = $0.1 { e } else { nil } }
+        if failures.count == codes.count, let first = failures.first { throw first }
+        let lists = codes.indices.map { (try? byIndex[$0]?.get()) ?? [] }
         return FreeCatalog.interleaveByLanguage(lists, limit: limit) { $0.identifier ?? "" }
     }
 
@@ -231,11 +241,20 @@ nonisolated enum ArchiveOrgClient {
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        let (data, response) = try await RequestRetryPolicy.fetch(request)
         // aed5d25: shared artifact filter for BOTH rows (books + classical) —
         // dropped docs are logged upstream via the count difference.
-        return try decodePopular(data).filter {
-            !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
+        do {
+            return try decodePopular(data).filter {
+                !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
+            }
+        } catch {
+            // 27f360b A3: a decode failure must be TELLABLE from transport —
+            // archive.org can answer 200 with an HTML challenge. Carry status
+            // and the first bytes of the answer (no URLs, so nothing to mask).
+            let status = response?.statusCode
+            let prefix = String(decoding: data.prefix(80), as: UTF8.self)
+            throw FreeCatalog.CatalogDecodeError(status: status, answerPrefix: prefix)
         }
     }
 

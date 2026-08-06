@@ -211,10 +211,31 @@ enum CatalogSourceLoader {
         var archiveBooks: [LibraryItem] = []
         var gutenberg: [LibraryItem] = []
         var oldTimeRadio: [LibraryItem] = []
-        /// Sources whose load FAILED — the page shows the reason where a row
-        /// would silently miss (Regel 3: no mute error). A set, so the visible
-        /// text is built localized at the surface.
-        var failures: Set<CatalogSource> = []
+        /// 0b72ac4 A1/A3: failed sources WITH the short reason (log + error
+        /// line). Cancellations never land here — a cancelled task is "not
+        /// loaded yet", not a broken source.
+        var failures: [CatalogSource: String] = [:]
+    }
+
+    /// Wraps one fetch as a Result so the error ARRIVES as an error —
+    /// `try?` under `async let` ate the distinction cancellation vs. failure,
+    /// which booked a torn-down .task as four broken sources at once (0b72ac4).
+    private static func fetched<T: Sendable>(_ op: @escaping @Sendable () async throws -> T) async -> Result<T, Error> {
+        do { return .success(try await op()) } catch { return .failure(error) }
+    }
+
+    /// Unwraps one source result: success returns the value, cancellation
+    /// stays silent (A1), a real failure books source + reason (A3).
+    private static func value<T>(_ result: Result<T, Error>, _ source: CatalogSource,
+                                 failures: inout [CatalogSource: String]) -> T? {
+        switch result {
+        case .success(let value): return value
+        case .failure(let error):
+            if let reason = FreeCatalog.failureReason(error) {
+                failures[source] = reason
+            }
+            return nil
+        }
     }
 
     static func load() async -> SourceRows {
@@ -230,65 +251,58 @@ enum CatalogSourceLoader {
         let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
         let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
 
-        // ONE pass: the independent sources load concurrently; each failure
-        // lands in `failures` under its source instead of vanishing.
-        async let newTask: [LibriVoxBook]? = librivoxOn
-            ? (try? LibriVoxClient.newBooks(sinceDays: 120, limit: 40)) : nil
-        async let popularTask: [ArchivePopularDoc]? = librivoxOn
-            ? (try? ArchiveOrgClient.popularLibriVoxByLanguage(
-                rowsPerLanguage: 12, languageCodes: codes, limit: 12)) : nil
-        async let archiveTask: [ArchivePopularDoc]? = archiveOn
-            ? (try? ArchiveOrgClient.audiobooksOutsideLibriVox(rows: 12, languageCodes: codes)) : nil
-        async let otrTask: [ArchivePopularDoc]? = (archiveOn && codes.contains("en"))
-            ? (try? ArchiveOrgClient.popularOldTimeRadio(rows: 12)) : nil
+        // ONE pass, sources concurrent; each error arrives AS an error.
+        async let newTask = fetched { try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40) }
+        async let popularTask = fetched { try await ArchiveOrgClient.popularLibriVoxByLanguage(
+            rowsPerLanguage: 12, languageCodes: codes, limit: 12) }
+        async let archiveTask = fetched { try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+            rows: 12, languageCodes: codes) }
+        async let otrTask = fetched { try await ArchiveOrgClient.popularOldTimeRadio(rows: 12) }
 
         if librivoxOn {
-            if let books = await newTask {
+            if let books = value(await newTask, .librivox, failures: &rows.failures) {
                 let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
                 rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
-            } else { rows.failures.insert(.librivox) }
-            if let docs = await popularTask {
+            }
+            if let docs = value(await popularTask, .librivox, failures: &rows.failures) {
                 rows.librivoxPopular = docs.compactMap { provider.remember(popular: $0) }
-            } else { rows.failures.insert(.librivox) }
-        }
+            }
+        } else { _ = await newTask; _ = await popularTask }
         if archiveOn {
-            if let docs = await archiveTask {
+            if let docs = value(await archiveTask, .archiveBooks, failures: &rows.failures) {
                 rows.archiveBooks = docs.compactMap { provider.remember(popular: $0) }
-            } else { rows.failures.insert(.archiveBooks) }
+            }
             if codes.contains("en") {
-                if let docs = await otrTask {
+                if let docs = value(await otrTask, .oldTimeRadio, failures: &rows.failures) {
                     rows.oldTimeRadio = docs.compactMap { doc in
                         guard let identifier = doc.identifier else { return nil }
-                        // Series bundles are the unit here — higher gate bound.
                         provider.rememberOldTimeRadio(identifier)
                         return provider.remember(popular: doc)
                     }
-                } else { rows.failures.insert(.oldTimeRadio) }
-            }
-        }
-        // Gutenberg last (sequential): its own fallback ladder needs up to
-        // three requests and gutendex rate-limits politely.
-        if librivoxOn {
-            var books: [GutenbergClient.Book] = []
-            var failed = false
-            for page in 1...2 {
-                guard let hit = try? await GutenbergClient.audiobooks(languages: codes, page: page) else {
-                    failed = books.isEmpty
-                    break
                 }
-                books += hit
-                if hit.isEmpty { break }
+            } else { _ = await otrTask }
+        } else { _ = await archiveTask; _ = await otrTask }
+        // Gutenberg last (sequential): own fallback ladder, polite rate limit.
+        if librivoxOn {
+            let gut = await fetched { () -> [GutenbergClient.Book] in
+                var books: [GutenbergClient.Book] = []
+                for page in 1...2 {
+                    let hit = try await GutenbergClient.audiobooks(languages: codes, page: page)
+                    books += hit
+                    if hit.isEmpty { break }
+                }
+                if books.isEmpty, !codes.isEmpty {
+                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                }
+                return books
             }
-            // 9ef73a4: same fallback rule as the other rows.
-            if books.isEmpty, !failed, !codes.isEmpty,
-               let unfiltered = try? await GutenbergClient.audiobooks(languages: [], page: 1) {
-                books = unfiltered
+            if let books = value(gut, .gutenberg, failures: &rows.failures) {
+                rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
             }
-            if failed { rows.failures.insert(.gutenberg) }
-            rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
         }
-        for source in rows.failures {
-            Logger.library.error("FREECAT source=\(source.rawValue, privacy: .public) FAILED")
+        for (source, reason) in rows.failures {
+            // A3: reason is short and URL-free by construction (failureReason).
+            Logger.library.error("FREECAT source=\(source.rawValue, privacy: .public) FAILED: \(reason, privacy: .public)")
         }
         Logger.library.notice("FREECAT sources lvNew=\(rows.librivoxNew.count) lvPop=\(rows.librivoxPopular.count) ia=\(rows.archiveBooks.count) gut=\(rows.gutenberg.count) otr=\(rows.oldTimeRadio.count)")
         return rows
@@ -319,6 +333,12 @@ final class FreeCatalogStore: ObservableObject {
     @Published private(set) var sourceRows = CatalogSourceLoader.SourceRows()
     private(set) var sourcesLoaded = false
     private var sourcesLoading = false
+
+    /// A2: the error line's tap — clears the failed state and loads again.
+    func retrySources() async {
+        sourcesLoaded = false
+        await ensureSourcesLoaded()
+    }
 
     func ensureSourcesLoaded() async {
         guard !sourcesLoaded, !sourcesLoading, NetworkMonitor.shared.isConnected else { return }

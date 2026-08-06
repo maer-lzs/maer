@@ -659,6 +659,7 @@
       }
     },
     "Also interesting: Free Audiobooks" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -669,6 +670,7 @@
       }
     },
     "Also interesting: Radio Plays" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1459,6 +1461,26 @@
         }
       }
     },
+    "Could not load %@. Tap to try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht geladen werden. Zum Wiederholen tippen."
+          }
+        }
+      }
+    },
+    "Could not load %@. Check your connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ konnte nicht geladen werden. Prüfe deine Verbindung."
+          }
+        }
+      }
+    },
     "Could not load genres. Check your connection and try again." : {
       "localizations" : {
         "de" : {
@@ -1640,6 +1662,7 @@
       }
     },
     "Curated public-broadcast plays, US audio drama and licensed classics." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -1883,6 +1906,16 @@
         }
       }
     },
+    "Don't show under Continue" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr unter Fortsetzen zeigen"
+          }
+        }
+      }
+    },
     "Done" : {
       "localizations" : {
         "de" : {
@@ -1957,16 +1990,6 @@
         }
       }
     },
-    "Don't show under Continue" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nicht mehr unter Fortsetzen zeigen"
-          }
-        }
-      }
-    },
     "Downloaded" : {
       "localizations" : {
         "de" : {
@@ -2034,6 +2057,7 @@
       }
     },
     "Editorial picks" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2289,6 +2313,17 @@
         }
       }
     },
+    "Free Audiobooks" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörbücher"
+          }
+        }
+      }
+    },
     "Free Audiobooks & Radio Plays" : {
       "localizations" : {
         "de" : {
@@ -2299,67 +2334,8 @@
         }
       }
     },
-    "Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Hörspiele und Hörbücher — öffentlich-rechtliche Sender, unabhängige Produktionen und gemeinfreie Kataloge, getrennt von deiner eigenen Bibliothek."
-          }
-        }
-      }
-    },
-    "Public Broadcast Radio Plays" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Öffentlich-rechtliche Hörspiele"
-          }
-        }
-      }
-    },
-    "Independent Audio Drama (USA)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unabhängige Hörspiel-Reihen (USA)"
-          }
-        }
-      }
-    },
-    "Could not load %@. Check your connection." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ konnte nicht geladen werden. Prüfe deine Verbindung."
-          }
-        }
-      }
-    },
-    "The catalogs need a connection." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Die Kataloge brauchen eine Verbindung."
-          }
-        }
-      }
-    },
-    "Free Audiobooks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Hörbücher"
-          }
-        }
-      }
-    },
     "Free audiobooks from LibriVox, Project Gutenberg and the Internet Archive — public domain or openly licensed, separate from your own library." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -2419,6 +2395,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie gemeinfreie Aufnahmen aus dem Internet Archive — getrennt von deiner eigenen Bibliothek."
+          }
+        }
+      }
+    },
+    "Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Hörspiele und Hörbücher — öffentlich-rechtliche Sender, unabhängige Produktionen und gemeinfreie Kataloge, getrennt von deiner eigenen Bibliothek."
           }
         }
       }
@@ -2687,6 +2673,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Trotzdem einschließen"
+          }
+        }
+      }
+    },
+    "Independent Audio Drama (USA)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unabhängige Hörspiel-Reihen (USA)"
           }
         }
       }
@@ -4587,12 +4583,12 @@
         }
       }
     },
-    "Radio plays and audiobooks from public broadcasters, independent producers and public-domain catalogs." : {
+    "Podcast" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hörspiele und Hörbücher von öffentlich-rechtlichen Sendern, unabhängigen Produzenten und aus gemeinfreien Katalogen."
+            "value" : "Podcast"
           }
         }
       }
@@ -4603,16 +4599,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcast-Charts (Apple)"
-          }
-        }
-      }
-    },
-    "Podcast" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast"
           }
         }
       }
@@ -4715,6 +4701,7 @@
       }
     },
     "Popular at LibriVox" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4864,6 +4851,16 @@
         }
       }
     },
+    "Public Broadcast Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Öffentlich-rechtliche Hörspiele"
+          }
+        }
+      }
+    },
     "Public domain" : {
       "localizations" : {
         "de" : {
@@ -4874,27 +4871,8 @@
         }
       }
     },
-    "Recording from %@. Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aufnahme von %@. Tonaufnahmen sind in der Schweiz nach 50 Jahren frei, in der EU nach 70 und in den USA nach 100."
-          }
-        }
-      }
-    },
-    "Rights status not stated by the source" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechtelage von der Quelle nicht angegeben"
-          }
-        }
-      }
-    },
     "Public Domain — free to listen and share" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -4999,6 +4977,7 @@
       }
     },
     "Radio Play Classics (English)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -5009,11 +4988,22 @@
       }
     },
     "Radio Plays" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörspiele"
+          }
+        }
+      }
+    },
+    "Radio plays and audiobooks from public broadcasters, independent producers and public-domain catalogs." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiele und Hörbücher von öffentlich-rechtlichen Sendern, unabhängigen Produzenten und aus gemeinfreien Katalogen."
           }
         }
       }
@@ -5124,6 +5114,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Empfohlen"
+          }
+        }
+      }
+    },
+    "Recording from %@. Sound recordings are free after 50 years in Switzerland, 70 in the EU and 100 in the USA." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aufnahme von %@. Tonaufnahmen sind in der Schweiz nach 50 Jahren frei, in der EU nach 70 und in den USA nach 100."
           }
         }
       }
@@ -5331,6 +5331,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut versuchen"
+          }
+        }
+      }
+    },
+    "Rights status not stated by the source" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtelage von der Quelle nicht angegeben"
           }
         }
       }
@@ -5650,6 +5660,7 @@
       }
     },
     "Show all" : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -6474,6 +6485,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nur Text"
+          }
+        }
+      }
+    },
+    "The catalogs need a connection." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Kataloge brauchen eine Verbindung."
           }
         }
       }

@@ -68,6 +68,12 @@ enum UITestSeed {
             bookEntry(id: "seed-book-1", title: "Seed Book One", author: "Ada Author",
                       chapters: [chapter(0, 0, 1800, "Chapter 1"), chapter(1, 1800, 3600, "Chapter 2")]),
             bookEntry(id: "seed-book-2", title: "Seed Book Two", author: "Ben Author", chapters: nil),
+            // e96d396 C3: a STALE start (five weeks back) — the journey zaun
+            // that Continue never grows an age cutoff again.
+            bookEntry(id: "seed-book-old", title: "Seed Book Old", author: "Cora Author", chapters: nil,
+                      progress: BookProgress(
+                          fraction: 0.4, isFinished: false,
+                          lastUpdate: Date().timeIntervalSince1970 - 35 * 24 * 3600)),
         ]
         // Scroll depth for collapse-threshold journeys (the two-book grid never
         // reaches the 60 pt raw offset): a page of filler books. Fillers do NOT
@@ -185,14 +191,15 @@ enum UITestSeed {
                       duration: 4320, changedAt: 1_784_541_600_000),
     ]
 
-    private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?) -> LibraryEntry {
+    private static func bookEntry(id: String, title: String, author: String, chapters: [ABSChapter]?,
+                                  progress: BookProgress? = nil) -> LibraryEntry {
         LibraryEntry(item: LibraryItem(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(title: title, authorName: author, narratorName: nil,
                                               seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                 duration: 3600, chapters: chapters, tracks: nil),
-            addedAt: 0), progress: nil)
+            addedAt: 0), progress: progress)
     }
 
     private static func musicAlbum(id: String, title: String, artist: String) -> LibraryItem {

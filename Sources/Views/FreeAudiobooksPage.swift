@@ -176,14 +176,32 @@ struct FreeAudiobooksPage: View {
                                  destination: FreeAudiobooksRoute.source(source))
                 tileRow(items, placeholder: placeholder)
             }
-        } else if rows.failures.contains(source) {
-            VStack(alignment: .leading, spacing: 6) {
-                RowHeading.plain(verbatim: source.title)
-                Text("Could not load \(source.title). Check your connection.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
+        } else if let reason = rows.failures[source] {
+            failureLine(source, reason: reason)
+        }
+    }
+
+    /// A2/A3: the error line is TAPPABLE (retry — "unreachable" is a normal
+    /// state for these sources and needs a visible way back, not a dead-end
+    /// label) and carries the short REASON, so one look tells 429 / HTML
+    /// answer / transport apart.
+    private func failureLine(_ source: CatalogSource, reason: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RowHeading.plain(verbatim: source.title)
+            Button {
+                Task { await store.retrySources() }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Could not load \(source.title). Tap to try again.")
+                    Text(verbatim: "(\(reason))").foregroundStyle(.tertiary)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal)
+                .contentShape(.rect)
             }
+            .buttonStyle(.plain)
         }
     }
 

@@ -340,6 +340,33 @@ nonisolated enum FreeCatalog {
             ? .publicDomain : .termsApply(year: String(digits))
     }
 
+    /// 27f360b A3: a 200-with-HTML answer must be tellable from transport.
+    struct CatalogDecodeError: Error {
+        let status: Int?
+        let answerPrefix: String
+    }
+
+    /// 0b72ac4 A1/A3 — the PURE classification of a source failure:
+    /// nil = cancellation (NOT a failure; the next task run fetches again),
+    /// otherwise a short reason for log AND error line. One look then tells
+    /// 429 / HTML answer / transport apart. Tested (A4) so the class of
+    /// "cancelled task booked as broken source" cannot return.
+    static func failureReason(_ error: Error) -> String? {
+        if error is CancellationError { return nil }
+        if let urlError = error as? URLError {
+            if urlError.code == .cancelled { return nil }
+            return "URLError \(urlError.code.rawValue)"
+        }
+        if let apiError = error as? APIError, case .http(let code, _) = apiError {
+            return "HTTP \(code)"
+        }
+        if let decode = error as? CatalogDecodeError {
+            let status = decode.status.map(String.init) ?? "?"
+            return "decode (HTTP \(status)): \(decode.answerPrefix.prefix(80))"
+        }
+        return String(describing: type(of: error))
+    }
+
     static func catalogMetaLine(year: String?, runtime: String?) -> String {
         let parts = [year?.trimmingCharacters(in: .whitespaces), runtime]
             .compactMap { $0 }

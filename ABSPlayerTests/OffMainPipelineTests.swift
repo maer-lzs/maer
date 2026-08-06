@@ -43,11 +43,11 @@ struct OffMainDecodeTests {
         )
     }
 
-    /// df0b3bb: what lies untouched for weeks is not "Continue" any more, it is
-    /// a case for Rediscover — the SAME threshold (RediscoverSections.pausedAfter),
-    /// not a second constant. Plus the lesson from 49dc2c3: a missing or
-    /// placeholder stamp means UNKNOWN, and unknown must not be treated as old.
-    @Test("Continue drops genuinely stale entries but keeps undated ones")
+    /// e96d396 C1/C3-Unit: the age cutoff is GONE — Continue is the row of
+    /// ALL started books again (the owner: "harte Regression"; a four-week-old
+    /// start is exactly what he wants to continue). Rediscover keeps its own
+    /// threshold over continueAll; the overlap is wanted.
+    @Test("Continue keeps stale AND undated entries — the cutoff must not return")
     func continueAgeCutoff() async {
         let now = Date().timeIntervalSince1970
         let items = [entry("fresh", title: "Fresh", added: 10),
@@ -71,14 +71,12 @@ struct OffMainDecodeTests {
         let ids = Set(output.continueListening.map(\.id))
         #expect(ids.contains("fresh"))
         #expect(ids.contains("undated"))
-        #expect(!ids.contains("stale"))
+        // The C-regression guard: a stale start STAYS in Continue.
+        #expect(ids.contains("stale"))
 
-        // The cutoff MOVES a title to Rediscover, it does not erase it: what
-        // Continue drops must still be reachable for Rediscover's "paused"
-        // source, which reads `continueAll`. Feeding Rediscover the filtered
-        // list emptied that source silently — this expectation is the guard.
+        // Rediscover's source stays the unfiltered list (superset by design —
+        // manual hides are the only difference).
         let all = Set(output.continueAll.map(\.id))
-        #expect(all.contains("stale"))
         #expect(all.isSuperset(of: ids))
     }
 

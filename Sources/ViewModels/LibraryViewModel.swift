@@ -873,10 +873,6 @@ final class LibraryViewModel: ObservableObject {
     /// S6: the expensive part of a rebuild — makeEntry over every item, the
     /// Continue/Recently unions and sorts, AND the memoized derived lists — runs
     /// OFF the main actor over the snapshot; the main actor only assigns.
-    /// df0b3bb: below this a timestamp is a placeholder, not a date
-    /// (2000-01-01). Seeded and never-synced entries carry small values.
-    nonisolated static let plausibleTimestampFloor: Double = 946_684_800
-
     nonisolated static func computeRebuild(_ input: RebuildInput) -> RebuildOutput {
         let combined = input.items.map {
             makeEntry(item: $0, progress: input.progress, queued: input.queued)
@@ -905,29 +901,26 @@ final class LibraryViewModel: ObservableObject {
         //     invented, so a title cannot sit in both rows at once.
         // (2) CAP: a row is the preview of a page (3a3b1aa); the complete
         //     stock belongs behind the chevron.
-        let continueCutoff = Date().timeIntervalSince1970 - RediscoverSections.pausedAfter
         let continueAll = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
-        let continueListening = continueById.values
+        // e96d396 C1 (the owner: "harte Regression"): the AGE CUTOFF is GONE.
+        // Continue is the row of ALL started books again — a book left lying
+        // for four weeks is exactly what he wants to continue, not "gone from
+        // Continue". The e46e7b4 cutoff was my design decision inside
+        // df0b3bb/6fcb301; it hollowed out a visible surface nobody ordered
+        // hollowed. Lesson (into the report): capping (display) and culling
+        // (stock) are two different operations — df0b3bb ordered the first,
+        // I also built the second.
+        // C2: Rediscover keeps feeding from continueAll with its own
+        // threshold — the overlap is WANTED (one row answers "what did I
+        // start?", the other "what did I forget?").
+        // The manual hide gesture (ContinueHidden) stays untouched.
+        let continueListening = continueAll
             .filter { entry in
-                // df0b3bb 3: taken off this row by hand — the position is
-                // untouched, so it still counts as started everywhere else.
-                if ContinueHidden.isHidden(id: entry.id,
-                                           lastUpdate: entry.progress?.lastUpdate ?? 0,
-                                           markers: input.hiddenMarkers) { return false }
-                let last = entry.progress?.lastUpdate ?? 0
-                // Timestamps arrive in seconds or milliseconds (ABS) — the
-                // same normalisation the Rediscover source uses.
-                let seconds = last > 4_000_000_000 ? last / 1000 : last
-                // 49dc2c3's lesson, applied here: UNKNOWN is not OLD. A missing
-                // or implausible stamp (0, or anything before 2000 — seeds and
-                // entries the server never dated) means "no date recorded". A
-                // started book must not vanish from Continue just because
-                // nobody wrote down when. Only a REAL date can be too old.
-                guard seconds > Self.plausibleTimestampFloor else { return true }
-                return seconds >= continueCutoff
+                !ContinueHidden.isHidden(id: entry.id,
+                                         lastUpdate: entry.progress?.lastUpdate ?? 0,
+                                         markers: input.hiddenMarkers)
             }
-            .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
 
         var recentById = byId
         for item in input.seedRecent where recentById[item.id] == nil {
