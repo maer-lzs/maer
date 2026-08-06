@@ -332,6 +332,8 @@ struct LibraryView: View {
         .environment(\.pushPodcastRoute) { navigationPath.append($0) }
         // Home tiles push book detail pages (String route) the same way.
         .environment(\.pushBookDetail) { navigationPath.append($0) }
+        // Paket 4: the search deck's catalog tile pushes the merged area.
+        .environment(\.pushFreeAudiobooksRoute) { navigationPath.append($0) }
         // Y63: pushed detail pages (music album, podcast show) host the settings
         // cog themselves — the root toolbar's cog doesn't propagate. Set on the
         // NavigationStack itself so pushed destinations inherit it.
@@ -1042,7 +1044,8 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 10) {
             // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's chevron
             // branch → the shared entry variant.
-            RowHeading.entry("Free Audiobooks", destination: FreeAudiobooksRoute.area)
+            // fe13468: ONE string for the page and BOTH entries.
+            RowHeading.entry("Free Audiobooks & Radio Plays", destination: FreeAudiobooksRoute.area)
                 .accessibilityIdentifier("free-audiobooks-entry")
             Text("Free public-domain audiobooks from LibriVox — separate from your own library.")
                 .font(.caption)

@@ -844,6 +844,30 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the card must leave the row at once")
     }
 
+    /// Paket 4 (11be262): the merged page "Freie Hörbücher & Hörspiele" is
+    /// reachable from the podcast tab's preview entry, and its feed rows
+    /// (static curation) render — end-to-end over the real navigation path.
+    func testMergedCatalogReachableFromPodcastTab() {
+        let app = launchSeeded()
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 20))
+        podcasts.tap()
+
+        let entry = app.descendants(matching: .any)["free-catalog-entry-podcasts"].firstMatch
+        var swipes = 0
+        while !entry.exists && swipes < 8 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(entry.waitForExistence(timeout: 10),
+                      "the podcast tab must carry the catalog entry")
+        entry.tap()
+
+        // The German sim: the OERR row heading is static curation — no network.
+        let heading = app.staticTexts["Öffentlich-rechtliche Hörspiele"].firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 10),
+                      "the merged page must show the public-broadcast row")
+        // And a curated feed row is present with its subscribe control.
+        XCTAssertTrue(app.staticTexts["hr2 Hörspiel"].firstMatch.waitForExistence(timeout: 5))
+    }
+
     /// fb21fbd/8be0e17: sorting moved OUT of the tab head to the surface it
     /// acts on. Two things must hold at once — the tab head no longer carries
     /// it, and the "All Books" section does.

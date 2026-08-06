@@ -52,6 +52,19 @@ struct CatalogFeedRow: View {
     }
 }
 
+/// Paket 4: push the catalog area from non-link surfaces (the search deck's
+/// category tile) — same pattern as PushRadioRouteKey.
+nonisolated struct PushFreeAudiobooksRouteKey: EnvironmentKey {
+    static let defaultValue: @MainActor (FreeAudiobooksRoute) -> Void = { _ in }
+}
+
+extension EnvironmentValues {
+    var pushFreeAudiobooksRoute: @MainActor (FreeAudiobooksRoute) -> Void {
+        get { self[PushFreeAudiobooksRouteKey.self] }
+        set { self[PushFreeAudiobooksRouteKey.self] = newValue }
+    }
+}
+
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Paket 1: the load layer lives in the store — one pass, all catalog
@@ -59,6 +72,14 @@ struct FreeAudiobooksPage: View {
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
+    // Paket 4: the Apple radio-play charts moved here from the retired
+    // HoerspielePage — 11be262 keeps the genre axis and the charts alive
+    // ("alles andere bleibt gültig"); chip-driven, so legitimate view state
+    // like the sub-pages' paging.
+    @State private var selectedChip: String = CatalogGenreAxis.hoerspielChips[0].key
+    @State private var chartResults: [PodcastSearchResult] = []
+    @State private var chartsLoading = false
+    @State private var chartsFailed = false
 
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
@@ -86,6 +107,7 @@ struct FreeAudiobooksPage: View {
                 feedSection(.oerr)
                 feedSection(.escapeArtists)
                 feedSection(.usIndies)
+                chartsSection
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
                 librivoxSection
@@ -104,12 +126,17 @@ struct FreeAudiobooksPage: View {
                             .padding()
                     }
                 }
+                Text("Public-broadcast content can disappear after fixed periods — downloads keep your copies.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
             }
             .padding(.top, TabContentLayout.topInset)
             .bottomBarClearance()
         }
         .navigationTitle(Text("Free Audiobooks & Radio Plays"))
         .task { await store.ensureSourcesLoaded() }
+        .task(id: selectedChip) { await loadCharts() }
         // Connection returns while the page is open: load then.
         .onChange(of: networkMonitor.isConnected) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
@@ -181,6 +208,89 @@ struct FreeAudiobooksPage: View {
             .padding(.horizontal)
         }
         .scrollClipDisabled()
+    }
+
+
+    // ── Apple radio-play charts (moved from HoerspielePage, Paket 4) ──────
+
+    private var chipRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(CatalogGenreAxis.hoerspielChips) { chip in
+                    Button {
+                        withAnimation(.snappy(duration: 0.2)) { selectedChip = chip.key }
+                    } label: {
+                        chipLabel(chip, selected: selectedChip == chip.key)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("hoerspiele-chip-\(chip.key)")
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
+
+    private func chipLabel(_ chip: CatalogGenreAxis.Chip, selected: Bool) -> some View {
+        let fill: AnyShapeStyle = selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary)
+        let text: Color = selected ? .white : .primary
+        return Label(chip.title, systemImage: chip.systemImage)
+            .font(.subheadline.weight(.medium))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(fill, in: Capsule())
+            .foregroundStyle(text)
+    }
+
+    @ViewBuilder
+    private var chartsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RowHeading.plain("Podcast Charts (Apple)")
+            chipRow
+            if chartsLoading && chartResults.isEmpty {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if chartResults.isEmpty {
+                Text(chartsFailed
+                     ? String(localized: "The charts could not be loaded. Check your connection.")
+                     : String(localized: "Nothing in this genre right now."))
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            } else {
+                LazyVStack(spacing: 0) {
+                    ForEach(chartResults, id: \.feedURL) { result in
+                        CatalogFeedRow(result: result)
+                    }
+                }
+            }
+        }
+    }
+
+    private func loadCharts() async {
+        guard let chip = CatalogGenreAxis.hoerspielChips.first(where: { $0.key == selectedChip })
+        else { return }
+        chartsLoading = true
+        chartsFailed = false
+        defer { chartsLoading = false }
+        #if DEBUG
+        if UITestSeed.isActive { chartResults = []; return }
+        #endif
+        let directory = ITunesDirectory()
+        var pool: [PodcastSearchResult] = []
+        for genreId in chip.genreIds {
+            guard let hits = try? await directory.topPodcasts(genreId: genreId) else {
+                Logger.library.notice("FREECAT charts chip=\(chip.key, privacy: .public) genre=\(genreId) FAILED")
+                continue
+            }
+            pool += hits
+        }
+        chartsFailed = pool.isEmpty
+        // Subscribed shows drop out — a catalog, not a second library view.
+        let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+        chartResults = PodcastRecommendationsStore.excludingSubscribed(
+            pool,
+            subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+            subscribedTitles: shows.map(\.title))
     }
 
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {

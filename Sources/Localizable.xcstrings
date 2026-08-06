@@ -4587,6 +4587,26 @@
         }
       }
     },
+    "Radio plays and audiobooks from public broadcasters, independent producers and public-domain catalogs." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörspiele und Hörbücher von öffentlich-rechtlichen Sendern, unabhängigen Produzenten und aus gemeinfreien Katalogen."
+          }
+        }
+      }
+    },
+    "Podcast Charts (Apple)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podcast-Charts (Apple)"
+          }
+        }
+      }
+    },
     "Podcast" : {
       "localizations" : {
         "de" : {

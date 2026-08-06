@@ -256,22 +256,42 @@ struct PodcastsView: View {
     /// third entrance on Home would be one too many.
     ///
     /// The master switch gates it: no door into an empty room.
+    /// Paket 4: the podcast tab's entry previews the FEED sources of the
+    /// merged page (they land here as subscriptions) — the audiobooks tab
+    /// previews the catalog sources. Disjoint by construction (CatalogSource
+    /// split, tested), which is the owner's "no tile in both tabs".
     @ViewBuilder
     private var hoerspieleSection: some View {
-        if freeCatalogsMaster {
+        // isActive gate: this row is STATICALLY filled and would render at app
+        // start inside the kept-alive but HIDDEN tab — where a tile row hangs
+        // the main thread in a layout loop (adbc018 class; measured three
+        // times: TabPill journey 281s instead of ~20 whenever the podcast tab
+        // was mounted invisible, green the moment it is the visible one; both
+        // width strategies hung, so the gate is on VISIBILITY, not sizing).
+        // Every other row in this tab is fetch-filled and thus empty until the
+        // tab is visible — this one needs the explicit gate instead.
+        if freeCatalogsMaster && isActive {
             VStack(alignment: .leading, spacing: 10) {
-                // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's
-                // chevron branch → the shared component (entry variant: the
-                // chevron is earned by the target, not by a count).
-                RowHeading.entry("Radio Plays", destination: PodcastRoute.hoerspiele)
-                    .accessibilityIdentifier("podcasts-hoerspiele-entry")
-                Text("Curated public-broadcast plays, US audio drama and licensed classics.")
+                // 733ac2a asked for a TILE row here — built three ways
+                // (RecommendationTile + containerRelativeFrame, fixed width,
+                // plain MediaTile) and every variant hangs the main thread in
+                // an AttributeGraph invalidation loop on this tab (sampled:
+                // hang3.sample shows reportsBottomBarScroll in the cycle;
+                // bisect: row out = journeys green in 10s, any tile row in =
+                // 282s). The stable heading form ships; the tile-row form is
+                // an OPEN finding with the measurement protocol in the report
+                // — not silently dropped.
+                RowHeading.entry("Free Audiobooks & Radio Plays",
+                                 destination: FreeAudiobooksRoute.area)
+                    .accessibilityIdentifier("free-catalog-entry-podcasts")
+                Text("Radio plays and audiobooks from public broadcasters, independent producers and public-domain catalogs.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
             }
         }
     }
+
 
     @ViewBuilder
     private var recommendationsSection: some View {

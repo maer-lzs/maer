@@ -37,6 +37,7 @@ struct SearchScreen: View {
     }
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @State private var drill: [DeckDrill] = []
     /// Y15: explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
@@ -781,10 +782,12 @@ struct SearchScreen: View {
                 // 8d49a8e: the tile leads to the OWN page (charts by genre +
                 // curated socket) instead of the flat curation list — the
                 // charts carry the bulk, the socket only what they miss.
-                CategoryTile(title: String(localized: "Radio Plays"),
+                // Paket 4: the tile is the THIRD entrance to the merged
+                // page (11be262: same surface, one title everywhere).
+                CategoryTile(title: String(localized: "Free Audiobooks & Radio Plays"),
                              systemImage: "waveform.and.mic",
                              accessibilityId: "podcast-genre-hoerspiele") {
-                    pushPodcastRoute(.hoerspiele)
+                    pushFreeAudiobooksRoute(.area)
                 }
                 ForEach(PodcastGenres.curated) { genre in
                     CategoryTile(title: genre.title, systemImage: genre.systemImage,
