@@ -57,3 +57,19 @@ struct CatalogMixRow: View {
         }
     }
 }
+
+extension CatalogMix {
+    /// The ONE computation of the mixed audiobooks-&-radio-plays row (Auftrag
+    /// K podcast tab + L2 Start share it — "keine zwei Mischer"): curated
+    /// radio-play feeds (static, instant) + the catalog title rows from the
+    /// calm-gated store, fairly interleaved, capped by RowPreview.
+    static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
+        let languages = SuggestionLanguages.current()
+        let feedGroups = [CatalogSource.oerr, .escapeArtists, .usIndies]
+            .map { $0.curatedFeeds(forLanguages: languages) }
+        return row(feedGroups: feedGroups,
+                   itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
+                                rows.archiveBooks, rows.gutenberg],
+                   limit: RowPreview.limit)
+    }
+}

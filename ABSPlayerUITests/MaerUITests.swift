@@ -81,7 +81,10 @@ nonisolated final class MaerUITests: XCTestCase {
     func testHomeAndTabSwitching() {
         let app = launchSeeded()
         // Home is the start tab — its Up Next section shows the seeded queue.
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        // Auftrag L: the Entdecken rows sit ABOVE Up Next and fill from the
+        // live catalogs, so the seed marker can sink below the fold of the
+        // lazy root — scroll it into existence instead of pinning a layout.
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
         snap(app, "home")
 
         // Switch to the Podcasts tab → seeded show.
@@ -95,7 +98,20 @@ nonisolated final class MaerUITests: XCTestCase {
         // Back to Home.
         let home = app.buttons["tab-home"].firstMatch
         if home.waitForExistence(timeout: 10) { home.tap() }
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
+    }
+
+    /// Scroll helper for lazy roots: an element below the fold is not in the
+    /// AX tree until its row materializes — swipe up (bounded) while looking.
+    private func waitScrollingTo(_ app: XCUIApplication, text: String,
+                                 swipes: Int = 8) -> Bool {
+        let element = app.staticTexts[text].firstMatch
+        if element.waitForExistence(timeout: 15) { return true }
+        for _ in 0..<swipes {
+            app.swipeUp()
+            if element.waitForExistence(timeout: 2) { return true }
+        }
+        return false
     }
 
     /// F3: the author portrait is SUCCESS-ONLY. The seed injects content into

@@ -34,6 +34,11 @@ enum MusicRoute: Hashable {
     case shelfPage(MusicShelf)
     /// Welle 3: the free-music (Jamendo) full page behind Home's row.
     case freeJamendo
+    /// Auftrag L1: the small music-catalog page behind Start's mixed
+    /// "Entdecken · Musik" row (the I2 surface, earlier) — one source row per
+    /// active catalog (classical · Jamendo), each heading onto its existing
+    /// page. netlabels/78rpm/LMA grow in here later.
+    case freeCatalogArea
 
     static func == (lhs: MusicRoute, rhs: MusicRoute) -> Bool {
         switch (lhs, rhs) {
@@ -43,7 +48,7 @@ enum MusicRoute: Hashable {
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
              (.genres, .genres), (.freeClassical, .freeClassical),
-             (.freeJamendo, .freeJamendo):
+             (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea):
             return true
         case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
@@ -65,6 +70,7 @@ enum MusicRoute: Hashable {
         case .freeClassical:    hasher.combine(9)
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
+        case .freeCatalogArea:  hasher.combine(12)
         }
     }
 
@@ -84,6 +90,7 @@ enum MusicRoute: Hashable {
         case .freeClassical: return "music-route-free-classical"
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
+        case .freeCatalogArea: return "music-route-free-catalog-area"
         }
     }
 }
@@ -143,6 +150,8 @@ extension View {
                 MusicGenreDetailPage(genre: genre, playerCoordinator: playerCoordinator)
             case .freeClassical:
                 FreeClassicalPage(playerCoordinator: playerCoordinator)
+            case .freeCatalogArea:
+                MusicCatalogAreaPage(playerCoordinator: playerCoordinator)
             case .shelfPage(let shelf):
                 MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
             case .freeJamendo:

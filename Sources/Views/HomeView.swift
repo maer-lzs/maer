@@ -124,9 +124,15 @@ struct HomeView: View {
                     // compute() (a lazy below-the-fold view never ran its
                     // own task reliably), rows render dumb.
                     if freeCatalogsMaster {
+                        // L1 "Entdecken · Musik" (one mixed row, entry page).
                         FreeCatalogRows(playerCoordinator: playerCoordinator,
                                         freeMusic: freeCatalogStore.rows.freeMusic,
                                         classical: freeCatalogStore.rows.classical)
+                        // L2 "Entdecken · Hörbücher & Hörspiele": the SAME
+                        // mixed row/computation as the podcast tab (Regel 2),
+                        // entry chevron onto the existing area page. Start
+                        // gets its catalog teaser back — as a family with L1.
+                        discoverAudiobooksSection
                     }
                     upNextSection
                     radioSection
@@ -296,7 +302,11 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
 // Welle 3: Discover's page is the SAME recommendation pool
                 // page as the podcast tab's (Regel 2) — the book admixture is
                 // Discover's curation, the pool is the stock.
-                RowHeading(title: "Discover",
+                // L3: the personal row gives the "Discover" name to the
+                // catalog family — it is computed FROM the listener, so it says
+                // so ("Empfohlen"; tab parity with the podcast tab). Reason
+                // subtitles and the shared pool page stay unchanged.
+                RowHeading(title: "Recommended",
                            total: recommendations.results.count,
                            shown: discoverShown.count,
                            destination: PodcastRoute.recommendations)
@@ -354,6 +364,24 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
         case .genre(let genre): return String(localized: "Because you listen to \(genre)")
         case .popular: return String(localized: "Popular")
+        }
+    }
+
+    /// L2: Start's mixed free-audiobooks row — tiles via the ONE shared
+    /// computation (`CatalogMix.hoerspieleTiles`), row via the ONE shared
+    /// `CatalogMixRow`. The store row loads in compute() (34c36e1: a lazy
+    /// below-the-fold .task never ran reliably); until the catalogs land the
+    /// mix shows the static feed curation, so the row is never empty.
+    @ViewBuilder
+    private var discoverAudiobooksSection: some View {
+        let tiles = CatalogMix.hoerspieleTiles(rows: freeCatalogStore.sourceRows)
+        if !tiles.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                RowHeading.entry("Discover · Audiobooks & Radio Plays",
+                                 destination: FreeAudiobooksRoute.area)
+                    .accessibilityIdentifier("home-discover-audiobooks")
+                CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)
+            }
         }
     }
 
@@ -553,6 +581,12 @@ RowHeading(title: "Rediscover",
         // the next recompute instead of deciding forever, Y37 class).
         // cb99bf6: the fill lives in the shared store now.
         await freeCatalogStore.ensureLoaded()
+        // L2: the mixed audiobooks row needs the catalog SOURCE rows too —
+        // same 34c36e1 rule (below-the-fold .task is unreliable, compute
+        // always runs; idempotent, so a podcast-tab visit costs nothing).
+        // This deliberately widens the old "not in the Home pass" line: the
+        // row now RENDERS on Start, so Start owns a load kick.
+        await freeCatalogStore.ensureSourcesLoaded()
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
         // Uncapped counterpart for the page behind the row (3a3b1aa).

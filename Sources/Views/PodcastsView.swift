@@ -303,18 +303,10 @@ RowHeading(title: "Continue", font: .title2,
         }
     }
 
-    /// The podcast tab mixes the SAME sources as the area page it opens:
-    /// curated radio-play feeds (instant, static curation) + the catalog
-    /// title rows (calm-gated store). RowPreview caps the row.
+    /// The podcast tab mixes the SAME sources as the area page it opens —
+    /// via the ONE shared computation (L2's Start row uses it too).
     private var hoerspieleMixTiles: [CatalogMix.Tile] {
-        let languages = SuggestionLanguages.current()
-        let feedGroups = [CatalogSource.oerr, .escapeArtists, .usIndies]
-            .map { $0.curatedFeeds(forLanguages: languages) }
-        let rows = freeCatalogStore.sourceRows
-        return CatalogMix.row(feedGroups: feedGroups,
-                              itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
-                                           rows.archiveBooks, rows.gutenberg],
-                              limit: RowPreview.limit)
+        CatalogMix.hoerspieleTiles(rows: freeCatalogStore.sourceRows)
     }
 
 

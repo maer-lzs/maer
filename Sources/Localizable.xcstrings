@@ -1897,6 +1897,26 @@
         }
       }
     },
+    "Discover \u00b7 Audiobooks & Radio Plays" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entdecken \u00b7 H\u00f6rb\u00fccher & H\u00f6rspiele"
+          }
+        }
+      }
+    },
+    "Discover \u00b7 Music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entdecken \u00b7 Musik"
+          }
+        }
+      }
+    },
     "Discover and Rediscover suggestions; searching the catalog and genre charts stays on demand." : {
       "localizations" : {
         "de" : {

@@ -19,51 +19,30 @@ struct FreeCatalogRows: View {
     /// view below the fold never ran its .task reliably (the third suspect);
     /// loading lives in HomeView's compute() pass (always runs, calm-gated)
     /// via `FreeCatalogLoader`.
-    /// 7edb21b: the two audiobook rows LEFT Home — the books mix into the
-    /// Discover section instead (moderate share) and live in their own
-    /// audiobooks-tab area; only classical + free music remain as rows.
+    /// Auftrag L1: ONE mixed "Entdecken · Musik" row replaced the two source
+    /// rows (classical + Jamendo) — interleaved, not two blocks (the archive-
+    /// row mix decision), through the ONE merge (`HomeSections.interleave`).
+    /// The source gates keep acting through the LOADER (a gated-off source
+    /// loads nothing, so its share is simply absent); both empty → no row.
+    /// The entry chevron opens the small music-catalog page (I2 earlier).
     let freeMusic: [LibraryItem]
     let classical: [LibraryItem]
     @State private var detailItem: LibraryItem?
 
     var body: some View {
         Group {
-            if !classical.isEmpty {
-                // 50f4751: the teaser POINTS INTO the separate area — the
-                // header row navigates to the music-tab browse page.
+            if !classical.isEmpty || !freeMusic.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    NavigationLink(value: MusicRoute.freeClassical) {
-                        HStack(spacing: 6) {
-                            Text("Free Classical").font(.title3).bold()
-                            Image(systemName: "chevron.right")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("home-free-classical-link")
-                    tileRow(items: classical)
-                }
-            }
-            if !freeMusic.isEmpty {
-                // Welle 3: the row has its page now — entry chevron (the
-                // Jamendo stock behind the 12-tile preview is thousands).
-                VStack(alignment: .leading, spacing: 10) {
-                    RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
-                    tileRow(items: freeMusic)
+                    RowHeading.entry("Discover · Music",
+                                     destination: MusicRoute.freeCatalogArea)
+                        .accessibilityIdentifier("home-discover-music")
+                    tileRow(items: HomeSections.interleave([classical, freeMusic],
+                                                           limit: RowPreview.limit))
                 }
             }
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
-    }
-
-    private func row(title: LocalizedStringKey, items: [LibraryItem]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.title3).bold().padding(.horizontal)
-            tileRow(items: items)
         }
     }
 

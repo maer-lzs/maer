@@ -477,3 +477,66 @@ struct FreeJamendoPage: View {
         }
     }
 }
+
+
+/// Auftrag L1: the small music-catalog page behind Start's "Entdecken ·
+/// Musik" row — the I2 surface, earlier. One source row per ACTIVE catalog
+/// (a gated-off source loads nothing, so its row is simply absent), each
+/// heading an entry chevron onto the source's existing full page (DIE REGEL).
+/// netlabels/78rpm/LMA grow into this block later (I2).
+struct MusicCatalogAreaPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var store = FreeCatalogStore.shared
+    @State private var detailItem: LibraryItem?
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                if !store.rows.classical.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        RowHeading.entry("Free Classical", destination: MusicRoute.freeClassical)
+                        tileRow(store.rows.classical)
+                    }
+                }
+                if !store.rows.freeMusic.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
+                        tileRow(store.rows.freeMusic)
+                    }
+                }
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Discover · Music"))
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    /// Same tile anatomy as the source rows (NACHSCHLAGEN, license capsule on
+    /// the detail sheet; long-press keeps the Play shortcut).
+    private func tileRow(_ items: [LibraryItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(RowPreview.cut(items)) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: "music.note",
+                        onTap: { detailItem = item })
+                    .containerRelativeFrame(.horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
+}
