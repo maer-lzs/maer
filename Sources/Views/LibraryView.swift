@@ -323,6 +323,11 @@ struct LibraryView: View {
                         playerCoordinator: playerCoordinator,
                         libraryViewModel: viewModel
                     )
+                case .allBooks:
+                    // J1: the full stock behind the preview (endless grid +
+                    // the sort/filter control that moved with it).
+                    AllBooksPage(viewModel: viewModel,
+                                 playerCoordinator: playerCoordinator)
                 }
             }
             .navigationDestination(for: FreeAudiobooksRoute.self) { route in
@@ -1005,36 +1010,6 @@ struct LibraryView: View {
 
     // MARK: - Inhalt
 
-    @State private var libraryWidth: CGFloat = 0
-
-    /// Smallest allowed column width — the column width was already at this
-    /// value before all the grid adjustments; it yields 3 columns on a normal
-    /// iPhone portrait.
-    private let minColumnWidth: CGFloat = 108
-    private let gridSpacing: CGFloat = 16
-    private let gridHorizontalPadding: CGFloat = 16
-
-    /// Self-computed column count instead of `.adaptive` — that proved
-    /// unreliable (sometimes no recompute after a rotation, sometimes a column
-    /// width that did not match the actual cover size and thus overlapped). With
-    /// a single reliable width measurement as the source for both column count
-    /// and cell size there is no more ambiguity.
-    private var columnCount: Int {
-        guard libraryWidth > 0 else { return 3 }
-        let available = libraryWidth - gridHorizontalPadding * 2
-        let count = Int((available + gridSpacing) / (minColumnWidth + gridSpacing))
-        return max(count, 1)
-    }
-
-    /// Cell width that exactly matches the computed column count — grid and cover
-    /// size always use the same value, so they can never diverge.
-    private var gridCellWidth: CGFloat {
-        guard libraryWidth > 0 else { return 132 }
-        let available = libraryWidth - gridHorizontalPadding * 2
-        let totalSpacing = gridSpacing * CGFloat(columnCount - 1)
-        return (available - totalSpacing) / CGFloat(columnCount)
-    }
-
     /// cb99bf6: store feeds the tab tile row (fill via Home's compute pass).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeBookDetail: LibraryItem?
@@ -1175,15 +1150,6 @@ struct LibraryView: View {
             // content keeps scrolling behind the glass but rests above the bottom
             // zone (no black area behind the mini-player).
             .bottomBarClearance()
-            .background(
-                GeometryReader { geo in
-                    Color.clear
-                        .onAppear { libraryWidth = geo.size.width }
-                        .onChange(of: geo.size.width) { _, newWidth in
-                            libraryWidth = newWidth
-                        }
-                }
-            )
         }
         // A5: the refreshable closure must return promptly or the indicator can
         // stick — kick the full reload as a background task (its progressive UI
@@ -1315,100 +1281,37 @@ struct LibraryView: View {
 
     // MARK: All Books
 
-    /// cb1f658 (2): staged paging for the big grid — the albums-page
-    /// pattern. DISPLAY limit only: search/filter/sort keep working over
-    /// the FULL corpus (sortedFilteredEntries), the grid just materializes
-    /// in pages while scrolling. Local data → no loading foot needed.
-    @State private var visibleBookCount = LibraryView.bookPageSize
-    private static let bookPageSize = 60
-
-    /// fb21fbd: the audiobook sort/filter state as a caption — only what
-    /// DEVIATES from the default is named (pure `SortIndicator`).
-    private var audiobookSortLabel: String? {
-        SortIndicator.summary([
-            SortIndicator.part(viewModel.sortOption.label,
-                               ifNot: viewModel.sortOption == .titel
-                                   && viewModel.sortAscending == SortOption.titel.defaultAscending),
-            SortIndicator.part(viewModel.filterOption.label,
-                               ifNot: viewModel.filterOption == .alle),
-        ])
-    }
-
+    /// J1: the tab shows a PREVIEW (9 tiles, counted chevron WITH the total:
+    /// "All Books · 221 ›"); the endless grid + sort/filter control moved to
+    /// `AllBooksPage` behind it. This drops the last "the section IS the full
+    /// list" exception — every tab root is previews now. The e46e7b4 objection
+    /// (a cap made books unreachable) is answered by DIE REGEL, which came
+    /// later: the page exists, the chevron counts.
+    ///
+    /// Count rule: `total` is the WHOLE stock, `shown` the preview's books —
+    /// so a persisted filter with zero hits still leaves the chevron (the way
+    /// to the control on the page, fb21fbd trap), and a small library (≤ 9)
+    /// drops it by pure counting, no special case.
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // fb21fbd: heading left, sort/filter right — AT the surface it acts
-            // on. RowHeading brings its own horizontal padding, the control its
-            // own, so the row needs none of its own.
-            HStack(alignment: .firstTextBaseline) {
-                RowHeading.plain("All Books")
-                Spacer(minLength: 12)
-                SectionSortControl(activeLabel: audiobookSortLabel) { audiobookSortMenu }
-                    .padding(.horizontal)
-            }
-            if viewModel.sortOption == .serie {
-                seriesGrid
-            } else {
-                bookGrid(Array(viewModel.sortedFilteredEntries.prefix(visibleBookCount)),
-                         pagedTotal: viewModel.sortedFilteredEntries.count)
-            }
+            RowHeading(title: "All Books",
+                       total: viewModel.entries.count,
+                       shown: allBooksPreviewShown,
+                       showsTotal: true,
+                       destination: LibraryListRoute.allBooks)
+            AudiobookStockGrid(viewModel: viewModel,
+                               playerCoordinator: playerCoordinator,
+                               limit: AudiobookStockGrid.previewLimit)
         }
-        // Sort/search changes reset the display window (a fresh order starts
-        // at the top anyway; keeps early pages small after narrowing).
-        .onChange(of: viewModel.sortOption) { _, _ in visibleBookCount = Self.bookPageSize }
-        .onChange(of: viewModel.sortAscending) { _, _ in visibleBookCount = Self.bookPageSize }
-        .onChange(of: viewModel.filterOption) { _, _ in visibleBookCount = Self.bookPageSize }
     }
 
-    /// Grid under series sorting: series as stacks, single books normal.
-    /// cb1f658 (2): same staged display window as the flat grid.
-    private var seriesGrid: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
-        let grouped = viewModel.seriesGroupedEntries
-        let shown = Array(grouped.prefix(visibleBookCount))
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-            ForEach(shown) { gridEntry in
-                switch gridEntry {
-                case .single(let entry):
-                    // Same top spacing as the fan headroom of the stack tiles —
-                    // otherwise covers/texts in mixed rows sit at different heights.
-                    BookGridCell(
-                        entry: entry,
-                        width: gridCellWidth,
-                        playerCoordinator: playerCoordinator,
-                        libraryViewModel: viewModel
-                    )
-                    .padding(.top, 10)
-                case .series(let name, let entries):
-                    NavigationLink {
-                        seriesDetail(name: name, entries: entries)
-                    } label: {
-                        SeriesStackCell(
-                            name: name,
-                            entries: entries,
-                            cellWidth: gridCellWidth,
-                            coverURL: { AppSession.shared.coverURL(forItemId: $0) }
-                        )
-                        .frame(maxHeight: .infinity, alignment: .top)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            if shown.count < grouped.count {
-                Color.clear.frame(height: 1)
-                    .onAppear { visibleBookCount += Self.bookPageSize }
-            }
+    /// Books visible in the preview window (a series stack counts its members).
+    private var allBooksPreviewShown: Int {
+        if viewModel.sortOption == .serie {
+            return AudiobookStockGrid.previewBookCount(viewModel.seriesGroupedEntries,
+                                                       limit: AudiobookStockGrid.previewLimit)
         }
-        .padding(.horizontal)
-    }
-
-    /// Detail view of a series: all volumes in order.
-    private func seriesDetail(name: String, entries: [LibraryEntry]) -> some View {
-        ScrollView {
-            bookGrid(entries)
-                .padding(.top, 12)
-        }
-        .navigationTitle(name)
-        .navigationBarTitleDisplayMode(.inline)
+        return min(AudiobookStockGrid.previewLimit, viewModel.sortedFilteredEntries.count)
     }
 
     // MARK: Resume from outside (quick action / Siri)
@@ -1460,31 +1363,6 @@ struct LibraryView: View {
                 icon: UIApplicationShortcutIcon(systemImageName: "play.fill")
             )
         ]
-    }
-
-
-
-    /// Audiobooks — the reference menu, unchanged (LibraryViewModel state).
-    @ViewBuilder private var audiobookSortMenu: some View {
-        Picker("Sort By", selection: $viewModel.sortOption) {
-            ForEach(SortOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-        Button {
-            viewModel.sortAscending.toggle()
-        } label: {
-            Label(
-                viewModel.sortAscending ? String(localized: "Ascending") : String(localized: "Descending"),
-                systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
-            )
-        }
-        Divider()
-        Picker("Filter", selection: $viewModel.filterOption) {
-            ForEach(FilterOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
     }
 
 
@@ -1542,41 +1420,16 @@ struct LibraryView: View {
         }
     }
 
-    /// Cover grid with a self-computed column count and width (see
-    /// `columnCount`/`gridCellWidth`) instead of `.adaptive` — grid and cover
-    /// size are now guaranteed to use the same value, so they can never diverge
-    /// (neither too narrow with overlap, nor unnecessarily few columns on a
-    /// narrow iPhone).
-    /// `pagedTotal` > entries.count arms the staged-paging advance sentinel
-    /// (cb1f658 2); callers with full lists (series detail) pass nothing.
     /// The full list behind a capped row (3a3b1aa). Read live from the view
     /// model, so the page tracks the same source its preview row does.
     private func entries(for route: LibraryListRoute) -> [LibraryEntry] {
         switch route {
         case .continueListening: viewModel.continueListening
         case .recentlyAdded:     viewModel.recentlyAdded
+        // .allBooks renders AllBooksPage (grid follows the live sort state
+        // itself) — never reaches this list helper.
+        case .allBooks:          []
         }
-    }
-
-    private func bookGrid(_ entries: [LibraryEntry], pagedTotal: Int? = nil) -> some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
-        return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-            ForEach(entries) { entry in
-                // Shared cell (BookGridComponents) — identical in the
-                // library and the author/genre browse grids.
-                BookGridCell(
-                    entry: entry,
-                    width: gridCellWidth,
-                    playerCoordinator: playerCoordinator,
-                    libraryViewModel: viewModel
-                )
-            }
-            if let pagedTotal, entries.count < pagedTotal {
-                Color.clear.frame(height: 1)
-                    .onAppear { visibleBookCount += Self.bookPageSize }
-            }
-        }
-        .padding(.horizontal)
     }
 
 }

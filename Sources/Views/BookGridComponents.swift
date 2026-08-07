@@ -431,3 +431,210 @@ struct BookDownloadRow: View {
         .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
     }
 }
+
+
+/// Auftrag J: the ONE audiobook stock grid — flat or series-grouped (follows
+/// `viewModel.sortOption`), shared between the tab's 9-tile PREVIEW
+/// (`limit: 9`) and the full `AllBooksPage` (`limit: nil` = staged paging over
+/// the whole stock, the former in-tab behaviour moved here unchanged). Cells
+/// are the shared `BookGridCell`/`SeriesStackCell`; a series stack pushes the
+/// shared `BrowseBooksScreen` as its volume list.
+struct AudiobookStockGrid: View {
+    @ObservedObject var viewModel: LibraryViewModel
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// nil = the endless form. A number caps the grid (preview — no paging).
+    var limit: Int? = nil
+
+    @State private var measuredWidth: CGFloat = 0
+    @State private var visibleCount = AudiobookStockGrid.pageSize
+    static let pageSize = 60
+    /// 3×3 on the phone (J1); adaptive column count keeps iPad rows full.
+    static let previewLimit = 9
+
+    private let minColumnWidth: CGFloat = 108
+    private let gridSpacing: CGFloat = 16
+    private let horizontalPadding: CGFloat = 16
+
+    private var columnCount: Int {
+        guard measuredWidth > 0 else { return 3 }
+        let available = measuredWidth - horizontalPadding * 2
+        return max(Int((available + gridSpacing) / (minColumnWidth + gridSpacing)), 1)
+    }
+
+    private var cellWidth: CGFloat {
+        guard measuredWidth > 0 else { return 132 }
+        let available = measuredWidth - horizontalPadding * 2
+        let totalSpacing = gridSpacing * CGFloat(columnCount - 1)
+        return (available - totalSpacing) / CGFloat(columnCount)
+    }
+
+    /// Display window: the preview cap, or the staged-paging window.
+    private var window: Int { limit ?? visibleCount }
+
+    var body: some View {
+        Group {
+            if viewModel.sortOption == .serie {
+                seriesGrid
+            } else {
+                flatGrid
+            }
+        }
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { measuredWidth = geo.size.width }
+                    .onChange(of: geo.size.width) { _, newWidth in
+                        measuredWidth = newWidth
+                    }
+            }
+        )
+        // Sort/search changes reset the paging window (a fresh order starts at
+        // the top anyway; keeps early pages small after narrowing).
+        .onChange(of: viewModel.sortOption) { _, _ in visibleCount = Self.pageSize }
+        .onChange(of: viewModel.sortAscending) { _, _ in visibleCount = Self.pageSize }
+        .onChange(of: viewModel.filterOption) { _, _ in visibleCount = Self.pageSize }
+    }
+
+    private var flatGrid: some View {
+        let all = viewModel.sortedFilteredEntries
+        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+            ForEach(Array(all.prefix(window))) { entry in
+                BookGridCell(
+                    entry: entry,
+                    width: cellWidth,
+                    playerCoordinator: playerCoordinator,
+                    libraryViewModel: viewModel
+                )
+            }
+            if limit == nil, window < all.count {
+                Color.clear.frame(height: 1)
+                    .onAppear { visibleCount += Self.pageSize }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    /// Grid under series sorting: series as stacks, single books normal.
+    private var seriesGrid: some View {
+        let grouped = viewModel.seriesGroupedEntries
+        let shown = Array(grouped.prefix(window))
+        let columns = Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: columnCount)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+            ForEach(shown) { gridEntry in
+                switch gridEntry {
+                case .single(let entry):
+                    // Same top spacing as the fan headroom of the stack tiles —
+                    // otherwise covers/texts in mixed rows sit at different heights.
+                    BookGridCell(
+                        entry: entry,
+                        width: cellWidth,
+                        playerCoordinator: playerCoordinator,
+                        libraryViewModel: viewModel
+                    )
+                    .padding(.top, 10)
+                case .series(let name, let entries):
+                    NavigationLink {
+                        // The volume list is the shared title+grid screen —
+                        // same cells, same behaviour as every browse surface.
+                        BrowseBooksScreen(
+                            title: name,
+                            entries: entries,
+                            playerCoordinator: playerCoordinator,
+                            libraryViewModel: viewModel
+                        )
+                    } label: {
+                        SeriesStackCell(
+                            name: name,
+                            entries: entries,
+                            cellWidth: cellWidth,
+                            coverURL: { AppSession.shared.coverURL(forItemId: $0) }
+                        )
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if limit == nil, window < grouped.count {
+                Color.clear.frame(height: 1)
+                    .onAppear { visibleCount += Self.pageSize }
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    /// Pure (J1 count rule): how many BOOKS the preview window shows — a
+    /// series stack counts its members, so the heading's counted chevron
+    /// compares books to books.
+    nonisolated static func previewBookCount(_ entries: [LibraryViewModel.GridEntry],
+                                             limit: Int) -> Int {
+        entries.prefix(limit).reduce(0) {
+            switch $1 {
+            case .single: $0 + 1
+            case .series(_, let members): $0 + members.count
+            }
+        }
+    }
+}
+
+/// Auftrag J1: the full stock behind the "All Books" preview — the endless
+/// grid (staged paging, series grouping) that used to live ON the tab, plus
+/// the sort/filter control, which moved here with it (fb21fbd: the control
+/// sits on the surface it acts on).
+struct AllBooksPage: View {
+    @ObservedObject var viewModel: LibraryViewModel
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+
+    /// fb21fbd: only what DEVIATES from the default is named (pure `SortIndicator`).
+    private var sortLabel: String? {
+        SortIndicator.summary([
+            SortIndicator.part(viewModel.sortOption.label,
+                               ifNot: viewModel.sortOption == .titel
+                                   && viewModel.sortAscending == SortOption.titel.defaultAscending),
+            SortIndicator.part(viewModel.filterOption.label,
+                               ifNot: viewModel.filterOption == .alle),
+        ])
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Spacer(minLength: 12)
+                    SectionSortControl(activeLabel: sortLabel) { sortMenu }
+                        .padding(.horizontal)
+                }
+                AudiobookStockGrid(viewModel: viewModel,
+                                   playerCoordinator: playerCoordinator)
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("All Books"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    /// Audiobooks — the reference menu, unchanged (LibraryViewModel state);
+    /// moved from the tab section with the control.
+    @ViewBuilder private var sortMenu: some View {
+        Picker("Sort By", selection: $viewModel.sortOption) {
+            ForEach(SortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        Button {
+            viewModel.sortAscending.toggle()
+        } label: {
+            Label(
+                viewModel.sortAscending ? String(localized: "Ascending") : String(localized: "Descending"),
+                systemImage: viewModel.sortAscending ? "arrow.up" : "arrow.down"
+            )
+        }
+        Divider()
+        Picker("Filter", selection: $viewModel.filterOption) {
+            ForEach(FilterOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+    }
+}

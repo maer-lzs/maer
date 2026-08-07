@@ -11,15 +11,19 @@ import Foundation
 nonisolated enum LibraryListRoute: Hashable {
     case continueListening
     case recentlyAdded
-    // Deliberately NO `allBooks`: that section already IS the full list
-    // (staged paging over the whole stock), so a chevron would point at the
-    // surface you are standing on — the affordance-without-target G8 forbids.
+    /// Auftrag J1: the full stock behind the "All Books" PREVIEW. This
+    /// reverses the earlier "deliberately no allBooks" note — back then the
+    /// section WAS the full list, so a chevron pointed at itself (G8). DIE
+    /// REGEL came later: tab roots are previews, the full stock lives one
+    /// level down, and the chevron is earned by counting again.
+    case allBooks
 
     /// Same wording as the row it belongs to — the page IS that row, unabridged.
     var title: String {
         switch self {
         case .continueListening: String(localized: "Continue")
         case .recentlyAdded:     String(localized: "Recently Added")
+        case .allBooks:          String(localized: "All Books")
         }
     }
 }

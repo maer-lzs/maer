@@ -888,40 +888,85 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["hr2 Hörspiel"].firstMatch.waitForExistence(timeout: 5))
     }
 
-    /// fb21fbd/8be0e17: sorting moved OUT of the tab head to the surface it
-    /// acts on. Two things must hold at once — the tab head no longer carries
-    /// it, and the "All Books" section does.
-    func testSortControlLivesAtTheSection() {
+    /// fb21fbd → Auftrag J1: sorting moved from the tab head to the section,
+    /// and now WITH the section's full grid onto its page. The journey walks
+    /// the whole J1 chain: preview heading (counted chevron with the total)
+    /// → All-Books page → the control lives THERE and opens its menu; the
+    /// tab preview carries no control anymore.
+    func testAllBooksPreviewPageAndSortControl() {
         let app = launchSeeded()
-        // "All Books" lives in the AUDIOBOOKS tab; launchSeeded lands on Home
-        // (the first diagnosis run dumped the hierarchy and showed exactly that).
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 20))
         books.tap()
 
-        // "All Books" sits below the fold in a LazyVStack — scroll it into
-        // existence before looking for the control on its heading line.
+        // The preview heading sits below the fold — scroll it into view.
         let allBooks = app.staticTexts["Alle Bücher"].firstMatch
         var swipes = 0
         while !allBooks.exists && swipes < 8 {
             app.swipeUp()
             swipes += 1
         }
-        // A Menu does not always surface as .button — match ANY descendant.
+        XCTAssertTrue(allBooks.waitForExistence(timeout: 10), "preview heading must exist")
+        // J1: NO control on the tab preview anymore (it moved to the page).
+        XCTAssertFalse(app.descendants(matching: .any)["section-sort-control"].firstMatch.exists,
+                       "the tab preview must not carry the sort control")
+        // The heading names the total (25 seeded books > 9 preview) and pushes.
+        allBooks.tap()
+
+        let pageBar = app.navigationBars["Alle Bücher"].firstMatch
+        XCTAssertTrue(pageBar.waitForExistence(timeout: 10), "the All-Books page must open")
         let control = app.descendants(matching: .any)["section-sort-control"].firstMatch
         if !control.waitForExistence(timeout: 10) {
-            // Diagnosis kept in place (project rule): the hierarchy at the
-            // moment of failure says more than a rerun with a guessed query.
-            XCTFail("no sort control at the section. Hierarchy:\n\(app.debugDescription)")
+            XCTFail("no sort control on the page. Hierarchy:\n\(app.debugDescription)")
             return
         }
-
         // It opens the SAME menu as before the move.
         control.tap()
         let sortPicker = app.buttons["Sort By"].firstMatch
         let anyOption = app.buttons["Titel"].firstMatch
         XCTAssertTrue(sortPicker.waitForExistence(timeout: 5) || anyOption.waitForExistence(timeout: 5),
                       "the control must open the sort menu")
+    }
+
+    /// Auftrag J2: the podcast "Recently Updated" grid is a 12-tile preview;
+    /// the full subscription grid (with the moved sort/filter control) lives
+    /// on its page. Chain: counted chevron (31 shows seeded via -uitest-huge)
+    /// → page → filter to zero hits shows the honest line (fb21fbd way back)
+    /// → filter back → tiles return.
+    func testRecentlyUpdatedPreviewAndSubscriptionsPage() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-uitest", "-uitest-huge"]
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 20))
+        podcasts.tap()
+
+        let heading = app.staticTexts["Zuletzt aktualisiert"].firstMatch
+        var swipes = 0
+        while !heading.exists && swipes < 10 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(heading.waitForExistence(timeout: 10), "preview heading must exist")
+        heading.tap()
+
+        let pageBar = app.navigationBars["Zuletzt aktualisiert"].firstMatch
+        XCTAssertTrue(pageBar.waitForExistence(timeout: 10), "the subscriptions page must open")
+        let control = app.descendants(matching: .any)["section-sort-control"].firstMatch
+        XCTAssertTrue(control.waitForExistence(timeout: 10), "the control lives on the page now")
+
+        // Filter to zero hits (seed has no downloads): honest line, way back.
+        control.tap()
+        let withDownloads = app.buttons["Geladen"].firstMatch
+        XCTAssertTrue(withDownloads.waitForExistence(timeout: 5)); withDownloads.tap()
+        XCTAssertTrue(app.staticTexts["Keine Sendung passt zu diesem Filter"].firstMatch
+            .waitForExistence(timeout: 10), "zero hits must say so instead of a blank grid")
+        control.tap()
+        let all = app.buttons["Alle"].firstMatch
+        XCTAssertTrue(all.waitForExistence(timeout: 5)); all.tap()
+        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 10),
+                      "clearing the filter must bring the shows back")
     }
 
     func testPremiumMarkingSheetOpensSorted() {

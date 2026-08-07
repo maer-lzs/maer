@@ -227,6 +227,23 @@ struct LibraryDerivedListsTests {
         }
     }
 
+    @Test("J1-Zaehlregel: Vorschau zaehlt BUECHER — ein Serien-Stapel seine Mitglieder")
+    func allBooksPreviewCountsBooks() {
+        let entries: [LibraryViewModel.GridEntry] = [
+            .series(name: "Saga", entries: [entry(id: "a", title: "A"),
+                                            entry(id: "b", title: "B"),
+                                            entry(id: "c", title: "C")]),
+            .single(entry(id: "d", title: "D")),
+            .single(entry(id: "e", title: "E")),
+        ]
+        // Window of 2 grid slots: the stack (3 books) + one single = 4 books.
+        #expect(AudiobookStockGrid.previewBookCount(entries, limit: 2) == 4)
+        // Full window: 5 books; chevron counting compares books to books, so
+        // total 5 vs shown 5 drops the chevron (no special case for stacks).
+        #expect(AudiobookStockGrid.previewBookCount(entries, limit: 9) == 5)
+        #expect(AudiobookStockGrid.previewBookCount([], limit: 9) == 0)
+    }
+
     @Test("Filter keeps a stack when ANY book matches, drops it when none do")
     func seriesGroupingRespectsFilter() {
         withCleanSortDefaults { vm in

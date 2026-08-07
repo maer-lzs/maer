@@ -43,12 +43,8 @@ struct PodcastsView: View {
 
     /// Non-observing store handles (reads only; re-render is driven by the scope).
     private var absPodcast: ABSPodcastProvider { ABSPodcastProvider.shared }
-    // Teil 2: show-grid sort/filter, persisted; shared with the toolbar menu in
-    // LibraryView via the same AppStorage keys.
     /// df0b3bb 3: see HomeView — hiding an episode must redraw this row.
     @State private var hiddenRevision = 0
-    @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
-    @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
     /// D4/B3: more tile text lines at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -89,7 +85,7 @@ struct PodcastsView: View {
     /// tab becomes visible again (isActive gates the actual work). The store
     /// part comes deduplicated from the scope.
     private var recomputeToken: String {
-        "\(isActive)-\(recomputeScope.token)-\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(hiddenRevision)"
+        "\(isActive)-\(recomputeScope.token)-\(hiddenRevision)"
     }
 
     var body: some View {
@@ -222,8 +218,11 @@ struct PodcastsView: View {
     private func computeSections() async -> PodcastSectionsResult {
         let shows = allShows
         let snapshot = PodcastSections.snapshot(shows: shows)
+        // J2: the tab's show grid is a PREVIEW now — newest-first, unfiltered
+        // (the sort/filter control moved to the full page, which computes with
+        // the persisted values itself).
         return await PodcastSections.computeDetached(
-            shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
+            shows: shows, snapshot: snapshot, sort: .zuletztAktualisiert, filter: .alle
         )
     }
 
@@ -366,58 +365,29 @@ RowHeading(title: "Recommended",
 
     // MARK: - Recently updated (show grid, 2 columns)
 
-    /// fb21fbd: the podcast sort/filter menu now lives WHERE it acts — the
-    /// tab's show grid — instead of in the shared toolbar. Content unchanged.
-    @ViewBuilder private var podcastSortMenu: some View {
-        Picker("Sort By", selection: $podcastSort) {
-            ForEach(PodcastSortOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-        Divider()
-        Picker("Filter", selection: $podcastFilter) {
-            ForEach(PodcastFilterOption.allCases) { option in
-                Text(option.label).tag(option)
-            }
-        }
-    }
-
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
-        // fb21fbd Falle: the control now lives IN this section, so gating the
-        // section on a non-empty grid would hide the only way back out of a
-        // filter that matches nothing — and the filter is persisted, so it
-        // would survive a restart. The section therefore also shows while a
-        // filter is active, then with a reason instead of tiles.
-        if !recentShows.isEmpty || podcastFilter != .alle {
+        // J2: a PREVIEW now — 12 tiles, newest first, unfiltered; the full
+        // subscription grid (and the sort/filter control with it, fb21fbd)
+        // lives on the page behind the counted chevron. The count rule shows
+        // the total ("Recently Updated · 27 ›"); with ≤ 12 shows the chevron
+        // falls away by pure counting. The old fb21fbd zero-hits trap died
+        // with the filter's move: the preview is unfiltered, and the page —
+        // where the filter lives — always shows its own way back out.
+        if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                // Heading reflects the active grid sort (Teil 2); default sort's
-                // label is "Recently Updated", so the default look is unchanged.
-                // fb21fbd: sort/filter sit AT this grid — it is the surface
-                // they act on. The HEADING already names the sort (Teil 2), so
-                // the caption beside the symbol carries only the filter; naming
-                // the sort twice in one line would be noise.
-                HStack(alignment: .firstTextBaseline) {
-                    RowHeading.plain(verbatim: podcastSort.label)
-                    Spacer(minLength: 12)
-                    SectionSortControl(
-                        activeLabel: SortIndicator.part(podcastFilter.label,
-                                                        ifNot: podcastFilter == .alle)
-                    ) { podcastSortMenu }
-                        .padding(.horizontal)
-                }
+                RowHeading(title: "Recently Updated",
+                           total: recentShows.count,
+                           shown: recentShowsPreview.count,
+                           showsTotal: true,
+                           destination: PodcastRoute.subscriptions)
                 // D6/B5: adaptive columns instead of a fixed pair — on iPads the
                 // two flexible columns blew the tiles up to ~500pt covers.
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
                     alignment: .leading, spacing: 18
                 ) {
-                    // 6fcb301 gilt fuer VORSCHAU-Reihen — dieses Raster ist
-                    // keine: es IST die Abo-Sammlung des Tabs (die Sortierung
-                    // im Kopf wirkt genau hier), das Podcast-Gegenstueck zu
-                    // "Alle Buecher". Ein Deckel haette ab dem 13. Abo Feeds
-                    // unerreichbar gemacht — es gibt keine Flaeche dahinter.
-                    ForEach(recentShows) { info in
+                    ForEach(recentShowsPreview) { info in
                         NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
                             RecentShowTile(info: info)
                         }
@@ -426,14 +396,13 @@ RowHeading(title: "Recommended",
                     }
                 }
                 .padding(.horizontal)
-                if recentShows.isEmpty {
-                    Text("No show matches this filter")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                }
             }
         }
+    }
+
+    /// J2 preview cut (12 = one GT-adjustable screenful of show tiles).
+    private var recentShowsPreview: [RecentShowInfo] {
+        Array(recentShows.prefix(12))
     }
 
     // MARK: - Premium (private/paid feeds)
@@ -864,6 +833,95 @@ struct ChartGenrePage: View {
                 pool,
                 subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
                 subscribedTitles: shows.map(\.title))
+        }
+    }
+}
+
+
+/// J2: the full subscription grid behind the "Recently Updated" preview —
+/// the sort/filter control moved here with it (fb21fbd: the control sits on
+/// the surface it acts on; same persisted AppStorage keys as before). The
+/// fb21fbd zero-hits rule lives ON this page now: an active filter with no
+/// match shows the reason, and the control stays reachable.
+struct PodcastSubscriptionsPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+    @AppStorage(AppStorageKeys.podcastSortOption) private var podcastSort = PodcastSortOption.zuletztAktualisiert
+    @AppStorage(AppStorageKeys.podcastFilterOption) private var podcastFilter = PodcastFilterOption.alle
+    @State private var infos: [RecentShowInfo] = []
+
+    private var allShows: [PodcastShow] {
+        let abs = ABSPodcastProvider.shared.activeShows
+        let absFeeds = Set(abs.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        let rssOnly = subs.shows.filter {
+            !absFeeds.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
+        }
+        return abs + rssOnly
+    }
+
+    /// Sort AND filter named when they deviate — no heading carries the sort
+    /// here (the page title is stable), so the caption names both.
+    private var controlLabel: String? {
+        SortIndicator.summary([
+            SortIndicator.part(podcastSort.label, ifNot: podcastSort == .zuletztAktualisiert),
+            SortIndicator.part(podcastFilter.label, ifNot: podcastFilter == .alle),
+        ])
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Spacer(minLength: 12)
+                    SectionSortControl(activeLabel: controlLabel) { sortMenu }
+                        .padding(.horizontal)
+                }
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
+                    alignment: .leading, spacing: 18
+                ) {
+                    ForEach(infos) { info in
+                        NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
+                            RecentShowTile(info: info)
+                        }
+                        .buttonStyle(.plain)
+                        .podcastShowMenu(info.show)
+                    }
+                }
+                .padding(.horizontal)
+                if infos.isEmpty {
+                    Text("No show matches this filter")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                }
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Recently Updated"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: "\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(subs.shows.count)") {
+            let shows = allShows
+            let snapshot = PodcastSections.snapshot(shows: shows)
+            let sections = await PodcastSections.computeDetached(
+                shows: shows, snapshot: snapshot, sort: podcastSort, filter: podcastFilter
+            )
+            infos = sections.recentShows
+        }
+    }
+
+    @ViewBuilder private var sortMenu: some View {
+        Picker("Sort By", selection: $podcastSort) {
+            ForEach(PodcastSortOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
+        }
+        Divider()
+        Picker("Filter", selection: $podcastFilter) {
+            ForEach(PodcastFilterOption.allCases) { option in
+                Text(option.label).tag(option)
+            }
         }
     }
 }

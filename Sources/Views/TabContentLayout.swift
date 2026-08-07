@@ -77,6 +77,8 @@ struct RowHeading<Destination: Hashable>: View {
     var font: Font = .title3
     var variant: Variant = .none
     var destination: Destination?
+    /// Auftrag J: name the counted total in the chevron label (stock previews).
+    var showsTotal: Bool = false
 
     var body: some View {
         switch variant {
@@ -110,6 +112,14 @@ struct RowHeading<Destination: Hashable>: View {
     private var chevronLabel: some View {
         HStack(spacing: 6) {
             label.font(font).bold()
+            // Auftrag J: the stock surfaces name their TOTAL in the chevron
+            // ("Alle Bücher · 221 ›") — opt-in via `showsTotal`, rendered
+            // HERE so no call site invents its own number formatting.
+            if showsTotal, case .counted(let total, _) = variant {
+                Text(verbatim: "· \(total)")
+                    .font(font).bold()
+                    .foregroundStyle(.secondary)
+            }
             Image(systemName: "chevron.right")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -128,11 +138,15 @@ struct RowHeading<Destination: Hashable>: View {
 
     /// Counted heading — the standard form (kept as the memberwise-style
     /// entry point so existing call sites read unchanged).
+    /// `showsTotal` (Auftrag J): the two stock previews name their total in
+    /// the chevron label; preview rows keep the plain chevron.
     init(title: LocalizedStringKey, verbatimTitle: String? = nil, font: Font = .title3,
-         total: Int, shown: Int = RowPreview.limit, destination: Destination?) {
+         total: Int, shown: Int = RowPreview.limit, showsTotal: Bool = false,
+         destination: Destination?) {
         self.title = title
         self.verbatimTitle = verbatimTitle
         self.font = font
+        self.showsTotal = showsTotal
         self.variant = .counted(total: total, shown: shown)
         self.destination = destination
     }
