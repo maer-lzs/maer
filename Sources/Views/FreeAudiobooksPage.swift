@@ -24,38 +24,6 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     case shelf(CatalogSource, String)
 }
 
-/// Paket 2: the ONE feed row of the catalog surfaces — show-preview push +
-/// subscribe badge. Shared with the old radio-play page until Paket 4 removes
-/// it (Regel 2: one component, not a copy).
-struct CatalogFeedRow: View {
-    let result: PodcastSearchResult
-    @Environment(\.pushPodcastRoute) private var pushRoute
-
-    var body: some View {
-        Button {
-            pushRoute(.showPreview(feedURL: result.feedURL))
-        } label: {
-            HStack(spacing: 8) {
-                MediaRowContent(
-                    coverURL: result.artworkURL.flatMap { URL(string: $0) },
-                    eyebrow: result.author,
-                    title: result.title,
-                    meta: String(localized: "Podcast"),
-                    placeholderSystemImage: "waveform.and.mic",
-                    // c125ccd: a hit without artwork resolves it from the feed.
-                    coverOverride: result.artworkURL == nil
-                        ? FeedArtwork(feedURL: result.feedURL, placeholderSystemImage: "waveform.and.mic")
-                        : nil
-                )
-                PodcastSubscribeBadge(feedURL: result.feedURL)
-            }
-            .padding(.horizontal, 20)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 /// Paket 4: push the catalog area from non-link surfaces (the search deck's
 /// category tile) — same pattern as PushRadioRouteKey.
 nonisolated struct PushFreeAudiobooksRouteKey: EnvironmentKey {

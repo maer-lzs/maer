@@ -93,15 +93,20 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// A feed source: all curated rows, complete — the curation IS the stock.
+    /// E-Rest (7d192e2): a feed source is a TILE GRID too — the list form
+    /// belongs to search; that the curation IS the full stock answers the
+    /// chevron question, not the FORM question (blueprint pages are grids).
+    /// Same tile as every catalog-show surface (show-preview tap + subscribe
+    /// badge); `CatalogFeedRow` died with this, its last call site.
     private var feedList: some View {
-        LazyVStack(spacing: 0) {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
             ForEach(source.curatedFeeds(forLanguages: SuggestionLanguages.current())) { entry in
-                CatalogFeedRow(result: PodcastSearchResult(
+                RecommendationTile(result: PodcastSearchResult(
                     title: entry.title, author: entry.author,
                     artworkURL: nil, feedURL: entry.feedURL))
             }
         }
+        .padding(.horizontal)
         .padding(.top, TabContentLayout.topInset)
     }
 
