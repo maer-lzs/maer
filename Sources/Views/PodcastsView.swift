@@ -30,6 +30,9 @@ struct PodcastsView: View {
     /// becoming visible (isActive is part of the recompute token).
     var isActive: Bool = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
+    // Auftrag K: the mixed catalog row renders from the calm-gated store
+    // (sourceRows applies via runWhenCalm — no layout shift mid-scroll).
+    @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     // Front 2 fix 2: the tab root observes the NOISY stores (progress store =
     // every playback save, DownloadManager = every download progress tick,
     // ABS provider) only through the deduplicating recompute scope below —
@@ -92,7 +95,19 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             if sectionsReady {
-                LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                // Auftrag K, MEASURED root fix (hang5.sample + 7-run matrix):
+                // with the catalog tile row present, this tab's outer
+                // LazyVStack drove a pure SwiftUI LazyStack-placement loop
+                // (289 s journey hang; app code absent from the sample). The
+                // scroll reporter was ruled out (guard/constant-transform/
+                // not-installed all hung identically; row out = green), and
+                // the row's own container is irrelevant (lazy AND eager row
+                // both green under an eager root). An EAGER root ends the
+                // loop: 16 s green with the row in, both row variants. Cost
+                // is bounded — every section is a capped preview (and J2
+                // caps the last full grid). Do NOT flip this back to lazy
+                // without re-running the tile-row journey measurement.
+                VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     nextUpSection
                     hoerspieleSection
                     recommendationsSection
@@ -269,35 +284,38 @@ RowHeading(title: "Continue", font: .title2,
     /// split, tested), which is the owner's "no tile in both tabs".
     @ViewBuilder
     private var hoerspieleSection: some View {
-        // 9a5d1fd korrigiert: my earlier claim here (visibility gate fixes
-        // the hang) was WRONG — the gate did not help; the hang reproduced
-        // with every tile-row variant and disappeared only without the row
-        // (bisect). the reviewer's sample analysis: aggregated Lazy churn in SwiftUI,
-        // app code nearly absent; structure hypothesis is the scroll
-        // REPORTING (guard sits in the message, observation stays installed —
-        // third appearance of the geometry class). The row ships in the
-        // stable heading form until the measured root fix lands; the gate
-        // stays as belt, not as explanation.
+        // Auftrag K: the 733ac2a TILE row, unblocked by the MEASURED root
+        // fix (eager tab root, see body) — the hang was the outer LazyVStack's
+        // placement loop, NOT the scroll reporter (all reporter variants hung
+        // identically; hang5.sample has no reporter in the cycle). The row
+        // ships in its intended mixed form: radio-play feeds + catalog titles
+        // interleaved, heading = entry chevron onto the area page (the old
+        // heading-only form dissolves into it). isActive stays as belt for
+        // the mounted-but-hidden case.
         if freeCatalogsMaster && isActive {
             VStack(alignment: .leading, spacing: 10) {
-                // 733ac2a asked for a TILE row here — built three ways
-                // (RecommendationTile + containerRelativeFrame, fixed width,
-                // plain MediaTile) and every variant hangs the main thread in
-                // an AttributeGraph invalidation loop on this tab (sampled:
-                // hang3.sample shows reportsBottomBarScroll in the cycle;
-                // bisect: row out = journeys green in 10s, any tile row in =
-                // 282s). The stable heading form ships; the tile-row form is
-                // an OPEN finding with the measurement protocol in the report
-                // — not silently dropped.
                 RowHeading.entry("Free Audiobooks & Radio Plays",
                                  destination: FreeAudiobooksRoute.area)
                     .accessibilityIdentifier("free-catalog-entry-podcasts")
-                Text("Radio plays and audiobooks from public broadcasters, independent producers and public-domain catalogs.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
+                CatalogMixRow(tiles: hoerspieleMixTiles,
+                              playerCoordinator: playerCoordinator)
             }
+            .task { await freeCatalogStore.ensureSourcesLoaded() }
         }
+    }
+
+    /// The podcast tab mixes the SAME sources as the area page it opens:
+    /// curated radio-play feeds (instant, static curation) + the catalog
+    /// title rows (calm-gated store). RowPreview caps the row.
+    private var hoerspieleMixTiles: [CatalogMix.Tile] {
+        let languages = SuggestionLanguages.current()
+        let feedGroups = [CatalogSource.oerr, .escapeArtists, .usIndies]
+            .map { $0.curatedFeeds(forLanguages: languages) }
+        let rows = freeCatalogStore.sourceRows
+        return CatalogMix.row(feedGroups: feedGroups,
+                              itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
+                                           rows.archiveBooks, rows.gutenberg],
+                              limit: RowPreview.limit)
     }
 
 

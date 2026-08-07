@@ -62,8 +62,9 @@ struct HomeSectionsTests {
 
     @Test("interleave on empty sources is empty")
     func interleaveEmpty() {
-        #expect(HomeSections.interleave([], limit: 5).isEmpty)
-        #expect(HomeSections.interleave([[], []], limit: 5).isEmpty)
+        // interleave is generic since Auftrag K — the empty case pins a type.
+        #expect(HomeSections.interleave([[String]](), limit: 5).isEmpty)
+        #expect(HomeSections.interleave([[String](), []], limit: 5).isEmpty)
     }
 }
 

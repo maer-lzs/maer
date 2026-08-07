@@ -57,8 +57,10 @@ nonisolated enum HomeSections {
     /// starves the others — a pure recency sort let a music library with fresher
     /// timestamps take every slot ("Recently Added" showed only music). Used for
     /// "Recently Added" (books + albums).
-    static func interleave(_ sources: [[String]], limit: Int) -> [String] {
-        var result: [String] = []
+    /// Generic since Auftrag K/L: the catalog mix rows (podcast tab + start)
+    /// interleave typed tiles through the SAME merge — one implementation.
+    static func interleave<T>(_ sources: [[T]], limit: Int) -> [T] {
+        var result: [T] = []
         var index = 0
         var progressed = true
         while progressed && result.count < limit {

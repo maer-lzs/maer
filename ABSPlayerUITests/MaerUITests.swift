@@ -695,13 +695,19 @@ nonisolated final class MaerUITests: XCTestCase {
         let podcasts = app.buttons["tab-podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
         podcasts.tap()
-        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.navigationBars["Podcasts"].firstMatch.waitForExistence(timeout: 15))
         app.terminate()
         app = XCUIApplication()
         app.launchArguments += ["-uitest", "-uitest-keeptab"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-        XCTAssertTrue(app.staticTexts["Seed Show"].firstMatch.waitForExistence(timeout: 20),
+        // Auftrag K: the marker is the podcast NAVIGATION BAR, not the "Seed
+        // Show" tile — the new catalog tile row pushes the recently-updated
+        // LazyVGrid below the fold, where its cells don't materialize into
+        // the AX tree (verified via tree dump: the tab renders fully, the
+        // grid is just off-screen). The bar carries the same assertion:
+        // the app restarted ON the podcast tab.
+        XCTAssertTrue(app.navigationBars["Podcasts"].firstMatch.waitForExistence(timeout: 20),
                       "the app must restart on the podcast tab (last selection)")
         // Cleanup for order-independence: back to Home for later journeys.
         app.buttons["tab-home"].firstMatch.tap()

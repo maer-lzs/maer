@@ -886,6 +886,33 @@ struct CatalogGenreAxisTests {
         #expect(detail.media.tracks?.isEmpty == false)
     }
 
+    @Test("Katalog-Mischreihe: fair verschraenkt, gedeckelt, keine leeren Spuren")
+    func catalogMixRow() {
+        func feed(_ n: Int) -> HoerspielCuration.Entry {
+            .init(title: "F\(n)", author: "A", feedURL: "https://f/\(n)")
+        }
+        func item(_ id: String) -> LibraryItem {
+            LibraryItem(id: id, media: nil, addedAt: nil)
+        }
+        // Interleaved, not two blocks: lanes alternate fairly.
+        let tiles = CatalogMix.row(feedGroups: [[feed(1), feed(2)]],
+                                   itemGroups: [[item("a"), item("b")]], limit: 10)
+        #expect(tiles.map(\.id) == ["feed:https://f/1", "item:a",
+                                    "feed:https://f/2", "item:b"])
+        // Cap applies across the mix.
+        let capped = CatalogMix.row(feedGroups: [[feed(1), feed(2), feed(3)]],
+                                    itemGroups: [[item("a"), item("b"), item("c")]],
+                                    limit: 3)
+        #expect(capped.count == 3)
+        // An empty lane never starves the merge (filtered before the merge).
+        let sparse = CatalogMix.row(feedGroups: [[]],
+                                    itemGroups: [[item("a")], [], [item("b")]],
+                                    limit: 10)
+        #expect(sparse.map(\.id) == ["item:a", "item:b"])
+        // All empty: empty row (the section hides on the surface).
+        #expect(CatalogMix.row(feedGroups: [], itemGroups: [[]], limit: 5).isEmpty)
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")

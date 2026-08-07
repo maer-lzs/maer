@@ -12,7 +12,14 @@ import Foundation
 /// `.music` history entry (correct counters) and fires the `librarySynced`
 /// signal (the live Music tab reloads on it); a failed run records an error
 /// entry and stays silent.
+/// `.serialized`: every test here swaps `SubsonicProvider.shared.historyStore`
+/// for its own mock (with a `defer` reset). Run in parallel they race on that
+/// one singleton across suspension points (`await mapAlbums`), so an append
+/// can land in a NEIGHBOR test's mock — seen as a real one-in-many failure of
+/// `successRecordsAndSignals` (entries.count == 0). Serializing the suite
+/// removes the shared-state race; the tests themselves are unchanged.
 @MainActor
+@Suite(.serialized)
 struct SubsonicSyncTests {
     private final class MockHistoryStore: SyncHistoryStoring {
         var entries: [SyncHistoryEntry] = []

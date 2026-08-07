@@ -229,6 +229,14 @@ extension View {
     /// the UI (see s16b-hitch-status). Gating reporting to the visible tab breaks
     /// it at the root. Pushed detail pages keep the default (they live in the
     /// active tab's stack, never a second competing root).
+    /// Auftrag K settled the reporter's role in the tile-row hang: NONE.
+    /// Measured variants — callback guard (this form), constant transform on
+    /// inactive tabs (1a), modifiers not installed at all (1b) — all hung
+    /// identically with the row in a lazy tab root (329 s class), and the
+    /// hang5 sample shows a pure LazyStack placement loop WITHOUT the
+    /// reporter in the cycle (its hang3 appearance was bycatch). The root
+    /// was the podcast tab's outer LazyVStack (see PodcastsView); the
+    /// simplest reporting form stays.
     func reportsBottomBarScroll(active: Bool = true) -> some View {
         onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
             guard active else { return }
