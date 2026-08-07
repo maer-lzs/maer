@@ -134,6 +134,10 @@ struct PodcastsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
             hiddenRevision += 1
         }
+        // Pinchflat Paket A (a404b38): the app-start mirror pass — SILENT on
+        // every failure (a mesh-only server being away is normal); visible
+        // errors live at the manual gesture in the source management.
+        .task { await PinchflatSync.mirrorSilentlyOnce() }
         // A5: return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
         // detail fetches) keeps running as a background task; the sections

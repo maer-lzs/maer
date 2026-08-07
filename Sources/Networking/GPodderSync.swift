@@ -138,8 +138,12 @@ final class GPodderSync {
                                    uniquingKeysWith: { a, _ in a })
         // Y52: token feeds never take part in gpodder sync (pushing them would
         // hand the secret to the server) — invisible to the resolution UI too.
+        // Pinchflat (a7fa35e): MIRRORED feeds (origin != nil) stay out the
+        // same way — a mirrored server group is no subscription set of the
+        // user's, and other devices without mesh access would inherit dead
+        // feeds. They mirror the server themselves instead.
         let localRaw = Dictionary(PodcastSubscriptions.shared.shows
-            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) }
+            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) && $0.origin == nil }
             .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
             uniquingKeysWith: { a, _ in a })
         return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),

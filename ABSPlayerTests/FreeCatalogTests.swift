@@ -677,6 +677,46 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: []).isEmpty)
     }
 
+    // MARK: - Pinchflat Paket A: Spiegel-Diff + OPML-Kette
+
+    /// a7fa35e: der Server ist Quelle der Wahrheit — gespiegelt, nicht
+    /// importiert. Der Diff ist die Stelle, an der ein stiller Fehler Abos
+    /// fressen wuerde; deshalb pur und am Fixture getestet.
+    @Test("Pinchflat mirror diff: new in, orphaned out, hidden stays out")
+    func pinchflatMirrorDiff() {
+        let server = ["https://s/a.xml", "https://s/b.xml", "https://s/c.xml"]
+        // b ist schon da, d ist verwaist, c ist ausgeblendet.
+        let diff = PinchflatMirror.diff(
+            serverFeeds: server,
+            mirrored: ["https://s/b.xml", "https://s/d.xml"],
+            hidden: ["https://s/c.xml"])
+        #expect(diff.toSubscribe == ["https://s/a.xml"])
+        #expect(diff.toUnsubscribe == ["https://s/d.xml"])
+        // Ein ausgeblendeter Kanal wird NIE re-abonniert — auch wenn der
+        // Server ihn weiter listet (die Opt-out-Ausnahme der Nachschaerfung).
+        let again = PinchflatMirror.diff(serverFeeds: server,
+                                         mirrored: ["https://s/a.xml", "https://s/b.xml"],
+                                         hidden: ["https://s/c.xml"])
+        #expect(again.toSubscribe.isEmpty)
+        #expect(again.toUnsubscribe.isEmpty)
+        // Leerer Server ⇒ alles verwaist (Fortschritt bleibt, Regel wie beim
+        // Abbestellen) — aber NUR die Gruppe, hidden unberuehrt.
+        let empty = PinchflatMirror.diff(serverFeeds: [], mirrored: ["https://s/a.xml"], hidden: [])
+        #expect(empty.toUnsubscribe == ["https://s/a.xml"])
+    }
+
+    /// Die eingefrorene echte OPML-Antwort laeuft durch DENSELBEN Parser wie
+    /// der Import (Regel 2) — die Kette Server → Feed-URLs ist der Zaun.
+    @Test("Pinchflat OPML fixture parses via the shared parser")
+    func pinchflatOPMLParses() throws {
+        let data = try CorpusFixture.data("pinchflat-sources", ext: "opml", subdirectory: "WireCorpus")
+        let urls = try #require(PodcastImport.parseOPML(data))
+        #expect(urls.count == 2)
+        #expect(urls.allSatisfy { $0.contains("/sources/") && $0.hasSuffix("/feed.xml") })
+        // Verifiziert am Pruefstand: die xmlUrls kommen OHNE route_token.
+        #expect(urls.allSatisfy { !$0.contains("route_token") })
+    }
+
     // MARK: - 11be262 Paket 1/4: Quellen-Aufteilung
 
     /// the owner's Bedingung "keine Kachel erscheint in beiden Tabs" haelt

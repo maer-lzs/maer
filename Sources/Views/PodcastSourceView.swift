@@ -74,6 +74,7 @@ struct PodcastSourceView: View {
                 resultsSection
             }
             addByURLSection
+            pinchflatSection
             importSection
             if absPodcastsEnabled && absPodcast.hasPodcasts { serverSyncSection }
             NavigationLink {
@@ -334,6 +335,93 @@ struct PodcastSourceView: View {
     /// (second access point, one truth).
     private var premiumManagementSection: some View {
         PremiumFeedsSection()
+    }
+
+    // MARK: - Pinchflat server (Paket A)
+
+    @State private var pinchflatURL: String = PinchflatClient.serverURL?.absoluteString ?? ""
+    @State private var pinchflatToken = ""
+    @State private var pinchflatUser = ""
+    @State private var pinchflatPassword = ""
+    @State private var pinchflatStatus: String?
+    @State private var pinchflatBusy = false
+    @State private var showPinchflat = false
+
+    /// Paket A (5c8ff27/a7fa35e): connect = done — the server's channel list
+    /// MIRRORS into its own group; new channels arrive on refresh, hiding is
+    /// the opt-out. Visible errors belong to THIS manual gesture (a404b38);
+    /// the app-start pass stays silent.
+    private var pinchflatSection: some View {
+        Section {
+            DisclosureGroup(isExpanded: $showPinchflat) {
+                TextField("Server URL", text: $pinchflatURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                // 13c5094: token FIELD + help line — no HTML scraping.
+                SecureField("Route token", text: $pinchflatToken)
+                Text("Find the route token in Pinchflat under Settings.")
+                    .font(.caption).foregroundStyle(.secondary)
+                TextField("Username (optional)", text: $pinchflatUser)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password (optional)", text: $pinchflatPassword)
+                if let status = pinchflatStatus {
+                    Text(status).font(.caption).foregroundStyle(.secondary)
+                }
+                Button {
+                    Task { await connectPinchflat() }
+                } label: {
+                    if pinchflatBusy { ProgressView() } else { Text("Connect") }
+                }
+                .disabled(pinchflatBusy || pinchflatURL.trimmingCharacters(in: .whitespaces).isEmpty)
+                if PinchflatClient.serverURL != nil {
+                    Button("Refresh channel list") {
+                        Task { await connectPinchflat(reconnect: true) }
+                    }
+                    .disabled(pinchflatBusy)
+                    Button("Disconnect server", role: .destructive) {
+                        PinchflatClient.setServer(url: nil, routeToken: nil, user: nil, password: nil)
+                        pinchflatStatus = nil
+                        pinchflatURL = ""
+                    }
+                }
+            } label: {
+                Label("Pinchflat Server", systemImage: "play.rectangle.on.rectangle")
+            }
+        } footer: {
+            Text("Mirrors every channel of your Pinchflat server as its own group — manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube.")
+        }
+    }
+
+    private func connectPinchflat(reconnect: Bool = false) async {
+        pinchflatBusy = true
+        defer { pinchflatBusy = false }
+        pinchflatStatus = nil
+        if !reconnect {
+            guard let url = URL(string: pinchflatURL.trimmingCharacters(in: .whitespaces)),
+                  url.host != nil else {
+                pinchflatStatus = String(localized: "That does not look like a server address.")
+                return
+            }
+            PinchflatClient.setServer(url: url,
+                                      routeToken: pinchflatToken.trimmingCharacters(in: .whitespaces),
+                                      user: pinchflatUser.trimmingCharacters(in: .whitespaces),
+                                      password: pinchflatPassword)
+            pinchflatToken = ""
+            pinchflatPassword = ""
+        }
+        do {
+            let count = try await PinchflatSync.mirror()
+            pinchflatStatus = String(localized: "Connected — \(count) channels in the group.")
+        } catch PinchflatClient.FetchError.unauthorized {
+            pinchflatStatus = String(localized: "The server rejected the token or login (401).")
+        } catch PinchflatClient.FetchError.badAnswer {
+            pinchflatStatus = String(localized: "The server answered, but not with a channel list.")
+        } catch {
+            // A mesh-only server being away is NORMAL, not an app defect.
+            pinchflatStatus = String(localized: "Server not reachable right now — try again in your home network.")
+        }
     }
 
     @ViewBuilder

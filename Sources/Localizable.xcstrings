@@ -4624,6 +4624,97 @@
         }
       }
     },
+    "Pinchflat Server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Pinchflat-Server" }
+        }
+      }
+    },
+    "Server URL" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Server-Adresse" }
+        }
+      }
+    },
+    "Route token" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Route-Token" }
+        }
+      }
+    },
+    "Find the route token in Pinchflat under Settings." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Den Route-Token findest du in Pinchflat unter Settings." }
+        }
+      }
+    },
+    "Connect" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Verbinden" }
+        }
+      }
+    },
+    "Refresh channel list" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Kanalliste aktualisieren" }
+        }
+      }
+    },
+    "Disconnect server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Server trennen" }
+        }
+      }
+    },
+    "That does not look like a server address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Das sieht nicht nach einer Server-Adresse aus." }
+        }
+      }
+    },
+    "Connected — %lld channels in the group." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Verbunden — %lld Kanäle in der Gruppe." }
+        }
+      }
+    },
+    "The server rejected the token or login (401)." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Der Server hat Token oder Login abgelehnt (401)." }
+        }
+      }
+    },
+    "The server answered, but not with a channel list." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Der Server hat geantwortet, aber nicht mit einer Kanalliste." }
+        }
+      }
+    },
+    "Server not reachable right now — try again in your home network." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Server gerade nicht erreichbar — versuch es im Heimnetz erneut." }
+        }
+      }
+    },
+    "Mirrors every channel of your Pinchflat server as its own group — manage channels in Pinchflat, Mär serves them. Content plays from your server; provenance is shown as YouTube." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Spiegelt jeden Kanal deines Pinchflat-Servers als eigene Gruppe — verwaltet wird in Pinchflat, Mär serviert. Abgespielt wird von deinem Server; die Herkunft wird als YouTube gekennzeichnet." }
+        }
+      }
+    },
     "Podcast" : {
       "localizations" : {
         "de" : {

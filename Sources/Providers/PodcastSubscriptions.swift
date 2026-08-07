@@ -38,6 +38,10 @@ nonisolated struct PodcastShow: Codable, Identifiable {
     var explicit: Bool? = nil
     var funding: [PodcastFunding]? = nil
     var owner: String? = nil
+    /// Pinchflat Paket A/B (5c8ff27 c): provenance — which server MIRRORS
+    /// this feed (PinchflatMirror.originTag). nil = an ordinary subscription.
+    /// Herkunft ist ein Fakt am Feed, kein zweiter Ordnungsbaum.
+    var origin: String? = nil
     var showType: String? = nil    // episodic | serial
 }
 
@@ -612,6 +616,22 @@ final class PodcastSubscriptions: ObservableObject {
         // premium URLs can carry secrets).
         Logger.rss.notice("premium replacement: \(offer.showTitle, privacy: .public) — \(matches.count) matched, \(moved) progress moved, \(adopted) downloads adopted")
         return (moved, adopted)
+    }
+
+    /// Pinchflat Paket A: tag a mirrored feed's provenance.
+    func setOrigin(_ origin: String?, forFeedURL feedURL: String) {
+        guard let index = shows.firstIndex(where: { $0.feedURL == feedURL }) else { return }
+        shows[index].origin = origin
+        save()
+    }
+
+    /// Pinchflat Paket A: a SERVER-driven remove (channel left the mirror).
+    /// Deliberately NOT the user-unsubscribe: it must not join the gpodder
+    /// user-intent set — the mirrored group is no subscription set of the
+    /// user's (a7fa35e), and progress stays like any unsubscribe.
+    func removeMirrored(feedURL: String) {
+        shows.removeAll { $0.feedURL == feedURL }
+        save()
     }
 
     func unsubscribe(id: String) {
