@@ -23,6 +23,10 @@ struct NetworkServicesView: View {
 
     var body: some View {
         Form {
+            // #85 (f9ba23b S4): every service toggle carries a stable a11y id
+            // — journeys match ids, never labels (the label predicate found
+            // the tab pill behind the sheet once, 8b4327c). One convention,
+            // no half-set.
             Section {
                 Toggle(isOn: $artistImagesOnline) {
                     // bdfe8dc/22cf822: name the boundary AND its second half.
@@ -34,10 +38,12 @@ struct NetworkServicesView: View {
                     serviceLabel(NetworkServiceNames.artistImages,
                                  purpose: "Artist portraits and identities for your music library. Portraits from your own server stay visible — your server may fetch them from external services itself; you control that there.")
                 }
+                .accessibilityIdentifier("network-artist-images-toggle")
                 Toggle(isOn: $highResCovers) {
                     serviceLabel(NetworkServiceNames.hiResCovers,
                                  purpose: "High-resolution album covers for albums with a MusicBrainz ID.")
                 }
+                .accessibilityIdentifier("network-hires-covers-toggle")
                 Toggle(isOn: $lyricsOnline) {
                     serviceLabel(NetworkServiceNames.lyrics,
                                  // 22cf822 parity: same half-truth applies —
@@ -55,6 +61,7 @@ struct NetworkServicesView: View {
                     serviceLabel(NetworkServiceNames.radioBrowser,
                                  purpose: "The community station catalog behind the Radio tab.")
                 }
+                .accessibilityIdentifier("network-radiobrowser-toggle")
                 // e4bd910: the agreed logo fallback chain — ONE switch for
                 // both stages (Wikidata P154 first, then the homepage
                 // touch icon); off = placeholder right after the favicon.
@@ -62,18 +69,22 @@ struct NetworkServicesView: View {
                     serviceLabel(NetworkServiceNames.radioLogoChain,
                                  purpose: "Logos for stations without a usable favicon.")
                 }
+                .accessibilityIdentifier("network-radio-logo-toggle")
                 Toggle(isOn: $librivoxRows) {
                     serviceLabel(NetworkServiceNames.librivox,
                                  purpose: "Public-domain audiobooks for the free Discover rows.")
                 }
+                .accessibilityIdentifier("network-librivox-toggle")
                 Toggle(isOn: $archivePopular) {
                     serviceLabel(NetworkServiceNames.internetArchive,
                                  purpose: "Popularity ranking and streams for the free audiobooks and the Free Classical area.")
                 }
+                .accessibilityIdentifier("network-archive-toggle")
                 Toggle(isOn: $jamendoRow) {
                     serviceLabel(NetworkServiceNames.jamendo,
                                  purpose: "Creative-Commons music charts. Requires a client key; free API for non-commercial use.")
                 }
+                .accessibilityIdentifier("network-jamendo-toggle")
                 if jamendoRow {
                     TextField("Own Jamendo client_id (optional)", text: $jamendoClientId)
                         .textInputAutocapitalization(.never)
@@ -111,6 +122,10 @@ struct SuggestionLanguagesView: View {
 
     var body: some View {
         Form {
+            // #85 (f9ba23b S4): every service toggle carries a stable a11y id
+            // — journeys match ids, never labels (the label predicate found
+            // the tab pill behind the sheet once, 8b4327c). One convention,
+            // no half-set.
             Section {
                 ForEach(choices, id: \.self) { code in
                     Button {

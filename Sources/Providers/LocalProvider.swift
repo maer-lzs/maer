@@ -90,6 +90,9 @@ final class LocalProvider: AudioProvider {
     /// written by the player through the `localPosition` mechanism (the same
     /// store `fetchAllProgress` reads) — writing here too would duplicate the
     /// write path for the same key.
+    // Deliberately empty (#62/V3): local progress persists through the player
+    // path (PlayerViewModel's local-position save), not through the provider —
+    // a second write here would race that one truth. Not a stub.
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {}
 
     // No server bookmarks (capability missing — never called).
