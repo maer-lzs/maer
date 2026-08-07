@@ -44,6 +44,52 @@ nonisolated enum RediscoverSections {
     /// continue rule: shows never displace books/episodes beyond a fifth.
     static func showCap(limit: Int) -> Int { max(2, limit / 5) }
 
+    /// 13c5094 (owner answer "Pool = Seite"): the FULL candidate pool,
+    /// unshuffled, grouped by source — the page behind the Rediscover row.
+    /// Same thresholds as the daily picks by construction: picks() draws
+    /// from exactly this pool.
+    struct Pool {
+        var paused: [Pick] = []
+        var unheard: [Pick] = []
+        var seriesNext: [Pick] = []
+        var showsObserved: [Pick] = []
+        var showsUnknown: [Pick] = []
+        var count: Int { paused.count + unheard.count + seriesNext.count
+            + showsObserved.count + showsUnknown.count }
+    }
+
+    static func pool(
+        paused: [(id: String, lastPlayed: TimeInterval)],
+        unheard: [(id: String, addedAt: TimeInterval)],
+        seriesNext: [(id: String, volume: Int)],
+        showsDormant: [(id: String, lastPlayed: TimeInterval?)] = [],
+        now: Date
+    ) -> Pool {
+        let nowT = now.timeIntervalSince1970
+        var pool = Pool()
+        pool.paused = paused
+            .filter { nowT - $0.lastPlayed > pausedAfter && $0.lastPlayed > 0 }
+            .sorted { $0.lastPlayed < $1.lastPlayed }   // longest pause first
+            .map { Pick(id: $0.id, reason: .paused(weeks: Int((nowT - $0.lastPlayed) / (7 * 24 * 3600)))) }
+        pool.unheard = unheard
+            .filter { nowT - $0.addedAt > unheardAfter && $0.addedAt > 0 }
+            .sorted { $0.addedAt < $1.addedAt }
+            .map { Pick(id: $0.id, reason: .unheardSince(added: Date(timeIntervalSince1970: $0.addedAt))) }
+        pool.seriesNext = seriesNext
+            .map { Pick(id: $0.id, reason: .nextInSeries(volume: $0.volume)) }
+        // 5dcbf21/49dc2c3 rules unchanged: shows share the paused threshold;
+        // an absent listen record qualifies immediately.
+        pool.showsObserved = showsDormant
+            .compactMap { entry in
+                guard let last = entry.lastPlayed, last > 0, nowT - last > pausedAfter else { return nil }
+                return Pick(id: entry.id, reason: .showDormant(weeks: Int((nowT - last) / (7 * 24 * 3600))))
+            }
+        pool.showsUnknown = showsDormant
+            .filter { ($0.lastPlayed ?? 0) <= 0 }
+            .map { Pick(id: $0.id, reason: .showDormantUnknown) }
+        return pool
+    }
+
     static func picks(
         paused: [(id: String, lastPlayed: TimeInterval)],
         unheard: [(id: String, addedAt: TimeInterval)],
@@ -58,28 +104,16 @@ nonisolated enum RediscoverSections {
         limit: Int
     ) -> [Pick] {
         guard limit > 0 else { return [] }
-        let nowT = now.timeIntervalSince1970
-
-        let pausedPicks: [Pick] = paused
-            .filter { nowT - $0.lastPlayed > pausedAfter && $0.lastPlayed > 0 }
-            .map { Pick(id: $0.id, reason: .paused(weeks: Int((nowT - $0.lastPlayed) / (7 * 24 * 3600)))) }
-        let unheardPicks: [Pick] = unheard
-            .filter { nowT - $0.addedAt > unheardAfter && $0.addedAt > 0 }
-            .map { Pick(id: $0.id, reason: .unheardSince(added: Date(timeIntervalSince1970: $0.addedAt))) }
-        let seriesPicks: [Pick] = seriesNext
-            .map { Pick(id: $0.id, reason: .nextInSeries(volume: $0.volume)) }
-        // 5dcbf21: dormant shows share the paused threshold (one anchor, no
-        // second constant) — "long unheard" means the same everywhere.
-        // 49dc2c3: an observed listen must be OLDER than the threshold; an
-        // absent one qualifies immediately (nothing to compare against).
-        let observedShows: [Pick] = showsDormant
-            .compactMap { entry in
-                guard let last = entry.lastPlayed, last > 0, nowT - last > pausedAfter else { return nil }
-                return Pick(id: entry.id, reason: .showDormant(weeks: Int((nowT - last) / (7 * 24 * 3600))))
-            }
-        let unknownShows: [Pick] = showsDormant
-            .filter { ($0.lastPlayed ?? 0) <= 0 }
-            .map { Pick(id: $0.id, reason: .showDormantUnknown) }
+        // 13c5094: the FILTERS live in pool() now — the daily picks are a
+        // seeded rotation OVER the pool, and the pool page shows the pool
+        // itself (one source of truth, Regel 2).
+        let pool = Self.pool(paused: paused, unheard: unheard,
+                             seriesNext: seriesNext, showsDormant: showsDormant, now: now)
+        let pausedPicks = pool.paused
+        let unheardPicks = pool.unheard
+        let seriesPicks = pool.seriesNext
+        let observedShows = pool.showsObserved
+        let unknownShows = pool.showsUnknown
 
         // Deterministic daily rotation: seeded shuffle per source (stable within
         // a day), then round-robin across the sources in priority order.

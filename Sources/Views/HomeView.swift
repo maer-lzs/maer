@@ -36,6 +36,8 @@ struct HomeView: View {
     /// Teil 3 "Rediscover": daily-rotated local picks (paused / unheard / next
     /// volume) — empty hides the section.
     @State private var rediscoverPicks: [RediscoverSections.Pick] = []
+    /// 13c5094: the full pool behind the daily row (page + counted chevron).
+    @State private var rediscoverPool = RediscoverSections.Pool()
     /// Teil 5: ONE opt-out for both recommendation sections (Rediscover +
     /// Discover); the library-fact sections stay untouched.
     @AppStorage(AppStorageKeys.homeRecommendations) private var recommendationsEnabled = true
@@ -152,11 +154,18 @@ struct HomeView: View {
         // fetched in compute() — the root has no access to it and re-fetching
         // for a push would hit the network on a tap).
         .navigationDestination(for: MixedRowRoute.self) { route in
-            MixedMediaPage(route: route,
-                           continueIds: continueIdsAll, addedItems: recentlyAddedAll,
-                           musicProgress: musicContinueProgress,
-                           playerCoordinator: playerCoordinator,
-                           libraryViewModel: libraryViewModel)
+            if route == .rediscoverPool {
+                // 13c5094: the pool page — Home hands over its computed pool.
+                RediscoverPoolPage(pool: rediscoverPool,
+                                   playerCoordinator: playerCoordinator,
+                                   libraryViewModel: libraryViewModel)
+            } else {
+                MixedMediaPage(route: route,
+                               continueIds: continueIdsAll, addedItems: recentlyAddedAll,
+                               musicProgress: musicContinueProgress,
+                               playerCoordinator: playerCoordinator,
+                               libraryViewModel: libraryViewModel)
+            }
         }
         .task(id: recomputeToken) {
             guard isActive else { return }
@@ -354,7 +363,10 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     private var rediscoverSection: some View {
         if !rediscoverPicks.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain("Rediscover")
+RowHeading(title: "Rediscover",
+                           total: rediscoverPool.count,
+                           shown: RowPreview.cut(rediscoverPicks).count,
+                           destination: MixedRowRoute.rediscoverPool)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(rediscoverPicks), id: \.id) { pick in
@@ -373,69 +385,10 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    @ViewBuilder
     private func rediscoverTile(_ pick: RediscoverSections.Pick) -> some View {
-        // TF4/E1: the shared scope is the ONE observer of download/network state
-        // for the tile; MediaTile stays value-driven off its `unavailable`.
-        // 5dcbf21: show picks open the SHOW page (no single item behind them).
-        if pick.id.hasPrefix(Self.showPickPrefix) {
-            let feedURL = String(pick.id.dropFirst(Self.showPickPrefix.count))
-            if let show = PodcastSubscriptions.shared.shows.first(where: { $0.feedURL == feedURL }) {
-                MediaTile(
-                    title: show.title,
-                    subtitle: rediscoverSubtitle(pick.reason),
-                    coverURL: show.artworkURL.flatMap { URL(string: $0) },
-                    placeholderSystemImage: "mic",
-                    onTap: { pushRoute(.show(feedURL: feedURL)) }
-                )
-            }
-        } else if let entry = libraryViewModel.entry(id: pick.id) {
-            MediaAvailabilityScope(itemId: entry.id) { unavailable in
-                MediaTile(
-                    title: entry.item.title,
-                    subtitle: rediscoverSubtitle(pick.reason),
-                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
-                    placeholderSystemImage: "book.closed",
-                    progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
-                    unavailable: unavailable,
-                    onTap: { pushBook(entry.id) }
-                ) {
-                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
-                }
-            }
-        } else if let item = AppSession.shared.libraryItem(forId: pick.id) {
-            MediaAvailabilityScope(itemId: item.id) { unavailable in
-                MediaTile(
-                    title: item.title,
-                    subtitle: rediscoverSubtitle(pick.reason),
-                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                    progress: episodeProgress(item),
-                    unavailable: unavailable,
-                    onTap: { pushRoute(.episode(itemId: item.id)) }
-                ) {
-                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
-                }
-            }
-        }
-    }
-
-    private func rediscoverSubtitle(_ reason: RediscoverSections.Reason) -> String {
-        switch reason {
-        case .paused(let weeks):
-            return String(localized: "Paused for \(weeks) weeks")
-        case .unheardSince(let added):
-            return String(localized: "Unheard since \(added.formatted(.dateTime.month(.wide).year()))")
-        case .nextInSeries(let volume):
-            return volume > 0
-                ? String(localized: "Volume \(volume) of your series")
-                : String(localized: "Next volume of your series")
-        case .showDormant(let weeks):
-            return String(localized: "Long unheard · last \(weeks) weeks ago")
-        case .showDormantUnknown:
-            // 49dc2c3: no observed listen — name no week count rather than
-            // inventing one from the backfill moment.
-            return String(localized: "Long unheard")
-        }
+        // Shared with the pool page (13c5094: Pool = Seite) — one tile.
+        RediscoverTile(pick: pick, playerCoordinator: playerCoordinator,
+                       libraryViewModel: libraryViewModel)
     }
 
     /// W2 "Recently Added": newly added books AND albums in one horizontal shelf,
@@ -614,8 +567,9 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             await CoverColorLoader.prewarm(url: AppSession.shared.coverURL(forItemId: id))
         }
         let rediscover: [RediscoverSections.Pick]
+        var pool = RediscoverSections.Pool()
         if recommendationsEnabled {
-            rediscover = computeRediscover(
+            (rediscover, pool) = computeRediscover(
                 bookContinue: pausedCandidates, episodeContinue: episodesShown,
                 visibleContinue: Set(rankedContinue))
             await recommendations.refreshIfNeeded()
@@ -635,6 +589,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             recentlyAddedItems = addedItems
             recentMusicItems = recentMusic
             rediscoverPicks = rediscover
+            rediscoverPool = pool
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }
         }
         // Layout-shift fix: same calm gate as the other libraries — a landed
@@ -648,7 +603,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         bookContinue: [(id: String, ts: Double)],
         episodeContinue: [(id: String, ts: Double)],
         visibleContinue: Set<String>
-    ) -> [RediscoverSections.Pick] {
+    ) -> ([RediscoverSections.Pick], RediscoverSections.Pool) {
         // (a) paused: started books + episodes, EXCLUDING what the Continue
         // carousel already shows (no doubles on one page).
         let paused = (bookContinue + episodeContinue)
@@ -688,15 +643,21 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             return (Self.showPickPrefix + show.feedURL, lastByFeed[show.feedURL].map(Self.seconds))
         }
         let now = Date()
-        return RediscoverSections.picks(
+        // 13c5094: picks AND pool from the same inputs — the row shows the
+        // daily rotation, the page shows the pool (one filter source).
+        let picks = RediscoverSections.picks(
             paused: paused, unheard: unheard, seriesNext: seriesNext,
             showsDormant: showsDormant,
             now: now, daySeed: RediscoverSections.daySeed(for: now),
             limit: Self.rediscoverPoolLimit)
+        let pool = RediscoverSections.pool(
+            paused: paused, unheard: unheard, seriesNext: seriesNext,
+            showsDormant: showsDormant, now: now)
+        return (picks, pool)
     }
 
     /// 5dcbf21: show picks ride the feed URL behind a marker prefix.
-    private static let showPickPrefix = "rediscover-show:"
+    static let showPickPrefix = "rediscover-show:"
 
     /// Y4a: the horizontal row carries the full pool, capped sanely.
     private static let rediscoverPoolLimit = 24
@@ -710,5 +671,120 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// source podcast auto-continue uses), 0 if none.
     private func localTimestamp(_ id: String) -> Double {
         (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double])?.last ?? 0
+    }
+}
+
+
+/// 13c5094: THE Rediscover tile — row AND pool page render it (Regel 2).
+struct RediscoverTile: View {
+    let pick: RediscoverSections.Pick
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    let libraryViewModel: LibraryViewModel
+    @Environment(\.pushPodcastRoute) private var pushRoute
+    @Environment(\.pushBookDetail) private var pushBook
+
+    var body: some View {
+        // TF4/E1: the shared scope is the ONE observer of download/network
+        // state; 5dcbf21: show picks open the SHOW page.
+        if pick.id.hasPrefix(HomeView.showPickPrefix) {
+            let feedURL = String(pick.id.dropFirst(HomeView.showPickPrefix.count))
+            if let show = PodcastSubscriptions.shared.shows.first(where: { $0.feedURL == feedURL }) {
+                MediaTile(
+                    title: show.title,
+                    subtitle: Self.subtitle(pick.reason),
+                    coverURL: show.artworkURL.flatMap { URL(string: $0) },
+                    placeholderSystemImage: "mic",
+                    onTap: { pushRoute(.show(feedURL: feedURL)) }
+                )
+            }
+        } else if let entry = libraryViewModel.entry(id: pick.id) {
+            MediaAvailabilityScope(itemId: entry.id) { unavailable in
+                MediaTile(
+                    title: entry.item.title,
+                    subtitle: Self.subtitle(pick.reason),
+                    coverURL: AppSession.shared.coverURL(forItemId: entry.id),
+                    placeholderSystemImage: "book.closed",
+                    progress: (entry.progress?.isStarted ?? false) ? entry.progress?.fraction : nil,
+                    unavailable: unavailable,
+                    onTap: { pushBook(entry.id) }
+                ) {
+                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: entry.item) } }
+                }
+            }
+        } else if let item = AppSession.shared.libraryItem(forId: pick.id) {
+            MediaAvailabilityScope(itemId: item.id) { unavailable in
+                MediaTile(
+                    title: item.title,
+                    subtitle: Self.subtitle(pick.reason),
+                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                    progress: {
+                        if case .inProgress(let fraction, _) = podcastPlayState(for: item) { return fraction }
+                        return nil
+                    }(),
+                    unavailable: unavailable,
+                    onTap: { pushRoute(.episode(itemId: item.id)) }
+                ) {
+                    MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
+                }
+            }
+        }
+    }
+
+    static func subtitle(_ reason: RediscoverSections.Reason) -> String {
+        switch reason {
+        case .paused(let weeks):
+            return String(localized: "Paused for \(weeks) weeks")
+        case .unheardSince(let added):
+            return String(localized: "Unheard since \(added.formatted(.dateTime.month(.wide).year()))")
+        case .nextInSeries(let volume):
+            return volume > 0
+                ? String(localized: "Volume \(volume) of your series")
+                : String(localized: "Next volume of your series")
+        case .showDormant(let weeks):
+            return String(localized: "Not listened for \(weeks) weeks")
+        case .showDormantUnknown:
+            return String(localized: "Long unheard — new episodes waiting")
+        }
+    }
+}
+
+/// 13c5094 (the owner: "Pool = Seite"): the FULL candidate pool, unshuffled,
+/// grouped by source — the page turns "today for you" into browsable.
+struct RediscoverPoolPage: View {
+    let pool: RediscoverSections.Pool
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    let libraryViewModel: LibraryViewModel
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                section("Paused", picks: pool.paused)
+                section("Lying unheard", picks: pool.unheard)
+                section("Next in your series", picks: pool.seriesNext)
+                section("Dormant shows", picks: pool.showsObserved + pool.showsUnknown)
+            }
+            .padding(.top, TabContentLayout.topInset)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Rediscover"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private func section(_ title: LocalizedStringKey, picks: [RediscoverSections.Pick]) -> some View {
+        if !picks.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                RowHeading.plain(title)
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                    ForEach(picks, id: \.id) { pick in
+                        RediscoverTile(pick: pick, playerCoordinator: playerCoordinator,
+                                       libraryViewModel: libraryViewModel)
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
     }
 }

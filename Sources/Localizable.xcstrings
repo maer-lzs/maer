@@ -5140,6 +5140,34 @@
         }
       }
     },
+    "Paused" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Pausiert" }
+        }
+      }
+    },
+    "Lying unheard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Liegt ungehört" }
+        }
+      }
+    },
+    "Next in your series" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Nächste Bände deiner Reihen" }
+        }
+      }
+    },
+    "Dormant shows" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : { "state" : "translated", "value" : "Lange ungehörte Sendungen" }
+        }
+      }
+    },
     "Rediscover" : {
       "localizations" : {
         "de" : {

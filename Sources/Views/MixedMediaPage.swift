@@ -13,12 +13,15 @@ import SwiftUI
 nonisolated enum MixedRowRoute: Hashable {
     case continueListening
     case recentlyAdded
+    /// 13c5094: the Rediscover pool page.
+    case rediscoverPool
 
     /// Same wording as the row — the page IS that row, unabridged.
     var title: String {
         switch self {
         case .continueListening: String(localized: "Continue")
         case .recentlyAdded:     String(localized: "Recently Added")
+        case .rediscoverPool:    String(localized: "Rediscover")
         }
     }
 }
@@ -106,6 +109,9 @@ struct MixedMediaPage: View {
                         hearTile(id)
                             .frame(width: cardWidth, alignment: .top)
                     }
+                case .rediscoverPool:
+                    // Registered separately (RediscoverPoolPage) — never here.
+                    EmptyView()
                 case .recentlyAdded:
                     ForEach(addedItems) { item in
                         HomeRecentlyAddedTile(item: item,
