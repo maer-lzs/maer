@@ -107,6 +107,14 @@ final class PodcastSubscriptions: ObservableObject {
     private func rebuildCaches() {
         cachedAllEpisodes = nil
         episodeIndex = Self.buildEpisodeIndex(shows)
+        // Befund T1: mirror the origin-carrying feed keys into the defaults
+        // set the nonisolated premium truth reads — ONE maintenance point,
+        // always in sync with the store (bootstrap heals existing stores).
+        let mirrored = Set(shows.filter { $0.origin != nil }.map { Self.feedKey($0.feedURL) })
+        if mirrored != Self.mirroredFeedKeys() {
+            UserDefaults.standard.set(Array(mirrored).sorted(),
+                                      forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
+        }
     }
 
     /// guid → (show index, episode index). Pure + static so tests can verify the
@@ -350,7 +358,12 @@ final class PodcastSubscriptions: ObservableObject {
     /// OR a known members-only host OR a MANUAL user marking (92e25d6 — the
     /// escape hatch for unknown patterns; one truth feeds management, tab
     /// grouping, badges, the replace dialog AND the OPML-export guard).
-    nonisolated static func isPremiumFeed(_ feedURL: String) -> Bool {
+    nonisolated static func isPremiumFeed(_ feedURL: String,
+                                          defaults: UserDefaults = .standard) -> Bool {
+        // Befund T1: a mirrored feed is NEVER premium — its host login is
+        // server infrastructure, not a paywall; its marking is the origin
+        // capsule. First check, so no heuristic below can override it.
+        if mirroredFeedKeys(defaults: defaults).contains(feedKey(feedURL)) { return false }
         if PodcastFeedAuth.hasCredentials(feedKey: feedKey(feedURL)) { return true }
         if isTokenFeedURL(feedURL) { return true }
         // 6446a04: the feed says it itself — catches the path-token class
@@ -359,6 +372,11 @@ final class PodcastSubscriptions: ObservableObject {
         if manualPremiumFeedKeys().contains(feedKey(feedURL)) { return true }
         let lower = feedURL.lowercased()
         return premiumHosts.contains { lower.contains($0) }
+    }
+
+    /// Befund T1: the mirrored-group feed keys (maintained in rebuildCaches).
+    nonisolated static func mirroredFeedKeys(defaults: UserDefaults = .standard) -> Set<String> {
+        Set(defaults.stringArray(forKey: AppStorageKeys.pinchflatMirroredFeedKeys) ?? [])
     }
 
     /// 92e25d6: manual premium markings (persisted feed keys).

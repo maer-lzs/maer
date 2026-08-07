@@ -110,10 +110,13 @@ struct PodcastsView: View {
                     hoerspieleSection
                     recommendationsSection
                     latestEpisodesSection
+                    // T4 (the owner): the server group is daily stock like the
+                    // subscriptions — it sits right after Latest Episodes,
+                    // ABOVE Premium and the subscription grid, not trailing.
+                    pinchflatGroupSection
                     premiumSection
                     downloadedShelf
                     recentlyUpdatedSection
-                    pinchflatGroupSection
                     historyRow
                 }
                 .padding(.top, TabContentLayout.topInset)

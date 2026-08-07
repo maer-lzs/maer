@@ -256,6 +256,10 @@ nonisolated enum AppStorageKeys {
     /// 92e25d6: feed keys the user MARKED as premium manually (the escape
     /// hatch for unknown URL patterns) — feeds the ONE premium truth.
     static let premiumMarkedFeeds = "premiumMarkedFeeds"
+    /// Befund T1: feed keys of the Pinchflat-mirrored group, maintained by
+    /// the subscriptions store — read by the nonisolated premium truth
+    /// (origin != nil is NEVER premium; server access is infrastructure).
+    static let pinchflatMirroredFeedKeys = "pinchflatMirroredFeedKeys"
     /// 6446a04: feed keys whose channel carries itunes:block/podcast:block.
     static let blockedFeedKeys = "blockedFeedKeys"
     /// 5034add: MASTER switch over every free-catalog surface + its traffic.

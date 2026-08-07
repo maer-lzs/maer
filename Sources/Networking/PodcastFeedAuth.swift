@@ -25,6 +25,11 @@ nonisolated enum PodcastFeedAuth {
         }
     }
 
+    /// Remove stored credentials (tests + explicit disconnects).
+    static func remove(feedKey: String) {
+        KeychainStore.delete(forKey: key(feedKey))
+    }
+
     static func hasCredentials(feedKey: String) -> Bool {
         credentials(feedKey: feedKey) != nil
     }

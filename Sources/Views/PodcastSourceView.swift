@@ -377,6 +377,16 @@ struct PodcastSourceView: View {
                 if let status = pinchflatStatus {
                     Text(status).font(.caption).foregroundStyle(.secondary)
                 }
+                // S3: the SAVED state is visible — never a matter of faith.
+                if let host = PinchflatClient.serverURL?.host {
+                    Label {
+                        Text("Connected to \(host)")
+                    } icon: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
                 Button {
                     Task { await connectPinchflat() }
                 } label: {
@@ -389,7 +399,7 @@ struct PodcastSourceView: View {
                     }
                     .disabled(pinchflatBusy)
                     Button("Disconnect server", role: .destructive) {
-                        PinchflatClient.setServer(url: nil, routeToken: nil, user: nil, password: nil)
+                        PinchflatClient.disconnect()
                         pinchflatStatus = nil
                         pinchflatURL = ""
                     }
@@ -423,11 +433,14 @@ struct PodcastSourceView: View {
         defer { pinchflatBusy = false }
         pinchflatStatus = nil
         if !reconnect {
-            guard let url = URL(string: pinchflatURL.trimmingCharacters(in: .whitespaces)),
-                  url.host != nil else {
+            // S1/S2: normalize (scheme-less input is the common case) and show
+            // a visible form error on unusable input — the existing
+            // configuration stays untouched either way.
+            guard let url = PinchflatClient.normalizedServerURL(from: pinchflatURL) else {
                 pinchflatStatus = String(localized: "That does not look like a server address.")
                 return
             }
+            pinchflatURL = url.absoluteString
             PinchflatClient.setServer(url: url,
                                       routeToken: pinchflatToken.trimmingCharacters(in: .whitespaces),
                                       user: pinchflatUser.trimmingCharacters(in: .whitespaces),

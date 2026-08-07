@@ -309,5 +309,34 @@ struct ProviderTokenChainTests {
             isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
         #expect(offers.isEmpty)
     }
+
+    @Test("T2-Zaun: gespiegelter Feed traegt NIE Premium — auch mit Host-Credentials")
+    func mirroredFeedIsNeverPremium() {
+        let feedURL = "https://tube.example/sources/abc/feed.xml"
+        let key = PodcastSubscriptions.feedKey(feedURL)
+        // Host credentials from the server setup — exactly the class the
+        // premium heuristic used to trip over (Befund T).
+        PodcastFeedAuth.set(feedKey: key, user: "the implementer", password: "pw")
+        defer { PodcastFeedAuth.remove(feedKey: key) }
+        let defaults = UserDefaults(suiteName: "t2-zaun-\(UUID().uuidString)")!
+        // Without membership the credentials DO mark premium (heuristic works)…
+        #expect(PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
+        // …with origin-membership the ONE truth answers false — so the tile
+        // lock, the premium row and the premium page all drop it (T3: the
+        // double appearance dies with the same truth).
+        defaults.set([key], forKey: AppStorageKeys.pinchflatMirroredFeedKeys)
+        #expect(!PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
+    }
+
+    @Test("S1: Schema-lose Pinchflat-Adressen normalisieren auf denselben Host")
+    func pinchflatAddressNormalization() {
+        let hosts = ["tube.x.y", "https://tube.x.y", "  tube.x.y  ", "http://tube.x.y"]
+            .map { PinchflatClient.normalizedServerURL(from: $0)?.host }
+        #expect(hosts == ["tube.x.y", "tube.x.y", "tube.x.y", "tube.x.y"])
+        // Unusable input answers nil — the caller shows a form error and the
+        // existing configuration stays (S2: no delete branch on save).
+        #expect(PinchflatClient.normalizedServerURL(from: "   ") == nil)
+        #expect(PinchflatClient.normalizedServerURL(from: "https://") == nil)
+    }
 }
 #endif

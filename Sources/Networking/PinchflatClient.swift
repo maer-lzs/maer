@@ -31,20 +31,40 @@ enum PinchflatClient {
         get { UserDefaults.standard.string(forKey: serverDefaultsKey).flatMap(URL.init) }
     }
 
-    static func setServer(url: URL?, routeToken: String?, user: String?, password: String?) {
-        if let url, let host = url.host {
-            UserDefaults.standard.set(url.absoluteString, forKey: serverDefaultsKey)
-            if let routeToken, !routeToken.isEmpty {
-                KeychainStore.save(routeToken, forKey: tokenKey(host))
-            }
-            if let user, let password, !user.isEmpty {
-                KeychainStore.save("\(user)\n\(password)", forKey: loginKey(host))
-            }
-        } else if let old = serverURL?.host {
+    /// Befund S1: normalize a typed address — trim, and prepend `https://`
+    /// when no scheme is given (`tube.x.y` parses host-less in Foundation,
+    /// which used to make saving a silent no-op). Returns nil only for input
+    /// that has no host even after normalization.
+    nonisolated static func normalizedServerURL(from raw: String) -> URL? {
+        var trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if !trimmed.contains("://") { trimmed = "https://" + trimmed }
+        guard let url = URL(string: trimmed), url.host != nil else { return nil }
+        return url
+    }
+
+    /// Befund S2: saving and removing are TWO paths now — a bad NEW entry can
+    /// never land in a delete branch and destroy the existing configuration.
+    /// Callers validate via `normalizedServerURL` and show a visible form
+    /// error instead (Regel 3).
+    static func setServer(url: URL, routeToken: String?, user: String?, password: String?) {
+        guard let host = url.host else { return }
+        UserDefaults.standard.set(url.absoluteString, forKey: serverDefaultsKey)
+        if let routeToken, !routeToken.isEmpty {
+            KeychainStore.save(routeToken, forKey: tokenKey(host))
+        }
+        if let user, let password, !user.isEmpty {
+            KeychainStore.save("\(user)\n\(password)", forKey: loginKey(host))
+        }
+    }
+
+    /// The explicit remove path of the management surface.
+    static func disconnect() {
+        if let old = serverURL?.host {
             KeychainStore.delete(forKey: tokenKey(old))
             KeychainStore.delete(forKey: loginKey(old))
-            UserDefaults.standard.removeObject(forKey: serverDefaultsKey)
         }
+        UserDefaults.standard.removeObject(forKey: serverDefaultsKey)
     }
 
     static func credentials(host: String) -> (user: String, password: String)? {
