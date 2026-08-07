@@ -560,6 +560,25 @@ final class LibraryViewModel: ObservableObject {
         isLoading = entries.isEmpty
         errorMessage = nil
         defer { isLoading = false }
+        // Befund M ("kein Spinner ohne Endzustand"): a BACKGROUND refresh with
+        // stock on screen must end promptly when the server is away — the
+        // retry tower (3 attempts x ~20 s connect timeout, several call
+        // sites) kept `isRefreshing` (= the floating activity pill over the
+        // Continue cards) spinning for minutes on 5G where the mesh-only
+        // server is unreachable. With a cache showing, ONE attempt per call
+        // is honest: fail fast -> silent cache state (the card keeps working,
+        // resume is offline-capable). First installs (nothing on screen)
+        // keep the full retry patience.
+        let retryAttempts = entries.isEmpty ? 3 : 1
+        let refreshStarted = Date()
+        defer {
+            // Diagnostic (keep): if the pill class reappears at GT, this line
+            // names the actual duration instead of a guess.
+            let elapsed = Date().timeIntervalSince(refreshStarted)
+            if elapsed > 30 {
+                Logger.library.notice("REFRESH long run: \(Int(elapsed))s with stock=\(self.entries.count)")
+            }
+        }
         // Local source always first (in-memory, never an error) — so local
         // titles are there even when the server is offline.
         await reloadLocalCache()
@@ -570,7 +589,7 @@ final class LibraryViewModel: ObservableObject {
             // back to today's resolve-then-load behavior.
             let storedId = UserDefaults.standard.string(forKey: AppStorageKeys.selectedLibraryId)
             if let storedId {
-                async let validationTask: [ABSLibrary]? = try? await withRetry {
+                async let validationTask: [ABSLibrary]? = try? await withRetry(attempts: retryAttempts) {
                     try await self.provider.fetchLibraries()
                 }.filter { !$0.isPodcast }
                 do {
@@ -593,7 +612,7 @@ final class LibraryViewModel: ObservableObject {
                 // belong to the podcast provider. Retry transient errors briefly
                 // (timeout/5xx) before the offline/cache fallback; real offline
                 // errors and 401 still throw immediately.
-                let libraries = try await withRetry { try await self.provider.fetchLibraries() }
+                let libraries = try await withRetry(attempts: retryAttempts) { try await self.provider.fetchLibraries() }
                     .filter { !$0.isPodcast }
                 try await resolveAndLoad(libraries: libraries)
             }
@@ -654,7 +673,9 @@ final class LibraryViewModel: ObservableObject {
         // (sort, filter, series stacks, search) work on what is already
         // loaded and complete themselves as more pages arrive.
         let pageSize = 50
-        let first = try await withRetry {
+        // Befund M: same fail-fast rule as loadLibrary — with stock on screen
+        // one attempt, full patience only on an empty first load.
+        let first = try await withRetry(attempts: entries.isEmpty ? 3 : 1) {
             try await self.provider.fetchLibraryItemsPage(libraryId: id, limit: pageSize, page: 0)
         }
         let progress = (try? await progressTask) ?? [:]
