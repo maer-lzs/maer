@@ -22,6 +22,10 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     /// full grid behind a genre row (shelf = FILTER over the source's stock,
     /// no second client).
     case shelf(CatalogSource, String)
+    /// Auftrag O: the SHOW PAGE of an archive.org series bundle (OTR class —
+    /// items routed through rememberOldTimeRadio). Tap stays NACHSCHLAGEN;
+    /// the page replaces the detail sheet for this class only.
+    case series(itemId: String)
 }
 
 /// Paket 4: push the catalog area from non-link surfaces (the search deck's
@@ -39,6 +43,7 @@ extension EnvironmentValues {
 
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     /// Paket 1: the load layer lives in the store — one pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
@@ -319,10 +324,18 @@ struct FreeAudiobooksPage: View {
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {
         // 174f855: NACHSCHLAGEN — tap opens the detail (rights line + the
         // prominent Play); long-press keeps Play as the shortcut.
+        // Auftrag O: an OTR series bundle looks up its SHOW PAGE (episode
+        // list) instead of the sheet — same tap class, richer answer.
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: placeholder,
-            onTap: { detailItem = item }
+            onTap: {
+                if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                    pushFreeAudiobooksRoute(.series(itemId: item.id))
+                } else {
+                    detailItem = item
+                }
+            }
         )
         .contextMenu {
             Button {

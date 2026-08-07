@@ -913,6 +913,28 @@ struct CatalogGenreAxisTests {
         #expect(CatalogMix.row(feedGroups: [], itemGroups: [[]], limit: 5).isEmpty)
     }
 
+    @Test("Auftrag O: Track-Titel aus dem Dateinamen, Position -> Folgen-Index")
+    func archiveSeriesHelpers() {
+        // File name is the episode title: percent-decoded, extension dropped,
+        // underscores become spaces.
+        #expect(FreeCatalog.trackDisplayTitle(
+            contentUrl: "https://archive.org/download/x/Ep%2001_The_Thing.mp3")
+            == "Ep 01 The Thing")
+        #expect(FreeCatalog.trackDisplayTitle(contentUrl: "https://a/b/no-extension")
+            == "no-extension")
+        // O2 marking: the ONE item position falls into exactly one episode.
+        func track(_ i: Int, start: Double, dur: Double) -> ABSAudioTrack {
+            ABSAudioTrack(index: i, startOffset: start, duration: dur,
+                          contentUrl: "https://x/\(i).mp3", metadata: nil)
+        }
+        let tracks = [track(0, start: 0, dur: 100), track(1, start: 100, dur: 50)]
+        #expect(FreeCatalog.trackIndex(at: 0, tracks: tracks) == nil)     // no position
+        #expect(FreeCatalog.trackIndex(at: 42, tracks: tracks) == 0)
+        #expect(FreeCatalog.trackIndex(at: 100, tracks: tracks) == 1)
+        #expect(FreeCatalog.trackIndex(at: 999, tracks: tracks) == 1)     // past end: last
+        #expect(FreeCatalog.trackIndex(at: 42, tracks: []) == nil)
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")

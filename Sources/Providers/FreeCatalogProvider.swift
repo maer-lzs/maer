@@ -55,6 +55,13 @@ final class FreeCatalogProvider: AudioProvider {
 
     func rememberOldTimeRadio(_ identifier: String) { oldTimeRadioIds.insert(identifier) }
 
+    /// Auftrag O: is this item an OTR series bundle (the class that gets a
+    /// SHOW PAGE with an episode list instead of the detail sheet)?
+    func isOldTimeRadio(itemId: String) -> Bool {
+        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return false }
+        return oldTimeRadioIds.contains(String(itemId.dropFirst(FreeCatalog.archivePrefix.count)))
+    }
+
     /// e948444: stated licence per item id, for the detail sheet.
     private var licences: [String: String] = [:]
 
@@ -149,7 +156,8 @@ final class FreeCatalogProvider: AudioProvider {
     /// remember side reaches the detail automatically, instead of being a
     /// change at four places that is missed at three.
     private func detailMetadata(itemId: String,
-                                title: String?, authorName: String?) -> LibraryItemMetadata {
+                                title: String?, authorName: String?,
+                                description: String? = nil) -> LibraryItemMetadata {
         let known = itemsById[itemId]?.media?.metadata
         return LibraryItemMetadata(
             title: title ?? known?.title,
@@ -158,7 +166,8 @@ final class FreeCatalogProvider: AudioProvider {
             seriesName: known?.seriesName,
             genres: known?.genres,
             publishedYear: known?.publishedYear,
-            description: known?.description)
+            // Auftrag O/P2: the metadata API's description reaches the detail.
+            description: description ?? known?.description)
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -197,7 +206,8 @@ final class FreeCatalogProvider: AudioProvider {
                     // The hand-rescued title fallback is covered by the helper.
                     metadata: detailMetadata(itemId: itemId,
                                              title: meta.metadata?.title?.first,
-                                             authorName: meta.metadata?.creator?.joined),
+                                             authorName: meta.metadata?.creator?.joined,
+                                             description: meta.metadata?.description?.joined),
                     duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
                 userMediaProgress: nil)
         }

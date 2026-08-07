@@ -342,6 +342,9 @@ struct LibraryView: View {
                 case .shelf(let source, let key):
                     CatalogShelfPage(source: source, shelfKey: key,
                                      playerCoordinator: playerCoordinator)
+                case .series(let itemId):
+                    ArchiveSeriesPage(itemId: itemId,
+                                      playerCoordinator: playerCoordinator)
                 }
             }
         }

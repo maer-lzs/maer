@@ -21,6 +21,7 @@ import OSLog
 /// G8 for chips: only shelves the LOADED stock fills appear — an empty chip
 /// is an affordance without a target.
 struct CatalogSourcePage: View {
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     let source: CatalogSource
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
@@ -211,10 +212,17 @@ struct CatalogSourcePage: View {
 
     private func tile(_ item: LibraryItem) -> some View {
         // 174f855: NACHSCHLAGEN — tap = detail, long-press = Play shortcut.
+        // Auftrag O: OTR bundles push their show page (episode list).
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
-            onTap: { detailItem = item }
+            onTap: {
+                if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                    pushFreeAudiobooksRoute(.series(itemId: item.id))
+                } else {
+                    detailItem = item
+                }
+            }
         )
         .contextMenu {
             Button {
@@ -340,5 +348,154 @@ struct CatalogShelfPage: View {
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
+    }
+}
+
+
+/// Auftrag O: the show page of an archive.org SERIES bundle (Old-Time-Radio
+/// class) — the owner's question "is that really 255 hours without a pause?"
+/// answered honestly: the bundle's files ARE episodes, the app knew them all
+/// along (FreeCatalog.archiveTracks); this page finally shows them. Blueprint
+/// list form like the podcast episode lists; hundreds of episodes page in
+/// staged windows like the Fundgruben.
+struct ArchiveSeriesPage: View {
+    let itemId: String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var detail: LibraryItemDetail?
+    @State private var failed = false
+    @State private var visibleCount = 100
+
+    private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
+
+    /// O2: the ONE item position, honestly marked on the episode it falls in
+    /// — no per-episode progress system (own Auftrag if ever wanted).
+    private var lastHeardIndex: Int? {
+        let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double]
+        guard let position = saved?.first else { return nil }
+        return FreeCatalog.trackIndex(at: position, tracks: tracks)
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                if let detail {
+                    header(detail)
+                    episodeList
+                } else if failed {
+                    Text("Could not load the episode list. Tap to try again.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                        .onTapGesture { failed = false; Task { await load() } }
+                } else {
+                    ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
+                }
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: detail?.media.metadata?.title ?? ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
+        } catch {
+            failed = true
+        }
+    }
+
+    @ViewBuilder
+    private func header(_ detail: LibraryItemDetail) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 14) {
+                podcastArtwork(url: AppSession.shared.coverURL(forItemId: itemId),
+                               size: 110, corner: 12)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(verbatim: detail.media.metadata?.title ?? "")
+                        .font(.headline)
+                    if let author = detail.media.metadata?.authorName {
+                        Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    // O3: the honest second line — the episode count the tile
+                    // could not carry without a second fetch.
+                    Text("\(tracks.count) episodes")
+                        .font(.caption).foregroundStyle(.secondary)
+                    // Rights capsule: the existing graded truth, never guessed.
+                    if let licence = FreeCatalogProvider.shared.licence(forItemId: itemId) {
+                        Text(verbatim: licence)
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(.quaternary, in: Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal)
+            if let description = detail.media.metadata?.description, !description.isEmpty {
+                Text(podcastPlainText(description))
+                    .font(.footnote).foregroundStyle(.secondary)
+                    .lineLimit(6)
+                    .padding(.horizontal)
+            }
+        }
+    }
+
+    private var episodeList: some View {
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(tracks.prefix(visibleCount).enumerated()), id: \.offset) { index, track in
+                episodeRow(index: index, track: track)
+                Divider().padding(.leading, 20)
+            }
+            if visibleCount < tracks.count {
+                Color.clear.frame(height: 1)
+                    .onAppear { visibleCount += 100 }
+            }
+        }
+    }
+
+    private func episodeDurationText(_ seconds: Double) -> String {
+        let total = Int(seconds / 60)
+        if total >= 60 { return String(localized: "\(total / 60) h \(total % 60) min") }
+        return String(localized: "\(total) min")
+    }
+
+    private func episodeRow(index: Int, track: ABSAudioTrack) -> some View {
+        Button {
+            // Play THIS episode: the existing open + the existing seek — the
+            // player already handles offsets, no new playback path (O1).
+            Task {
+                await playerCoordinator.open(item: LibraryItem(
+                    id: itemId, media: detail?.media, addedAt: nil))
+                await playerCoordinator.viewModel?.seek(to: track.startOffset ?? 0)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Text(verbatim: "\(index + 1)")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
+                    .frame(width: 34, alignment: .trailing)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl))
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                    if lastHeardIndex == index {
+                        Text("Last heard")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(AppTheme.accent)
+                    }
+                }
+                Spacer(minLength: 8)
+                if let duration = track.duration, duration > 0 {
+                    // Same wording family as durationText(_:) — minutes-based.
+                    Text(verbatim: episodeDurationText(duration))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

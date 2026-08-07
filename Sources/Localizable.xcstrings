@@ -2522,6 +2522,26 @@
         }
       }
     },
+    "Could not load the episode list. Tap to try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgenliste konnte nicht geladen werden. Tippen zum erneuten Versuch."
+          }
+        }
+      }
+    },
+    "Last heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt geh\u00f6rt"
+          }
+        }
+      }
+    },
     "Hide Channel" : {
       "localizations" : {
         "de" : {

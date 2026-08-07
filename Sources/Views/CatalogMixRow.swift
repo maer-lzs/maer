@@ -15,6 +15,7 @@ import SwiftUI
 /// prominent Play; long-press keeps Play as the shortcut for catalog tiles.
 struct CatalogMixRow: View {
     let tiles: [CatalogMix.Tile]
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detailItem: LibraryItem?
 
@@ -47,7 +48,15 @@ struct CatalogMixRow: View {
             FreeCatalogBookTile(
                 item: item,
                 placeholderSystemImage: "waveform.and.mic",
-                onTap: { detailItem = item }
+                // Auftrag O: OTR bundles push their show page (episode list);
+                // every other catalog item keeps the detail sheet.
+                onTap: {
+                    if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                        pushFreeAudiobooksRoute(.series(itemId: item.id))
+                    } else {
+                        detailItem = item
+                    }
+                }
             )
             .contextMenu {
                 Button {

@@ -103,6 +103,8 @@ nonisolated enum ArchiveOrgClient {
             // 3ac9183: same list-capable fields on the metadata endpoint.
             let title: ArchiveStringList?
             let creator: ArchiveStringList?
+            /// Auftrag O/P2: the item description for the series/detail pages.
+            let description: ArchiveStringList?
         }
         let files: [ArchiveFile]?
         let metadata: Meta?

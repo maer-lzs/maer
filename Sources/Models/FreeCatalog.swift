@@ -577,6 +577,33 @@ nonisolated enum FreeCatalog {
         segment.addingPercentEncoding(withAllowedCharacters: pathSegmentAllowed) ?? segment
     }
 
+    /// Auftrag O: display title of one series track — the FILE name is the
+    /// episode title in archive.org series bundles (percent-decoded, extension
+    /// dropped). Pure, so the episode list never guesses.
+    static func trackDisplayTitle(contentUrl: String) -> String {
+        let last = contentUrl.split(separator: "/").last.map(String.init) ?? contentUrl
+        let decoded = last.removingPercentEncoding ?? last
+        var name = decoded
+        if let dot = name.lastIndex(of: "."), dot > name.startIndex {
+            name = String(name[..<dot])
+        }
+        return name.replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Auftrag O2: which track the ONE item position falls into (honest
+    /// minimal marking — no per-episode progress system). nil = no position
+    /// or before the first track.
+    static func trackIndex(at position: Double, tracks: [ABSAudioTrack]) -> Int? {
+        guard position > 0 else { return nil }
+        for (i, track) in tracks.enumerated() {
+            let start = track.startOffset ?? 0
+            let end = start + (track.duration ?? 0)
+            if position >= start && position < end { return i }
+        }
+        return tracks.isEmpty ? nil : tracks.count - 1
+    }
+
     static func archiveTracks(identifier: String, files: [ArchiveFile]) -> [ABSAudioTrack] {
         var start: Double = 0
         var out: [ABSAudioTrack] = []
