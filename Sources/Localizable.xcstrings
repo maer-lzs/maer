@@ -2666,12 +2666,12 @@
         }
       }
     },
-    "Independent Audio Drama (USA)" : {
+    "Independent Audio Drama (English)" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unabhängige Hörspiel-Reihen (USA)"
+            "value" : "Unabhängige Hörspiel-Reihen (Englisch)"
           }
         }
       }

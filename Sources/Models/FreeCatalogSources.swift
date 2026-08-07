@@ -56,7 +56,9 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .oerr:          String(localized: "Public Broadcast Radio Plays")
         case .escapeArtists: String(localized: "Story Podcasts (English)")
-        case .usIndies:      String(localized: "Independent Audio Drama (USA)")
+        // d417967: the cut is the English-speaking world (UK's Rusty Quill,
+        // AU candidates) — "(USA)" stopped being true with N4, D2 rule.
+        case .usIndies:      String(localized: "Independent Audio Drama (English)")
         case .oldTimeRadio:  "Old Time Radio"
         case .librivox:      "LibriVox"
         case .archiveBooks:  "Internet Archive"

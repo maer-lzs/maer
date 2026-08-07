@@ -152,7 +152,10 @@ nonisolated final class MaerUITests: XCTestCase {
                                 "UICTContentSizeCategoryAccessibilityExtraLarge"]
         app.launch()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        // Same fold rule as testHomeAndTabSwitching: AX3-sized tiles plus the
+        // grown Entdecken rows can push the seed marker below the lazy root's
+        // fold — scroll to it instead of pinning a layout.
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
         snap(app, "home-ax3")
         let music = app.buttons["tab-music"].firstMatch
         if music.waitForExistence(timeout: 10) { music.tap() }

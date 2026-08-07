@@ -85,5 +85,25 @@ nonisolated enum HoerspielCuration {
         // WITHOUT www — www.castofwonders.org serves a 10-item stub.
         Entry(title: "Cast of Wonders", author: "Escape Artists",
               feedURL: "https://castofwonders.org/feed/podcast/", language: "en"),
+        // N4 (08.08.2026, measured): the strongest independent serialized
+        // dramas — full feeds, publisher hosting addresses (megaphone/art19/
+        // acast/libsyn are the shows' OWN hosts, not tracking wrappers),
+        // enclosure spot checks 200. The Magnus Archives is BRITISH (Rusty
+        // Quill) — the row title says "(English)" since d417967 decided the
+        // cut is the English-speaking world.
+        Entry(title: "Welcome to Night Vale", author: "Night Vale Presents",
+              feedURL: "https://feeds.megaphone.fm/SBP4591212513", language: "en"),
+        Entry(title: "The Bright Sessions", author: "Atypical Artists",
+              feedURL: "https://rss.art19.com/the-bright-sessions", language: "en"),
+        Entry(title: "Wolf 359", author: "Kinda Evil Genius Productions",
+              feedURL: "https://feeds.megaphone.fm/wolf359radio", language: "en"),
+        Entry(title: "ars PARADOXICA", author: "ars PARADOXICA",
+              feedURL: "https://rss.libsyn.com/shows/108705/destinations/591779.xml", language: "en"),
+        Entry(title: "We're Alive", author: "Wayland Productions",
+              feedURL: "https://feeds.acast.com/public/shows/d1b39068-c10f-5817-8324-88ba173183cd", language: "en"),
+        Entry(title: "The Magnus Archives", author: "Rusty Quill",
+              feedURL: "https://feeds.acast.com/public/shows/b6085bcd-3542-4a43-b6a8-021e3fd251b8", language: "en"),
+        Entry(title: "The White Vault", author: "Fool and Scholar Productions",
+              feedURL: "https://feeds.megaphone.fm/SBP7754210900", language: "en"),
     ]
 }
