@@ -18,6 +18,10 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     case allPopular
     /// Paket 3: one source's full page (fundgrube + the axis that carries).
     case source(CatalogSource)
+    /// H erweitert (f374116): one shelf of a genre-carrying source — the
+    /// full grid behind a genre row (shelf = FILTER over the source's stock,
+    /// no second client).
+    case shelf(CatalogSource, String)
 }
 
 /// Paket 2: the ONE feed row of the catalog surfaces — show-preview push +
@@ -279,7 +283,13 @@ struct FreeAudiobooksPage: View {
         VStack(alignment: .leading, spacing: 10) {
             // 12b5918: Apple is the SENDER (caption line), not a mechanic in
             // the title; tiles like the rest of the page (list form = search).
-            RowHeading.plain("Popular Radio-Play Podcasts")
+// H: two-stage — the heading leads to the charts page
+            // (genres as tile rows there); the chips HERE stay as the
+            // preview row's quick filter.
+            RowHeading(title: "Popular Radio-Play Podcasts",
+                       total: chartResults.count,
+                       shown: RowPreview.cut(chartResults).count,
+                       destination: PodcastRoute.charts)
             Text(verbatim: "Apple Podcasts")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -297,7 +307,7 @@ struct FreeAudiobooksPage: View {
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(chartResults, id: \.feedURL) { result in
+                        ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
                             RecommendationTile(result: result)
                                 .containerRelativeFrame(.horizontal,
                                     count: CardMetrics.recommendationColumns(regularWidth: false),

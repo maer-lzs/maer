@@ -330,7 +330,14 @@ nonisolated enum FreeCatalog {
         case ..<1923:   return true
         case ...1946:   return currentYear >= year + 101
         case ...1956:   return currentYear >= year + 111
-        default:        return currentYear >= 2068
+        case ...1972:   return currentYear >= 2068
+        default:
+            // 9a5d1fd Rest-Korn: recordings AFTER 1972 follow regular
+            // copyright (95 years from publication), not the pre-1972
+            // 2067 sunset — the old default would have claimed PD for a
+            // 1980 recording come 2068. Our historical collections never
+            // reach this branch; correctness costs nothing.
+            return currentYear >= year + 96
         }
     }
 

@@ -265,14 +265,15 @@ RowHeading(title: "Continue", font: .title2,
     /// split, tested), which is the owner's "no tile in both tabs".
     @ViewBuilder
     private var hoerspieleSection: some View {
-        // isActive gate: this row is STATICALLY filled and would render at app
-        // start inside the kept-alive but HIDDEN tab — where a tile row hangs
-        // the main thread in a layout loop (adbc018 class; measured three
-        // times: TabPill journey 281s instead of ~20 whenever the podcast tab
-        // was mounted invisible, green the moment it is the visible one; both
-        // width strategies hung, so the gate is on VISIBILITY, not sizing).
-        // Every other row in this tab is fetch-filled and thus empty until the
-        // tab is visible — this one needs the explicit gate instead.
+        // 9a5d1fd korrigiert: my earlier claim here (visibility gate fixes
+        // the hang) was WRONG — the gate did not help; the hang reproduced
+        // with every tile-row variant and disappeared only without the row
+        // (bisect). the reviewer's sample analysis: aggregated Lazy churn in SwiftUI,
+        // app code nearly absent; structure hypothesis is the scroll
+        // REPORTING (guard sits in the message, observation stays installed —
+        // third appearance of the geometry class). The row ships in the
+        // stable heading form until the measured root fix lands; the gate
+        // stays as belt, not as explanation.
         if freeCatalogsMaster && isActive {
             VStack(alignment: .leading, spacing: 10) {
                 // 733ac2a asked for a TILE row here — built three ways
@@ -722,5 +723,125 @@ struct PodcastDownloadsPage: View {
         }
         .navigationTitle(Text("Downloaded"))
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+
+/// H (7749411): the charts page — one tile ROW per genre of the measured
+/// hoerspielChips axis, headed by a counting chevron onto the genre grid.
+/// Same chart client as the chips (no second load path); genres are
+/// STRUCTURE here, not filter (the chips stay on the overview only).
+struct RadioPlayChartsPage: View {
+    @State private var byChip: [String: [PodcastSearchResult]] = [:]
+    @State private var loading = false
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                Text(verbatim: "Apple Podcasts")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                ForEach(CatalogGenreAxis.hoerspielChips) { chip in
+                    if let results = byChip[chip.key], !results.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            RowHeading(title: "", verbatimTitle: chip.title,
+                                       total: results.count,
+                                       shown: RowPreview.cut(results).count,
+                                       destination: PodcastRoute.chartGenre(chip.key))
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: 12) {
+                                    ForEach(RowPreview.cut(results), id: \.feedURL) { result in
+                                        RecommendationTile(result: result)
+                                            .containerRelativeFrame(.horizontal,
+                                                count: CardMetrics.recommendationColumns(regularWidth: false),
+                                                span: 1, spacing: 12)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                            .scrollClipDisabled()
+                        }
+                    }
+                }
+                if loading && byChip.isEmpty {
+                    ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+                }
+            }
+            .padding(.top, TabContentLayout.topInset)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Popular Radio-Play Podcasts"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard byChip.isEmpty else { return }
+            #if DEBUG
+            if UITestSeed.isActive { return }
+            #endif
+            loading = true
+            defer { loading = false }
+            let directory = ITunesDirectory()
+            let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+            let feeds = Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            let titles = shows.map(\.title)
+            for chip in CatalogGenreAxis.hoerspielChips {
+                var pool: [PodcastSearchResult] = []
+                for genreId in chip.genreIds {
+                    pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
+                }
+                byChip[chip.key] = PodcastRecommendationsStore.excludingSubscribed(
+                    pool, subscribedNormalizedFeeds: feeds, subscribedTitles: titles)
+            }
+        }
+    }
+}
+
+/// H stage 3: ONE parameterised genre page — the full chart grid.
+/// NACHSCHLAGEN (tap = show preview, subscribing lives there).
+struct ChartGenrePage: View {
+    let chipKey: String
+    @State private var results: [PodcastSearchResult] = []
+    @State private var loading = false
+
+    private var chip: CatalogGenreAxis.Chip? {
+        CatalogGenreAxis.hoerspielChips.first { $0.key == chipKey }
+    }
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)]
+
+    var body: some View {
+        ScrollView {
+            if loading && results.isEmpty {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                    ForEach(results, id: \.feedURL) { result in
+                        RecommendationTile(result: result)
+                    }
+                }
+                .padding(.horizontal)
+                .bottomBarClearance()
+            }
+        }
+        .navigationTitle(Text(verbatim: chip?.title ?? ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard results.isEmpty, let chip else { return }
+            #if DEBUG
+            if UITestSeed.isActive { return }
+            #endif
+            loading = true
+            defer { loading = false }
+            let directory = ITunesDirectory()
+            var pool: [PodcastSearchResult] = []
+            for genreId in chip.genreIds {
+                pool += (try? await directory.topPodcasts(genreId: genreId)) ?? []
+            }
+            let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
+            results = PodcastRecommendationsStore.excludingSubscribed(
+                pool,
+                subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
+                subscribedTitles: shows.map(\.title))
+        }
     }
 }

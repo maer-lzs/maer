@@ -29,6 +29,10 @@ enum PodcastRoute: Hashable {
     /// expansion is not a page).
     case latestAll
     case downloadsAll
+    /// H (7749411): the two-stage chart form — charts page (genres as tile
+    /// rows) and one parameterised genre page (full grid).
+    case charts
+    case chartGenre(String)
 }
 
 extension View {
@@ -62,6 +66,10 @@ extension View {
                 LatestEpisodesPage(playerCoordinator: playerCoordinator)
             case .downloadsAll:
                 PodcastDownloadsPage(playerCoordinator: playerCoordinator)
+            case .charts:
+                RadioPlayChartsPage()
+            case .chartGenre(let key):
+                ChartGenrePage(chipKey: key)
             case .history:
                 PodcastHistoryView(playerCoordinator: playerCoordinator)
             }

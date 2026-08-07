@@ -334,6 +334,9 @@ struct LibraryView: View {
                     CatalogSourcePage(source: .librivox, playerCoordinator: playerCoordinator)
                 case .source(let source):
                     CatalogSourcePage(source: source, playerCoordinator: playerCoordinator)
+                case .shelf(let source, let key):
+                    CatalogShelfPage(source: source, shelfKey: key,
+                                     playerCoordinator: playerCoordinator)
                 }
             }
         }

@@ -798,6 +798,13 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.rightsNote(year: "1947", currentYear: 2048) == .termsApply(year: "1947"))
         // … sondern erst 2058.
         #expect(FreeCatalog.rightsNote(year: "1947", currentYear: 2058) == .publicDomain)
+        // 9a5d1fd: 1957–1972 warten auf den 2067-Sunset …
+        #expect(FreeCatalog.rightsNote(year: "1970", currentYear: 2067) == .termsApply(year: "1970"))
+        #expect(FreeCatalog.rightsNote(year: "1970", currentYear: 2068) == .publicDomain)
+        // … aber NACH 1972 gilt regulaeres Copyright — 1980 ist 2068 NICHT
+        // frei (der alte default haette es behauptet), sondern erst 2076.
+        #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2068) == .termsApply(year: "1980"))
+        #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2076) == .publicDomain)
         // the reviewer's Beispiele: in der Schweiz frei, in den USA geschuetzt —
         // genau deshalb Fristen statt Urteil.
         #expect(FreeCatalog.rightsNote(year: "1945", currentYear: 2026) == .termsApply(year: "1945"))

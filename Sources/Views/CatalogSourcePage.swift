@@ -107,9 +107,15 @@ struct CatalogSourcePage: View {
 
     private var catalogGrid: some View {
         LazyVStack(alignment: .leading, spacing: 14) {
-            // 9ef73a4/48e786d: the chips moved HERE from the overview — the
-            // control sits on the surface it acts on (same rule as sorting).
-            if !shelves.isEmpty { shelfRow }
+            // f374116 (H erweitert): genres are the STANDARD FORM where the
+            // axis carries — tile row per filled shelf, counting chevron onto
+            // the shelf grid. The chips died here (structure beats filter);
+            // shelf = filter over the loaded stock, no second client.
+            if hasChips {
+                ForEach(shelves, id: \.key) { shelf in
+                    genreRow(shelf)
+                }
+            }
             // LibriVox keeps its "new additions" as a second lens on the
             // same source — the overview shows one row per source only.
             if source == .librivox, !store.sourceRows.librivoxNew.isEmpty {
@@ -140,6 +146,32 @@ struct CatalogSourcePage: View {
             if isLoading { ProgressView().frame(maxWidth: .infinity).padding() }
         }
         .padding(.top, TabContentLayout.topInset)
+    }
+
+    /// H: one shelf's preview row (filter over `items`).
+    @ViewBuilder
+    private func genreRow(_ shelf: (key: String, title: String)) -> some View {
+        let filtered = items.filter { shelvesOf($0).contains(shelf.key) }
+        if !filtered.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                RowHeading(title: "", verbatimTitle: shelf.title,
+                           total: filtered.count,
+                           shown: RowPreview.cut(filtered).count,
+                           destination: FreeAudiobooksRoute.shelf(source, shelf.key))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(RowPreview.cut(filtered)) { item in
+                            tile(item)
+                                .containerRelativeFrame(.horizontal,
+                                    count: CardMetrics.recommendationColumns(regularWidth: false),
+                                    spacing: 14)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
+        }
     }
 
     private var shelfRow: some View {
@@ -245,5 +277,63 @@ struct CatalogSourcePage: View {
         page += 1
         if new.isEmpty { reachedEnd = true }
         Logger.library.notice("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) items=\(items.count)")
+    }
+}
+
+
+/// H erweitert: ONE parameterised shelf grid for the genre-carrying catalog
+/// sources — the full filtered stock, staged loading rides the source page's
+/// own paging (seeded from the store like CatalogSourcePage).
+struct CatalogShelfPage: View {
+    let source: CatalogSource
+    let shelfKey: String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var store = FreeCatalogStore.shared
+    @State private var detailItem: LibraryItem?
+
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    private var title: String {
+        CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title ?? ""
+    }
+
+    private var items: [LibraryItem] {
+        let base: [LibraryItem] = switch source {
+        case .librivox:  store.sourceRows.librivoxPopular + store.sourceRows.librivoxNew
+        case .gutenberg: store.sourceRows.gutenberg
+        default:         []
+        }
+        return base.filter { item in
+            let genres = item.media?.metadata?.genres ?? []
+            let shelves = source == .gutenberg
+                ? CatalogGenreAxis.shelves(forSubjects: genres)
+                : CatalogGenreAxis.shelves(forLibriVoxGenres: genres)
+            return shelves.contains(shelfKey)
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(items) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        onTap: { detailItem = item })
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: title))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await store.ensureSourcesLoaded() }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
     }
 }

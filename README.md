@@ -114,8 +114,12 @@ Mär talks to servers through their standard APIs, so it works with more than on
 - **Funkwhale** — should work: its Subsonic dialect ships numeric IDs and partial endpoints (handled leniently); sign in with a Funkwhale **application token** as the password. Not yet verified against a live Funkwhale instance.
 - **Jellyfin** — built in as a second music backend, currently **in verification** against a real server; treat it as beta.
 - **RSS / Podcasting 2.0** feeds, the **PodcastIndex** directory, and the open **Radio Browser** catalog for stations.
+- **PodFetch** — verified as an RSS/gpodder family member (the tooling agent's matrix, wave 2).
+- **Gonic** and **Airsonic** — verified via the Subsonic protocol probe (the tooling agent's matrix, wave 2).
+- **Pinchflat** — verified as a plain RSS feed family (12/12 real-feed probe, the tooling agent's matrix, wave 3): its per-channel feeds play like any podcast. A deeper **server binding** (channel list from the server, YouTube provenance) is being built as its own row and will be verified separately — the feed row above stays as-is.
+- Deliberately **not** verified: **Podsync** (needs the user's own Google API key — out of scope for a probe) and **ytdl-sub** (produces no RSS; not part of this family).
 
-Only rows the compatibility matrix actually covers are claimed as verified; everything else is "should work" at best.
+Only rows the compatibility matrix actually covers are claimed as verified; everything else is "should work" at best. Source of truth for the verified rows is the compatibility matrix in the delivery repo.
 
 ## Core sync rule
 
