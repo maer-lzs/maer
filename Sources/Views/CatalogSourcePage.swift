@@ -30,6 +30,8 @@ struct CatalogSourcePage: View {
     @State private var page = 1
     @State private var isLoading = false
     @State private var reachedEnd = false
+    /// P1: language-fallback as SESSION state (one truth, held here).
+    @State private var languageFallback = false
     @State private var detailItem: LibraryItem?
     @State private var selectedShelf: String?
 
@@ -37,7 +39,12 @@ struct CatalogSourcePage: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     /// Chips only where the axis carries (measured per source, 9ef73a4).
-    private var hasChips: Bool { source == .librivox || source == .gutenberg }
+    /// P5/P7: the genre scaffolding covers the measured sources — LibriVox,
+    /// Gutenberg (H), IA audiobooks (26% shelve) and OTR (40% shelve).
+    private var hasChips: Bool {
+        source == .librivox || source == .gutenberg
+            || source == .archiveBooks || source == .oldTimeRadio
+    }
 
     private func genres(of item: LibraryItem) -> [String] {
         item.media?.metadata?.genres ?? []
@@ -55,9 +62,11 @@ struct CatalogSourcePage: View {
     }
 
     private func shelvesOf(_ item: LibraryItem) -> [String] {
-        source == .gutenberg
-            ? CatalogGenreAxis.shelves(forSubjects: genres(of: item))
-            : CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item))
+        // LibriVox speaks its own genre names; every archive-subject family
+        // (Gutenberg LCSH, IA, OTR) goes through the subjects branch.
+        source == .librivox
+            ? CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item))
+            : CatalogGenreAxis.shelves(forSubjects: genres(of: item))
     }
 
     /// The visible cut: everything, or one shelf. An item WITHOUT genre data
@@ -259,16 +268,25 @@ struct CatalogSourcePage: View {
             new = docs.compactMap { provider.remember(popular: $0) }
             if docs.count < pageSize { reachedEnd = true }
         case .archiveBooks:
-            guard let docs = try? await ArchiveOrgClient.audiobooksOutsideLibriVox(
-                rows: pageSize, languageCodes: codes, page: page)
+            // P1: the fallback is a session state — once fallen back, deeper
+            // pages browse the unfiltered corpus too (the returned flag
+            // rides back in; the old page-1-only guard ended the trove after
+            // one page for German users).
+            guard let result = try? await ArchiveOrgClient.audiobooksOutsideLibriVox(
+                rows: pageSize, languageCodes: codes, page: page, unfiltered: languageFallback)
             else { reachedEnd = true; return }
-            new = docs.compactMap { provider.remember(popular: $0) }
-            if docs.count < pageSize { reachedEnd = true }
+            languageFallback = result.unfiltered
+            new = result.docs.compactMap { provider.remember(popular: $0) }
+            if result.docs.count < pageSize { reachedEnd = true }
         case .gutenberg:
-            // gutendex pages at 32; same language-fallback rule as the row.
-            var books = (try? await GutenbergClient.audiobooks(languages: codes, page: page)) ?? []
-            if books.isEmpty, page == 1, !codes.isEmpty {
+            // gutendex pages at 32; P1: same session-state rule as archive —
+            // the same corner the reviewer asked to check (a first-page fallback that
+            // never continued).
+            var books = (try? await GutenbergClient.audiobooks(
+                languages: languageFallback ? [] : codes, page: page)) ?? []
+            if books.isEmpty, page == 1, !codes.isEmpty, !languageFallback {
                 books = (try? await GutenbergClient.audiobooks(languages: [], page: 1)) ?? []
+                if !books.isEmpty { languageFallback = true }
             }
             new = books.compactMap { provider.remember(gutenberg: $0) }
             if books.isEmpty { reachedEnd = true }
@@ -300,6 +318,7 @@ struct CatalogSourcePage: View {
 struct CatalogShelfPage: View {
     let source: CatalogSource
     let shelfKey: String
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
@@ -311,16 +330,19 @@ struct CatalogShelfPage: View {
     }
 
     private var items: [LibraryItem] {
+        // P5/P7: the shelf grid covers every scaffolded source.
         let base: [LibraryItem] = switch source {
-        case .librivox:  store.sourceRows.librivoxPopular + store.sourceRows.librivoxNew
-        case .gutenberg: store.sourceRows.gutenberg
-        default:         []
+        case .librivox:     store.sourceRows.librivoxPopular + store.sourceRows.librivoxNew
+        case .gutenberg:    store.sourceRows.gutenberg
+        case .archiveBooks: store.sourceRows.archiveBooks
+        case .oldTimeRadio: store.sourceRows.oldTimeRadio
+        default:            []
         }
         return base.filter { item in
             let genres = item.media?.metadata?.genres ?? []
-            let shelves = source == .gutenberg
-                ? CatalogGenreAxis.shelves(forSubjects: genres)
-                : CatalogGenreAxis.shelves(forLibriVoxGenres: genres)
+            let shelves = source == .librivox
+                ? CatalogGenreAxis.shelves(forLibriVoxGenres: genres)
+                : CatalogGenreAxis.shelves(forSubjects: genres)
             return shelves.contains(shelfKey)
         }
     }
@@ -331,7 +353,15 @@ struct CatalogShelfPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
-                        onTap: { detailItem = item })
+                        // P7/O: OTR bundles in shelf grids push their show
+                        // page too — same tap class everywhere.
+                        onTap: {
+                            if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                                pushFreeAudiobooksRoute(.series(itemId: item.id))
+                            } else {
+                                detailItem = item
+                            }
+                        })
                     .contextMenu {
                         Button {
                             Task { await playerCoordinator.open(item: item) }

@@ -2542,6 +2542,16 @@
         }
       }
     },
+    "Audiobooks (Internet Archive)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "H\u00f6rb\u00fccher (Internet Archive)"
+          }
+        }
+      }
+    },
     "Hide Channel" : {
       "localizations" : {
         "de" : {
@@ -5882,6 +5892,36 @@
         }
       }
     },
+    "Music & Variety" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik & Variet\u00e9"
+          }
+        }
+      }
+    },
+    "Public domain (per source)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei (laut Quelle)"
+          }
+        }
+      }
+    },
+    "Religion" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Religion"
+          }
+        }
+      }
+    },
     "Sort By" : {
       "localizations" : {
         "de" : {
@@ -7092,6 +7132,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Will use your %1$@ login (from “%2$@”)"
+          }
+        }
+      }
+    },
+    "Western" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Western"
           }
         }
       }

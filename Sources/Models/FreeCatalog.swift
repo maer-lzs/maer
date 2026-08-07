@@ -261,7 +261,12 @@ nonisolated enum FreeCatalog {
         guard let url, !url.isEmpty else { return nil }
         let lower = url.lowercased()
         if lower.contains("publicdomain") || lower.contains("mark/1.0") {
-            return String(localized: "Public domain")
+            // P6a (063219c): claim and derived fact stop sharing one word —
+            // an uploader's PD DECLARATION renders as "per source"; the plain
+            // "Public domain" stays reserved for OUR term-based derivation
+            // (rightsNote). The MacLean class would never have stood under
+            // our word. CC licences are licence statements and stay as-is.
+            return String(localized: "Public domain (per source)")
         }
         guard let range = lower.range(of: "creativecommons.org/licenses/") else { return url }
         let rest = lower[range.upperBound...].split(separator: "/").first.map(String.init) ?? ""
@@ -274,6 +279,28 @@ nonisolated enum FreeCatalog {
     /// the catalog (measured example: `LibriVoxHorror_2007-2017`). Identifier,
     /// title and creator carry the name, so a fold match is enough; being
     /// conservative here costs at most a duplicate-free false negative.
+    /// P4 (1dfdca7, freigegeben nach Voll-Messung über 4.257 Titel): the
+    /// curated EXCLUSION denylist — data, not a code branch per case (same
+    /// mechanism class as the shellac NS filter). Exactly these six: all
+    /// Alistair-MacLean novels of one uploader (1955–1983 commercial works
+    /// with an invented public-domain dedication; the wider bestseller-author
+    /// probe found nothing else). The measured "PD contradicts year" rule was
+    /// withdrawn (207 false alarms — the year field holds the RECORDING
+    /// year). A denylist is never complete — P6b's periodic probe feeds it.
+    static let curatedExclusions: Set<String> = [
+        "BearislandAM", "IceStationZebraAM", "AthabascaAM",
+        "HMSUlyssesAM", "PuppetOnAChainAM", "AlistairMacleanTheLastFrontierChapter5",
+    ]
+
+    /// The one curation gate of the archive audiobook row: not a LibriVox
+    /// duplicate AND not on the exclusion denylist (P4).
+    static func isCuratedArchiveDoc(_ doc: ArchivePopularDoc) -> Bool {
+        guard let id = doc.identifier, !curatedExclusions.contains(id) else {
+            return doc.identifier == nil ? isNotLibriVoxDuplicate(doc) : false
+        }
+        return isNotLibriVoxDuplicate(doc)
+    }
+
     static func isNotLibriVoxDuplicate(_ doc: ArchivePopularDoc) -> Bool {
         let haystack = [doc.identifier, doc.title?.joined, doc.creator?.joined]
             .compactMap { $0 }.joined(separator: " ").lowercased()

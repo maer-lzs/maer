@@ -579,8 +579,10 @@ struct CatalogGenreAxisTests {
                 == "CC BY-NC-ND")
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/by-nc-sa/3.0/us/")
                 == "CC BY-NC-SA")
+        // P6a: an uploader's PD DECLARATION names its source — the plain
+        // "Public domain" stays reserved for our term-based derivation.
         #expect(FreeCatalog.licenceLabel("http://creativecommons.org/licenses/publicdomain/")
-                == String(localized: "Public domain"))
+                == String(localized: "Public domain (per source)"))
         // An unknown form keeps its URL rather than being flattened to "free".
         #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
                 == "https://example.org/some-licence")
@@ -933,6 +935,56 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.trackIndex(at: 100, tracks: tracks) == 1)
         #expect(FreeCatalog.trackIndex(at: 999, tracks: tracks) == 1)     // past end: last
         #expect(FreeCatalog.trackIndex(at: 42, tracks: []) == nil)
+    }
+
+    @Test("P1: Sprach-Rueckfall ist Sitzungszustand — Seite 2 blaettert ungefiltert weiter")
+    func archiveFallbackPagesOn() async throws {
+        // Page 1: the language-filtered query is empty, the base query has
+        // stock — the call reports the fallback.
+        func doc(_ id: String) -> ArchivePopularDoc {
+            ArchivePopularDoc(identifier: id, title: nil, creator: nil,
+                              downloads: nil, runtime: nil, licenseurl: nil,
+                              year: nil, subject: nil)
+        }
+        let page1 = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+            rows: 20, languageCodes: ["de"], page: 1,
+            fetch: { query, _, _ in query.contains("language:") ? [] : [doc("a")] })
+        #expect(page1.docs.map(\.identifier) == ["a"])
+        #expect(page1.unfiltered)
+        // Page 2 WITH the session flag: no filtered query fires at all.
+        var queries: [String] = []
+        let page2 = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+            rows: 20, languageCodes: ["de"], page: 2, unfiltered: true,
+            fetch: { query, _, _ in queries.append(query); return [doc("b")] })
+        #expect(page2.docs.map(\.identifier) == ["b"])
+        #expect(queries.count == 1 && !queries[0].contains("language:"))
+        // Filtered mode with stock: deeper empty pages legitimately end.
+        let end = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+            rows: 20, languageCodes: ["de"], page: 3,
+            fetch: { _, _, _ in [] })
+        #expect(end.docs.isEmpty && !end.unfiltered)
+    }
+
+    @Test("P4: Sperrliste — die sechs Kennungen fallen, Nachbarn bleiben")
+    func curatedExclusions() {
+        func doc(_ id: String) -> ArchivePopularDoc {
+            ArchivePopularDoc(identifier: id, title: nil, creator: nil,
+                              downloads: nil, runtime: nil, licenseurl: nil,
+                              year: nil, subject: nil)
+        }
+        #expect(!FreeCatalog.isCuratedArchiveDoc(doc("HMSUlyssesAM")))
+        #expect(!FreeCatalog.isCuratedArchiveDoc(doc("BearislandAM")))
+        #expect(FreeCatalog.isCuratedArchiveDoc(doc("art_of_war_full")))
+    }
+
+    @Test("P5/P7: neue Regale — IA-Religion, OTR-Western/Suspense/Variete")
+    func newShelves() {
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Religion"]) == ["religion"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["western"]) == ["western"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Suspense"]) == ["horror"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["variety"]) == ["music"])
+        // Boilerplate stays unmapped — the axis is conservative.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["old time radio", "otrr set"]).isEmpty)
     }
 
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")

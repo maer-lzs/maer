@@ -189,24 +189,30 @@ nonisolated enum ArchiveOrgClient {
     /// LibriVox recordings slip through `NOT collection:librivoxaudio` — the
     /// identifier/creator carries "librivox", so it is excluded here rather
     /// than showing the same content twice.
-    static func audiobooksOutsideLibriVox(rows: Int, languageCodes: [String],
-                                          page: Int = 1) async throws -> [ArchivePopularDoc] {
+    /// P1 (7e03298): the language fallback is a SESSION state, not a page
+    /// property — the old first-page-only guard ended the 4,257-item trove
+    /// after ~20 titles for German users (page 2 queried WITH the filter
+    /// again, got nothing, read as reachedEnd). The pager passes the returned
+    /// `unfiltered` back in, so deeper pages keep browsing the unfiltered
+    /// corpus once the fallback happened (one truth, held by the caller).
+    /// `fetch` is injectable so the decision chain is unit-testable.
+    static func audiobooksOutsideLibriVox(
+        rows: Int, languageCodes: [String], page: Int = 1, unfiltered: Bool = false,
+        fetch: (String, Int, Int) async throws -> [ArchivePopularDoc] = { try await popular(query: $0, rows: $1, page: $2) }
+    ) async throws -> (docs: [ArchivePopularDoc], unfiltered: Bool) {
         let base = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
             + " AND mediatype:(audio) AND licenseurl:[* TO *]"
         // 9ef73a4 Befund 3: for German users this row was permanently EMPTY —
         // every German audiobook in the collection is a LibriVox title
-        // (measured: (deu OR ger) with the NOT clause ⇒ 0, without ⇒ 844), and
-        // unlike the LibriVox row this one never fell back. Same rule now,
-        // same reasoning ("an empty row would be worse"), same shape as
-        // popularLibriVox: fall back to unfiltered on the FIRST page only —
-        // deeper pages legitimately end.
-        if let language = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
-            let filtered = try await popular(query: base + " AND \(language)", rows: rows, page: page)
-            if !filtered.isEmpty { return filtered.filter { FreeCatalog.isNotLibriVoxDuplicate($0) } }
-            guard page == 1 else { return [] }
+        // (measured: (deu OR ger) with the NOT clause ⇒ 0, without ⇒ 844).
+        if !unfiltered, let language = FreeCatalog.archiveLanguageClause(codes: languageCodes) {
+            let filtered = try await fetch(base + " AND \(language)", rows, page)
+            if !filtered.isEmpty { return (filtered.filter { FreeCatalog.isCuratedArchiveDoc($0) }, false) }
+            // Filtered mode with stock on deeper pages legitimately ends.
+            guard page == 1 else { return ([], false) }
         }
-        let docs = try await popular(query: base, rows: rows, page: page)
-        return docs.filter { FreeCatalog.isNotLibriVoxDuplicate($0) }
+        let docs = try await fetch(base, rows, page)
+        return (docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }, true)
     }
 
     /// E3: popular free classical recordings (same client, Regel 2).

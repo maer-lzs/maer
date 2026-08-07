@@ -104,6 +104,10 @@ nonisolated enum CatalogGenreAxis {
         ("biography", String(localized: "Biographies")),
         ("comedy", String(localized: "Comedy")),
         ("philosophy", String(localized: "Philosophy")),
+        // P5/P7: the measured new shelves (IA religion, OTR western + variety).
+        ("religion", String(localized: "Religion")),
+        ("western", String(localized: "Western")),
+        ("music", String(localized: "Music & Variety")),
     ]
 
     /// 9ef73a4: Gutenberg LCSH subjects → the SAME shelves. Regel 2: one
@@ -130,6 +134,29 @@ nonisolated enum CatalogGenreAxis {
         "folklore": "fairytales",
         "autobiography": "biography",
         "biography": "biography",
+        // P5 (1dfdca7, full-stock measurement over 4,257 IA titles — 26%
+        // shelve): the IA subjects speak plainly; philosophy/poetry already
+        // map via librivoxAxis, religion is a NEW shelf (80 titles).
+        "religion": "religion",
+        "christianity": "religion",
+        "bible": "religion",
+        "theology": "religion",
+        // P7 (38511f1, full-stock measurement over 2,314 OTR bundles — 40%
+        // shelve): plain OTR subject terms; suspense counts into the horror
+        // shelf (the reviewer's Horror/Suspense 114 is ONE shelf), western and
+        // music/variety are NEW shelves (82 / 159 bundles).
+        "crime": "crime",
+        "comedy": "comedy",
+        "horror": "horror",
+        "suspense": "horror",
+        "thriller": "horror",
+        "western": "western",
+        "westerns": "western",
+        "music": "music",
+        "musical": "music",
+        "variety": "music",
+        "sci-fi": "scifi",
+        "children": "children",
     ]
 
     /// Gutenberg subjects → shelves, over BOTH spelling families.

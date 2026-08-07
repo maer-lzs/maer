@@ -61,7 +61,9 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         case .usIndies:      String(localized: "Independent Audio Drama (English)")
         case .oldTimeRadio:  "Old Time Radio"
         case .librivox:      "LibriVox"
-        case .archiveBooks:  "Internet Archive"
+        // P3 (D2 rule): the title names the CONTENT, the sender sits in the
+        // parenthesis — one string for row AND source page (fe13468).
+        case .archiveBooks:  String(localized: "Audiobooks (Internet Archive)")
         case .gutenberg:     "Project Gutenberg"
         }
     }

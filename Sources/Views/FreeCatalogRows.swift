@@ -247,7 +247,7 @@ enum CatalogSourceLoader {
         async let popularTask = fetched { try await ArchiveOrgClient.popularLibriVoxByLanguage(
             rowsPerLanguage: 12, languageCodes: codes, limit: 12) }
         async let archiveTask = fetched { try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-            rows: 12, languageCodes: codes) }
+            rows: 12, languageCodes: codes).docs }
         async let otrTask = fetched { try await ArchiveOrgClient.popularOldTimeRadio(rows: 12) }
 
         if librivoxOn {
@@ -369,6 +369,11 @@ struct FreeCatalogDetailSheet: View {
     @State private var localSubscribed = false
     /// b395e5f: hi-res cover once resolved (thumb → hires upgrade).
     @State private var hiresCover: URL?
+    /// P2: the metadata API's item description (archive items resolve it
+    /// lazily from the SAME metadata endpoint the detail path uses — no new
+    /// API); collapsed after a few lines like the book descriptions.
+    @State private var itemDescription: String?
+    @State private var descriptionExpanded = false
 
     private var isJamendo: Bool { item.id.hasPrefix(FreeCatalog.jamendoPrefix) }
     private var jamendoTrack: JamendoTrack? {
@@ -452,6 +457,18 @@ struct FreeCatalogDetailSheet: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
+                        // P2: the item description, below the rights capsule —
+                        // HTML remnants cleaned by the ONE existing text
+                        // preparation (podcastPlainText, Regel 2); collapsed
+                        // after four lines, tap expands.
+                        if let itemDescription, !itemDescription.isEmpty {
+                            Text(podcastPlainText(itemDescription))
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(descriptionExpanded ? nil : 4)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .onTapGesture { descriptionExpanded.toggle() }
+                        }
                         if let url = librivoxURL {
                             Link(destination: url) {
                                 Label("View on LibriVox", systemImage: "arrow.up.right.square")
@@ -496,6 +513,15 @@ struct FreeCatalogDetailSheet: View {
             if item.id.hasPrefix(FreeCatalog.librivoxPrefix) {
                 hiresCover = await FreeCatalogProvider.shared.hiresCoverURL(forItemId: item.id)
                 absLibraries = await LibriVoxImporter.audiobookLibraries()
+            }
+            // P2: the description reaches the sheet. Known metadata first
+            // (LibriVox/Gutenberg rows carry it); archive items ask the ONE
+            // metadata endpoint (same call class as runtime/hi-res).
+            itemDescription = item.media?.metadata?.description
+            if itemDescription == nil, item.id.hasPrefix(FreeCatalog.archivePrefix) {
+                let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+                let meta = try? await ArchiveOrgClient.metadata(identifier: identifier)
+                itemDescription = meta?.metadata?.description?.joined
             }
         }
         // Library picker (first use / vanished remembered target). The
