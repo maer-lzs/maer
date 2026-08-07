@@ -33,13 +33,17 @@ struct MediaRowContent<CoverOverride: View>: View {
     /// Cell-cost sweep: CONCRETE generic instead of `AnyView` (type erasure
     /// taxed every row creation/diff in the Lazy containers).
     var coverOverride: CoverOverride?
+    /// Pinchflat Paket B: origin capsule in the meta line (compact form —
+    /// height-neutral, so the reserved cell height stays data-independent).
+    var showsOriginCapsule = false
 
     init(coverURL: URL?, eyebrow: String? = nil, title: String,
          titleDimmed: Bool = false, coverDimmed: Bool = false,
          offlineBadge: Bool = false, downloadedBadge: Bool = false,
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
-         coverSize: CGFloat = 64, coverOverride: CoverOverride?) {
+         coverSize: CGFloat = 64, showsOriginCapsule: Bool = false,
+         coverOverride: CoverOverride?) {
         self.coverURL = coverURL
         self.eyebrow = eyebrow
         self.title = title
@@ -53,6 +57,7 @@ struct MediaRowContent<CoverOverride: View>: View {
         self.placeholderSystemImage = placeholderSystemImage
         self.coverSize = coverSize
         self.coverOverride = coverOverride
+        self.showsOriginCapsule = showsOriginCapsule
     }
 
     var body: some View {
@@ -83,6 +88,7 @@ struct MediaRowContent<CoverOverride: View>: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                    if showsOriginCapsule { OriginCapsule(compact: true) }
                     Text(meta ?? " ")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -142,13 +148,14 @@ extension MediaRowContent where CoverOverride == EmptyView {
          offlineBadge: Bool = false, downloadedBadge: Bool = false,
          progressFraction: Double? = nil, meta: String? = nil,
          showsPlayedCheck: Bool = false, placeholderSystemImage: String = "mic",
-         coverSize: CGFloat = 64) {
+         coverSize: CGFloat = 64, showsOriginCapsule: Bool = false) {
         self.init(coverURL: coverURL, eyebrow: eyebrow, title: title,
                   titleDimmed: titleDimmed, coverDimmed: coverDimmed,
                   offlineBadge: offlineBadge, downloadedBadge: downloadedBadge,
                   progressFraction: progressFraction, meta: meta,
                   showsPlayedCheck: showsPlayedCheck,
                   placeholderSystemImage: placeholderSystemImage,
-                  coverSize: coverSize, coverOverride: nil)
+                  coverSize: coverSize, showsOriginCapsule: showsOriginCapsule,
+                  coverOverride: nil)
     }
 }

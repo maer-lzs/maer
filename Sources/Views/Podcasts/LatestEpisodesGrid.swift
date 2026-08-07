@@ -39,6 +39,9 @@ struct LatestEpisodesGrid: View {
         // items.count instead of Int.max: cols * rows must not overflow.
         let rows = alwaysExpanded ? max(items.count, 1) : (expanded ? 6 : 2)
         let shown = Array(items.prefix(cols * rows))
+        // Paket B: membership resolved ONCE per render (cell-cost rule),
+        // handed to the tiles as a value.
+        let mirrored = PodcastSubscriptions.shared.mirroredEpisodeGuids()
         VStack(alignment: .leading, spacing: 10) {
             if !alwaysExpanded {
                 // Welle 3b: the heading carries the page chevron (counted —
@@ -52,7 +55,7 @@ struct LatestEpisodesGrid: View {
                 alignment: .leading, spacing: 14
             ) {
                 ForEach(shown) { item in
-                    episodeTile(item)
+                    episodeTile(item, mirrored: mirrored)
                 }
             }
             .padding(.horizontal)
@@ -86,7 +89,7 @@ struct LatestEpisodesGrid: View {
         )
     }
 
-    private func episodeTile(_ item: LibraryItem) -> some View {
+    private func episodeTile(_ item: LibraryItem, mirrored: Set<String>) -> some View {
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             MediaTile(
                 title: item.title,
@@ -94,6 +97,10 @@ struct LatestEpisodesGrid: View {
                 cornerBadgeURL: showBadgeURL(for: item),
                 progress: episodeProgress(item),
                 unavailable: unavailable,
+                // Paket B: origin capsule for mirrored episodes (host-computed
+                // set, word is the carrier — a916a5a).
+                badgeText: mirrored.contains(item.id) ? "YouTube" : nil,
+                badgeSystemImage: mirrored.contains(item.id) ? "play.rectangle" : nil,
                 onTap: { pushRoute(.episode(itemId: item.id)) }
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }

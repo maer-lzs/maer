@@ -31,6 +31,8 @@ enum PodcastRoute: Hashable {
     case downloadsAll
     /// J2: the full subscription grid behind the "Recently Updated" preview.
     case subscriptions
+    /// Pinchflat Paket B: the mirrored group's full channel grid.
+    case pinchflatGroup
     /// H (7749411): the two-stage chart form — charts page (genres as tile
     /// rows) and one parameterised genre page (full grid).
     case charts
@@ -70,6 +72,8 @@ extension View {
                 PodcastDownloadsPage(playerCoordinator: playerCoordinator)
             case .subscriptions:
                 PodcastSubscriptionsPage(playerCoordinator: playerCoordinator)
+            case .pinchflatGroup:
+                PinchflatGroupPage(playerCoordinator: playerCoordinator)
             case .charts:
                 RadioPlayChartsPage()
             case .chartGenre(let key):

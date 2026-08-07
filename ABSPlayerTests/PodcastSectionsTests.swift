@@ -214,6 +214,26 @@ struct PodcastSectionsTests {
 
     // MARK: - Teil 2: grid sort + filter
 
+    @Test("Paket B: gespiegelte Shows wandern in die Gruppe, nicht ins Abo-Raster")
+    func mirroredShowsSplitIntoTheirGroup() {
+        var mirrored = show("m1", episodes: [episode("m1e1", pubDate: 100)])
+        mirrored.origin = "pinchflat:tube.example"
+        var mirrored2 = show("m2", episodes: [episode("m2e1", pubDate: 300)])
+        mirrored2.origin = "pinchflat:tube.example"
+        let regular = show("r1", episodes: [episode("r1e1", pubDate: 200)])
+        let world = World()
+        let result = PodcastSections.compute(
+            shows: [mirrored, regular, mirrored2],
+            downloadedIds: world.downloaded,
+            inboxOff: { world.inboxOff.contains($0) },
+            playState: { world.state($0) },
+            lastPlayed: { world.ts($0) })
+        // The group is the mirrored shows' row — the general grid never
+        // doubles them; the group sorts newest first.
+        #expect(result.recentShows.map(\.show.id) == ["r1"])
+        #expect(result.mirroredShows.map(\.show.id) == ["m2", "m1"])
+    }
+
     @Test("Teil 2: arrange sorts by recency / name / unplayed and filters")
     func arrangeSortsAndFilters() {
         // Titles are "Show a/b/c" (fixture); ids are a/b/c.

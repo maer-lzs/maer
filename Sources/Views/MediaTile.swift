@@ -41,6 +41,11 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// stack, and rides ON the cover so the reserved text lines below stay
     /// untouched (jank rule).
     var badgeText: String? = nil
+    /// Paket B (a916a5a): optional SF symbol INSIDE the capsule, before the
+    /// word — the origin capsule is "generic video symbol + YouTube" (word is
+    /// the carrier, symbol is Beiwerk with a GT-checked fallback ladder). No
+    /// trademark glyphs, same rule as badgeText.
+    var badgeSystemImage: String? = nil
     /// A3: unavailable content (offline, not downloaded) dims AND carries the
     /// white wifi.slash badge — dimming alone never carries the state.
     var unavailable: Bool = false
@@ -57,6 +62,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
+         badgeSystemImage: String? = nil,
          coverOverride: CoverOverride?,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.title = title
@@ -70,6 +76,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.meta = meta
         self.titleLineLimit = titleLineLimit
         self.badgeText = badgeText
+        self.badgeSystemImage = badgeSystemImage
         self.coverOverride = coverOverride
         self.onTap = onTap
         self.corner = corner
@@ -126,14 +133,19 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     @ViewBuilder
     private var licenceCapsule: some View {
         if let badgeText, !badgeText.isEmpty {
-            Text(badgeText)
-                .font(.caption2.weight(.medium))
-                .lineLimit(1)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(.black.opacity(0.55), in: Capsule())
-                .foregroundStyle(.white)
-                .padding(6)
+            HStack(spacing: 3) {
+                if let badgeSystemImage {
+                    Image(systemName: badgeSystemImage).font(.caption2)
+                }
+                Text(badgeText)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(.black.opacity(0.55), in: Capsule())
+            .foregroundStyle(.white)
+            .padding(6)
         }
     }
 
@@ -201,12 +213,14 @@ extension MediaTile where CoverOverride == EmptyView {
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
          cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
+         badgeSystemImage: String? = nil,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
                   progress: progress, unavailable: unavailable,
-                  meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText, coverOverride: nil,
+                  meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText,
+                  badgeSystemImage: badgeSystemImage, coverOverride: nil,
                   onTap: onTap, corner: corner)
     }
 }

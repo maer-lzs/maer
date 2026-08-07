@@ -8,6 +8,10 @@ import Foundation
 nonisolated struct PodcastSectionsResult {
     var nextUp: [LibraryItem] = []
     var recentShows: [RecentShowInfo] = []
+    /// Pinchflat Paket B: mirrored shows (origin != nil) render in their OWN
+    /// group row instead of "Recently updated" — the group IS their row
+    /// (c90390b), so the general grid does not double them. Newest first.
+    var mirroredShows: [RecentShowInfo] = []
     var downloaded: [LibraryItem] = []
 }
 
@@ -184,12 +188,17 @@ enum PodcastSections {
             }
         }
 
+        // Paket B: mirrored shows split into their own group (the group is
+        // their row); everything else stays in the general grid.
+        let mirrored = infos.filter { $0.show.origin != nil }
+        let regular = infos.filter { $0.show.origin == nil }
         return PodcastSectionsResult(
             // Welle 3 / C-Lehre: the SOURCE no longer culls — the row caps
             // its preview (RowPreview), the page shows the full stock. 200 is
             // a sanity bound, not a curation.
             nextUp: picks.sorted { $0.playedAt > $1.playedAt }.prefix(200).map(\.item),
-            recentShows: arrange(infos, sort: sort, filter: filter),
+            recentShows: arrange(regular, sort: sort, filter: filter),
+            mirroredShows: mirrored.sorted { $0.lastUpdated > $1.lastUpdated },
             downloaded: downloadedItems.sorted { ($0.addedAt ?? 0) > ($1.addedAt ?? 0) }
         )
     }

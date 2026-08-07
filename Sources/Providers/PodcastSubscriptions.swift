@@ -625,6 +625,23 @@ final class PodcastSubscriptions: ObservableObject {
         save()
     }
 
+    /// Paket B: every episode guid of the mirrored group — hosts resolve
+    /// membership ONCE per render and hand rows a Bool (cell-cost rule:
+    /// no per-row shows×episodes scan).
+    func mirroredEpisodeGuids() -> Set<String> {
+        Set(shows.filter { $0.origin != nil }.flatMap { $0.episodes.map(\.guid) })
+    }
+
+    /// Paket B: does this feed belong to a mirrored group? Carried by the
+    /// `origin` field only — never a URL heuristic (a916a5a). Drives the
+    /// "YouTube" origin capsule on surfaces OUTSIDE the group row.
+    func isMirrored(feedURL: String) -> Bool {
+        let normalized = Self.normalizeFeedURL(feedURL)
+        return shows.contains {
+            $0.origin != nil && Self.normalizeFeedURL($0.feedURL) == normalized
+        }
+    }
+
     /// Pinchflat Paket A: a SERVER-driven remove (channel left the mirror).
     /// Deliberately NOT the user-unsubscribe: it must not join the gpodder
     /// user-intent set — the mirrored group is no subscription set of the

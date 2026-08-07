@@ -394,6 +394,10 @@ struct SearchScreen: View {
                     // shows; a LibriVox source will add audiobooks later).
                     meta: result.kind == .catalogShow ? String(localized: "Podcast") : nil,
                     placeholderSystemImage: Self.placeholder(result.kind),
+                    // Paket B: mirrored shows carry the origin capsule in
+                    // search too (show hits carry the feed URL as id).
+                    showsOriginCapsule: result.kind == .show
+                        && PodcastSubscriptions.shared.isMirrored(feedURL: result.id),
                     // cd5cc4a (1): radio hits share the ONE gated artwork
                     // (gradient+initials fallback) instead of the gray box.
                     coverOverride: catalogCover(result)

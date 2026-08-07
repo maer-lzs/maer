@@ -351,6 +351,14 @@ struct PodcastSourceView: View {
     /// MIRRORS into its own group; new channels arrive on refresh, hiding is
     /// the opt-out. Visible errors belong to THIS manual gesture (a404b38);
     /// the app-start pass stays silent.
+    /// Paket B: hidden channels for the re-admit list (revision-driven —
+    /// UserDefaults writes don't invalidate SwiftUI on their own).
+    @State private var hiddenRevision = 0
+    private var hiddenChannels: [(feedURL: String, title: String)] {
+        _ = hiddenRevision
+        return PinchflatSync.hiddenEntries()
+    }
+
     private var pinchflatSection: some View {
         Section {
             DisclosureGroup(isExpanded: $showPinchflat) {
@@ -384,6 +392,22 @@ struct PodcastSourceView: View {
                         PinchflatClient.setServer(url: nil, routeToken: nil, user: nil, password: nil)
                         pinchflatStatus = nil
                         pinchflatURL = ""
+                    }
+                }
+                // Paket B: re-admit hidden channels HERE (the hide gesture
+                // lives on the tiles; this is its visible way back). Unhide
+                // kicks one mirror pass — server = source of truth.
+                ForEach(hiddenChannels, id: \.feedURL) { entry in
+                    Button {
+                        PinchflatSync.unhide(feedURL: entry.feedURL)
+                        hiddenRevision += 1
+                        Task { try? await PinchflatSync.mirror() }
+                    } label: {
+                        Label {
+                            Text("Show \"\(entry.title)\" again")
+                        } icon: {
+                            Image(systemName: "eye")
+                        }
                     }
                 }
             } label: {

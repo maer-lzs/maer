@@ -261,6 +261,32 @@ enum PodcastRowTap { case play, detail, none }
 
 /// Rich episode row: cover, show + title, date/remaining time, progress, and a
 /// trailing cluster of consistent gray controls (info · download · play/pause).
+/// Pinchflat Paket B (a916a5a): the origin capsule — a GENERIC video SF
+/// symbol + the word "YouTube" as a descriptive provenance line (the same
+/// class as "Apple Podcasts" as a sender line; NO trademark glyph). The word
+/// is the carrier; the symbol is Beiwerk with a GT-checked fallback ladder
+/// (5c2de4e: film → tv → word-only). Carried by `PodcastShow.origin` only,
+/// never a URL heuristic. Placed on surfaces OUTSIDE the group row (latest
+/// episodes, downloads, search, show page) — inside the group the heading
+/// already says it.
+struct OriginCapsule: View {
+    /// Compact = height-neutral for reserved-height list rows (jank rule:
+    /// cell height must not depend on this row's data).
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "play.rectangle").font(.caption2)
+            Text(verbatim: "YouTube").font(.caption2.weight(.medium))
+        }
+        .padding(.horizontal, compact ? 4 : 6)
+        .padding(.vertical, compact ? 0 : 2)
+        .background(.quaternary, in: Capsule())
+        .foregroundStyle(.secondary)
+        .accessibilityLabel(Text(verbatim: "YouTube"))
+    }
+}
+
 struct PodcastEpisodeRow: View {
     let item: LibraryItem
     /// Tapping the row body opens the episode page on every surface (show
@@ -275,6 +301,9 @@ struct PodcastEpisodeRow: View {
     /// f0b9c8a: the hosting SHOW page passes its title so the eyebrow can
     /// drop when it merely repeats it; surfaces that mix shows pass nil.
     var showTitle: String? = nil
+    /// Paket B: the HOST resolves membership once (set lookup) — a per-row
+    /// shows×episodes scan would break the cell-cost convention.
+    var showsOriginCapsule: Bool = false
     @Environment(\.pushPodcastRoute) private var pushRoute
 
     /// R1: text-only episode (kept, no enclosure) — plain read, one per render.
@@ -411,7 +440,8 @@ struct PodcastEpisodeRow: View {
             progressFraction: inProgress,
             meta: metaText(state: state),
             showsPlayedCheck: isPlayed,
-            placeholderSystemImage: "mic"
+            placeholderSystemImage: "mic",
+            showsOriginCapsule: showsOriginCapsule
         )
     }
 

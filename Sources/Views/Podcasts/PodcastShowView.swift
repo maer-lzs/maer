@@ -183,6 +183,8 @@ struct PodcastShowView: View {
                 if let author = show.author {
                     Text(author).font(.subheadline).foregroundStyle(.secondary)
                 }
+                // Paket B: provenance on the show page (origin-carried).
+                if show.origin != nil { OriginCapsule() }
             }
             if let description = show.description, !description.isEmpty {
                 Text(podcastPlainText(description))

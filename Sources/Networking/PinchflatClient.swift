@@ -113,22 +113,43 @@ enum PinchflatClient {
 @MainActor
 enum PinchflatSync {
     private static let hiddenKey = "pinchflatHiddenFeeds"
+    /// Paket B: remembered titles for the hidden list — the management
+    /// surface shows channel names, not opaque feed UUIDs.
+    private static let hiddenTitlesKey = "pinchflatHiddenTitles"
     private static var didRunThisSession = false
 
     static func hiddenFeeds() -> Set<String> {
         Set(UserDefaults.standard.stringArray(forKey: hiddenKey) ?? [])
     }
 
+    /// Hidden channels with their remembered display titles (management list).
+    static func hiddenEntries() -> [(feedURL: String, title: String)] {
+        let titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+        return hiddenFeeds().sorted().map { ($0, titles[$0] ?? $0) }
+    }
+
     /// The opt-out exception (a7fa35e): hidden survives mirror runs.
-    static func hide(feedURL: String) {
+    /// Paket B: the visible GESTURE calls this from the context menu on the
+    /// group tile / grid cell.
+    static func hide(feedURL: String, title: String? = nil) {
         var set = hiddenFeeds(); set.insert(feedURL)
         UserDefaults.standard.set(Array(set).sorted(), forKey: hiddenKey)
+        if let title {
+            var titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+            titles[feedURL] = title
+            UserDefaults.standard.set(titles, forKey: hiddenTitlesKey)
+        }
         PodcastSubscriptions.shared.removeMirrored(feedURL: feedURL)
     }
 
+    /// Un-hide re-admits the channel; the next mirror pass re-subscribes it
+    /// (server = source of truth), so the caller kicks one.
     static func unhide(feedURL: String) {
         var set = hiddenFeeds(); set.remove(feedURL)
         UserDefaults.standard.set(Array(set).sorted(), forKey: hiddenKey)
+        var titles = UserDefaults.standard.dictionary(forKey: hiddenTitlesKey) as? [String: String] ?? [:]
+        titles.removeValue(forKey: feedURL)
+        UserDefaults.standard.set(titles, forKey: hiddenTitlesKey)
     }
 
     /// One mirror pass. Returns the mirrored-group size on success.

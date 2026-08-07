@@ -1887,6 +1887,16 @@
         }
       }
     },
+    "Hide Channel" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kanal ausblenden"
+          }
+        }
+      }
+    },
     "Discover" : {
       "localizations" : {
         "de" : {
@@ -6105,6 +6115,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sortieren und filtern"
+          }
+        }
+      }
+    },
+    "Show \"%@\" again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\u201e%@\u201c wieder einblenden"
           }
         }
       }

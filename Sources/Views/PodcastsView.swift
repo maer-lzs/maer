@@ -64,6 +64,8 @@ struct PodcastsView: View {
     // immediately, the sections come a frame later.
     @State private var nextUp: [LibraryItem] = []           // "Continue" (large cards)
     @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
+    /// Paket B: the mirrored group's shows (their OWN row; split in compute).
+    @State private var mirroredShows: [RecentShowInfo] = []
     @State private var downloaded: [LibraryItem] = []
     /// X1c: newest episode per show for the SHARED latest-episodes grid
     /// (same derivation and tile as Home).
@@ -111,6 +113,7 @@ struct PodcastsView: View {
                     premiumSection
                     downloadedShelf
                     recentlyUpdatedSection
+                    pinchflatGroupSection
                     historyRow
                 }
                 .padding(.top, TabContentLayout.topInset)
@@ -195,6 +198,7 @@ struct PodcastsView: View {
                 withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) {
                     nextUp = sections.nextUp
                     recentShows = sections.recentShows
+                    mirroredShows = sections.mirroredShows
                     downloaded = sections.downloaded
                     latestItems = latest
                     sectionsReady = true
@@ -397,6 +401,45 @@ RowHeading(title: "Recommended",
         Array(recentShows.prefix(12))
     }
 
+    // MARK: - Pinchflat group (Paket B)
+
+    /// c90390b: the mirrored group is a NORMAL tile row after the blueprint —
+    /// show tiles (same tile as the subscription surfaces), RowPreview cap,
+    /// counted chevron onto the group page (full grid). Tap = show page like
+    /// any subscription; hiding is the context menu on tile + grid cell. NO
+    /// per-tile origin capsule in here (the heading already says it, a916a5a).
+    /// Row title: neutral placeholder from the server name — the final name
+    /// is the owner's GT decision, the string stays swappable.
+    @ViewBuilder
+    private var pinchflatGroupSection: some View {
+        if !mirroredShows.isEmpty, let host = PinchflatClient.serverURL?.host {
+            VStack(alignment: .leading, spacing: 12) {
+                RowHeading(title: "", verbatimTitle: host,
+                           total: mirroredShows.count,
+                           shown: RowPreview.cut(mirroredShows).count,
+                           destination: PodcastRoute.pinchflatGroup)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(RowPreview.cut(mirroredShows)) { info in
+                            NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
+                                RecentShowTile(info: info)
+                            }
+                            .buttonStyle(.plain)
+                            .containerRelativeFrame(.horizontal,
+                                count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
+                                span: 1, spacing: 14)
+                            .contextMenu {
+                                PinchflatHideButton(show: info.show)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
+        }
+    }
+
     // MARK: - Premium (private/paid feeds)
 
     /// Y52: the ONE premium test lives in PodcastSubscriptions (credentials OR
@@ -486,9 +529,11 @@ RowHeading(title: "Downloaded",
                            total: downloaded.count,
                            shown: shown.count,
                            destination: PodcastRoute.downloadsAll)
+                let mirrored = subs.mirroredEpisodeGuids()
                 LazyVStack(spacing: 0) {
                     ForEach(shown) { item in
-                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                        PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
+                                          showsOriginCapsule: mirrored.contains(item.id))
                     }
                 }
                 if downloaded.count > limit {
@@ -696,10 +741,13 @@ struct PodcastDownloadsPage: View {
     }
 
     var body: some View {
-        ScrollView {
+        // Paket B: membership once per render (cell-cost rule).
+        let mirrored = subs.mirroredEpisodeGuids()
+        return ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(items) { item in
-                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator)
+                    PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
+                                      showsOriginCapsule: mirrored.contains(item.id))
                 }
             }
             .bottomBarClearance()
@@ -914,6 +962,61 @@ struct PodcastSubscriptionsPage: View {
             ForEach(PodcastFilterOption.allCases) { option in
                 Text(option.label).tag(option)
             }
+        }
+    }
+}
+
+
+/// Paket B: the group page — the full mirrored-channel grid behind the row
+/// (blueprint "Zuletzt hinzugefügt": heading → full grid; no sort control,
+/// the group is server-ordered by newest). Hide = context menu on the cell.
+struct PinchflatGroupPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var subs = PodcastSubscriptions.shared
+    @State private var infos: [RecentShowInfo] = []
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
+                alignment: .leading, spacing: 18
+            ) {
+                ForEach(infos) { info in
+                    NavigationLink(value: PodcastRoute.show(feedURL: info.show.feedURL)) {
+                        RecentShowTile(info: info)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        PinchflatHideButton(show: info.show)
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: PinchflatClient.serverURL?.host ?? ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .task(id: subs.shows.count) {
+            let shows = subs.shows.filter { $0.origin != nil }
+            let snapshot = PodcastSections.snapshot(shows: shows)
+            let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
+            infos = sections.mirroredShows
+        }
+    }
+}
+
+/// Paket B: the ONE hide gesture (context menu on row tile + grid cell) —
+/// opt-out that survives mirror runs; re-admitting lives in the server
+/// management (source view).
+struct PinchflatHideButton: View {
+    let show: PodcastShow
+
+    var body: some View {
+        Button(role: .destructive) {
+            PinchflatSync.hide(feedURL: show.feedURL, title: show.title)
+        } label: {
+            Label("Hide Channel", systemImage: "eye.slash")
         }
     }
 }
