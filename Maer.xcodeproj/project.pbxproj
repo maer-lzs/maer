@@ -59,11 +59,11 @@
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		CFA9000000000000000000C1 /* Config/AppKeys.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/AppKeys.xcconfig; sourceTree = "<group>"; };
+		CFA9000000000000000000C2 /* Config/App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
 		CFA9000000000000000000E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFA9000000000000000000E2 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
 		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
-		CFA9000000000000000000C2 /* Config/App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -107,20 +107,20 @@
 			path = Sources;
 			sourceTree = "<group>";
 		};
-		CFA9000000000000000000D1 /* LiveActivityWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				CFA9000000000000000000D2 /* Exceptions for "LiveActivityWidget" folder in "MaerWidgetsExtension" target */,
-			);
-			path = LiveActivityWidget;
-			sourceTree = "<group>";
-		};
 		CF68E6543002599A00C97B74 /* MaerWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				CF68E6643002599B00C97B74 /* Exceptions for "MaerWidgets" folder in "MaerWidgetsExtension" target */,
 			);
 			path = MaerWidgets;
+			sourceTree = "<group>";
+		};
+		CFA9000000000000000000D1 /* LiveActivityWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CFA9000000000000000000D2 /* Exceptions for "LiveActivityWidget" folder in "MaerWidgetsExtension" target */,
+			);
+			path = LiveActivityWidget;
 			sourceTree = "<group>";
 		};
 		CFC8E64B30006E4B00226154 /* ABSPlayerTests */ = {
@@ -167,7 +167,7 @@
 		CF1170EA2FF99D9D00DA1AC5 = {
 			isa = PBXGroup;
 			children = (
-				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
+				CF1170F52FF99D9D00DA1AC5 /* Sources */,
 				AAE1000000000000000000A2 /* ABSPlayerUITests.xctest */,
 				AAE1000000000000000000A3 /* ABSPlayerUITests */,
 				CF11771A2FFA95BE00DA1AC5 /* ABSPlayer.app */,
@@ -242,7 +242,7 @@
 				CF68E65F3002599B00C97B74 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */,
+				CF1170F52FF99D9D00DA1AC5 /* Sources */,
 			);
 			name = ABSPlayer;
 			packageProductDependencies = (
