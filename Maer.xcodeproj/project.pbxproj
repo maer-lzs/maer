@@ -65,7 +65,6 @@
 		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
 		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -193,11 +192,6 @@
 				CF68E6523002599A00C97B74 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		CFE8E3FA3007EC2C007756AC /* Products */ = {
-			isa = PBXGroup;
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -332,12 +326,6 @@
 			preferredProjectObjectVersion = 77;
 			productRefGroup = CF1170EA2FF99D9D00DA1AC5;
 			projectDirPath = "";
-			projectReferences = (
-				{
-					ProductGroup = CFE8E3FA3007EC2C007756AC /* Products */;
-					ProjectRef = CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */;
-				},
-			);
 			projectRoot = "";
 			targets = (
 				CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */,

@@ -195,7 +195,7 @@ struct MusicView: View {
             }
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
+                        RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         freeTileRow(freeCatalogStore.rows.freeMusic)
                     }
             }

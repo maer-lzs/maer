@@ -25,12 +25,17 @@ struct ProjectFileIntegrityTests {
         return try? String(contentsOf: url, encoding: .utf8)
     }
 
-    @Test("pbxproj: no self-reference of the project (Xcode auto-injection)")
+    /// Zero, not one: the last remaining `wrapper.pb-project` entry was the
+    /// ORIGINAL injection (3648644) — a full self-subproject reference (file
+    /// reference + Products group + `projectReferences` entry), not the
+    /// orphan line it looked like. It is gone since the root fix, so the
+    /// fence now says what it means instead of tolerating one corpse.
+    @Test("pbxproj: the project never references itself")
     func noSelfReference() throws {
         guard let text = Self.projectFile else { return }
         let count = text.components(separatedBy: "wrapper.pb-project").count - 1
-        #expect(count == 1,
-                "project references != 1 — Xcode injected a self-reference; heal with git checkout -- Maer.xcodeproj/project.pbxproj")
+        #expect(count == 0,
+                "the project references itself — Xcode injected it; heal with git checkout -- Maer.xcodeproj/project.pbxproj")
     }
 
     /// Since e885a01 the app target's synchronised group carries

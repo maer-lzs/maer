@@ -446,7 +446,7 @@ struct FreeJamendoPage: View {
             if items.isEmpty && isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
             } else if items.isEmpty {
-                ContentUnavailableView("Free Music", systemImage: "music.note")
+                ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")
             } else {
                 // P8 (cde97a9): genre shelf rows FIRST (blueprint form — row +
                 // entry chevron onto the server-paged shelf grid), the weekly
@@ -480,7 +480,7 @@ struct FreeJamendoPage: View {
                 }
             }
         }
-        .navigationTitle(Text("Free Music"))
+        .navigationTitle(Text("Free Music (Jamendo)"))
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
@@ -629,7 +629,7 @@ struct MusicCatalogAreaPage: View {
                 }
                 if !store.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
+                        RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         tileRow(store.rows.freeMusic)
                     }
                 }
