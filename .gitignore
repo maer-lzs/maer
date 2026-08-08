@@ -58,3 +58,6 @@ Icon
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcworkspace/contents.xcworkspacedata
+
+## App-Schluessel (Z1): Werte NIE im Repo
+Config/AppKeys.local.xcconfig

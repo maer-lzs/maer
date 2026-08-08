@@ -715,8 +715,8 @@ final class PodcastSubscriptions: ObservableObject {
               let idx = shows.firstIndex(where: { $0.id == showId }) else { return 0 }
         let show = shows[idx]
         let dir = PodcastIndexDirectory(
-            key: AppStorageKeys.podcastIndexKeyValue,
-            secret: AppStorageKeys.podcastIndexSecretValue
+            key: AppStorageKeys.podcastIndexEffectiveKey,
+            secret: AppStorageKeys.podcastIndexEffectiveSecret
         )
         guard let piEpisodes = try? await dir.episodes(feedURL: show.feedURL) else { return 0 }
         let key = Self.feedKey(show.feedURL)

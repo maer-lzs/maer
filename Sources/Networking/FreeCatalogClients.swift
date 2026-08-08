@@ -308,14 +308,14 @@ nonisolated enum JamendoClient {
         let results: [JamendoTrack]?
     }
 
-    /// Key resolution: user key beats the build-injected one (PI pattern).
+    /// Key resolution: user key beats the build-injected one — the shared Z1
+    /// rule (`AppStorageKeys.resolvedAppKey`, same as PodcastIndex).
     @MainActor
     static func clientId() -> String? {
-        if let user = UserDefaults.standard.string(forKey: AppStorageKeys.jamendoClientId),
-           !user.isEmpty { return user }
-        if let injected = Bundle.main.object(forInfoDictionaryKey: "JamendoClientId") as? String,
-           !injected.isEmpty { return injected }
-        return nil
+        let resolved = AppStorageKeys.resolvedAppKey(
+            user: UserDefaults.standard.string(forKey: AppStorageKeys.jamendoClientId) ?? "",
+            injected: Bundle.main.object(forInfoDictionaryKey: "JamendoClientId") as? String)
+        return resolved.isEmpty ? nil : resolved
     }
 
     nonisolated static func decodeTracks(_ data: Data) throws -> [JamendoTrack] {

@@ -67,8 +67,8 @@ final class GlobalSearchModel: ObservableObject {
                     return await Self.catalogBookResults(query: query)
                 }
                 let directory: PodcastDirectory = AppStorageKeys.podcastIndexConfigured
-                    ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexKeyValue,
-                                            secret: AppStorageKeys.podcastIndexSecretValue)
+                    ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                            secret: AppStorageKeys.podcastIndexEffectiveSecret)
                     : ITunesDirectory()
                 let hits = try await directory.search(query)
                 // fb94905 (3): SEARCH is the exception — someone typing a

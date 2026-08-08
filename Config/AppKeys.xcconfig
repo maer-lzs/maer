@@ -1,0 +1,14 @@
+// App keys (Jamendo, PodcastIndex) — POLICY: values never live in the repo.
+//
+// Put the real values into Config/AppKeys.local.xcconfig (gitignored):
+//   MAER_JAMENDO_CLIENT_ID = …
+//   MAER_PODCASTINDEX_KEY = …
+//   MAER_PODCASTINDEX_SECRET = …
+//
+// Missing file or empty values are fine: the substituted Info.plist entries
+// stay empty and the app falls back to the user-entered keys
+// (Settings → Network services), exactly as before.
+MAER_JAMENDO_CLIENT_ID =
+MAER_PODCASTINDEX_KEY =
+MAER_PODCASTINDEX_SECRET =
+#include? "AppKeys.local.xcconfig"

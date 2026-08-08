@@ -685,8 +685,8 @@ struct PodcastSourceView: View {
         let directory: PodcastDirectory
         if source == .podcastIndex, AppStorageKeys.podcastIndexConfigured {
             directory = PodcastIndexDirectory(
-                key: AppStorageKeys.podcastIndexKeyValue,
-                secret: AppStorageKeys.podcastIndexSecretValue
+                key: AppStorageKeys.podcastIndexEffectiveKey,
+                secret: AppStorageKeys.podcastIndexEffectiveSecret
             )
         } else {
             directory = ITunesDirectory()

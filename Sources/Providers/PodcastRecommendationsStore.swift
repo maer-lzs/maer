@@ -92,8 +92,8 @@ final class PodcastRecommendationsStore: ObservableObject {
 
         let piConfigured = AppStorageKeys.podcastIndexConfigured
         let directory: PodcastDirectory = piConfigured
-            ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexKeyValue,
-                                    secret: AppStorageKeys.podcastIndexSecretValue)
+            ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                    secret: AppStorageKeys.podcastIndexEffectiveSecret)
             : ITunesDirectory()
 
         var pool: [PodcastSearchResult] = []

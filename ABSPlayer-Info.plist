@@ -7,6 +7,16 @@
 	     TestFlight/App Store skip the export-compliance question per build. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Z1 app keys: values come from Config/AppKeys.local.xcconfig (gitignored,
+	     never in the repo); empty means "not injected" and the app falls back
+	     to the user-entered keys. These authenticate the APP against Jamendo/
+	     PodcastIndex and carry no user identity. -->
+	<key>JamendoClientId</key>
+	<string>$(MAER_JAMENDO_CLIENT_ID)</string>
+	<key>PodcastIndexKey</key>
+	<string>$(MAER_PODCASTINDEX_KEY)</string>
+	<key>PodcastIndexSecret</key>
+	<string>$(MAER_PODCASTINDEX_SECRET)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

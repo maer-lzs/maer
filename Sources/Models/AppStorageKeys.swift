@@ -66,8 +66,29 @@ nonisolated enum AppStorageKeys {
         UserDefaults.standard.removeObject(forKey: podcastIndexSecret)
     }
 
+    /// Z1: the ONE resolution rule for app keys — a user-entered value beats
+    /// the build-injected one (Jamendo and PodcastIndex share it).
+    nonisolated static func resolvedAppKey(user: String, injected: String?) -> String {
+        user.isEmpty ? (injected ?? "") : user
+    }
+
+    /// Effective PodcastIndex credentials: user entry first, then the
+    /// build-injected app key (`ABSPlayer-Info.plist`, values via
+    /// `Config/AppKeys.local.xcconfig` — never in the repo). The Settings
+    /// field binds to `podcastIndexKeyValue` and keeps showing only the
+    /// user's own entry.
+    static var podcastIndexEffectiveKey: String {
+        resolvedAppKey(user: podcastIndexKeyValue,
+                       injected: Bundle.main.object(forInfoDictionaryKey: "PodcastIndexKey") as? String)
+    }
+
+    static var podcastIndexEffectiveSecret: String {
+        resolvedAppKey(user: podcastIndexSecretValue,
+                       injected: Bundle.main.object(forInfoDictionaryKey: "PodcastIndexSecret") as? String)
+    }
+
     static var podcastIndexConfigured: Bool {
-        !podcastIndexKeyValue.isEmpty && !podcastIndexSecretValue.isEmpty
+        !podcastIndexEffectiveKey.isEmpty && !podcastIndexEffectiveSecret.isEmpty
     }
     // MARK: - gpodder / oPodSync (open podcast sync next to iCloud/ABS)
 
