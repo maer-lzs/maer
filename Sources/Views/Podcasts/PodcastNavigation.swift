@@ -33,6 +33,9 @@ enum PodcastRoute: Hashable {
     case subscriptions
     /// Pinchflat Paket B: the mirrored group's full channel grid.
     case pinchflatGroup
+    /// X²·5: the book-category charts (1482) as a full grid — measured: no
+    /// carrying sub-division, so no shelf tier.
+    case bookCharts
     /// H (7749411): the two-stage chart form — charts page (genres as tile
     /// rows) and one parameterised genre page (full grid).
     case charts
@@ -74,6 +77,8 @@ extension View {
                 PodcastSubscriptionsPage(playerCoordinator: playerCoordinator)
             case .pinchflatGroup:
                 PinchflatGroupPage(playerCoordinator: playerCoordinator)
+            case .bookCharts:
+                BookChartsPage()
             case .charts:
                 RadioPlayChartsPage()
             case .chartGenre(let key):

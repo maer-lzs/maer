@@ -725,6 +725,7 @@ struct CatalogGenreAxisTests {
     /// STRUKTURELL: feed- und katalogbasierte Quellen sind disjunkte Mengen
     /// EINES enums, und die Kuration verteilt jeden Feed auf genau eine Reihe.
     @Test("Catalog sources split disjointly; every curated feed lands exactly once")
+    @MainActor
     func catalogSourceSplit() {
         let feed = CatalogSource.allCases.filter(\.isFeedBased)
         let catalog = CatalogSource.allCases.filter { !$0.isFeedBased }
@@ -1037,6 +1038,23 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min", readingVersion: 2)
                 == "1927 · 42 min · " + String(localized: "Reading \(2)"))
         #expect(FreeCatalog.catalogMetaLine(year: nil, runtime: nil, readingVersion: nil) == " ")
+    }
+
+    @Test("X²·3: Positivlisten-Regel — Token-genau, keine Substring-Fehlgriffe")
+    func oerrRule() {
+        // Word-boundary precision: "hr" the broadcaster matches, "Uhr" not.
+        #expect(OERRCuration.matches(artistName: "hr")?.country == .germany)
+        #expect(OERRCuration.matches(artistName: "Die Uhr GmbH") == nil)
+        #expect(OERRCuration.matches(artistName: "WDR")?.country == .germany)
+        #expect(OERRCuration.matches(artistName: "Schweizer Radio und Fernsehen (SRF)")?.country == .switzerland)
+        #expect(OERRCuration.matches(artistName: "BBC Radio 4")?.country == .uk)
+        #expect(OERRCuration.matches(artistName: "Rundfunk Berlin-Brandenburg")?.country == .germany)
+        // Not on the list: missing without remark (the whole rule).
+        #expect(OERRCuration.matches(artistName: "NPR") == nil)
+        #expect(OERRCuration.matches(artistName: nil) == nil)
+        // Language gating drives visibility.
+        #expect(OERRCuration.active(forLanguages: ["de"]).allSatisfy { $0.language == "de" })
+        #expect(OERRCuration.active(forLanguages: []).isEmpty)
     }
 
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")

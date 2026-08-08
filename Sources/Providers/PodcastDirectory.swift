@@ -75,11 +75,17 @@ struct ITunesDirectory: PodcastDirectory {
     }
 
     func search(_ term: String) async throws -> [PodcastSearchResult] {
+        try await search(term, country: nil)
+    }
+
+    /// X²·3: the OERR live rule searches per broadcaster STOREFRONT — an
+    /// explicit country overrides the suggestion-language default.
+    func search(_ term: String, country: String?) async throws -> [PodcastSearchResult] {
         var components = URLComponents(string: "https://itunes.apple.com/search")!
         // f79c40c: the FIRST selected suggestion language sets the search
         // storefront (a per-keystroke multi-storefront fan-out would be
         // wasteful — honest simplification, reported; charts DO interleave).
-        let storefront = SuggestionLanguages.storefront(
+        let storefront = country ?? SuggestionLanguages.storefront(
             for: SuggestionLanguages.current().first ?? "en")
         components.queryItems = [
             URLQueryItem(name: "media", value: "podcast"),

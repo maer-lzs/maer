@@ -74,6 +74,7 @@ extension CatalogMix {
     /// K podcast tab + L2 Start share it — "keine zwei Mischer"): curated
     /// radio-play feeds (static, instant) + the catalog title rows from the
     /// calm-gated store, fairly interleaved, capped by RowPreview.
+    @MainActor
     static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()
         let feedGroups = [CatalogSource.oerr, .independents]

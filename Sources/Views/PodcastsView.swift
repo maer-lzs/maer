@@ -1023,3 +1023,51 @@ struct PinchflatHideButton: View {
         }
     }
 }
+
+/// X²·5: the full book-category chart grid (Apple genre 1482 — readings and
+/// literature adaptations). Measured: the 1482 charts carry no sub-division,
+/// so this is a plain grid, no shelf tier (blueprint otherwise).
+struct BookChartsPage: View {
+    @State private var results: [PodcastSearchResult] = []
+    @State private var failed = false
+
+    private let columns = [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 14)]
+
+    var body: some View {
+        ScrollView {
+            if results.isEmpty && failed {
+                Text("The charts could not be loaded. Check your connection.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .padding()
+            } else if results.isEmpty {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(verbatim: "Apple Podcasts")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
+                        ForEach(results, id: \.feedURL) { result in
+                            RecommendationTile(result: result)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.top, 12)
+            }
+        }
+        .navigationTitle(Text("Popular Readings & Books"))
+        .navigationBarTitleDisplayMode(.inline)
+        .bottomBarClearance()
+        .task {
+            guard results.isEmpty else { return }
+            let hits = (try? await ITunesDirectory().topPodcasts(genreId: 1482, limit: 100)) ?? []
+            failed = hits.isEmpty
+            let subscribed = Set(PodcastAutoContinue.allShows()
+                .map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            results = hits.filter {
+                !subscribed.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
+            }
+        }
+    }
+}

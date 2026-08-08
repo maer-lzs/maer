@@ -26,6 +26,9 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     /// items routed through rememberOldTimeRadio). Tap stays NACHSCHLAGEN;
     /// the page replaces the detail sheet for this class only.
     case series(itemId: String)
+    /// X²·3: the OERR sub-page — one tile row per COUNTRY (empty countries
+    /// do not appear).
+    case oerrCountries
 }
 
 /// Paket 4: push the catalog area from non-link surfaces (the search deck's
@@ -43,6 +46,8 @@ extension EnvironmentValues {
 
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// X²·3: re-render when the live OERR entries land (calm-gated).
+    @ObservedObject private var oerrStore = OERRLiveStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     /// Paket 1: the load layer lives in the store — one pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
@@ -57,6 +62,10 @@ struct FreeAudiobooksPage: View {
     @State private var chartResults: [PodcastSearchResult] = []
     @State private var chartsLoading = false
     @State private var chartsFailed = false
+    /// X²·5: the second chart row — Apple's book category (genre 1482;
+    /// readings and literature adaptations live there). Loads once, not
+    /// chip-driven.
+    @State private var bookChartResults: [PodcastSearchResult] = []
 
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
@@ -84,6 +93,7 @@ struct FreeAudiobooksPage: View {
                 feedSection(.oerr)
                 feedSection(.independents)
                 chartsSection
+                bookChartsSection
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
                 librivoxSection
@@ -112,7 +122,10 @@ struct FreeAudiobooksPage: View {
         }
         .navigationTitle(Text("Free Audiobooks & Radio Plays"))
         .task { await store.ensureSourcesLoaded() }
+        // X²·3: kick the live OERR rule once (seed renders immediately).
+        .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
         .task(id: selectedChip) { await loadCharts() }
+        .task { await loadBookCharts() }
         // Connection returns while the page is open: load then.
         .onChange(of: networkMonitor.isConnected) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
@@ -132,8 +145,18 @@ struct FreeAudiobooksPage: View {
         let feeds = source.curatedFeeds(forLanguages: languages)
         if !feeds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.plain(verbatim: source.title)
-                feedTileRow(feeds)
+                if source == .oerr {
+                    // X²·3: the rule-curated row grows past the preview — the
+                    // counted chevron opens the BY-COUNTRY sub-page.
+                    RowHeading(title: "", verbatimTitle: source.title,
+                               total: feeds.count,
+                               shown: RowPreview.cut(feeds).count,
+                               destination: FreeAudiobooksRoute.oerrCountries)
+                    feedTileRow(Array(RowPreview.cut(feeds)))
+                } else {
+                    RowHeading.plain(verbatim: source.title)
+                    feedTileRow(feeds)
+                }
             }
         }
     }
@@ -297,6 +320,51 @@ struct FreeAudiobooksPage: View {
         }
     }
 
+    /// X²·5: the book-category charts (1482) — same client, one load. The
+    /// measured 1482 charts have no carrying sub-division (no chart
+    /// sub-genres), so the page behind the chevron is a full grid without
+    /// shelves.
+    private func loadBookCharts() async {
+        #if DEBUG
+        if UITestSeed.isActive { return }
+        #endif
+        guard bookChartResults.isEmpty else { return }
+        let hits = (try? await ITunesDirectory().topPodcasts(genreId: 1482)) ?? []
+        let shows = PodcastAutoContinue.allShows()
+        let subscribed = Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+        bookChartResults = hits.filter {
+            !subscribed.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
+        }
+    }
+
+    @ViewBuilder
+    private var bookChartsSection: some View {
+        if !bookChartResults.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                RowHeading(title: "Popular Readings & Books",
+                           total: bookChartResults.count,
+                           shown: RowPreview.cut(bookChartResults).count,
+                           destination: PodcastRoute.bookCharts)
+                Text(verbatim: "Apple Podcasts")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 12) {
+                        ForEach(RowPreview.cut(bookChartResults), id: \.feedURL) { result in
+                            RecommendationTile(result: result)
+                                .containerRelativeFrame(.horizontal,
+                                    count: CardMetrics.recommendationColumns(regularWidth: false),
+                                    span: 1, spacing: 12)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
+        }
+    }
+
     private func loadCharts() async {
         guard let chip = CatalogGenreAxis.hoerspielChips.first(where: { $0.key == selectedChip })
         else { return }
@@ -345,5 +413,54 @@ struct FreeAudiobooksPage: View {
                 Task { await playerCoordinator.open(item: item) }
             } label: { Label("Play", systemImage: "play.fill") }
         }
+    }
+}
+
+/// X²·3: the public-broadcast sub-page, one tile row per COUNTRY (the
+/// scaffolding blueprint with the country as the axis; empty countries do
+/// not appear — DIE REGEL). Entries come from the same live store the
+/// preview row reads.
+struct OERRCountriesPage: View {
+    @ObservedObject private var store = OERRLiveStore.shared
+
+    private var languages: [String] { SuggestionLanguages.current() }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                let entries = store.current(forLanguages: languages)
+                ForEach(OERRCuration.Country.allCases, id: \.self) { country in
+                    let rows = entries.filter { $0.country == country }
+                    if !rows.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            RowHeading.plain(verbatim: country.title)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: 12) {
+                                    ForEach(rows) { entry in
+                                        RecommendationTile(result: PodcastSearchResult(
+                                            title: entry.title, author: entry.author,
+                                            artworkURL: nil, feedURL: entry.feedURL))
+                                            .containerRelativeFrame(.horizontal,
+                                                count: CardMetrics.recommendationColumns(regularWidth: false),
+                                                span: 1, spacing: 12)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                            .scrollClipDisabled()
+                        }
+                    }
+                }
+                Text("Public-broadcast content can disappear after fixed periods — downloads keep your copies.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: CatalogSource.oerr.title))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
     }
 }

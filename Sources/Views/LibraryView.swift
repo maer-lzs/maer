@@ -345,6 +345,8 @@ struct LibraryView: View {
                 case .series(let itemId):
                     ArchiveSeriesPage(itemId: itemId,
                                       playerCoordinator: playerCoordinator)
+                case .oerrCountries:
+                    OERRCountriesPage()
                 }
             }
         }

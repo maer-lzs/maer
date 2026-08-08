@@ -41,6 +41,8 @@ nonisolated enum HoerspielCuration {
         /// Old-Time-Radio shelf). nil = German-language, always shown.
         var language: String? = nil
         var group: Group = .oerr
+        /// X²·3: the country axis of the OERR sub-page (nil for independents).
+        var country: OERRCuration.Country? = nil
         /// nil for OERR entries (their rights live with the broadcaster).
         var form: Form? = nil
         /// X²·1 (P6a-Geist): the CC capsule ONLY where the FEED itself states
@@ -60,27 +62,35 @@ nonisolated enum HoerspielCuration {
 
     static let feeds: [Entry] = [
         Entry(title: "ARD Hörspiel (WDR Hörspiel-Speicher)", author: "WDR",
-              feedURL: "https://www1.wdr.de/mediathek/audio/hoerspiel-speicher/wdr_hoerspielspeicher150.podcast"),
+              feedURL: "https://www1.wdr.de/mediathek/audio/hoerspiel-speicher/wdr_hoerspielspeicher150.podcast",
+              country: .germany),
         Entry(title: "Große Geschichten – ARD Literatur-Hörspiele", author: "BR",
-              feedURL: "https://feeds.br.de/hoerspiel-pool/feed.xml"),
+              feedURL: "https://feeds.br.de/hoerspiel-pool/feed.xml", country: .germany),
         Entry(title: "hr2 Hörspiel", author: "hr",
-              feedURL: "https://podcast.hr.de/hr2_hoerspiel/podcast.xml"),
+              feedURL: "https://podcast.hr.de/hr2_hoerspiel/podcast.xml", country: .germany),
         Entry(title: "Ö1 Hörspiel und Radiokunst", author: "ORF",
-              feedURL: "https://podcast.orf.at/podcast/oe1/oe1_hoerspiel/oe1_hoerspiel.xml"),
+              feedURL: "https://podcast.orf.at/podcast/oe1/oe1_hoerspiel/oe1_hoerspiel.xml",
+              country: .austria),
         // Auftrag N2 (08.08.2026): the measured ÖRR sweep — Bestand vor
         // Neuzugängen, so the four familiar tiles above keep their spots.
         Entry(title: "SWR Kultur Hörspiel", author: "SWR",
-              feedURL: "https://www.swr.de/~podcast/swrkultur/hoerspiel/podcast-hoerspiel-100.xml"),
+              feedURL: "https://www.swr.de/~podcast/swrkultur/hoerspiel/podcast-hoerspiel-100.xml",
+              country: .germany),
         Entry(title: "Hörspiele und Lesungen bei MDR KULTUR", author: "MDR",
-              feedURL: "https://www.mdr.de/kultur/podcast/hoerspiele/audiogalerie-106.xml"),
+              feedURL: "https://www.mdr.de/kultur/podcast/hoerspiele/audiogalerie-106.xml",
+              country: .germany),
         Entry(title: "Freispiel – Hörspiel und Feature", author: "Deutschlandfunk Kultur",
-              feedURL: "https://www.hoerspielundfeature.de/podcast-hoerspiel-100.xml"),
+              feedURL: "https://www.hoerspielundfeature.de/podcast-hoerspiel-100.xml",
+              country: .germany),
         Entry(title: "SRF Hörspiel", author: "SRF",
-              feedURL: "https://www.srf.ch/feed/podcast/sd/553f3450-1697-4fc5-ad79-0dead1605c8f.xml"),
+              feedURL: "https://www.srf.ch/feed/podcast/sd/553f3450-1697-4fc5-ad79-0dead1605c8f.xml",
+              country: .switzerland),
         Entry(title: "SRF Krimi", author: "SRF",
-              feedURL: "https://www.srf.ch/feed/podcast/sd/5ba1cc91-64f2-4583-a72c-7d8194d7b163.xml"),
+              feedURL: "https://www.srf.ch/feed/podcast/sd/5ba1cc91-64f2-4583-a72c-7d8194d7b163.xml",
+              country: .switzerland),
         Entry(title: "Schreckmümpfeli", author: "SRF",
-              feedURL: "https://www.srf.ch/feed/podcast/sd/46500e89-d57c-4684-aefb-2e5cb1adbca0.xml"),
+              feedURL: "https://www.srf.ch/feed/podcast/sd/46500e89-d57c-4684-aefb-2e5cb1adbca0.xml",
+              country: .switzerland),
         // X²·1 (08.08., Fusion): ONE independent row — anthologies, series
         // and readings; the form is a data field, the meta line shows it.
         // Every entry live-verified (items count + enclosure spot check 200);

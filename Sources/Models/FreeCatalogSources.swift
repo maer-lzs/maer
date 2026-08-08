@@ -70,17 +70,19 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// The curated feeds of a FEED source (empty for catalog sources).
-    /// Escape Artists carry their publisher in the author field already —
-    /// the split leans on that instead of a second list.
+    /// X²·3: the OERR row reads the LIVE store (seed-backed, rule-curated);
+    /// the independents stay hand-curated data.
+    @MainActor
     func curatedFeeds(forLanguages codes: [String]) -> [HoerspielCuration.Entry] {
         guard isFeedBased else { return [] }
-        // X²·1: explicit group data instead of author/language heuristics.
-        return HoerspielCuration.feeds(forLanguages: codes).filter { entry in
-            switch self {
-            case .oerr:         entry.group == .oerr
-            case .independents: entry.group == .independent
-            default:            false
-            }
+        switch self {
+        case .oerr:
+            return OERRLiveStore.shared.current(forLanguages: codes)
+        case .independents:
+            return HoerspielCuration.feeds(forLanguages: codes)
+                .filter { $0.group == .independent }
+        default:
+            return []
         }
     }
 }
