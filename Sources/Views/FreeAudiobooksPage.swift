@@ -82,8 +82,7 @@ struct FreeAudiobooksPage: View {
                 // the reviewer's Reihenfolge (11be262): feeds first, catalogs after —
                 // the feed rows are static curation and render instantly.
                 feedSection(.oerr)
-                feedSection(.escapeArtists)
-                feedSection(.usIndies)
+                feedSection(.independents)
                 chartsSection
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
@@ -143,9 +142,13 @@ struct FreeAudiobooksPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 12) {
                 ForEach(feeds) { entry in
+                    // X²·1: form meta line + CC capsule only where the feed
+                    // states it.
                     RecommendationTile(result: PodcastSearchResult(
                         title: entry.title, author: entry.author,
-                        artworkURL: nil, feedURL: entry.feedURL))
+                        artworkURL: nil, feedURL: entry.feedURL),
+                        subtitle: entry.form?.label,
+                        badgeText: entry.ccLicense)
                         .containerRelativeFrame(.horizontal,
                             count: CardMetrics.recommendationColumns(regularWidth: false),
                             span: 1, spacing: 12)

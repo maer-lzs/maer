@@ -43,7 +43,9 @@ struct CatalogMixRow: View {
         case .feed(let entry):
             RecommendationTile(result: PodcastSearchResult(
                 title: entry.title, author: entry.author,
-                artworkURL: nil, feedURL: entry.feedURL))
+                artworkURL: nil, feedURL: entry.feedURL),
+                subtitle: entry.form?.label,
+                badgeText: entry.ccLicense)
         case .item(let item):
             FreeCatalogBookTile(
                 item: item,
@@ -74,7 +76,7 @@ extension CatalogMix {
     /// calm-gated store, fairly interleaved, capped by RowPreview.
     static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()
-        let feedGroups = [CatalogSource.oerr, .escapeArtists, .usIndies]
+        let feedGroups = [CatalogSource.oerr, .independents]
             .map { $0.curatedFeeds(forLanguages: languages) }
         return row(feedGroups: feedGroups,
                    itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,

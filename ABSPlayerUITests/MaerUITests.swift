@@ -916,8 +916,9 @@ nonisolated final class MaerUITests: XCTestCase {
     func testEntdeckenRowsAppearOnColdStart() {
         let app = launchSeeded()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-        // Stay on Start. The music row heads "Entdecken · Musik" (de sim).
-        let heading = app.staticTexts["Entdecken · Musik"].firstMatch
+        // Stay on Start. 3b98dfb: match the locale-independent row id, not
+        // the localized heading text.
+        let heading = app.buttons["home-discover-music"].firstMatch
         var rounds = 0
         while !heading.exists && rounds < 12 {
             app.swipeUp()

@@ -326,8 +326,9 @@ nonisolated enum FreeCatalog {
     /// title and creator carry the name, so a fold match is enough; being
     /// conservative here costs at most a duplicate-free false negative.
     /// P4 (1dfdca7, freigegeben nach Voll-Messung über 4.257 Titel): the
-    /// curated EXCLUSION denylist — data, not a code branch per case (same
-    /// mechanism class as the shellac NS filter). Exactly these six: all
+    /// curated EXCLUSION denylist — data, not a code branch per case, and
+    /// deliberately the ONLY exclusion form in the repo (curation elsewhere
+    /// uses positive lists/queries only). Exactly these six: all
     /// Alistair-MacLean novels of one uploader (1955–1983 commercial works
     /// with an invented public-domain dedication; the wider bestseller-author
     /// probe found nothing else). The measured "PD contradicts year" rule was

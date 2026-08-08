@@ -16,8 +16,10 @@ import Foundation
 nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     // Feed-based (action: subscribe) — rows of MediaRowContent.
     case oerr
-    case escapeArtists
-    case usIndies
+    /// X²·1: the FUSED independent row (formerly escapeArtists + usIndies) —
+    /// anthologies, series and readings, English AND German (the language
+    /// bracket fell with the owner's X²·2 decision; language logic mixes).
+    case independents
     // Catalog-based (action: play / take over) — tile rows.
     case oldTimeRadio
     case librivox
@@ -30,7 +32,7 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     /// tab; what lands in the audiobook corner previews in the audiobooks tab.
     var isFeedBased: Bool {
         switch self {
-        case .oerr, .escapeArtists, .usIndies: return true
+        case .oerr, .independents: return true
         case .oldTimeRadio, .librivox, .archiveBooks, .gutenberg: return false
         }
     }
@@ -46,7 +48,7 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         // 9815608 D: "Escape Artists" is a PUBLISHER, not a content name —
         // the row title names the content, the publisher stays the sender
         // line on every tile (author field).
-        case .oerr, .usIndies, .escapeArtists: return false
+        case .oerr, .independents: return false
         }
     }
 
@@ -55,10 +57,9 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .oerr:          String(localized: "Public Broadcast Radio Plays")
-        case .escapeArtists: String(localized: "Story Podcasts (English)")
-        // d417967: the cut is the English-speaking world (UK's Rusty Quill,
-        // AU candidates) — "(USA)" stopped being true with N4, D2 rule.
-        case .usIndies:      String(localized: "Independent Audio Drama (English)")
+        // X²·1/X²·2: ONE fused row; the language bracket fell (German
+        // community entries joined, the preview mixes active languages).
+        case .independents:  String(localized: "Independent Stories & Anthologies")
         case .oldTimeRadio:  "Old Time Radio"
         case .librivox:      "LibriVox"
         // P3 (D2 rule): the title names the CONTENT, the sender sits in the
@@ -73,12 +74,12 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     /// the split leans on that instead of a second list.
     func curatedFeeds(forLanguages codes: [String]) -> [HoerspielCuration.Entry] {
         guard isFeedBased else { return [] }
+        // X²·1: explicit group data instead of author/language heuristics.
         return HoerspielCuration.feeds(forLanguages: codes).filter { entry in
             switch self {
-            case .oerr:          entry.language == nil
-            case .escapeArtists: entry.author == "Escape Artists"
-            case .usIndies:      entry.language != nil && entry.author != "Escape Artists"
-            default:             false
+            case .oerr:         entry.group == .oerr
+            case .independents: entry.group == .independent
+            default:            false
             }
         }
     }

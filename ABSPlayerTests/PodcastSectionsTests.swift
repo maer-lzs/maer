@@ -234,6 +234,17 @@ struct PodcastSectionsTests {
         #expect(result.mirroredShows.map(\.show.id) == ["m2", "m1"])
     }
 
+    @Test("5abb1e9-Kuer: Kapsel-Kennung — mirroredEpisodeGuids und Item-Id sind DIESELBE Kette")
+    func capsuleIdsMatchThroughTheRealChain() {
+        var mirrored = show("m1", episodes: [episode("rss:m1:e1", pubDate: 100)])
+        mirrored.origin = "pinchflat:tube.example"
+        // The host set and the tile's item id both come from the SAME
+        // episodes array — the guid IS the LibraryItem id.
+        let guids = Set(mirrored.episodes.map(\.guid))
+        let item = podcastLibraryItem(show: mirrored, episode: mirrored.episodes[0])
+        #expect(guids.contains(item.id))
+    }
+
     @Test("Teil 2: arrange sorts by recency / name / unplayed and filters")
     func arrangeSortsAndFilters() {
         // Titles are "Show a/b/c" (fixture); ids are a/b/c.

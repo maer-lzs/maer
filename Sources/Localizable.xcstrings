@@ -6002,6 +6002,46 @@
         }
       }
     },
+    "Anthology" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthologie"
+          }
+        }
+      }
+    },
+    "Independent Stories & Anthologies" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unabh\u00e4ngige Erz\u00e4hlungen & Anthologien"
+          }
+        }
+      }
+    },
+    "Reading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesung"
+          }
+        }
+      }
+    },
+    "Serial" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie"
+          }
+        }
+      }
+    },
     "Sort By" : {
       "localizations" : {
         "de" : {

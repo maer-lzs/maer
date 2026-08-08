@@ -113,7 +113,9 @@ struct CatalogSourcePage: View {
             ForEach(source.curatedFeeds(forLanguages: SuggestionLanguages.current())) { entry in
                 RecommendationTile(result: PodcastSearchResult(
                     title: entry.title, author: entry.author,
-                    artworkURL: nil, feedURL: entry.feedURL))
+                    artworkURL: nil, feedURL: entry.feedURL),
+                    subtitle: entry.form?.label,
+                    badgeText: entry.ccLicense)
             }
         }
         .padding(.horizontal)

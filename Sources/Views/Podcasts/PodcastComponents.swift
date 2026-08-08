@@ -662,6 +662,9 @@ struct PodcastSubscribeButton: View {
 struct RecommendationTile: View {
     let result: PodcastSearchResult
     var subtitle: String? = nil
+    /// X²·1: the CC capsule of a curated independent feed — only where the
+    /// FEED states the licence (rides MediaTile's badge mechanics).
+    var badgeText: String? = nil
     /// Kachel-Auftrag: nil = the tile FILLS its containerRelativeFrame slot
     /// (screen-relative rows); a numeric width remains for legacy callers.
     var width: CGFloat? = nil
@@ -676,6 +679,7 @@ struct RecommendationTile: View {
                 subtitle: subtitle,
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
                 unavailable: unavailable,
+                badgeText: badgeText,
                 // 2e2c222 G: a result WITHOUT artwork resolves it from the
                 // feed — the c125ccd fallback the old LIST row had; without
                 // it every curated feed tile rendered gray (curation carries

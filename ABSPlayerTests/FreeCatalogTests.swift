@@ -746,7 +746,11 @@ struct CatalogGenreAxisTests {
 
         // Ohne en bleibt OERR uebrig — die anderen Reihen sind leer, nicht kaputt.
         #expect(!CatalogSource.oerr.curatedFeeds(forLanguages: ["de"]).isEmpty)
-        #expect(CatalogSource.escapeArtists.curatedFeeds(forLanguages: ["de"]).isEmpty)
+        // X²·2: the fused row keeps its GERMAN entries without en active —
+        // the community additions, not the English stock.
+        let deOnly = CatalogSource.independents.curatedFeeds(forLanguages: ["de"])
+        #expect(!deOnly.isEmpty)
+        #expect(deOnly.allSatisfy { $0.language == nil })
         // Katalog-Quellen liefern nie Feeds.
         #expect(CatalogSource.librivox.curatedFeeds(forLanguages: codes).isEmpty)
     }
