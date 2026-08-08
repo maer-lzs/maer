@@ -124,6 +124,25 @@ enum UITestSeed {
             }
         }
 
+        // Befund-V journey: catalog rows arrive LATE (2 s) through the real
+        // calm-gated store path — the Entdecken row must appear on the first
+        // Start stay without a tab switch.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            func classic(_ n: Int) -> LibraryItem {
+                LibraryItem(id: "lva:seed-classic-\(n)",
+                            media: LibraryItemMedia(
+                                metadata: LibraryItemMetadata(
+                                    title: "Seed Classical \(n)", authorName: "Seed Orchestra",
+                                    narratorName: nil, seriesName: nil, genres: nil,
+                                    publishedYear: nil, description: nil),
+                                duration: 600, chapters: nil, tracks: nil),
+                            addedAt: nil)
+            }
+            FreeCatalogStore.shared._seedForUITest(
+                classical: (1...4).map(classic), freeMusic: [])
+        }
+
         // Mixed Up-Next queue: a book, an album and an episode.
         let queue = PlayQueue.shared
         queue.clear()

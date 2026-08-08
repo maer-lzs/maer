@@ -133,7 +133,13 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: track.name, authorName: track.artist_name, narratorName: nil,
+                    // Befund W: Jamendo delivers names HTML-encoded
+                    // ("Bessonn&amp;sa") — decode at the ONE intake through
+                    // the existing text preparation (Regel 2, no second
+                    // decoder). Title AND artist.
+                    title: track.name.map(podcastPlainText),
+                    authorName: track.artist_name.map(podcastPlainText),
+                    narratorName: nil,
                     seriesName: nil, genres: nil, publishedYear: nil, description: nil),
                 duration: track.duration.map(Double.init), chapters: nil, tracks: nil),
             addedAt: nil)

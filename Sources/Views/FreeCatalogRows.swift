@@ -341,6 +341,21 @@ final class FreeCatalogStore: ObservableObject {
         BottomBarState.shared.runWhenCalm { [weak self] in self?.sourceRows = loaded }
     }
 
+    #if DEBUG
+    /// Befund-V journey: the harness DELAYS this fill to simulate the late
+    /// store arrival the cold start used to miss — applied through the SAME
+    /// calm-gated path as the real loader, so the journey exercises the
+    /// exact publish chain (store → observing Home → row appears without a
+    /// tab switch).
+    func _seedForUITest(classical: [LibraryItem], freeMusic: [LibraryItem]) {
+        loaded = true
+        var seeded = FreeCatalogLoader.Rows()
+        seeded.classical = classical
+        seeded.freeMusic = freeMusic
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.rows = seeded }
+    }
+    #endif
+
     /// The single load pass (34c36e1 discipline: called from compute(),
     /// never from a lazily mounted empty view's own task).
     func ensureLoaded() async {

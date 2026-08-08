@@ -559,6 +559,13 @@ final class PodcastSubscriptions: ObservableObject {
         var seen = Set(base.episodes.map { $0.guid })
         let extra = other.episodes.filter { seen.insert($0.guid).inserted }
         result.episodes = (base.episodes + extra).sorted { $0.pubDate > $1.pubDate }
+        // 78c5298: `origin` is a STORE fact, not a feed fact — a freshly
+        // parsed show carries nil, and whenever the fresh side becomes base
+        // (more episodes: the normal case on the first big refresh) the
+        // provenance silently died with it. That killed the origin capsule on
+        // every surface AND (delayed) the group row + the premium exclusion.
+        // The stored side (`a`) owns it.
+        result.origin = a.origin
         return result
     }
 

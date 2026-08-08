@@ -907,6 +907,28 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["hr2 Hörspiel"].firstMatch.waitForExistence(timeout: 5))
     }
 
+    /// Befund V (1448c1c): the Entdecken rows appear on the FIRST Start stay
+    /// — no tab switch needed. The cold start used to miss the late store
+    /// fill (NetworkMonitor not ready on the one compute pass); the fix kicks
+    /// the loads when connectivity arrives. Live catalogs, so the timeout is
+    /// generous; the row sits below the fold → scroll while waiting.
+    func testEntdeckenRowsAppearOnColdStart() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        // Stay on Start. The music row heads "Entdecken · Musik" (de sim).
+        let heading = app.staticTexts["Entdecken · Musik"].firstMatch
+        var rounds = 0
+        while !heading.exists && rounds < 12 {
+            app.swipeUp()
+            _ = heading.waitForExistence(timeout: 5)
+            if heading.exists { break }
+            app.swipeDown(); app.swipeDown()
+            rounds += 1
+        }
+        XCTAssertTrue(heading.exists,
+                      "the Entdecken row must appear on the first Start stay, without a tab switch")
+    }
+
     /// fb21fbd → Auftrag J1: sorting moved from the tab head to the section,
     /// and now WITH the section's full grid onto its page. The journey walks
     /// the whole J1 chain: preview heading (counted chevron with the total)

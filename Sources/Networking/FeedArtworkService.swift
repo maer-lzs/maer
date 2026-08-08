@@ -25,7 +25,12 @@ actor FeedArtworkService {
     /// The curation changes rarely — a generous TTL, but not eternal:
     /// public-broadcast image URLs rotate, which is exactly why nothing is
     /// hard-wired into the curation data.
-    private static let persistKey = "feedArtworkResults"
+    /// U2 (bb403a6): v2 discards the poisoned generation — entries written
+    /// while a 401 body was mistaken for "feed states no image" (server
+    /// connected before its artwork endpoint was open) healed only after the
+    /// 7-day TTL otherwise. Same storageVersion move as the radio logos.
+    private static let persistKey = "feedArtworkResults.v2"
+    private static let legacyPersistKey = "feedArtworkResults"
     private static let positiveTTL: TimeInterval = 30 * 24 * 3600
     private static let negativeTTL: TimeInterval = 7 * 24 * 3600
 
@@ -37,6 +42,7 @@ actor FeedArtworkService {
     private func loadPersistedIfNeeded() {
         guard !persistedLoaded else { return }
         persistedLoaded = true
+        UserDefaults.standard.removeObject(forKey: Self.legacyPersistKey)
         guard let data = UserDefaults.standard.data(forKey: Self.persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
@@ -58,7 +64,10 @@ actor FeedArtworkService {
 
     /// The channel artwork for a feed; nil when the feed states none (cached
     /// as a negative, so a miss costs one request, not one per appearance).
-    func artworkURL(feedURL: String) async -> URL? {
+    /// `fetch` is injectable (U4 fence): the failure-vs-absence decision is
+    /// what the test pins, not the transport.
+    func artworkURL(feedURL: String,
+                    fetch: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }) async -> URL? {
         loadPersistedIfNeeded()
         if let cached = cache[feedURL] { return cached }
         guard let url = URL(string: feedURL), await NetworkMonitor.shared.isConnected else { return nil }
@@ -68,7 +77,17 @@ actor FeedArtworkService {
         request.setValue("bytes=0-\(FeedArtworkLookup.headByteCount - 1)", forHTTPHeaderField: "Range")
         var resolved: URL?
         do {
-            let (data, _) = try await RequestRetryPolicy.fetch(request)
+            let (data, http) = try await fetch(request)
+            // U1 (bb403a6): failure ≠ absence — the radio-logo distinction
+            // (failure/empty/data). fetch returns non-2xx WITH its error body,
+            // and a 401 page read as "feed states no image" persisted a
+            // 7-day negative (the owner connected before the artwork endpoint
+            // opened). Only a SUCCESSFULLY read head may answer "no image";
+            // any other status is a failure: session-only, retried next time.
+            if let status = http?.statusCode, !(200...299).contains(status) {
+                Logger.rss.error("HOERSPIEL artwork feed=\(feedURL, privacy: .public) → FAILED: HTTP \(status)")
+                return nil
+            }
             // A server ignoring Range would hand out the whole feed — cut it
             // down before parsing so the promise "head only" holds either way.
             let head = String(decoding: data.prefix(FeedArtworkLookup.headByteCount), as: UTF8.self)

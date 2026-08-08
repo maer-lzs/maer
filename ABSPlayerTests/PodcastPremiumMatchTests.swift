@@ -328,6 +328,62 @@ struct ProviderTokenChainTests {
         #expect(!PodcastSubscriptions.isPremiumFeed(feedURL, defaults: defaults))
     }
 
+    @Test("78c5298-Zaun: origin ueberlebt den Refresh-Merge — auch wenn fresh die Base wird")
+    func originSurvivesRefreshMerge() {
+        func show(_ id: String, episodes: Int, origin: String? = nil) -> PodcastShow {
+            var s = PodcastShow(id: id, title: "T", author: nil, artworkURL: nil,
+                                description: nil, feedURL: "https://x/\(id)",
+                                episodes: (0..<episodes).map {
+                                    PodcastEpisode(guid: "\(id)-\($0)", title: "E\($0)",
+                                                   audioURL: "https://x/\($0).mp3",
+                                                   pubDate: Double($0), duration: 60,
+                                                   description: nil, imageURL: nil,
+                                                   chaptersURL: nil)
+                                })
+            s.origin = origin
+            return s
+        }
+        let stored = show("a", episodes: 2, origin: "pinchflat:tube.example")
+        // The normal first-refresh case: the fresh parse has MORE episodes,
+        // becomes base — and used to drop the store-owned origin silently.
+        let freshBigger = show("a", episodes: 5)
+        #expect(PodcastSubscriptions.merge(stored, freshBigger).origin == "pinchflat:tube.example")
+        // The other direction stays correct too.
+        let freshSmaller = show("a", episodes: 1)
+        #expect(PodcastSubscriptions.merge(stored, freshSmaller).origin == "pinchflat:tube.example")
+        // An ordinary subscription never grows an origin out of nowhere.
+        #expect(PodcastSubscriptions.merge(show("b", episodes: 2), show("b", episodes: 5)).origin == nil)
+    }
+
+    @Test("U4-Zaun: Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
+    func artworkFailureIsNotAbsence() async {
+        let service = FeedArtworkService()
+        let feed = "https://tube.example/sources/u4/feed.xml"
+        let head = "<rss><channel><itunes:image href=\"https://tube.example/cover.jpg\"/></channel></rss>"
+        // First call: the endpoint answers 401 (server connected before the
+        // artwork switch) — a FAILURE, not "feed states no image".
+        let poisoned = await service.artworkURL(feedURL: feed, fetch: { request in
+            (Data("denied".utf8),
+             HTTPURLResponse(url: request.url!, statusCode: 401,
+                             httpVersion: nil, headerFields: nil))
+        })
+        #expect(poisoned == nil)
+        // Second call must TRY AGAIN (no cached/persisted negative) and win.
+        let healed = await service.artworkURL(feedURL: feed, fetch: { request in
+            (Data(head.utf8),
+             HTTPURLResponse(url: request.url!, statusCode: 200,
+                             httpVersion: nil, headerFields: nil))
+        })
+        #expect(healed?.absoluteString == "https://tube.example/cover.jpg")
+        // A successfully read head WITHOUT an image is the honest negative.
+        let empty = await service.artworkURL(feedURL: "https://tube.example/none/feed.xml", fetch: { request in
+            (Data("<rss></rss>".utf8),
+             HTTPURLResponse(url: request.url!, statusCode: 200,
+                             httpVersion: nil, headerFields: nil))
+        })
+        #expect(empty == nil)
+    }
+
     @Test("S1: Schema-lose Pinchflat-Adressen normalisieren auf denselben Host")
     func pinchflatAddressNormalization() {
         let hosts = ["tube.x.y", "https://tube.x.y", "  tube.x.y  ", "http://tube.x.y"]

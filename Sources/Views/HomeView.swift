@@ -177,6 +177,21 @@ struct HomeView: View {
             guard isActive else { return }
             await compute()
         }
+        // Befund V (1448c1c): the catalog loads MISSED the first Start pass
+        // on a cold start — NetworkMonitor answers false until NWPathMonitor's
+        // first update, ensureLoaded()'s guard bailed, and with a cache-fed
+        // library the recompute token never changed again (the row appeared
+        // only after a tab switch flipped isActive). Same class and same cure
+        // as the radio cold start: when connectivity arrives, kick the loads
+        // once — the store publishes calm-gated, so the rows appear below the
+        // visible area without a jolt.
+        .onReceive(NetworkMonitor.shared.$isConnected) { connected in
+            guard connected, isActive else { return }
+            Task {
+                await freeCatalogStore.ensureLoaded()
+                await freeCatalogStore.ensureSourcesLoaded()
+            }
+        }
         // E3: recompute the Discover filter only when its inputs change.
         .task(id: discoverToken) { recomputeDiscover() }
         .sheet(isPresented: $showQueueSheet) {

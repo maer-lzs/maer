@@ -987,6 +987,16 @@ struct CatalogGenreAxisTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["old time radio", "otrr set"]).isEmpty)
     }
 
+    @Test("Befund W: Jamendo-Namen dekodieren HTML-Entities an der Einlese-Stelle")
+    func jamendoEntitiesDecode() {
+        let track = JamendoTrack(id: "w1", name: "Song &quot;Alpha&quot;",
+                                 artist_name: "Bessonn&amp;sa", image: nil,
+                                 audio: "https://x/a.mp3", shareurl: nil, duration: 60)
+        let item = FreeCatalogProvider.shared.remember(track: track)
+        #expect(item?.title == "Song \"Alpha\"")
+        #expect(item?.author == "Bessonn&sa")
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")
