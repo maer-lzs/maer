@@ -142,7 +142,7 @@ struct FreeAudiobooksPage: View {
     /// this page is pushed, not a kept-alive tab root.
     @ViewBuilder
     private func feedSection(_ source: CatalogSource) -> some View {
-        let feeds = source.curatedFeeds(forLanguages: languages)
+        let feeds = OERRLiveStore.feeds(for: source, languages: languages)
         if !feeds.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 if source == .oerr {

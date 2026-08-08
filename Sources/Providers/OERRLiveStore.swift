@@ -34,6 +34,15 @@ final class OERRLiveStore: ObservableObject {
         }
     }
 
+    /// Befund Y (Y1): the ONE surface entry point — live for OERR, pure
+    /// curation data otherwise. The dependency arrow points store → data;
+    /// the Models layer never touches this type.
+    static func feeds(for source: CatalogSource, languages: [String]) -> [HoerspielCuration.Entry] {
+        source == .oerr
+            ? shared.current(forLanguages: languages)
+            : source.curatedFeeds(forLanguages: languages)
+    }
+
     func ensureLoaded(forLanguages codes: [String]) async {
         guard !loaded, !loading, NetworkMonitor.shared.isConnected else { return }
         #if DEBUG

@@ -69,20 +69,19 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The curated feeds of a FEED source (empty for catalog sources).
-    /// X²·3: the OERR row reads the LIVE store (seed-backed, rule-curated);
-    /// the independents stay hand-curated data.
-    @MainActor
+    /// The curated feeds of a FEED source (empty for catalog sources) —
+    /// PURE seed data. Befund Y (5a646f7): this layer stays Foundation-only;
+    /// the LIVE OERR enrichment is a provider concern, and the UI reaches it
+    /// through `OERRLiveStore.feeds(for:languages:)` — the dependency points
+    /// from the store to this data, never back.
     func curatedFeeds(forLanguages codes: [String]) -> [HoerspielCuration.Entry] {
         guard isFeedBased else { return [] }
-        switch self {
-        case .oerr:
-            return OERRLiveStore.shared.current(forLanguages: codes)
-        case .independents:
-            return HoerspielCuration.feeds(forLanguages: codes)
-                .filter { $0.group == .independent }
-        default:
-            return []
+        return HoerspielCuration.feeds(forLanguages: codes).filter { entry in
+            switch self {
+            case .oerr:         entry.group == .oerr
+            case .independents: entry.group == .independent
+            default:            false
+            }
         }
     }
 }

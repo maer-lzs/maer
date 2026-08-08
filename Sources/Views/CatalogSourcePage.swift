@@ -110,7 +110,7 @@ struct CatalogSourcePage: View {
     /// badge); `CatalogFeedRow` died with this, its last call site.
     private var feedList: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
-            ForEach(source.curatedFeeds(forLanguages: SuggestionLanguages.current())) { entry in
+            ForEach(OERRLiveStore.feeds(for: source, languages: SuggestionLanguages.current())) { entry in
                 RecommendationTile(result: PodcastSearchResult(
                     title: entry.title, author: entry.author,
                     artworkURL: nil, feedURL: entry.feedURL),

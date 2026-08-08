@@ -78,7 +78,7 @@ extension CatalogMix {
     static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()
         let feedGroups = [CatalogSource.oerr, .independents]
-            .map { $0.curatedFeeds(forLanguages: languages) }
+            .map { OERRLiveStore.feeds(for: $0, languages: languages) }
         return row(feedGroups: feedGroups,
                    itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
                                 rows.archiveBooks, rows.gutenberg],

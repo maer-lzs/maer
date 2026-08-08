@@ -658,12 +658,32 @@
         }
       }
     },
+    "Ambient" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambient"
+          }
+        }
+      }
+    },
     "Another import is already running." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Es läuft bereits eine Übernahme."
+          }
+        }
+      }
+    },
+    "Anthology" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anthologie"
           }
         }
       }
@@ -815,6 +835,16 @@
         }
       }
     },
+    "Audiobooks (Internet Archive)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hörbücher (Internet Archive)"
+          }
+        }
+      }
+    },
     "Audiobooks are large (often several hundred MB). Continue on cellular data?" : {
       "localizations" : {
         "de" : {
@@ -863,6 +893,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Audiobookshelf-Server"
+          }
+        }
+      }
+    },
+    "Australia" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Australien"
+          }
+        }
+      }
+    },
+    "Austria" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Österreich"
           }
         }
       }
@@ -955,6 +1005,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Weil du %@ hörst"
+          }
+        }
+      }
+    },
+    "Belgium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belgien"
           }
         }
       }
@@ -1077,6 +1137,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nach Genre"
+          }
+        }
+      }
+    },
+    "Canada" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kanada"
           }
         }
       }
@@ -1369,6 +1439,16 @@
         }
       }
     },
+    "Connected to %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden mit %@"
+          }
+        }
+      }
+    },
     "Connected." : {
       "localizations" : {
         "de" : {
@@ -1485,6 +1565,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Länderliste konnte nicht geladen werden. Prüfe deine Verbindung und versuch es erneut."
+          }
+        }
+      }
+    },
+    "Could not load the episode list. Tap to try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folgenliste konnte nicht geladen werden. Tippen zum erneuten Versuch."
           }
         }
       }
@@ -1635,6 +1725,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kultur"
+          }
+        }
+      }
+    },
+    "Dance" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dance"
           }
         }
       }
@@ -1791,6 +1891,16 @@
         }
       }
     },
+    "Denmark" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dänemark"
+          }
+        }
+      }
+    },
     "Descending" : {
       "localizations" : {
         "de" : {
@@ -1859,16 +1969,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Server trennen"
-          }
-        }
-      }
-    },
-    "Connected to %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden mit %@"
           }
         }
       }
@@ -2256,6 +2356,26 @@
         }
       }
     },
+    "Finland" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finnland"
+          }
+        }
+      }
+    },
+    "Folk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folk"
+          }
+        }
+      }
+    },
     "For Children" : {
       "localizations" : {
         "de" : {
@@ -2302,6 +2422,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zu finden in der Audiobookshelf-Weboberfläche unter Einstellungen → Benutzer → eigenen Account öffnen (oder Einstellungen → API-Keys bei neueren Versionen)."
+          }
+        }
+      }
+    },
+    "France" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frankreich"
           }
         }
       }
@@ -2353,7 +2483,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Freie gemeinfreie H\u00f6rb\u00fccher von LibriVox \u2014 getrennt von deiner eigenen Bibliothek."
+            "value" : "Freie gemeinfreie Hörbücher von LibriVox — getrennt von deiner eigenen Bibliothek."
           }
         }
       }
@@ -2398,6 +2528,16 @@
         }
       }
     },
+    "From the Free Catalogs" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus den freien Katalogen"
+          }
+        }
+      }
+    },
     "From Your Region" : {
       "localizations" : {
         "de" : {
@@ -2434,6 +2574,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Genres"
+          }
+        }
+      }
+    },
+    "Germany" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deutschland"
           }
         }
       }
@@ -2522,46 +2672,6 @@
         }
       }
     },
-    "Could not load the episode list. Tap to try again." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folgenliste konnte nicht geladen werden. Tippen zum erneuten Versuch."
-          }
-        }
-      }
-    },
-    "Last heard" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt geh\u00f6rt"
-          }
-        }
-      }
-    },
-    "Audiobooks (Internet Archive)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "H\u00f6rb\u00fccher (Internet Archive)"
-          }
-        }
-      }
-    },
-    "From the Free Catalogs" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aus den freien Katalogen"
-          }
-        }
-      }
-    },
     "Hide Channel" : {
       "localizations" : {
         "de" : {
@@ -2590,6 +2700,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hochauflösende Album-Cover für Alben mit MusicBrainz-ID."
+          }
+        }
+      }
+    },
+    "Hip-Hop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hip-Hop"
           }
         }
       }
@@ -2706,12 +2826,22 @@
         }
       }
     },
-    "Independent Audio Drama (English)" : {
+    "Independent Stories & Anthologies" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unabhängige Hörspiel-Reihen (Englisch)"
+            "value" : "Unabhängige Erzählungen & Anthologien"
+          }
+        }
+      }
+    },
+    "Indie" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indie"
           }
         }
       }
@@ -2754,6 +2884,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ungültige Server-URL."
+          }
+        }
+      }
+    },
+    "Italy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Italien"
+          }
+        }
+      }
+    },
+    "Japan" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Japan"
           }
         }
       }
@@ -2860,6 +3010,16 @@
         }
       }
     },
+    "Korea" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Korea"
+          }
+        }
+      }
+    },
     "Last 7 Days" : {
       "localizations" : {
         "de" : {
@@ -2886,6 +3046,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zuletzt geprüft"
+          }
+        }
+      }
+    },
+    "Last heard" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt gehört"
           }
         }
       }
@@ -3171,7 +3341,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lange nicht geh\u00f6rt \u2014 neue Folgen warten"
+            "value" : "Lange nicht gehört — neue Folgen warten"
           }
         }
       }
@@ -3438,6 +3608,16 @@
         }
       }
     },
+    "Music & Variety" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Musik & Varieté"
+          }
+        }
+      }
+    },
     "Music library synced." : {
       "localizations" : {
         "de" : {
@@ -3516,6 +3696,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erzähler"
+          }
+        }
+      }
+    },
+    "Netherlands" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niederlande"
           }
         }
       }
@@ -3618,6 +3808,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neue Abos werden auf deinem Audiobookshelf-Server angelegt und über alle Geräte synchronisiert. Aus = nur lokal, dieses Gerät. Auto-Sichern legt eine gestreamte Feed-Folge nach ~30 s am Server ab, damit ihr Fortschritt auch dort synct."
+          }
+        }
+      }
+    },
+    "New Zealand" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuseeland"
           }
         }
       }
@@ -3932,6 +4132,16 @@
         }
       }
     },
+    "Norway" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Norwegen"
+          }
+        }
+      }
+    },
     "Not enough free storage for this download." : {
       "localizations" : {
         "de" : {
@@ -3959,7 +4169,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Seit %lld Wochen nicht geh\u00f6rt"
+            "value" : "Seit %lld Wochen nicht gehört"
           }
         }
       }
@@ -4737,6 +4947,16 @@
         }
       }
     },
+    "Popular Readings & Books" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebte Lesungen & Bücher"
+          }
+        }
+      }
+    },
     "Popular Songs" : {
       "localizations" : {
         "de" : {
@@ -4757,12 +4977,32 @@
         }
       }
     },
+    "Popular This Week" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebt diese Woche"
+          }
+        }
+      }
+    },
     "Popularity ranking and streams for the free audiobooks and the Free Classical area." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher und den Freie-Klassik-Bereich."
+          }
+        }
+      }
+    },
+    "Portugal" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portugal"
           }
         }
       }
@@ -4876,6 +5116,16 @@
         }
       }
     },
+    "Public domain (per source)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfrei (laut Quelle)"
+          }
+        }
+      }
+    },
     "Public-broadcast content can disappear after fixed periods — downloads keep your copies." : {
       "localizations" : {
         "de" : {
@@ -4962,6 +5212,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reaktivieren"
+          }
+        }
+      }
+    },
+    "Reading" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesung"
+          }
+        }
+      }
+    },
+    "Reading %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesung %lld"
           }
         }
       }
@@ -5102,6 +5372,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erschienen"
+          }
+        }
+      }
+    },
+    "Religion" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Religion"
           }
         }
       }
@@ -5458,6 +5738,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sichere Verbindung fehlgeschlagen (Zertifikatsproblem). Ist HTTPS auf dem Server korrekt eingerichtet?"
+          }
+        }
+      }
+    },
+    "Serial" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie"
           }
         }
       }
@@ -5902,346 +6192,6 @@
         }
       }
     },
-    "Music & Variety" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musik & Variet\u00e9"
-          }
-        }
-      }
-    },
-    "Public domain (per source)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfrei (laut Quelle)"
-          }
-        }
-      }
-    },
-    "Religion" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Religion"
-          }
-        }
-      }
-    },
-    "Ambient" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ambient"
-          }
-        }
-      }
-    },
-    "Dance" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dance"
-          }
-        }
-      }
-    },
-    "Folk" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Folk"
-          }
-        }
-      }
-    },
-    "Hip-Hop" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hip-Hop"
-          }
-        }
-      }
-    },
-    "Indie" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Indie"
-          }
-        }
-      }
-    },
-    "Popular This Week" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebt diese Woche"
-          }
-        }
-      }
-    },
-    "Reading %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lesung %lld"
-          }
-        }
-      }
-    },
-    "Anthology" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anthologie"
-          }
-        }
-      }
-    },
-    "Independent Stories & Anthologies" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unabh\u00e4ngige Erz\u00e4hlungen & Anthologien"
-          }
-        }
-      }
-    },
-    "Reading" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lesung"
-          }
-        }
-      }
-    },
-    "Serial" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Serie"
-          }
-        }
-      }
-    },
-    "Popular Readings & Books" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebte Lesungen & B\u00fccher"
-          }
-        }
-      }
-    },
-    "Germany" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deutschland"
-          }
-        }
-      }
-    },
-    "Austria" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\u00d6sterreich"
-          }
-        }
-      }
-    },
-    "Switzerland" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schweiz"
-          }
-        }
-      }
-    },
-    "United Kingdom" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gro\u00dfbritannien"
-          }
-        }
-      }
-    },
-    "Australia" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Australien"
-          }
-        }
-      }
-    },
-    "Canada" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kanada"
-          }
-        }
-      }
-    },
-    "New Zealand" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neuseeland"
-          }
-        }
-      }
-    },
-    "France" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Frankreich"
-          }
-        }
-      }
-    },
-    "Belgium" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Belgien"
-          }
-        }
-      }
-    },
-    "Italy" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Italien"
-          }
-        }
-      }
-    },
-    "Spain" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spanien"
-          }
-        }
-      }
-    },
-    "Netherlands" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Niederlande"
-          }
-        }
-      }
-    },
-    "Sweden" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schweden"
-          }
-        }
-      }
-    },
-    "Norway" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Norwegen"
-          }
-        }
-      }
-    },
-    "Denmark" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "D\u00e4nemark"
-          }
-        }
-      }
-    },
-    "Finland" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finnland"
-          }
-        }
-      }
-    },
-    "Portugal" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Portugal"
-          }
-        }
-      }
-    },
-    "Japan" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Japan"
-          }
-        }
-      }
-    },
-    "Korea" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Korea"
-          }
-        }
-      }
-    },
     "Sort By" : {
       "localizations" : {
         "de" : {
@@ -6298,6 +6248,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quellen — Radio"
+          }
+        }
+      }
+    },
+    "Spain" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spanien"
           }
         }
       }
@@ -6428,16 +6388,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Speicher"
-          }
-        }
-      }
-    },
-    "Story Podcasts (English)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erzähl-Podcasts (Englisch)"
           }
         }
       }
@@ -6610,6 +6560,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Unterstützen"
+          }
+        }
+      }
+    },
+    "Sweden" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schweden"
+          }
+        }
+      }
+    },
+    "Switzerland" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schweiz"
           }
         }
       }
@@ -7172,6 +7142,16 @@
         }
       }
     },
+    "United Kingdom" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Großbritannien"
+          }
+        }
+      }
+    },
     "Unknown Artist" : {
       "comment" : "A placeholder name for an artist.",
       "isCommentAutoGenerated" : true,
@@ -7406,6 +7386,16 @@
         }
       }
     },
+    "Western" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Western"
+          }
+        }
+      }
+    },
     "When on (and Subsonic off), your Jellyfin albums, artists and playlists appear in the Music tab." : {
       "localizations" : {
         "de" : {
@@ -7452,16 +7442,6 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "Will use your %1$@ login (from “%2$@”)"
-          }
-        }
-      }
-    },
-    "Western" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Western"
           }
         }
       }
