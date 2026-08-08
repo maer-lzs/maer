@@ -36,6 +36,20 @@ struct MusicView: View {
 
     /// 50f4751/f18ec34/5034add: ONE pure gate — master > feature toggle
     /// (Music pill) > archive.org service opt-out.
+    private var netlabelsArea: Bool {
+        FreeCatalogActivation.effective(
+            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
+            feature: UserDefaults.standard.object(forKey: AppStorageKeys.netlabelsRowEnabled) as? Bool ?? true,
+            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+    }
+
+    private var shellacArea: Bool {
+        FreeCatalogActivation.effective(
+            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
+            feature: UserDefaults.standard.object(forKey: AppStorageKeys.shellacRowsEnabled) as? Bool ?? true,
+            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+    }
+
     private var freeClassicalArea: Bool {
         FreeCatalogActivation.effective(
             master: freeCatalogsMaster,
@@ -161,8 +175,22 @@ struct MusicView: View {
             // fetch (Regel 2). I2: future free sources join THIS block.
             if freeClassicalArea, !freeCatalogStore.rows.classical.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Free Classical", destination: MusicRoute.freeClassical)
+                        RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
                         freeTileRow(freeCatalogStore.rows.classical)
+                    }
+            }
+            if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
+                        freeTileRow(freeCatalogStore.rows.netlabels)
+                    }
+            }
+            // Auflage 1 (the reviewer 08.08.): the 78s are reachable ONLY through
+            // their genre shelves — the entry leads to the shelf list, never
+            // to an undivided view of the collection.
+            if shellacArea {
+                    VStack(alignment: .leading, spacing: 8) {
+                        RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
                     }
             }
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {

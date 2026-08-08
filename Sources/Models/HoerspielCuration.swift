@@ -181,6 +181,16 @@ nonisolated enum HoerspielCuration {
         // X²·2 (the owner entschieden): the German independents — community
         // honestly named (LibriVox principle); language nil = always visible,
         // so the row's language bracket fell (mixed preview by language).
+        // hoer-talk-Vertiefung (08.08., gemessen): the ONE independent
+        // German production feed the portal scene still hosts itself — 66
+        // items, 43 of them full episodes (sample 70 MB audio/mpeg), running
+        // (newest 2026-06-28). The identical file is served under
+        // rick-future.de; `atom:link rel="self"` names THIS one as canonical,
+        // so only one is curated. No CC anywhere on the site — the feed
+        // carries a plain copyright, hence no licence capsule.
+        Entry(title: "Rick Future", author: "Sven Matthias",
+              feedURL: "https://www.hoer-talk.de/rfpodcast.xml",
+              group: .independent, form: .series),
         Entry(title: "Das Hörspielprojekt", author: "Hörspielprojekt.de (Community)",
               feedURL: "https://hoerspielprojekt.de/hoerspiele.xml",
               group: .independent, form: .anthology),

@@ -27,7 +27,10 @@ enum MusicRoute: Hashable {
     case genre(MusicGenre)
     /// 50f4751: the SEPARATE free-classical catalog area (never mixed into
     /// the personal library surfaces).
-    case freeClassical
+    case archiveMusic(ArchiveMusicArea)
+    /// the reviewer 08.08. Auflage 1: „Alte Schallplatten" exists ONLY as its genre
+    /// shelves — this page lists them, there is no undivided view.
+    case shellacArea
     /// Welle 3 (DIE REGEL): a shelf row's full page — recent/newest as a
     /// grid. ONE parameterised page; Home's "Recently Played (Music)" row
     /// targets the same .recent page (Regel 2: no duplicate surface).
@@ -49,10 +52,11 @@ enum MusicRoute: Hashable {
         case let (.artists(a), .artists(b)):     return a.map(\.id) == b.map(\.id)
         case let (.playlists(a), .playlists(b)): return a.map(\.id) == b.map(\.id)
         case (.albums, .albums), (.songs, .songs), (.downloaded, .downloaded),
-             (.genres, .genres), (.freeClassical, .freeClassical),
+             (.genres, .genres), (.shellacArea, .shellacArea),
              (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
+        case let (.archiveMusic(a), .archiveMusic(b)): return a == b
         case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
@@ -70,7 +74,8 @@ enum MusicRoute: Hashable {
         case .downloaded:       hasher.combine(6)
         case .genres:           hasher.combine(7)
         case .genre(let g):     hasher.combine(8); hasher.combine(g.name)
-        case .freeClassical:    hasher.combine(9)
+        case .archiveMusic(let a): hasher.combine(9); hasher.combine(a.key)
+        case .shellacArea:      hasher.combine(14)
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
         case .freeCatalogArea:  hasher.combine(12)
@@ -91,7 +96,8 @@ enum MusicRoute: Hashable {
         case .downloaded: return "music-route-downloaded"
         case .genres:     return "music-route-genres"
         case .genre:      return "music-route-genre"
-        case .freeClassical: return "music-route-free-classical"
+        case .archiveMusic(let a): return a.routeIdentifier
+        case .shellacArea: return "music-route-shellac-area"
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
         case .freeCatalogArea: return "music-route-free-catalog-area"
@@ -153,8 +159,10 @@ extension View {
                 MusicGenresPage()
             case .genre(let genre):
                 MusicGenreDetailPage(genre: genre, playerCoordinator: playerCoordinator)
-            case .freeClassical:
-                FreeClassicalPage(playerCoordinator: playerCoordinator)
+            case .archiveMusic(let area):
+                ArchiveMusicPage(area: area, playerCoordinator: playerCoordinator)
+            case .shellacArea:
+                ShellacShelvesPage(playerCoordinator: playerCoordinator)
             case .freeCatalogArea:
                 MusicCatalogAreaPage(playerCoordinator: playerCoordinator)
             case .jamendoShelf(let key):

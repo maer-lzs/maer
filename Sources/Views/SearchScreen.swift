@@ -682,7 +682,7 @@ struct SearchScreen: View {
         + (freeClassicalDeckVisible
             ? [DeckEntry(id: "music-free-classical", title: String(localized: "Free Classical"),
                          systemImage: "music.quarternote.3", count: nil) {
-                onOpenMusicRoute(.freeClassical)
+                onOpenMusicRoute(.archiveMusic(ArchiveMusicCatalog.classical))
             }]
             : [])
     }

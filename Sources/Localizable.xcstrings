@@ -1,6 +1,146 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Netlabels" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Netlabels"
+          }
+        }
+      }
+    },
+    "Show Netlabels" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Netlabels zeigen"
+          }
+        }
+      }
+    },
+    "Old Records" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alte Schallplatten"
+          }
+        }
+      }
+    },
+    "Show Old Records" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alte Schallplatten zeigen"
+          }
+        }
+      }
+    },
+    "Jazz (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jazz (Schellack)"
+          }
+        }
+      }
+    },
+    "Opera (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oper (Schellack)"
+          }
+        }
+      }
+    },
+    "Folk (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folk (Schellack)"
+          }
+        }
+      }
+    },
+    "Blues (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blues (Schellack)"
+          }
+        }
+      }
+    },
+    "Country (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Country (Schellack)"
+          }
+        }
+      }
+    },
+    "Tango (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tango (Schellack)"
+          }
+        }
+      }
+    },
+    "Swing (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swing (Schellack)"
+          }
+        }
+      }
+    },
+    "Gospel (78s)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gospel (Schellack)"
+          }
+        }
+      }
+    },
+    "Creative-Commons releases from netlabels on the Internet Archive — separate from your own library. Each tile shows the licence of its release." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creative-Commons-Veröffentlichungen von Netlabels aus dem Internet Archive — getrennt von deiner eigenen Bibliothek. Jede Kachel zeigt die Lizenz ihrer Veröffentlichung."
+          }
+        }
+      }
+    },
+    "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digitalisierte Schellackplatten aus dem Internet Archive — getrennt von deiner eigenen Bibliothek. Das Aufnahmejahr ist die einzige Rechteangabe, die die Quelle macht."
+          }
+        }
+      }
+    },
     "" : {
       "shouldTranslate" : false
     },

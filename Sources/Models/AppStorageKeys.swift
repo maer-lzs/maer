@@ -260,6 +260,12 @@ nonisolated enum AppStorageKeys {
     /// f18ec34: the "Free Classical" AREA toggle (feature level, Music pill);
     /// the archive.org service opt-out stays superior.
     static let freeClassicalEnabled = "freeClassicalEnabled"
+    /// Auftrag 05.08. (netlabels): the Creative-Commons netlabel area on
+    /// archive.org. Same two levels as classical — this feature switch sits
+    /// under the archive.org service opt-out and the catalog master switch.
+    static let netlabelsRowEnabled = "netlabelsRowEnabled"
+    /// „Alte Schallplatten" (78 rpm genre shelves, georgeblood).
+    static let shellacRowsEnabled = "shellacRowsEnabled"
     /// 3125a42: remembered ABS import target (library picker on first use).
     static let librivoxImportLibraryId = "librivoxImportLibraryId"
     static let librivoxImportFolderId = "librivoxImportFolderId"

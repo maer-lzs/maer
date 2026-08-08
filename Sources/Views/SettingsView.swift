@@ -495,6 +495,8 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
     @AppStorage(AppStorageKeys.freeClassicalEnabled) private var freeClassical = true
+    @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
+    @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
     private var musicSection: some View {
         Section {
             Toggle("Look up lyrics online", isOn: $lyricsOnline)
@@ -506,6 +508,12 @@ struct SettingsView: View {
             // network-services page stays superior (service off wins).
             Toggle("Show Free Classical", isOn: $freeClassical)
                 .accessibilityIdentifier("music-free-classical-toggle")
+                .disabled(!freeCatalogsMaster)
+            Toggle("Show Netlabels", isOn: $netlabelsRow)
+                .accessibilityIdentifier("music-netlabels-toggle")
+                .disabled(!freeCatalogsMaster)
+            Toggle("Show Old Records", isOn: $shellacRows)
+                .accessibilityIdentifier("music-shellac-toggle")
                 .disabled(!freeCatalogsMaster)
         } header: {
             Text("Metadata")

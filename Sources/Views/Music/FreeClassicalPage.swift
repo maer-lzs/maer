@@ -5,12 +5,17 @@
 import SwiftUI
 import OSLog
 
-/// 50f4751: the SEPARATE "Free Classical" catalog area behind its own music
-/// browse entry — external free catalog, clearly marked as such (header line
-/// + public-domain badge in the detail sheet); NEVER mixed into the personal
-/// library surfaces. Popularity-sorted grid (archive.org downloads), paged;
-/// tiles play directly, context menu opens the license sheet.
-struct FreeClassicalPage: View {
+/// 50f4751 → parameterised: THE page for every archive.org music area
+/// (classical · netlabels · the 78 rpm genre shelves). External free catalog,
+/// clearly marked as such (header line + licence capsule/detail sheet);
+/// NEVER mixed into the personal library surfaces. Popularity-sorted grid
+/// (archive.org downloads), paged; tiles play directly, context menu opens
+/// the licence sheet.
+///
+/// Regel 2: there is no second page of this shape — the area carries what
+/// differs (query, title, note, symbol).
+struct ArchiveMusicPage: View {
+    let area: ArchiveMusicArea
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
@@ -29,30 +34,32 @@ struct FreeClassicalPage: View {
             } else if items.isEmpty {
                 if loadFailed {
                     ContentUnavailableView {
-                        Label("Free Classical", systemImage: "music.quarternote.3")
+                        Label(area.title, systemImage: area.placeholderSystemImage)
                     } description: {
                         Text("Could not load the catalog. Check your connection and try again.")
                     } actions: {
                         Button("Retry") { Task { await loadMore(reset: true) } }
                     }
                 } else {
-                    ContentUnavailableView("Free Classical", systemImage: "music.quarternote.3")
+                    ContentUnavailableView(area.title, systemImage: area.placeholderSystemImage)
                 }
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 10) {
                         // Clear external-catalog marking (Katalog ≠ Bibliothek).
-                        Text("Free public-domain recordings from the Internet Archive — separate from your own library.")
+                        Text(area.headerNote)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         CoverGrid(columns: columns) {
                             ForEach(items) { item in
-                                MediaTile(
-                                    title: item.title,
-                                    subtitle: item.author,
-                                    coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                                    placeholderSystemImage: "music.quarternote.3",
+                                // Shared catalog tile (Regel 2): carries the
+                                // licence capsule (40b8f96) — which is what
+                                // makes the CC-licensed netlabel releases
+                                // honest at a glance.
+                                FreeCatalogBookTile(
+                                    item: item,
+                                    placeholderSystemImage: area.placeholderSystemImage,
                                     onTap: { Task { await playerCoordinator.open(item: item) } }
                                 )
                                 .contextMenu {
@@ -75,7 +82,7 @@ struct FreeClassicalPage: View {
                 }
             }
         }
-        .navigationTitle(Text("Free Classical"))
+        .navigationTitle(Text(area.title))
         .task { if items.isEmpty { await loadMore(reset: true) } }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
@@ -90,8 +97,8 @@ struct FreeClassicalPage: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let docs = try await ArchiveOrgClient.popularClassical(rows: pageSize, page: page)
-            Logger.library.notice("FREECAT classical page=\(page) loaded=\(docs.count)")
+            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: pageSize, page: page)
+            Logger.library.notice("FREECAT \(area.key, privacy: .public) page=\(page) loaded=\(docs.count)")
             let provider = FreeCatalogProvider.shared
             let new = docs.compactMap { provider.remember(popular: $0) }
             if new.isEmpty { reachedEnd = true; return }
@@ -100,8 +107,96 @@ struct FreeClassicalPage: View {
             page += 1
             if docs.count < pageSize { reachedEnd = true }
         } catch {
-            Logger.library.error("FREECAT classical FAILED: \(String(describing: error), privacy: .public)")
+            Logger.library.error("FREECAT \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = items.isEmpty
+        }
+    }
+}
+
+/// „Alte Schallplatten": the shelves ARE the surface. There is deliberately
+/// no undivided view over the whole collection — safety comes from the
+/// inclusion criterion, so there must be no way around it (the reviewer 08.08.,
+/// Auflage 1). Each shelf heading is an entry chevron onto its own page.
+struct ShellacShelvesPage: View {
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var rows: [String: [LibraryItem]] = [:]
+    @State private var detailItem: LibraryItem?
+    @State private var loadFailed = false
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                Text("Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                // Regel 3: a failed load says so and offers a retry — a
+                // caption-only page would read as "nothing here".
+                if rows.values.allSatisfy(\.isEmpty), loadFailed {
+                    ContentUnavailableView {
+                        Label("Old Records", systemImage: "opticaldisc.fill")
+                    } description: {
+                        Text("Could not load the catalog. Check your connection and try again.")
+                    } actions: {
+                        Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
+                    }
+                }
+                ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
+                    if let items = rows[shelf.key], !items.isEmpty {
+                        VStack(alignment: .leading, spacing: 10) {
+                            RowHeading.entry(verbatim: shelf.title,
+                                             destination: MusicRoute.archiveMusic(shelf))
+                            tileRow(items, shelf: shelf)
+                        }
+                    }
+                }
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text("Old Records"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await loadShelves() }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private func tileRow(_ items: [LibraryItem], shelf: ArchiveMusicArea) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(RowPreview.cut(items)) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: shelf.placeholderSystemImage,
+                        onTap: { detailItem = item })
+                    .containerRelativeFrame(.horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private func loadShelves() async {
+        guard rows.isEmpty else { return }
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return }
+        let provider = FreeCatalogProvider.shared
+        for shelf in ArchiveMusicCatalog.shellacShelves {
+            do {
+                let docs = try await ArchiveOrgClient.popularMusic(area: shelf, rows: 12)
+                Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
+                rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }
+            } catch {
+                Logger.library.error("FREECAT \(shelf.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+                loadFailed = true
+            }
         }
     }
 }

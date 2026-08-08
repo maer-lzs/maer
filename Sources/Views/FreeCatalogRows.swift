@@ -120,6 +120,9 @@ enum FreeCatalogLoader {
         var tabBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
         var classical: [LibraryItem] = []
+        /// Netlabels (archive.org, CC) — its own row next to Jamendo; the
+        /// source name at the heading keeps them apart (Auftrag Punkt 4).
+        var netlabels: [LibraryItem] = []
     }
 
     /// Moderate share (Fortsetzen-Deckel-Denke): at most this many LibriVox
@@ -171,6 +174,17 @@ enum FreeCatalogLoader {
                 rows.classical = docs.compactMap { provider.remember(popular: $0) }
             } catch {
                 Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
+            }
+        }
+        let netlabelsOn = (UserDefaults.standard.object(forKey: AppStorageKeys.netlabelsRowEnabled) as? Bool ?? true) && archiveOn
+        if netlabelsOn {
+            do {
+                let docs = try await ArchiveOrgClient.popularMusic(
+                    area: ArchiveMusicCatalog.netlabels, rows: 12)
+                Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
+                rows.netlabels = docs.compactMap { provider.remember(popular: $0) }
+            } catch {
+                Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
             }
         }
         if jamendoOn {
@@ -364,7 +378,7 @@ final class FreeCatalogStore: ObservableObject {
         defer { loading = false }
         let loadedRows = await FreeCatalogLoader.load()
         loaded = !loadedRows.discoverBooks.isEmpty
-            || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty
+            || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty || !loadedRows.netlabels.isEmpty
         BottomBarState.shared.runWhenCalm { [weak self] in self?.rows = loadedRows }
     }
 }

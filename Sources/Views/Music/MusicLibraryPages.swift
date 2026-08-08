@@ -617,8 +617,14 @@ struct MusicCatalogAreaPage: View {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 if !store.rows.classical.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        RowHeading.entry("Free Classical", destination: MusicRoute.freeClassical)
+                        RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
                         tileRow(store.rows.classical)
+                    }
+                }
+                if !store.rows.netlabels.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
+                        tileRow(store.rows.netlabels)
                     }
                 }
                 if !store.rows.freeMusic.isEmpty {
@@ -626,6 +632,12 @@ struct MusicCatalogAreaPage: View {
                         RowHeading.entry("Free Music", destination: MusicRoute.freeJamendo)
                         tileRow(store.rows.freeMusic)
                     }
+                }
+                // Auflage 1: the 78s are reachable only through their
+                // shelves — the entry leads to the shelf list, never to an
+                // undivided view of the collection.
+                VStack(alignment: .leading, spacing: 10) {
+                    RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
                 }
             }
             .padding(.top, 12)
