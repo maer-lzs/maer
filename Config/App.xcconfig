@@ -1,0 +1,14 @@
+// Base configuration of the ABSPlayer app target.
+#include "AppKeys.xcconfig"
+
+// Bundle hygiene: the app target's synced root group is the REPO ROOT, so its
+// resource sweep otherwise ships everything that is not source — internal docs,
+// screenshots, the test wire-corpora, even tooling config — and it COMPILES the
+// unit test files into the app binary (measured: 148 test files in target
+// 'ABSPlayer'). Shipped is only what the app needs.
+//
+// Patterns are matched against the path, and `*` does NOT cross a slash — one
+// entry per depth. Directory entries in `membershipExceptions` are silently
+// ignored (measured), which is why the exclusion lives here and not there:
+// a pattern also covers files added later.
+EXCLUDED_SOURCE_FILE_NAMES = $(inherited) *.md docs/* screenshots/* .claude/* ABSPlayerTests/* ABSPlayerTests/*/* ABSPlayerTests/*/*/* ABSPlayerUITests/*
