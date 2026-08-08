@@ -14,6 +14,17 @@ Mär started as a private replacement for a client that regularly lost playback 
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
+## Privacy & Data Security
+
+Mär is built on a simple rule: **your listening is nobody's business.**
+
+- **No account.** Mär has no sign-up, no cloud, no user database. The only logins are the ones to your own servers.
+- **No tracking.** No analytics, no ads, and no third-party SDKs — the project has zero external code dependencies.
+- **Your data stays yours.** Listening progress, subscriptions and downloads live on your device and on servers you run (Audiobookshelf, Subsonic/Navidrome, Jellyfin, Booksonic, gpodder/oPodSync, Pinchflat). Nothing is sent anywhere else.
+- **Network requests only to sources you can see.** The free catalogs and online extras (LibriVox, Internet Archive, Project Gutenberg, Jamendo, artist images, high-res covers, lyrics, radio logos, suggestions) each have their own switch in Settings → Network services; directory search and charts (Apple, PodcastIndex, Radio Browser) run on demand. The optional built-in app keys for Jamendo/PodcastIndex authenticate the app against those services — they carry no user identity.
+- **Credentials stay local.** Server logins, tokens and secrets are stored in the system keychain; logs carry hosts, not secrets, and the OPML export excludes premium/token feeds by default.
+- **Don't trust us — read the code.** Mär is GPL-3.0: every claim above is verifiable in this repository.
+
 ## Screenshots
 
 | Library | Player | Music |
