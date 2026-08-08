@@ -435,6 +435,9 @@ struct FreeJamendoPage: View {
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
     @State private var detailItem: LibraryItem?
+    /// P8: server-loaded genre rows (shelf key → row items). Empty shelves
+    /// hide themselves after the answer (G8: no empty shelf lies).
+    @State private var shelfRows: [String: [LibraryItem]] = [:]
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
@@ -445,20 +448,36 @@ struct FreeJamendoPage: View {
             } else if items.isEmpty {
                 ContentUnavailableView("Free Music", systemImage: "music.note")
             } else {
-                CoverGrid(columns: columns) {
-                    ForEach(items) { item in
-                        FreeCatalogBookTile(
-                            item: item,
-                            placeholderSystemImage: "music.note",
-                            onTap: { detailItem = item })
-                        .contextMenu {
-                            Button {
-                                Task { await playerCoordinator.open(item: item) }
-                            } label: { Label("Play", systemImage: "play.fill") }
+                // P8 (cde97a9): genre shelf rows FIRST (blueprint form — row +
+                // entry chevron onto the server-paged shelf grid), the weekly
+                // popularity trove below. Each row loads SERVER-side via the
+                // tags parameter — no local filtering of a 200 pool.
+                LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                    ForEach(CatalogGenreAxis.musicShelves, id: \.key) { shelf in
+                        if let rowItems = shelfRows[shelf.key], !rowItems.isEmpty {
+                            VStack(alignment: .leading, spacing: 10) {
+                                RowHeading.entry(verbatim: shelf.title,
+                                                 destination: MusicRoute.jamendoShelf(shelf.key))
+                                jamendoTileRow(rowItems)
+                            }
                         }
                     }
+                    RowHeading.plain("Popular This Week")
+                    CoverGrid(columns: columns) {
+                        ForEach(items) { item in
+                            FreeCatalogBookTile(
+                                item: item,
+                                placeholderSystemImage: "music.note",
+                                onTap: { detailItem = item })
+                            .contextMenu {
+                                Button {
+                                    Task { await playerCoordinator.open(item: item) }
+                                } label: { Label("Play", systemImage: "play.fill") }
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
             }
         }
         .navigationTitle(Text("Free Music"))
@@ -471,13 +490,117 @@ struct FreeJamendoPage: View {
             let provider = FreeCatalogProvider.shared
             let tracks = (try? await JamendoClient.popularTracks(limit: 60)) ?? []
             items = tracks.compactMap { provider.remember(track: $0) }
+            // P8: shelf rows concurrently — a failing genre drops out instead
+            // of taking the page down. Tracks (Sendable) cross the group
+            // boundary; remember() runs afterwards on the main actor.
+            let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack]).self) { group in
+                for shelf in CatalogGenreAxis.musicShelves {
+                    let key = shelf.key
+                    group.addTask {
+                        let tags = CatalogGenreAxis.musicTags(forShelf: key)
+                        return (key, (try? await JamendoClient.popularTracks(limit: 12, tags: tags)) ?? [])
+                    }
+                }
+                var out: [(String, [JamendoTrack])] = []
+                for await result in group { out.append(result) }
+                return out
+            }
+            for (key, tracks) in shelfTracks {
+                shelfRows[key] = tracks.compactMap { provider.remember(track: $0) }
+            }
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
     }
+
+    private func jamendoTileRow(_ rowItems: [LibraryItem]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 14) {
+                ForEach(rowItems) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: "music.note",
+                        onTap: { detailItem = item })
+                    .containerRelativeFrame(.horizontal,
+                                            count: CardMetrics.recommendationColumns(regularWidth: false),
+                                            spacing: 14)
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
 }
 
+/// P8: one Jamendo genre shelf as a full grid — pages SERVER-side over the
+/// tags query (offset), same tile language as the trove.
+struct JamendoShelfPage: View {
+    let shelfKey: String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+    @State private var detailItem: LibraryItem?
+    @State private var isLoading = false
+    @State private var reachedEnd = false
+    @State private var offset = 0
+
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+    private let pageSize = 40
+
+    private var title: String {
+        CatalogGenreAxis.musicShelves.first { $0.key == shelfKey }?.title ?? shelfKey
+    }
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(items) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: "music.note",
+                        onTap: { detailItem = item })
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                    }
+                }
+                if !reachedEnd {
+                    Color.clear.frame(height: 1)
+                        .onAppear { Task { await load() } }
+                }
+            }
+            .padding(.horizontal)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: title))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private func load() async {
+        guard !isLoading, !reachedEnd else { return }
+        isLoading = true
+        defer { isLoading = false }
+        let provider = FreeCatalogProvider.shared
+        let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
+        let tracks = (try? await JamendoClient.popularTracks(limit: pageSize, tags: tags,
+                                                             offset: offset)) ?? []
+        let new = tracks.compactMap { provider.remember(track: $0) }
+        var seen = Set(items.map(\.id))
+        items += new.filter { seen.insert($0.id).inserted }
+        offset += pageSize
+        if tracks.count < pageSize { reachedEnd = true }
+    }
+}
 
 /// Auftrag L1: the small music-catalog page behind Start's "Entdecken ·
 /// Musik" row — the I2 surface, earlier. One source row per ACTIVE catalog

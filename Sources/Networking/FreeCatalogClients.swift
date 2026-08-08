@@ -302,7 +302,11 @@ nonisolated enum JamendoClient {
 
     /// Weekly popularity chart (CC music; ToS: attribution + backlink per
     /// track — the detail sheet carries both).
-    static func popularTracks(limit: Int) async throws -> [JamendoTrack] {
+    /// P8: `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR —
+    /// the API can do it better than filtering a local 200 pool); `offset`
+    /// pages the shelf grid.
+    static func popularTracks(limit: Int, tags: [String] = [],
+                              offset: Int = 0) async throws -> [JamendoTrack] {
         guard let id = await clientId() else { return [] }
         var comp = URLComponents(string: "https://api.jamendo.com/v3.0/tracks/")!
         comp.queryItems = [
@@ -312,6 +316,12 @@ nonisolated enum JamendoClient {
             URLQueryItem(name: "order", value: "popularity_week"),
             URLQueryItem(name: "audioformat", value: "mp32"),
         ]
+        if !tags.isEmpty {
+            comp.queryItems?.append(URLQueryItem(name: "fuzzytags", value: tags.joined(separator: "+")))
+        }
+        if offset > 0 {
+            comp.queryItems?.append(URLQueryItem(name: "offset", value: String(offset)))
+        }
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")

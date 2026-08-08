@@ -58,15 +58,16 @@ nonisolated final class MaerUITests: XCTestCase {
     /// album and a podcast episode. Before the fix the book + album were dropped.
     func testMixedQueueRendersAllTypes() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20),
+        // Fold rule (Befund-V seed): the delayed Entdecken rows land after
+        // ~2 s ABOVE Up Next and can push every marker below the lazy fold —
+        // scroll to each instead of pinning a layout.
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"),
                       "queued audiobook must render (T3/T5)")
-        XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 10),
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Album"),
                       "queued music album must render (T3/T5)")
-        // bd66c5b made the Continue row taller (music card in full Featured
-        // anatomy) — the episode row can start below the lazy render window.
         let episode = app.staticTexts["Seed Episode One"].firstMatch
         var episodeSwipes = 0
-        while !episode.exists && episodeSwipes < 4 { app.swipeUp(); episodeSwipes += 1 }
+        while !episode.exists && episodeSwipes < 6 { app.swipeUp(); episodeSwipes += 1 }
         XCTAssertTrue(episode.exists, "queued podcast episode must render")
         // bd66c5b: the Continue row renders the seeded in-progress ALBUM in
         // the SAME Featured-card format as book/episode cards (one row, one

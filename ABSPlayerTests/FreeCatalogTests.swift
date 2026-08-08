@@ -997,6 +997,18 @@ struct CatalogGenreAxisTests {
         #expect(item?.author == "Bessonn&sa")
     }
 
+    @Test("P8: Musik-Achse — Faltung aufs Eltern-Regal, Server-Tags je Regal")
+    func musicAxisFolding() {
+        #expect(CatalogGenreAxis.musicTags(forShelf: "pop") == ["electropop", "pop", "poprock"])
+        #expect(CatalogGenreAxis.musicTags(forShelf: "folk") == ["folk", "singersongwriter"])
+        #expect(CatalogGenreAxis.musicTags(forShelf: "hiphop") == ["hiphop", "rap"])
+        #expect(CatalogGenreAxis.musicTags(forShelf: "unknown").isEmpty)
+        // Every shelf resolves at least its own tag.
+        for shelf in CatalogGenreAxis.musicShelves {
+            #expect(CatalogGenreAxis.musicTags(forShelf: shelf.key).contains(shelf.key))
+        }
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")

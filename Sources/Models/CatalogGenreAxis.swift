@@ -159,6 +159,39 @@ nonisolated enum CatalogGenreAxis {
         "children": "children",
     ]
 
+    /// P8 (cde97a9, measured over 200 popular tracks — 93% carry tags, the
+    /// best axis of all sources): the MUSIC genre family. Related tags fold
+    /// onto their parent shelf as AXIS entries (electropop→pop), no special
+    /// code; netlabels inherits this axis later. Server-side use: the shelf
+    /// query sends ALL its tags (fuzzytags OR-join) via `musicTags(forShelf:)`.
+    static let musicAxis: [String: String] = [
+        "pop": "pop", "electropop": "pop", "poprock": "pop",
+        "rock": "rock",
+        "electronic": "electronic", "electro": "electronic",
+        "dance": "dance",
+        "indie": "indie",
+        "folk": "folk", "singersongwriter": "folk",
+        "hiphop": "hiphop", "rap": "hiphop",
+        "ambient": "ambient", "chillout": "ambient",
+    ]
+
+    /// Shelf key → display title, in browse order (the measured filled ones).
+    static let musicShelves: [(key: String, title: String)] = [
+        ("pop", String(localized: "Pop")),
+        ("rock", String(localized: "Rock")),
+        ("electronic", String(localized: "Electronic")),
+        ("dance", String(localized: "Dance")),
+        ("indie", String(localized: "Indie")),
+        ("folk", String(localized: "Folk")),
+        ("hiphop", String(localized: "Hip-Hop")),
+        ("ambient", String(localized: "Ambient")),
+    ]
+
+    /// All tags that fold onto one shelf — the server-side shelf query.
+    static func musicTags(forShelf shelf: String) -> [String] {
+        musicAxis.filter { $0.value == shelf }.map(\.key).sorted()
+    }
+
     /// Gutenberg subjects → shelves, over BOTH spelling families.
     static func shelves(forSubjects subjects: [String]) -> [String] {
         var hit = Set<String>()

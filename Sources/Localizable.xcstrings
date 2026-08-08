@@ -5922,6 +5922,66 @@
         }
       }
     },
+    "Ambient" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambient"
+          }
+        }
+      }
+    },
+    "Dance" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dance"
+          }
+        }
+      }
+    },
+    "Folk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folk"
+          }
+        }
+      }
+    },
+    "Hip-Hop" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hip-Hop"
+          }
+        }
+      }
+    },
+    "Indie" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indie"
+          }
+        }
+      }
+    },
+    "Popular This Week" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebt diese Woche"
+          }
+        }
+      }
+    },
     "Sort By" : {
       "localizations" : {
         "de" : {

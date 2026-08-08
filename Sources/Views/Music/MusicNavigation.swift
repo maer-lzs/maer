@@ -34,6 +34,8 @@ enum MusicRoute: Hashable {
     case shelfPage(MusicShelf)
     /// Welle 3: the free-music (Jamendo) full page behind Home's row.
     case freeJamendo
+    /// P8: one Jamendo genre shelf (server-paged grid).
+    case jamendoShelf(String)
     /// Auftrag L1: the small music-catalog page behind Start's mixed
     /// "Entdecken · Musik" row (the I2 surface, earlier) — one source row per
     /// active catalog (classical · Jamendo), each heading onto its existing
@@ -50,6 +52,7 @@ enum MusicRoute: Hashable {
              (.genres, .genres), (.freeClassical, .freeClassical),
              (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea):
             return true
+        case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
@@ -71,6 +74,7 @@ enum MusicRoute: Hashable {
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
         case .freeCatalogArea:  hasher.combine(12)
+        case .jamendoShelf(let k): hasher.combine(13); hasher.combine(k)
         }
     }
 
@@ -91,6 +95,7 @@ enum MusicRoute: Hashable {
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
         case .freeCatalogArea: return "music-route-free-catalog-area"
+        case .jamendoShelf: return "music-route-jamendo-shelf"
         }
     }
 }
@@ -152,6 +157,8 @@ extension View {
                 FreeClassicalPage(playerCoordinator: playerCoordinator)
             case .freeCatalogArea:
                 MusicCatalogAreaPage(playerCoordinator: playerCoordinator)
+            case .jamendoShelf(let key):
+                JamendoShelfPage(shelfKey: key, playerCoordinator: playerCoordinator)
             case .shelfPage(let shelf):
                 MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
             case .freeJamendo:
