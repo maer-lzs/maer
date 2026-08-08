@@ -91,7 +91,7 @@ struct GlobalSearchModelTests {
 
     private func makeModel(providers: [any SearchableProvider],
                            catalog: [SearchResult] = []) -> GlobalSearchModel {
-        let model = GlobalSearchModel(providers: { providers }, catalog: { _ in catalog })
+        let model = GlobalSearchModel(providers: { providers }, catalog: { _, _ in catalog })
         model.debounceOverride = .zero
         return model
     }
@@ -163,7 +163,7 @@ struct GlobalSearchModelTests {
         // Now the catalog fails too → total failure.
         let failing = GlobalSearchModel(
             providers: { [MockProvider(results: [], fails: true)] },
-            catalog: { _ in throw NSError(domain: "mock", code: 2) })
+            catalog: { _, _ in throw NSError(domain: "mock", code: 2) })
         failing.debounceOverride = .zero
         failing.query = "xx"
         failing.queryChanged(activeTab: .home)

@@ -1009,6 +1009,32 @@ struct CatalogGenreAxisTests {
         }
     }
 
+    @Test("Q2: Titel-Normalisierung — Artikel zurueck, by-Anhang ab, Version als Feld")
+    func titleNormalization() {
+        let full = FreeCatalog.normalizedTitle("Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894)")
+        #expect(full.title == "Der Struwwelpeter")
+        #expect(full.version == nil)
+        let versioned = FreeCatalog.normalizedTitle("Art of War, The by Sun Tzu (554 - 496), version 2")
+        #expect(versioned.title == "The Art of War")
+        #expect(versioned.version == 2)
+        let paren = FreeCatalog.normalizedTitle("Faust (version 3)")
+        #expect(paren.title == "Faust")
+        #expect(paren.version == 3)
+        // Conservative: a mid-title "by" without a dated tail survives.
+        #expect(FreeCatalog.normalizedTitle("Death by Chocolate").title == "Death by Chocolate")
+        // French articles too; plain titles pass through untouched.
+        #expect(FreeCatalog.normalizedTitle("Misérables, Les by Victor Hugo (1802 - 1885)").title
+                == "Les Misérables")
+        #expect(FreeCatalog.normalizedTitle("Dracula").title == "Dracula")
+    }
+
+    @Test("Q3: Metazeile traegt die Lesung dezent")
+    func metaLineCarriesReading() {
+        #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min", readingVersion: 2)
+                == "1927 · 42 min · " + String(localized: "Reading \(2)"))
+        #expect(FreeCatalog.catalogMetaLine(year: nil, runtime: nil, readingVersion: nil) == " ")
+    }
+
     @Test("Katalog-Metazeile erfindet weder Jahr noch Laufzeit")
     func catalogMetaLine() {
         #expect(FreeCatalog.catalogMetaLine(year: "1927", runtime: "42 min") == "1927 · 42 min")

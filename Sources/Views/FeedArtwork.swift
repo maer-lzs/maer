@@ -98,7 +98,9 @@ struct FreeCatalogBookTile: View {
             // hint the user has.
             meta: FreeCatalog.catalogMetaLine(
                 year: item.media?.metadata?.publishedYear?.value,
-                runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces)),
+                runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces),
+                // Q3: the reading marker as a quiet meta part.
+                readingVersion: FreeCatalogProvider.shared.readingVersion(forItemId: item.id)),
             titleLineLimit: 1,
             // 40b8f96: the LICENCE at a glance — the source follows from the
             // section a tile stands in, the rights situation from nothing.

@@ -369,6 +369,16 @@ struct SearchScreen: View {
         SearchRowCover(result: result, placeholderSystemImage: Self.placeholder(result.kind))
     }
 
+    /// Q1: sender + quiet reading marker ("LibriVox · Lesung 2").
+    private func catalogBookMeta(_ result: SearchResult) -> String? {
+        var parts: [String] = []
+        if let source = result.sourceLabel { parts.append(source) }
+        if let version = FreeCatalogProvider.shared.readingVersion(forItemId: result.id) {
+            parts.append(String(localized: "Reading \(version)"))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
     private func resultRow(_ result: SearchResult) -> some View {
         Button {
             switch result.kind {
@@ -390,9 +400,11 @@ struct SearchScreen: View {
                     titleDimmed: !result.isPlayableNow,
                     coverDimmed: !result.isPlayableNow,
                     offlineBadge: !result.isPlayableNow,
-                    // Y25: catalog hits say WHAT they are (today only podcast
-                    // shows; a LibriVox source will add audiobooks later).
-                    meta: result.kind == .catalogShow ? String(localized: "Podcast") : nil,
+                    // Y25: catalog hits say WHAT they are. Q1: book hits name
+                    // their SENDER (LibriVox/Gutenberg/Archive), the licence
+                    // capsule logic stays with the detail sheet.
+                    meta: result.kind == .catalogShow ? String(localized: "Podcast")
+                        : result.kind == .catalogBook ? catalogBookMeta(result) : nil,
                     placeholderSystemImage: Self.placeholder(result.kind),
                     // Paket B: mirrored shows carry the origin capsule in
                     // search too (show hits carry the feed URL as id).
@@ -987,13 +999,15 @@ struct SearchScreen: View {
         case .song: return String(localized: "Songs")
         case .playlist: return String(localized: "Playlists")
         case .catalogShow: return String(localized: "New Shows")
+        // Q1 (D2): the card names the CONTENT and its family of senders.
+        case .catalogBook: return String(localized: "From the Free Catalogs")
         case .radioStation: return String(localized: "Radio Stations")
         }
     }
 
     static func placeholder(_ kind: SearchResult.Kind) -> String {
         switch kind {
-        case .book, .series: return "book.closed"
+        case .book, .series, .catalogBook: return "book.closed"
         case .author: return "person"
         case .show, .episode, .catalogShow: return "mic"
         case .album, .song: return "music.note"

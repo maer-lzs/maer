@@ -2552,6 +2552,16 @@
         }
       }
     },
+    "From the Free Catalogs" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus den freien Katalogen"
+          }
+        }
+      }
+    },
     "Hide Channel" : {
       "localizations" : {
         "de" : {
@@ -5978,6 +5988,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beliebt diese Woche"
+          }
+        }
+      }
+    },
+    "Reading %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lesung %lld"
           }
         }
       }

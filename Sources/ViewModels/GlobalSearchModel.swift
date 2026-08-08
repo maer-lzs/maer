@@ -32,13 +32,13 @@ final class GlobalSearchModel: ObservableObject {
     static let minServerChars = 2
 
     private let providers: @MainActor () -> [any SearchableProvider]
-    private let catalog: @MainActor @Sendable (String) async throws -> [SearchResult]
+    private let catalog: @MainActor @Sendable (String, MediaType) async throws -> [SearchResult]
     /// Tests shrink the debounce to keep runs fast.
     var debounceOverride: Duration?
     private var runTask: Task<Void, Never>?
 
     init(providers: @escaping @MainActor () -> [any SearchableProvider],
-         catalog: @escaping @MainActor @Sendable (String) async throws -> [SearchResult]) {
+         catalog: @escaping @MainActor @Sendable (String, MediaType) async throws -> [SearchResult]) {
         self.providers = providers
         self.catalog = catalog
     }
@@ -52,12 +52,20 @@ final class GlobalSearchModel: ObservableObject {
                     return provider as? any SearchableProvider
                 }
             },
-            catalog: { query in
+            catalog: { query, tab in
                 #if DEBUG
                 if let seeded = UITestSeed.catalogSearchOverride {
                     return seeded(query)
                 }
                 #endif
+                // Q1 (257853c): the BOOK scope asks the free CATALOGS in book
+                // form — the podcast directory disappears here (LibriVox book
+                // feeds are indexed there, which produced podcast rows with a
+                // subscribe plus for "Struwwelpeter"). Every other scope keeps
+                // the directory card unchanged (there those hits ARE shows).
+                if tab == .audiobooks {
+                    return await Self.catalogBookResults(query: query)
+                }
                 let directory: PodcastDirectory = AppStorageKeys.podcastIndexConfigured
                     ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexKeyValue,
                                             secret: AppStorageKeys.podcastIndexSecretValue)
@@ -77,6 +85,73 @@ final class GlobalSearchModel: ObservableObject {
                                      coverURL: hit.artworkURL.flatMap { URL(string: $0) })
                     }
             })
+    }
+
+    /// Q1: the free-catalog book search — the three EXISTING clients
+    /// (LibriVox title API, gutendex search, archive advancedsearch with a
+    /// title clause), concurrent; a failing source drops out. Gates: master
+    /// plus each source's service opt-out (a source that is off contributes
+    /// nothing). Results are remembered in the provider, so covers, licence
+    /// capsules and the detail sheet ride the existing paths.
+    @MainActor
+    static func catalogBookResults(query: String) async -> [SearchResult] {
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return [] }
+        let provider = FreeCatalogProvider.shared
+        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
+        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+        // Isolation-checker rule (same as P8): only Sendable RAW payloads
+        // cross the group boundary; remember()/result building runs on the
+        // main actor afterwards.
+        enum RawHits: Sendable {
+            case librivox([LibriVoxBook])
+            case gutenberg([GutenbergClient.Book])
+            case archive([ArchivePopularDoc])
+        }
+        let raw = await withTaskGroup(of: RawHits.self) { group in
+            if librivoxOn {
+                group.addTask {
+                    .librivox((try? await LibriVoxClient.searchBooks(title: query)) ?? [])
+                }
+                group.addTask {
+                    .gutenberg((try? await GutenbergClient.audiobooks(languages: [], search: query)) ?? [])
+                }
+            }
+            if archiveOn {
+                group.addTask {
+                    let base = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
+                        + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+                    return .archive((try? await ArchiveOrgClient.popular(
+                        query: base + " AND title:(\(query))", rows: 10)) ?? [])
+                }
+            }
+            var collected: [RawHits] = []
+            for await hits in group { collected.append(hits) }
+            return collected
+        }
+        var out: [SearchResult] = []
+        for hits in raw {
+            switch hits {
+            case .librivox(let books):
+                out += books.map { provider.remember(book: $0) }
+                    .map { Self.bookResult($0, source: "LibriVox") }
+            case .gutenberg(let books):
+                out += books.compactMap { provider.remember(gutenberg: $0) }
+                    .map { Self.bookResult($0, source: "Project Gutenberg") }
+            case .archive(let docs):
+                out += docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
+                    .compactMap { provider.remember(popular: $0) }
+                    .map { Self.bookResult($0, source: "Internet Archive") }
+            }
+        }
+        return out
+    }
+
+    @MainActor
+    private static func bookResult(_ item: LibraryItem, source: String) -> SearchResult {
+        SearchResult(id: item.id, kind: .catalogBook, title: item.title,
+                     subtitle: item.author,
+                     coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                     sourceLabel: source)
     }
 
     /// Debounce + cancel-on-new-input; below the server minimum the results
@@ -131,7 +206,7 @@ final class GlobalSearchModel: ObservableObject {
             let catalog = self.catalog
             group.addTask {
                 let hits = await withSearchTimeout(Self.providerTimeout) {
-                    try await catalog(query)
+                    try await catalog(query, activeTab)
                 }
                 return ("catalog", hits)
             }

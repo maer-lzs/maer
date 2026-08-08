@@ -33,11 +33,14 @@ final class FreeCatalogProvider: AudioProvider {
         // 40b8f96: LibriVox recordings are public domain — the capsule says so
         // instead of leaving the class blank where we DO know it.
         licences[id] = String(localized: "Public domain")
+        // Q2: ONE normalization at the intake — every surface shows it.
+        let normalized = book.title.map(FreeCatalog.normalizedTitle)
+        readingVersions[id] = normalized?.version
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    title: book.title, authorName: FreeCatalog.authorLine(book.authors),
+                    title: normalized?.title, authorName: FreeCatalog.authorLine(book.authors),
                     // 48e786d Schritt 0: pass the genres THROUGH — they were
                     // decoded away for months while the axis waited for them.
                     narratorName: nil, seriesName: nil,
@@ -64,6 +67,11 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// e948444: stated licence per item id, for the detail sheet.
     private var licences: [String: String] = [:]
+    /// Q3: reading version per item id ("Lesung 2") — a meta fact, never part
+    /// of the title and never a dedupe (multiple readings are legitimate).
+    private var readingVersions: [String: Int] = [:]
+
+    func readingVersion(forItemId id: String) -> Int? { readingVersions[id] }
 
     func licence(forItemId id: String) -> String? { licences[id] }
 
@@ -106,13 +114,17 @@ final class FreeCatalogProvider: AudioProvider {
         guard let identifier = doc.identifier else { return nil }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
+        // Q2: archive rows carry the same LibriVox title pattern (the
+        // librivoxaudio collection) — same one-place normalization.
+        let normalized = doc.title?.first.map(FreeCatalog.normalizedTitle)
+        readingVersions[id] = normalized?.version
         let item = LibraryItem(
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     // 3ac9183: first entry leads (composer first); the
                     // detail sheet names everyone via the joined form.
-                    title: doc.title?.first, authorName: doc.creator?.first, narratorName: nil,
+                    title: normalized?.title, authorName: doc.creator?.first, narratorName: nil,
                     // 50aefa8: the recording year, where the index has one.
                     seriesName: nil, genres: doc.subject?.values,
                     publishedYear: doc.year?.first.map(LenientString.init),

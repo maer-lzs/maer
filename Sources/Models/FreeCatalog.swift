@@ -255,6 +255,52 @@ nonisolated enum FreeCatalog {
         return runtimeSeconds(raw)
     }
 
+    /// Q2 (257853c, pure): LibriVox catalog titles arrive as
+    /// "Struwwelpeter, Der by Heinrich Hoffmann (1809 - 1894), version 2" —
+    /// normalize for EVERY display surface (rows, pages, search):
+    /// 1. strip the " by <author> (<dates>)" tail (the author has his own
+    ///    line; conservative — only with a parenthesized date, so a title
+    ///    that merely contains "by" survives),
+    /// 2. lift a trailing "version N" into its own field (Q3: multiple
+    ///    readings are LEGITIMATE — the marker moves to a meta line, the
+    ///    duplicate is never hidden),
+    /// 3. turn a trailing article back around ("X, Der" → "Der X"; de/en/fr).
+    static func normalizedTitle(_ raw: String) -> (title: String, version: Int?) {
+        var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // (1) trailing ", version 2" / "(version 2)" FIRST — it sits AFTER
+        // the by-tail ("… by Sun Tzu (554 - 496), version 2"), so the dated
+        // by-anchor only matches once the version marker is gone.
+        var version: Int?
+        if let range = title.range(of: #"[,(\-\s]+version\s+(\d+)\)?\s*$"#,
+                                   options: [.regularExpression, .caseInsensitive]) {
+            let matched = String(title[range])
+            version = Int(matched.components(separatedBy: CharacterSet.decimalDigits.inverted)
+                .joined())
+            title.removeSubrange(range)
+        }
+        // (2) " by Author (1809 - 1894)" — anchored at the end via the dates.
+        if let range = title.range(of: #"\s+by\s+[^()]+\(\d{3,4}[^)]*\)\s*$"#,
+                                   options: .regularExpression) {
+            title.removeSubrange(range)
+        }
+        title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        // (3) ", Der" tail → leading article.
+        let articles = ["der", "die", "das", "ein", "eine",
+                        "the", "a", "an", "le", "la", "les", "l'", "un", "une"]
+        for article in articles {
+            for candidate in [", \(article)", ", \(article.capitalized)"] {
+                if title.lowercased().hasSuffix(candidate.lowercased()),
+                   title.count > candidate.count {
+                    let stem = String(title.dropLast(candidate.count))
+                    let lifted = String(title.suffix(candidate.count).dropFirst(2))
+                    title = "\(lifted) \(stem)".trimmingCharacters(in: .whitespaces)
+                    break
+                }
+            }
+        }
+        return (title, version)
+    }
+
     /// e948444 (pure): the licence URL as a short, honest label. Unknown
     /// forms keep the raw URL rather than being flattened to "free".
     static func licenceLabel(_ url: String?) -> String? {
@@ -411,8 +457,12 @@ nonisolated enum FreeCatalog {
         return String(describing: type(of: error))
     }
 
-    static func catalogMetaLine(year: String?, runtime: String?) -> String {
-        let parts = [year?.trimmingCharacters(in: .whitespaces), runtime]
+    static func catalogMetaLine(year: String?, runtime: String?,
+                                readingVersion: Int? = nil) -> String {
+        // Q3: the reading marker is a META fact ("Lesung 2"), never part of
+        // the title and never a dedupe — multiple readings are legitimate.
+        let version = readingVersion.map { String(localized: "Reading \($0)") }
+        let parts = [year?.trimmingCharacters(in: .whitespaces), runtime, version]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
         // A reserved blank keeps the cell heights uniform (Jank-Regel).

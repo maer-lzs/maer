@@ -15,6 +15,9 @@ nonisolated struct SearchResult: Identifiable, Equatable {
         /// Catalog source "New Shows" — NOT a provider capability; results are
         /// unsubscribed shows whose id is the feed URL.
         case catalogShow
+        /// Q1: a free-catalog BOOK hit (audiobook scope; id = catalog item
+        /// id lva:/gut:) — book form, NACHSCHLAGEN tap, never a subscribe plus.
+        case catalogBook
         /// F4: a radio station (catalog or own list).
         case radioStation
     }
@@ -29,6 +32,9 @@ nonisolated struct SearchResult: Identifiable, Equatable {
     /// False when the item cannot start right now (offline & not downloaded) —
     /// the row follows the overlay-glyph rule (dimmed + wifi.slash).
     var isPlayableNow: Bool = true
+    /// Q1: the catalog SENDER line of a catalogBook hit (LibriVox/Gutenberg/
+    /// Internet Archive) — sources sign their hits.
+    var sourceLabel: String? = nil
 }
 
 /// F6: pure section building + the context-ranking matrix.
@@ -36,7 +42,7 @@ nonisolated enum SearchRanking {
     /// The FIXED base order of the typed sections; the catalog section is
     /// always last (clearly a catalog, not the user's own content).
     static let baseOrder: [SearchResult.Kind] = [
-        .book, .author, .series, .show, .episode, .album, .artist, .song, .playlist, .radioStation, .catalogShow
+        .book, .author, .series, .show, .episode, .album, .artist, .song, .playlist, .radioStation, .catalogBook, .catalogShow
     ]
 
     /// Kinds that belong to a tab — its sections lead while that tab is active.
@@ -54,8 +60,10 @@ nonisolated enum SearchRanking {
     /// kept), then the remaining base order; `.catalogShow` always last.
     static func sectionOrder(activeTab: MediaType) -> [SearchResult.Kind] {
         let leading = kinds(for: activeTab)
-        let rest = baseOrder.filter { !leading.contains($0) && $0 != .catalogShow }
-        return leading + rest + [.catalogShow]
+        let rest = baseOrder.filter {
+            !leading.contains($0) && $0 != .catalogShow && $0 != .catalogBook
+        }
+        return leading + rest + [.catalogBook, .catalogShow]
     }
 
     /// Group results into ordered, non-empty sections.

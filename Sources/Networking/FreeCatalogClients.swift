@@ -14,6 +14,23 @@ nonisolated enum LibriVoxClient {
     }
 
     /// New catalog additions since `sinceDays` ago ("Neu bei LibriVox").
+    /// Q1: title search over the SAME API (the ^ prefix is the API's own
+    /// stemming operator — no new client).
+    static func searchBooks(title: String, limit: Int = 10) async throws -> [LibriVoxBook] {
+        var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
+        comp.queryItems = [
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "extended", value: "1"),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "title", value: "^" + title),
+        ]
+        guard let url = comp.url else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        return try decodeFeed(data)
+    }
+
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -77,12 +94,17 @@ nonisolated enum GutenbergClient {
 
     /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
     /// caller decides how many pages are worth it.
-    static func audiobooks(languages: [String], page: Int = 1) async throws -> [Book] {
+    static func audiobooks(languages: [String], page: Int = 1,
+                           search: String? = nil) async throws -> [Book] {
         var comp = URLComponents(string: "https://gutendex.com/books/")!
         var items = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
                      URLQueryItem(name: "page", value: String(page))]
         if !languages.isEmpty {
             items.append(URLQueryItem(name: "languages", value: languages.joined(separator: ",")))
+        }
+        // Q1: gutendex's own title/author search — same client, one param.
+        if let search, !search.isEmpty {
+            items.append(URLQueryItem(name: "search", value: search))
         }
         comp.queryItems = items
         guard let url = comp.url else { return [] }
