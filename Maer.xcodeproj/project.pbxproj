@@ -10,6 +10,8 @@
 		CF68E6513002599A00C97B74 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6503002599A00C97B74 /* WidgetKit.framework */; };
 		CF68E6533002599A00C97B74 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CF68E6523002599A00C97B74 /* SwiftUI.framework */; };
 		CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CFA9000000000000000000F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CFA9000000000000000000E1 /* Assets.xcassets */; };
+		CFA9000000000000000000F2 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = CFA9000000000000000000E2 /* LICENSE */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,32 +59,16 @@
 		CF68E6503002599A00C97B74 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		CF68E6523002599A00C97B74 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		CFA9000000000000000000C1 /* Config/AppKeys.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/AppKeys.xcconfig; sourceTree = "<group>"; };
+		CFA9000000000000000000E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CFA9000000000000000000E2 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
+		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
 		CFA9000000000000000000C2 /* Config/App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CFE8E3F63007EC2C007756AC /* Maer.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = Maer.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		CF1177692FFA997500DA1AC5 /* Exceptions for "ABSPlayer" folder in "ABSPlayer" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"ABSPlayer-Info.plist",
-				ABSPlayerUITests/MaerUITests.swift,
-				CHANGELOG.md,
-				Config/App.xcconfig,
-				Config/AppKeys.local.xcconfig,
-				Config/AppKeys.xcconfig,
-				LiveActivityWidget/ANLEITUNG.md,
-				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/MaerWidgetBundle.swift,
-				LiveActivityWidget/PodcastUpNextWidget.swift,
-				MaerWidgets/Assets.xcassets,
-				MaerWidgets/Info.plist,
-				README.de.md,
-				README.md,
-			);
-			target = CF1170F22FF99D9D00DA1AC5 /* ABSPlayer */;
-		};
 		CF68E6643002599B00C97B74 /* Exceptions for "MaerWidgets" folder in "MaerWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -90,14 +76,18 @@
 			);
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 		};
-		CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "MaerWidgetsExtension" target */ = {
+		CF68E67230025A8B00C97B74 /* Exceptions for "Sources" folder in "MaerWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				LiveActivityWidget/ContinueListeningWidget.swift,
-				LiveActivityWidget/MaerWidgetBundle.swift,
-				LiveActivityWidget/PodcastUpNextWidget.swift,
-				Sources/Localizable.xcstrings,
-				Sources/Models/WidgetShared.swift,
+				Localizable.xcstrings,
+				Models/WidgetShared.swift,
+			);
+			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
+		};
+		CFA9000000000000000000D2 /* Exceptions for "LiveActivityWidget" folder in "MaerWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ANLEITUNG.md,
 			);
 			target = CF68E64D3002599A00C97B74 /* MaerWidgetsExtension */;
 		};
@@ -109,13 +99,20 @@
 			path = ABSPlayerUITests;
 			sourceTree = "<group>";
 		};
-		CF1170F52FF99D9D00DA1AC5 /* ABSPlayer */ = {
+		CF1170F52FF99D9D00DA1AC5 /* Sources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				CF1177692FFA997500DA1AC5 /* Exceptions for "ABSPlayer" folder in "ABSPlayer" target */,
-				CF68E67230025A8B00C97B74 /* Exceptions for "ABSPlayer" folder in "MaerWidgetsExtension" target */,
+				CF68E67230025A8B00C97B74 /* Exceptions for "Sources" folder in "MaerWidgetsExtension" target */,
 			);
-			name = ABSPlayer;
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		CFA9000000000000000000D1 /* LiveActivityWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				CFA9000000000000000000D2 /* Exceptions for "LiveActivityWidget" folder in "MaerWidgetsExtension" target */,
+			);
+			path = LiveActivityWidget;
 			sourceTree = "<group>";
 		};
 		CF68E6543002599A00C97B74 /* MaerWidgets */ = {
@@ -181,6 +178,11 @@
 				CF68E64F3002599A00C97B74 /* Frameworks */,
 				CFA9000000000000000000C1 /* Config/AppKeys.xcconfig */,
 				CFA9000000000000000000C2 /* Config/App.xcconfig */,
+				CFA9000000000000000000E1 /* Assets.xcassets */,
+				CFA9000000000000000000E2 /* LICENSE */,
+				CFA9000000000000000000E3 /* ABSPlayer-Info.plist */,
+				CFA9000000000000000000E4 /* ABSPlayer.entitlements */,
+				CFA9000000000000000000D1 /* LiveActivityWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -263,6 +265,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				CF68E6543002599A00C97B74 /* MaerWidgets */,
+				CFA9000000000000000000D1 /* LiveActivityWidget */,
 			);
 			name = MaerWidgetsExtension;
 			packageProductDependencies = (
@@ -357,6 +360,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFA9000000000000000000F1 /* Assets.xcassets in Resources */,
+				CFA9000000000000000000F2 /* LICENSE in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

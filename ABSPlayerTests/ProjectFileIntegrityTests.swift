@@ -33,13 +33,25 @@ struct ProjectFileIntegrityTests {
                 "project references != 1 — Xcode injected a self-reference; heal with git checkout -- Maer.xcodeproj/project.pbxproj")
     }
 
-    @Test("pbxproj: the local app-key file is never a bundle member")
-    func appKeysStayOutOfTheBundle() throws {
+    /// Since e885a01 the app target's synchronised group carries
+    /// `path = Sources`. That is the STRUCTURAL guarantee behind two things
+    /// that used to need maintenance: the project file cannot reference
+    /// itself (it lies outside the swept folder), and nothing from the repo
+    /// root — docs, screenshots, test fixtures, tooling config, the local
+    /// key file — can be swept into the app bundle. Lose the path and both
+    /// problems return silently, so it is nailed down here.
+    @Test("pbxproj: the app target syncs Sources, not the repo root")
+    func appTargetSyncsSourcesOnly() throws {
         guard let text = Self.projectFile else { return }
-        #expect(text.contains("Config/AppKeys.local.xcconfig"),
-                "membershipException for Config/AppKeys.local.xcconfig is gone — the resource sweep would ship the key file inside the app")
+        #expect(text.contains("path = Sources;"),
+                "the synchronised app group lost `path = Sources` — the repo root would be swept again (self-reference + bundle pollution)")
         #expect(text.contains("Config/App.xcconfig"),
-                "the app target lost its bundle-hygiene base configuration")
+                "the app target lost its base configuration")
+        // What the app genuinely needs from the root is explicit now.
+        #expect(text.contains("Assets.xcassets in Resources"),
+                "the asset catalogue lives in the repo root and must stay explicitly referenced")
+        #expect(text.contains("LICENSE in Resources"),
+                "the licence is shipped on purpose (GPL) and must stay explicitly referenced")
     }
 }
 #endif

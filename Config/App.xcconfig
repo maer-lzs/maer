@@ -1,14 +1,13 @@
 // Base configuration of the ABSPlayer app target.
 #include "AppKeys.xcconfig"
 
-// Bundle hygiene: the app target's synced root group is the REPO ROOT, so its
-// resource sweep otherwise ships everything that is not source — internal docs,
-// screenshots, the test wire-corpora, even tooling config — and it COMPILES the
-// unit test files into the app binary (measured: 148 test files in target
-// 'ABSPlayer'). Shipped is only what the app needs.
+// Bundle hygiene now comes from the STRUCTURE, not from a pattern list: the
+// app target's synchronised group carries `path = Sources`, so the repo root
+// (docs, screenshots, test fixtures, tooling config — and the project file
+// itself) is outside the swept area. What the app genuinely needs from the
+// root is referenced explicitly (Assets.xcassets, LICENSE).
 //
-// Patterns are matched against the path, and `*` does NOT cross a slash — one
-// entry per depth. Directory entries in `membershipExceptions` are silently
-// ignored (measured), which is why the exclusion lives here and not there:
-// a pattern also covers files added later.
-EXCLUDED_SOURCE_FILE_NAMES = $(inherited) *.md docs/* screenshots/* .claude/* ABSPlayerTests/* ABSPlayerTests/*/* ABSPlayerTests/*/*/* ABSPlayerUITests/*
+// The former EXCLUDED_SOURCE_FILE_NAMES list was the symptom treatment for
+// the root sweep; with the source removed it would only be dead weight that
+// hides a regression. `ArchiveMusicContractTests`/`ProjectFileIntegrityTests`
+// guard the structure instead.
