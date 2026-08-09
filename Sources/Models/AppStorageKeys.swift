@@ -283,8 +283,6 @@ nonisolated enum AppStorageKeys {
     /// 3125a42: remembered ABS import target (library picker on first use).
     static let librivoxImportLibraryId = "librivoxImportLibraryId"
     static let librivoxImportFolderId = "librivoxImportFolderId"
-    /// 7edb21b: the "Free Audiobooks" AREA toggle (feature level, audiobooks
-    /// pill); the LibriVox service opt-out stays superior.
     /// e4bd910: the radio-logo fallback chain (Wikidata P154 → homepage
     /// touch icon) behind the gated favicon — network-services opt-out.
     static let radioLogoChainEnabled = "radioLogoChainEnabled"
@@ -305,6 +303,9 @@ nonisolated enum AppStorageKeys {
     static let blockedFeedKeys = "blockedFeedKeys"
     /// 5034add: MASTER switch over every free-catalog surface + its traffic.
     static let freeCatalogsMasterEnabled = "freeCatalogsMasterEnabled"
+    /// 7edb21b: the "Free Audiobooks" AREA toggle — it lives at the "Free
+    /// Catalogs" area of the source map (it used to sit in the audiobooks
+    /// pill); the LibriVox service opt-out stays superior.
     static let freeAudiobooksEnabled = "freeAudiobooksEnabled"
 
     // Radio-Picker-Kuratierung (b942da6/b1ab99d)

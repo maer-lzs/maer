@@ -7,9 +7,10 @@ import SwiftUI
 
 /// Central settings (Variante b): pill tabs at the top — "General" carries
 /// everything cross-cutting in the placement-rule order (Sources → Libraries →
-/// Sync → Storage → Notifications → Appearance → Statistics → About →
-/// Diagnostics), plus ONE pill per enabled media type that has own settings
-/// (Audiobooks: playback · Podcasts: recommendations). Placement rule: every
+/// Free Catalogs → Playback → Sync → Storage → Notifications → Drive Mode →
+/// Appearance → Statistics → Diagnostics → About), plus ONE pill per enabled
+/// media type that has own settings (Audiobooks: series auto-play · Podcasts:
+/// recommendations · Music: metadata). Placement rule: every
 /// setting belongs to exactly one category — source · library · playback ·
 /// storage · sync · system/diagnosis; media-specific goes on its media pill,
 /// cross-cutting on General (docs/components.md).
@@ -97,9 +98,9 @@ struct SettingsView: View {
             pillTabs
             Form {
                 // Variante b: General = everything cross-cutting, in the
-                // placement-rule order (sources → libraries → sync → storage →
-                // notifications → appearance → stats → about → diagnostics);
-                // one pill per media type with its specifics.
+                // placement-rule order below (the sequence in this switch IS
+                // the rule — a new section takes its place in it instead of
+                // being appended); one pill per media type with its specifics.
                 switch tab {
                 case .general:
                     sourcesSection
@@ -347,7 +348,10 @@ struct SettingsView: View {
                 Label("Sync via iCloud", systemImage: "icloud")
             }
             .onChange(of: podcastICloudSync) { _, on in
-                if on { PodcastCloudSync.shared.start() }
+                if on {
+                    PodcastCloudSync.shared.start()
+                    MaerPlaylistCloudSync.shared.start()
+                }
             }
         } header: {
             Text("Sync")

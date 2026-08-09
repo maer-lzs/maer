@@ -37,28 +37,15 @@ struct MusicView: View {
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
 
-    /// 50f4751/f18ec34/5034add: ONE pure gate — master > feature toggle
-    /// (Music pill) > archive.org service opt-out.
-    private var netlabelsArea: Bool {
-        FreeCatalogActivation.effective(
-            master: AppStorageKeys.freeCatalogsMasterActive,
-            feature: AppStorageKeys.netlabelsActive,
-            service: AppStorageKeys.archiveBooksActive)
-    }
-
-    private var shellacArea: Bool {
-        FreeCatalogActivation.effective(
-            master: AppStorageKeys.freeCatalogsMasterActive,
-            feature: AppStorageKeys.shellacActive,
-            service: AppStorageKeys.archiveBooksActive)
-    }
-
-    private var freeClassicalArea: Bool {
-        FreeCatalogActivation.effective(
-            master: freeCatalogsMaster,
-            feature: AppStorageKeys.freeClassicalActive,
-            service: AppStorageKeys.archiveBooksActive)
-    }
+    /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
+    /// at the "Free Catalogs" area of the source map > archive.org service
+    /// opt-out). These three used to re-compose it here and passed the
+    /// finished answer as `feature:` — harmless, because both sides are ANDed,
+    /// but a second place that can drift, which is the exact defect the one
+    /// accessor per source was built to end. They read it now.
+    private var netlabelsArea: Bool { AppStorageKeys.netlabelsActive }
+    private var shellacArea: Bool { AppStorageKeys.shellacActive }
+    private var freeClassicalArea: Bool { AppStorageKeys.freeClassicalActive }
 
     private var sortedPlaylists: [MusicPlaylist] {
         PlaylistPresentation.sortedByChanged(vm.playlists) {

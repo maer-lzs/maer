@@ -127,8 +127,8 @@ struct ProjectFileIntegrityTests {
                 "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
     }
 
-    /// Befund 09.08.: vier handgepflegte User-Agent-Zeichenketten mit drei
-    /// Versionen und zwei Adressen — eine davon nannte die private Forge und
+    /// Befund 09.08.: SECHS handgepflegte User-Agent-Zeichenketten mit vier
+    /// Versionswerten und zwei Adressen — eine davon nannte die private Forge und
     /// ging bei jedem Kuenstlerbild-Abruf nach draussen. Jetzt gibt es genau
     /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
     /// hartkodiertes `Maer/<Ziffer>` mehr in den Quellen, und die eine

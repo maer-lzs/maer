@@ -26,11 +26,45 @@ final class MaerPlaylists: ObservableObject {
     nonisolated struct Playlist: Codable, Identifiable, Hashable {
         var id: String
         var name: String
+        /// A version that LOST a merge and was kept instead of dropped. It
+        /// stays on this device: pushing it would multiply the same rescue
+        /// across every device on the next reconcile (`ff1263c`). Renaming it
+        /// clears the mark — that is the user adopting it as a normal list.
+        var isRescue: Bool = false
         /// Zeitstempel der letzten Änderung — Paket 2 führt je Liste
         /// zusammen, nicht je Eintrag (eine Eintrags-Zusammenführung könnte
         /// eine Löschung nicht von einem Fehlen unterscheiden).
         var updatedAt: Double
         var itemIds: [String]
+
+        // Tolerant decoding: files written before the rescue mark existed have
+        // no such field, and a missing field must not fail the whole store.
+        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds }
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            id = try c.decode(String.self, forKey: .id)
+            name = try c.decode(String.self, forKey: .name)
+            isRescue = (try? c.decode(Bool.self, forKey: .isRescue)) ?? false
+            updatedAt = try c.decode(Double.self, forKey: .updatedAt)
+            itemIds = try c.decode([String].self, forKey: .itemIds)
+        }
+        init(id: String, name: String, isRescue: Bool = false, updatedAt: Double, itemIds: [String]) {
+            self.id = id
+            self.name = name
+            self.isRescue = isRescue
+            self.updatedAt = updatedAt
+            self.itemIds = itemIds
+        }
+    }
+
+    /// Deleted lists with the moment of deletion — without this mark a list
+    /// deleted here returns from iCloud on the next reconcile. Kept small: the
+    /// mark is dropped once no device can still carry an older version (30
+    /// days, the same order of magnitude as the podcast tombstones).
+    private static let tombstoneKey = "maerPlaylistTombstones"
+    static var tombstones: [String: Double] {
+        get { (UserDefaults.standard.dictionary(forKey: tombstoneKey) as? [String: Double]) ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: tombstoneKey) }
     }
 
     @Published private(set) var playlists: [Playlist] = []
@@ -120,14 +154,47 @@ final class MaerPlaylists: ObservableObject {
     func rename(playlistId: String, to name: String) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
         playlists[index].name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Naming a rescue copy is the user adopting it — from here on it is an
+        // ordinary list and travels with the others.
+        playlists[index].isRescue = false
         playlists[index].updatedAt = Date().timeIntervalSince1970
         save()
     }
 
     func delete(playlistId: String) {
         playlists.removeAll { $0.id == playlistId }
+        // The deletion needs to be a FACT, not the absence of one — otherwise
+        // the next reconcile hands the list back.
+        var marks = Self.tombstones
+        marks[playlistId] = Date().timeIntervalSince1970
+        Self.tombstones = marks
         save()
     }
+
+    /// Adopt the state a merge produced. Rescue copies are appended, never
+    /// pushed — see `MaerPlaylistMerge`.
+    func apply(merged: [String: MaerPlaylistMerge.Entry],
+               rescued: [MaerPlaylistMerge.Entry],
+               tombstones marks: [String: Double],
+               rescueName: (MaerPlaylistMerge.Entry) -> String) {
+        var next = playlists.filter { $0.isRescue }
+        for (id, entry) in merged {
+            next.append(Playlist(id: id, name: entry.name,
+                                 updatedAt: entry.updatedAt, itemIds: entry.itemIds))
+        }
+        let existing = next.map(\.itemIds)
+        for candidate in rescued where MaerPlaylistMerge.needsRescue(candidate, existing: existing) {
+            next.append(Playlist(id: UUID().uuidString, name: rescueName(candidate),
+                                 isRescue: true, updatedAt: candidate.updatedAt,
+                                 itemIds: candidate.itemIds))
+        }
+        Self.tombstones = marks
+        playlists = next.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        save()
+    }
+
+    /// Everything that may travel — rescue copies stay here.
+    var syncable: [Playlist] { playlists.filter { !$0.isRescue } }
 
     func move(playlistId: String, from source: IndexSet, to destination: Int) {
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }

@@ -125,7 +125,7 @@ nonisolated struct JamendoTrack: Decodable, Sendable {
 // MARK: - Pure mappers
 
 /// 5034add: THE gate hierarchy for every free-catalog surface — master
-/// (General pill) > area feature toggles (audiobooks/music pill) > service
+/// (General pill) > area feature toggles ("Free Catalogs" area of the source map) > service
 /// opt-outs (network-services page). ONE pure function all catalog paths
 /// ask (Regel 2 — never five copied checks); master off means OFF: no UI
 /// surface and no network traffic.

@@ -686,7 +686,11 @@ struct BookDetailScreen: View {
                     isFinished: target
                 )
                 isFinishedOverride = target
-                if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }   // X16c
+                // Same rule as in the online branch above: marking finished
+                // behaves like a natural end, so the running session stops and
+                // auto-continue advances. Offline must not behave differently
+                // — the decision is the user's, not the server's.
+                if target { coordinator.markPlayedAndAdvance(itemId: entry.id) }
             } else {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }

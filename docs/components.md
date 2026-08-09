@@ -86,13 +86,23 @@ bump, Apple Forums 685461). Applies to: `MediaRowContent` (all four slots) ·
 `RadioStationCard`. List-backed rows (native UITableView sizing) are exempt
 but converge via the shared components anyway.
 
+### Die Kuerzel in den Kommentaren
+
+Kommentare tragen oft ein Kuerzel wie `Y6b`, `X16c`, `M1`, `Z1`, `P6b` oder einen
+Commit-SHA. Das sind **interne Vorgangsnummern** — sie loesen sich in einem privaten
+Repo auf und sind fuer Aussenstehende bedeutungslos. Sie sind eine ZUGABE, nie der
+Traeger der Bedeutung: **der Kommentar nennt den Grund immer selbst.** Wo er das nicht
+tut, ist das ein Mangel und keine Konvention. Ebenso aufloesbar in diesem Dokument:
+`Regel 2` (eine Implementierung je Mechanik, an allen Flaechen dieselbe) und `Regel 3`
+(nichts scheitert still).
+
 **Convention — settings placement (Variante b, 25.07):** every setting belongs
 to EXACTLY ONE category: **source · library · playback · storage · sync ·
 system/diagnosis**. Media-type-specific settings go on that type's settings
 pill (Audiobooks: series auto-play · Podcasts: recommendations · Music:
 metadata); cross-cutting ones go on General, in the fixed order Sources →
 Libraries → Free Catalogs → **Playback** → Sync → Storage → Notifications →
-Appearance → Statistics → About → Diagnostics. **S1 (d9ef077):** skip interval,
+Drive Mode → Appearance → Statistics → Diagnostics → About. **S1 (d9ef077):** skip interval,
 default speed and Smart Rewind are cross-cutting — they feed the lock screen for
 podcasts, music and radio too — and moved off the Audiobooks pill; switching
 that pill off used to take away a setting that governs podcasts. **S2:** Radio

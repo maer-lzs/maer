@@ -5,21 +5,23 @@
 
 import Foundation
 
-/// Befund 09.08.: die App stellte sich fremden Servern unter VIER Kennungen
-/// vor — `Maer/1.0` (ohne Adresse), `2.1`, `2.6`, `2.7` — und eine davon nannte
-/// die PRIVATE Forge (`git.lschroeder.eu`), die damit bei jedem
-/// Künstlerbild-Abruf an fremde Bilddienste ging. Das war die einzige Stelle
-/// im ausgelieferten Code, die etwas Internes nach außen sendete.
+/// Befund 09.08.: die App stellte sich fremden Servern unter SECHS
+/// handgepflegten Kennungen vor — vier Versionswerte (`Maer/1.0` ganz ohne
+/// Adresse, `2.1`, `2.6`, `2.7`) auf sechs Zeichenketten — und eine davon nannte
+/// die private Entwicklungs-Forge, die damit bei jedem Künstlerbild-Abruf an
+/// fremde Bilddienste ging. Das war die einzige Stelle im ausgelieferten Code,
+/// die etwas Internes nach außen sendete — und der Name dieser Forge gehört
+/// deshalb auch nicht in diesen Kommentar.
 ///
 /// Dieselbe Fehlerklasse wie die verstreuten Aktivierungs-Vorgaben: derselbe
 /// Wert an N Stellen, und N−1 driften ab. Deshalb steht die Kennung ab jetzt
 /// **einmal** hier und leitet die Version aus dem Bundle ab — beim nächsten
-/// Versionssprung zieht sie von selbst mit, statt dass drei von vier
+/// Versionssprung zieht sie von selbst mit, statt dass fünf von sechs
 /// vergessen werden.
 ///
 /// Die Adresse ist `maer.fm` und nicht die Forge: sie bleibt gültig, wenn die
 /// Forge wechselt. MusicBrainz und Radio Browser verlangen ausdrücklich eine
-/// identifizierende Kennung mit Kontaktweg — mit vier Identitäten ist jede
+/// identifizierende Kennung mit Kontaktweg — mit sechs Identitäten ist jede
 /// Zuordnung auf ihrer Seite wertlos.
 nonisolated enum AppUserAgent {
     /// Die EINE Selbstvorstellung der App gegenüber fremden Servern.

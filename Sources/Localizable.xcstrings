@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ (version from %@)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (Stand vom %@)"
+          }
+        }
+      }
+    },
     "Applies to everything that plays — books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause." : {
       "localizations" : {
         "de" : {

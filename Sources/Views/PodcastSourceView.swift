@@ -7,7 +7,7 @@ import SwiftUI
 import OSLog
 import UniformTypeIdentifiers
 
-/// Subscribe to podcasts (Settings → Sources → Podcasts): search by name
+/// Subscribe to podcasts (Settings → Areas → Podcasts → Podcast sources): search by name
 /// (Apple/PodcastIndex) and subscribe with one tap, or via feed URL; manage
 /// subscribed shows. Source-specific management, analogous to `LocalFilesView`
 /// — the podcast tab only consumes.
