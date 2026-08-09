@@ -5,16 +5,6 @@
 
 import SwiftUI
 
-/// Demo access for the app review (Apple requires a testable account for
-/// server-bound apps). Fill in with a hosted demo server before submitting; as
-/// long as both values are nil, none of it appears in the app.
-enum DemoAccess {
-    static let serverURL: String? = "https://demo.maer.fm"
-    static let apiToken: String? = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyMTdhYjNhNC1mYWNkLTRmNzctYTdmMC1iMWQzZTAxZjQzNTQiLCJ1c2VybmFtZSI6ImRlbW8iLCJpYXQiOjE3ODQwNjk3Mjl9.DWjbaz_Z-t3xSEzGRv75UKIkqcOj0NM3Lt7GjYIeTME"
-
-    static var isAvailable: Bool { serverURL != nil && apiToken != nil }
-}
-
 struct SetupView: View {
     @ObservedObject var viewModel: AuthViewModel
 
@@ -89,19 +79,6 @@ struct SetupView: View {
                         }
                     }
                     .disabled(viewModel.isLoading || viewModel.serverURLString.isEmpty || !hasCredentials)
-                }
-
-                if DemoAccess.isAvailable {
-                    Section {
-                        Button("Use Demo Server") {
-                            viewModel.serverURLString = DemoAccess.serverURL ?? ""
-                            viewModel.loginMode = .token
-                            viewModel.apiToken = DemoAccess.apiToken ?? ""
-                            Task { await viewModel.connect() }
-                        }
-                    } footer: {
-                        Text("Connects to a public demo server with sample audiobooks.")
-                    }
                 }
 
                 // F10: the EQUAL second path — no server required. Podcasts

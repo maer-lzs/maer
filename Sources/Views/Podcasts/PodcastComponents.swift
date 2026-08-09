@@ -355,6 +355,7 @@ struct PodcastEpisodeRow: View {
                 } label: {
                     Label("Play Last", systemImage: "text.append")
                 }
+                MaerPlaylistMenu(itemId: item.id)
                 .tint(.gray)
             }
         }

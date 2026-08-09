@@ -509,6 +509,17 @@ struct ArchiveSeriesPage: View {
         }
         .navigationTitle(Text(verbatim: FreeCatalog.normalizedCollectionTitle(
             detail?.media.metadata?.title ?? "")))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    // Paket 1 + M1-Korrektur: „Zur Playlist" gehoert auf der
+                    // Albumseite JE ALBUM hierher (je Spur siehe Bericht —
+                    // dafuer fehlen Spur-Kennungen).
+                    CatalogQueueButtons(itemId: itemId)
+                } label: { Image(systemName: "ellipsis.circle") }
+                .accessibilityIdentifier("album-actions")
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }

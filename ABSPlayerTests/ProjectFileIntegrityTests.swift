@@ -97,6 +97,36 @@ struct ProjectFileIntegrityTests {
                 "the additional terms must travel with the binary they apply to")
     }
 
+    /// Auftrag afd452a: ein vollstaendiges JWT stand im Klartext in einer
+    /// gewoehnlichen View-Datei (`SetupView`, Demo-Zugang) — also im
+    /// oeffentlichen Spiegel und dauerhaft in der Historie. Der Zugang ist
+    /// zurueckgebaut; dieser Zaun sorgt dafuer, dass so etwas nicht als
+    /// „nur kurz zum Testen" wiederkommt. JWTs haben eine erkennbare Form
+    /// (`eyJ` = base64 von `{"`), das genuegt als Muster.
+    @Test("no access token is hard-coded in the sources")
+    func noHardCodedTokens() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        var offenders: [String] = []
+        var checked = 0
+        for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
+            let dir = root.appendingPathComponent(folder)
+            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+            else { continue }
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                checked += 1
+                // Ein JWT im Quelltext: "eyJ" gefolgt von base64 und einem Punkt.
+                if text.range(of: #""eyJ[A-Za-z0-9_-]{8,}\."#, options: .regularExpression) != nil {
+                    offenders.append(url.lastPathComponent)
+                }
+            }
+        }
+        guard checked > 0 else { return }
+        #expect(offenders.isEmpty,
+                "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
+    }
+
     @Test("pbxproj: the app target syncs Sources, not the repo root")
     func appTargetSyncsSourcesOnly() throws {
         guard let text = Self.projectFile else { return }

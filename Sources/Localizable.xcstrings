@@ -1,6 +1,66 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Add to Server Playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zur Server-Playlist"
+          }
+        }
+      }
+    },
+    "Save as Playlist" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Als Playlist sichern"
+          }
+        }
+      }
+    },
+    "Playlists · On your server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists · Auf deinem Server"
+          }
+        }
+      }
+    },
+    "Playlists · On your devices" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists · Auf deinen Geräten"
+          }
+        }
+      }
+    },
+    "Not available on this device" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf diesem Gerät nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Playlists on your devices can mix everything — your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists auf deinen Geräten dürfen alles mischen — die Musik deines Servers, freie Kataloge und lokale Dateien. Sie bleiben auf deinen Geräten, weil ein Server keine Katalog-Adresse referenzieren kann."
+          }
+        }
+      }
+    },
     "%lld tracks" : {
       "localizations" : {
         "de" : {
@@ -1507,16 +1567,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verbunden."
-          }
-        }
-      }
-    },
-    "Connects to a public demo server with sample audiobooks." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbindet mit einem öffentlichen Demo-Server mit Beispiel-Hörbüchern."
           }
         }
       }
@@ -7453,16 +7503,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Audiobookshelf für Podcasts nutzen"
-          }
-        }
-      }
-    },
-    "Use Demo Server" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Demo-Server verwenden"
           }
         }
       }

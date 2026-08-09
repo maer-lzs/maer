@@ -68,6 +68,7 @@ struct BookContextMenuItems: View {
             } label: {
                 Label("Play Next", systemImage: "text.insert")
             }
+            MaerPlaylistMenu(itemId: entry.id)
             Button {
                 PlayQueue.shared.playLast(entry.id)
             } label: {

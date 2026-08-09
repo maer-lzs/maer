@@ -36,6 +36,8 @@ enum MusicRoute: Hashable {
     /// Albumseite statt sofort zu spielen (datengetrieben, nicht sammlungs-
     /// weise: Netlabels 4-79 Spuren, Klassik 1 — gemessen).
     case catalogAlbum(String)
+    /// Paket 1: eine Maer-Playlist (quellenuebergreifend, auf den Geraeten).
+    case maerPlaylist(String)
     /// Welle 3 (DIE REGEL): a shelf row's full page — recent/newest as a
     /// grid. ONE parameterised page; Home's "Recently Played (Music)" row
     /// targets the same .recent page (Regel 2: no duplicate surface).
@@ -63,6 +65,7 @@ enum MusicRoute: Hashable {
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusic(a), .archiveMusic(b)): return a == b
         case let (.catalogAlbum(a), .catalogAlbum(b)): return a == b
+        case let (.maerPlaylist(a), .maerPlaylist(b)): return a == b
         case let (.shelfPage(a), .shelfPage(b)): return a == b
         case let (.genre(a), .genre(b)):         return a.name == b.name
         default:                                 return false
@@ -83,6 +86,7 @@ enum MusicRoute: Hashable {
         case .archiveMusic(let a): hasher.combine(9); hasher.combine(a.key)
         case .shellacArea:      hasher.combine(14)
         case .catalogAlbum(let id): hasher.combine(15); hasher.combine(id)
+        case .maerPlaylist(let id): hasher.combine(16); hasher.combine(id)
         case .shelfPage(let s): hasher.combine(10); hasher.combine(String(describing: s))
         case .freeJamendo:      hasher.combine(11)
         case .freeCatalogArea:  hasher.combine(12)
@@ -106,6 +110,7 @@ enum MusicRoute: Hashable {
         case .archiveMusic(let a): return a.routeIdentifier
         case .shellacArea: return "music-route-shellac-area"
         case .catalogAlbum: return "music-route-catalog-album"
+        case .maerPlaylist: return "music-route-maer-playlist"
         case .shelfPage(let s): return "music-route-shelf-\(String(describing: s))"
         case .freeJamendo: return "music-route-free-jamendo"
         case .freeCatalogArea: return "music-route-free-catalog-area"
@@ -171,6 +176,8 @@ extension View {
                 ArchiveMusicPage(area: area, playerCoordinator: playerCoordinator)
             case .shellacArea:
                 ShellacShelvesPage(playerCoordinator: playerCoordinator)
+            case .maerPlaylist(let id):
+                MaerPlaylistPage(playlistId: id, playerCoordinator: playerCoordinator)
             case .catalogAlbum(let id):
                 ArchiveSeriesPage(itemId: id, flavor: .album,
                                   playerCoordinator: playerCoordinator)

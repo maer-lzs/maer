@@ -839,7 +839,26 @@ struct PlayerView: View {
         transcriptControl
         driveModeControl
         markFinishedControl
+        playlistControl
         catalogSourceControl
+    }
+
+    /// ERWEITERUNG 7baf2c2, Punkt 1: „Wenn ich einen Song höre, will ich ihn
+    /// in eine Playliste tun, wenn er gut ist." Der Player war die Fläche mit
+    /// dem stärksten Anlass und der schwächsten Ausstattung — hier gab es
+    /// weder Warteschlangen- noch Playlist-Aktion. Beides kommt aus DERSELBEN
+    /// geteilten Komponente wie überall sonst (Regel 2).
+    @ViewBuilder
+    private var playlistControl: some View {
+        if let id = viewModel.item?.id {
+            Menu {
+                CatalogQueueButtons(itemId: id)
+            } label: {
+                Label("Add to Playlist", systemImage: "text.badge.plus")
+                    .font(.footnote)
+            }
+            .accessibilityIdentifier("player-add-to-playlist")
+        }
     }
 
     private var driveModeControl: some View {

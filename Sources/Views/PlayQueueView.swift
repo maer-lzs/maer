@@ -25,6 +25,8 @@ struct PlayQueueSheet: View {
 /// (`.onMove`/EditButton), swipe to remove, tap a row to play it (and remove it
 /// from the queue). Rows render uniformly via `PlayQueueRow`.
 struct PlayQueueView: View {
+    @State private var showSaveSheet = false
+    @State private var newListName = ""
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var queue = PlayQueue.shared
 
@@ -48,6 +50,27 @@ struct PlayQueueView: View {
         // Locale-independent handle for the UI-test harness.
         .accessibilityIdentifier("play-queue-list")
         .navigationTitle("Up Next")
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showSaveSheet = true
+                } label: { Image(systemName: "text.badge.plus") }
+                .accessibilityLabel(Text("Save as Playlist"))
+                .accessibilityIdentifier("queue-save-as-playlist")
+                .disabled(PlayQueue.shared.ids.isEmpty)
+            }
+        }
+        .alert("Save as Playlist", isPresented: $showSaveSheet) {
+            TextField("Name", text: $newListName)
+            Button("Create") {
+                // ERWEITERUNG 7baf2c2 Punkt 4: die naheliegendste Art, eine
+                // Playlist anzulegen — statt jeden Titel einzeln zu suchen.
+                let name = newListName.isEmpty ? String(localized: "Playlist") : newListName
+                MaerPlaylists.shared.create(name: name, itemIds: PlayQueue.shared.ids)
+                newListName = ""
+            }
+            Button("Cancel", role: .cancel) { newListName = "" }
+        }
         .toolbar {
             if !queue.isEmpty {
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }

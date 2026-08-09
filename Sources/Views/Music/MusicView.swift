@@ -13,6 +13,7 @@ import Combine
 /// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
     @Environment(\.pushMusicRoute) private var pushRoute
+    @ObservedObject private var maerPlaylists = MaerPlaylists.shared
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
@@ -318,17 +319,73 @@ struct MusicView: View {
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
-            RowHeading.plain("Playlists")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 16) {
-                    ForEach(sortedPlaylists) {
-                        PlaylistCard(playlist: $0, playerCoordinator: playerCoordinator)
+            // Paket 1: ZWEI Playlist-Typen, sichtbar unterschieden — ein
+            // Nutzer muss wissen, was ein anderer Client sehen wird. Die
+            // Server-Listen synchronisieren ueberallhin und tragen nur
+            // Server-Titel; die Maer-Listen leben auf den Geraeten und duerfen
+            // alles mischen. Die Unterscheidung ist Pflicht, die Wortwahl
+            // unsere.
+            if !sortedPlaylists.isEmpty {
+                RowHeading.plain("Playlists · On your server")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(sortedPlaylists) {
+                            PlaylistCard(playlist: $0, playerCoordinator: playerCoordinator)
+                        }
+                        NewPlaylistCard { showNewPlaylist = true }
                     }
-                    NewPlaylistCard { showNewPlaylist = true }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .scrollClipDisabled()
+            } else {
+                RowHeading.plain("Playlists")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 16) {
+                        NewPlaylistCard { showNewPlaylist = true }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
             }
-            .scrollClipDisabled()
+            maerPlaylistRow
+        }
+    }
+
+    /// Paket 1: die Maer-Listen — quellenuebergreifend, auf den Geraeten.
+    @ViewBuilder
+    private var maerPlaylistRow: some View {
+        let lists = maerPlaylists.playlists
+        if !lists.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                RowHeading.plain("Playlists · On your devices")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(lists) { list in
+                            Button {
+                                pushRoute(.maerPlaylist(list.id))
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Image(systemName: "music.note.list")
+                                        .font(.title2)
+                                        .foregroundStyle(AppTheme.accent)
+                                    Text(verbatim: list.name)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(2)
+                                    Text("\(list.itemIds.count) entries")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                .frame(width: 150, alignment: .leading)
+                                .padding(12)
+                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("maer-playlist-\(list.id)")
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
         }
     }
 }
@@ -650,12 +707,19 @@ private struct MusicItemMenu: ViewModifier {
                     } label: { Label("Play Last", systemImage: "text.append") }
                 }
 
-                // Add to Playlist — only meaningful for Subsonic music items.
+                // Paket 1: ZWEI Ziele, sichtbar getrennt. Die Server-Liste
+                // gibt es nur fuer Titel, die dem Server gehoeren — das Gate
+                // bleibt, es ist keine Willkuer, sondern die Natur der Sache
+                // (Navidrome kann keine Katalog-Adresse referenzieren). Die
+                // Maer-Liste gibt es fuer alles, was auch in die Warteschlange
+                // darf. Nichts scheitert still: wo das eine fehlt, steht das
+                // andere mit Grund.
                 if AppSession.shared.musicProvider.owns(itemId: item.id) {
                     Button {
                         addTarget = AddToPlaylistTarget(itemId: item.id)
-                    } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
+                    } label: { Label("Add to Server Playlist", systemImage: "text.badge.plus") }
                 }
+                MaerPlaylistMenu(itemId: item.id)
 
                 if DownloadManager.shared.isDownloaded(itemId: item.id) {
                     Button(role: .destructive) {

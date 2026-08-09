@@ -63,6 +63,7 @@ extension View {
                 Button {
                     PlayQueue.shared.playLast(item.id)
                 } label: { Label("Play Last", systemImage: "text.append") }
+                MaerPlaylistMenu(itemId: item.id)
             }
             if !isTextOnly {
             let played = podcastPlayState(for: item) == .played

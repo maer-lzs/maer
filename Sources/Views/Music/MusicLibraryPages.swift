@@ -731,3 +731,87 @@ struct MusicCatalogAreaPage: View {
         .scrollClipDisabled()
     }
 }
+
+/// Paket 1: die Seite einer Mär-Playlist. Bewusst schlicht — eine Liste von
+/// Kennungen, jede Zeile löst sich beim Anzeigen selbst auf.
+///
+/// AUFLAGE 24132fa: Ein Eintrag, den DIESES Gerät nicht auflösen kann (ein
+/// Server-Titel ohne verbundenen Server, eine Datei, die hier nie lag), wird
+/// **sichtbar behalten, nicht entfernt** — er sagt, warum er gerade nicht
+/// spielbar ist, und wird beim Abspielen übersprungen. Auflösbarkeit ist eine
+/// Eigenschaft des GERÄTS, nie des Eintrags; sonst beschnitte Gerät B die
+/// Liste von Gerät A.
+struct MaerPlaylistPage: View {
+    let playlistId: String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var store = MaerPlaylists.shared
+    @State private var renaming = false
+    @State private var newName = ""
+
+    private var playlist: MaerPlaylists.Playlist? { store.playlist(id: playlistId) }
+
+    var body: some View {
+        List {
+            if let playlist {
+                Section {
+                    ForEach(playlist.itemIds, id: \.self) { id in
+                        row(id)
+                    }
+                    .onDelete { offsets in
+                        for index in offsets { store.remove(itemId: playlist.itemIds[index], from: playlistId) }
+                    }
+                    .onMove { source, destination in
+                        store.move(playlistId: playlistId, from: source, to: destination)
+                    }
+                } footer: {
+                    // P3: einmal ruhig erklären, nicht bei jedem Hinzufügen.
+                    Text("Playlists on your devices can mix everything — your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
+                }
+            }
+        }
+        .navigationTitle(Text(verbatim: playlist?.name ?? ""))
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        newName = playlist?.name ?? ""
+                        renaming = true
+                    } label: { Label("Rename", systemImage: "pencil") }
+                    Button(role: .destructive) {
+                        store.delete(playlistId: playlistId)
+                    } label: { Label("Delete", systemImage: "trash") }
+                } label: { Image(systemName: "ellipsis.circle") }
+            }
+        }
+        .alert("Rename", isPresented: $renaming) {
+            TextField("Name", text: $newName)
+            Button("Save") { store.rename(playlistId: playlistId, to: newName) }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ id: String) -> some View {
+        let item = AppSession.shared.libraryItem(forId: id)
+        Button {
+            if let item { Task { await playerCoordinator.open(item: item) } }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: item?.title ?? id)
+                    .font(.subheadline)
+                    .foregroundStyle(item == nil ? .secondary : .primary)
+                if item == nil {
+                    // Sichtbar behalten statt still entfernen.
+                    Text("Not available on this device")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if let author = item?.author {
+                    Text(verbatim: author).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(item == nil)
+    }
+}

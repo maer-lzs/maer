@@ -1,7 +1,7 @@
 # App-Store-Checkliste für Mär
 
 Stand: Juli 2026. Code-seitig ist die App einreichungsbereit (Privacy-Manifest,
-Demo-Zugang-Mechanik, Lokalisierung EN/DE) — die folgenden Schritte sind
+Lokalisierung EN/DE) — die folgenden Schritte sind
 Konto-/Portal-Arbeit.
 
 ## Voraussetzungen
@@ -16,10 +16,15 @@ Konto-/Portal-Arbeit.
 
 ## In der Codebasis (einmalig vor dem Upload)
 
-- [ ] **Demo-Zugang füllen**: `Sources/Views/SetupView.swift` → `DemoAccess`
-      (`serverURL` + `apiToken` eines öffentlich erreichbaren Demo-Servers
-      mit 2–3 gemeinfreien Hörbüchern). Apple LEHNT Server-gebundene Apps
-      ohne testbaren Zugang regelmäßig ab.
+- [ ] **Demo-Zugang in die PRÜFHINWEISE** (nicht in die App): In App Store
+      Connect trägt man Serveradresse und Token in die Felder der
+      App-Review-Informationen ein — „Anmeldedaten erforderlich" ankreuzen,
+      dann „Benutzername"/„Passwort" bzw. das Feld „Hinweise". Der Prüfer
+      trägt beides im Einrichtungsbildschirm ein.
+      **Der frühere Knopf „Use Demo Server" ist zurückgebaut** (afd452a): er
+      stand JEDEM Nutzer offen und streamte von the owner's Hausleitung, und
+      sein Token stand im Klartext in einer Quelldatei — also im öffentlichen
+      Spiegel. Zugangsdaten gehören in die Prüfhinweise, nicht in die App.
 - [ ] **App-Icon** prüfen: `Assets.xcassets/AppIcon` — alle Größen belegt?
 - [ ] `MARKETING_VERSION`/`CURRENT_PROJECT_VERSION` prüfen (aktuell 1.0/1).
 
@@ -40,11 +45,18 @@ Konto-/Portal-Arbeit.
 
 ## Review-Notes (Textbaustein)
 
-> Mär is a client for the self-hosted, open-source audiobook server
-> Audiobookshelf (audiobookshelf.org). A server is required. For review,
-> please use the built-in demo access: on the setup screen tap
-> "Use Demo Server" — it connects to our demo instance with public-domain
-> audiobooks. No account creation, no payments, no user data collection.
+> Mär is a client for self-hosted audio: audiobooks (Audiobookshelf),
+> podcasts (plain RSS), music (Subsonic/OpenSubsonic, Jellyfin) and internet
+> radio. **A server is NOT required to try the app** — podcasts, internet
+> radio, the free catalogues (LibriVox, Internet Archive, Project Gutenberg,
+> Jamendo) and imported local files all work without any account. Choose
+> "Start without a server" on the setup screen.
+>
+> To review the Audiobookshelf part, please use the demo server credentials
+> given in the review information fields above: enter the server address and
+> the token on the setup screen (choose "Token" as the sign-in method).
+>
+> No account creation, no payments, no tracking, no user data collection.
 
 ## CarPlay (separat, blockiert die Einreichung NICHT)
 
@@ -63,6 +75,6 @@ Konto-/Portal-Arbeit.
       **Distribute App** → App Store Connect.
 - [ ] TestFlight-Runde auf dem eigenen Gerät (installiert das Store-Binary,
       prüft Push-freie Funktionen, Widget, Siri).
-- [ ] Einreichen; bei Ablehnung: Review-Antworten sachlich, Demo-Zugang
+- [ ] Einreichen; bei Ablehnung: Review-Antworten sachlich, Demo-Zugangsdaten
       erneut hervorheben — das ist bei Server-Client-Apps der häufigste
       Ablehnungsgrund.
