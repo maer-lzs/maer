@@ -6,6 +6,7 @@
 import SwiftUI
 import Combine
 import UIKit
+import OSLog
 
 /// Fully unsubscribe from a feed — from BOTH sources by the normalised feed URL:
 /// remove the RSS subscription (the gpodder reconcile then sends `remove`) AND
@@ -162,9 +163,33 @@ enum PodcastAutoDownload {
         if on { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId)) }
     }
 
+    /// What the automatism itself downloaded — the cleanup below touches
+    /// nothing else. A property of the data, not a guess from a file's age.
+    private static let ownedKey = "podcastAutoDownloadedIds"
+    static var ownedByAutomation: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: ownedKey) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: ownedKey) }
+    }
+
+    /// Why the last run could not fetch an episode of this show. Shown in the
+    /// show's settings next to the switch — a background job that fails must
+    /// be findable where it was switched on.
+    static func errorKey(_ showId: String) -> String { "podcastAutoDownloadError.\(showId)" }
+    static func lastError(_ showId: String) -> String? {
+        UserDefaults.standard.string(forKey: errorKey(showId))
+    }
+
     /// For all enabled shows, pull the new (since the cutoff), not-yet-local
     /// episodes. `perShow` caps it per run.
+    ///
+    /// Wi-Fi is a GATE, not a warning: this runs in the background, nobody is
+    /// watching, and it is the only part of the app that can spend the user's
+    /// data plan without them touching anything.
     static func run(shows: [PodcastShow], perShow: Int = 3) async {
+        guard await NetworkStatus.isOnWiFi() else {
+            Logger.library.notice("AUTODOWNLOAD skipped — no Wi-Fi (cellular is never used unattended)")
+            return
+        }
         let dm = DownloadManager.shared
         for show in shows where isEnabled(show.id) {
             let since = UserDefaults.standard.double(forKey: sinceKey(show.id))
@@ -173,12 +198,55 @@ enum PodcastAutoDownload {
                 .sorted { $0.pubDate > $1.pubDate }
                 .prefix(perShow)
                 .map { podcastLibraryItem(show: show, episode: $0) }
+            var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {
                 let provider = AppSession.shared.provider(for: item.id)
-                guard let detail = try? await provider.fetchItemDetail(itemId: item.id) else { continue }
-                await dm.download(item: detail, provider: provider)
+                do {
+                    let detail = try await provider.fetchItemDetail(itemId: item.id)
+                    await dm.download(item: detail, provider: provider)
+                    ownedByAutomation.insert(item.id)
+                } catch {
+                    // Regel 3: an episode that cannot be fetched used to fall
+                    // out of the run silently. It says so now, and says why.
+                    let title = item.media?.metadata?.title ?? item.id
+                    failure = String(localized: "\(title) could not be downloaded: \(error.localizedDescription)")
+                    Logger.library.error("AUTODOWNLOAD failed for \(item.id, privacy: .public): \(String(describing: error), privacy: .public)")
+                }
+            }
+            if let failure {
+                UserDefaults.standard.set(failure, forKey: errorKey(show.id))
+            } else {
+                UserDefaults.standard.removeObject(forKey: errorKey(show.id))
             }
         }
+        sweep()
+    }
+
+    /// Delete finished automatic downloads after the keep window — and only
+    /// those. Anything downloaded by hand is untouched, whatever its age.
+    static func sweep(now: Double = Date().timeIntervalSince1970) {
+        let dm = DownloadManager.shared
+        let owned = ownedByAutomation
+        guard !owned.isEmpty else { return }
+        let items: [PodcastAutoDownloadRules.Item] = owned.map { id in
+            let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]
+            let position = stored?.first ?? 0
+            // The progress marker already carries the moment it was written
+            // (milliseconds) — no second bookkeeping for "finished when".
+            let finishedAt = (stored?.count ?? 0) > 1 ? stored![1] / 1000 : 0
+            let duration = dm.loadCachedDetail(forItemId: id)?.media.duration ?? 0
+            let finished = position >= PodcastProgressStore.playedSentinel
+                || (duration > 0 && position >= duration - 1)
+            return .init(id: id, isFinished: finished, finishedAt: finishedAt)
+        }
+        let expired = PodcastAutoDownloadRules.expired(items, ownedByAutomation: owned, now: now)
+        for id in expired { dm.deleteDownload(itemId: id) }
+        if !expired.isEmpty {
+            Logger.library.notice("AUTODOWNLOAD swept \(expired.count) finished downloads (kept manual ones)")
+        }
+        let stillThere = Set(owned.filter { dm.isDownloaded(itemId: $0) })
+        ownedByAutomation = PodcastAutoDownloadRules.forget(
+            ownedByAutomation: owned, deleted: expired, stillDownloaded: stillThere)
     }
 }
 

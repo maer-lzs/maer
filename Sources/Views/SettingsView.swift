@@ -63,6 +63,10 @@ struct SettingsView: View {
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
+    // The key still says "podcast" although the switch now covers playlists
+    // too. Renaming it would reset the setting of EVERY user to the default —
+    // the same class as the keychain loss on a bundle-ID change, only
+    // invisible. Do not "tidy" this name.
     @AppStorage(AppStorageKeys.podcastICloudSync) private var podcastICloudSync = true
     @AppStorage(AppStorageKeys.podcastNewEpisodeNotifications) private var newEpisodeNotifications = false
 
@@ -331,7 +335,7 @@ struct SettingsView: View {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
             Toggle(isOn: $podcastICloudSync) {
-                Label("Sync Podcast Progress via iCloud", systemImage: "icloud")
+                Label("Sync via iCloud", systemImage: "icloud")
             }
             .onChange(of: podcastICloudSync) { _, on in
                 if on { PodcastCloudSync.shared.start() }
@@ -339,7 +343,7 @@ struct SettingsView: View {
         } header: {
             Text("Sync")
         } footer: {
-            Text("iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page.")
+            Text("Covers podcast progress and Mär playlists — both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page.")
         }
     }
 

@@ -14,6 +14,7 @@ struct PodcastShowSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var rate: Float?          // nil = default speed
     @State private var autoDownload = false
+    @State private var autoDownloadError: String?
     @State private var inboxMode = "all"     // all | latest | off
     @State private var notify = true
     @State private var episodeLimit = 0      // 0 = unbegrenzt
@@ -53,7 +54,14 @@ struct PodcastShowSettingsSheet: View {
                 } header: {
                     Text("Episodes")
                 } footer: {
-                    Text("Keeping only the latest N removes older episodes (and their downloads) from this show — handy for news podcasts.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Automatic downloads only run on Wi-Fi, and are removed a week after you finished them — episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show.")
+                        // Regel 3: a background job that failed says so where
+                        // it was switched on, and says why.
+                        if let failure = autoDownloadError {
+                            Text(failure).foregroundStyle(.red)
+                        }
+                    }
                 }
                 Section("Sort") {
                     Picker("Order", selection: $newestFirst) {
@@ -71,6 +79,7 @@ struct PodcastShowSettingsSheet: View {
             .onAppear {
                 rate = UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate(showId)) as? Float
                 autoDownload = PodcastAutoDownload.isEnabled(showId)
+                autoDownloadError = PodcastAutoDownload.lastError(showId)
                 inboxMode = AppStorageKeys.podcastInboxModeValue(showId)
                 notify = AppStorageKeys.podcastNotifyEnabled(showId)
                 episodeLimit = AppStorageKeys.podcastEpisodeLimitValue(showId)

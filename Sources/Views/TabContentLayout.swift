@@ -342,7 +342,10 @@ struct CatalogQueueButtons: View {
         case .added:         return nil
         case .alreadyThere:  return String(localized: "Already in “\(listName)”.")
         case .limitReached(let limit):
-            return String(localized: "Your playlists are full (\(limit) entries). Remove something first.")
+            // The limit is not a private quota: playlists and podcast progress
+            // share ONE iCloud budget, so the message must not suggest the
+            // playlists had a compartment of their own (Entscheid f35db87).
+            return String(localized: "Your playlists are full (\(limit) entries) — they share the iCloud space with your podcast progress. Remove something first.")
         case .notQueueable:  return String(localized: "This cannot be added to a playlist.")
         }
     }

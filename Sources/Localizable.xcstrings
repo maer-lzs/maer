@@ -1,6 +1,76 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Already in “%@”." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schon in „%@“."
+          }
+        }
+      }
+    },
+    "This cannot be added to a playlist." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das lässt sich nicht in eine Playlist legen."
+          }
+        }
+      }
+    },
+    "Your playlists are full (%lld entries) — they share the iCloud space with your podcast progress. Remove something first." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Playlists sind voll (%lld Einträge) — sie teilen sich den iCloud-Platz mit deinem Podcast-Fortschritt. Nimm zuerst etwas heraus."
+          }
+        }
+      }
+    },
+    "Automatic downloads only run on Wi-Fi, and are removed a week after you finished them — episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatische Downloads laufen nur über WLAN und verschwinden eine Woche, nachdem du sie gehört hast — selbst geladene Folgen bleiben unangetastet. „Nur die neuesten N behalten“ entfernt ältere Folgen (und ihre Downloads) aus dieser Sendung."
+          }
+        }
+      }
+    },
+    "Covers podcast progress and Mär playlists — both share one iCloud budget, so it is one decision, not two. Needs iCloud enabled. Server sync per service lives on its source page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Umfasst den Podcast-Fortschritt und die Mär-Playlists — beide teilen sich ein iCloud-Kontingent, es ist also eine Entscheidung und nicht zwei. Braucht eingeschaltetes iCloud. Der Server-Abgleich je Dienst steht auf der jeweiligen Quellenseite."
+          }
+        }
+      }
+    },
+    "Sync via iCloud" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Über iCloud abgleichen"
+          }
+        }
+      }
+    },
+    "%@ could not be downloaded: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ließ sich nicht laden: %@"
+          }
+        }
+      }
+    },
     "Areas" : {
       "localizations" : {
         "de" : {
@@ -3109,16 +3179,6 @@
         }
       }
     },
-    "iCloud keeps podcast progress in sync across your own devices (needs iCloud enabled). Server sync per service lives on its source page." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "iCloud hält den Podcast-Fortschritt zwischen deinen Geräten synchron (iCloud muss aktiv sein). Server-Sync je Dienst liegt auf der jeweiligen Quellen-Seite."
-          }
-        }
-      }
-    },
     "Import" : {
       "localizations" : {
         "de" : {
@@ -3369,16 +3429,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nur die von diesem Gerät behalten"
-          }
-        }
-      }
-    },
-    "Keeping only the latest N removes older episodes (and their downloads) from this show — handy for news podcasts." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur die neuesten N zu behalten entfernt ältere Folgen (und ihre Downloads) aus dieser Show — praktisch für News-Podcasts."
           }
         }
       }
@@ -6983,16 +7033,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jetzt synchronisieren"
-          }
-        }
-      }
-    },
-    "Sync Podcast Progress via iCloud" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcast-Fortschritt über iCloud syncen"
           }
         }
       }

@@ -531,6 +531,11 @@ nonisolated enum AppStorageKeys {
     }
 
     /// Sync podcast progress across your own devices via iCloud.
+    /// ONE iCloud switch for podcast progress AND Mär playlists: both write
+    /// into the same `NSUbiquitousKeyValueStore` with its shared 1 MB budget,
+    /// so two switches would suggest an independence that does not exist. The
+    /// key keeps the old name deliberately — renaming it resets the setting of
+    /// every existing user to the default, invisibly.
     static let podcastICloudSync = "podcastICloudSync"
     static var podcastICloudSyncEnabled: Bool {
         UserDefaults.standard.object(forKey: podcastICloudSync) as? Bool ?? true
