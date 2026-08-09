@@ -72,3 +72,30 @@ enum CatalogShuffle {
         await coordinator.open(item: first)
     }
 }
+
+/// M1-KORREKTUR (224594b): der Typ ist DATENGETRIEBEN, nicht sammlungsweise.
+/// Gemessen an echten Einträgen: Netlabels 4–79 Spuren, Schallplatten-Jazz 36,
+/// Klassik 1. Eine Regel je Fläche wäre also falsch — die Antwort entscheidet.
+///
+/// Beim Tap wird die Detail-Antwort ohnehin geholt (ohne sie gibt es keine
+/// Abspieladresse), und genau sie trägt die Spurenzahl:
+///  * **eine Spur → sofort abspielen** (das M1-Gefühl bleibt: der Dreiminüter
+///    startet),
+///  * **mehrere Spuren → Albumseite** mit Titelliste; ein Tipp dort spielt
+///    DIESE Spur (Offset-Weg wie bei den OTR-Bündeln).
+///
+/// Kein Raten, kein Sammlungs-Sonderfall, kein zweiter Ladeweg.
+@MainActor
+enum CatalogTap {
+    static func open(item: LibraryItem,
+                     coordinator: PlayerCoordinator,
+                     pushMusicRoute: @MainActor (MusicRoute) -> Void) async {
+        let count = (try? await FreeCatalogProvider.shared.fetchItemDetail(itemId: item.id))?
+            .media.tracks?.count ?? 1
+        if count > 1 {
+            pushMusicRoute(.catalogAlbum(item.id))
+        } else {
+            await coordinator.open(item: item)
+        }
+    }
+}

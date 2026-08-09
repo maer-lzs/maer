@@ -16,6 +16,7 @@ import OSLog
 /// Regel 2: there is no second page of this shape — the area carries what
 /// differs (query, title, note, symbol).
 struct ArchiveMusicPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     let area: ArchiveMusicArea
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
@@ -131,6 +132,7 @@ struct ArchiveMusicPage: View {
 /// inclusion criterion, so there must be no way around it (the reviewer 08.08.,
 /// Auflage 1). Each shelf heading is an entry chevron onto its own page.
 struct ShellacShelvesPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var rows: [String: [LibraryItem]] = [:]
     @State private var detailItem: LibraryItem?
@@ -190,7 +192,12 @@ struct ShellacShelvesPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
-                        onTap: { Task { await playerCoordinator.open(item: item) } })
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: pushRoute)
+                            }
+                        })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)

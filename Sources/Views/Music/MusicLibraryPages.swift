@@ -390,6 +390,7 @@ struct MusicGenreDetailPage: View {
 /// honest upper request, the server may return less). Tap class stays
 /// NACHSCHLAGEN (AlbumCell → album page), inherited from the row.
 struct MusicShelfPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     let shelf: MusicShelf
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
@@ -432,6 +433,7 @@ struct MusicShelfPage: View {
 /// NACHSCHLAGEN tap (detail sheet carries the ToS-mandated attribution and
 /// the prominent Play).
 struct FreeJamendoPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
@@ -470,7 +472,12 @@ struct FreeJamendoPage: View {
                             FreeCatalogBookTile(
                                 item: item,
                                 placeholderSystemImage: "music.note",
-                                onTap: { Task { await playerCoordinator.open(item: item) } })
+                                onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: pushRoute)
+                            }
+                        })
                             .contextMenu {
                                 Button {
                                     detailItem = item
@@ -525,7 +532,12 @@ struct FreeJamendoPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { Task { await playerCoordinator.open(item: item) } })
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: pushRoute)
+                            }
+                        })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)
@@ -546,6 +558,7 @@ struct FreeJamendoPage: View {
 /// P8: one Jamendo genre shelf as a full grid — pages SERVER-side over the
 /// tags query (offset), same tile language as the trove.
 struct JamendoShelfPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     let shelfKey: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
@@ -569,7 +582,12 @@ struct JamendoShelfPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { Task { await playerCoordinator.open(item: item) } })
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: pushRoute)
+                            }
+                        })
                     .contextMenu {
                         Button {
                             detailItem = item
@@ -691,7 +709,12 @@ struct MusicCatalogAreaPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { Task { await playerCoordinator.open(item: item) } })
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: pushRoute)
+                            }
+                        })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)

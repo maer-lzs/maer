@@ -465,7 +465,15 @@ struct CatalogShelfPage: View {
 /// list form like the podcast episode lists; hundreds of episodes page in
 /// staged windows like the Fundgruben.
 struct ArchiveSeriesPage: View {
+    /// M1-KORREKTUR (224594b): dieselbe Seite traegt beide Faelle — eine
+    /// Old-Time-Radio-Sammlung IST ein Album mit Folgen, ein Netlabel-Release
+    /// ein Album mit Spuren. Unterschiedlich ist nur die Sprache: „Folgen"
+    /// gegen „Titel", Erstausstrahlung gegen reine Laufzeit. Parametrisieren
+    /// statt eine zweite Seite bauen (Regel 2).
+    enum Flavor { case series, album }
+
     let itemId: String
+    var flavor: Flavor = .series
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detail: LibraryItemDetail?
     @State private var failed = false
@@ -528,7 +536,9 @@ struct ArchiveSeriesPage: View {
                     }
                     // O3: the honest second line — the episode count the tile
                     // could not carry without a second fetch.
-                    Text("\(tracks.count) episodes")
+                    Text(flavor == .album
+                         ? "\(tracks.count) tracks"
+                         : "\(tracks.count) episodes")
                         .font(.caption).foregroundStyle(.secondary)
                     // Rights capsule: the existing graded truth, never guessed.
                     if let licence = FreeCatalogProvider.shared.licence(forItemId: itemId) {
@@ -607,8 +617,12 @@ struct ArchiveSeriesPage: View {
                 // date, running number) is taken OFF the title — but the
                 // date is the first broadcast and therefore moves into the
                 // meta line instead of being thrown away.
-                let episode = FreeCatalog.otrEpisode(
-                    fromFileName: FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl))
+                // Die OTR-Kopfmuster (Kuerzel/Datum/Nummer) gibt es nur bei
+                // Serien; Musik-Spurnamen bleiben unangetastet.
+                let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
+                let episode = flavor == .series
+                    ? FreeCatalog.otrEpisode(fromFileName: raw)
+                    : (title: raw, airDate: nil)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: episode.title)
                         .font(.subheadline)
