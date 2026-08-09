@@ -884,6 +884,37 @@ nonisolated final class MaerUITests: XCTestCase {
                       "a five-week-old start must stay in Continue")
     }
 
+    /// A3 (09.08.): the fence for the "built but never wired" class. Auftrag Q
+    /// built the whole catalog-book search — queries, mapping, result kind —
+    /// and it never reached the screen, because `Scope.kinds(.audiobooks)`
+    /// filtered `.catalogBook` away and the catalog card only rendered in the
+    /// podcast scope. Nothing was red; the feature was simply dead.
+    ///
+    /// This journey searches in the BOOK scope and requires a catalog hit. It
+    /// fails the moment either wire is cut again.
+    func testBookScopeShowsCatalogResults() {
+        let app = launchSeeded()
+        app.buttons["global-search"].firstMatch.tap()
+        let scope = app.buttons["scope-audiobooks"].firstMatch
+        XCTAssertTrue(scope.waitForExistence(timeout: 20), "the book scope must exist")
+        scope.tap()
+        // Y17: the field sits in the bottom bar and is a plain TextField
+        // (not a UISearchBar) — same access as every other search journey.
+        let field = app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("Seed Catalog Book")
+        // The seeded catalog answer carries a .catalogBook hit; if the scope
+        // filters it away (A1) or the card is missing (A2), nothing shows.
+        let hit = app.staticTexts["Seed Catalog Book"].firstMatch
+        if !hit.waitForExistence(timeout: 15) {
+            // Diagnose (bleibt bis der Zaun steht): was steht stattdessen da?
+            XCTFail("no catalog hit in the book scope — screen was:\n"
+                    + app.descendants(matching: .staticText).allElementsBoundByIndex
+                        .prefix(40).map { $0.label }.joined(separator: " | "))
+        }
+    }
+
     /// Paket 4 (11be262): the merged page "Freie Hörbücher & Hörspiele" is
     /// reachable from the podcast tab's preview entry, and its feed rows
     /// (static curation) render — end-to-end over the real navigation path.

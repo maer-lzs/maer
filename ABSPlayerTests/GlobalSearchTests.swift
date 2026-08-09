@@ -53,9 +53,17 @@ struct SearchRankingTests {
         #expect(!SearchScope.library.includesCatalog)
         #expect(SearchScope.podcasts.kinds == [.show, .episode])
         #expect(SearchScope.podcasts.includesCatalog)
-        #expect(SearchScope.audiobooks.kinds == [.book, .author, .series])
+        // A1 (09.08.): DIESER Fall stand vorher hier als
+        // `[.book, .author, .series]` + `!includesCatalog` — der Test hat also
+        // die kaputte Verdrahtung festgeschrieben, weshalb Auftrag Q
+        // wirkungslos bleiben konnte, ohne dass etwas rot wurde. Lehre: ein
+        // Unit-Test über eine Filtermenge ist KEIN Zaun gegen "erreicht nie
+        // den Schirm" — das kann nur die Journey
+        // (`testBookScopeShowsCatalogResults`).
+        #expect(SearchScope.audiobooks.kinds == [.book, .author, .series, .catalogBook])
+        #expect(SearchScope.audiobooks.includesCatalog)
         #expect(SearchScope.music.kinds == [.album, .artist, .song, .playlist])
-        #expect(!SearchScope.audiobooks.includesCatalog && !SearchScope.music.includesCatalog)
+        #expect(!SearchScope.music.includesCatalog)
         // The search opens in the scope of the tab it was started from.
         #expect(SearchScope.initial(for: .audiobooks) == .audiobooks)
         #expect(SearchScope.initial(for: .podcasts) == .podcasts)

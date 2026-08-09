@@ -288,7 +288,12 @@ struct SearchScreen: View {
     @ViewBuilder
     private func catalogCard(_ section: GlobalSearchModel.Section?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("New Shows — from the catalog")
+            // A2: the card names what it SHOWS. In the book scope these are
+            // catalog readings, not shows — the kind title already carries
+            // the right wording.
+            (scope == .audiobooks
+             ? Text("From the Free Catalogs")
+             : Text("New Shows — from the catalog"))
                 .font(.headline)
             Text("Not in your library yet")
                 .font(.caption)

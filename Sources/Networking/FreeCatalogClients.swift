@@ -248,12 +248,30 @@ nonisolated enum ArchiveOrgClient {
     /// `unfiltered` back in, so deeper pages keep browsing the unfiltered
     /// corpus once the fallback happened (one truth, held by the caller).
     /// `fetch` is injectable so the decision chain is unit-testable.
+    /// BEFUND f220ecd: the base query of a source lives in exactly ONE place.
+    /// The shelf pages used to REBUILD it and thereby lost three decided
+    /// points at once — the LibriVox de-duplication (1.098 of 1.602 hits were
+    /// duplicates), the licence clause (178 titles without any rights
+    /// statement) and, through `isCuratedArchiveDoc`, the MacLean denylist.
+    /// A shelf appends its subject clause to THIS string; it never writes its
+    /// own.
+    static func archiveBaseQuery(for source: CatalogSource) -> String? {
+        switch source {
+        case .archiveBooks:
+            "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
+                + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+        case .oldTimeRadio:
+            oldTimeRadioQuery + " AND mediatype:(audio)"
+        default:
+            nil
+        }
+    }
+
     static func audiobooksOutsideLibriVox(
         rows: Int, languageCodes: [String], page: Int = 1, unfiltered: Bool = false,
         fetch: (String, Int, Int) async throws -> [ArchivePopularDoc] = { try await popular(query: $0, rows: $1, page: $2) }
     ) async throws -> (docs: [ArchivePopularDoc], unfiltered: Bool) {
-        let base = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
-            + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+        let base = archiveBaseQuery(for: .archiveBooks)!
         // 9ef73a4 Befund 3: for German users this row was permanently EMPTY —
         // every German audiobook in the collection is a LibriVox title
         // (measured: (deu OR ger) with the NOT clause ⇒ 0, without ⇒ 844).

@@ -24,6 +24,43 @@ struct CatalogShelfQueryTests {
         #expect(CatalogGenreAxis.subjects(forShelf: "does-not-exist").isEmpty)
     }
 
+    /// BEFUND f220ecd (der Zaun dazu): jede Fläche derselben Quelle muss auf
+    /// DERSELBEN Basis stehen. Der Regal-Pfad hatte die Basis nachgebaut und
+    /// dabei drei beschlossene Punkte verloren — Entdopplung, Lizenzklausel
+    /// und (über `isCuratedArchiveDoc`) die Sperrliste.
+    @Test("every archive shelf stands on the source's ONE base query")
+    func shelvesReuseTheBaseQuery() throws {
+        let books = try #require(ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks))
+        #expect(books.contains("NOT collection:librivoxaudio"),
+                "without it a shelf shows the LibriVox duplicates again (measured: 1.098 of 1.602)")
+        #expect(books.contains("licenseurl:[* TO *]"),
+                "we suggest nothing whose rights situation is unknown")
+        #expect(books.contains("mediatype:(audio)"),
+                "without it the collection also returns TEXT items")
+
+        let otr = try #require(ArchiveOrgClient.archiveBaseQuery(for: .oldTimeRadio))
+        #expect(otr.contains("licenseurl:[* TO *]"), "the OTR row carries it, the shelf must too")
+        #expect(otr.contains("mediatype:(audio)"))
+
+        // Feed-based sources have no archive base — they must not silently
+        // fall back to some other collection.
+        #expect(ArchiveOrgClient.archiveBaseQuery(for: .oerr) == nil)
+        #expect(ArchiveOrgClient.archiveBaseQuery(for: .independents) == nil)
+    }
+
+    @Test("the denylist is one truth — it filters wherever we assemble the offer")
+    func denylistCoversEveryArchiveSurface() {
+        // 893a7ea: same gate for row, trove, shelf and search. The pure
+        // predicate is the single place; this pins that a known excluded id
+        // is recognised, so a surface that forgets to call it stands out in
+        // review rather than in a device session.
+        let excluded = ArchivePopularDoc(
+            identifier: "BearislandAM", title: ArchiveStringList(["Bear Island"]),
+            creator: ArchiveStringList(["Alistair MacLean"]), downloads: 1,
+            runtime: nil, licenseurl: nil, year: nil, subject: nil)
+        #expect(!FreeCatalog.isCuratedArchiveDoc(excluded))
+    }
+
     @Test("R2: a title belongs to its FIRST shelf in browse order")
     func primaryShelfIsFirstInBrowseOrder() {
         let order = CatalogGenreAxis.librivoxShelves.map(\.key)

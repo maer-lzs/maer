@@ -426,14 +426,19 @@ struct CatalogShelfPage: View {
                 }
             case .archiveBooks, .oldTimeRadio:
                 let subjects = CatalogGenreAxis.subjects(forShelf: shelfKey)
-                guard !subjects.isEmpty else { reachedEnd = true; return }
+                // BEFUND f220ecd: the shelf appends to the source's ONE base
+                // query — rebuilding it lost the LibriVox de-duplication, the
+                // licence clause and (via isCuratedArchiveDoc) the denylist.
+                guard !subjects.isEmpty,
+                      let base = ArchiveOrgClient.archiveBaseQuery(for: source)
+                else { reachedEnd = true; return }
                 let clause = subjects.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
-                let base = source == .oldTimeRadio
-                    ? "collection:oldtimeradio AND mediatype:(audio)"
-                    : "collection:audio_bookspoetry AND mediatype:(audio)"
                 let docs = try await ArchiveOrgClient.popular(
                     query: "\(base) AND (\(clause))", rows: pageSize, page: page)
-                fresh = docs.compactMap { provider.remember(popular: $0) }
+                // Same gate as the row: de-duplication + denylist (893a7ea —
+                // filtered wherever WE assemble the offer).
+                fresh = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
+                    .compactMap { provider.remember(popular: $0) }
             default:
                 reachedEnd = true; return
             }

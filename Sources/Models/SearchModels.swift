@@ -148,7 +148,15 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     var kinds: Set<SearchResult.Kind> {
         switch self {
         case .library: return Set(SearchResult.Kind.allCases).subtracting([.catalogShow])
-        case .audiobooks: return [.book, .author, .series]
+        // A1 (09.08.): `.catalogBook` gehoert HIER hin — Auftrag Q erzeugte
+        // vollstaendige Ergebnisse, die diese Zeile eine Zeile spaeter
+        // wegfilterte ("gebaut, nie angeschlossen"). ACHTUNG beim Aendern:
+        // dieselbe Fall-Zeile steht ein zweites Mal in
+        // `SearchRanking.kinds(for:)` — das ist die REIHENFOLGE der
+        // Sektionen, nicht der Bereichs-Filter; dort gehoert `.catalogBook`
+        // gerade NICHT hinein (die Reihenfolge haengt es selbst hinten an,
+        // sonst entstuende die Sektion doppelt).
+        case .audiobooks: return [.book, .author, .series, .catalogBook]
         case .podcasts: return [.show, .episode]
         case .music: return [.album, .artist, .song, .playlist]
         case .radio: return [.radioStation]
@@ -156,5 +164,8 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     }
 
     /// Whether the catalog section renders inline for this scope.
-    var includesCatalog: Bool { self == .podcasts }
+    /// A1: the BOOK scope asks the free catalogs (Auftrag Q) and therefore
+    /// needs the card too — otherwise the old "New Shows" row renders there
+    /// and stays empty forever, because nothing fills it any more.
+    var includesCatalog: Bool { self == .podcasts || self == .audiobooks }
 }

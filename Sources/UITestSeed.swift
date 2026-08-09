@@ -41,11 +41,22 @@ enum UITestSeed {
     static var catalogSearchOverride: (@MainActor (String) -> [SearchResult])? {
         guard isActive else { return nil }
         return { query in
-            guard PodcastLocalSearch.matches("Seed Catalog Show", query) || query.count >= 2 else { return [] }
+            guard PodcastLocalSearch.matches("Seed Catalog Show", query)
+                    || PodcastLocalSearch.matches("Seed Catalog Book", query)
+                    || query.count >= 2 else { return [] }
+            // A3: BOTH kinds are seeded — the book scope filters to
+            // `.catalogBook`, the podcast scope to `.catalogShow`, so the
+            // journey proves the WIRING of each scope, not just that some
+            // result arrives.
             return [SearchResult(id: "https://catalog.example/seed-feed",
                                  kind: .catalogShow,
                                  title: "Seed Catalog Show",
-                                 subtitle: "Catalog Author")]
+                                 subtitle: "Catalog Author"),
+                    SearchResult(id: "lv:seed-book",
+                                 kind: .catalogBook,
+                                 title: "Seed Catalog Book",
+                                 subtitle: "Seed Reader",
+                                 sourceLabel: "LibriVox")]
         }
     }
 
