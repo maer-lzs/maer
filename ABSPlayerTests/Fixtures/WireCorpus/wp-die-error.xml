@@ -1,0 +1,8 @@
+<error>
+    <code>wp_die</code>
+    <title><![CDATA[Database Error]]></title>
+    <message><![CDATA[&lt;h1&gt;Error establishing a database connection&lt;/h1&gt;]]></message>
+    <data>
+        <status>500</status>
+    </data>
+</error>

@@ -608,6 +608,7 @@ struct JamendoShelfPage: View {
 /// heading an entry chevron onto the source's existing full page (DIE REGEL).
 /// netlabels/78rpm/LMA grow into this block later (I2).
 struct MusicCatalogAreaPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
@@ -638,6 +639,24 @@ struct MusicCatalogAreaPage: View {
                 // undivided view of the collection.
                 VStack(alignment: .leading, spacing: 10) {
                     RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
+                    // GT-Befund 09.08.: die Reihe zeigt die FAECHER, nicht
+                    // Titel — eine echte Vorschau ihrer Seite, und per
+                    // Konstruktion nie eine ungegliederte Auswahl (Auflage 1).
+                    // Kachelform = die Genre-Felder-Praezedenz (CategoryTile).
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 12) {
+                            ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
+                                CategoryTile(title: shelf.title,
+                                             systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
+                                             count: nil,
+                                             accessibilityId: "shellac-tile-\(shelf.key)") {
+                                    pushRoute(MusicRoute.archiveMusic(shelf))
+                                }
+                                .frame(width: 200)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                 }
             }
             .padding(.top, 12)

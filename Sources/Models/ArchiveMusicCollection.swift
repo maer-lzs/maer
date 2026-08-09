@@ -20,6 +20,10 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// The external-catalog line at the top of the page (Katalog ≠ Bibliothek).
     let headerNote: String
     let placeholderSystemImage: String
+    /// The archive.org `subject` a shelf is cut along (empty for whole-area
+    /// catalogs). Kept as DATA so the UI can pick a glyph from the English
+    /// term instead of the localised title.
+    var subject: String = ""
 
     var id: String { key }
     var routeIdentifier: String { "music-route-\(key)" }
@@ -85,7 +89,8 @@ nonisolated enum ArchiveMusicCatalog {
             query: "collection:georgeblood AND subject:\"\(subject)\" AND mediatype:(audio)",
             title: title,
             headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
-            placeholderSystemImage: "opticaldisc.fill")
+            placeholderSystemImage: "opticaldisc.fill",
+            subject: subject)
     }
 
     /// Every area that has its own full page (for contract tests).

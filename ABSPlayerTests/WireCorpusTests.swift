@@ -19,6 +19,28 @@ struct WireCorpusTests {
         try CorpusFixture.data(name, ext: ext, subdirectory: "WireCorpus")
     }
 
+    // MARK: - B3 (09.08.): HTTP 200 + well-formed XML that is NOT a feed
+
+    /// The real answer podcastle.org/feed/podcast/ gave on 09.08., frozen:
+    /// `<error><code>wp_die</code><title>Database Error</title>`. The parser
+    /// used to build a subscribable show out of it (title "Database Error",
+    /// subscribe button) because the document was well-formed and had a
+    /// title. Well-formedness is not feed-ness.
+    @Test("wp_die error page is NOT a feed (root element decides)")
+    func wpDieErrorPageIsNotAFeed() throws {
+        let data = try CorpusFixture.data("wp-die-error", ext: "xml", subdirectory: "WireCorpus")
+        let show = RSSFeedParser(feedURL: "https://podcastle.org/feed/podcast/").parse(data)
+        #expect(show == nil, "an error page must not become a show")
+    }
+
+    @Test("a feed root is still accepted (no over-blocking)")
+    func realFeedStillParses() throws {
+        let data = try CorpusFixture.data("minimal-valid", ext: "xml", subdirectory: "RSSEdgeCorpus")
+        let show = RSSFeedParser(feedURL: "https://example.invalid/feed").parse(data)
+        #expect(show != nil)
+        #expect(!(show?.episodes.isEmpty ?? true))
+    }
+
     private var brokenBodies: [(String, String)] {
         [("portal", "html"), ("half", "json"), ("empty", "json"), ("foreign", "json")]
     }

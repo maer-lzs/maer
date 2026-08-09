@@ -1007,6 +1007,12 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var seenGuids: Set<String> = []
     private var inItem = false
     private var text = ""
+    /// B1 (09.08.): the FIRST element of the document. A server can answer
+    /// HTTP 200 with well-formed XML that is not a feed at all — measured:
+    /// podcastle.org/feed/podcast/ returned `<error><title>Database Error`,
+    /// out of which this parser happily built a subscribable "show". Well-
+    /// formedness is not feed-ness, so the root decides.
+    private var rootElement: String?
 
     // Aktuelles Item
     private var iTitle = "", iGuid = "", iAudio = "", iDuration = "", iDesc = "", iImage = "", iPubDate = "", iChapters = ""
@@ -1014,10 +1020,21 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     private var iPersons: [PodcastPerson] = []
     private var pendingPersonAttrs: [String: String]?
 
+    /// Roots a feed may legitimately have: RSS 2.0, Atom, RDF-flavoured RSS 1.0.
+    private static let feedRoots: Set<String> = ["rss", "feed", "rdf:RDF", "RDF"]
+
     func parse(_ data: Data) -> PodcastShow? {
         let parser = XMLParser(data: data)
         parser.delegate = self
-        guard parser.parse(), !showTitle.isEmpty || !episodes.isEmpty else { return nil }
+        guard parser.parse() else { return nil }
+        // B1: not a feed root ⇒ not a feed. No show is constructed from an
+        // error page, however well-formed it is.
+        guard let root = rootElement, Self.feedRoots.contains(root) else { return nil }
+        // B2 (belt and braces): a "show" without a single episode AND without
+        // artwork is not a show — other 200-with-garbage shapes exist that a
+        // root check alone would pass.
+        guard !episodes.isEmpty || showImage != nil else { return nil }
+        guard !showTitle.isEmpty || !episodes.isEmpty else { return nil }
         return PodcastShow(
             id: "feed:\(feedKey)",
             title: showTitle.isEmpty ? feedURL : showTitle,
@@ -1038,6 +1055,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didStartElement el: String, namespaceURI: String?,
                 qualifiedName qName: String?, attributes attrs: [String: String]) {
+        if rootElement == nil { rootElement = qName ?? el }
         text = ""
         if el == "item" || el == "entry" {
             inItem = true

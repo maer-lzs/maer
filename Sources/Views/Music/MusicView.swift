@@ -11,6 +11,7 @@ import Combine
 /// the entries replace the old inline album grid), then two server shelves
 /// (recently played / recently added). Playback runs through the shared player.
 struct MusicView: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
     /// Only the visible tab reports scroll to the shared BottomBarState; hidden-
     /// but-mounted tabs must stay silent (see reportsBottomBarScroll(active:)).
@@ -191,6 +192,24 @@ struct MusicView: View {
             if shellacArea {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
+                    // GT-Befund 09.08.: die Reihe zeigt die FAECHER, nicht
+                    // Titel — eine echte Vorschau ihrer Seite, und per
+                    // Konstruktion nie eine ungegliederte Auswahl (Auflage 1).
+                    // Kachelform = die Genre-Felder-Praezedenz (CategoryTile).
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(spacing: 12) {
+                            ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
+                                CategoryTile(title: shelf.title,
+                                             systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
+                                             count: nil,
+                                             accessibilityId: "shellac-tile-\(shelf.key)") {
+                                    pushRoute(MusicRoute.archiveMusic(shelf))
+                                }
+                                .frame(width: 200)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                     }
             }
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {

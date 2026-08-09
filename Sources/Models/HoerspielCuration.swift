@@ -103,7 +103,11 @@ nonisolated enum HoerspielCuration {
               feedURL: "https://decoderring.libsyn.com/rss", language: "en",
               group: .independent, form: .series),
         Entry(title: "PodCastle", author: "Escape Artists",
-              feedURL: "https://podcastle.org/feed/podcast/", language: "en",
+              // 09.08. GEMESSEN: der /podcast/-Pfad antwortet mit HTTP 200 und
+              // einer WordPress-Fehlerseite (`<error>Database Error`), aus der
+              // die App eine Show baute. Der Pfad ohne /podcast/ liefert
+              // dieselbe Show mit Vollfolgen (PC 953-955, 5-100 MB, 40 Items).
+              feedURL: "https://podcastle.org/feed/", language: "en",
               group: .independent, form: .anthology),
         Entry(title: "PseudoPod", author: "Escape Artists",
               feedURL: "https://pseudopod.org/feed/podcast/", language: "en",
