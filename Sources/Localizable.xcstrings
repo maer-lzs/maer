@@ -1,6 +1,26 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Applies to everything that plays — books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gilt für alles, was spielt — Bücher, Podcasts, Musik, Radio. Die Wiedergabe startet mit der Standardgeschwindigkeit; sanftes Zurückspulen setzt nach einer längeren Pause etwas früher wieder ein."
+          }
+        }
+      }
+    },
+    "When a series book ends, the next unfinished one starts automatically." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Endet ein Reihenband, startet der nächste ungehörte von selbst."
+          }
+        }
+      }
+    },
     "Already in “%@”." : {
       "localizations" : {
         "de" : {
@@ -247,16 +267,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Welche Server für diese Bereiche angefragt werden — und wie du einen einzelnen abschaltest — steht bei den Netzdiensten."
-          }
-        }
-      }
-    },
-    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Bücher starten mit der Standardgeschwindigkeit. Sanftes Zurückspulen setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Reihenband, startet der nächste ungehörte von selbst."
           }
         }
       }

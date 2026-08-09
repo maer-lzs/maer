@@ -24,10 +24,18 @@ struct SettingsView: View {
 
     private enum Tab: String, CaseIterable, Identifiable {
         // Variante b: General + one pill per media type that (a) is enabled
-        // and (b) HAS own settings. Today that is Audiobooks (playback) and
-        // Podcasts (recommendations); Music and Radio have no tab-level
-        // settings yet (their specifics live on the source pages), so they
-        // get no pill — an empty tab would be worse than none.
+        // and (b) HAS own settings. Today that is Audiobooks (series
+        // auto-play), Podcasts (recommendations) and Music (metadata).
+        //
+        // S2 (d9ef077) asked why Radio has none. Answer, written down so the
+        // question does not come back: radio has no TAB-LEVEL setting. Its
+        // source and switch live at the Radio area of the source map like
+        // every other source; the logo fallback is an external SERVICE and
+        // belongs on the network-services page; country and region are chosen
+        // in the radio view itself, where you change them WHILE browsing —
+        // moving them into a settings pill would take them away from the
+        // moment they are used. A pill with nothing but a link would be worse
+        // than none.
         case general, audiobooks, podcasts, music
         var id: String { rawValue }
         var label: LocalizedStringKey {
@@ -97,6 +105,7 @@ struct SettingsView: View {
                     sourcesSection
                     librariesSection
                     freeCatalogsSection
+                    playbackSection
                     globalSyncSection
                     storageSection
                     notificationsSection
@@ -106,7 +115,7 @@ struct SettingsView: View {
                     networkServicesSection
                     aboutSection
                 case .audiobooks:
-                    playbackSection
+                    audiobooksSection
                 case .podcasts:
                     recommendationsSection
                     // 92e25d6: premium management ALWAYS visible on the pill.
@@ -363,8 +372,16 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Audiobooks
+    // MARK: - Wiedergabe (cross-cutting)
 
+    /// S1 (d9ef077): skip interval, default speed and Smart Rewind feed the
+    /// lock screen and the control centre for EVERY kind of playback — podcast,
+    /// music, radio. They used to render only under `case .audiobooks`, so
+    /// someone who wanted a 15-second skip for podcasts had to look under
+    /// Audiobooks, and someone who switched the audiobook pill off (no books)
+    /// lost access to a setting that governs their podcasts. Cross-cutting
+    /// belongs on General. `autoPlayNextInSeries` stays with the books — that
+    /// one really is book-specific.
     private var playbackSection: some View {
         Section {
             Picker(selection: $skipInterval) {
@@ -399,7 +416,17 @@ struct SettingsView: View {
             .onChange(of: smartRewind) { _, newValue in
                 UserDefaults.standard.set(newValue, forKey: AppStorageKeys.smartRewind)
             }
+        } header: {
+            Text("Playback")
+        } footer: {
+            Text("Applies to everything that plays — books, podcasts, music, radio. Playback starts at the default speed; Smart Rewind resumes a little earlier after a longer pause.")
+        }
+    }
 
+    // MARK: - Audiobooks
+
+    private var audiobooksSection: some View {
+        Section {
             Toggle(isOn: $autoPlayNext) {
                 Label("Auto-Play Next in Series", systemImage: "play.circle")
             }
@@ -407,9 +434,9 @@ struct SettingsView: View {
                 UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
             }
         } header: {
-            Text("Playback")
+            Text("Books")
         } footer: {
-            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
+            Text("When a series book ends, the next unfinished one starts automatically.")
         }
     }
 

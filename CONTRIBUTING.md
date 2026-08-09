@@ -21,9 +21,29 @@ resolve. Open `Maer.xcodeproj`, pick the `ABSPlayer` scheme, run.
 
 ## Where
 
-Pull requests and issues go to **<https://codeberg.org/LzS/maer>**. A GitHub
-mirror, if one exists, is a shop window only — issues and pull requests are
-disabled there.
+Pull requests and issues go to **<https://codeberg.org/LzS/maer>**.
+
+Open pull requests against **`dev`**, not `main`. `main` carries released
+versions only.
+
+## What happens after you open a pull request
+
+There is no automated build here: the test suites run on real hardware, by
+hand, so a first response can take a few days. Nothing is wrong if it is quiet
+for a while. You can run the same checks yourself if you have a Mac — the two
+schemes named under Building are exactly what a maintainer runs.
+
+Merging happens on the project's own Forgejo instance and reaches Codeberg
+through the mirror, so your commits arrive with your authorship intact — the
+pull request itself is then closed with a link to the merge commit.
+
+## Commits say what they answer
+
+Every commit names the thing it responds to — an issue, a reported defect, or
+the change request it implements — so the history can be read backwards from
+the code to the reason. Reference issues in the qualified form `LzS/maer#12`,
+not as a bare `#12`: this project is served from two forges with independent
+issue numbering, and a bare number can resolve to the wrong one.
 
 ## Licence
 

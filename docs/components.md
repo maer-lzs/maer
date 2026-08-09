@@ -89,9 +89,17 @@ but converge via the shared components anyway.
 **Convention — settings placement (Variante b, 25.07):** every setting belongs
 to EXACTLY ONE category: **source · library · playback · storage · sync ·
 system/diagnosis**. Media-type-specific settings go on that type's settings
-pill (Audiobooks: playback · Podcasts: recommendations); cross-cutting ones go
-on General, in the fixed order Sources → Libraries → Sync → Storage →
-Notifications → Appearance → Statistics → About → Diagnostics. New settings
+pill (Audiobooks: series auto-play · Podcasts: recommendations · Music:
+metadata); cross-cutting ones go on General, in the fixed order Sources →
+Libraries → Free Catalogs → **Playback** → Sync → Storage → Notifications →
+Appearance → Statistics → About → Diagnostics. **S1 (d9ef077):** skip interval,
+default speed and Smart Rewind are cross-cutting — they feed the lock screen for
+podcasts, music and radio too — and moved off the Audiobooks pill; switching
+that pill off used to take away a setting that governs podcasts. **S2:** Radio
+has no pill because it has no tab-level setting (source at its map area,
+logo fallback is a service, country/region are chosen in the radio view while
+browsing) — the reason is written at the pill enum so the question does not
+return. New settings
 inherit this rule instead of being appended at the end (that is how the
 diagnosis switches ended up squatting in About). A media pill exists only when
 the type is enabled AND has at least one own setting.
