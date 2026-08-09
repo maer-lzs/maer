@@ -251,15 +251,28 @@ nonisolated enum AppStorageKeys {
     /// unset = device locale (SuggestionLanguages.effective).
     static let suggestionLanguages = "suggestionLanguages"
 
-    // 0714d26: free-catalog Discover rows (each an own opt-out on the
-    // network-services page; defaults ON — object(forKey:)-checked).
+    // The three free-catalog SERVICE switches — whom the app may contact
+    // (librivox.org · archive.org · api.jamendo.com), each with its own
+    // opt-out on the network-services page; defaults ON (object(forKey:)).
+    //
+    // WARNING, and it is the opposite of what the names say: these three
+    // read like row switches and ARE services, while `freeClassicalEnabled`,
+    // `netlabelsRowEnabled`, `shellacRowsEnabled` and `freeAudiobooksEnabled`
+    // read like services and ARE areas (three of them on the ONE archive.org
+    // service). The names lie — and they still must not be renamed: a new key
+    // resets the setting of every existing user to the default, invisibly,
+    // the same class as the keychain loss on a bundle-ID change. Read the
+    // `feature:`/`service:` argument at the `…Active` accessors, not the
+    // name, when deciding where a new switch belongs.
     static let librivoxRowsEnabled = "librivoxRowsEnabled"
     static let archivePopularEnabled = "archivePopularEnabled"
     static let jamendoRowEnabled = "jamendoRowEnabled"
     /// The user's OWN Jamendo client_id (beats the build-injected one).
     static let jamendoClientId = "jamendoClientId"
-    /// f18ec34: the "Free Classical" AREA toggle (feature level, Music pill);
-    /// the archive.org service opt-out stays superior.
+    /// f18ec34: the "Free Classical" AREA toggle — an area on the archive.org
+    /// service, whose opt-out stays superior. The name reads like a service
+    /// and is not one; see the warning at `librivoxRowsEnabled`. Not
+    /// renameable (it would reset every user's setting).
     static let freeClassicalEnabled = "freeClassicalEnabled"
     /// Auftrag 05.08. (netlabels): the Creative-Commons netlabel area on
     /// archive.org. Same two levels as classical — this feature switch sits
@@ -454,17 +467,21 @@ nonisolated enum AppStorageKeys {
         freeCatalogsMasterActive && boolValue(archivePopularEnabled)
     }
 
+    // These three switches are SERVICES (whom does the app contact), not
+    // areas — so they are passed as `service:`. The result is the same either
+    // way (both sides are ANDed), but the call now says which of the two a
+    // switch is, and that is the distinction the placement rule rests on.
     nonisolated static var librivoxActive: Bool {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(librivoxRowsEnabled), service: true)
+                                        feature: true, service: boolValue(librivoxRowsEnabled))
     }
     nonisolated static var archiveBooksActive: Bool {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(archivePopularEnabled), service: true)
+                                        feature: true, service: boolValue(archivePopularEnabled))
     }
     nonisolated static var jamendoActive: Bool {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(jamendoRowEnabled), service: true)
+                                        feature: true, service: boolValue(jamendoRowEnabled))
     }
     nonisolated static var freeClassicalActive: Bool {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
