@@ -658,6 +658,119 @@ nonisolated enum FreeCatalog {
     /// Auftrag O: display title of one series track — the FILE name is the
     /// episode title in archive.org series bundles (percent-decoded, extension
     /// dropped). Pure, so the episode list never guesses.
+    /// O-P1/O-P3 (09.08.): the OTR title family — same house as
+    /// `normalizedTitle` (Q2), because it is the same problem: a source
+    /// writes housekeeping into the name and it eats the work's title.
+    ///
+    /// GEMESSEN an acht Sammlungen; die Muster gehen weit auseinander:
+    /// ```
+    /// Gunsmoke 52-04-26 (001) Billy the Kid
+    /// YTJD 1948-12-07 000 Milford Brooks III (Dick Powell Audition)
+    /// Dragnet_49-06-10_002_Production_2_aka_Homicide
+    /// Richard Diamond 49-05-01 (002) Diamond In the Rough (AFRS)
+    /// Suspense 420617 001 The Burning Court (128-44) 28455 30m00s
+    /// Philip_Marlowe_47-06-12_xxx_Who_Shot_Waldo
+    /// XMinusOne55-04-24001NoContact          ← ganz ohne Trenner
+    /// ```
+    /// Regel (konservativ, nie raten): abgetrennt wird NUR, wenn ein DATUM
+    /// erkannt wurde. Das Datum ist wertvoll (Erstausstrahlung) und wandert
+    /// in die Metazeile statt weggeworfen zu werden; Kürzel und laufende
+    /// Nummer sind Redundanz (Sendungsname steht oben, Nummer links). Passt
+    /// nichts, bleibt der Titel unverändert.
+    static func otrEpisode(fromFileName raw: String) -> (title: String, airDate: String?) {
+        var name = raw.replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+        // Technischer Schwanz mancher Sammlungen: "(128-44) 28455 30m00s".
+        name = name.replacingOccurrences(
+            of: #"\s*\(\d{2,3}-\d{2}\)\s*\d+\s*\d+m\d+s\s*$"#,
+            with: "", options: .regularExpression)
+
+        // Datum in den vier gemessenen Schreibweisen, mit optionalem Kürzel
+        // davor und optionaler Nummer dahinter ("000", "(001)", "xxx").
+        let pattern = #"^(.*?)((?:19|20)\d{2}-\d{2}-\d{2}|\d{2}-\d{2}-\d{2}|(?:19|20)\d{6}|\d{6})[\s._-]*(?:\(?(?:\d{1,4}|[xX]{3})\)?)?[\s._-]*(.*)$"#
+        guard let match = name.range(of: pattern, options: .regularExpression) else {
+            return (name, nil)
+        }
+        let ns = name as NSString
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let m = regex.firstMatch(in: name, range: NSRange(location: 0, length: ns.length)),
+              m.numberOfRanges == 4
+        else { _ = match; return (name, nil) }
+        let rest = ns.substring(with: m.range(at: 3)).trimmingCharacters(in: .whitespaces)
+        // Bleibt nach dem Abtrennen nichts übrig, war es kein Kopfmuster.
+        guard !rest.isEmpty else { return (name, nil) }
+        let date = isoAirDate(ns.substring(with: m.range(at: 2)))
+        return (rest, date)
+    }
+
+    /// The measured date shapes → ISO. Two-digit years are OTR: 20-99 ⇒ 19xx,
+    /// 00-19 ⇒ 20xx would be wrong here (radio plays predate 2000), so a
+    /// two-digit year is always 19xx.
+    static func isoAirDate(_ raw: String) -> String? {
+        let digits = raw.filter(\.isNumber)
+        switch digits.count {
+        case 8:
+            let y = digits.prefix(4), m = digits.dropFirst(4).prefix(2), d = digits.suffix(2)
+            return "\(y)-\(m)-\(d)"
+        case 6:
+            let y = digits.prefix(2), m = digits.dropFirst(2).prefix(2), d = digits.suffix(2)
+            return "19\(y)-\(m)-\(d)"
+        default:
+            return nil
+        }
+    }
+
+    /// O-P2 (09.08., gemessen): archive.org descriptions of the OTR
+    /// collections open with a CENTRED HTML HEADING that repeats the title
+    /// („<p align=center><b>YOURS TRULY, JOHNNY DOLLAR</b></p>"), followed by
+    /// blank lines. On screen that read as a duplicated sender line plus a
+    /// hole. NOTE: it is NOT the author field — that one says „Old Time Radio
+    /// Researchers Group"; the assumption in the order was wrong, the
+    /// measurement decided.
+    ///
+    /// Pure: drop a leading line that is the title again (case/punctuation
+    /// tolerant), then collapse runs of blank lines.
+    static func tidiedDescription(_ text: String, title: String) -> String {
+        var lines = text.components(separatedBy: .newlines)
+        func fold(_ s: String) -> String {
+            s.lowercased().filter { $0.isLetter || $0.isNumber }
+        }
+        // The heading names the WORK; the item title may still carry the
+        // collection housekeeping („… - Single Episodes"), so both forms
+        // count as a match.
+        let wanted = Set([fold(title), fold(normalizedCollectionTitle(title))]).subtracting([""])
+        while let first = lines.first {
+            let trimmed = first.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty { lines.removeFirst(); continue }
+            if wanted.contains(fold(trimmed)) { lines.removeFirst(); continue }
+            break
+        }
+        var out: [String] = []
+        for line in lines {
+            let isBlank = line.trimmingCharacters(in: .whitespaces).isEmpty
+            if isBlank, out.last?.trimmingCharacters(in: .whitespaces).isEmpty ?? true { continue }
+            out.append(line)
+        }
+        return out.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// O-P3: archive.org collection housekeeping in the WORK title —
+    /// „Yours Truly, Johnny Dollar - Single Episodes". Measured: 12 of the
+    /// top 25 OTR collections carry such a suffix, in three shapes. Only
+    /// KNOWN shapes are cut; anything else stays untouched.
+    static func normalizedCollectionTitle(_ raw: String) -> String {
+        var title = raw.trimmingCharacters(in: .whitespaces)
+        for pattern in [#"\s*-\s*Single Episodes\b.*$"#,
+                        #"\s*-\s*\d+\s+Episodes\b.*$"#,
+                        #"\s*-\s*The Complete Series\b.*$"#,
+                        #"\s*\(OTRR Certified\)\s*$"#] {
+            title = title.replacingOccurrences(of: pattern, with: "",
+                                               options: [.regularExpression, .caseInsensitive])
+        }
+        let cleaned = title.trimmingCharacters(in: .whitespaces)
+        return cleaned.isEmpty ? raw : cleaned
+    }
+
     static func trackDisplayTitle(contentUrl: String) -> String {
         let last = contentUrl.split(separator: "/").last.map(String.init) ?? contentUrl
         let decoded = last.removingPercentEncoding ?? last

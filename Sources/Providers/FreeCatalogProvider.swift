@@ -116,7 +116,12 @@ final class FreeCatalogProvider: AudioProvider {
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         // Q2: archive rows carry the same LibriVox title pattern (the
         // librivoxaudio collection) — same one-place normalization.
-        let normalized = doc.title?.first.map(FreeCatalog.normalizedTitle)
+        // O-P3 (09.08.): the OTR bundles additionally carry archive.org
+        // COLLECTION housekeeping in the title („… - Single Episodes"), which
+        // pushed the work's name out of the tile. Same family, applied first.
+        let normalized = doc.title?.first
+            .map(FreeCatalog.normalizedCollectionTitle)
+            .map(FreeCatalog.normalizedTitle)
         readingVersions[id] = normalized?.version
         let item = LibraryItem(
             id: id,

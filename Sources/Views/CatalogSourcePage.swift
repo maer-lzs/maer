@@ -497,7 +497,8 @@ struct ArchiveSeriesPage: View {
             .padding(.top, 12)
             .bottomBarClearance()
         }
-        .navigationTitle(Text(verbatim: detail?.media.metadata?.title ?? ""))
+        .navigationTitle(Text(verbatim: FreeCatalog.normalizedCollectionTitle(
+            detail?.media.metadata?.title ?? "")))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
     }
@@ -517,7 +518,8 @@ struct ArchiveSeriesPage: View {
                 podcastArtwork(url: AppSession.shared.coverURL(forItemId: itemId),
                                size: 110, corner: 12)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(verbatim: detail.media.metadata?.title ?? "")
+                    Text(verbatim: FreeCatalog.normalizedCollectionTitle(
+                        detail.media.metadata?.title ?? ""))
                         .font(.headline)
                     if let author = detail.media.metadata?.authorName {
                         Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
@@ -537,12 +539,33 @@ struct ArchiveSeriesPage: View {
             }
             .padding(.horizontal)
             if let description = detail.media.metadata?.description, !description.isEmpty {
-                Text(podcastPlainText(description))
+                // O-P2: the leading heading repeats the title and leaves a
+                // hole underneath — both go (measured, see tidiedDescription).
+                Text(verbatim: FreeCatalog.tidiedDescription(
+                    podcastPlainText(description),
+                    title: detail.media.metadata?.title ?? ""))
                     .font(.footnote).foregroundStyle(.secondary)
                     .lineLimit(6)
                     .padding(.horizontal)
             }
         }
+    }
+
+    /// O-P1: "07.12.1948 · 29 Min." — date in the user's format, duration in
+    /// the existing wording. Either part may be missing; both missing means
+    /// no line at all (never an empty separator).
+    private func episodeMetaLine(airDate: String?, duration: Double?) -> String? {
+        var parts: [String] = []
+        if let airDate {
+            let iso = DateFormatter()
+            iso.dateFormat = "yyyy-MM-dd"
+            iso.timeZone = TimeZone(identifier: "UTC")
+            if let date = iso.date(from: airDate) {
+                parts.append(date.formatted(date: .numeric, time: .omitted))
+            }
+        }
+        if let duration, duration > 0 { parts.append(episodeDurationText(duration)) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var episodeList: some View {
@@ -578,11 +601,22 @@ struct ArchiveSeriesPage: View {
                 Text(verbatim: "\(index + 1)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
                     .frame(width: 34, alignment: .trailing)
+                // O-P1: the name's housekeeping head (series shorthand,
+                // date, running number) is taken OFF the title — but the
+                // date is the first broadcast and therefore moves into the
+                // meta line instead of being thrown away.
+                let episode = FreeCatalog.otrEpisode(
+                    fromFileName: FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl))
+                    Text(verbatim: episode.title)
                         .font(.subheadline)
                         .foregroundStyle(.primary)
                         .lineLimit(2)
+                    if let meta = episodeMetaLine(airDate: episode.airDate,
+                                                  duration: track.duration) {
+                        Text(verbatim: meta)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     if lastHeardIndex == index {
                         Text("Last heard")
                             .font(.caption2.weight(.medium))
@@ -590,11 +624,6 @@ struct ArchiveSeriesPage: View {
                     }
                 }
                 Spacer(minLength: 8)
-                if let duration = track.duration, duration > 0 {
-                    // Same wording family as durationText(_:) — minutes-based.
-                    Text(verbatim: episodeDurationText(duration))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
