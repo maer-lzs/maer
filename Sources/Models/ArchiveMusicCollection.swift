@@ -25,6 +25,10 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// catalogs). Kept as DATA so the UI can pick a glyph from the English
     /// term instead of the localised title.
     var subject: String = ""
+    /// Stock MEASURED on 09.08. — the rotation window is a tenth of it
+    /// (`CatalogRotation`). Drift of a few percent only shifts the window
+    /// slightly, so this does not need to be exact, only honest.
+    var measuredTotal: Int = 0
 
     var id: String { key }
     var routeIdentifier: String { "music-route-\(key)" }
@@ -41,7 +45,8 @@ nonisolated enum ArchiveMusicCatalog {
         query: "collection:georgeblood AND subject:classical AND mediatype:(audio)",
         title: String(localized: "Free Classical"),
         headerNote: String(localized: "Free public-domain recordings from the Internet Archive — separate from your own library."),
-        placeholderSystemImage: "music.quarternote.3")
+        placeholderSystemImage: "music.quarternote.3",
+        measuredTotal: 4_271)
 
     /// Netlabel releases under Creative Commons. Measured 08.08.: 76.950
     /// audio items, 61.111 WITH a stated licence — the query keeps only
@@ -52,7 +57,8 @@ nonisolated enum ArchiveMusicCatalog {
         query: "collection:netlabels AND mediatype:(audio) AND licenseurl:[* TO *]",
         title: String(localized: "Netlabels"),
         headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive — separate from your own library. Each tile shows the licence of its release."),
-        placeholderSystemImage: "opticaldisc")
+        placeholderSystemImage: "opticaldisc",
+        measuredTotal: 61_112)
 
     // MARK: - Shellac 78s (the SAME collection the classical area uses)
 
@@ -68,14 +74,14 @@ nonisolated enum ArchiveMusicCatalog {
     /// `ArchiveMusicContractTests`, which fails if a shelf ever loses its
     /// subject constraint.
     static let shellacShelves: [ArchiveMusicArea] = [
-        shellac(subject: "jazz", key: "shellac-jazz", title: String(localized: "Jazz (78s)")),
-        shellac(subject: "opera", key: "shellac-opera", title: String(localized: "Opera (78s)")),
-        shellac(subject: "folk", key: "shellac-folk", title: String(localized: "Folk (78s)")),
-        shellac(subject: "blues", key: "shellac-blues", title: String(localized: "Blues (78s)")),
-        shellac(subject: "country", key: "shellac-country", title: String(localized: "Country (78s)")),
-        shellac(subject: "tango", key: "shellac-tango", title: String(localized: "Tango (78s)")),
-        shellac(subject: "swing", key: "shellac-swing", title: String(localized: "Swing (78s)")),
-        shellac(subject: "gospel", key: "shellac-gospel", title: String(localized: "Gospel (78s)")),
+        shellac(subject: "jazz", key: "shellac-jazz", title: String(localized: "Jazz (78s)"), total: 6_794),
+        shellac(subject: "opera", key: "shellac-opera", title: String(localized: "Opera (78s)"), total: 5_818),
+        shellac(subject: "folk", key: "shellac-folk", title: String(localized: "Folk (78s)"), total: 3_834),
+        shellac(subject: "blues", key: "shellac-blues", title: String(localized: "Blues (78s)"), total: 3_383),
+        shellac(subject: "country", key: "shellac-country", title: String(localized: "Country (78s)"), total: 2_378),
+        shellac(subject: "tango", key: "shellac-tango", title: String(localized: "Tango (78s)"), total: 1_825),
+        shellac(subject: "swing", key: "shellac-swing", title: String(localized: "Swing (78s)"), total: 942),
+        shellac(subject: "gospel", key: "shellac-gospel", title: String(localized: "Gospel (78s)"), total: 600),
     ]
 
     /// Same base as the classical area (`georgeblood`, the professionally
@@ -84,14 +90,15 @@ nonisolated enum ArchiveMusicCatalog {
     /// gospel 600. Rights presentation is the classical one: no licence
     /// field in this collection, so the recording year is the only hint and
     /// no capsule is drawn.
-    static func shellac(subject: String, key: String, title: String) -> ArchiveMusicArea {
+    static func shellac(subject: String, key: String, title: String, total: Int = 0) -> ArchiveMusicArea {
         ArchiveMusicArea(
             key: key,
             query: "collection:georgeblood AND subject:\"\(subject)\" AND mediatype:(audio)",
             title: title,
             headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
             placeholderSystemImage: "opticaldisc.fill",
-            subject: subject)
+            subject: subject,
+            measuredTotal: total)
     }
 
     /// Every area that has its own full page (for contract tests).

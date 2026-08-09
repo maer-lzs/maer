@@ -191,7 +191,8 @@ struct ShellacShelvesPage: View {
         let provider = FreeCatalogProvider.shared
         for shelf in ArchiveMusicCatalog.shellacShelves {
             do {
-                let docs = try await ArchiveOrgClient.popularMusic(area: shelf, rows: 12)
+                let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12, on: Date())
+                let docs = try await ArchiveOrgClient.popularMusic(area: shelf, rows: 12, page: page)
                 Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
                 rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }
             } catch {

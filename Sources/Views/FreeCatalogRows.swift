@@ -170,7 +170,13 @@ enum FreeCatalogLoader {
         let classicalOn = (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true) && archiveOn
         if classicalOn {
             do {
-                let docs = try await ArchiveOrgClient.popularClassical(rows: 12)
+                // Tages-Rotation: die Reihe zeigt heute eine ANDERE Seite des
+                // Beliebtheits-Fensters als gestern (die All-Zeiten-Bestenliste
+                // aendert sich sonst nie).
+                let page = CatalogRotation.page(
+                    total: ArchiveMusicCatalog.classical.measuredTotal, rowSize: 12, on: Date())
+                let docs = try await ArchiveOrgClient.popularMusic(
+                    area: ArchiveMusicCatalog.classical, rows: 12, page: page)
                 Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
                 rows.classical = docs.compactMap { provider.remember(popular: $0) }
             } catch {
@@ -180,8 +186,10 @@ enum FreeCatalogLoader {
         let netlabelsOn = (UserDefaults.standard.object(forKey: AppStorageKeys.netlabelsRowEnabled) as? Bool ?? true) && archiveOn
         if netlabelsOn {
             do {
+                let page = CatalogRotation.page(
+                    total: ArchiveMusicCatalog.netlabels.measuredTotal, rowSize: 12, on: Date())
                 let docs = try await ArchiveOrgClient.popularMusic(
-                    area: ArchiveMusicCatalog.netlabels, rows: 12)
+                    area: ArchiveMusicCatalog.netlabels, rows: 12, page: page)
                 Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
                 rows.netlabels = docs.compactMap { provider.remember(popular: $0) }
             } catch {
@@ -193,7 +201,16 @@ enum FreeCatalogLoader {
                 Logger.library.notice("FREECAT jamendo EMPTY: no client key")
             } else {
                 do {
-                    let tracks = try await JamendoClient.popularTracks(limit: 12)
+                    // Jamendo kennt KEINE Zufalls-Sortierung (gemessen:
+                    // `order=random` antwortet mit status=failed), also
+                    // dieselbe Tages-Rotation ueber den seit P8 vorhandenen
+                    // `offset`. Fenster bewusst gesetzt statt gemessen: die
+                    // Beliebtheits-Spitze ist bei Jamendo ueber Wochen-,
+                    // Monats- und Download-Sortierung IDENTISCH (gemessen),
+                    // die oberen ~600 Titel sind das brauchbare Feld.
+                    let jamendoPage = CatalogRotation.page(total: 6_000, rowSize: 12, on: Date())
+                    let tracks = try await JamendoClient.popularTracks(
+                        limit: 12, offset: (jamendoPage - 1) * 12)
                     Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
                     rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
                 } catch {
@@ -257,13 +274,25 @@ enum CatalogSourceLoader {
         let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
         let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
 
+        // Tages-Rotation der BELIEBTHEITS-Reihen (Auftrag 09.08.): dieselbe
+        // Sortierung, aber taeglich eine andere Seite des oberen Zehntels.
+        // „Neu bei LibriVox" rotiert NICHT — die Reihe ist per Definition
+        // schon taeglich frisch (sie sortiert nach Datum).
+        // Bestaende gemessen 09.08.: LibriVox 21.711 · IA-Hoerbuecher 4.257 ·
+        // OTR (lizenziert) 2.309.
+        let today = Date()
+        let lvPage = CatalogRotation.page(total: 21_711, rowSize: 12, on: today)
+        let iaPage = CatalogRotation.page(total: 4_257, rowSize: 12, on: today)
+        let otrPage = CatalogRotation.page(total: 2_309, rowSize: 12, on: today)
+
         // ONE pass, sources concurrent; each error arrives AS an error.
         async let newTask = fetched { try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40) }
         async let popularTask = fetched { try await ArchiveOrgClient.popularLibriVoxByLanguage(
-            rowsPerLanguage: 12, languageCodes: codes, limit: 12) }
+            rowsPerLanguage: 12, languageCodes: codes, limit: 12, page: lvPage) }
         async let archiveTask = fetched { try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-            rows: 12, languageCodes: codes).docs }
-        async let otrTask = fetched { try await ArchiveOrgClient.popularOldTimeRadio(rows: 12) }
+            rows: 12, languageCodes: codes, page: iaPage).docs }
+        async let otrTask = fetched { try await ArchiveOrgClient.popularOldTimeRadio(
+            rows: 12, page: otrPage) }
 
         if librivoxOn {
             if let books = value(await newTask, .librivox, failures: &rows.failures) {
