@@ -31,6 +31,28 @@ nonisolated enum LibriVoxClient {
         return try decodeFeed(data)
     }
 
+    /// R1 (09.08., gemessen): the API filters by genre (`genre=`, case-
+    /// insensitive) and pages (`offset=`) — that is what turns a shelf from a
+    /// 20-title pool filter into its real stock (Poetry ≥1.200, Philosophy
+    /// 281). Past the end the API answers **404**; that is the END signal,
+    /// not a failure, so it maps to an empty page instead of an error.
+    static func books(genre: String, limit: Int, offset: Int = 0) async throws -> [LibriVoxBook] {
+        var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
+        comp.queryItems = [
+            URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "extended", value: "1"),
+            URLQueryItem(name: "limit", value: String(limit)),
+            URLQueryItem(name: "offset", value: String(offset)),
+            URLQueryItem(name: "genre", value: genre),
+        ]
+        guard let url = comp.url else { return [] }
+        var request = URLRequest(url: url)
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await RequestRetryPolicy.fetch(request)
+        if response?.statusCode == 404 { return [] }   // end of list, not a failure
+        return try decodeFeed(data)
+    }
+
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -94,8 +116,11 @@ nonisolated enum GutenbergClient {
 
     /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
     /// caller decides how many pages are worth it.
+    /// `topic` (R1) filters server-side over subjects AND bookshelves —
+    /// measured 09.08.: philosophy 13, religion 3. Small, but that IS the
+    /// stock; the shelf shows honestly what exists.
     static func audiobooks(languages: [String], page: Int = 1,
-                           search: String? = nil) async throws -> [Book] {
+                           search: String? = nil, topic: String? = nil) async throws -> [Book] {
         var comp = URLComponents(string: "https://gutendex.com/books/")!
         var items = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
                      URLQueryItem(name: "page", value: String(page))]
@@ -105,6 +130,9 @@ nonisolated enum GutenbergClient {
         // Q1: gutendex's own title/author search — same client, one param.
         if let search, !search.isEmpty {
             items.append(URLQueryItem(name: "search", value: search))
+        }
+        if let topic, !topic.isEmpty {
+            items.append(URLQueryItem(name: "topic", value: topic))
         }
         comp.queryItems = items
         guard let url = comp.url else { return [] }

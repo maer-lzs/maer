@@ -58,6 +58,16 @@ struct FreeAudiobooksPage: View {
     // HoerspielePage — 11be262 keeps the genre axis and the charts alive
     // ("alles andere bleibt gültig"); chip-driven, so legitimate view state
     // like the sub-pages' paging.
+    //
+    // WARUM NUR die Hörspiel-Charts und keine Bücher-Charts (09.08.,
+    // gemessen — damit die Buch-Reihe nicht in drei Monaten zurückkehrt):
+    // Apples FIKTIONS-Kategorien sind FORM-basiert (Drama 1484, SciFi 1485,
+    // Comedy Fiction 1486) — dort stehen echte Hörspiele. „Books" 1482 ist
+    // dagegen THEMA-basiert: 20 von 25 Chart-Einträgen waren Gespräche ÜBER
+    // Bücher, nicht Lesungen. Eine Form aus einer Themen-Kategorie
+    // herauszufiltern hieße raten, und selbst ein perfekter Filter ließe nur
+    // die fünf Lesungen übrig, die LibriVox/Gutenberg/Archiv ohnehin besser
+    // abdecken. Deshalb wurde X²·5 ersatzlos zurückgebaut.
     @State private var selectedChip: String = CatalogGenreAxis.hoerspielChips[0].key
     @State private var chartResults: [PodcastSearchResult] = []
     @State private var chartsLoading = false
@@ -65,7 +75,6 @@ struct FreeAudiobooksPage: View {
     /// X²·5: the second chart row — Apple's book category (genre 1482;
     /// readings and literature adaptations live there). Loads once, not
     /// chip-driven.
-    @State private var bookChartResults: [PodcastSearchResult] = []
 
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
@@ -93,7 +102,6 @@ struct FreeAudiobooksPage: View {
                 feedSection(.oerr)
                 feedSection(.independents)
                 chartsSection
-                bookChartsSection
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
                 librivoxSection
@@ -125,7 +133,6 @@ struct FreeAudiobooksPage: View {
         // X²·3: kick the live OERR rule once (seed renders immediately).
         .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
         .task(id: selectedChip) { await loadCharts() }
-        .task { await loadBookCharts() }
         // Connection returns while the page is open: load then.
         .onChange(of: networkMonitor.isConnected) { _, connected in
             if connected { Task { await store.ensureSourcesLoaded() } }
@@ -307,51 +314,6 @@ struct FreeAudiobooksPage: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
-                            RecommendationTile(result: result)
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.recommendationColumns(regularWidth: false),
-                                    span: 1, spacing: 12)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
-            }
-        }
-    }
-
-    /// X²·5: the book-category charts (1482) — same client, one load. The
-    /// measured 1482 charts have no carrying sub-division (no chart
-    /// sub-genres), so the page behind the chevron is a full grid without
-    /// shelves.
-    private func loadBookCharts() async {
-        #if DEBUG
-        if UITestSeed.isActive { return }
-        #endif
-        guard bookChartResults.isEmpty else { return }
-        let hits = (try? await ITunesDirectory().topPodcasts(genreId: 1482)) ?? []
-        let shows = PodcastAutoContinue.allShows()
-        let subscribed = Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
-        bookChartResults = hits.filter {
-            !subscribed.contains(PodcastSubscriptions.normalizeFeedURL($0.feedURL))
-        }
-    }
-
-    @ViewBuilder
-    private var bookChartsSection: some View {
-        if !bookChartResults.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                RowHeading(title: "Popular Readings & Books",
-                           total: bookChartResults.count,
-                           shown: RowPreview.cut(bookChartResults).count,
-                           destination: PodcastRoute.bookCharts)
-                Text(verbatim: "Apple Podcasts")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(RowPreview.cut(bookChartResults), id: \.feedURL) { result in
                             RecommendationTile(result: result)
                                 .containerRelativeFrame(.horizontal,
                                     count: CardMetrics.recommendationColumns(regularWidth: false),

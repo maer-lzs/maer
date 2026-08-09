@@ -166,9 +166,17 @@ struct CatalogSourcePage: View {
     }
 
     /// H: one shelf's preview row (filter over `items`).
+    ///
+    /// R2 (09.08.): on THIS page a title belongs to exactly one shelf — its
+    /// FIRST in browse order. „Eudemian Ethics" carries Philosophy AND
+    /// Religion and therefore stood twice on one screen, which reads as a
+    /// bug rather than as the truth of its subjects. On the shelf FULL pages
+    /// it may appear in both — there it is the truth.
     @ViewBuilder
     private func genreRow(_ shelf: (key: String, title: String)) -> some View {
-        let filtered = items.filter { shelvesOf($0).contains(shelf.key) }
+        let filtered = items.filter {
+            CatalogGenreAxis.primaryShelf(among: shelvesOf($0)) == shelf.key
+        }
         if !filtered.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 RowHeading(title: "", verbatimTitle: shelf.title,
@@ -322,31 +330,18 @@ struct CatalogShelfPage: View {
     let shelfKey: String
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
+    @State private var items: [LibraryItem] = []
+    @State private var page = 1
+    @State private var isLoading = false
+    @State private var loadFailed = false
+    @State private var reachedEnd = false
 
+    private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     private var title: String {
         CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title ?? ""
-    }
-
-    private var items: [LibraryItem] {
-        // P5/P7: the shelf grid covers every scaffolded source.
-        let base: [LibraryItem] = switch source {
-        case .librivox:     store.sourceRows.librivoxPopular + store.sourceRows.librivoxNew
-        case .gutenberg:    store.sourceRows.gutenberg
-        case .archiveBooks: store.sourceRows.archiveBooks
-        case .oldTimeRadio: store.sourceRows.oldTimeRadio
-        default:            []
-        }
-        return base.filter { item in
-            let genres = item.media?.metadata?.genres ?? []
-            let shelves = source == .librivox
-                ? CatalogGenreAxis.shelves(forLibriVoxGenres: genres)
-                : CatalogGenreAxis.shelves(forSubjects: genres)
-            return shelves.contains(shelfKey)
-        }
     }
 
     var body: some View {
@@ -369,16 +364,88 @@ struct CatalogShelfPage: View {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
                     }
+                    .onAppear {
+                        if item.id == items.last?.id { Task { await loadMore() } }
+                    }
                 }
             }
             .padding(.horizontal)
-            .bottomBarClearance()
+            if isLoading {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if items.isEmpty && loadFailed {
+                // Regel 3: a failed load is not "this shelf is empty".
+                ContentUnavailableView {
+                    Label(title, systemImage: "books.vertical")
+                } description: {
+                    Text("Could not load the catalog. Check your connection and try again.")
+                } actions: {
+                    Button("Retry") { Task { await loadMore(reset: true) } }
+                }
+                .padding(.top, 40)
+            }
+            Color.clear.frame(height: 1).bottomBarClearance()
         }
         .navigationTitle(Text(verbatim: title))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await store.ensureSourcesLoaded() }
+        .task { if items.isEmpty { await loadMore(reset: true) } }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    /// R1 (09.08.): the shelf ASKS for its shelf instead of filtering the
+    /// preview pool. The pool held 12-20 titles, so every shelf of every
+    /// source together could never show more than that — the measured stock
+    /// is orders of magnitude bigger (LibriVox Poetry ≥1.200, archive.org
+    /// philosophy in the thousands). One query per shelf, paged.
+    private func loadMore(reset: Bool = false) async {
+        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return }
+        guard !isLoading, !reachedEnd || reset else { return }
+        if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
+        isLoading = true
+        defer { isLoading = false }
+        let provider = FreeCatalogProvider.shared
+        do {
+            var fresh: [LibraryItem] = []
+            switch source {
+            case .librivox:
+                // A shelf folds 2-3 LibriVox genres; ask for each and merge
+                // (the API takes ONE genre per request).
+                let genres = CatalogGenreAxis.librivoxGenres(forShelf: shelfKey)
+                let offset = (page - 1) * pageSize
+                for genre in genres {
+                    let books = try await LibriVoxClient.books(genre: genre, limit: pageSize, offset: offset)
+                    fresh += books.compactMap { provider.remember(book: $0) }
+                }
+            case .gutenberg:
+                let topics = CatalogGenreAxis.subjects(forShelf: shelfKey)
+                for topic in topics.prefix(2) {
+                    let books = try await GutenbergClient.audiobooks(
+                        languages: SuggestionLanguages.current(), page: page, topic: topic)
+                    fresh += books.compactMap { provider.remember(gutenberg: $0) }
+                }
+            case .archiveBooks, .oldTimeRadio:
+                let subjects = CatalogGenreAxis.subjects(forShelf: shelfKey)
+                guard !subjects.isEmpty else { reachedEnd = true; return }
+                let clause = subjects.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+                let base = source == .oldTimeRadio
+                    ? "collection:oldtimeradio AND mediatype:(audio)"
+                    : "collection:audio_bookspoetry AND mediatype:(audio)"
+                let docs = try await ArchiveOrgClient.popular(
+                    query: "\(base) AND (\(clause))", rows: pageSize, page: page)
+                fresh = docs.compactMap { provider.remember(popular: $0) }
+            default:
+                reachedEnd = true; return
+            }
+            Logger.library.notice("FREECAT shelf=\(shelfKey, privacy: .public) source=\(source.rawValue, privacy: .public) page=\(page) loaded=\(fresh.count)")
+            if fresh.isEmpty { reachedEnd = true; return }
+            var seen = Set(items.map(\.id))
+            items += fresh.filter { seen.insert($0.id).inserted }
+            page += 1
+            if fresh.count < pageSize { reachedEnd = true }
+        } catch {
+            Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            loadFailed = items.isEmpty
         }
     }
 }

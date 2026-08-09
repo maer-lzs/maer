@@ -192,6 +192,36 @@ nonisolated enum CatalogGenreAxis {
         musicAxis.filter { $0.value == shelf }.map(\.key).sorted()
     }
 
+    // MARK: - R1 (09.08.): the shelves ask the SERVER, not a local pool
+
+    /// A shelf → the LibriVox genre names that fold onto it. Measured 09.08.:
+    /// the LibriVox API DOES filter (`genre=`, case-insensitive) and pages
+    /// (`offset=`) — Poetry alone carries ≥1.200 titles, Philosophy 281, so a
+    /// shelf that used to filter a 20-title preview pool was showing a
+    /// thousandth of its stock. A shelf maps to 2-3 genres; the client asks
+    /// for each and merges.
+    static func librivoxGenres(forShelf shelf: String) -> [String] {
+        librivoxAxis.filter { $0.value == shelf }.map(\.key).sorted()
+    }
+
+    /// A shelf → the subject terms for the SUBJECT-based catalogs
+    /// (archive.org `subject:`, gutendex `topic=`). Both spelling families
+    /// ride along, because a shelf can be reached from either.
+    static func subjects(forShelf shelf: String) -> [String] {
+        let terms = lcshAxis.filter { $0.value == shelf }.map(\.key)
+            + librivoxAxis.filter { $0.value == shelf }.map(\.key)
+        return Array(Set(terms)).sorted()
+    }
+
+    /// R2: on ONE page a title belongs to exactly one shelf — the first in
+    /// browse order. („Eudemian Ethics" carries Philosophy AND Religion; two
+    /// identical tiles on one page read as a bug, not as truth.) On the shelf
+    /// FULL pages it may legitimately appear in both — there it IS the truth
+    /// of its subjects.
+    static func primaryShelf(among shelves: [String]) -> String? {
+        librivoxShelves.map(\.key).first { shelves.contains($0) }
+    }
+
     /// Gutenberg subjects → shelves, over BOTH spelling families.
     static func shelves(forSubjects subjects: [String]) -> [String] {
         var hit = Set<String>()

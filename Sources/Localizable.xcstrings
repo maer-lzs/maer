@@ -5058,16 +5058,6 @@
         }
       }
     },
-    "Popular Readings & Books" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebte Lesungen & Bücher"
-          }
-        }
-      }
-    },
     "Popular Songs" : {
       "localizations" : {
         "de" : {
