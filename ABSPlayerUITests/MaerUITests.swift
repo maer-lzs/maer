@@ -436,6 +436,20 @@ nonisolated final class MaerUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments += ["-uitest-setup"]
         app.launch()
+        // The first screen is the MAP: every area with one line about what it
+        // needs — and four of five need nothing.
+        let audiobooks = app.buttons["source-map-audiobooks"].firstMatch
+        XCTAssertTrue(audiobooks.waitForExistence(timeout: 15), "the setup must show the map of areas")
+        for area in ["music", "podcasts", "radio", "freeCatalogs"] {
+            XCTAssertTrue(app.buttons["source-map-\(area)"].firstMatch.exists,
+                          "area \(area) must be on the map")
+        }
+        // An area without a server says what it would need, and leads there.
+        audiobooks.tap()
+        XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
+                      "the audiobook area must lead to the Audiobookshelf setup")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
         let start = app.buttons["start-serverless"].firstMatch
         XCTAssertTrue(start.waitForExistence(timeout: 15), "setup must offer the serverless path")
         start.tap()
@@ -443,6 +457,34 @@ nonisolated final class MaerUITests: XCTestCase {
                       "serverless start must land in the app")
         XCTAssertFalse(app.buttons["tab-audiobooks"].firstMatch.exists,
                        "no book source → no audiobooks tab")
+        app.terminate()
+    }
+
+    /// F2 (d9ef077): the map is not a screen you tap away once — the settings
+    /// show the SAME component, which is what makes the way back exist. Proof
+    /// is that both places carry the same rows with the same identifiers, and
+    /// that the settings side reaches every area page.
+    func testSourceMapIsAlsoTheSettingsSourcesOverview() {
+        let app = launchSeeded()
+        XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 20))
+        app.buttons["open-settings"].firstMatch.tap()
+        for area in ["audiobooks", "music", "podcasts", "radio", "freeCatalogs"] {
+            let row = app.buttons["source-map-\(area)"].firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 10),
+                          "the settings must show the same map row for \(area)")
+        }
+        // A filled state: the seeded run is connected, so the audiobook row
+        // names a host instead of asking for one.
+        var scrollBack = 0
+        while !app.buttons["source-map-audiobooks"].firstMatch.isHittable && scrollBack < 6 {
+            app.swipeUp(); scrollBack += 1
+        }
+        app.buttons["source-map-audiobooks"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
+                      "the area page must carry the source entry")
+        backOut(app)
+        XCTAssertTrue(app.buttons["settings-done"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["settings-done"].firstMatch.tap()
         app.terminate()
     }
 
@@ -458,8 +500,11 @@ nonisolated final class MaerUITests: XCTestCase {
             let gear = app.buttons["open-settings"].firstMatch
             XCTAssertTrue(gear.waitForExistence(timeout: 10))
             gear.tap()
-            // Etappe E: the source row lives in the tab-independent Sources
-            // section on the General pill (the settings' landing tab).
+            // The source row lives behind its area on the map (General pill,
+            // the settings' landing tab).
+            let area = app.buttons["source-map-music"].firstMatch
+            XCTAssertTrue(area.waitForExistence(timeout: 10))
+            area.tap()
             let row = app.buttons["settings-music-source"].firstMatch
             XCTAssertTrue(row.waitForExistence(timeout: 10))
             row.tap()
@@ -479,7 +524,8 @@ nonisolated final class MaerUITests: XCTestCase {
             // the sheet, whose button count varies per tab (the sort button
             // only exists where there is something to sort). The index was
             // always fragile; it merely happened to fit.
-            backOut(app)
+            backOut(app)   // source page → area page
+            backOut(app)   // area page → the map
             let done = app.buttons["settings-done"].firstMatch
             XCTAssertTrue(done.waitForExistence(timeout: 5))
             done.tap()
@@ -692,10 +738,14 @@ nonisolated final class MaerUITests: XCTestCase {
         let settings = app.buttons["open-settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 10))
         settings.tap()
+        let podcastArea2 = app.buttons["source-map-podcasts"].firstMatch
+        XCTAssertTrue(podcastArea2.waitForExistence(timeout: 10), "the podcast area must be on the map")
+        podcastArea2.tap()
         let rss = app.switches["settings-source-rss"].firstMatch
         XCTAssertTrue(rss.waitForExistence(timeout: 10), "RSS source toggle must exist")
         rss.tap()   // off → sources bump with podcasts transiently unavailable
         rss.tap()   // back on → second bump, state restored
+        backOut(app)
         let done = app.buttons["settings-done"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 10))
         done.tap()
@@ -1380,9 +1430,13 @@ nonisolated final class MaerUITests: XCTestCase {
         let app = launchSeeded()
         XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         app.buttons["open-settings"].firstMatch.tap()
-        let source = app.buttons["settings-podcast-source"].firstMatch
+        // The four source sections are ONE map of areas now — the podcast
+        // source page sits one push deeper, at its area.
+        let podcastArea = app.buttons["source-map-podcasts"].firstMatch
         var swipes = 0
-        while !source.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+        while !podcastArea.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+        XCTAssertTrue(podcastArea.waitForExistence(timeout: 10)); podcastArea.tap()
+        let source = app.buttons["settings-podcast-source"].firstMatch
         XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
         let export = app.buttons["opml-export"].firstMatch
         swipes = 0
@@ -1510,11 +1564,20 @@ nonisolated final class MaerUITests: XCTestCase {
         while !master.exists && scrolls < 6 { app.swipeUp(); scrolls += 1 }
         XCTAssertTrue(master.waitForExistence(timeout: 10), "master must sit on the General pill")
         flip(master)
-        // Subordinate area toggle greys out — visible hierarchy, no double state.
-        app.buttons["settings-tab-music"].firstMatch.tap()
+        // Subordinate area toggle greys out — visible hierarchy, no double
+        // state. The area toggles sit at their area on the map now (they used
+        // to be split across two media pills). Reopening the sheet is how we
+        // get back to the top: swiping DOWN inside a sheet dismisses it, so a
+        // scroll-up loop would silently lose the whole screen.
+        app.buttons["settings-done"].firstMatch.tap()
+        app.buttons["open-settings"].firstMatch.tap()
+        let catalogArea = app.buttons["source-map-freeCatalogs"].firstMatch
+        XCTAssertTrue(catalogArea.waitForExistence(timeout: 10)); catalogArea.tap()
         let area = app.switches["music-free-classical-toggle"].firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 10))
         XCTAssertFalse(area.isEnabled, "area toggle must grey out while the master is off")
+        backOut(app)
+        XCTAssertTrue(app.buttons["settings-done"].firstMatch.waitForExistence(timeout: 10))
         app.buttons["settings-done"].firstMatch.tap()
         // Surface gone: the deck tile disappears with the master off.
         app.buttons["global-search"].firstMatch.tap()

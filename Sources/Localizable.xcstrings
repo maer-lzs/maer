@@ -1,6 +1,216 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Areas" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereiche"
+          }
+        }
+      }
+    },
+    "Connected with %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbunden mit %@"
+          }
+        }
+      }
+    },
+    "No account needed · synced with %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto · Abgleich mit %@"
+          }
+        }
+      }
+    },
+    "Needs an Audiobookshelf server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Braucht einen Audiobookshelf-Server"
+          }
+        }
+      }
+    },
+    "Needs a Subsonic, Navidrome or Jellyfin server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Braucht einen Subsonic-, Navidrome- oder Jellyfin-Server"
+          }
+        }
+      }
+    },
+    "No account needed — feeds right away" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto — Feeds sofort"
+          }
+        }
+      }
+    },
+    "No account needed — stations worldwide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto — Sender aus aller Welt"
+          }
+        }
+      }
+    },
+    "No account needed — LibriVox, radio plays, netlabels, old records" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Konto — LibriVox, Hörspiele, Netlabels, alte Schallplatten"
+          }
+        }
+      }
+    },
+    "Four of the five areas need no account at all. Servers can be attached here at any time — nothing has to be set up before listening." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vier der fünf Bereiche brauchen kein Konto. Server lassen sich hier jederzeit anschließen — vor dem ersten Hören muss nichts eingerichtet werden."
+          }
+        }
+      }
+    },
+    "Mär is a home for audiobooks, music, podcasts, radio and free catalogs — your own servers and the open net in one app." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mär ist ein Zuhause für Hörbücher, Musik, Podcasts, Radio und freie Kataloge — deine eigenen Server und das offene Netz in einer App."
+          }
+        }
+      }
+    },
+    "Radio, podcasts and the free catalogs are there right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio, Podcasts und die freien Kataloge sind sofort da — ganz ohne Konto. Audiobookshelf, ein Musikserver oder der Podcast-Abgleich kommen jederzeit in den Einstellungen dazu. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
+          }
+        }
+      }
+    },
+    "Your own audiobook server. Files on this device work without any server. Connecting to a server on your home network may ask for local-network permission." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein eigener Hörbuch-Server. Dateien auf diesem Gerät funktionieren ganz ohne Server. Beim Verbinden mit einem Server im Heimnetz fragt iOS nach der Berechtigung fürs lokale Netzwerk."
+          }
+        }
+      }
+    },
+    "Feeds work without any account. A server is only needed to keep subscriptions in sync across devices." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feeds funktionieren ohne Konto. Ein Server ist nur nötig, damit die Abos über mehrere Geräte gleich bleiben."
+          }
+        }
+      }
+    },
+    "Stations come from the community catalog — no account. A source off makes zero calls." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sender kommen aus dem Gemeinschafts-Verzeichnis — ohne Konto. Eine abgeschaltete Quelle fragt nichts ab."
+          }
+        }
+      }
+    },
+    "Public-domain readings, radio plays, free labels and historic recordings — clearly separated from your own library. Sources: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Lesungen, Hörspiele, freie Labels und historische Aufnahmen — klar getrennt von deiner eigenen Bibliothek. Quellen: %@."
+          }
+        }
+      }
+    },
+    "Free catalogs are switched off entirely under General — these switches take effect again once they are back on." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die freien Kataloge sind unter „Allgemein“ ganz abgeschaltet — diese Schalter wirken wieder, sobald sie dort an sind."
+          }
+        }
+      }
+    },
+    "Services behind them" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dienste dahinter"
+          }
+        }
+      }
+    },
+    "Which servers are contacted for these areas — and how to switch a single one off — is on the network services page." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Server für diese Bereiche angefragt werden — und wie du einen einzelnen abschaltest — steht bei den Netzdiensten."
+          }
+        }
+      }
+    },
+    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Bücher starten mit der Standardgeschwindigkeit. Sanftes Zurückspulen setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Reihenband, startet der nächste ungehörte von selbst."
+          }
+        }
+      }
+    },
+    "Your server always comes first. Sources: lyrics — %@ · artist images — %@ · high-res covers — %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Server kommt immer zuerst. Quellen: Liedtexte — %@ · Künstlerbilder — %@ · hochauflösende Cover — %@."
+          }
+        }
+      }
+    },
+    "Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Which of the areas appear is set under Areas → Free Catalogs. Sources: %@." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeinfreie Hörbücher, klassische Aufnahmen und freie Musik — klar getrennt von deiner eigenen Bibliothek. Aus heißt: keine Katalogfläche und kein Netzverkehr. Welche Bereiche erscheinen, stellst du unter „Bereiche → Freie Kataloge“ ein. Quellen: %@."
+          }
+        }
+      }
+    },
     "Use Pinchflat" : {
       "localizations" : {
         "de" : {
@@ -520,16 +730,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+15 Min."
-          }
-        }
-      }
-    },
-    "A source off makes zero server calls. Whether a media type appears at all is set under Libraries below." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Eine ausgeschaltete Quelle macht keinerlei Server-Anfragen. Ob ein Medientyp überhaupt erscheint, regelst du unten unter Bibliotheken."
           }
         }
       }
@@ -2651,16 +2851,6 @@
         }
       }
     },
-    "Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Sources: %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gemeinfreie Hörbücher, klassische Aufnahmen und freie Musik — klar getrennt von deiner Bibliothek. Aus blendet alle Katalog-Flächen aus und stoppt deren Netzverkehr. Quellen: %@."
-          }
-        }
-      }
-    },
     "Free public-domain recordings from the Internet Archive — separate from your own library." : {
       "localizations" : {
         "de" : {
@@ -3323,16 +3513,6 @@
         }
       }
     },
-    "Listen to podcasts right away — no account needed. Audiobookshelf, a music server or podcast sync can be added anytime in Settings. Connecting to a server on your home network may ask for local-network permission." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Podcasts sofort hören — ganz ohne Konto. Audiobookshelf, ein Musik-Server oder Podcast-Sync lassen sich jederzeit in den Einstellungen ergänzen. Beim Verbinden mit einem Server im Heimnetz fragt iOS ggf. nach der Berechtigung fürs lokale Netzwerk."
-          }
-        }
-      }
-    },
     "Listening History" : {
       "localizations" : {
         "de" : {
@@ -3929,26 +4109,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Neues Lesezeichen"
-          }
-        }
-      }
-    },
-    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain area, separate from your library. Sources: %@ · %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte. Freie Hörbücher ergänzt einen gemeinfreien Bereich, getrennt von deiner Bibliothek. Quellen: %1$@ · %2$@."
-          }
-        }
-      }
-    },
-    "New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free catalogs are switched off entirely under General." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neue Bücher starten mit der Standard-Geschwindigkeit. Smart Rewind setzt nach einer längeren Pause etwas früher wieder ein. Endet ein Serienbuch, startet automatisch das nächste ungehörte. Freie Kataloge sind unter Allgemein komplett ausgeschaltet."
           }
         }
       }
@@ -6435,46 +6595,6 @@
         }
       }
     },
-    "Sources — Audiobooks" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quellen — Hörbücher"
-          }
-        }
-      }
-    },
-    "Sources — Music" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quellen — Musik"
-          }
-        }
-      }
-    },
-    "Sources — Podcasts" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quellen — Podcasts"
-          }
-        }
-      }
-    },
-    "Sources — Radio" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quellen — Radio"
-          }
-        }
-      }
-    },
     "Spain" : {
       "localizations" : {
         "de" : {
@@ -7817,26 +7937,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deine Podcast-Warteschlange auf einen Blick."
-          }
-        }
-      }
-    },
-    "Your server always comes first. Sources: lyrics — %@ · artist images — %@ · high-res covers — %@ · Free Classical — %@." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Server kommt immer zuerst. Quellen: Songtexte — %1$@ · Künstlerbilder — %2$@ · Hi-Res-Cover — %3$@ · Freie Klassik — %4$@."
-          }
-        }
-      }
-    },
-    "Your server always comes first. Sources: lyrics — %@ · artist images — %@ · high-res covers — %@ · Free Classical — %@. Free catalogs are switched off entirely under General." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dein Server kommt immer zuerst. Quellen: Songtexte — %1$@ · Künstlerbilder — %2$@ · Hi-Res-Cover — %3$@ · Freie Klassik — %4$@. Freie Kataloge sind unter Allgemein komplett ausgeschaltet."
           }
         }
       }

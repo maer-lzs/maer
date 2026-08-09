@@ -71,6 +71,15 @@ struct NetworkServicesView: View {
                                  purpose: "Logos for stations without a usable favicon.")
                 }
                 .accessibilityIdentifier("network-radio-logo-toggle")
+                // Placement rule (the answer to Punkt C, written down so the
+                // next switch lands right): this page holds ONE entry per
+                // external SERVICE — whom does the app contact. Whether an
+                // AREA appears is decided at that area on the source map.
+                // Free Classical, Netlabels and Old Records are three areas
+                // on this one archive.org service, which is why they are not
+                // here; the key names (`librivoxRowsEnabled` reads like a
+                // row, `freeClassicalEnabled` like a service) hid that rule
+                // rather than breaking it.
                 Toggle(isOn: $librivoxRows) {
                     serviceLabel(NetworkServiceNames.librivox,
                                  purpose: "Public-domain audiobooks for the free Discover rows.")

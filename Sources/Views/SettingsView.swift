@@ -73,15 +73,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.podcastsTabEnabled) private var podcastsTab = true
     @AppStorage(AppStorageKeys.musicTabEnabled) private var musicTab = true
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
-    @AppStorage(AppStorageKeys.absAudiobooksEnabled) private var absAudiobooksOn = true
-    @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsOn = false
-    @AppStorage(AppStorageKeys.rssEnabled) private var rssOn = true
-    @AppStorage(AppStorageKeys.subsonicEnabled) private var subsonicOn = false
-    @AppStorage(AppStorageKeys.jellyfinEnabled) private var jellyfinOn = false
-    @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
 
-    /// Exclusivity note (ABS-podcasts turned gpodder off, or vice versa).
-    @State private var podcastServerNote: String?
     @State private var coverCacheBytes: Int64 = 0
     @State private var showDeleteAllDownloads = false
 
@@ -125,9 +117,6 @@ struct SettingsView: View {
             // The selected media pill can disappear (library toggled off).
             if !visibleTabs.contains(tab) { tab = .general }
         }
-        .alert("Podcast source changed", isPresented: Binding(
-            get: { podcastServerNote != nil }, set: { if !$0 { podcastServerNote = nil } }
-        )) { Button("OK", role: .cancel) {} } message: { Text(podcastServerNote ?? "") }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -182,9 +171,12 @@ struct SettingsView: View {
     // MARK: - Allgemein
 
     /// 5034add: the MASTER switch over everything public-domain/catalog —
-    /// prominent on General (not buried on the network-services subpage).
-    /// Hierarchy: master > area toggles (pills, greyed while off) > service
-    /// opt-outs (network page). Off means OFF: surfaces AND traffic.
+    /// prominent on General (not buried on a subpage). Hierarchy unchanged:
+    /// master > area toggles > service opt-outs (network page). Off means
+    /// OFF: surfaces AND traffic. The area toggles used to sit in two
+    /// different media pills; they live at the "Free Catalogs" area of the
+    /// source map now, which the footer points to (no switch without a way
+    /// to it).
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     private var freeCatalogsSection: some View {
         Section {
@@ -195,7 +187,7 @@ struct SettingsView: View {
         } header: {
             Text("Free Catalogs")
         } footer: {
-            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Sources: \(NetworkServiceNames.freeCatalogs).")
+            Text("Free public-domain audiobooks, classical recordings and free music — clearly separated from your own library. Off hides every catalog surface and stops its network traffic. Which of the areas appear is set under Areas → Free Catalogs. Sources: \(NetworkServiceNames.freeCatalogs).")
         }
     }
 
@@ -288,69 +280,21 @@ struct SettingsView: View {
         }
     }
 
-    /// Variante b, rule category "source": servers/accounts with their on/off
-    /// switch and config page — one subsection per media type, every service
-    /// equal. The tab level (which media types appear) lives in the separate
-    /// Libraries section below; effective activity stays tab ∧ source
-    /// (`SourceActivation`), every change routes through
-    /// `AppSession.reconfigureSources()`. Keys unchanged.
+    /// The four former "Sources — X" sections are ONE now: the same map of
+    /// areas the first screen shows, here with a filled state. That is also
+    /// the way BACK to that screen, which did not exist before — and the
+    /// switches live one push deeper, at their area (`SourceAreaPage`).
+    /// Effective activity stays tab ∧ source (`SourceActivation`), every
+    /// change routes through `AppSession.reconfigureSources()`, keys
+    /// unchanged.
     @ViewBuilder
     private var sourcesSection: some View {
-        Section {
-            sourceToggle("Audiobookshelf", isOn: $absAudiobooksOn)
-            NavigationLink { ABSSourceView(coordinator: coordinator,
-                                           libraryViewModel: libraryViewModel,
-                                           onLogout: onLogout) } label: {
-                Label("Audiobookshelf server", systemImage: "server.rack")
-            }
-            .accessibilityIdentifier("settings-abs-source")
-            NavigationLink { LocalFilesView(onImported: {
-                Task { await libraryViewModel?.refreshAfterLocalChange() }
-            }) } label: { Label("Local Files", systemImage: "folder") }
-        } header: { Text("Sources — Audiobooks") }
-
-        Section {
-            // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
-            // server at a time; RSS below stays free). Enabling ABS turns
-            // gpodder off, with a note.
-            Toggle(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
-                .onChange(of: absPodcastsOn) {
-                    if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
-                        podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
-                    }
-                    AppSession.shared.reconfigureSources()
-                }
-            sourceToggle("RSS feeds", isOn: $rssOn)
-                .accessibilityIdentifier("settings-source-rss")
-            NavigationLink { PodcastSourceView() } label: {
-                Label("Podcast sources", systemImage: "mic")
-            }
-            .accessibilityIdentifier("settings-podcast-source")
-        } header: { Text("Sources — Podcasts") }
-
-        Section {
-            sourceToggle("Music server (Subsonic)", isOn: $subsonicOn)
-            NavigationLink { SubsonicSourceView() } label: {
-                Label("Music Server", systemImage: "music.note")
-            }
-            .accessibilityIdentifier("settings-music-source")
-            sourceToggle("Jellyfin", isOn: $jellyfinOn)
-            NavigationLink { JellyfinSourceView() } label: {
-                Label("Jellyfin Server", systemImage: "music.note.house")
-            }
-            .accessibilityIdentifier("settings-jellyfin-source")
-        } header: { Text("Sources — Music") } footer: {
-            Text("One music server at a time: with both on, Subsonic is used.")
-        }
-
-        Section {
-            sourceToggle("Internet radio", isOn: $radioOn)
-            NavigationLink { RadioSourceView() } label: {
-                Label("Radio", systemImage: "dot.radiowaves.left.and.right")
-            }
-            .accessibilityIdentifier("settings-radio-source")
-        } header: { Text("Sources — Radio") } footer: {
-            Text("A source off makes zero server calls. Whether a media type appears at all is set under Libraries below.")
+        SourceMapCard(facts: .current) { area in
+            AnyView(SourceAreaPage(area: area, absDestination: {
+                AnyView(ABSSourceView(coordinator: coordinator,
+                                      libraryViewModel: libraryViewModel,
+                                      onLogout: onLogout))
+            }))
         }
     }
 
@@ -373,12 +317,6 @@ struct SettingsView: View {
     /// TF bib-toggles: the tab-master row (bold) — flipping it reconfigures.
     private func tabMasterToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         Toggle(isOn: isOn) { Text(title).fontWeight(.semibold) }
-            .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
-    }
-
-    /// TF bib-toggles: a per-source row — flipping it reconfigures.
-    private func sourceToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) { Text(title) }
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
     }
 
@@ -423,7 +361,6 @@ struct SettingsView: View {
 
     // MARK: - Audiobooks
 
-    @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
     private var playbackSection: some View {
         Section {
             Picker(selection: $skipInterval) {
@@ -465,22 +402,10 @@ struct SettingsView: View {
             .onChange(of: autoPlayNext) { _, newValue in
                 UserDefaults.standard.set(newValue, forKey: AppStorageKeys.autoPlayNextInSeries)
             }
-
-            // 7edb21b: FEATURE level for the whole free-audiobooks area
-            // (tab entry + Discover mix) — the classical-toggle pattern;
-            // the LibriVox service opt-out on the network-services page
-            // stays superior (service off wins).
-            Toggle("Show free audiobooks", isOn: $freeAudiobooks)
-                .accessibilityIdentifier("books-free-audiobooks-toggle")
-                // 5034add: master off greys the area toggle — visibly
-                // subordinate, no silent double state.
-                .disabled(!freeCatalogsMaster)
         } header: {
             Text("Playback")
         } footer: {
-            freeCatalogsMaster
-                ? Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free audiobooks adds a public-domain area, separate from your library. Sources: \(NetworkServiceNames.librivox) · \(NetworkServiceNames.internetArchive).")
-                : Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically. Free catalogs are switched off entirely under General.")
+            Text("New books start at the default speed. Smart Rewind resumes a little earlier after a longer pause. When a series book ends, the next unfinished one starts automatically.")
         }
     }
 
@@ -495,35 +420,18 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
-    @AppStorage(AppStorageKeys.freeClassicalEnabled) private var freeClassical = true
-    @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
-    @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
     private var musicSection: some View {
         Section {
             Toggle("Look up lyrics online", isOn: $lyricsOnline)
                 .accessibilityIdentifier("music-lyrics-toggle")
             Toggle("Load artist images from the web", isOn: $artistImagesOnline)
             Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
-            // f18ec34: FEATURE level — the whole Free-Classical area (browse
-            // entry + Home teaser); the archive.org service opt-out on the
-            // network-services page stays superior (service off wins).
-            Toggle("Show Free Classical", isOn: $freeClassical)
-                .accessibilityIdentifier("music-free-classical-toggle")
-                .disabled(!freeCatalogsMaster)
-            Toggle("Show Netlabels", isOn: $netlabelsRow)
-                .accessibilityIdentifier("music-netlabels-toggle")
-                .disabled(!freeCatalogsMaster)
-            Toggle("Show Old Records", isOn: $shellacRows)
-                .accessibilityIdentifier("music-shellac-toggle")
-                .disabled(!freeCatalogsMaster)
         } header: {
             Text("Metadata")
         } footer: {
             // 0b7a9ff: every toggle names its exact services — the SAME
             // shared strings the network-services page shows (one truth).
-            freeCatalogsMaster
-                ? Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers) · Free Classical — \(NetworkServiceNames.internetArchive).")
-                : Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers) · Free Classical — \(NetworkServiceNames.internetArchive). Free catalogs are switched off entirely under General.")
+            Text("Your server always comes first. Sources: lyrics — \(NetworkServiceNames.lyrics) · artist images — \(NetworkServiceNames.artistImages) · high-res covers — \(NetworkServiceNames.hiResCovers).")
         }
     }
 

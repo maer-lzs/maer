@@ -113,7 +113,10 @@ struct ABSSourceView: View {
             }
         }
         .sheet(isPresented: $showABSSetup) {
-            SetupView(viewModel: authViewModel)
+            // The login form alone — presenting the whole first screen here
+            // would offer "start without a server" to someone who is already
+            // in the app and looking for the opposite.
+            NavigationStack { ABSLoginPage(viewModel: authViewModel) }
         }
         .onChange(of: authViewModel.isLoggedIn) { _, loggedIn in
             if loggedIn { showABSSetup = false }
