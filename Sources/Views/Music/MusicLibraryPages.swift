@@ -466,14 +466,15 @@ struct FreeJamendoPage: View {
                     RowHeading.plain("Popular This Week")
                     CoverGrid(columns: columns) {
                         ForEach(items) { item in
+                            // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
                             FreeCatalogBookTile(
                                 item: item,
                                 placeholderSystemImage: "music.note",
-                                onTap: { detailItem = item })
+                                onTap: { Task { await playerCoordinator.open(item: item) } })
                             .contextMenu {
                                 Button {
-                                    Task { await playerCoordinator.open(item: item) }
-                                } label: { Label("Play", systemImage: "play.fill") }
+                                    detailItem = item
+                                } label: { Label("Details", systemImage: "info.circle") }
                             }
                         }
                     }
@@ -519,10 +520,11 @@ struct FreeJamendoPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(rowItems) { item in
+                    // M1: Musik-Kachel — Tap spielt, Langdruck zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { detailItem = item })
+                        onTap: { Task { await playerCoordinator.open(item: item) } })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)
@@ -561,14 +563,15 @@ struct JamendoShelfPage: View {
         ScrollView {
             CoverGrid(columns: columns) {
                 ForEach(items) { item in
+                    // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { detailItem = item })
+                        onTap: { Task { await playerCoordinator.open(item: item) } })
                     .contextMenu {
                         Button {
-                            Task { await playerCoordinator.open(item: item) }
-                        } label: { Label("Play", systemImage: "play.fill") }
+                            detailItem = item
+                        } label: { Label("Details", systemImage: "info.circle") }
                     }
                 }
                 if !reachedEnd {
@@ -676,17 +679,18 @@ struct MusicCatalogAreaPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
+                    // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { detailItem = item })
+                        onTap: { Task { await playerCoordinator.open(item: item) } })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)
                     .contextMenu {
                         Button {
-                            Task { await playerCoordinator.open(item: item) }
-                        } label: { Label("Play", systemImage: "play.fill") }
+                            detailItem = item
+                        } label: { Label("Details", systemImage: "info.circle") }
                     }
                 }
             }

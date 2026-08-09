@@ -839,6 +839,7 @@ struct PlayerView: View {
         transcriptControl
         driveModeControl
         markFinishedControl
+        catalogSourceControl
     }
 
     private var driveModeControl: some View {
@@ -847,6 +848,36 @@ struct PlayerView: View {
         }
         .font(.footnote)
         .accessibilityIdentifier("player-drive-mode")
+    }
+
+    /// M1-Auflage (09.08.): seit die Musik-Katalog-Kacheln beim Tap SPIELEN,
+    /// ueberspringt der Weg das Detail-Sheet — und dort stand die
+    /// ToS-Pflichtangabe von Jamendo (Kuenstler, Anbieter, Rueckverweis).
+    /// Der Player traegt sie jetzt selbst: Lizenz/Quelle sichtbar, Link zur
+    /// Quellseite. Kein Katalog-Titel ⇒ keine Zeile.
+    @ViewBuilder
+    private var catalogSourceControl: some View {
+        if let id = viewModel.item?.id,
+           FreeCatalog.allPrefixes.contains(where: { id.hasPrefix($0) }) {
+            let licence = FreeCatalogProvider.shared.licence(forItemId: id)
+            let source = FreeCatalogProvider.shared.sourceURL(forItemId: id)
+            VStack(alignment: .leading, spacing: 4) {
+                if id.hasPrefix(FreeCatalog.jamendoPrefix) {
+                    Label("Creative Commons — via Jamendo", systemImage: "checkmark.seal")
+                        .font(.footnote).foregroundStyle(.secondary)
+                } else if let licence {
+                    Label(licence, systemImage: "checkmark.seal")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                if let source {
+                    Link(destination: source) {
+                        Label("View source", systemImage: "arrow.up.right.square")
+                            .font(.footnote)
+                    }
+                    .accessibilityIdentifier("player-zur-quellseite")
+                }
+            }
+        }
     }
 
     private var markFinishedControl: some View {

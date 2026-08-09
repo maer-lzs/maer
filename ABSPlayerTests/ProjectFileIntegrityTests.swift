@@ -46,7 +46,7 @@ struct ProjectFileIntegrityTests {
     /// root — docs, screenshots, test fixtures, tooling config, the local
     /// key file — can be swept into the app bundle. Lose the path and both
     /// problems return silently, so it is nailed down here.
-    /// Die App-Store-Ausnahme (LICENSE-EXCEPTION) kann Laurenz nur erteilen,
+    /// Die App-Store-Erlaubnis (LICENSE-ADDITIONAL-TERMS, Teil 1) kann Laurenz nur erteilen,
     /// weil er ALLEINIGER Rechteinhaber ist — und das ist er nur, solange das
     /// Projekt keine Fremdabhängigkeit einzieht. Eine still dazugekommene
     /// SPM-Abhängigkeit brächte fremden Code (und fremde Lizenz) in dieselbe
@@ -88,7 +88,7 @@ struct ProjectFileIntegrityTests {
     func noExternalDependencies() throws {
         guard let text = Self.projectFile else { return }
         #expect(!text.contains("XCRemoteSwiftPackageReference"),
-                "a new SPM dependency changes the licence situation — see LICENSE-EXCEPTION")
+                "a new SPM dependency changes the licence situation — see LICENSE-ADDITIONAL-TERMS")
         #expect(!text.contains("XCLocalSwiftPackageReference"))
         #expect(!text.contains("packageProductDependencies = (\n\t\t\t\tXC"),
                 "a package product was linked into a target")

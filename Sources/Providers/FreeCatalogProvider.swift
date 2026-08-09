@@ -29,6 +29,9 @@ final class FreeCatalogProvider: AudioProvider {
     private var itemsById: [String: LibraryItem] = [:]
 
     func remember(book: LibriVoxBook) -> LibraryItem {
+        if let page = book.url_librivox.flatMap({ URL(string: $0) }) {
+            librivoxPages[FreeCatalog.librivoxPrefix + book.id] = page
+        }
         let id = FreeCatalog.librivoxPrefix + book.id
         librivoxBooks[id] = book
         // 40b8f96: LibriVox recordings are public domain — the capsule says so
@@ -168,6 +171,33 @@ final class FreeCatalogProvider: AudioProvider {
     func libraryItem(forId id: String) -> LibraryItem? { itemsById[id] }
     func librivoxBook(forId id: String) -> LibriVoxBook? { librivoxBooks[id] }
     func jamendoTrack(forId id: String) -> JamendoTrack? { jamendoTracks[id] }
+
+    /// M1-Auflage (09.08.): the source page of a catalog item — the ToS-
+    /// mandated backlink for Jamendo, and the honest provenance for the
+    /// archive/LibriVox items. Needed because the music tiles now PLAY on
+    /// tap and thereby skip the detail sheet, where the attribution used to
+    /// live; the player carries it instead. nil for anything that is not a
+    /// catalog item.
+    func sourceURL(forItemId id: String) -> URL? {
+        if id.hasPrefix(FreeCatalog.jamendoPrefix) {
+            return jamendoTracks[id]?.shareurl.flatMap { URL(string: $0) }
+        }
+        if id.hasPrefix(FreeCatalog.archivePrefix) {
+            let identifier = String(id.dropFirst(FreeCatalog.archivePrefix.count))
+            return URL(string: "https://archive.org/details/\(FreeCatalog.encodedPathSegment(identifier))")
+        }
+        if id.hasPrefix(FreeCatalog.librivoxPrefix) {
+            return librivoxPages[id]
+        }
+        if id.hasPrefix(FreeCatalog.gutenbergPrefix) {
+            let bookId = String(id.dropFirst(FreeCatalog.gutenbergPrefix.count))
+            return URL(string: "https://www.gutenberg.org/ebooks/\(bookId)")
+        }
+        return nil
+    }
+
+    /// The LibriVox catalogue page per remembered book (the API gives it).
+    private var librivoxPages: [String: URL] = [:]
 
     // MARK: - AudioProvider
 

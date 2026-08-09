@@ -175,9 +175,12 @@ available at <https://codeberg.org/LzS/maer>.
 
 ### Contributing
 
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (it builds
+without any API keys and has no dependencies to resolve).
+
 By contributing you agree that your contribution is licensed under GPL-3.0 and
 that the project's copyright holder may grant the app-store additional
-permission described in LICENSE-EXCEPTION for it as well.
+permission described in LICENSE-ADDITIONAL-TERMS for it as well.
 
 ---
 

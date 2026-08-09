@@ -270,8 +270,11 @@ bleibt unter <https://codeberg.org/LzS/maer> verfügbar.
 
 ### Beiträge
 
+Beiträge sind willkommen — siehe [CONTRIBUTING.md](CONTRIBUTING.md) (Mär baut
+ohne API-Schlüssel und ohne aufzulösende Abhängigkeiten).
+
 Mit einem Beitrag erklärst du dich damit einverstanden, dass er unter GPL-3.0
-lizenziert ist und dass der Rechteinhaber des Projekts die in LICENSE-EXCEPTION
+lizenziert ist und dass der Rechteinhaber des Projekts die in LICENSE-ADDITIONAL-TERMS
 beschriebene zusätzliche App-Store-Erlaubnis auch für ihn erteilen darf.
 
 ---

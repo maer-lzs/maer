@@ -167,17 +167,24 @@ struct ShellacShelvesPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
+                    // M1 (09.08.): bei MUSIK spielt der Tap. Die Regel ist
+                    // dieselbe wie bei den Buechern, nur die Frage ist eine
+                    // andere: beim Buch fragt man „was ist das?" (→ Detail),
+                    // beim Dreiminueter „spiel" (→ Wiedergabe). Spiegelbildlich
+                    // und trotzdem konsistent — bitte nicht als Inkonsistenz
+                    // „aufraeumen". Die ToS-Attribution traegt jetzt der Player
+                    // (`player-zur-quellseite`), nicht mehr nur das Sheet.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
-                        onTap: { detailItem = item })
+                        onTap: { Task { await playerCoordinator.open(item: item) } })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)
                     .contextMenu {
                         Button {
-                            Task { await playerCoordinator.open(item: item) }
-                        } label: { Label("Play", systemImage: "play.fill") }
+                            detailItem = item
+                        } label: { Label("Details", systemImage: "info.circle") }
                     }
                 }
             }
