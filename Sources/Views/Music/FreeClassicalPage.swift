@@ -129,7 +129,7 @@ struct ArchiveMusicPage: View {
 
 /// „Alte Schallplatten": the shelves ARE the surface. There is deliberately
 /// no undivided view over the whole collection — safety comes from the
-/// inclusion criterion, so there must be no way around it (the reviewer 08.08.,
+/// inclusion criterion, so there must be no way around it (08.08.,
 /// Auflage 1). Each shelf heading is an entry chevron onto its own page.
 struct ShellacShelvesPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute

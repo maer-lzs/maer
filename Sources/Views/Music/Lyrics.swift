@@ -163,7 +163,7 @@ final class LyricsService: ObservableObject {
         }
         guard let url = comps?.url else { return nil }
         var request = URLRequest(url: url)
-        request.setValue("Maer/2.1 (https://codeberg.org/lzs/maer)", forHTTPHeaderField: "User-Agent")
+        AppUserAgent.apply(to: &request)
         guard let (data, http) = try? await RequestRetryPolicy.fetch(request),
               http?.statusCode == 200 else { return nil }
 

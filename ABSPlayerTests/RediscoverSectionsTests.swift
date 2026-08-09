@@ -188,7 +188,7 @@ struct AuthorPortraitRuleTests {
         let now = Date(timeIntervalSince1970: 100 * 24 * 3600)
         let fresh = now.timeIntervalSince1970 - 2 * 24 * 3600     // heard recently
         let old = now.timeIntervalSince1970 - 35 * 24 * 3600      // 5 weeks ago
-        // the reviewer's matrix: (a) freshly heard, (b) long ago, (c) never logged,
+        // matrix: (a) freshly heard, (b) long ago, (c) never logged,
         // (d) backfill-stamped ⇒ reaches picks() as unknown, like (c).
         let picks = RediscoverSections.picks(
             paused: [], unheard: [], seriesNext: [],

@@ -66,7 +66,7 @@ nonisolated enum ArchiveMusicCatalog {
     /// genre shelves, never as one undivided view over the whole 187.034-item
     /// collection. What does not meet an inclusion criterion simply never
     /// appears — construction instead of post-filtering, so no exclusion list
-    /// is needed anywhere (958d7d1 + the owner 08.08.; the reviewer's counter-measure
+    /// is needed anywhere (958d7d1 + the owner 08.08.; the counter-measurement
     /// found 0 of 46 problematic hits inside these shelves).
     ///
     /// THERE IS DELIBERATELY NO "all" ENTRY. If safety comes from the

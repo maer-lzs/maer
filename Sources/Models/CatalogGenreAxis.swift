@@ -112,7 +112,7 @@ nonisolated enum CatalogGenreAxis {
     ]
 
     /// 9ef73a4: Gutenberg LCSH subjects → the SAME shelves. Regel 2: one
-    /// axis, extended — no GutenbergGenreAxis next to it. the reviewer's measurement of
+    /// axis, extended — no GutenbergGenreAxis next to it. the measurement of
     /// the 1,124 audio titles drove the entries (Domestic fiction 15 · Love
     /// stories 15 · Adventure stories 13 · Bildungsromans 9 · Satire 6 ·
     /// Historical fiction 5); four of them already sat in librivoxAxis
@@ -144,7 +144,7 @@ nonisolated enum CatalogGenreAxis {
         "theology": "religion",
         // P7 (38511f1, full-stock measurement over 2,314 OTR bundles — 40%
         // shelve): plain OTR subject terms; suspense counts into the horror
-        // shelf (the reviewer's Horror/Suspense 114 is ONE shelf), western and
+        // shelf (the Horror/Suspense 114 is ONE shelf), western and
         // music/variety are NEW shelves (82 / 159 bundles).
         "crime": "crime",
         "comedy": "comedy",

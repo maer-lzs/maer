@@ -103,7 +103,7 @@ nonisolated enum ChapterModel {
     }
 
     /// One chapter per track, using the correct per-track offsets (TrackMath).
-    /// T9d: real coverage is often only a fraction (the operator: Schattensaat 24 %,
+    /// T9d: real coverage is often only a fraction (measured: Schattensaat 24 %,
     /// Kriegswirren 36 %), so these are NOT chapters — name them "Part N of M"
     /// so they don't masquerade as a book's real chapters.
     static func trackChapters(_ tracks: [ABSAudioTrack], duration: Double) -> [ABSChapter] {

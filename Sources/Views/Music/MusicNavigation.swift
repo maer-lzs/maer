@@ -29,7 +29,7 @@ enum MusicRoute: Hashable {
     /// 50f4751: the SEPARATE free-classical catalog area (never mixed into
     /// the personal library surfaces).
     case archiveMusic(ArchiveMusicArea)
-    /// the reviewer 08.08. Auflage 1: „Alte Schallplatten" exists ONLY as its genre
+    /// 08.08. Auflage 1: „Alte Schallplatten" exists ONLY as its genre
     /// shelves — this page lists them, there is no undivided view.
     case shellacArea
     /// M1-Korrektur: ein Katalog-Titel mit MEHREREN Spuren oeffnet seine

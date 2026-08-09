@@ -127,6 +127,39 @@ struct ProjectFileIntegrityTests {
                 "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
     }
 
+    /// Befund 09.08.: vier handgepflegte User-Agent-Zeichenketten mit drei
+    /// Versionen und zwei Adressen — eine davon nannte die private Forge und
+    /// ging bei jedem Kuenstlerbild-Abruf nach draussen. Jetzt gibt es genau
+    /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
+    /// hartkodiertes `Maer/<Ziffer>` mehr in den Quellen, und die eine
+    /// Definition steht in `AppUserAgent`.
+    @Test("exactly one User-Agent, and no hard-coded version literal")
+    func oneUserAgent() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let dir = root.appendingPathComponent("Sources")
+        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        var literals: [String] = []
+        var definitions = 0
+        var checked = 0
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            checked += 1
+            if url.lastPathComponent == "AppUserAgent.swift" {
+                definitions += text.components(separatedBy: "\"Maer/\\(").count - 1
+                continue
+            }
+            if text.range(of: #""Maer/[0-9]"#, options: .regularExpression) != nil {
+                literals.append(url.lastPathComponent)
+            }
+        }
+        guard checked > 0 else { return }
+        #expect(literals.isEmpty,
+                "a hard-coded User-Agent version — it drifts, and one of them once carried the private forge")
+        #expect(definitions == 1, "the identification is defined exactly once")
+    }
+
     @Test("pbxproj: the app target syncs Sources, not the repo root")
     func appTargetSyncsSourcesOnly() throws {
         guard let text = Self.projectFile else { return }

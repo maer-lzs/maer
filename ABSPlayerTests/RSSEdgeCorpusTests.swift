@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// RSS parser against the tooling agent's edge-case corpus (ballon5, corpus version 1.0).
+/// RSS parser against the edge-case corpus (ballon5, corpus version 1.0).
 /// Ground truth: `RSS-MANIFEST.json` / the corpus MANIFEST table. Every case
 /// runs on every test run; where Mär deviates from the corpus expectation the
 /// assert is wrapped in `withKnownIssue` with a Befund ID (full list in the

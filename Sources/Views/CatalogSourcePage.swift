@@ -291,7 +291,7 @@ struct CatalogSourcePage: View {
             if result.docs.count < pageSize { reachedEnd = true }
         case .gutenberg:
             // gutendex pages at 32; P1: same session-state rule as archive —
-            // the same corner the reviewer asked to check (a first-page fallback that
+            // the same corner flagged in review (a first-page fallback that
             // never continued).
             var books = (try? await GutenbergClient.audiobooks(
                 languages: languageFallback ? [] : codes, page: page)) ?? []

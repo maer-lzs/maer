@@ -192,7 +192,7 @@ struct MusicView: View {
                         freeTileRow(freeCatalogStore.rows.netlabels)
                     }
             }
-            // Auflage 1 (the reviewer 08.08.): the 78s are reachable ONLY through
+            // Auflage 1 (08.08.): the 78s are reachable ONLY through
             // their genre shelves — the entry leads to the shelf list, never
             // to an undivided view of the collection.
             if shellacArea {

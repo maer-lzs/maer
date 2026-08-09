@@ -196,7 +196,7 @@ nonisolated enum RadioBrowserClient {
             }
             var request = URLRequest(url: url)
             // The API asks clients to identify themselves.
-            request.setValue("Maer/1.0", forHTTPHeaderField: "User-Agent")
+            AppUserAgent.apply(to: &request)
             do {
                 let (data, http) = try await RequestRetryPolicy.fetch(request)
                 guard let status = http?.statusCode, (200...299).contains(status) else {

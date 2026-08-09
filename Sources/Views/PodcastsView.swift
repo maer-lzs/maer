@@ -322,7 +322,7 @@ RowHeading(title: "Continue", font: .title2,
     private var recommendationsSection: some View {
         // Layout-shift: renders from the GATED snapshot, not the live store —
         // the section (2nd from top) used to insert whole when the external
-        // fetch landed, shoving everything below (the reviewer's precision: the
+        // fetch landed, shoving everything below (the measured precision: the
         // conditional if-!isEmpty card-row insert IS the shift).
         if !recommendationItems.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
@@ -462,7 +462,7 @@ RowHeading(title: "Recommended",
                 // can reach it today, because other people's libraries are
                 // bigger. Ad-hoc heading (not RowHeading): the lock icon is a
                 // third variant — the moment RowHeading grows one more, it
-                // becomes the enum the reviewer noted (e268c70), and this call site
+                // becomes the enum noted (e268c70), and this call site
                 // folds in.
                 if shows.count > RowPreview.cut(shows).count {
                     NavigationLink(value: PodcastRoute.premium) {

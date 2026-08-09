@@ -23,7 +23,9 @@ actor ArtistPortraitService {
     private var cache: [String: URL?] = [:]
     private var lastRequest = Date.distantPast
 
-    private static let userAgent = "Maer/2.6 (https://git.lschroeder.eu/the-owner/maer)"
+    /// Trug bis 09.08. die PRIVATE Forge nach draussen — jetzt die eine
+    /// gemeinsame Kennung (AppUserAgent).
+    private static let userAgent = AppUserAgent.value
 
     /// Resolve the portrait for an artist: server URL wins immediately;
     /// otherwise the MB→Wikidata→Commons chain (MBID direct, else a

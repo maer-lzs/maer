@@ -23,7 +23,7 @@ enum CorpusFixture {
     }
 }
 
-/// OPML import against the tooling agent's edge-case corpus (ballon8, corpus version 1.0).
+/// OPML import against the edge-case corpus (ballon8, corpus version 1.0).
 /// Ground truth: `OPML-MANIFEST.json` — `expected_import_count` is the number
 /// of feeds a correct importer pulls after EXACT-URL dedupe. Cases where Mär
 /// deviates are wrapped in `withKnownIssue` (Befund list in the corpus

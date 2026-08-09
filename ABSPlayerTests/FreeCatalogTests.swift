@@ -403,7 +403,7 @@ struct FreeCatalogSelectionTests {
         #expect(ImageCache.cacheCapBytes(freeBytes: 40 * 1024 * mb) > 200 * mb)
     }
 
-    @Test("the junk meta item stays filtered (the reviewer's Librivox M4b collection)")
+    @Test("the junk meta item stays filtered (Librivox M4b collection)")
     func junkStaysFiltered() {
         #expect(FreeCatalog.isArtifactDoc(identifier: "librivox_m4b_collection",
                                           title: "Librivox M4b Collection Audiobooks Main"))
@@ -701,7 +701,7 @@ struct CatalogGenreAxisTests {
 
     /// 9ef73a4: Gutenbergs LCSH-subjects landen auf DENSELBEN Regalen wie die
     /// LibriVox-Genres — erweitert, nicht daneben gebaut. Die Faelle stammen
-    /// aus the reviewer's Messung der 1.124 Audio-Titel.
+    /// aus Messung der 1.124 Audio-Titel.
     @Test("LCSH subjects map onto the shared shelves")
     func lcshShelves() {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Domestic fiction"]) == ["fiction"])
@@ -892,7 +892,7 @@ struct CatalogGenreAxisTests {
         // frei (der alte default haette es behauptet), sondern erst 2076.
         #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2068) == .termsApply(year: "1980"))
         #expect(FreeCatalog.rightsNote(year: "1980", currentYear: 2076) == .publicDomain)
-        // the reviewer's Beispiele: in der Schweiz frei, in den USA geschuetzt —
+        // Beispiele: in der Schweiz frei, in den USA geschuetzt —
         // genau deshalb Fristen statt Urteil.
         #expect(FreeCatalog.rightsNote(year: "1945", currentYear: 2026) == .termsApply(year: "1945"))
         #expect(FreeCatalog.rightsNote(year: "1953", currentYear: 2026) == .termsApply(year: "1953"))

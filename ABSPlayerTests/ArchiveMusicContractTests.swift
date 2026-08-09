@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// The CONTRACT of the 78 rpm area (the reviewer 08.08., Auflage 2 — as a counter-
+/// The CONTRACT of the 78 rpm area (08.08., Auflage 2 — as a counter-
 /// proposal: the invariant is tested, not a sample).
 ///
 /// Why this shape: the area is safe because every shelf is defined by an
@@ -19,7 +19,7 @@ import Testing
 /// is the CONSTRUCTION, so that is what is nailed down here: lose the subject
 /// constraint, or add a way past the shelves, and these cases go red.
 ///
-/// The empirical basis stays in the report: the reviewer counter-measured 46 hits of
+/// The empirical basis stays in the report: counter-measured 46 hits of
 /// problematic material in the collection — 0 of them inside these shelves.
 /// Re-measure when the shelf set changes.
 struct ArchiveMusicContractTests {

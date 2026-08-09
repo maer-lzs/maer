@@ -8,7 +8,8 @@ import Foundation
 /// 0714d26 E1: the two KEYLESS free-audiobook services. Decode failures
 /// THROW (badPayload-Lehre — never a silent empty row on a broken answer).
 nonisolated enum LibriVoxClient {
-    static let userAgent = "Maer/2.7 (https://codeberg.org/lzs/maer)"
+    /// EINE Kennung fuer die ganze App (Befund 09.08.) — siehe AppUserAgent.
+    static let userAgent = AppUserAgent.value
 
     nonisolated static func decodeFeed(_ data: Data) throws -> [LibriVoxBook] {
         try JSONDecoder().decode(LibriVoxFeed.self, from: data).books ?? []
@@ -238,7 +239,7 @@ nonisolated enum ArchiveOrgClient {
     /// Plato's "Republic" as EPUB, measured), a stated licence (we suggest
     /// nothing whose rights are unknown), and the language.
     ///
-    /// Entdopplung (the reviewer's measured finding): user-made compilations of
+    /// Entdopplung (the measured finding): user-made compilations of
     /// LibriVox recordings slip through `NOT collection:librivoxaudio` — the
     /// identifier/creator carries "librivox", so it is excluded here rather
     /// than showing the same content twice.

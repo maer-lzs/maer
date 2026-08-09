@@ -55,7 +55,7 @@ nonisolated enum HoerspielCuration {
         var form: Form? = nil
         /// X²·1 (P6a-Geist): the CC capsule ONLY where the FEED itself states
         /// it (verified per feed, never blanket). Site-wide statements stay
-        /// out until the reviewer decides otherwise (report carries the evidence).
+        /// out until decided otherwise (report carries the evidence).
         var ccLicense: String? = nil
         var id: String { feedURL }
     }

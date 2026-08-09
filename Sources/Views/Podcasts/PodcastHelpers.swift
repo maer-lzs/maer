@@ -226,7 +226,7 @@ func relativeDateText(_ item: LibraryItem) -> String {
 
 /// "55 min" or "1 h 51 min" from the episode duration.
 func durationText(_ item: LibraryItem) -> String {
-    // 33bf469 P1 (the tooling agent's Fund gilt auch fuer uns): duration 0 is the ABSENCE
+    // 33bf469 P1 (Fund gilt auch fuer uns): duration 0 is the ABSENCE
     // of a duration, not a length — livestream rips and YouTube-bridge feeds
     // carry it often. "0 min" claimed a length nobody measured; the line
     // stays empty instead (the played/progress paths were already guarded).

@@ -51,5 +51,6 @@ actor CoverArtArchive {
     }
 
     /// MusicBrainz policy requires an identifying User-Agent.
-    nonisolated static let userAgent = "Maer/2.1 (https://codeberg.org/lzs/maer)"
+    /// EINE Kennung fuer die ganze App (Befund 09.08.) — siehe AppUserAgent.
+    nonisolated static let userAgent = AppUserAgent.value
 }

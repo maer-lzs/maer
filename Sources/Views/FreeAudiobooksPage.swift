@@ -98,7 +98,7 @@ struct FreeAudiobooksPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-                // the reviewer's Reihenfolge (11be262): feeds first, catalogs after —
+                // Reihenfolge (11be262): feeds first, catalogs after —
                 // the feed rows are static curation and render instantly.
                 feedSection(.oerr)
                 feedSection(.independents)
@@ -146,7 +146,7 @@ struct FreeAudiobooksPage: View {
     /// 3d6b412 E: feed sources are TILE rows too — the list form belongs to
     /// search, the surface speaks ONE tile language. The action distinction
     /// lives in the tap convention now (tile tap = show preview =
-    /// NACHSCHLAGEN; subscribing happens there). Hang risk assessed by the reviewer:
+    /// NACHSCHLAGEN; subscribing happens there). Hang risk assessed:
     /// this page is pushed, not a kept-alive tab root.
     @ViewBuilder
     private func feedSection(_ source: CatalogSource) -> some View {
