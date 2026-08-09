@@ -14,6 +14,8 @@ Mär started as a private replacement for a client that regularly lost playback 
 
 > **Note:** This is a private hobby project without warranty. It is not affiliated with the Audiobookshelf project.
 
+**Home:** <https://maer.fm> · **Source:** <https://codeberg.org/LzS/maer>
+
 ## Privacy & Data Security
 
 Mär is built on a simple rule: **your listening is nobody's business.**
@@ -162,6 +164,20 @@ Multi-user support, metadata editing, and server/library administration. Also no
 GPL-3.0-or-later — see [LICENSE](LICENSE). Up to v2.1 Mär was offered under
 the MIT license; from this commit on GPL-3.0-or-later applies. LICENSE files
 in older history are historical artifacts.
+
+Mär is GPL-3.0. Additional terms under GPL-3.0 section 7 apply — an additional
+permission for distribution through application distribution channels, and a
+reservation of the name and icon: see
+[LICENSE-ADDITIONAL-TERMS](LICENSE-ADDITIONAL-TERMS). For distribution through
+the App Store a custom end-user agreement applies instead of Apple's standard
+one: [docs/EULA.md](docs/EULA.md). The source of every released version stays
+available at <https://codeberg.org/LzS/maer>.
+
+### Contributing
+
+By contributing you agree that your contribution is licensed under GPL-3.0 and
+that the project's copyright holder may grant the app-store additional
+permission described in LICENSE-EXCEPTION for it as well.
 
 ---
 

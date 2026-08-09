@@ -15,6 +15,8 @@ Mär ist **server-first und offline-first**: Bibliothek, Metadaten, Cover und Fo
 Entstanden als privater Ersatz für einen Client, der beim Geräte-Wechsel regelmäßig den Hörfortschritt verlor. Inzwischen ist daraus ein universeller Client für das selbst gehostete, quelloffene Audio-Ökosystem geworden — auf einer Provider-Architektur, dabei bewusst fokussiert: kein Multi-User, keine Server-Verwaltung, nur hören und den Stand verlässlich synchronisieren, online wie offline.
 
 > **Hinweis:** Dies ist ein privates Hobby-Projekt ohne Gewähr. Es ist nicht
+
+**Zuhause:** <https://maer.fm> · **Quelltext:** <https://codeberg.org/LzS/maer>
 > mit dem Audiobookshelf-Projekt affiliiert.
 
 ## Screenshots
@@ -257,6 +259,20 @@ Multi-User, Metadaten-Bearbeitung, Server-/Bibliotheksverwaltung. Ebenfalls nich
 GPL-3.0-or-later — siehe [LICENSE](LICENSE). Bis v2.1 wurde Mär unter der
 MIT-Lizenz angeboten; ab diesem Commit gilt GPL-3.0-or-later. LICENSE-Dateien
 in der älteren Historie sind historische Artefakte.
+
+Mär steht unter der GPL-3.0. Zusätzlich gelten Bedingungen nach GPL-3.0
+Abschnitt 7 — eine zusätzliche Erlaubnis für die Verteilung über
+App-Vertriebskanäle und ein Vorbehalt an Name und Symbol: siehe
+[LICENSE-ADDITIONAL-TERMS](LICENSE-ADDITIONAL-TERMS). Für die Verteilung über
+den App Store gilt eine eigene Endnutzer-Vereinbarung anstelle der von Apple:
+[docs/EULA.md](docs/EULA.md). Der Quelltext jeder veröffentlichten Fassung
+bleibt unter <https://codeberg.org/LzS/maer> verfügbar.
+
+### Beiträge
+
+Mit einem Beitrag erklärst du dich damit einverstanden, dass er unter GPL-3.0
+lizenziert ist und dass der Rechteinhaber des Projekts die in LICENSE-EXCEPTION
+beschriebene zusätzliche App-Store-Erlaubnis auch für ihn erteilen darf.
 
 ---
 

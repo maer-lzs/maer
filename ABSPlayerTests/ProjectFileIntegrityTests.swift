@@ -1,6 +1,7 @@
 // Mär — an audio player for self-hosted open ecosystems
 // Copyright (C) 2026 Laurenz Schröder
 // SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 #if canImport(Testing)
 import Testing
@@ -45,6 +46,57 @@ struct ProjectFileIntegrityTests {
     /// root — docs, screenshots, test fixtures, tooling config, the local
     /// key file — can be swept into the app bundle. Lose the path and both
     /// problems return silently, so it is nailed down here.
+    /// Die App-Store-Ausnahme (LICENSE-EXCEPTION) kann Laurenz nur erteilen,
+    /// weil er ALLEINIGER Rechteinhaber ist — und das ist er nur, solange das
+    /// Projekt keine Fremdabhängigkeit einzieht. Eine still dazugekommene
+    /// SPM-Abhängigkeit brächte fremden Code (und fremde Lizenz) in dieselbe
+    /// Binärdatei und würde die Ausnahme aushöhlen, ohne dass jemand es
+    /// bemerkt. Deshalb ist die Zahl hier festgenagelt: 0.
+    /// GPL § 7 verlangt den Hinweis auf Zusatzbedingungen ausdrücklich **in
+    /// den Quelldateien** („in the relevant source files … a notice indicating
+    /// where to find the applicable terms") — nicht nur in der Wurzel. Eine
+    /// neue Datei ohne diese Zeile ließe die Bedingung still ausfallen, und
+    /// niemand würde es merken. Derselbe Mechanismus wie beim pbxproj-Zaun.
+    @Test("every source file carries copyright, SPDX and the additional-terms notice")
+    func everySourceFileCarriesTheLicenceHeader() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        var offenders: [String] = []
+        var checked = 0
+        for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
+            let dir = root.appendingPathComponent(folder)
+            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+            else { continue }
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                checked += 1
+                let head = text.prefix(400)
+                if !head.contains("Copyright (C)")
+                    || !head.contains("SPDX-License-Identifier: GPL-3.0-or-later")
+                    || !head.contains("see LICENSE-ADDITIONAL-TERMS") {
+                    offenders.append(url.lastPathComponent)
+                }
+            }
+        }
+        // Not readable (device run) ⇒ nothing to say, like the other cases.
+        guard checked > 0 else { return }
+        #expect(offenders.isEmpty,
+                "source files without the full licence header — GPL §7 requires the notice in the files")
+    }
+
+    @Test("no third-party dependency sneaks in (the licence exception rests on it)")
+    func noExternalDependencies() throws {
+        guard let text = Self.projectFile else { return }
+        #expect(!text.contains("XCRemoteSwiftPackageReference"),
+                "a new SPM dependency changes the licence situation — see LICENSE-EXCEPTION")
+        #expect(!text.contains("XCLocalSwiftPackageReference"))
+        #expect(!text.contains("packageProductDependencies = (\n\t\t\t\tXC"),
+                "a package product was linked into a target")
+        // Both licence documents ship with the app (same reason LICENSE does).
+        #expect(text.contains("LICENSE-ADDITIONAL-TERMS in Resources"),
+                "the additional terms must travel with the binary they apply to")
+    }
+
     @Test("pbxproj: the app target syncs Sources, not the repo root")
     func appTargetSyncsSourcesOnly() throws {
         guard let text = Self.projectFile else { return }

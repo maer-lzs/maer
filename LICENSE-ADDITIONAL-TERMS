@@ -1,0 +1,78 @@
+Mär — Additional Terms under GNU GPL Version 3, Section 7
+
+Copyright (C) 2026 Laurenz Schröder
+
+These terms are granted and imposed by the sole copyright holder of Mär. They
+supplement the GNU General Public License version 3; in every other respect
+that License applies unchanged.
+
+────────────────────────────────────────────────────────────────────────
+PART 1 — ADDITIONAL PERMISSION: distribution channels
+────────────────────────────────────────────────────────────────────────
+
+As an additional permission under section 7 of the GNU General Public License
+version 3, you are granted permission to distribute copies of Mär, or works
+based on Mär, through any managed application distribution channel operated by
+a third party — including application stores, app marketplaces, and comparable
+platforms, whatever their name, operator, or target operating system, existing
+now or established in the future — even where the terms of service of such a
+channel impose limitations that would otherwise conflict with sections 6 and 10
+of the GNU General Public License.
+
+Such limitations include, without limitation: restrictions on the number of
+devices or user accounts on which a copy may be installed; a requirement to
+associate a copy with an account of the channel operator; technical measures
+applied by the channel operator to the distributed copy, including digital
+rights management, code signing, notarisation, and integrity enforcement; and
+review, revocation, or removal of the copy by the channel operator.
+
+This permission is subject to all of the following conditions:
+
+  (a) The complete corresponding source code of the distributed version is
+      publicly available, free of charge, under the GNU General Public License
+      version 3 or later — at https://codeberg.org/LzS/maer, also reachable at
+      https://maer.fm/source, through a distribution channel that does not
+      impose the limitations described above — for as long as that version is
+      distributed.
+
+  (b) Recipients are informed, in the application itself or in its listing on
+      the distribution channel, where that source code can be obtained.
+
+  (c) You add no restrictions of your own beyond those the channel operator
+      imposes.
+
+  (d) The distributed copy is functionally the published version of Mär: this
+      permission does not cover distributing a version whose source has been
+      withheld, nor adding proprietary components under cover of it.
+
+This permission grants no rights in the name "Mär" or in the application
+artwork; see Part 2 below.
+
+This additional permission applies solely to distribution through such
+channels. In every other respect the GNU General Public License version 3
+applies unchanged.
+
+────────────────────────────────────────────────────────────────────────
+PART 2 — NAME AND ARTWORK
+────────────────────────────────────────────────────────────────────────
+
+Forks are welcome, but the name is not part of what the licence hands over.
+"Mär" — and "Maer", its plain-ASCII spelling — and the application icon are
+reserved to the copyright holder, in any capitalisation; neither the GNU
+General Public License nor Part 1 grants any rights in them. Only the copyright
+holder — and a distribution channel releasing a build submitted to it by the
+copyright holder — may publish the application under either spelling. Anyone
+else who publishes it, changed or not, gives it a name and an icon of their
+own.
+
+This concerns the application, not the source code. The source keeps the
+project's name wherever it is copied, you may build it for your own use, and
+you may say freely that your work is a fork of Mär or a client for Mär.
+
+────────────────────────────────────────────────────────────────────────
+
+Part 1 is an additional permission and may be removed by any recipient who
+chooses to do so. Part 2 states additional terms permitted by section 7(c)
+and section 7(e); they are not "further restrictions" within the meaning of
+section 10 and may not be removed. The copyright holder may withhold Part 1
+for future versions; versions already released with it keep it.

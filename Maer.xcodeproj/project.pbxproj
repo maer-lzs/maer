@@ -12,6 +12,7 @@
 		CF68E6603002599B00C97B74 /* MaerWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CF68E64E3002599A00C97B74 /* MaerWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CFA9000000000000000000F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CFA9000000000000000000E1 /* Assets.xcassets */; };
 		CFA9000000000000000000F2 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = CFA9000000000000000000E2 /* LICENSE */; };
+		CFA9000000000000000000F5 /* LICENSE-ADDITIONAL-TERMS in Resources */ = {isa = PBXBuildFile; fileRef = CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +63,7 @@
 		CFA9000000000000000000C2 /* Config/App.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config/App.xcconfig; sourceTree = "<group>"; };
 		CFA9000000000000000000E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CFA9000000000000000000E2 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */ = {isa = PBXFileReference; lastKnownFileType = text; path = "LICENSE-ADDITIONAL-TERMS"; sourceTree = "<group>"; };
 		CFA9000000000000000000E3 /* ABSPlayer-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "ABSPlayer-Info.plist"; sourceTree = "<group>"; };
 		CFA9000000000000000000E4 /* ABSPlayer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ABSPlayer.entitlements; sourceTree = "<group>"; };
 		CFC8E64A30006E4A00226154 /* ABSPlayerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ABSPlayerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -179,6 +181,7 @@
 				CFA9000000000000000000C2 /* Config/App.xcconfig */,
 				CFA9000000000000000000E1 /* Assets.xcassets */,
 				CFA9000000000000000000E2 /* LICENSE */,
+				CFA9000000000000000000E5 /* LICENSE-ADDITIONAL-TERMS */,
 				CFA9000000000000000000E3 /* ABSPlayer-Info.plist */,
 				CFA9000000000000000000E4 /* ABSPlayer.entitlements */,
 				CFA9000000000000000000D1 /* LiveActivityWidget */,
@@ -350,6 +353,7 @@
 			files = (
 				CFA9000000000000000000F1 /* Assets.xcassets in Resources */,
 				CFA9000000000000000000F2 /* LICENSE in Resources */,
+				CFA9000000000000000000F5 /* LICENSE-ADDITIONAL-TERMS in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
