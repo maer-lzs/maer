@@ -67,6 +67,7 @@ struct ArchiveMusicPage: View {
                                     Button {
                                         detailItem = item
                                     } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogQueueButtons(itemId: item.id)
                                 }
                                 .onAppear {
                                     if item.id == items.last?.id { Task { await loadMore() } }
@@ -84,6 +85,17 @@ struct ArchiveMusicPage: View {
             }
         }
         .navigationTitle(Text(area.title))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await CatalogShuffle.play(area: area, coordinator: playerCoordinator) }
+                } label: {
+                    Image(systemName: "shuffle")
+                }
+                .accessibilityLabel(Text("Play something at random"))
+                .accessibilityIdentifier("catalog-shuffle")
+            }
+        }
         .task { if items.isEmpty { await loadMore(reset: true) } }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
@@ -147,6 +159,7 @@ struct ShellacShelvesPage: View {
                         VStack(alignment: .leading, spacing: 10) {
                             RowHeading.entry(verbatim: shelf.title,
                                              destination: MusicRoute.archiveMusic(shelf))
+                                .catalogShuffle(area: shelf, coordinator: playerCoordinator)
                             tileRow(items, shelf: shelf)
                         }
                     }
@@ -185,6 +198,7 @@ struct ShellacShelvesPage: View {
                         Button {
                             detailItem = item
                         } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogQueueButtons(itemId: item.id)
                     }
                 }
             }

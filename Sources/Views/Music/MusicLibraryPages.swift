@@ -475,6 +475,7 @@ struct FreeJamendoPage: View {
                                 Button {
                                     detailItem = item
                                 } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogQueueButtons(itemId: item.id)
                             }
                         }
                     }
@@ -532,6 +533,7 @@ struct FreeJamendoPage: View {
                         Button {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
+                        CatalogQueueButtons(itemId: item.id)
                     }
                 }
             }
@@ -572,6 +574,7 @@ struct JamendoShelfPage: View {
                         Button {
                             detailItem = item
                         } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogQueueButtons(itemId: item.id)
                     }
                 }
                 if !reachedEnd {
@@ -623,18 +626,23 @@ struct MusicCatalogAreaPage: View {
                 if !store.rows.classical.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
+                            .catalogShuffle(area: ArchiveMusicCatalog.classical,
+                                            coordinator: playerCoordinator)
                         tileRow(store.rows.classical)
                     }
                 }
                 if !store.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
+                            .catalogShuffle(area: ArchiveMusicCatalog.netlabels,
+                                            coordinator: playerCoordinator)
                         tileRow(store.rows.netlabels)
                     }
                 }
                 if !store.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                            .jamendoShuffle(coordinator: playerCoordinator)
                         tileRow(store.rows.freeMusic)
                     }
                 }
@@ -691,6 +699,7 @@ struct MusicCatalogAreaPage: View {
                         Button {
                             detailItem = item
                         } label: { Label("Details", systemImage: "info.circle") }
+                        CatalogQueueButtons(itemId: item.id)
                     }
                 }
             }

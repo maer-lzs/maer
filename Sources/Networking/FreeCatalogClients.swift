@@ -302,7 +302,11 @@ nonisolated enum ArchiveOrgClient {
     }
 
     /// Shared advancedsearch (downloads sort) — one mechanism for both rows.
-    static func popular(query: String, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
+    /// `sort` defaults to the popularity ranking; M2 passes "random" for the
+    /// shuffle gesture (measured: the value works, but archive.org caches it
+    /// for a few minutes — the caller varies the PAGE as well).
+    static func popular(query: String, rows: Int, page: Int = 1,
+                        sort: String = "downloads desc") async throws -> [ArchivePopularDoc] {
         var comp = URLComponents(string: "https://archive.org/advancedsearch.php")!
         comp.queryItems = [
             URLQueryItem(name: "q", value: query),
@@ -322,7 +326,7 @@ nonisolated enum ArchiveOrgClient {
             // 48e786d: subjects ride along so the genre axis has material for
             // the archive.org rows too (they were never requested before).
             URLQueryItem(name: "fl[]", value: "subject"),
-            URLQueryItem(name: "sort[]", value: "downloads desc"),
+            URLQueryItem(name: "sort[]", value: sort),
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "output", value: "json"),

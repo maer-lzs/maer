@@ -178,12 +178,16 @@ struct MusicView: View {
             if freeClassicalArea, !freeCatalogStore.rows.classical.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
+                            .catalogShuffle(area: ArchiveMusicCatalog.classical,
+                                            coordinator: playerCoordinator)
                         freeTileRow(freeCatalogStore.rows.classical)
                     }
             }
             if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
+                            .catalogShuffle(area: ArchiveMusicCatalog.netlabels,
+                                            coordinator: playerCoordinator)
                         freeTileRow(freeCatalogStore.rows.netlabels)
                     }
             }
@@ -216,6 +220,7 @@ struct MusicView: View {
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                            .jamendoShuffle(coordinator: playerCoordinator)
                         freeTileRow(freeCatalogStore.rows.freeMusic)
                     }
             }

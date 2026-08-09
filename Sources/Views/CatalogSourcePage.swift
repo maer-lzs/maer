@@ -364,6 +364,7 @@ struct CatalogShelfPage: View {
                         Button {
                             Task { await playerCoordinator.open(item: item) }
                         } label: { Label("Play", systemImage: "play.fill") }
+                        CatalogQueueButtons(itemId: item.id)
                     }
                     .onAppear {
                         if item.id == items.last?.id { Task { await loadMore() } }

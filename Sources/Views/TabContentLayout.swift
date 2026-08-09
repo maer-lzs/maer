@@ -80,8 +80,36 @@ struct RowHeading<Destination: Hashable>: View {
     var destination: Destination?
     /// Auftrag J: name the counted total in the chevron label (stock previews).
     var showsTotal: Bool = false
+    /// M2 (09.08.): a discreet SYMBOL action next to the chevron — the
+    /// shuffle gesture of the music catalog rows. Deliberately the sort-symbol
+    /// form (fb21fbd), NOT a glass button: it belongs to the heading, not on
+    /// top of the content. nil = no accessory, which is every other row.
+    var accessorySymbol: String?
+    var accessoryLabel: LocalizedStringKey = ""
+    var accessoryAction: (@MainActor () -> Void)?
 
     var body: some View {
+        if let accessorySymbol, let accessoryAction {
+            HStack(spacing: 8) {
+                headingBody
+                Spacer(minLength: 4)
+                Button(action: accessoryAction) {
+                    Image(systemName: accessorySymbol)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(accessoryLabel))
+            }
+        } else {
+            headingBody
+        }
+    }
+
+    @ViewBuilder
+    private var headingBody: some View {
         switch variant {
         case .counted(let total, let shown):
             if let destination, total > shown {
@@ -216,4 +244,51 @@ enum CardMetrics {
     static func recommendationColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func playlistColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func rediscoverColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
+}
+
+// MARK: - M2: die Zufalls-Geste als geteilte Erweiterung
+
+extension RowHeading {
+    /// „Zufällig abspielen" an einer archive.org-Musikreihe — aus dem GANZEN
+    /// Fach, nicht aus der Vorschau (M2). Reihe = heute frisch aus dem Guten,
+    /// dieser Knopf = quer durch alles: zwei Gesten, zwei Bedeutungen.
+    @MainActor
+    func catalogShuffle(area: ArchiveMusicArea, coordinator: PlayerCoordinator) -> RowHeading {
+        var copy = self
+        copy.accessorySymbol = "shuffle"
+        copy.accessoryLabel = "Play something at random"
+        copy.accessoryAction = { Task { await CatalogShuffle.play(area: area, coordinator: coordinator) } }
+        return copy
+    }
+
+    /// Dasselbe für Jamendo — dort über einen zufälligen Versatz, weil die
+    /// API keine Zufallssortierung kennt (gemessen).
+    @MainActor
+    func jamendoShuffle(tags: [String] = [], coordinator: PlayerCoordinator) -> RowHeading {
+        var copy = self
+        copy.accessorySymbol = "shuffle"
+        copy.accessoryLabel = "Play something at random"
+        copy.accessoryAction = { Task { await CatalogShuffle.playJamendo(tags: tags, coordinator: coordinator) } }
+        return copy
+    }
+}
+
+
+/// M3 (Auftrag 09.08.): „Als Nächstes" / „Zuletzt einreihen" für Katalog-Titel.
+/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
+/// es fehlten nur die Einstiege. EIN Baustein für alle Katalog-Kacheln (Musik
+/// UND Bücher), damit die nächste Fläche ihn nicht neu erfindet.
+struct CatalogQueueButtons: View {
+    let itemId: String
+
+    var body: some View {
+        if PlayQueue.canEnqueue(itemId) {
+            Button {
+                PlayQueue.shared.playNext(itemId)
+            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
+            Button {
+                PlayQueue.shared.playLast(itemId)
+            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
+        }
+    }
 }
