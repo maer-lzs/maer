@@ -849,7 +849,20 @@ struct PlayerView: View {
     }
 
     private var markFinishedControl: some View {
-        Button { Task { await viewModel.toggleFinished() } } label: {
+        // GT 09.08.: im Player ist das markierte Element per Definition das
+        // laufende — „gehoert" muss es also anhalten (X16c). `toggleFinished`
+        // allein kippt nur die Marke. Richtung ZUERST lesen, danach hat sie
+        // sich schon gedreht; „ungehoert" bleibt folgenlos (Position und
+        // Wiedergabe unveraendert, Auflage 3).
+        Button {
+            Task {
+                let wasFinished = viewModel.isFinished
+                await viewModel.toggleFinished()
+                if !wasFinished, let id = viewModel.item?.id {
+                    AppSession.shared.playerCoordinator.markPlayedAndAdvance(itemId: id)
+                }
+            }
+        } label: {
             Label(viewModel.isFinished ? String(localized: "Mark Unfinished") : String(localized: "Mark Finished"),
                   systemImage: viewModel.isFinished ? "checkmark.circle.fill" : "checkmark.circle")
         }

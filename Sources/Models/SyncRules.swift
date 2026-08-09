@@ -11,6 +11,16 @@ import Foundation
 /// default MainActor isolation.
 nonisolated enum SyncRules {
 
+    /// GT 09.08.: „finished" is DERIVED from the position, at exactly one
+    /// place. That is what makes „mark as heard" safe on a running item:
+    /// `finalizeAsFinished()` moves the position to the end, so the stop's
+    /// final sync writes `finished` — never the old position behind it.
+    /// One second of tolerance because the last tick rarely lands exactly on
+    /// the duration.
+    static func isFinished(currentTime: Double, duration: Double) -> Bool {
+        duration > 0 && currentTime >= duration - 1
+    }
+
     /// Device reconcile: adopt the server state?
     /// With timestamp: newer entry + noticeable difference (also backwards).
     /// Without timestamp (old servers): forward only.

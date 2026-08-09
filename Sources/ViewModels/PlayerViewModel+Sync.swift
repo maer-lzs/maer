@@ -67,7 +67,7 @@ extension PlayerViewModel {
             return
         }
 
-        let isFinishedNow = duration > 0 && currentTime >= duration - 1
+        let isFinishedNow = SyncRules.isFinished(currentTime: currentTime, duration: duration)
         do {
             try await provider.updateProgress(
                 itemId: item.id,

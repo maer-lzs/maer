@@ -268,7 +268,8 @@ struct PodcastEpisodeDetailView: View {
             // X16c: marking played behaves like a natural end — if this episode
             // is the active session, playback stops and auto-continue advances
             // (parity with the audiobook detail page).
-            if nowPlayed { playerCoordinator.markPlayedAndAdvance(itemId: item.id) }
+            // (Die Konsequenz zieht jetzt `podcastSetPlayed` selbst — eine
+            // Stelle fuer alle Flaechen, GT 09.08.)
         } label: {
             Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.title2)

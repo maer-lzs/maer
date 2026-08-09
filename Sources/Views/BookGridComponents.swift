@@ -155,6 +155,11 @@ struct BookContextMenuItems: View {
         let newIsFinished = !(entry.progress?.isFinished ?? false)
         // Invariant "heard = flies out": marking finished drops it from Up Next.
         if newIsFinished { PlayQueue.shared.markedPlayed(entry.id) }
+        // GT 09.08.: the player consequence belongs at the same place as the
+        // queue invariant (X16c: mark = as if it had ended → stop and
+        // auto-continue). No-op when the book is not the active item, so the
+        // context menu needs no condition of its own.
+        if newIsFinished { playerCoordinator.markPlayedAndAdvance(itemId: entry.id) }
         let duration: Double
         let currentTime: Double
         if let fresh = try? await provider.fetchItemDetail(itemId: entry.id) {

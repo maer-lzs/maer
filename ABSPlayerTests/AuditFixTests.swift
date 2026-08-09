@@ -321,4 +321,26 @@ struct PodcastAutoContinueTests {
         #expect(picked?.id == "s2e1")
     }
 }
+/// GT 09.08.: „Als gehört" auf dem LAUFENDEN Element hält an — und der letzte
+/// Schreibvorgang darf nicht die alte Position hinterherschieben. Genau das
+/// ist die Falle: `markPlayedAndAdvance` ruft `finalizeAsFinished()` (Position
+/// ans Ende) und danach `stop()`, dessen Endsync den Zustand schreibt. Die
+/// Ableitung „ist fertig" hängt deshalb an EINER puren Regel, und die ist hier
+/// festgenagelt.
+struct MarkPlayedWriteOrderTests {
+    @Test("finalizeAsFinished puts the position where the final sync reads FINISHED")
+    func finishedIsDerivedFromTheEndPosition() {
+        let duration = 1800.0
+        // finalizeAsFinished setzt currentTime = duration.
+        #expect(SyncRules.isFinished(currentTime: duration, duration: duration))
+        // Der letzte Tick landet selten exakt — eine Sekunde Toleranz.
+        #expect(SyncRules.isFinished(currentTime: duration - 0.4, duration: duration))
+        // Die laufende Position VORHER ist nicht fertig: ohne
+        // finalizeAsFinished schriebe der Endsync genau das (der Fehlerfall).
+        #expect(!SyncRules.isFinished(currentTime: 300, duration: duration))
+        // Unbekannte Dauer ist nie „fertig" (sonst waere jeder Livestream fertig).
+        #expect(!SyncRules.isFinished(currentTime: 300, duration: 0))
+    }
+}
+
 #endif
