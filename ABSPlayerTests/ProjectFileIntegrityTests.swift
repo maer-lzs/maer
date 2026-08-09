@@ -160,6 +160,32 @@ struct ProjectFileIntegrityTests {
         #expect(definitions == 1, "the identification is defined exactly once")
     }
 
+    /// Architektur-Befund 09.08.: die acht Katalogquellen hatten ein zweites,
+    /// handgeschriebenes Aktivierungssystem — die Vorgabe „an" stand 35× in
+    /// elf Dateien. Heute stimmten alle 35 überein; erzwungen hat das
+    /// niemand, ein `bool(forKey:)` an einer Stelle hätte sie gekippt.
+    /// Jetzt steht sie einmal je Quelle in `AppStorageKeys`. Ohne diesen Zaun
+    /// ist der Aufräumtag in drei Monaten rückgängig gemacht.
+    @Test("the default 'on' lives in exactly one file")
+    func noScatteredDefaults() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let dir = root.appendingPathComponent("Sources")
+        guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+        else { return }
+        var offenders: [String] = []
+        var checked = 0
+        for case let url as URL in walker where url.pathExtension == "swift" {
+            if url.lastPathComponent == "AppStorageKeys.swift" { continue }
+            guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+            checked += 1
+            if text.contains("as? Bool ?? true") { offenders.append(url.lastPathComponent) }
+        }
+        guard checked > 0 else { return }
+        #expect(offenders.isEmpty,
+                "a default value composed outside AppStorageKeys — that is how 35 copies grew")
+    }
+
     @Test("pbxproj: the app target syncs Sources, not the repo root")
     func appTargetSyncsSourcesOnly() throws {
         guard let text = Self.projectFile else { return }

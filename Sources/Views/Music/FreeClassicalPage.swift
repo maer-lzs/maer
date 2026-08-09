@@ -105,7 +105,7 @@ struct ArchiveMusicPage: View {
 
     private func loadMore(reset: Bool = false) async {
         // 5034add: master off ⇒ no traffic even if the route is still open.
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return }
+        guard AppStorageKeys.freeCatalogsMasterActive else { return }
         guard !isLoading, !reachedEnd || reset else { return }
         if reset { page = 1; reachedEnd = false; loadFailed = false }
         isLoading = true
@@ -215,7 +215,7 @@ struct ShellacShelvesPage: View {
 
     private func loadShelves() async {
         guard rows.isEmpty else { return }
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return }
+        guard AppStorageKeys.freeCatalogsMasterActive else { return }
         let provider = FreeCatalogProvider.shared
         for shelf in ArchiveMusicCatalog.shellacShelves {
             do {

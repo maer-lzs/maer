@@ -41,23 +41,23 @@ struct MusicView: View {
     /// (Music pill) > archive.org service opt-out.
     private var netlabelsArea: Bool {
         FreeCatalogActivation.effective(
-            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
-            feature: UserDefaults.standard.object(forKey: AppStorageKeys.netlabelsRowEnabled) as? Bool ?? true,
-            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+            master: AppStorageKeys.freeCatalogsMasterActive,
+            feature: AppStorageKeys.netlabelsActive,
+            service: AppStorageKeys.archiveBooksActive)
     }
 
     private var shellacArea: Bool {
         FreeCatalogActivation.effective(
-            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
-            feature: UserDefaults.standard.object(forKey: AppStorageKeys.shellacRowsEnabled) as? Bool ?? true,
-            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+            master: AppStorageKeys.freeCatalogsMasterActive,
+            feature: AppStorageKeys.shellacActive,
+            service: AppStorageKeys.archiveBooksActive)
     }
 
     private var freeClassicalArea: Bool {
         FreeCatalogActivation.effective(
             master: freeCatalogsMaster,
-            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true,
-            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+            feature: AppStorageKeys.freeClassicalActive,
+            service: AppStorageKeys.archiveBooksActive)
     }
 
     private var sortedPlaylists: [MusicPlaylist] {

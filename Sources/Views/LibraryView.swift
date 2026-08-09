@@ -1040,8 +1040,8 @@ struct LibraryView: View {
     private var freeAudiobooksArea: Bool {
         FreeCatalogActivation.effective(
             master: freeCatalogsMaster,
-            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true,
-            service: UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true)
+            feature: AppStorageKeys.freeAudiobooksAreaActive,
+            service: AppStorageKeys.librivoxActive)
     }
 
     /// cb99bf6: the tile ROW above "All Books" — linked title into the area

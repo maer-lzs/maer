@@ -133,7 +133,7 @@ enum FreeCatalogLoader {
     static func load() async -> Rows {
         // 5034add: master off ⇒ nothing loads, nothing fetches — the whole
         // catalog feature is dark (UI gates hide the surfaces separately).
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else {
+        guard AppStorageKeys.freeCatalogsMasterActive else {
             return Rows()
         }
         var rows = Rows()
@@ -141,11 +141,11 @@ enum FreeCatalogLoader {
         if UITestSeed.isActive { return rows }   // no external calls in the harness
         #endif
         let provider = FreeCatalogProvider.shared
-        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
-        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
-        let jamendoOn = UserDefaults.standard.object(forKey: AppStorageKeys.jamendoRowEnabled) as? Bool ?? true
+        let librivoxOn = AppStorageKeys.librivoxActive
+        let archiveOn = AppStorageKeys.archiveBooksActive
+        let jamendoOn = AppStorageKeys.jamendoActive
 
-        let areaOn = UserDefaults.standard.object(forKey: AppStorageKeys.freeAudiobooksEnabled) as? Bool ?? true
+        let areaOn = AppStorageKeys.freeAudiobooksAreaActive
         if librivoxOn && areaOn {
             do {
                 // 938aebc: the row used to fetch LibriVox's SINCE feed (new
@@ -167,7 +167,7 @@ enum FreeCatalogLoader {
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
             }
         }
-        let classicalOn = (UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true) && archiveOn
+        let classicalOn = (AppStorageKeys.freeClassicalActive) && archiveOn
         if classicalOn {
             do {
                 // Tages-Rotation: die Reihe zeigt heute eine ANDERE Seite des
@@ -183,7 +183,7 @@ enum FreeCatalogLoader {
                 Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
             }
         }
-        let netlabelsOn = (UserDefaults.standard.object(forKey: AppStorageKeys.netlabelsRowEnabled) as? Bool ?? true) && archiveOn
+        let netlabelsOn = (AppStorageKeys.netlabelsActive) && archiveOn
         if netlabelsOn {
             do {
                 let page = CatalogRotation.page(
@@ -262,7 +262,7 @@ enum CatalogSourceLoader {
     }
 
     static func load() async -> SourceRows {
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else {
+        guard AppStorageKeys.freeCatalogsMasterActive else {
             return SourceRows()
         }
         var rows = SourceRows()
@@ -271,8 +271,8 @@ enum CatalogSourceLoader {
         #endif
         let provider = FreeCatalogProvider.shared
         let codes = SuggestionLanguages.current()
-        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
-        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+        let librivoxOn = AppStorageKeys.librivoxActive
+        let archiveOn = AppStorageKeys.archiveBooksActive
 
         // Tages-Rotation der BELIEBTHEITS-Reihen (Auftrag 09.08.): dieselbe
         // Sortierung, aber taeglich eine andere Seite des oberen Zehntels.
@@ -690,7 +690,7 @@ struct FreeCatalogDetailSheet: View {
     private func startServerImport() {
         // Wi-Fi gate (books run 100–500 MB) — the existing cellular warning
         // mechanism; explicit confirmation continues on cellular.
-        let warn = UserDefaults.standard.object(forKey: AppStorageKeys.warnCellularDownload) as? Bool ?? true
+        let warn = AppStorageKeys.warnCellularDownloadValue
         Task {
             if warn, !(await NetworkStatus.isOnWiFi()) {
                 showWiFiWarning = true

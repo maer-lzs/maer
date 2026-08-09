@@ -12,6 +12,7 @@ import UniformTypeIdentifiers
 /// subscribed shows. Source-specific management, analogous to `LocalFilesView`
 /// — the podcast tab only consumes.
 struct PodcastSourceView: View {
+    @AppStorage(AppStorageKeys.pinchflatEnabled) private var pinchflatEnabled = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
 
@@ -362,6 +363,15 @@ struct PodcastSourceView: View {
 
     private var pinchflatSection: some View {
         Section {
+            // Befund B1 (09.08.): Pinchflat war die EINZIGE der vierzehn
+            // Quellen ohne Ein-/Aus-Schalter — stilllegen ging nur durch
+            // LOESCHEN, und danach mussten Adresse und Token neu eingetragen
+            // werden. Jetzt wie bei allen Nachbarn: ausschalten laesst die
+            // Zugangsdaten stehen.
+            Toggle(isOn: $pinchflatEnabled) {
+                Label("Use Pinchflat", systemImage: "play.rectangle.on.rectangle")
+            }
+            .accessibilityIdentifier("pinchflat-toggle")
             DisclosureGroup(isExpanded: $showPinchflat) {
                 TextField("Server URL", text: $pinchflatURL)
                     .textInputAutocapitalization(.never)

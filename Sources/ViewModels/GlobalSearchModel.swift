@@ -96,10 +96,10 @@ final class GlobalSearchModel: ObservableObject {
     /// capsules and the detail sheet ride the existing paths.
     @MainActor
     static func catalogBookResults(query: String) async -> [SearchResult] {
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true else { return [] }
+        guard AppStorageKeys.freeCatalogsMasterActive else { return [] }
         let provider = FreeCatalogProvider.shared
-        let librivoxOn = UserDefaults.standard.object(forKey: AppStorageKeys.librivoxRowsEnabled) as? Bool ?? true
-        let archiveOn = UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true
+        let librivoxOn = AppStorageKeys.librivoxActive
+        let archiveOn = AppStorageKeys.archiveBooksActive
         // Isolation-checker rule (same as P8): only Sendable RAW payloads
         // cross the group boundary; remember()/result building runs on the
         // main actor afterwards.

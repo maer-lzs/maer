@@ -22,7 +22,7 @@ final class PodcastServerSave {
     /// Like the toggle in the settings (`@AppStorage("podcastAutoSaveOnPlay")`),
     /// here directly from UserDefaults — default on.
     private var autoSave: Bool {
-        UserDefaults.standard.object(forKey: "podcastAutoSaveOnPlay") as? Bool ?? true
+        AppStorageKeys.podcastAutoSaveOnPlayValue
     }
 
     private struct Pending { let showId: String; let feed: FeedEpisode }

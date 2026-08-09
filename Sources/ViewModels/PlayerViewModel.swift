@@ -720,7 +720,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     private func applySmartRewindIfNeeded() {
         guard let pausedAt else { return }
         self.pausedAt = nil
-        guard UserDefaults.standard.object(forKey: AppStorageKeys.smartRewind) as? Bool ?? true else { return }
+        guard AppStorageKeys.smartRewindValue else { return }
         let gap = Date().timeIntervalSince(pausedAt)
         let rewind: Double
         switch gap {

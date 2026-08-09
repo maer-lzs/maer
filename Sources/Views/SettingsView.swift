@@ -56,9 +56,9 @@ struct SettingsView: View {
     @State private var defaultRate: Double =
         Double(UserDefaults.standard.object(forKey: AppStorageKeys.defaultPlaybackRate) as? Float ?? 1.0)
     @State private var smartRewind: Bool =
-        UserDefaults.standard.object(forKey: AppStorageKeys.smartRewind) as? Bool ?? true
+        AppStorageKeys.smartRewindValue
     @State private var warnCellular: Bool =
-        UserDefaults.standard.object(forKey: AppStorageKeys.warnCellularDownload) as? Bool ?? true
+        AppStorageKeys.warnCellularDownloadValue
     @State private var autoPlayNext: Bool =
         UserDefaults.standard.bool(forKey: AppStorageKeys.autoPlayNextInSeries)
     @AppStorage(AppStorageKeys.appearance) private var appearance = "system"

@@ -422,6 +422,83 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: rssEnabled) }
     }
 
+    /// Dieselbe Klasse wie die Katalog-Vorgaben, nur bei Vorlieben: der
+    /// Standardwert stand an mehreren Lesestellen. Auch hier gilt „einmal an
+    /// einem Ort", damit der Zaun ohne Ausnahmen auskommt.
+    nonisolated static var smartRewindValue: Bool { boolValue(smartRewind) }
+    nonisolated static var warnCellularDownloadValue: Bool { boolValue(warnCellularDownload) }
+    nonisolated static let podcastAutoSaveOnPlay = "podcastAutoSaveOnPlay"
+    nonisolated static var podcastAutoSaveOnPlayValue: Bool { boolValue(podcastAutoSaveOnPlay) }
+
+    // MARK: - Katalog-Aktivierung (Architektur-Befund 09.08.)
+
+    /// Die acht freien Katalogquellen hatten ein ZWEITES, handgeschriebenes
+    /// Aktivierungssystem mit exakt derselben Form wie das modellierte —
+    /// Hauptschalter ∧ Einzelschalter — nur ohne Modell: die Vorgabe „an"
+    /// stand **35× in elf Dateien**, jede Lesestelle komponierte selbst.
+    /// Heute stimmten alle 35 überein; erzwungen hat das niemand.
+    ///
+    /// Ab hier gilt für Kataloge dasselbe wie für Server-Quellen: EINE
+    /// Antwort je Quelle auf „ist sie an", an EINEM Ort, über dieselbe reine
+    /// Regel. Die drei Ebenen bleiben, wie sie waren (Master > Bereich >
+    /// Dienst) — `FreeCatalogActivation.effective` ist die dafür schon
+    /// vorhandene reine Funktion.
+    nonisolated static func boolValue(_ key: String, default defaultValue: Bool = true) -> Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue
+    }
+
+    /// Der Hauptschalter über allen Katalogflächen.
+    nonisolated static var freeCatalogsMasterActive: Bool { boolValue(freeCatalogsMasterEnabled) }
+    /// Der archive.org-DIENST-Opt-out — über den drei archive-Flächen.
+    nonisolated static var archiveServiceActive: Bool {
+        freeCatalogsMasterActive && boolValue(archivePopularEnabled)
+    }
+
+    nonisolated static var librivoxActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(librivoxRowsEnabled), service: true)
+    }
+    nonisolated static var archiveBooksActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(archivePopularEnabled), service: true)
+    }
+    nonisolated static var jamendoActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(jamendoRowEnabled), service: true)
+    }
+    nonisolated static var freeClassicalActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(freeClassicalEnabled),
+                                        service: boolValue(archivePopularEnabled))
+    }
+    nonisolated static var netlabelsActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(netlabelsRowEnabled),
+                                        service: boolValue(archivePopularEnabled))
+    }
+    nonisolated static var shellacActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(shellacRowsEnabled),
+                                        service: boolValue(archivePopularEnabled))
+    }
+    nonisolated static var freeAudiobooksAreaActive: Bool {
+        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
+                                        feature: boolValue(freeAudiobooksEnabled), service: true)
+    }
+    nonisolated static var radioLogoChainActive: Bool { boolValue(radioLogoChainEnabled) }
+
+    /// Befund B1: Pinchflat war die EINZIGE der vierzehn Quellen ohne
+    /// Ein-/Aus-Schalter — es gehörte zu keinem der beiden Systeme, also fiel
+    /// niemandem auf, dass es keins hatte. Praktisch spürbar: jede andere
+    /// Quelle lässt sich stilllegen OHNE sie zu entfernen (Zugangsdaten
+    /// bleiben); bei Pinchflat blieb nur Löschen und danach das Neueintragen
+    /// von Adresse und Token.
+    static let pinchflatEnabled = "pinchflatEnabled"
+    static var pinchflatActive: Bool {
+        SourceActivation.effective(tabEnabled: podcastsTabEnabledValue,
+                                   sourceEnabled: boolValue(pinchflatEnabled))
+    }
+
     /// Effective activation per source = tab master ∧ source toggle (the one
     /// invariant, `SourceActivation.effective`). Providers gate ALL their calls
     /// and their tab visibility on these.

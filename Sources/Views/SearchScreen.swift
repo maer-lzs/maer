@@ -695,9 +695,9 @@ struct SearchScreen: View {
 
     private var freeClassicalDeckVisible: Bool {
         FreeCatalogActivation.effective(
-            master: UserDefaults.standard.object(forKey: AppStorageKeys.freeCatalogsMasterEnabled) as? Bool ?? true,
-            feature: UserDefaults.standard.object(forKey: AppStorageKeys.freeClassicalEnabled) as? Bool ?? true,
-            service: UserDefaults.standard.object(forKey: AppStorageKeys.archivePopularEnabled) as? Bool ?? true)
+            master: AppStorageKeys.freeCatalogsMasterActive,
+            feature: AppStorageKeys.freeClassicalActive,
+            service: AppStorageKeys.archiveBooksActive)
     }
 
     private var audiobookDeckEntries: [DeckEntry] {

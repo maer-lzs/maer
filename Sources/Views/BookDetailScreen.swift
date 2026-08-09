@@ -849,7 +849,7 @@ struct BookDetailScreen: View {
 
     private func startDownloadWithWiFiCheck() async {
         // The warning can be turned off in the settings (default ON).
-        let warn = UserDefaults.standard.object(forKey: AppStorageKeys.warnCellularDownload) as? Bool ?? true
+        let warn = AppStorageKeys.warnCellularDownloadValue
         if warn, !(await NetworkStatus.isOnWiFi()) {
             showWiFiWarning = true
         } else {
