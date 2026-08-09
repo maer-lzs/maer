@@ -118,8 +118,10 @@ final class GlobalSearchModel: ObservableObject {
             }
             if archiveOn {
                 group.addTask {
-                    let base = "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
-                        + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+                    // Befund f220ecd, dritte Fläche derselben Klasse: auch die
+                    // Suche stand auf einer NACHGEBAUTEN Basis. Jetzt dieselbe
+                    // eine Wahrheit wie Reihe und Regal.
+                    let base = ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks) ?? ""
                     return .archive((try? await ArchiveOrgClient.popular(
                         query: base + " AND title:(\(query))", rows: 10)) ?? [])
                 }
@@ -148,10 +150,21 @@ final class GlobalSearchModel: ObservableObject {
 
     @MainActor
     private static func bookResult(_ item: LibraryItem, source: String) -> SearchResult {
-        SearchResult(id: item.id, kind: .catalogBook, title: item.title,
-                     subtitle: item.author,
-                     coverURL: AppSession.shared.coverURL(forItemId: item.id),
-                     sourceLabel: source)
+        // S1 (09.08., gemessen): „Struwwelpeter" gibt es bei LibriVox VIER
+        // Mal (zwei deutsch, zwei englisch — je eine zweite Lesung). Q2 hebt
+        // das „(version 2)" aus dem Titel, sonst stuenden hier vier
+        // identische Zeilen. Q3s Lesungs-Nummer gehoert deshalb sichtbar in
+        // die Zeile — mehrere Lesungen sind legitim, aber sie muessen
+        // unterscheidbar sein.
+        var subtitle = item.author
+        if let version = FreeCatalogProvider.shared.readingVersion(forItemId: item.id) {
+            let reading = String(localized: "Reading \(version)")
+            subtitle = [item.author, reading].compactMap { $0 }.joined(separator: " · ")
+        }
+        return SearchResult(id: item.id, kind: .catalogBook, title: item.title,
+                            subtitle: subtitle,
+                            coverURL: AppSession.shared.coverURL(forItemId: item.id),
+                            sourceLabel: source)
     }
 
     /// Debounce + cancel-on-new-input; below the server minimum the results

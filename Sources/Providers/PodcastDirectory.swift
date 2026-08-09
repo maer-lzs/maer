@@ -70,6 +70,13 @@ struct ITunesDirectory: PodcastDirectory {
             let artworkUrl600: String?
             let artworkUrl100: String?
             let feedUrl: String?
+            /// L2 (09.08.): Apple's FORM categories — the same lever the
+            /// chart decision rested on (Drama 1484/Fiction are form-based,
+            /// „Books" 1482 is topic-based). The OERR rule needs them,
+            /// because a sender rule alone puts the broadcaster's NEWS into
+            /// a radio-play row (measured: ABC Sport, Checkpoint, Front
+            /// Burner all pass a sender-only rule).
+            let genres: [String]?
         }
         let results: [Item]
     }
@@ -160,7 +167,8 @@ struct ITunesDirectory: PodcastDirectory {
                 title: item.collectionName ?? feed,
                 author: item.artistName,
                 artworkURL: item.artworkUrl600 ?? item.artworkUrl100,
-                feedURL: feed
+                feedURL: feed,
+                categories: item.genres
             )
         }
     }

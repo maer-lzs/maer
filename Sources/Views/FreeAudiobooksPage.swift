@@ -176,7 +176,7 @@ struct FreeAudiobooksPage: View {
                     // states it.
                     RecommendationTile(result: PodcastSearchResult(
                         title: entry.title, author: entry.author,
-                        artworkURL: nil, feedURL: entry.feedURL),
+                        artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                         subtitle: entry.form?.label,
                         badgeText: entry.ccLicense)
                         .containerRelativeFrame(.horizontal,
@@ -401,7 +401,7 @@ struct OERRCountriesPage: View {
                                     ForEach(rows) { entry in
                                         RecommendationTile(result: PodcastSearchResult(
                                             title: entry.title, author: entry.author,
-                                            artworkURL: nil, feedURL: entry.feedURL))
+                                            artworkURL: entry.artworkURL, feedURL: entry.feedURL))
                                             .containerRelativeFrame(.horizontal,
                                                 count: CardMetrics.recommendationColumns(regularWidth: false),
                                                 span: 1, spacing: 12)

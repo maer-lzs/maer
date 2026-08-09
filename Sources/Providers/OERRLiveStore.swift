@@ -63,21 +63,38 @@ final class OERRLiveStore: ObservableObject {
         let storefronts = Set(active.map(\.storefront))
         for storefront in storefronts {
             guard let language = active.first(where: { $0.storefront == storefront })?.language,
-                  let term = OERRCuration.searchTerms[language] else { continue }
-            let hits = (try? await ITunesDirectory().search(term, country: storefront)) ?? []
+                  let languageTerm = OERRCuration.searchTerms[language] else { continue }
+            // L2 (gemessen): der Sprach-Begriff findet in au/ca/nz nur die
+            // BBC — die dortigen Anstalten brauchen eigene Begriffe. Der
+            // Sprach-Begriff bleibt als Grundlage, die Anstalts-Begriffe
+            // kommen dazu (Anstalten OHNE eigene Begriffe aendern sich nicht).
+            var terms = [languageTerm]
+            for broadcaster in active where broadcaster.storefront == storefront {
+                terms += broadcaster.searchTerms
+            }
+            var hits: [PodcastSearchResult] = []
+            var seenHits = Set<String>()
+            for term in terms {
+                let found = (try? await ITunesDirectory().search(term, country: storefront)) ?? []
+                for hit in found where seenHits.insert(hit.feedURL).inserted { hits.append(hit) }
+            }
             var accepted = 0
             for hit in hits {
                 guard let broadcaster = OERRCuration.matches(artistName: hit.author) else { continue }
+                // L2: sender AND form. Without the form gate the broadcaster's
+                // news would stand in a radio-play row (measured).
+                guard OERRCuration.isFiction(categories: hit.categories) else { continue }
                 let normalized = PodcastSubscriptions.normalizeFeedURL(hit.feedURL)
                 guard seenFeeds.insert(normalized).inserted else { continue }
                 merged.append(HoerspielCuration.Entry(
                     title: hit.title, author: hit.author ?? "",
                     feedURL: hit.feedURL,
                     language: broadcaster.language == "de" ? nil : broadcaster.language,
-                    group: .oerr, country: broadcaster.country))
+                    group: .oerr, country: broadcaster.country,
+                    artworkURL: hit.artworkURL))
                 accepted += 1
             }
-            Logger.rss.notice("OERR live storefront=\(storefront, privacy: .public) hits=\(hits.count) accepted=\(accepted)")
+            Logger.rss.notice("OERR live storefront=\(storefront, privacy: .public) terms=\(terms.count) hits=\(hits.count) accepted=\(accepted)")
         }
         loaded = merged.count > seed.count
         let result = merged

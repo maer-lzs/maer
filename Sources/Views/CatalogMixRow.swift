@@ -43,7 +43,7 @@ struct CatalogMixRow: View {
         case .feed(let entry):
             RecommendationTile(result: PodcastSearchResult(
                 title: entry.title, author: entry.author,
-                artworkURL: nil, feedURL: entry.feedURL),
+                artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                 subtitle: entry.form?.label,
                 badgeText: entry.ccLicense)
         case .item(let item):

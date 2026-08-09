@@ -113,7 +113,7 @@ struct CatalogSourcePage: View {
             ForEach(OERRLiveStore.feeds(for: source, languages: SuggestionLanguages.current())) { entry in
                 RecommendationTile(result: PodcastSearchResult(
                     title: entry.title, author: entry.author,
-                    artworkURL: nil, feedURL: entry.feedURL),
+                    artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                     subtitle: entry.form?.label,
                     badgeText: entry.ccLicense)
             }

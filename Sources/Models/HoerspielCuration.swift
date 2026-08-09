@@ -43,6 +43,13 @@ nonisolated enum HoerspielCuration {
         var group: Group = .oerr
         /// X²·3: the country axis of the OERR sub-page (nil for independents).
         var country: OERRCuration.Country? = nil
+        /// L1 (09.08.): artwork the DIRECTORY already delivered
+        /// (`artworkUrl600`). The hand-curated seed leaves this nil — those
+        /// entries resolve their picture from the feed itself. For entries
+        /// found LIVE the picture was thrown away at the tile
+        /// (`artworkURL: nil`), which is why the English tiles stayed grey
+        /// although the source had a picture (BEFUND-G class).
+        var artworkURL: String? = nil
         /// nil for OERR entries (their rights live with the broadcaster).
         var form: Form? = nil
         /// X²·1 (P6a-Geist): the CC capsule ONLY where the FEED itself states

@@ -615,6 +615,45 @@ struct CatalogGenreAxisTests {
         #expect(!FreeCatalog.isGutenbergAudiobook("https://www.gutenberg.org/files/60165/60165-h/audio/p0288.mp3"))
     }
 
+    /// L2 (09.08.): Absender-Regel UND Form-Kategorie. Die Fälle unten sind
+    /// ECHTE Messwerte vom 09.08. — links vier BBC-Sendungen, die alle
+    /// `Drama`/`Fiction` tragen, rechts vier Absender-Treffer derselben
+    /// Regel, die KEINE Hörspiele sind. Ohne das Form-Gatter stünde
+    /// „Best of ABC Sport Podcast" in der Hörspiel-Reihe.
+    @Test("L2: the form gate keeps the broadcaster's news out of the radio-play row")
+    func oerrFormGate() {
+        // Echte Hörspiel-Sendungen (gemessen, gb-Storefront):
+        for real in [["Drama", "Podcasts", "Fiction"], ["Fiction"], ["Drama"]] {
+            #expect(OERRCuration.isFiction(categories: real))
+        }
+        // Echte Fehltreffer der Absender-Regel (gemessen, au/ca/nz):
+        for wrong in [["Sport", "Podcasts"],                  // ABC AFL Daily
+                      ["News", "Podcasts"],                   // Checkpoint, Front Burner
+                      ["Society & Culture", "Podcasts"],      // Q with Tom Power
+                      ["Religion & Spirituality", "Podcasts"],// Soul Search
+                      ["Kids & Family", "Podcasts"],          // It Takes A Village
+                      ["Podcasts"]] {                         // Best of ABC Sport Podcast
+            #expect(!OERRCuration.isFiction(categories: wrong))
+        }
+        // Keine Kategorien ⇒ Form UNBEKANNT ⇒ nicht aufnehmen (dieselbe
+        // Linie wie bei unbekannter Rechtelage).
+        #expect(!OERRCuration.isFiction(categories: nil))
+        #expect(!OERRCuration.isFiction(categories: []))
+    }
+
+    @Test("L2: broadcasters carry their own search terms, others keep the language term")
+    func oerrBroadcasterSearchTerms() {
+        let all = OERRCuration.broadcasters
+        let abc = all.first { $0.country == .australia }
+        #expect(!(abc?.searchTerms.isEmpty ?? true),
+                "au/ca/nz need own terms - the language term drama finds only the BBC there")
+        // German broadcasters are found by the language term and must NOT
+        // have been touched by L2.
+        let de = all.filter { $0.language == "de" }
+        #expect(!de.isEmpty)
+        #expect(de.allSatisfy { $0.searchTerms.isEmpty })
+    }
+
     @Test("bca2d20: LibriVox compilations are excluded — no content twice")
     func libriVoxDuplicateFilter() {
         func doc(_ id: String, title: String = "T", creator: String = "C") -> ArchivePopularDoc {
