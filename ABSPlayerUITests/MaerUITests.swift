@@ -1191,7 +1191,9 @@ nonisolated final class MaerUITests: XCTestCase {
             XCTAssertTrue(window.contains(b.frame),
                           "\(id) must fit the PORTRAIT window — was \(b.frame) in \(window)")
         }
-        // The sleep button left by decision (0693e05).
+        // NEGATIVE assertion: the sleep button was removed by decision, and
+        // this line guards that it stays removed. The identifier is absent
+        // from the app on purpose — it is not a dead reference.
         XCTAssertFalse(app.buttons["drive-sleep"].exists, "sleep button must be gone")
         // 8d54582/298d6b1 hero geometry: the capped hero must never displace
         // the controls — play button sits in the lower ~2/3 and the progress
@@ -1413,6 +1415,8 @@ nonisolated final class MaerUITests: XCTestCase {
         if let lo = minYs.min(), let hi = minYs.max() {
             XCTAssertLessThan(hi - lo, 8, "extras must form ONE row, not a grid")
         }
+        // NEGATIVE assertion, like `drive-sleep` above: the More menu was
+        // dissolved into the row, and this guards that it does not come back.
         XCTAssertFalse(app.buttons["player-more"].exists, "the More menu is gone")
         snap(app, "player-row-full-german")
         app.terminate()
@@ -1466,6 +1470,8 @@ nonisolated final class MaerUITests: XCTestCase {
         app.buttons["global-search"].firstMatch.tap()
         let musicScope = app.buttons["scope-music"].firstMatch
         XCTAssertTrue(musicScope.waitForExistence(timeout: 10)); musicScope.tap()
+        // The identifier is BUILT ("deck-tier-\(entry.id)"), so a literal
+        // search for it finds nothing in the sources — it exists all the same.
         let tile = app.buttons["deck-tier-music-free-classical"].firstMatch
         var deckSwipes = 0
         while !tile.exists && deckSwipes < 6 { app.swipeUp(); deckSwipes += 1 }
