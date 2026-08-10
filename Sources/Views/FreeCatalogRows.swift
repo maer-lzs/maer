@@ -351,9 +351,36 @@ enum CatalogSourceLoader {
 final class FreeCatalogStore: ObservableObject {
     static let shared = FreeCatalogStore()
     private init() {}
-    @Published private(set) var rows = FreeCatalogLoader.Rows()
+    /// Reading and loading cannot be separated: the getter starts the load if
+    /// it has not run. A surface that reads the rows without also triggering
+    /// the fetch is not expressible any more — that is why the catalogues used
+    /// to appear in the music tab only after a visit to Home.
+    ///
+    /// The side effect is safe: `ensureLoaded` is idempotent, guarded by
+    /// `loaded`/`loading`, and hands its result through the calm gate.
+    var rows: FreeCatalogLoader.Rows {
+        startLoadIfNeeded()
+        return storedRows
+    }
+    @Published private(set) var storedRows = FreeCatalogLoader.Rows()
     private(set) var loaded = false
     private var loading = false
+
+    /// Same for the source rows of the merged page.
+    var sourceRows: CatalogSourceLoader.SourceRows {
+        startSourceLoadIfNeeded()
+        return storedSourceRows
+    }
+
+    private func startLoadIfNeeded() {
+        guard !loaded, !loading else { return }
+        Task { await ensureLoaded() }
+    }
+
+    private func startSourceLoadIfNeeded() {
+        guard !sourcesLoaded, !sourcesLoading else { return }
+        Task { await ensureSourcesLoaded() }
+    }
 
     /// 784aceb: language change ⇒ reload on the next compute pass; the old
     /// rows stay visible until the calm-gated replacement arrives.
@@ -365,7 +392,7 @@ final class FreeCatalogStore: ObservableObject {
     /// Paket 1: the merged page's source rows — loaded on first open of the
     /// page (NOT in Home's compute pass; five extra network calls do not
     /// belong to app start for a page that may never open this session).
-    @Published private(set) var sourceRows = CatalogSourceLoader.SourceRows()
+    @Published private(set) var storedSourceRows = CatalogSourceLoader.SourceRows()
     private(set) var sourcesLoaded = false
     private var sourcesLoading = false
 
@@ -382,7 +409,7 @@ final class FreeCatalogStore: ObservableObject {
         let loaded = await CatalogSourceLoader.load()
         sourcesLoaded = !loaded.librivoxPopular.isEmpty || !loaded.gutenberg.isEmpty
             || !loaded.archiveBooks.isEmpty || !loaded.oldTimeRadio.isEmpty
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.sourceRows = loaded }
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedSourceRows = loaded }
     }
 
     #if DEBUG
@@ -396,7 +423,7 @@ final class FreeCatalogStore: ObservableObject {
         var seeded = FreeCatalogLoader.Rows()
         seeded.classical = classical
         seeded.freeMusic = freeMusic
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.rows = seeded }
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = seeded }
     }
     #endif
 
@@ -409,7 +436,7 @@ final class FreeCatalogStore: ObservableObject {
         let loadedRows = await FreeCatalogLoader.load()
         loaded = !loadedRows.discoverBooks.isEmpty
             || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty || !loadedRows.netlabels.isEmpty
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.rows = loadedRows }
+        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = loadedRows }
     }
 }
 
