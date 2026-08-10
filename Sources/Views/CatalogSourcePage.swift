@@ -305,11 +305,7 @@ struct CatalogSourcePage: View {
             guard let docs = try? await ArchiveOrgClient.popularOldTimeRadio(
                 rows: pageSize, page: page)
             else { reachedEnd = true; return }
-            new = docs.compactMap { doc in
-                guard let identifier = doc.identifier else { return nil }
-                provider.rememberOldTimeRadio(identifier)
-                return provider.remember(popular: doc)
-            }
+            new = docs.compactMap { provider.remember(popular: $0) }
             if docs.count < pageSize { reachedEnd = true }
         default:
             reachedEnd = true
@@ -465,14 +461,17 @@ struct CatalogShelfPage: View {
 /// list form like the podcast episode lists; hundreds of episodes page in
 /// staged windows like the Fundgruben.
 struct ArchiveSeriesPage: View {
-    /// M1-KORREKTUR (224594b): dieselbe Seite traegt beide Faelle — eine
-    /// Old-Time-Radio-Sammlung IST ein Album mit Folgen, ein Netlabel-Release
-    /// ein Album mit Spuren. Unterschiedlich ist nur die Sprache: „Folgen"
-    /// gegen „Titel", Erstausstrahlung gegen reine Laufzeit. Parametrisieren
-    /// statt eine zweite Seite bauen (Regel 2).
+    /// One page carries both cases — a radio-play collection is a work in
+    /// episodes, a netlabel release an album of tracks. What differs is the
+    /// wording ("episodes" against "tracks", first broadcast against plain
+    /// running time) and whether a row is an item of its own. Parameterised
+    /// instead of a second page.
     enum Flavor { case series, album }
 
     let itemId: String
+    /// The form to show while the item's own is still unknown. It comes from
+    /// the route that opened the page and is nothing but a fallback: once the
+    /// detail is loaded, the ITEM decides — see `effectiveFlavor`.
     var flavor: Flavor = .series
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detail: LibraryItemDetail?
@@ -480,6 +479,21 @@ struct ArchiveSeriesPage: View {
     @State private var visibleCount = 100
 
     private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
+
+    /// What the item IS, read from its collections.
+    ///
+    /// The route used to decide this: reached from the music tab an item was
+    /// an album, from the books tab a work. The mixed surfaces can reach
+    /// either, so the same reading became an album with a position per track
+    /// once it was opened through the album route — and the work's position,
+    /// the one place that knew where the listener was, no longer applied.
+    private var effectiveFlavor: Flavor {
+        switch FreeCatalogProvider.shared.archiveForm(itemId: itemId) {
+        case .album: return .album
+        case .work:  return .series
+        case nil:    return flavor
+        }
+    }
 
     /// Which row carries the "last heard" mark.
     ///
@@ -489,7 +503,7 @@ struct ArchiveSeriesPage: View {
     /// of one work, so the work's single position decides which part it falls
     /// into.
     private var lastHeardIndex: Int? {
-        flavor == .album ? lastHeardSongIndex : lastHeardSectionIndex
+        effectiveFlavor == .album ? lastHeardSongIndex : lastHeardSectionIndex
     }
 
     private var lastHeardSongIndex: Int? {
@@ -533,9 +547,8 @@ struct ArchiveSeriesPage: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    // Paket 1 + M1-Korrektur: „Zur Playlist" gehoert auf der
-                    // Albumseite JE ALBUM hierher (je Spur siehe Bericht —
-                    // dafuer fehlen Spur-Kennungen).
+                    // Queueing the whole release belongs here; a single track
+                    // carries its own buttons in its row.
                     CatalogQueueButtons(itemId: itemId)
                 } label: { Image(systemName: "ellipsis.circle") }
                 .accessibilityIdentifier("album-actions")
@@ -568,7 +581,7 @@ struct ArchiveSeriesPage: View {
                     }
                     // O3: the honest second line — the episode count the tile
                     // could not carry without a second fetch.
-                    Text(flavor == .album
+                    Text(effectiveFlavor == .album
                          ? "\(tracks.count) tracks"
                          : "\(tracks.count) episodes")
                         .font(.caption).foregroundStyle(.secondary)
@@ -634,7 +647,7 @@ struct ArchiveSeriesPage: View {
     private func episodeRow(index: Int, track: ABSAudioTrack) -> some View {
         Button {
             Task {
-                if flavor == .album {
+                if effectiveFlavor == .album {
                     // An album track is an item of its own: it plays as itself,
                     // keeps its own position and can be queued or added to a
                     // playlist. A series part stays a section of its work.
@@ -656,15 +669,13 @@ struct ArchiveSeriesPage: View {
                 // date, running number) is taken OFF the title — but the
                 // date is the first broadcast and therefore moves into the
                 // meta line instead of being thrown away.
-                // Die OTR-Kopfmuster (Kuerzel/Datum/Nummer) gibt es nur bei
-                // Serien; Musik-Spurnamen bleiben unangetastet.
                 // The source's own track title wins; the file name stays the
                 // fallback for items that state none. The OTR head patterns
                 // (shorthand, date, running number) only exist in series —
                 // music track names are left untouched.
                 let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
                 let stated = track.metadata?.title
-                let episode = flavor == .series
+                let episode = effectiveFlavor == .series
                     ? FreeCatalog.otrEpisode(fromFileName: raw)
                     : (title: stated ?? raw, airDate: nil)
                 VStack(alignment: .leading, spacing: 2) {
@@ -691,7 +702,7 @@ struct ArchiveSeriesPage: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            if flavor == .album {
+            if effectiveFlavor == .album {
                 CatalogQueueButtons(itemId: CatalogSongID.make(album: itemId, index: index))
             }
         }

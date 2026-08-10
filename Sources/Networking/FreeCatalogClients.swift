@@ -157,6 +157,10 @@ nonisolated enum ArchiveOrgClient {
             let creator: ArchiveStringList?
             /// Auftrag O/P2: the item description for the series/detail pages.
             let description: ArchiveStringList?
+            /// The collections — the item's FORM is read from them, and on
+            /// this endpoint it arrives even for an item that was never in a
+            /// row (a deep link, a playlist entry, a cold start).
+            let collection: ArchiveStringList?
         }
         let files: [ArchiveFile]?
         let metadata: Meta?
@@ -327,6 +331,11 @@ nonisolated enum ArchiveOrgClient {
             // 48e786d: subjects ride along so the genre axis has material for
             // the archive.org rows too (they were never requested before).
             URLQueryItem(name: "fl[]", value: "subject"),
+            // The collections decide the item's form (work in parts or album
+            // of tracks). Requested here, in the one place every archive.org
+            // row, shelf and search goes through — so an item carries its form
+            // no matter which surface found it.
+            URLQueryItem(name: "fl[]", value: "collection"),
             URLQueryItem(name: "sort[]", value: sort),
             URLQueryItem(name: "rows", value: String(rows)),
             URLQueryItem(name: "page", value: String(page)),

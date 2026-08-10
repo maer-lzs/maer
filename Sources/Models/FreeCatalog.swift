@@ -99,6 +99,10 @@ nonisolated struct ArchivePopularDoc: Decodable, Sendable {
     /// 48e786d: subjects (string or list, like title/creator) — the genre
     /// axis' material for archive.org rows.
     let subject: ArchiveStringList?
+    /// The collections the item belongs to — what decides its FORM (one work
+    /// in parts or an album of tracks, see `ArchiveItemForm`). Present on every
+    /// measured item and always containing the queried collection.
+    var collection: ArchiveStringList? = nil
 }
 
 nonisolated struct ArchiveFile: Decodable, Sendable {

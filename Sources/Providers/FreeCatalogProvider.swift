@@ -56,17 +56,31 @@ final class FreeCatalogProvider: AudioProvider {
         return item
     }
 
-    /// e948444: identifiers that came from the Old-Time-Radio row — they
-    /// are series bundles by design and get the higher track bound.
-    private var oldTimeRadioIds: Set<String> = []
+    /// The collections an item belongs to, per item id — filled at every
+    /// intake (search index and metadata endpoint alike). It replaces the set
+    /// of identifiers that only the radio-play row used to fill: what an item
+    /// IS travelled with the row that showed it, so the same item was a series
+    /// bundle from one surface and an ordinary item from another.
+    private var itemCollections: [String: [String]] = [:]
 
-    func rememberOldTimeRadio(_ identifier: String) { oldTimeRadioIds.insert(identifier) }
+    private func rememberCollections(_ collections: [String]?, forItemId id: String) {
+        guard let collections, !collections.isEmpty else { return }
+        itemCollections[id] = collections
+    }
 
-    /// Auftrag O: is this item an OTR series bundle (the class that gets a
-    /// SHOW PAGE with an episode list instead of the detail sheet)?
+    /// Is the item one work in parts or an album of tracks? `nil` means the
+    /// collections are not known yet — before any fetch there is nothing to
+    /// read, and the caller keeps its own default until the detail arrives.
+    func archiveForm(itemId: String) -> ArchiveItemForm? {
+        guard let collections = itemCollections[itemId] else { return nil }
+        return ArchiveItemForm.of(collections: collections)
+    }
+
+    /// Auftrag O: is this item a radio-play series bundle (the class that gets
+    /// a SHOW PAGE with an episode list instead of the detail sheet)?
     func isOldTimeRadio(itemId: String) -> Bool {
-        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return false }
-        return oldTimeRadioIds.contains(String(itemId.dropFirst(FreeCatalog.archivePrefix.count)))
+        guard let collections = itemCollections[itemId] else { return false }
+        return ArchiveItemForm.isRadioPlayBundle(collections: collections)
     }
 
     /// e948444: stated licence per item id, for the detail sheet.
@@ -118,6 +132,7 @@ final class FreeCatalogProvider: AudioProvider {
         guard let identifier = doc.identifier else { return nil }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
+        rememberCollections(doc.collection?.values, forItemId: id)
         // Q2: archive rows carry the same LibriVox title pattern (the
         // librivoxaudio collection) — same one-place normalization.
         // O-P3 (09.08.): the OTR bundles additionally carry archive.org
@@ -315,19 +330,29 @@ final class FreeCatalogProvider: AudioProvider {
             if let song = CatalogSongID.parse(itemId) {
                 return try await songDetail(songId: itemId, album: song.album, index: song.index)
             }
+            let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
+            let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+            // This endpoint answers for every item, including one that no row
+            // ever showed — so the form is known here even on a cold start.
+            rememberCollections(meta.metadata?.collection?.values, forItemId: itemId)
+            let collections = itemCollections[itemId] ?? []
             // A position stored before tracks had addresses points at the whole
             // release. It is carried over to the song it falls into, once, and
             // the album entry stays untouched — nobody loses where they were.
-            await Self.migrateAlbumPositionToSong(albumId: itemId)
-            let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
-            let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+            // Only an ALBUM is carried over: for a work the single position IS
+            // the truth, and splitting it into per-track marks would lose it.
+            if ArchiveItemForm.of(collections: collections) == .album {
+                await Self.migrateAlbumPositionToSong(albumId: itemId)
+            }
             let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
             // aed5d25 (2): plausibility gate — a collection bundle with
             // hundreds of parts is not a book; named in the log, never mute.
-            // e948444: a CURATED series collection (Old Time Radio) passes the
-            // higher bound — there the bundle is the unit, not an accident.
-            let cap = oldTimeRadioIds.contains(identifier)
+            // e948444: a CURATED series collection passes the higher bound —
+            // there the bundle is the unit, not an accident. Read from the
+            // item's own collections, so a bundle reached by deep link or from
+            // a playlist is no longer dropped for being too long.
+            let cap = ArchiveItemForm.isRadioPlayBundle(collections: collections)
                 ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
             guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
                 Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")
@@ -361,10 +386,9 @@ final class FreeCatalogProvider: AudioProvider {
                 userMediaProgress: nil)
         }
         if itemId.hasPrefix(FreeCatalog.gutenbergPrefix) {
-            // FUND beim 9081fa1-Strukturfix: dieser Zweig FEHLTE — und
-            // gutenbergAudioURL hatte keinen einzigen Aufrufer. Ein Tap auf
-            // eine Gutenberg-Kachel lief also in resourceUnavailable: die
-            // Titel waren nie abspielbar, seit es die Reihe gibt.
+            // This branch was missing: the stored audio url had no caller at
+            // all, so a tap on a Gutenberg tile ran into resourceUnavailable
+            // and those titles were never playable.
             guard let audio = gutenbergAudio[itemId] else {
                 throw URLError(.resourceUnavailable)
             }

@@ -309,11 +309,7 @@ enum CatalogSourceLoader {
             }
             if codes.contains("en") {
                 if let docs = value(await otrTask, .oldTimeRadio, failures: &rows.failures) {
-                    rows.oldTimeRadio = docs.compactMap { doc in
-                        guard let identifier = doc.identifier else { return nil }
-                        provider.rememberOldTimeRadio(identifier)
-                        return provider.remember(popular: doc)
-                    }
+                    rows.oldTimeRadio = docs.compactMap { provider.remember(popular: $0) }
                 }
             } else { _ = await otrTask }
         } else { _ = await archiveTask; _ = await otrTask }
