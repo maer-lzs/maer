@@ -45,7 +45,7 @@ struct OffMainDecodeTests {
     }
 
     /// e96d396 C1/C3-Unit: the age cutoff is GONE — Continue is the row of
-    /// ALL started books again (the owner: "harte Regression"; a four-week-old
+    /// ALL started books again (a four-week-old
     /// start is exactly what he wants to continue). Rediscover keeps its own
     /// threshold over continueAll; the overlap is wanted.
     @Test("Continue keeps stale AND undated entries — the cutoff must not return")

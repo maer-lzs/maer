@@ -931,11 +931,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 let now = Date().timeIntervalSince1970
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
                     self.lastLocalSaveAt = now
-                    // Befund 35cb1f4: dieser Weg schrieb ein ROHES Paar an
-                    // ProgressMark vorbei — jede geheilte Folge haette ihren
-                    // Bezugspunkt beim naechsten Anhoeren wieder verloren.
-                    // `advancing` traegt ihn fort, auch wenn hier keine Dauer
-                    // bekannt waere.
+                    // This path used to store a RAW pair, bypassing
+                    // ProgressMark — every repaired episode would have lost its
+                    // reference point on the next listen. `advancing` carries it
+                    // forward even when no duration is known here.
                     let previous = UserDefaults.standard.array(forKey: key) as? [Double]
                     UserDefaults.standard.set(
                         ProgressMark.advancing(previous, position: self.currentTime,

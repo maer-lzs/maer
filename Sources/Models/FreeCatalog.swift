@@ -63,7 +63,7 @@ nonisolated struct ArchiveStringList: Decodable, Sendable {
             // 1fdcd40 DRINGEND: archive.org delivers `year` as a NUMBER
             // (measured on four queries) — the string-only tolerance threw
             // typeMismatch and killed EVERY archive row at once, classical
-            // included. That was the owner's device finding A; the 429 suspicion
+            // included. That was device finding A; the 429 suspicion
             // is refuted (A3's decode-prefix line decided it). ONE place,
             // number-tolerant, like the string/list split above.
             values = [String(number)]
@@ -147,7 +147,7 @@ nonisolated enum FreeCatalog {
     /// Gutenberg arrived, `gut:` was added here and forgotten there, and every
     /// Gutenberg cover request went to the Audiobookshelf server (with the
     /// access token in the query string) for a title that does not exist there.
-    /// 41 × 404 later CrowdSec read it as an attack and locked the owner out of
+    /// 41 × 404 later CrowdSec read it as an attack and locked the user out of
     /// his own server. A new source now only has to appear in THIS list.
     static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
 

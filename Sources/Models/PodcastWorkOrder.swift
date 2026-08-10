@@ -9,7 +9,8 @@ import Foundation
 /// many different works in one feed — "Palmer Eldritch (1/2)", "(2/2)",
 /// "Unearthing (1/8)" … — and the plain feed order interleaves them, part 2
 /// above part 1. This brings the LIST into work order. Deliberately nothing
-/// more: no work cards, no disclosure UI, same list (the owner's cut).
+/// more: no work cards, no disclosure UI, same list — the reordering makes the
+/// familiar episode list readable, it does not add a second navigation level.
 ///
 /// Everything here is pure and conservative: a title without a part pattern
 /// is a single piece and keeps its place. A wrong grouping would be worse

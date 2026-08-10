@@ -119,7 +119,7 @@ final class GlobalSearchModel: ObservableObject {
             }
             if archiveOn {
                 group.addTask {
-                    // Befund f220ecd, dritte Fläche derselben Klasse: auch die
+                    // Third surface of the same class: the
                     // Suche stand auf einer NACHGEBAUTEN Basis. Jetzt dieselbe
                     // eine Wahrheit wie Reihe und Regal.
                     let base = ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks) ?? ""

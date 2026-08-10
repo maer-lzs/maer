@@ -15,11 +15,11 @@ enum TabContentLayout {
     static let sectionSpacing: CGFloat = 24
 }
 
-/// F5 Nachtrag (the owner 20.07., Gerät): the poster/tile card family is 10%
+/// Device finding: the poster/tile card family is 10%
 /// narrower so at least two cards fit side by side on the largest iPhone (17
 /// Pro Max). ONE central home for the fixed card widths so they never drift per
 /// surface (Regel 2 — the Featured card and the Recommended tile were each used
-/// at two sizes). First step only — a device-loop CANDIDATE; the owner tunes the
+/// at two sizes). First step only — a device-loop CANDIDATE; the
 /// exact factor on the device.
 /// 6fcb301: THE cap for horizontal preview rows. Until now caps were the
 /// exception — `prefix(` appeared once in HomeView, three times in
@@ -240,19 +240,20 @@ enum CardMetrics {
 
     // containerRelativeFrame column counts for the HORIZONTAL card rows — the
     // responsive replacement of fixed pt widths (screen-relative slots + a
-    // natural peek of the next card). Design dial: the owner tunes the counts on
+    // natural peek of the next card). Design dial: the counts are tuned on
     // device; regular width (iPad/landscape) shows roughly double.
     static func recommendationColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func playlistColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
     static func rediscoverColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
 }
 
-// MARK: - M2: die Zufalls-Geste als geteilte Erweiterung
+// MARK: - Shuffle gesture as a shared extension
 
 extension RowHeading {
     /// „Zufällig abspielen" an einer archive.org-Musikreihe — aus dem GANZEN
-    /// Fach, nicht aus der Vorschau (M2). Reihe = heute frisch aus dem Guten,
-    /// dieser Knopf = quer durch alles: zwei Gesten, zwei Bedeutungen.
+    /// shelf, not from the preview. The row is today's pick from the good
+    /// stuff, this button reaches across everything: two gestures, two
+    /// meanings.
     @MainActor
     func catalogShuffle(area: ArchiveMusicArea, coordinator: PlayerCoordinator) -> RowHeading {
         var copy = self
@@ -262,8 +263,8 @@ extension RowHeading {
         return copy
     }
 
-    /// Dasselbe für Jamendo — dort über einen zufälligen Versatz, weil die
-    /// API keine Zufallssortierung kennt (gemessen).
+    /// The same for Jamendo — via a random offset, because that API has no
+    /// random sort order (measured).
     @MainActor
     func jamendoShuffle(tags: [String] = [], coordinator: PlayerCoordinator) -> RowHeading {
         var copy = self
@@ -275,25 +276,19 @@ extension RowHeading {
 }
 
 
-/// BEFUND GT 10.08. (94eee6d), und er war meiner: Die Dialoge hingen am
-/// `Menu` — und dieses Menü steht INNERHALB eines `contextMenu`, dessen
-/// Hierarchie beim Schließen abgebaut wird. Also konnte der Namensdialog nie
-/// erscheinen, keine Liste entstehen, und die Regel-3-Meldungen („schon drin",
-/// „voll") blieben stumm. Die Falle steht im selben Repo dokumentiert
-/// (`MusicItemMenu`: „a contextMenu button can only flip a @State; the sheet is
-/// attached to the view") — ich habe sie beschrieben und dann hineingetreten.
+/// The state behind the playlist dialogs.
 ///
-/// Die Lösung trennt sauber: **das Menü löst nur aus, präsentiert wird an der
-/// Wurzel.** Ein Knopf im Kontextmenü setzt einen Zustand an dieser einen
-/// Stelle; `RootView` hängt die Dialoge an sich, wo sie den Abbau des Menüs
-/// überleben. Damit sind auch die neun Aufrufstellen erledigt, ohne dass jede
-/// eine Bindung durchreichen muss.
+/// A button inside a `contextMenu` can only flip a state — the presentation
+/// must hang OUTSIDE the menu, because the menu's hierarchy is torn down when
+/// it closes and an alert attached there is never presented. So the menu only
+/// triggers, this type holds the state, and `RootView` presents. That also
+/// spares every call site from threading a binding through.
 @MainActor
 final class MaerPlaylistPresenter: ObservableObject {
     static let shared = MaerPlaylistPresenter()
     private init() {}
 
-    /// Was hinzugefügt werden soll, sobald der Name steht.
+    /// What to add once the name is entered.
     @Published var pendingIds: [String] = []
     @Published var askingForName = false
     @Published var message: String?
@@ -317,8 +312,9 @@ final class MaerPlaylistPresenter: ObservableObject {
         pendingIds = []
     }
 
-    /// Regel 3: jedes Ergebnis bekommt einen Satz — auch „war schon drin" und
-    /// besonders die Obergrenze (sichtbar gemeldet statt still abgeschnitten).
+    /// Regel 3: every outcome gets a sentence — including "was already in
+    /// there" and above all the limit, which is reported instead of truncating
+    /// silently.
     static func text(for outcome: MaerPlaylists.AddOutcome, listName: String) -> String? {
         switch outcome {
         case .added:         return nil
@@ -334,8 +330,8 @@ final class MaerPlaylistPresenter: ObservableObject {
 }
 
 extension View {
-    /// Gehört EINMAL an die Wurzel: hier werden die Playlist-Dialoge gezeigt,
-    /// weil sie an keiner Menü-Hierarchie hängen dürfen.
+    /// Belongs at the root ONCE: the playlist dialogs are presented here
+    /// because they must not hang off a menu hierarchy.
     func maerPlaylistDialogs() -> some View { modifier(MaerPlaylistDialogs()) }
 }
 
@@ -368,12 +364,11 @@ private struct MaerPlaylistDialogs: ViewModifier {
 
 /// M3 (Auftrag 09.08.): „Als Nächstes" / „Zuletzt einreihen" für Katalog-Titel.
 /// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
-/// es fehlten nur die Einstiege. EIN Baustein für alle Katalog-Kacheln (Musik
-/// UND Bücher), damit die nächste Fläche ihn nicht neu erfindet.
+/// only the entry points were missing. ONE building block for every catalogue
+/// tile (music AND books), so the next surface does not reinvent it.
 struct CatalogQueueButtons: View {
     let itemId: String
-    /// Mehrere Kennungen (Album, Warteschlange) — dieselbe Aktion, nur mit
-    /// Menge statt Einzelstück.
+    /// Several ids (album, queue) — the same action with a set instead of one.
     var itemIds: [String]?
 
     private var ids: [String] { itemIds ?? [itemId] }
@@ -386,17 +381,16 @@ struct CatalogQueueButtons: View {
             Button {
                 for id in ids { PlayQueue.shared.playLast(id) }
             } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
-            // Die Playlist-Aktion existiert GENAU EINMAL (Regel 2). Sie stand
-            // hier vorher ein zweites Mal — the reviewer's Frage „warum zwei?" war
-            // berechtigt, und die Dopplung trug denselben Fehler zweimal.
+            // The playlist action exists EXACTLY ONCE (Regel 2). A second
+            // copy here carried the same defect twice.
             MaerPlaylistMenu(itemId: itemId, itemIds: itemIds)
         }
     }
 }
 
-/// Die EINE Playlist-Aktion — Menüinhalt, sonst nichts. Präsentiert wird an
-/// der Wurzel (`maerPlaylistDialogs`), weil ein Kontextmenü seine Dialoge beim
-/// Schließen mitnimmt.
+/// THE playlist action — menu content, nothing else. Presentation happens at
+/// the root (`maerPlaylistDialogs`), because a context menu takes its dialogs
+/// with it when it closes.
 struct MaerPlaylistMenu: View {
     let itemId: String
     var itemIds: [String]?

@@ -6,7 +6,7 @@
 import SwiftUI
 import OSLog
 
-/// Artists, decided variant B+C (the owner 26.07.): an ENRICHED LIST — every
+/// Artists, variant B+C: an ENRICHED LIST — every
 /// row carries a round thumbnail (server image, else the deterministic color
 /// circle with the initial), name and album count — topped by the C row: a
 /// horizontal portrait strip of ONLY artists with a real image (no color

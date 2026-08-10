@@ -86,7 +86,7 @@ final class FreeCatalogProvider: AudioProvider {
               FreeCatalog.isGutenbergAudiobook(audio) else { return nil }
         let id = FreeCatalog.gutenbergPrefix + String(book.id)
         gutenbergAudio[id] = audio
-        // the owner 05.08. (Geraet): the Gutenberg tiles came up WITHOUT covers.
+        // Device finding: the Gutenberg tiles came up WITHOUT covers.
         // Cause: the cover url rode along in `formats` and was dropped here,
         // and `coverURL(forItemId:)` had no gut: branch at all — so every
         // Gutenberg tile fell back to the placeholder. Measured at gutendex

@@ -925,7 +925,7 @@ final class LibraryViewModel: ObservableObject {
         //     stock belongs behind the chevron.
         let continueAll = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
-        // e96d396 C1 (the owner: "harte Regression"): the AGE CUTOFF is GONE.
+        // The AGE CUTOFF is GONE.
         // Continue is the row of ALL started books again — a book left lying
         // for four weeks is exactly what he wants to continue, not "gone from
         // Continue". The e46e7b4 cutoff was my design decision inside

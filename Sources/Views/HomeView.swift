@@ -720,7 +720,7 @@ RowHeading(title: "Rediscover",
     /// Last-played timestamp of an item from the local position store (same
     /// source podcast auto-continue uses), 0 if none.
     private func localTimestamp(_ id: String) -> Double {
-        (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double])?.last ?? 0
+        ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]) ?? 0
     }
 }
 
@@ -798,7 +798,7 @@ struct RediscoverTile: View {
     }
 }
 
-/// 13c5094 (the owner: "Pool = Seite"): the FULL candidate pool, unshuffled,
+/// The pool IS the page: the FULL candidate pool, unshuffled,
 /// grouped by source — the page turns "today for you" into browsable.
 struct RediscoverPoolPage: View {
     let pool: RediscoverSections.Pool

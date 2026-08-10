@@ -8,7 +8,7 @@
 //  ABSPlayerTests.swift
 //  ABSPlayerTests
 //
-//  Created by the owner on 10.07.26.
+
 //
 
 import Testing

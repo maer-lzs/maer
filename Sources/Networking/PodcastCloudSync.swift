@@ -120,12 +120,20 @@ final class PodcastCloudSync {
         var toLocal: [String: [Double]] = [:]
         var toCloud: [String: [Double]] = [:]
         for id in Set(local.keys).union(cloud.keys) {
-            let lts = local[id]?[1] ?? -1
-            let cts = cloud[id]?[1] ?? -1
+            let lts = ProgressMark.timestamp(local[id]) ?? -1
+            let cts = ProgressMark.timestamp(cloud[id]) ?? -1
+            // The winner brings position and timestamp; the marked duration
+            // survives from EITHER side. A device on an older build writes
+            // two-value marks with a fresh timestamp — without this it would
+            // wipe the reference point on every reconcile, silently.
             if cts > lts, let c = cloud[id] {
-                toLocal[id] = c
+                toLocal[id] = ProgressMark.advancing(local[id], position: c[0],
+                                                     duration: ProgressMark.markedDuration(c) ?? 0,
+                                                     nowMs: c[1])
             } else if lts > cts, let l = local[id] {
-                toCloud[id] = l
+                toCloud[id] = ProgressMark.advancing(cloud[id], position: l[0],
+                                                     duration: ProgressMark.markedDuration(l) ?? 0,
+                                                     nowMs: l[1])
             }
         }
         return (toLocal, toCloud)
@@ -143,13 +151,19 @@ final class PodcastCloudSync {
     }
 
     nonisolated static func mergeSingle(local: [Double]?, cloud: [Double]?) -> SingleMergeOutcome {
-        let lts = (local?.count ?? 0) >= 2 ? local![1] : -1
-        let cts = (cloud?.count ?? 0) >= 2 ? cloud![1] : -1
+        let lts = ProgressMark.timestamp(local) ?? -1
+        let cts = ProgressMark.timestamp(cloud) ?? -1
         if cts > lts, let c = cloud {
             if local == nil { return .pushTombstone }
-            return .adoptCloud(c)
+            return .adoptCloud(ProgressMark.advancing(local, position: c[0],
+                                                      duration: ProgressMark.markedDuration(c) ?? 0,
+                                                      nowMs: c[1]))
         }
-        if lts > cts, let l = local { return .pushLocal(l) }
+        if lts > cts, let l = local {
+            return .pushLocal(ProgressMark.advancing(cloud, position: l[0],
+                                                     duration: ProgressMark.markedDuration(l) ?? 0,
+                                                     nowMs: l[1]))
+        }
         return .none
     }
 

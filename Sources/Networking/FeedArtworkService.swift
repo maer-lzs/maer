@@ -82,7 +82,7 @@ actor FeedArtworkService {
             // U1 (bb403a6): failure ≠ absence — the radio-logo distinction
             // (failure/empty/data). fetch returns non-2xx WITH its error body,
             // and a 401 page read as "feed states no image" persisted a
-            // 7-day negative (the owner connected before the artwork endpoint
+            // 7-day negative (a server can be connected before its artwork endpoint
             // opened). Only a SUCCESSFULLY read head may answer "no image";
             // any other status is a failure: session-only, retried next time.
             if let status = http?.statusCode, !(200...299).contains(status) {

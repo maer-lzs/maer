@@ -8,7 +8,7 @@ import OSLog
 
 /// b81949f: fills the runtime gaps of the free-audiobook cards. The
 /// popularity search (`advancedsearch`) carries `runtime` for MOST items but
-/// not all — and the owner did not accept a reserved empty line, rightly.
+/// not all. A permanently reserved empty line in the card is not an option.
 ///
 /// **Source chosen after measuring, not guessing:** archive.org's metadata
 /// endpoint, because the item `identifier` is already in hand (the card came

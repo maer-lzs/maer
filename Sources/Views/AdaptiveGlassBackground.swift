@@ -28,7 +28,7 @@ extension EnvironmentValues {
     }
 }
 
-/// TF glass-tiering (the owner 21.07.): which look a glass surface renders.
+/// Glass tiering: which look a glass surface renders.
 /// `.material` (DEFAULT) = the cheap translucent look, never `glassEffect`, no
 /// per-frame backdrop re-sampling. `.glass` = real Liquid Glass (iOS 26). Only a
 /// few hero/control surfaces (bottom bar, sort, settings) opt into `.glass`, so

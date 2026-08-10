@@ -71,9 +71,13 @@ enum PodcastSections {
         )
     }
 
-    /// Nonisolated replication of `podcastPlayState` over the snapshot —
-    /// newest-wins across bridge ids, sentinel before the duration guard,
-    /// ABS server state when its timestamp is fresher.
+    /// The snapshot side of the played state: newest-wins across bridge ids,
+    /// ABS server state when its timestamp is fresher — and then THE shared
+    /// decision (`ProgressMark.state`). This used to be a replication that
+    /// compared against TODAY's duration, so a healed entry could never
+    /// become visible in Home or the podcast tab, which is where the symptom
+    /// shows. A replication with the same signature is not a shortcut; it is
+    /// a second truth.
     nonisolated static func state(guid: String, duration: Double,
                                   snapshot: StateSnapshot) -> EpisodePlayState {
         let ids = snapshot.equivalents[guid] ?? [guid]
@@ -93,13 +97,8 @@ enum PodcastSections {
             }
             return .unplayed
         }
-        guard let bestGuid, let stored = snapshot.positions[bestGuid] else { return .unplayed }
-        let time = stored[0]
-        if time >= PodcastProgressStore.playedSentinel { return .played }
-        guard duration > 0 else { return .unplayed }
-        if time >= duration - 1 { return .played }
-        if time > 1 { return .inProgress(fraction: min(max(time / duration, 0), 1), remaining: duration - time) }
-        return .unplayed
+        guard let bestGuid else { return .unplayed }
+        return ProgressMark.state(stored: snapshot.positions[bestGuid], currentDuration: duration)
     }
 
     /// X1c (pure): the newest episode of each show, newest first — ONE per

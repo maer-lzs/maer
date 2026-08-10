@@ -45,7 +45,7 @@ nonisolated enum RediscoverSections {
     /// continue rule: shows never displace books/episodes beyond a fifth.
     static func showCap(limit: Int) -> Int { max(2, limit / 5) }
 
-    /// 13c5094 (owner answer "Pool = Seite"): the FULL candidate pool,
+    /// The pool IS the page: the FULL candidate pool,
     /// unshuffled, grouped by source — the page behind the Rediscover row.
     /// Same thresholds as the daily picks by construction: picks() draws
     /// from exactly this pool.

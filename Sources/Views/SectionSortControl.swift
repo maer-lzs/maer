@@ -24,7 +24,7 @@ nonisolated enum SortIndicator {
     }
 }
 
-/// fb21fbd (the owner: „nicht als Button aus Glas, sondern ganz dezent als
+/// Not a glass button but a plain control at the surface it sorts (
 /// Symbol"): the sort/filter control as it sits AT the surface it acts on —
 /// no glass, no background, no border, in the accent colour.
 ///

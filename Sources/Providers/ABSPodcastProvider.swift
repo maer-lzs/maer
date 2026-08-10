@@ -265,7 +265,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
                   let ep = shows.first(where: { $0.id == "abspod:\(showId)" })?
                       .episodes.first(where: { $0.guid == absId }) else { continue }
             let duration = ep.duration
-            let isFinished = duration > 0 && localTime >= duration - 1
+            let isFinished = ProgressMark.isPlayed(stored: arr, currentDuration: duration)
             try? await client.updateEpisodeProgress(
                 libraryItemId: showId, episodeId: episodeId,
                 currentTime: localTime, duration: duration, isFinished: isFinished

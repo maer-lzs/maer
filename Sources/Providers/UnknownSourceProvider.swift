@@ -13,7 +13,7 @@ import OSLog
 /// the LIBRARY provider for an unknown namespace, and it has eleven callers.
 /// The most telling one is `PlayerCoordinator` resuming a STORED `lastId`: an
 /// id from a removed or renamed source sits in the defaults and would go to the
-/// user's server — the very mechanic that got the owner locked out, only rarer.
+/// user's server — the same mechanic that can lock someone out, only rarer.
 ///
 /// A test for a rule the production code never reads is a green fence around
 /// nothing. Hence this: the router can keep its non-optional signature, and

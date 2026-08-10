@@ -48,7 +48,7 @@ enum PodcastAutoContinue {
                 // Bridge-aware: the freshest progress of an episode can live
                 // under its rss:/abspod: twin — take the max over all ids.
                 ABSPodcastProvider.shared.equivalentIds(id).reduce(0.0) { best, eqId in
-                    let localTs = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(eqId)) as? [Double])?.last ?? 0
+                    let localTs = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(eqId)) as? [Double]) ?? 0
                     let absTs = ABSPodcastProvider.shared.episodeProgress[eqId]?.lastUpdate ?? 0
                     return max(best, max(localTs, absTs))
                 }

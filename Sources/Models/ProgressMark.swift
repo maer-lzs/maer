@@ -5,57 +5,55 @@
 
 import Foundation
 
-/// Wie „gehört" gespeichert und wieder gelesen wird.
+/// How "played" is stored and read back.
 ///
-/// **Gemessen, nicht vermutet (10.08.):** Bei Sendungen auf Megaphone wird
-/// Werbung ZUFÄLLIG je Abruf eingesetzt — Spotifys eigene Dokumentation nennt
-/// es „random ad insertion… it may show up or not in any given request". Die
-/// gemeldete Dauer ist für diese Klasse also **keine stabile Eigenschaft**.
+/// **Measured, not assumed:** shows hosted on Megaphone get ads inserted
+/// RANDOMLY per request — the platform's own documentation calls it "random
+/// ad insertion… it may show up or not in any given request". The reported
+/// duration is therefore **not a stable property** for that class of show.
 ///
-/// Vorher hieß „gehört" lokal: `Position ≥ heutige Dauer − 1`. Wuchs die Dauer
-/// zwischen zwei Abrufen um drei Minuten, fiel die Marke, und sechs fertige
-/// Folgen zeigten sich wieder als „noch 3 Min." — bei jeder Auffrischung neu.
-/// Die Gegenprobe am Server (41 Folgen, 38 exakt auf `total`, keine einzige
-/// nahe dem Ende) hat die Abgleich-Vermutung ausgeschlossen: Der Defekt lag
-/// in der lokalen RÜCK-Ableitung.
+/// "Played" used to mean `position >= today's duration - 1`. When the duration
+/// grew by three minutes between two fetches, the mark fell below the
+/// threshold and six finished episodes showed "3 min left" again — anew after
+/// every refresh. A server-side counter-check (41 episodes, 38 exactly on
+/// `total`, none near the end) ruled out the sync path: the defect was in the
+/// local back-derivation.
 ///
-/// Deshalb speichert der Eintrag die Dauer mit, die beim Markieren galt:
-/// `[Position, Zeitstempel, damalige Dauer]`. „Gehört" heißt dann **„die
-/// Position entspricht der Dauer, die damals galt"** — unabhängig davon, wie
-/// viel Werbung heute drinsteckt. Ältere Einträge (`count == 2`) verhalten
-/// sich unverändert, und **nach außen** geht weiterhin die echte Endposition:
-/// gpodder und Audiobookshelf erwarten `position = total`, und das ist auch
-/// richtig so.
+/// So the entry carries the duration that was valid when it was written:
+/// `[position, timestamp, duration at the time]`. "Played" then means **"the
+/// position matches the duration that applied back then"** — regardless of how
+/// much advertising is in today's copy. Older entries (`count == 2`) behave
+/// unchanged, and **outward** the real end position still goes out: gpodder and
+/// Audiobookshelf expect `position = total`, and rightly so.
 nonisolated enum ProgressMark {
-    /// Position, die „gehört" bedeutet, wenn die Folge keine Dauer meldet.
-    /// 30 Tage — jenseits jeder echten Folge und klein genug für die
-    /// Int-Umrechnung beim gpodder-Push.
+    /// The position that means "played" for episodes that report no duration.
+    /// 30 days — beyond any real episode and small enough for the `Int`
+    /// conversion in the gpodder push (infinity would trap there).
     static let playedSentinel: Double = 2_592_000
 
-    /// Der zu speichernde Eintrag. Die Dauer kommt nur mit, wenn sie bekannt
-    /// ist — ein erfundener Wert wäre schlimmer als keiner.
+    /// The entry to store. The duration only travels along when it is known —
+    /// an invented value would be worse than none.
     ///
-    /// **Nicht direkt aufrufen, wenn es die Stelle schon gibt** — dafür ist
-    /// `advancing` da. Diese Form baut NEU und verliert dabei, was sie nicht
-    /// weiß.
+    /// **Do not call this when an entry already exists** — that is what
+    /// `advancing` is for. This form builds a NEW one and drops whatever it
+    /// does not know.
     static func entry(position: Double, duration: Double, nowMs: Double) -> [Double] {
         duration > 0 ? [position, nowMs, duration] : [position, nowMs]
     }
 
-    /// **Fortschreiben statt neu bauen** (Befund ee4fca6).
+    /// **Carry forward instead of rebuilding.**
     ///
-    /// Ein eingehender Eintrag ohne bekannte Dauer darf einen VORHANDENEN
-    /// Bezugspunkt nicht löschen — er weiß es nicht besser, er weiß es gar
-    /// nicht. Genau das ist passiert: Der gpodder-Abgleich rief `entry` mit
-    /// `a.total ?? 0` auf, schrieb bei jüngerem Zeitstempel eine
-    /// Zwei-Werte-Marke über eine gute Drei-Werte-Marke, und weil der Server
-    /// Zeitstempel auf ganze Sekunden rundet, gewann dabei sogar das eigene
-    /// Echo. Ohne Abspielen, ohne Geste, im Takt der Synchronisierung.
+    /// An incoming entry without a known duration must not delete an EXISTING
+    /// reference point — it does not know better, it does not know at all.
+    /// That is exactly what happened: the gpodder pull called `entry` with
+    /// `total ?? 0` and, on a younger timestamp, wrote a two-value mark over a
+    /// good three-value one. The push stamps `Date()` at push time rather than
+    /// the entry's own timestamp, so even a device's own echo came back
+    /// younger and won — no playback, no gesture, in sync with the sync.
     ///
-    /// Dieselbe Klasse wie die Feldklassen beim Show-Merge: **Wissen, das nur
-    /// eine Seite hat, darf nicht daran sterben, dass die andere gewinnt.**
-    /// Deshalb steht es hier und nicht an den Aufrufstellen — dann kann auch
-    /// keine künftige den Bezugspunkt mehr verlieren.
+    /// Same class as the field classes in the show merge: **knowledge only one
+    /// side has must not die because the other side wins.** It lives here and
+    /// not at the call sites, so no future caller can lose it either.
     static func advancing(_ existing: [Double]?,
                           position: Double,
                           duration: Double,
@@ -64,30 +62,65 @@ nonisolated enum ProgressMark {
         return entry(position: position, duration: known, nowMs: nowMs)
     }
 
-    /// **Nachtragen** (Befund afdcc57): dem vorhandenen Eintrag NUR den
-    /// fehlenden Bezugspunkt ergänzen — Position und Zeitstempel bleiben
-    /// unangetastet. Kein Merge, keine Übernahme.
+    /// **Supplementing:** add ONLY the missing reference point to an entry
+    /// that already exists — position and timestamp stay untouched. This is
+    /// not a merge and not an adoption, which is why it asks no question about
+    /// timestamps: for the affected episodes both sides stem from the SAME
+    /// event, so the server is never newer.
     ///
-    /// `nil` heißt „nichts zu tun": Der Eintrag hat schon einen, oder die
-    /// Gegenseite kennt keine Dauer. Und es entsteht NIE ein Eintrag aus dem
-    /// Nichts — eine Heilung, die Gelöschtes zurückholt, wäre die Klasse, die
-    /// beim Abo-Abgleich die Massenlösch-Wache abfängt.
+    /// `nil` means "nothing to do": the entry already has one, or the other
+    /// side knows no duration. An entry is NEVER created from nothing — a
+    /// repair that resurrects deleted state is the class the subscription
+    /// merge guards against with its mass-deletion check.
     static func supplementing(_ existing: [Double], duration: Double) -> [Double]? {
         guard duration > 0, existing.count >= 2, markedDuration(existing) == nil else { return nil }
         return [existing[0], existing[1], duration]
     }
 
-    /// Die Dauer, die beim Schreiben galt — falls der Eintrag sie trägt.
+    /// When the entry was last written (milliseconds since 1970).
+    ///
+    /// Read it through here, never as `.last`: since the mark carries a third
+    /// value, `.last` is the DURATION (~3600) instead of a timestamp (~1.7e12),
+    /// and every comparison built on it silently picks the wrong side.
+    static func timestamp(_ stored: [Double]?) -> Double? {
+        guard let stored, stored.count >= 2 else { return nil }
+        return stored[1]
+    }
+
+    /// The duration that applied when the entry was written — if it carries one.
     static func markedDuration(_ stored: [Double]) -> Double? {
         stored.count >= 3 && stored[2] > 0 ? stored[2] : nil
     }
 
-    /// Gilt der Eintrag als gehört?
+    /// Three states of an episode for the UI — unplayed, in progress (with a
+    /// remaining time) or fully played. Foundation-only on purpose: the
+    /// decision below belongs next to the mark it reads, not to a view.
+    enum PlayState: Equatable, Sendable {
+        case unplayed
+        case inProgress(fraction: Double, remaining: Double)
+        case played
+    }
+
+    /// THE answer to "how far is this episode". Both the reactive store and
+    /// the off-main sections compute call this — they used to carry two
+    /// versions of it with the same signature, and only one of them knew
+    /// about the marked duration. That is why a healed entry stayed invisible
+    /// in exactly the two surfaces that show the symptom.
+    static func state(stored: [Double]?, currentDuration: Double) -> PlayState {
+        guard let stored, stored.count >= 2 else { return .unplayed }
+        if isPlayed(stored: stored, currentDuration: currentDuration) { return .played }
+        guard currentDuration > 0 else { return .unplayed }
+        let time = stored[0]
+        guard time > 1 else { return .unplayed }
+        return .inProgress(fraction: min(max(time / currentDuration, 0), 1),
+                           remaining: currentDuration - time)
+    }
+
+    /// Does the entry count as played?
     ///
-    /// Reihenfolge mit Absicht: Wächterwert zuerst (er braucht keine Dauer),
-    /// dann die MITGESPEICHERTE Dauer, und erst zuletzt die heutige — die
-    /// letzte Stufe ist der alte Weg und gilt nur noch für Einträge ohne
-    /// dritten Wert.
+    /// The order is deliberate: sentinel first (it needs no duration), then the
+    /// STORED duration, and only last today's — that last step is the old path
+    /// and applies only to entries without a third value.
     static func isPlayed(stored: [Double], currentDuration: Double) -> Bool {
         guard let position = stored.first else { return false }
         if position >= playedSentinel { return true }
@@ -96,3 +129,7 @@ nonisolated enum ProgressMark {
         return position >= currentDuration - 1
     }
 }
+
+/// The name the UI has always used. One type, one decision — the alias keeps
+/// the call sites untouched while the truth lives in `ProgressMark`.
+typealias EpisodePlayState = ProgressMark.PlayState

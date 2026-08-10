@@ -46,7 +46,7 @@ struct ProjectFileIntegrityTests {
     /// root — docs, screenshots, test fixtures, tooling config, the local
     /// key file — can be swept into the app bundle. Lose the path and both
     /// problems return silently, so it is nailed down here.
-    /// Die App-Store-Erlaubnis (LICENSE-ADDITIONAL-TERMS, Teil 1) kann Laurenz nur erteilen,
+    /// The app-store permission (LICENSE-ADDITIONAL-TERMS, part 1) can only be granted
     /// weil er ALLEINIGER Rechteinhaber ist — und das ist er nur, solange das
     /// Projekt keine Fremdabhängigkeit einzieht. Eine still dazugekommene
     /// SPM-Abhängigkeit brächte fremden Code (und fremde Lizenz) in dieselbe
@@ -200,17 +200,17 @@ struct ProjectFileIntegrityTests {
                 "the licence is shipped on purpose (GPL) and must stay explicitly referenced")
     }
 
-    /// Befund 7bdfb35: Der Hoerstand liegt als `[Position, Zeitstempel,
-    /// damalige Dauer]` — ein Eintrag mit drittem Wert ist GUELTIG. Wer auf
-    /// `count == 2` prueft, verwirft ihn still; heute ist das dreimal
-    /// passiert (der iCloud-Abgleich haette gehoerte Folgen nicht mehr reisen
-    /// lassen, der Player die Wiederaufnahme verloren, und das Messmittel
-    /// filterte ausgerechnet die Eintraege heraus, die es messen sollte).
+    /// The listening mark is `[position, timestamp, duration at the time]` —
+    /// an entry with a third value is VALID. Anything checking `count == 2`
+    /// discards it silently; that happened three times (the iCloud sync would
+    /// have stopped played episodes from travelling, the player would have lost
+    /// resume, and the measuring instrument filtered out exactly the entries it
+    /// was built to measure).
     ///
-    /// Der Zaun kennt den SCHLUESSEL, nicht die Zahl: `count == 2` ist
-    /// anderswo voellig richtig (Byte-Rahmen im DownloadManager, URL-Teile,
-    /// Liedtext-Zeitmarken) und darf nicht mitgefangen werden.
-    @Test("keine Lesestelle von localPosition prueft auf count == 2")
+    /// The fence knows the KEY, not the number: `count == 2` is perfectly
+    /// correct elsewhere (byte frames in the download manager, URL parts, lyric
+    /// timestamps) and must not be caught with it.
+    @Test("no reader of localPosition checks for count == 2")
     func noPositionReaderChecksForExactlyTwo() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -222,8 +222,8 @@ struct ProjectFileIntegrityTests {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let lines = text.components(separatedBy: "\n")
             for (index, line) in lines.enumerated() where line.contains("localPosition") {
-                // Das Lesen und die Formpruefung stehen oft in
-                // aufeinanderfolgenden Zeilen (guard ueber mehrere Zeilen).
+                // Read and shape check often sit on consecutive lines (a
+                // multi-line guard), so a small window catches both.
                 let window = lines[index..<min(index + 4, lines.count)].joined(separator: " ")
                 if window.contains("count == 2") {
                     offenders.append("\(file.lastPathComponent):\(index + 1)")
@@ -231,16 +231,16 @@ struct ProjectFileIntegrityTests {
             }
         }
         #expect(offenders.isEmpty,
-                "diese Lesestellen verwerfen Eintraege mit mitgespeicherter Dauer still: \(offenders)")
+                "these readers silently discard entries that carry a stored duration: \(offenders)")
     }
 
-    /// Befund 35cb1f4: Der Zaun deckte nur die LESER. Ein Schreiber, der ein
-    /// rohes `[position, ts]` ablegt, loescht den Bezugspunkt genauso still —
-    /// der Fuenf-Sekunden-Schreiber im Player tat das bei jeder Wiedergabe.
-    /// Also: Auf `localPosition` wird nur ueber `ProgressMark` geschrieben
-    /// (`entry`/`advancing`/`supplementing`) oder ein bestehender Wert
-    /// unveraendert umgezogen. Nie ein Array-Literal.
-    @Test("kein Array-Literal wird auf localPosition geschrieben")
+    /// The reader fence alone was not enough: a writer that stores a raw
+    /// `[position, ts]` drops the reference point just as silently — the
+    /// five-second writer in the player did it on every playback. So
+    /// `localPosition` is only written through `ProgressMark`
+    /// (`entry`/`advancing`/`supplementing`) or by moving an existing value
+    /// unchanged. Never an array literal.
+    @Test("no array literal is written to a localPosition key")
     func noRawArrayIsWrittenToAPositionKey() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -252,8 +252,8 @@ struct ProjectFileIntegrityTests {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             let lines = text.components(separatedBy: "\n")
             for (index, line) in lines.enumerated() where line.contains("set([") {
-                // Schluessel und Wert stehen oft in derselben Anweisung ueber
-                // mehrere Zeilen — ein Fenster faengt beide Schreibweisen.
+                // Key and value often sit in one statement across several
+                // lines — a window catches both spellings.
                 let start = max(0, index - 2)
                 let window = lines[start..<min(index + 3, lines.count)].joined(separator: " ")
                 if window.contains("localPosition") {
@@ -262,7 +262,48 @@ struct ProjectFileIntegrityTests {
             }
         }
         #expect(offenders.isEmpty,
-                "diese Schreibstellen bauen den Eintrag selbst und verlieren dabei die mitgespeicherte Dauer: \(offenders)")
+                "these writers build the entry themselves and lose the stored duration: \(offenders)")
+    }
+
+    /// **Whoever answers "played" calls `ProgressMark`.**
+    ///
+    /// The pattern behind five occurrences was not sloppiness: the rule lived
+    /// at the places where it had been reported, and nowhere did it say that it
+    /// applies everywhere. Two forms are expressible and both fail silently, so
+    /// the test fails instead of the user:
+    ///  * a comparison against a duration outside `ProgressMark`
+    ///  * `.last` used as a timestamp on a `localPosition` entry (since the
+    ///    third value exists, `.last` is the DURATION)
+    ///
+    /// Exempt on purpose: `SyncRules`, `BookmarkProgressMath` and the Subsonic
+    /// bookmark path judge a SERVER payload (position and duration arrive in
+    /// the same response), not a stored mark — there is no third value that
+    /// could be lost there.
+    @Test("the played decision is not reimplemented anywhere")
+    func playedDecisionIsNotReimplemented() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let sources = root.appendingPathComponent("Sources")
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        var offenders: [String] = []
+        let exempt = ["ProgressMark.swift", "SyncRules.swift", "BookmarkProgressMath.swift",
+                      "SubsonicProvider.swift"]
+        for file in files where !exempt.contains(file.lastPathComponent) {
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            for (index, line) in text.components(separatedBy: "\n").enumerated() {
+                let code = line.split(separator: "/").first.map(String.init) ?? line
+                if code.contains(">= duration - 1") || code.contains(">= currentDuration - 1")
+                    || code.contains(">= total - 1") {
+                    offenders.append("\(file.lastPathComponent):\(index + 1) (Dauer-Vergleich)")
+                }
+                if code.contains("localPosition(") && code.contains(").last") {
+                    offenders.append("\(file.lastPathComponent):\(index + 1) (.last als Zeitstempel)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these places reimplement the played decision instead of calling ProgressMark: \(offenders)")
     }
 }
 #endif

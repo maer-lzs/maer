@@ -19,7 +19,7 @@ import Testing
 /// URLs resolved against the feed base), R4 (duplicate guids collapse
 /// in-parse), R5 (weekday-less / zone-name RFC-2822 forms parse), O1 (broken
 /// OPML fails visibly). STILL OPEN:
-/// - R1 RESOLVED (owner decision 01.08): text-only items are KEPT and
+/// - R1 RESOLVED: text-only items are KEPT and
 ///   marked non-playable (`isPlayable == false`) — all five R1 cases strict.
 /// - R6: channel-level `podcast:guid` (PC20) is not read at all.
 /// - R7: `atom:link rel="next"` pagination (RFC 5005) is not surfaced.

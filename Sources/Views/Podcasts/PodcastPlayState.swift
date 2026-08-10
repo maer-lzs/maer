@@ -10,15 +10,6 @@ import SwiftUI
 // framework, so the pre-concurrency import is the sanctioned suppression.
 @preconcurrency import Combine
 
-/// Three states of an episode for the UI — unplayed, in progress (with remaining
-/// time) or fully played. Podcasts do NOT sync via the server; the basis is the
-/// local `localPosition` (which the player writes every 5 s).
-nonisolated enum EpisodePlayState: Equatable {
-    case unplayed
-    case inProgress(fraction: Double, remaining: Double)
-    case played
-}
-
 /// Reactive access to the local podcast progress. Needed because
 /// `localPosition` lives in UserDefaults (no @Published) — without this store a
 /// "mark as played" would not update the list immediately.
@@ -42,22 +33,14 @@ final class PodcastProgressStore: ObservableObject {
     /// episode/audiobook, and small enough for the Int conversions in the
     /// gpodder push. Without it, "mark as played" was a silent no-op for
     /// duration-less episodes (state() could never reach `time >= duration - 1`).
-    /// Eine Wahrheit, in `ProgressMark` — hier nur der vertraute Name.
+    /// One truth, in `ProgressMark` — this is only the familiar name.
     nonisolated static var playedSentinel: Double { ProgressMark.playedSentinel }
 
     /// State directly from guid + duration — without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
-        guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
-              stored.count >= 2 else { return .unplayed }
-        let time = stored[0]
-        // „Gehoert" entscheidet ProgressMark — es kennt den Waechterwert UND
-        // die Dauer, die beim Markieren galt. Die heutige Dauer taugt dafuer
-        // nicht: bei dynamischer Werbung schwankt sie je Abruf (gemessen).
-        if ProgressMark.isPlayed(stored: stored, currentDuration: duration) { return .played }
-        guard duration > 0 else { return .unplayed }
-        if time > 1 { return .inProgress(fraction: min(max(time / duration, 0), 1), remaining: duration - time) }
-        return .unplayed
+        let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double]
+        return ProgressMark.state(stored: stored, currentDuration: duration)
     }
 
     /// "Played" writes the position to the end; "unplayed" writes a `[0, now]`
@@ -70,9 +53,9 @@ final class PodcastProgressStore: ObservableObject {
             // With a known duration write the real end; without one the sentinel
             // — previously the else branch wrote the UNPLAYED tombstone for
             // duration-less episodes, making "mark as played" a silent no-op.
-            // Die Dauer wandert als DRITTER Wert mit: sie ist der Bezugspunkt,
-            // gegen den spaeter geprueft wird (nach aussen geht unveraendert
-            // die echte Endposition).
+            // The duration travels along as the THIRD value: it is the
+            // reference the check uses later (outward, the real end position
+            // still goes out unchanged).
             // Die frischeste bekannte Laenge: nach einer Wiedergabe hat der
             // Player die echte Assetlaenge in den Store geschrieben, waehrend
             // das uebergebene Element noch die Feed-Behauptung tragen kann.

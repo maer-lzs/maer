@@ -301,7 +301,7 @@ struct PodcastCategoryMappingTests {
         #expect(ContinueHidden.pruned(markers, progress: [:])["b1"] != nil)
     }
 
-    /// the owner 05.08. (Geraet): Gutenberg tiles had no covers. The url was in
+    /// Device finding: Gutenberg tiles had no covers. The url was in
     /// the Gutendex answer all along — measured before the fix: 32/32 entries
     /// carry image/jpeg, and the urls answer 200.
     @Test("Gutenberg cover comes out of the formats map")
@@ -367,7 +367,7 @@ struct PodcastCategoryMappingTests {
 
     @Test("8f0fc27/4ab17e8: the DEVICE REGION leads — priority, not exclusivity")
     func deviceRegionLeads() {
-        // the owner's case: Swiss device, German suggestions. The Swiss chart
+        // The case: Swiss device, German suggestions. The Swiss chart
         // deviates from the German one by 58 % and carries "Schreckmümpfeli";
         // it must lead instead of being a rotating afterthought.
         let de = SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 20_260_805,

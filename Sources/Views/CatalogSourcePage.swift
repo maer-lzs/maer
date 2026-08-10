@@ -459,7 +459,7 @@ struct CatalogShelfPage: View {
 
 
 /// Auftrag O: the show page of an archive.org SERIES bundle (Old-Time-Radio
-/// class) — the owner's question "is that really 255 hours without a pause?"
+/// class) — the question "is that really 255 hours without a pause?"
 /// answered honestly: the bundle's files ARE episodes, the app knew them all
 /// along (FreeCatalog.archiveTracks); this page finally shows them. Blueprint
 /// list form like the podcast episode lists; hundreds of episodes page in

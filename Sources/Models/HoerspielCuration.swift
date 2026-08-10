@@ -190,7 +190,7 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Old Gods of Appalachia", author: "DeepNerd Media",
               feedURL: "https://feeds.acast.com/public/shows/61ba0a431a8cbeb6ea3cf11a", language: "en",
               group: .independent, form: .series),
-        // X²·2 (the owner entschieden): the German independents — community
+        // The German independents — community
         // honestly named (LibriVox principle); language nil = always visible,
         // so the row's language bracket fell (mixed preview by language).
         // hoer-talk-Vertiefung (08.08., gemessen): the ONE independent

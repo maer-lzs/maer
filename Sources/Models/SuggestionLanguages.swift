@@ -71,7 +71,7 @@ nonisolated enum SuggestionLanguages {
     /// per run keeps the request count flat while the variety still arrives
     /// over the week. `perRun` = 2 by default (primary + one rotating).
     /// 8f0fc27/4ab17e8: the DEVICE REGION leads when it is in the language's
-    /// list — priority, not exclusivity. the owner lives in Switzerland, and
+    /// list — priority, not exclusivity. A device can sit in Switzerland, and
     /// the Swiss chart deviates from the German one by 58 % (measured), with
     /// content that is genuinely different: "Schreckmümpfeli" (the SRF
     /// short-play institution) stands there and nowhere else. Notably, the

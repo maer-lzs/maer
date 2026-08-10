@@ -23,16 +23,14 @@ struct PodcastShowSettingsSheet: View {
     private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
     private let limits: [Int] = [0, 5, 10, 25, 50, 100]
 
-    /// Eigene Eigenschaft, weil der `body` sonst die Typpruefung sprengt
-    /// (gemessen: Fehler „unable to type-check in reasonable time").
+    /// Its own property because the `body` otherwise blows the type checker
+    /// (measured: "unable to type-check this expression in reasonable time").
     @ViewBuilder
     private var diagnosisSection: some View {
-        // Befund 10.08. (gehoerte Folgen kippen zurueck): Das Messmittel,
-        // NICHT der Fix. Die Ursache liegt entweder in einer gewachsenen
-        // Dauer oder im Abgleich, und nur der gespeicherte Zeitstempel
-        // trennt beides — er liegt auf dem Geraet, also gehoert der
-        // Auslöser dorthin, wo der falsche Zustand auffaellt.
-        // Diagnose-UI ist bewusst verbatim (Projekt-Konvention).
+        // The measuring instrument, NOT the fix. The cause is either a grown
+        // duration or the sync, and only the stored timestamp separates the two
+        // — it lives on the device, so the trigger belongs where the wrong
+        // state shows up. Diagnostic UI stays verbatim (project convention).
         Section {
             Button {
                 UIPasteboard.general.string = progressReport()
@@ -56,7 +54,7 @@ struct PodcastShowSettingsSheet: View {
         }
     }
 
-    /// Liest die gespeicherten Positionen dieser Sendung zusammen — read-only.
+    /// Collects this show's stored positions — read-only.
     private func progressReport() -> String {
         let show = PodcastSubscriptions.shared.shows.first { $0.id == showId }
             ?? ABSPodcastProvider.shared.shows.first { $0.id == showId }
@@ -67,7 +65,7 @@ struct PodcastShowSettingsSheet: View {
             return ProgressDiagnosis.Entry(
                 title: episode.title, guid: episode.guid,
                 position: stored[0],
-                // Der Zeitstempel liegt in Millisekunden im Speicher.
+                // The stored timestamp is in milliseconds.
                 updatedAt: stored[1] / 1000,
                 feedDuration: episode.duration,
                 markedDuration: ProgressMark.markedDuration(stored))

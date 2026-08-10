@@ -6,11 +6,11 @@
 import Foundation
 import OSLog
 
-/// The show-INDEPENDENT listen log (the owner 26.07., data layer only — no UI):
+/// The show-INDEPENDENT listen log (data layer only — no UI):
 /// one persistent entry per episode guid that ever transitioned to `.played`,
 /// carrying enough metadata (episode/show title, feed, duration) to stay
 /// enumerable after an unsubscribe or feed rotation — the two gaps of the
-/// UserDefaults-only state. PERSON level (the owner 8b354d7): the log stores
+/// UserDefaults-only state. PERSON level: the log stores
 /// person facts — local transitions AND reconciled iCloud/gpodder positions
 /// feed it (noteReconciled); the log FILE itself is not synced (localPosition
 /// already is; each device derives the same facts — endgame candidate: sync
@@ -83,7 +83,7 @@ final class PodcastListenLog {
         persist()
     }
 
-    /// Personen-Ebene (owner decision 8b354d7): reconciled transitions —
+    /// Person level: reconciled transitions —
     /// iCloud/gpodder-applied positions — feed the log too; the log stores
     /// person FACTS, not device events. Metadata resolves via the subscribed
     /// shows; a guid whose show was never subscribed HERE gets a MINIMAL

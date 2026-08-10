@@ -14,7 +14,7 @@ import Testing
 /// INCLUSION criterion — what does not meet it never appears. A test that
 /// held a handful of known-bad identifiers against the queries would only
 /// ever prove something about those identifiers on that day (and would put
-/// exactly the list into the repo that the owner ruled out, and that 958d7d1
+/// exactly the list into the repo that was ruled out, and that
 /// rules out for the repo as a whole). What actually guarantees the property
 /// is the CONSTRUCTION, so that is what is nailed down here: lose the subject
 /// constraint, or add a way past the shelves, and these cases go red.

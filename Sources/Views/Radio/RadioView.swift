@@ -360,7 +360,7 @@ struct RadioView: View {
             return
         }
         #endif
-        // National (the owner 26.07.): country top-votes instead of world —
+        // National: country top-votes instead of world —
         // less foreign-language noise; search covers the exotics. b1ab99d:
         // the country follows the cascade (choice beats guess).
         async let topTask = Self.nationalPopular(effectiveCountryCode)

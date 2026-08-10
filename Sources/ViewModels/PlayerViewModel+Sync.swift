@@ -105,13 +105,16 @@ extension PlayerViewModel {
                 if provider.capabilities.contains(.progressSync) && !isPodcast {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
-                    // Die Dauer wandert mit (dritter Wert): am natuerlichen
-                    // Ende ist `currentTime == duration`, und ohne den Bezug
-                    // wuerde eine spaeter gewachsene Werbe-Dauer die fertige
-                    // Folge wieder als angefangen zeigen.
+                    // The duration travels along as the third value: at the
+                    // natural end `currentTime == duration`, and without that
+                    // reference a later-grown ad duration would show the
+                    // finished episode as started again. `advancing`, not
+                    // `entry` — with an unknown duration this must not drop a
+                    // reference point that is already there.
+                    let previous = UserDefaults.standard.array(forKey: key) as? [Double]
                     UserDefaults.standard.set(
-                        ProgressMark.entry(position: currentTime, duration: duration,
-                                           nowMs: Date().timeIntervalSince1970 * 1000),
+                        ProgressMark.advancing(previous, position: currentTime, duration: duration,
+                                               nowMs: Date().timeIntervalSince1970 * 1000),
                         forKey: key)
                     // gpodder: push the podcast position too (periodically + on
                     // pause/stop/seek). No-op without config; abspod: is mapped
@@ -281,13 +284,24 @@ extension PlayerViewModel {
         // Providers without server sync (RSS/local): the played state lives in
         // `localPosition` — set or remove it directly here.
         if !provider.capabilities.contains(.progressSync), let key = localPositionKey {
+            let nowMs = Date().timeIntervalSince1970 * 1000
             if target {
+                // With an unknown duration `entry(position: 0, duration: 0)`
+                // wrote `[0, now]` — which READS as unplayed. Same sentinel as
+                // `PodcastProgressStore.setPlayed`: it needs no duration.
+                let previous = UserDefaults.standard.array(forKey: key) as? [Double]
+                let position = duration > 0 ? duration : ProgressMark.playedSentinel
                 UserDefaults.standard.set(
-                    ProgressMark.entry(position: duration, duration: duration,
-                                       nowMs: Date().timeIntervalSince1970 * 1000),
+                    ProgressMark.advancing(previous, position: position,
+                                           duration: duration, nowMs: nowMs),
                     forKey: key)
             } else {
-                UserDefaults.standard.removeObject(forKey: key)
+                // A deleted key is not a fact: it loses against the older
+                // iCloud value on the next reconcile (newest-wins) and the
+                // episode flips back to played. The `[0, now]` tombstone is a
+                // decided pattern — `setPlayed` has always used it, this path
+                // deviated from it.
+                UserDefaults.standard.set([0.0, nowMs], forKey: key)
             }
         }
         if target {

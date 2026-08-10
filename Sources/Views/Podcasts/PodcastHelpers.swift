@@ -39,8 +39,7 @@ extension View {
                 Button {
                     // Same local stamp the Continue rows sort by (the last
                     // saved position), so hide/return use ONE clock.
-                    let stamp = (UserDefaults.standard
-                        .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                    let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
                     ContinueHiddenStore.hide(id: item.id, lastUpdate: stamp)
                 } label: {
                     Label("Don't show under Continue", systemImage: "eye.slash")
@@ -231,12 +230,12 @@ enum PodcastAutoDownload {
         let items: [PodcastAutoDownloadRules.Item] = owned.map { id in
             let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]
             let position = stored?.first ?? 0
-            // The progress marker already carries the moment it was written
-            // (milliseconds) — no second bookkeeping for "finished when".
-            let finishedAt = (stored?.count ?? 0) > 1 ? stored![1] / 1000 : 0
+            // The mark already carries the moment it was written (milliseconds)
+            // — no second bookkeeping for "finished when".
+            let finishedAt = (ProgressMark.timestamp(stored) ?? 0) / 1000
             let duration = dm.loadCachedDetail(forItemId: id)?.media.duration ?? 0
-            let finished = position >= PodcastProgressStore.playedSentinel
-                || (duration > 0 && position >= duration - 1)
+            let finished = stored.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
+            _ = position
             return .init(id: id, isFinished: finished, finishedAt: finishedAt)
         }
         let expired = PodcastAutoDownloadRules.expired(items, ownedByAutomation: owned, now: now)

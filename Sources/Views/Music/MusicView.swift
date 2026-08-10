@@ -302,7 +302,7 @@ struct MusicView: View {
 
 
     private var playlistRow: some View {
-        // Korrektur 01.08 (the owner am Gerät): CARDS, not tiles — the same
+        // Device finding: CARDS, not tiles — the same
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
@@ -383,7 +383,7 @@ struct MusicView: View {
 /// 8203d12: the doc comment claimed the OPPOSITE of what the code does — it
 /// still carried the original F5 specification ("tap opens the detail page,
 /// no direct playback"), while `1b16f2c` had already switched the card to
-/// tap-to-play. the owner's decision (05.08.) confirms tap-to-play as the ONE
+/// tap-to-play, which is the ONE
 /// card gesture; the detail page rides the `CardDetailPill`, shuffle the
 /// corner badge. Corrected here so the doc stops cementing a dead spec.
 private struct PlaylistCard: View {

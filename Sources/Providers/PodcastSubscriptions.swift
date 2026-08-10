@@ -52,12 +52,11 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var audioURL: String
     var pubDate: Double             // ms epoch
     var duration: Double            // seconds (0 if unknown) — FEED-Tatsache
-    /// Die vom Asset GEMESSENE Laenge (Befund 955dbfa). Sie ist eine
-    /// SPEICHER-Tatsache: ein frisches Parsen kann sie nicht kennen, weil sie
-    /// erst beim Abspielen entsteht. Deshalb hat sie ein eigenes Feld — im
-    /// alten Zustand ueberschrieb sie `duration` und starb bei jeder
-    /// Auffrischung. `duration` traegt sie weiterhin gespiegelt, damit jede
-    /// Lesestelle unveraendert die beste bekannte Laenge sieht.
+    /// The length MEASURED from the asset. It is a STORE fact: a fresh parse
+    /// cannot know it, because it only comes into existence during playback.
+    /// Hence its own field — while it merely overwrote `duration` it was
+    /// indistinguishable from the feed's claim and died on every refresh.
+    /// `duration` still mirrors it so every reader sees the best known length.
     var measuredDuration: Double? = nil
     var description: String?
     var imageURL: String?
@@ -443,7 +442,7 @@ final class PodcastSubscriptions: ObservableObject {
 
     /// f4f1b46: identity WITHOUT the secret VALUES — the ZEIT class rotates
     /// its `freebie` token, and since the token joined the identity params
-    /// (bb89772) a rotated token spawned a TWIN of the same feed (the owner's
+    /// (bb89772) a rotated token spawned a TWIN of the same feed (the
     /// screenshot: two entries, identical masked URL). Same masked identity
     /// ⇒ same resource on one device.
     nonisolated static func collapseKey(_ feedURL: String) -> String {
@@ -565,15 +564,13 @@ final class PodcastSubscriptions: ObservableObject {
     /// nach `guid`, neueste zuerst. `internal`, damit die RSS-Härtung (bei
     /// einem dünnen Abruf nie schrumpfen) im Unit-Test fahrbar ist.
     ///
-    /// Befund 955dbfa: **Felder klassifizieren statt Seiten waehlen.**
+    /// **Classify fields instead of picking a side.**
     ///
-    /// Vorher waehlte der Merge die Seite mit mehr Folgen als Basis und flickte
-    /// danach EINZELNE Felder von Hand zurueck. So wurde `origin` gerettet
-    /// (78c5298), nachdem es still gestorben war — und die gemessene Laenge
-    /// wurde NICHT gerettet, weil niemand daran dachte. Zwei Vorkommen sind
-    /// kein Zufall: Bei jenem Verfahren muss jedes Mal jemand daran denken.
+    /// Picking the side with more episodes and then patching individual fields
+    /// back requires someone to remember every field, every time — two fields
+    /// died that way before.
     ///
-    /// Die Klassifizierung ist objektiv, kein Ermessen:
+    /// The classification is objective, not a judgement call:
     ///  * **Feed-Tatsachen** (Titel, Bild, Beschreibung, Kategorien, die
     ///    angekuendigte Dauer): das frische Parsen kennt sie am besten, die
     ///    frische Seite gewinnt.
@@ -898,11 +895,10 @@ final class PodcastSubscriptions: ObservableObject {
     /// or round `itunes:duration`, and without a duration the played/remaining
     /// state cannot be derived. Persisted so lists and play-state math work
     /// from then on.
-    /// Die zuletzt bekannte Laenge einer Folge — nach einer Wiedergabe ist das
-    /// die vom Asset GEMESSENE, sonst die im Feed behauptete. Befund 48a4c60:
-    /// die beiden gehen auseinander (angekuendigte, aber leere Werbeplaetze),
-    /// und wer „gehoert" schreibt, sollte dieselbe Zahl nehmen wie der, der es
-    /// spaeter liest.
+    /// The latest known length of an episode — after playback the one MEASURED
+    /// from the asset, otherwise the one the feed claims. The two diverge when
+    /// ad slots are announced but left empty, so whoever writes "played" takes
+    /// the same number as whoever reads it later.
     func episodeDuration(guid: String) -> Double? {
         guard let idx = episodeIndex[guid] else { return nil }
         let value = shows[idx.show].episodes[idx.episode].duration
@@ -1201,7 +1197,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
                 // R4: duplicate guids collapse HERE (first item wins — feeds
                 // list newest first); duplicates used to survive the first
                 // subscribe and collide as SwiftUI ids.
-                // R1 (owner decision 01.08): items WITHOUT an audio
+                // Items WITHOUT an audio
                 // enclosure are KEPT — dimmed, no play affordance, tap opens
                 // the show notes (Apple-Podcasts behaviour). Text-only feeds
                 // no longer look empty/broken. Identity falls back to the

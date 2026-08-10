@@ -7,18 +7,14 @@ import Foundation
 import Combine
 import OSLog
 
-/// Paket 1 (Auftrag 57a9380): Mär-Playlists — der ZWEITE Playlist-Typ neben
-/// den Server-Playlists.
+/// Mär playlists — the SECOND playlist type next to the server playlists.
 ///
-/// Warum es ihn braucht: Server-Playlists leben auf Navidrome/Jellyfin und
-/// können nur Titel referenzieren, die dem Server gehören (`owns(itemId:)`).
-/// Das Gate ist richtig und bleibt — ein Jamendo-Stück hat auf einer
-/// Navidrome-Playlist keine Adresse. Für „gemischte" Listen braucht es also
-/// einen eigenen Typ, der da lebt, wo alle Kennungen gelten: hier.
+/// A server playlist can only reference what the server owns (`owns(itemId:)`),
+/// and that gate is correct: a catalogue track has no address on Navidrome. A
+/// mixed list therefore needs its own type, living where every id is valid.
 ///
-/// Datenform bewusst wie `PlayQueue`: eine Liste von KENNUNGEN, keine Dateien.
-/// Jedes Gerät löst sie selbst auf und streamt selbst — es wird nichts
-/// übertragen (Erweiterung 24132fa).
+/// The data shape follows `PlayQueue` on purpose: a list of IDS, not files.
+/// Every device resolves and streams them itself, so nothing is transferred.
 @MainActor
 final class MaerPlaylists: ObservableObject {
     static let shared = MaerPlaylists()
@@ -28,12 +24,12 @@ final class MaerPlaylists: ObservableObject {
         var name: String
         /// A version that LOST a merge and was kept instead of dropped. It
         /// stays on this device: pushing it would multiply the same rescue
-        /// across every device on the next reconcile (`ff1263c`). Renaming it
-        /// clears the mark — that is the user adopting it as a normal list.
+        /// across every device on the next reconcile. Renaming it clears the
+        /// mark — that is the user adopting it as a normal list.
         var isRescue: Bool = false
-        /// Zeitstempel der letzten Änderung — Paket 2 führt je Liste
-        /// zusammen, nicht je Eintrag (eine Eintrags-Zusammenführung könnte
-        /// eine Löschung nicht von einem Fehlen unterscheiden).
+        /// Timestamp of the last change — the cross-device merge works per
+        /// LIST, not per entry: an entry-level union cannot tell a deletion
+        /// from a missing entry.
         var updatedAt: Double
         var itemIds: [String]
 
@@ -58,9 +54,7 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// Deleted lists with the moment of deletion — without this mark a list
-    /// deleted here returns from iCloud on the next reconcile. Kept small: the
-    /// mark is dropped once no device can still carry an older version (30
-    /// days, the same order of magnitude as the podcast tombstones).
+    /// deleted here returns from iCloud on the next reconcile.
     private static let tombstoneKey = "maerPlaylistTombstones"
     static var tombstones: [String: Double] {
         get { (UserDefaults.standard.dictionary(forKey: tombstoneKey) as? [String: Double]) ?? [:] }
@@ -69,12 +63,12 @@ final class MaerPlaylists: ObservableObject {
 
     @Published private(set) var playlists: [Playlist] = []
 
-    /// Obergrenze über ALLE Mär-Playlists. Gemessen: die Kennungen sind
-    /// 6–61 Zeichen lang (`rss:` ist die teuerste Klasse), im Schnitt ~32 Byte
-    /// mit JSON-Hülle; der iCloud-Schlüssel-Wert-Speicher fasst 1 MB, also
-    /// rechnerisch ~32.000 Einträge. 5.000 sind davon 16 % — genug Luft für
-    /// die teure Klasse und für spätere Felder. Die Grenze gilt schon lokal,
-    /// damit Paket 2 niemandem etwas wegnehmen muss.
+    /// Upper bound across ALL Mär playlists. Measured: ids are 6–61 characters
+    /// (`rss:` is the most expensive class), ~32 bytes each with JSON overhead;
+    /// the iCloud key-value store holds 1 MB, so ~32,000 entries fit. 5,000 is
+    /// 16 % of that — headroom for the expensive class and for later fields.
+    /// The bound applies locally already, so the cross-device merge never has
+    /// to take anything away.
     static let entryLimit = 5_000
 
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -84,16 +78,16 @@ final class MaerPlaylists: ObservableObject {
 
     var totalEntries: Int { playlists.reduce(0) { $0 + $1.itemIds.count } }
 
-    // MARK: - Lesen
+    // MARK: - Reading
 
     func playlist(id: String) -> Playlist? { playlists.first { $0.id == id } }
 
-    /// Listen, in die dieses Element noch passt (für das Menü).
+    /// Lists this item still fits into (for the menu).
     func addable(itemId: String) -> [Playlist] {
         playlists.filter { !$0.itemIds.contains(itemId) }
     }
 
-    // MARK: - Schreiben
+    // MARK: - Writing
 
     @discardableResult
     func create(name: String, itemIds: [String] = []) -> Playlist {
@@ -106,16 +100,15 @@ final class MaerPlaylists: ObservableObject {
         return list
     }
 
-    /// Ergebnis des Hinzufügens — Regel 3: nichts scheitert still.
+    /// Outcome of adding — Regel 3: nothing fails silently.
     enum AddOutcome: Equatable {
         case added
-        /// Schon drin — kein Fehler, aber auch keine stille Wiederholung.
+        /// Already there — not an error, but not a silent repeat either.
         case alreadyThere
-        /// Die Obergrenze ist erreicht; die Zahl wandert in die Meldung.
+        /// The bound is reached; the number goes into the message.
         case limitReached(limit: Int)
-        /// Der Typ gehört nicht in eine Liste (Radio: ein endloser Strom ist
-        /// kein Listeneintrag — Entscheid F3, dieselbe Regel wie die
-        /// Warteschlange, kein zweiter Gate-Begriff).
+        /// The type does not belong in a list — an endless stream is not a
+        /// list entry. Same rule as the queue, no second gate concept.
         case notQueueable
     }
 
@@ -131,9 +124,9 @@ final class MaerPlaylists: ObservableObject {
         return .added
     }
 
-    /// Mehrere auf einmal (Album, Warteschlange sichern) — die Grenze zählt
-    /// pro Eintrag, angehängt wird so viel wie passt, und der Aufrufer
-    /// erfährt, wenn etwas nicht mehr hineinging.
+    /// Several at once (album, saving the queue) — the bound counts per entry,
+    /// as much is appended as fits, and the caller learns when something did
+    /// not.
     @discardableResult
     func add(itemIds: [String], to playlistId: String) -> AddOutcome {
         var outcome = AddOutcome.added
@@ -213,7 +206,7 @@ final class MaerPlaylists: ObservableObject {
     private func load() {
         guard let data = try? Data(contentsOf: fileURL) else { return }
         guard let decoded = try? JSONDecoder().decode([Playlist].self, from: data) else {
-            // Beschädigte Datei wird NICHT still überschrieben (V2-Lehre).
+            // A corrupt file is NOT overwritten silently.
             let backup = fileURL.appendingPathExtension("corrupt")
             try? FileManager.default.removeItem(at: backup)
             try? FileManager.default.moveItem(at: fileURL, to: backup)

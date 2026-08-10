@@ -802,7 +802,7 @@ struct PlayerView: View {
             }
     }
 
-    /// a50134c ENTSCHEID (the owner 02.08.): Variante A für ALLE Medientypen —
+    /// Variant A for ALL media types —
     /// Extras-Reihe (Up Next · Lesezeichen · Lyrics [Musik] · Transcript
     /// [Podcast] · „…"-Mehr-Menü mit Fahrmodus + Als gehört) und AirPlay
     /// SOLO mittig darunter (Apple-Position). Radio läuft über dieselbe

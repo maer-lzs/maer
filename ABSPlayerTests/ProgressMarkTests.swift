@@ -46,6 +46,30 @@ struct ProgressMarkTests {
 
 
 
+
+    @Test("die EINE Zustands-Entscheidung — Listen und Store urteilen gleich")
+    func stateIsTheSameEverywhere() {
+        // Genau der Fall aus dem Befund: markiert bei 3.420, Feed meldet heute
+        // 3.600. Die Nachbildung in den Listen sagte „noch 3 Min."
+        let healed = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
+        #expect(ProgressMark.state(stored: healed, currentDuration: 3_600) == .played)
+        // Halb gehoert bleibt halb gehoert, mit Restzeit gegen die HEUTIGE Dauer.
+        let half = ProgressMark.entry(position: 600, duration: 3_600, nowMs: 1_000)
+        #expect(ProgressMark.state(stored: half, currentDuration: 3_600)
+                == .inProgress(fraction: 600.0 / 3_600.0, remaining: 3_000))
+        #expect(ProgressMark.state(stored: nil, currentDuration: 3_600) == .unplayed)
+        #expect(ProgressMark.state(stored: [0, 1_000], currentDuration: 3_600) == .unplayed,
+                "der Grabstein liest sich als ungehoert")
+    }
+
+    @Test("der Zeitstempel wird benannt gelesen, nicht als letztes Element")
+    func timestampIsReadByName() {
+        #expect(ProgressMark.timestamp([3_420, 1_700_000_000_000, 3_420]) == 1_700_000_000_000)
+        #expect(ProgressMark.timestamp([3_420, 1_700_000_000_000]) == 1_700_000_000_000)
+        #expect(ProgressMark.timestamp([3_420]) == nil)
+        #expect(ProgressMark.timestamp(nil) == nil)
+    }
+
     @Test("ein Eintrag ohne Dauer loescht den vorhandenen Bezugspunkt NICHT")
     func advancingCarriesTheReferencePoint() {
         let good = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)

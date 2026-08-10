@@ -95,8 +95,8 @@ final class RSSProvider: AudioProvider {
             let time = stored[0]
             map[item.id] = BookProgress(
                 fraction: min(max(time / duration, 0), 1),
-                isFinished: time >= duration - 1,
-                lastUpdate: stored[1],
+                isFinished: ProgressMark.isPlayed(stored: stored, currentDuration: duration),
+                lastUpdate: ProgressMark.timestamp(stored) ?? 0,
                 currentTime: time
             )
         }

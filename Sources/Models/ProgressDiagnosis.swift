@@ -5,36 +5,32 @@
 
 import Foundation
 
-/// Befund 10.08.: gehörte Folgen zeigen sich wieder als „in Arbeit" mit einem
-/// Rest von exakt drei Minuten — bei sechs Folgen derselben Sendung derselbe
-/// Wert. Zwei Ursachen kommen infrage, und sie verlangen entgegengesetzte
-/// Reparaturen:
+/// The report that separates the two possible causes when a finished episode
+/// shows up as "in progress" again.
 ///
-///  * **Dauer-These:** „gehört" wird als POSITION = Dauer gespeichert. Wächst
-///    die gemeldete Dauer (dynamisch eingesetzte Werbung), fällt die Marke
-///    unter die Schwelle, und die Deutung kippt — ohne dass jemand geschrieben
-///    hat.
-///  * **Sync-These:** Der Server hält eine Position kurz vor Schluss, und der
-///    Abgleich holt sie zurück — „gehört" verliert gegen eine Position.
+///  * **Duration cause:** "played" is stored as POSITION = duration. When the
+///    reported duration grows (ads inserted per request), the mark falls below
+///    the threshold and the reading flips — without anyone writing.
+///  * **Sync cause:** the server holds a position near the end and the sync
+///    brings it back — "played" loses against a position.
 ///
-/// **Der gespeicherte Eintrag entscheidet es**, denn er ist `[Position,
-/// Zeitstempel]`: Ein ALTER Zeitstempel heißt, dass niemand geschrieben hat
-/// (dann kippte nur die Deutung); ein FRISCHER heißt, dass etwas
-/// darübergeschrieben hat. Deshalb misst dieser Bericht, statt zu raten — und
-/// deshalb steht hier kein Fix.
+/// **The stored entry decides it**, because it is `[position, timestamp,
+/// duration at the time]`: an OLD timestamp means nobody wrote (only the
+/// reading flipped), a FRESH one means something overwrote it. So this
+/// measures instead of guessing — and carries no fix.
 nonisolated enum ProgressDiagnosis {
     struct Entry: Equatable, Sendable {
         let title: String
         let guid: String
-        /// Gespeicherte Position in Sekunden.
+        /// Stored position in seconds.
         let position: Double
-        /// Zeitstempel des letzten Schreibens (Sekunden seit 1970).
+        /// Timestamp of the last write (seconds since 1970).
         let updatedAt: Double
-        /// Dauer, die der Feed HEUTE meldet.
+        /// The duration the feed reports TODAY.
         let feedDuration: Double
-        /// Dauer, die beim Schreiben galt (dritter Wert, falls vorhanden).
-        /// Ihre DIFFERENZ zur heutigen ist der ganze Befund — der Bericht
-        /// zeigt deshalb beide.
+        /// The duration that applied when it was written (third value, if
+        /// present). Its DIFFERENCE to today's is the whole point, so the
+        /// report shows both.
         let markedDuration: Double?
 
         init(title: String, guid: String, position: Double, updatedAt: Double,
@@ -49,17 +45,17 @@ nonisolated enum ProgressDiagnosis {
     }
 
     enum Verdict: Equatable, Sendable {
-        /// Position ≥ Dauer − 1: die App zeigt „Abgespielt".
+        /// Position >= duration - 1: the app shows it as played.
         case played
-        /// Rest in Sekunden — so viel fehlt nach heutiger Dauer.
+        /// Remaining seconds against today's duration.
         case inProgress(remaining: Double)
         case unplayed
     }
 
     static func verdict(_ entry: Entry) -> Verdict {
-        // Traegt der Eintrag seine damalige Dauer, entscheidet SIE — genau wie
-        // im Lesepfad der App (ProgressMark). Ein Messmittel, das anders
-        // urteilt als die App, misst sich selbst.
+        // If the entry carries its duration, THAT decides — exactly as the
+        // app's read path does. An instrument that judges differently from the
+        // thing it measures is measuring itself.
         if let marked = entry.markedDuration, marked > 0 {
             return entry.position >= marked - 1 ? .played
                 : (entry.position > 1 ? .inProgress(remaining: max(0, entry.feedDuration - entry.position)) : .unplayed)
@@ -70,23 +66,22 @@ nonisolated enum ProgressDiagnosis {
         return .unplayed
     }
 
-    /// Welche der beiden Thesen der Zeitstempel stützt. Ein Eintrag, der NACH
-    /// dem letzten Abgleich geschrieben wurde, kann nicht vom Abgleich
-    /// stammen; einer, der genau dabei entstand, sehr wohl.
+    /// Which of the two causes the timestamp supports. An entry written AFTER
+    /// the last sync cannot come from the sync; one written during it can.
     enum Trace: Equatable, Sendable {
-        /// Vor dem letzten Abgleich geschrieben — niemand hat seither
-        /// angefasst, es kippte nur die Deutung.
+        /// Written before the last sync — nobody touched it since, only the
+        /// reading flipped.
         case olderThanSync
-        /// Zum Zeitpunkt des Abgleichs geschrieben — etwas hat überschrieben.
+        /// Written at sync time — something overwrote it.
         case writtenBySync
-        /// Nach dem Abgleich geschrieben (z. B. eben markiert).
+        /// Written after the sync (just marked, for instance).
         case newerThanSync
         case noSyncKnown
     }
 
-    /// Wie nah am Abgleich ein Schreiben liegen darf, um ihm zugerechnet zu
-    /// werden. Zwei Minuten: ein Abgleich braucht Sekunden, aber der Bericht
-    /// stempelt seinen Abschluss, nicht jeden Einzelschreib.
+    /// How close to the sync a write may sit to be attributed to it. Two
+    /// minutes: a sync takes seconds, but its report stamps completion rather
+    /// than each individual write.
     static let syncWindow: TimeInterval = 120
 
     static func trace(_ entry: Entry, lastSync: Double?) -> Trace {
@@ -96,8 +91,8 @@ nonisolated enum ProgressDiagnosis {
         return .olderThanSync
     }
 
-    /// Der Textblock zum Weiterreichen. Absichtlich schlicht und vollständig:
-    /// Er soll ohne die App lesbar sein und keine Deutung verstecken.
+    /// The text block to hand on. Deliberately plain and complete: readable
+    /// without the app, hiding no interpretation.
     static func report(show: String,
                        entries: [Entry],
                        lastSync: Double?,

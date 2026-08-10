@@ -79,7 +79,7 @@ struct SearchRowCover: View {
 /// component. It also fills the card's time line: where the popularity
 /// search carried no `runtime`, the duration is resolved lazily from the
 /// item metadata and cached, so the third line is FILLED rather than
-/// reserved (the owner did not accept the empty reserve).
+/// reserved — an empty reserve is not acceptable in the card.
 struct FreeCatalogBookTile: View {
     let item: LibraryItem
     var placeholderSystemImage: String = "book.closed"

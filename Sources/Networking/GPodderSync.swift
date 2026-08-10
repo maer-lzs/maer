@@ -433,10 +433,9 @@ final class GPodderSync {
         let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
         let (actions, newSince) = try await client.episodeActions(since: since)
         var pulled = 0
-        /// Befund afdcc57: wie viele Alt-Eintraege ihren fehlenden
-        /// Bezugspunkt nachgetragen bekamen — einmal protokolliert, weil 44
-        /// Abos zu viel fuer Handarbeit sind und man sonst nicht sieht, ob die
-        /// Heilung ueberhaupt gegriffen hat.
+        /// How many existing entries had their missing reference point added
+        /// — logged once, because dozens of subscriptions are too many to check
+        /// by hand and there would otherwise be no sign that the repair ran.
         var supplemented = 0
         for a in actions where (a.action?.lowercased() == "play") {
             guard let enc = a.episode, let pos = a.position,
@@ -446,13 +445,12 @@ final class GPodderSync {
             let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
             let serverTotal = Double(a.total ?? 0)
             if tsMs > localTs {
-                // WEG 1 — UEBERNAHME: der Server ist neuer, sein Zustand gilt.
-                // `advancing` statt `entry`: Meldet der Server kein `total`,
-                // darf der vorhandene Bezugspunkt NICHT sterben (Befund
-                // ee4fca6 — genau so hat ein Hintergrund-Abgleich gute
-                // Drei-Werte-Marken durch Zwei-Werte-Marken ersetzt, im
-                // Zweifel sogar durch das eigene Echo, weil der Server
-                // Zeitstempel auf ganze Sekunden rundet).
+                // PATH 1 — ADOPTION: the server is newer, its state wins.
+                // `advancing` rather than `entry`: when the server reports no
+                // `total`, the existing reference point must NOT die. That is
+                // how a background sync replaced good three-value marks with
+                // two-value ones — in the worst case with a device's own echo,
+                // because the push stamps the moment of pushing.
                 defaults.set(
                     ProgressMark.advancing(localArr, position: Double(pos),
                                            duration: serverTotal, nowMs: tsMs),
@@ -462,13 +460,12 @@ final class GPodderSync {
                 PodcastListenLog.shared.noteReconciled(guids: [match.id])
             } else if let localArr,
                       let healed = ProgressMark.supplementing(localArr, duration: serverTotal) {
-                // WEG 2 — NACHTRAGEN (Befund afdcc57): Der lokale Eintrag
-                // stimmt inhaltlich, ihm fehlt nur der Bezugspunkt. Das ist
-                // KEINE Uebernahme, und deshalb hat es mit Zeitstempeln nichts
-                // zu tun — bei genau den betroffenen Folgen stammen beide
-                // Seiten vom SELBEN Ereignis, der Server ist nie neuer. Nur
-                // die Dauer wird ergaenzt; Position und Zeitstempel bleiben
-                // unangetastet, und es entsteht NIE ein Eintrag aus dem Nichts.
+                // PATH 2 — SUPPLEMENT: the local entry is correct, it only
+                // lacks its reference point. This is NOT an adoption, so it has
+                // nothing to do with timestamps — for the affected episodes both
+                // sides stem from the SAME event and the server is never newer.
+                // Only the duration is added; position and timestamp stay
+                // untouched, and no entry is ever created from nothing.
                 defaults.set(healed, forKey: AppStorageKeys.localPosition(match.id))
                 supplemented += 1
             }

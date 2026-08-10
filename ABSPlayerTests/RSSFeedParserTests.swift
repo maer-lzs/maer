@@ -61,7 +61,7 @@ struct RSSFeedParserTests {
             <enclosure url="https://example.com/a.mp3" type="audio/mpeg"/></item>
         </channel></rss>
         """))
-        // R1 (owner decision 01.08): BOTH stay — the text item is kept,
+        // BOTH stay — the text item is kept,
         // marked non-playable; the audio item stays playable.
         #expect(show.episodes.count == 2)
         let text = try #require(show.episodes.first { $0.title == "No audio" })

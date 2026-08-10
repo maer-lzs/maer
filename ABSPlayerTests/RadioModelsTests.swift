@@ -575,7 +575,7 @@ struct RadioStateQueryTests {
                                    bitrate: 64, codec: "MP3")
         let kept = RadioMapping.keepingCountry("DE", in: [de, it, unknown])
         // The Italian entry goes even though its bitrate is the best — in a
-        // DE list it must never become the default (the owner's report).
+        // DE list it must never become the default (device report).
         #expect(kept.map(\.id) == ["radio:rb:de", "radio:rb:x"])
         // Lower case and stray whitespace behave the same.
         #expect(RadioMapping.keepingCountry(" de ", in: [de, it]).map(\.id) == ["radio:rb:de"])

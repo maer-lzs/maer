@@ -761,7 +761,7 @@ struct CatalogGenreAxisTests {
 
     // MARK: - 11be262 Paket 1/4: Quellen-Aufteilung
 
-    /// the owner's Bedingung "keine Kachel erscheint in beiden Tabs" haelt
+    /// The condition "no tile appears in both tabs" holds
     /// STRUKTURELL: feed- und katalogbasierte Quellen sind disjunkte Mengen
     /// EINES enums, und die Kuration verteilt jeden Feed auf genau eine Reihe.
     @Test("Catalog sources split disjointly; every curated feed lands exactly once")
@@ -798,7 +798,7 @@ struct CatalogGenreAxisTests {
 
     // MARK: - c3ab12e: der Zaun gegen den Namensraum-Fehler
 
-    /// Ein Namensraum-Fehler hat the owner aus seinem eigenen Server ausgesperrt:
+    /// A namespace bug locked the user out of their own server:
     /// `gut:`-Kennungen gingen an Audiobookshelf, 41 × 404, CrowdSec las das als
     /// Angriff. Diese Tests werden rot, sobald eine Quelle ihren Namensraum
     /// nicht anmeldet.

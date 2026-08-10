@@ -111,7 +111,7 @@ struct PodcastsView: View {
                     hoerspieleSection
                     recommendationsSection
                     latestEpisodesSection
-                    // T4 (the owner): the server group is daily stock like the
+                    // The server group is daily stock like the
                     // subscriptions — it sits right after Latest Episodes,
                     // ABOVE Premium and the subscription grid, not trailing.
                     pinchflatGroupSection
@@ -242,8 +242,7 @@ struct PodcastsView: View {
         let markers = ContinueHiddenStore.markers()
         guard !markers.isEmpty else { return nextUp }
         return nextUp.filter { item in
-            let stamp = (UserDefaults.standard
-                .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+            let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
             return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
         }
     }
@@ -288,7 +287,7 @@ RowHeading(title: "Continue", font: .title2,
     /// Paket 4: the podcast tab's entry previews the FEED sources of the
     /// merged page (they land here as subscriptions) — the audiobooks tab
     /// previews the catalog sources. Disjoint by construction (CatalogSource
-    /// split, tested), which is the owner's "no tile in both tabs".
+    /// split, tested): no tile appears in both tabs.
     @ViewBuilder
     private var hoerspieleSection: some View {
         // Auftrag K: the 733ac2a TILE row, unblocked by the MEASURED root
@@ -413,7 +412,7 @@ RowHeading(title: "Recommended",
     /// any subscription; hiding is the context menu on tile + grid cell. NO
     /// per-tile origin capsule in here (the heading already says it, a916a5a).
     /// Row title: neutral placeholder from the server name — the final name
-    /// is the owner's GT decision, the string stays swappable.
+    /// is a device-loop decision, the string stays swappable.
     @ViewBuilder
     private var pinchflatGroupSection: some View {
         if !mirroredShows.isEmpty, let host = PinchflatClient.serverURL?.host {
@@ -600,7 +599,7 @@ final class PodcastsRecomputeScope: ObservableObject {
 
 
 /// e96d396 B2: the premium shows as a browsable GRID — the row's page.
-/// Blaupause "Zuletzt hinzugefuegt" (the owner named it the target form):
+/// Blueprint "recently added" — the target form for tile rows:
 /// heading with chevron -> the full grid. Management (S22) stays separate.
 struct PremiumShowsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -665,8 +664,7 @@ struct PodcastContinuePage: View {
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
             let markers = ContinueHiddenStore.markers()
             items = sections.nextUp.filter { item in
-                let stamp = (UserDefaults.standard
-                    .array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double])?.last ?? 0
+                let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
                 return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
             }
         }

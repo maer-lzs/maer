@@ -11,7 +11,7 @@ import Foundation
 /// The split into feed-based and catalog-based sources is Paket 4's
 /// distribution rule: the podcast tab previews the FEED sources (they land
 /// there as subscriptions), the audiobooks tab previews the CATALOG sources
-/// (they land in the audiobook corner). the owner's condition "no tile appears
+/// (they land in the audiobook corner). The condition "no tile appears
 /// in both tabs" holds structurally because the two sets are disjoint —
 /// guaranteed by this being ONE enum, tested.
 nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
@@ -19,7 +19,7 @@ nonisolated enum CatalogSource: String, CaseIterable, Identifiable, Sendable {
     case oerr
     /// X²·1: the FUSED independent row (formerly escapeArtists + usIndies) —
     /// anthologies, series and readings, English AND German (the language
-    /// bracket fell with the owner's X²·2 decision; language logic mixes).
+    /// bracket was dropped; language logic mixes).
     case independents
     // Catalog-based (action: play / take over) — tile rows.
     case oldTimeRadio

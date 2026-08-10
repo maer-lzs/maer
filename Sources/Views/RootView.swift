@@ -22,11 +22,10 @@ struct RootView: View {
                 SetupView(viewModel: authViewModel)
             }
         }
-        // Befund 94eee6d: die Playlist-Dialoge gehoeren HIERHER und nirgendwo
-        // sonst. Ausgeloest werden sie aus Kontextmenues, deren Hierarchie
-        // beim Schliessen verschwindet — ein dort angehaengter Alert kann nie
-        // erscheinen. An der Wurzel ueberlebt er, und alle Aufrufstellen
-        // teilen sich diese eine Praesentation.
+        // The playlist dialogs belong HERE and nowhere else: they are
+        // triggered from context menus whose hierarchy is torn down on close,
+        // so an alert attached there can never be presented. At the root it
+        // survives, and every call site shares this one presentation.
         .maerPlaylistDialogs()
     }
 }
