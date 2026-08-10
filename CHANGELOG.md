@@ -124,6 +124,11 @@ plainly instead of guessing.
   `path = Sources`, so the project file cannot inject them any more; a test
   fails loudly if it happens.
 - Bundle hygiene: only what the app needs ships.
+## v2.7.1 (Build 18)
+
+- Fix: the podcast listening history page failed to compile in Release
+  builds (API stuck inside a debug-only block) — v2.7 could not be
+  archived for TestFlight. No functional changes.
 
 ## v2.7 (Build 17)
 
