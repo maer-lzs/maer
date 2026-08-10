@@ -73,7 +73,11 @@ final class PodcastProgressStore: ObservableObject {
             // Die Dauer wandert als DRITTER Wert mit: sie ist der Bezugspunkt,
             // gegen den spaeter geprueft wird (nach aussen geht unveraendert
             // die echte Endposition).
-            let duration = item.media?.duration ?? 0
+            // Die frischeste bekannte Laenge: nach einer Wiedergabe hat der
+            // Player die echte Assetlaenge in den Store geschrieben, waehrend
+            // das uebergebene Element noch die Feed-Behauptung tragen kann.
+            let duration = PodcastSubscriptions.shared.episodeDuration(guid: item.id)
+                ?? item.media?.duration ?? 0
             let position = duration > 0 ? duration : Self.playedSentinel
             UserDefaults.standard.set(
                 ProgressMark.entry(position: position, duration: duration,

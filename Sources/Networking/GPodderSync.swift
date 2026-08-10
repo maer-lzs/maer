@@ -440,7 +440,15 @@ final class GPodderSync {
             let localArr = defaults.array(forKey: AppStorageKeys.localPosition(match.id)) as? [Double]
             let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
             if tsMs > localTs {
-                defaults.set([Double(pos), tsMs], forKey: AppStorageKeys.localPosition(match.id))
+                // Der Server liefert `total` mit — die Dauer, die zum
+                // Hoerzeitpunkt galt (the operator's Messung: 38 von 41 Folgen liegen
+                // exakt darauf). Als dritter Wert gespeichert heilt sie
+                // BESTEHENDE Eintraege, ohne etwas zu raten: „gehoert" wird
+                // dann gegen die damalige Dauer geprueft statt gegen die
+                // heute behauptete.
+                defaults.set(
+                    ProgressMark.entry(position: Double(pos), duration: Double(a.total ?? 0), nowMs: tsMs),
+                    forKey: AppStorageKeys.localPosition(match.id))
                 pulled += 1
                 // Personen-Ebene: a gpodder-applied transition feeds the log.
                 PodcastListenLog.shared.noteReconciled(guids: [match.id])

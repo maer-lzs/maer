@@ -44,6 +44,20 @@ struct ProgressMarkTests {
         #expect(ProgressMark.isPlayed(stored: stored, currentDuration: 99_999))
     }
 
+
+    @Test("die vom Server gemeldete Dauer heilt einen bestehenden Eintrag")
+    func serverTotalRepairsOldEntries() {
+        // gpodder liefert Position UND total; damit ist der Bezugspunkt da,
+        // ohne dass irgendetwas geraten wird.
+        let fromServer = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 9_000)
+        #expect(ProgressMark.isPlayed(stored: fromServer, currentDuration: 3_600),
+                "nach dem naechsten Abgleich gilt die Folge wieder als gehoert")
+        // Meldet der Server kein total, bleibt es beim alten Verhalten —
+        // eine erfundene Dauer waere schlimmer als keine.
+        let withoutTotal = ProgressMark.entry(position: 3_420, duration: 0, nowMs: 9_000)
+        #expect(withoutTotal.count == 2)
+    }
+
     @Test("nach aussen geht unveraendert die echte Endposition")
     func outwardValueIsUnchanged() {
         let stored = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)

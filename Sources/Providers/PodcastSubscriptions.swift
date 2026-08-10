@@ -843,6 +843,17 @@ final class PodcastSubscriptions: ObservableObject {
     /// or round `itunes:duration`, and without a duration the played/remaining
     /// state cannot be derived. Persisted so lists and play-state math work
     /// from then on.
+    /// Die zuletzt bekannte Laenge einer Folge — nach einer Wiedergabe ist das
+    /// die vom Asset GEMESSENE, sonst die im Feed behauptete. Befund 48a4c60:
+    /// die beiden gehen auseinander (angekuendigte, aber leere Werbeplaetze),
+    /// und wer „gehoert" schreibt, sollte dieselbe Zahl nehmen wie der, der es
+    /// spaeter liest.
+    func episodeDuration(guid: String) -> Double? {
+        guard let idx = episodeIndex[guid] else { return nil }
+        let value = shows[idx.show].episodes[idx.episode].duration
+        return value > 0 ? value : nil
+    }
+
     func updateEpisodeDuration(guid: String, duration: Double) {
         guard duration > 0, duration.isFinite, let idx = episodeIndex[guid] else { return }
         guard abs(shows[idx.show].episodes[idx.episode].duration - duration) > 1 else { return }
