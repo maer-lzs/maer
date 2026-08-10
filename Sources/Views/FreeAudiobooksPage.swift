@@ -23,9 +23,9 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     /// full grid behind a genre row (shelf = FILTER over the source's stock,
     /// no second client).
     case shelf(CatalogSource, String)
-    /// Auftrag O: the SHOW PAGE of an archive.org series bundle (OTR class —
-    /// items routed through rememberOldTimeRadio). Tap stays NACHSCHLAGEN;
-    /// the page replaces the detail sheet for this class only.
+    /// Auftrag O: the SHOW PAGE of an archive.org series bundle — the class is
+    /// read from the item's own collections (`ArchiveItemForm`). Tap stays
+    /// NACHSCHLAGEN; the page replaces the detail sheet for this class only.
     case series(itemId: String)
     /// X²·3: the OERR sub-page — one tile row per COUNTRY (empty countries
     /// do not appear).
