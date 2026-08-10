@@ -199,5 +199,39 @@ struct ProjectFileIntegrityTests {
         #expect(text.contains("LICENSE in Resources"),
                 "the licence is shipped on purpose (GPL) and must stay explicitly referenced")
     }
+
+    /// Befund 7bdfb35: Der Hoerstand liegt als `[Position, Zeitstempel,
+    /// damalige Dauer]` — ein Eintrag mit drittem Wert ist GUELTIG. Wer auf
+    /// `count == 2` prueft, verwirft ihn still; heute ist das dreimal
+    /// passiert (der iCloud-Abgleich haette gehoerte Folgen nicht mehr reisen
+    /// lassen, der Player die Wiederaufnahme verloren, und das Messmittel
+    /// filterte ausgerechnet die Eintraege heraus, die es messen sollte).
+    ///
+    /// Der Zaun kennt den SCHLUESSEL, nicht die Zahl: `count == 2` ist
+    /// anderswo voellig richtig (Byte-Rahmen im DownloadManager, URL-Teile,
+    /// Liedtext-Zeitmarken) und darf nicht mitgefangen werden.
+    @Test("keine Lesestelle von localPosition prueft auf count == 2")
+    func noPositionReaderChecksForExactlyTwo() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let sources = root.appendingPathComponent("Sources")
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        var offenders: [String] = []
+        for file in files {
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            let lines = text.components(separatedBy: "\n")
+            for (index, line) in lines.enumerated() where line.contains("localPosition") {
+                // Das Lesen und die Formpruefung stehen oft in
+                // aufeinanderfolgenden Zeilen (guard ueber mehrere Zeilen).
+                let window = lines[index..<min(index + 4, lines.count)].joined(separator: " ")
+                if window.contains("count == 2") {
+                    offenders.append("\(file.lastPathComponent):\(index + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "diese Lesestellen verwerfen Eintraege mit mitgespeicherter Dauer still: \(offenders)")
+    }
 }
 #endif

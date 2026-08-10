@@ -51,7 +51,14 @@ nonisolated struct PodcastEpisode: Codable, Identifiable {
     var title: String
     var audioURL: String
     var pubDate: Double             // ms epoch
-    var duration: Double            // seconds (0 if unknown)
+    var duration: Double            // seconds (0 if unknown) — FEED-Tatsache
+    /// Die vom Asset GEMESSENE Laenge (Befund 955dbfa). Sie ist eine
+    /// SPEICHER-Tatsache: ein frisches Parsen kann sie nicht kennen, weil sie
+    /// erst beim Abspielen entsteht. Deshalb hat sie ein eigenes Feld — im
+    /// alten Zustand ueberschrieb sie `duration` und starb bei jeder
+    /// Auffrischung. `duration` traegt sie weiterhin gespiegelt, damit jede
+    /// Lesestelle unveraendert die beste bekannte Laenge sieht.
+    var measuredDuration: Double? = nil
     var description: String?
     var imageURL: String?
     /// Podcasting 2.0 chapters (`<podcast:chapters url=… type=json+chapters>`).
@@ -535,7 +542,12 @@ final class PodcastSubscriptions: ObservableObject {
             }
             return e
         }
-        survivor = merge(survivor, rekeyed)
+        // Argument-Reihenfolge mit Absicht: Der ZWEITE gewinnt die
+        // Feed-Tatsachen, und das muss hier der Ueberlebende sein — seine URL
+        // traegt den aktuellen Token. Die Speicher-Tatsachen ueberleben von
+        // beiden Seiten (siehe merge), der Verlierer verliert also nur seine
+        // veraltete Adresse.
+        survivor = merge(rekeyed, survivor)
         let loserMasked = maskedFeedURL(loser.feedURL)
         let survivorMasked = maskedFeedURL(survivor.feedURL)
         Logger.rss.notice("PREMIUM identity merge: \(loserMasked, privacy: .public) folded into \(survivorMasked, privacy: .public)")
@@ -554,20 +566,64 @@ final class PodcastSubscriptions: ObservableObject {
     /// Union two versions of a show by episode GUID, keeping the richer set and
     /// losing nothing — the base is whichever already has more episodes. `internal`
     /// so the RSS hardening (never shrink on a weak fetch) is unit-testable.
-    nonisolated static func merge(_ a: PodcastShow, _ b: PodcastShow) -> PodcastShow {
-        let (base, other) = a.episodes.count >= b.episodes.count ? (a, b) : (b, a)
-        var result = base
-        var seen = Set(base.episodes.map { $0.guid })
-        let extra = other.episodes.filter { seen.insert($0.guid).inserted }
-        result.episodes = (base.episodes + extra).sorted { $0.pubDate > $1.pubDate }
-        // 78c5298: `origin` is a STORE fact, not a feed fact — a freshly
-        // parsed show carries nil, and whenever the fresh side becomes base
-        // (more episodes: the normal case on the first big refresh) the
-        // provenance silently died with it. That killed the origin capsule on
-        // every surface AND (delayed) the group row + the premium exclusion.
-        // The stored side (`a`) owns it.
-        result.origin = a.origin
+    /// Befund 955dbfa: **Felder klassifizieren statt Seiten waehlen.**
+    ///
+    /// Vorher waehlte der Merge die Seite mit mehr Folgen als Basis und flickte
+    /// danach EINZELNE Felder von Hand zurueck. So wurde `origin` gerettet
+    /// (78c5298), nachdem es still gestorben war — und die gemessene Laenge
+    /// wurde NICHT gerettet, weil niemand daran dachte. Zwei Vorkommen sind
+    /// kein Zufall: Bei jenem Verfahren muss jedes Mal jemand daran denken.
+    ///
+    /// Die Klassifizierung ist objektiv, kein Ermessen:
+    ///  * **Feed-Tatsachen** (Titel, Bild, Beschreibung, Kategorien, die
+    ///    angekuendigte Dauer): das frische Parsen kennt sie am besten, die
+    ///    frische Seite gewinnt.
+    ///  * **Speicher-Tatsachen** (`origin`, die gemessene Assetlaenge): ein
+    ///    frisches Parsen kann sie GAR NICHT kennen — sie ueberleben von der
+    ///    gespeicherten Seite, unabhaengig davon, wer mehr Folgen hat.
+    ///
+    /// Die Folgenliste bleibt eine Vereinigung nach `guid`: ein duennes Parsen
+    /// (gueltiger Titel, wenige Folgen) darf den Zwischenspeicher nie leeren.
+    /// Und bei doppelter `guid` zieht die Klassifizierung auf FOLGEN-Ebene mit
+    /// — sonst stuerbe dieselbe Tatsache nur unauffaelliger.
+    ///
+    /// Die Speicher-Tatsachen werden nicht blind von `stored` genommen,
+    /// sondern „wer sie hat, behaelt sie" (`stored ?? fresh`). Beim
+    /// Auffrischen ist das dasselbe, weil ein frisches Parsen sie nie hat —
+    /// aber `collapseInto` benutzt denselben Merge, um einen Zwillings-Eintrag
+    /// in den ueberlebenden zu falten, und dort darf die Herkunft des
+    /// Verlierers nicht verlorengehen, nur weil er als zweites Argument steht.
+    nonisolated static func merge(_ stored: PodcastShow, _ fresh: PodcastShow) -> PodcastShow {
+        var result = fresh
+        result.origin = stored.origin ?? fresh.origin
+
+        var storedByGuid: [String: PodcastEpisode] = [:]
+        for episode in stored.episodes { storedByGuid[episode.guid] = episode }
+
+        var seen = Set<String>()
+        var episodes: [PodcastEpisode] = []
+        for var episode in fresh.episodes where seen.insert(episode.guid).inserted {
+            if let known = storedByGuid[episode.guid] { carryStoreFacts(from: known, into: &episode) }
+            episodes.append(episode)
+        }
+        for episode in stored.episodes where seen.insert(episode.guid).inserted {
+            episodes.append(episode)
+        }
+        result.episodes = episodes.sorted { $0.pubDate > $1.pubDate }
         return result
+    }
+
+    /// Was nur der Speicher ueber eine FOLGE weiss. Waechst diese Liste, muss
+    /// der Zaun `storeFactsSurviveARefresh` mitwachsen — er ist genau dafuer da.
+    private nonisolated static func carryStoreFacts(from stored: PodcastEpisode,
+                                                    into fresh: inout PodcastEpisode) {
+        // Nur wenn die andere Seite selbst keine Messung traegt — sonst waere
+        // ein aelterer Wert staerker als ein neuerer.
+        if fresh.measuredDuration == nil, let measured = stored.measuredDuration, measured > 0 {
+            fresh.measuredDuration = measured
+            // Gespiegelt, damit jede Lesestelle die beste bekannte Laenge sieht.
+            fresh.duration = measured
+        }
     }
 
     /// Move `localPosition.<oldGuid>` → `<newGuid>` (only if the target is empty).
@@ -856,8 +912,13 @@ final class PodcastSubscriptions: ObservableObject {
 
     func updateEpisodeDuration(guid: String, duration: Double) {
         guard duration > 0, duration.isFinite, let idx = episodeIndex[guid] else { return }
-        guard abs(shows[idx.show].episodes[idx.episode].duration - duration) > 1 else { return }
+        guard abs(shows[idx.show].episodes[idx.episode].duration - duration) > 1
+                || shows[idx.show].episodes[idx.episode].measuredDuration == nil else { return }
+        // In BEIDE Felder: `duration` bleibt die beste bekannte Laenge fuer
+        // jede Lesestelle, `measuredDuration` ist die Speicher-Tatsache, die
+        // der Merge ueber die naechste Auffrischung rettet.
         shows[idx.show].episodes[idx.episode].duration = duration
+        shows[idx.show].episodes[idx.episode].measuredDuration = duration
         save()
     }
 

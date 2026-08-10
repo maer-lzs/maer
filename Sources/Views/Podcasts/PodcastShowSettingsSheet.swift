@@ -63,13 +63,14 @@ struct PodcastShowSettingsSheet: View {
         let defaults = UserDefaults.standard
         let entries: [ProgressDiagnosis.Entry] = (show?.episodes ?? []).compactMap { episode in
             guard let stored = defaults.array(forKey: AppStorageKeys.localPosition(episode.guid)) as? [Double],
-                  stored.count == 2, stored[0] > 0 else { return nil }
+                  stored.count >= 2, stored[0] > 0 else { return nil }
             return ProgressDiagnosis.Entry(
                 title: episode.title, guid: episode.guid,
                 position: stored[0],
                 // Der Zeitstempel liegt in Millisekunden im Speicher.
                 updatedAt: stored[1] / 1000,
-                feedDuration: episode.duration)
+                feedDuration: episode.duration,
+                markedDuration: ProgressMark.markedDuration(stored))
         }
         let lastSync = SyncHistoryStore.shared.lastChecked[SyncHistoryEntry.Service.gpodder.rawValue]
         return ProgressDiagnosis.report(

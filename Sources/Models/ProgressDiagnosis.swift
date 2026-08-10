@@ -32,13 +32,19 @@ nonisolated enum ProgressDiagnosis {
         let updatedAt: Double
         /// Dauer, die der Feed HEUTE meldet.
         let feedDuration: Double
+        /// Dauer, die beim Schreiben galt (dritter Wert, falls vorhanden).
+        /// Ihre DIFFERENZ zur heutigen ist der ganze Befund — der Bericht
+        /// zeigt deshalb beide.
+        let markedDuration: Double?
 
-        init(title: String, guid: String, position: Double, updatedAt: Double, feedDuration: Double) {
+        init(title: String, guid: String, position: Double, updatedAt: Double,
+             feedDuration: Double, markedDuration: Double? = nil) {
             self.title = title
             self.guid = guid
             self.position = position
             self.updatedAt = updatedAt
             self.feedDuration = feedDuration
+            self.markedDuration = markedDuration
         }
     }
 
@@ -51,6 +57,13 @@ nonisolated enum ProgressDiagnosis {
     }
 
     static func verdict(_ entry: Entry) -> Verdict {
+        // Traegt der Eintrag seine damalige Dauer, entscheidet SIE — genau wie
+        // im Lesepfad der App (ProgressMark). Ein Messmittel, das anders
+        // urteilt als die App, misst sich selbst.
+        if let marked = entry.markedDuration, marked > 0 {
+            return entry.position >= marked - 1 ? .played
+                : (entry.position > 1 ? .inProgress(remaining: max(0, entry.feedDuration - entry.position)) : .unplayed)
+        }
         guard entry.feedDuration > 0 else { return .unplayed }
         if entry.position >= entry.feedDuration - 1 { return .played }
         if entry.position > 1 { return .inProgress(remaining: entry.feedDuration - entry.position) }
@@ -103,6 +116,12 @@ nonisolated enum ProgressDiagnosis {
             lines.append("• \(entry.title)")
             lines.append("  guid: \(entry.guid)")
             lines.append("  Position: \(Int(entry.position)) s · Feed-Dauer heute: \(Int(entry.feedDuration)) s")
+            if let marked = entry.markedDuration, marked > 0 {
+                let diff = Int(entry.feedDuration - marked)
+                lines.append("  Dauer beim Schreiben: \(Int(marked)) s · Differenz zu heute: \(diff) s")
+            } else {
+                lines.append("  Dauer beim Schreiben: nicht gespeichert (alter Eintrag)")
+            }
             switch verdict(entry) {
             case .played:
                 lines.append("  Zustand: gilt als gehört")

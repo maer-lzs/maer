@@ -1,5 +1,130 @@
 # Changelog
 
+## v2.8 (Build 19)
+
+137 commits since v2.7 — the "open shelf" release: Mär now brings a library of
+its own. Free audiobooks, radio plays, netlabel music and old shellac records
+are one tap away without owning a server, every row leads to a page that holds
+the rest, and what the app knows about the rights of a recording it says
+plainly instead of guessing.
+
+### Security
+- **Subscription store wipe race**: a cold background refresh could mutate the
+  store *before* the disk load finished and wipe subscriptions. Now nothing
+  mutates before `ensureLoaded()`, a guard blocks implausible mass removals,
+  and a recovery path restores from the last good state.
+- **OPML export leaves premium and token feeds out by default**: those URLs
+  carry personal access links. The export says how many it withheld and offers
+  the full export as an explicit second choice.
+
+### Free catalogues
+- **One area, "Free Audiobooks & Radio Plays"**, with a page per source:
+  LibriVox, Internet Archive, Project Gutenberg, Old Time Radio — plus curated
+  feed rows (public broadcasters, independent anthologies).
+- **Genre shelves as the standard shape** wherever the axis actually carries:
+  measured per source (Internet Archive 26 %, Old Time Radio 40 %, Jamendo
+  93 % via tags). Where it does not, the source stays a browsable pool.
+- **Shelves ask their own question**: each shelf queries the server with its
+  own genre/subject clause and pages independently, instead of filtering the
+  twelve visible preview tiles.
+- **Rights are never guessed.** A recording without a licence field says
+  "rights not stated by the source" with a question mark — not a green check.
+  Public domain claimed by an uploader is labelled as claimed, not as derived.
+- **Series bundles get show pages** with an episode list; Old Time Radio
+  filenames are turned back into titles (date becomes "first aired", the
+  administrative tail falls away) — conservatively, and only when a date was
+  actually recognised.
+- **Daily rotation** through the popularity rows, so the shelf does not show
+  the same twelve titles every morning.
+
+### Rows and pages
+- **Every row is a preview, and every preview has a page behind it.** Counted
+  rows carry a chevron with their total; catalogue rows carry an entry chevron
+  (their stock is measured, and a counting rule would hide the way in at
+  12 of 12); fully curated feed rows carry none, because there is nothing
+  more to show.
+- **Sorting and filtering moved to the surfaces** they act on; the glass
+  button in the tab header is gone. A filter that matches nothing now says so
+  and stays reachable.
+
+### Radio
+- **Logos load by themselves** through a two-stage fallback (Wikidata P154,
+  then the site's touch icon) behind a favicon quality gate.
+- **A failure is not a finding**: a network error used to be stored as "this
+  station has no logo" and kept for fourteen days — every logo disappeared.
+  Only a cleanly completed no-hit is recorded now.
+- **Regional rows** with a vote floor, parallel fan-out and per-row dedupe;
+  the cold start paints the last known state in the first frame.
+
+### Podcasts
+- **Curated public-broadcaster entry** with a page by country; empty countries
+  do not appear.
+- **Pinchflat** as its own source: connect a server, mirror its channel list,
+  keep it in its own group, and mark the origin ("YouTube") wherever a
+  mirrored episode shows up outside that group.
+- **Premium is one truth**: feed signal, credentials, token URLs and a manual
+  mark all feed the same answer; mirrored feeds are never premium.
+- **Rediscover for podcasts**, and background refresh fails fast instead of
+  spinning for minutes without an end state.
+
+### Music
+- **Netlabels and 78 rpm records as positive shelves** — an inclusion list of
+  genres, never an exclusion list.
+- **Jamendo genre shelves** load server-side; the catalogue tap is
+  data-driven: one track plays, several open the album page.
+- **Shuffle** draws from the whole shelf, not from the visible twelve —
+  random sort *and* random page, because the sort alone is cached.
+
+### Playlists
+- **Mär playlists** hold ids from every source (server music, catalogue
+  titles, podcast episodes) — the second playlist type next to server
+  playlists, which can only reference what the server owns.
+- **"Add to playlist" wherever an item is operable**, including the player.
+- **iCloud sync across your own devices**: merged per list, and the losing
+  version is kept as a local copy instead of dropped.
+
+### Downloads
+- **Automatic download of new episodes per show** (it existed, three per run,
+  from the day you switch it on) gained the three things it was missing: Wi-Fi
+  as a *gate* rather than a warning, a cleanup that only ever touches what the
+  automatism itself downloaded (a week after you finished them), and a visible
+  reason when an episode cannot be fetched.
+
+### Onboarding & settings
+- **The first screen is the map of the areas**, not an Audiobookshelf login:
+  one sentence about what Mär is, then each area with one line about what it
+  needs. Four of the five need no account at all, and "start without a server"
+  is the equal choice.
+- **The same map is the sources overview in the settings** — which is also the
+  way back to it.
+- **One activation answer per source** instead of the same default repeated
+  35 times across eleven files; a test keeps it that way.
+- Global playback settings (skip interval, default speed, smart rewind) left
+  the Audiobooks pill: they govern podcasts, music and radio too.
+
+### Project
+- **Licence**: GPL-3.0 with additional terms for app-store distribution, a
+  name and artwork reservation, an EULA, and a licence header in every source
+  file — with a test that keeps it there.
+- **CONTRIBUTING**: how to build without keys, where pull requests go (`dev`),
+  what happens after you open one, and the one commit rule.
+- **One identity to the outside world**: the app introduced itself to foreign
+  servers under six hand-maintained user-agent strings, one of which named a
+  private host. Now there is one, derived from the bundle version.
+
+### Reliability
+- **"Played" no longer depends on a duration that changes.** Shows with
+  dynamically inserted ads report a different length per request; finished
+  episodes reappeared as "3 minutes left" after every refresh. The mark now
+  carries the duration it was written against.
+- **Knowledge that only the store has survives a refresh** — provenance and
+  measured length are classified as store facts instead of being restored
+  field by field.
+- **Xcode self-references at the root**: the synchronised group carries
+  `path = Sources`, so the project file cannot inject them any more; a test
+  fails loudly if it happens.
+- Bundle hygiene: only what the app needs ships.
+
 ## v2.7 (Build 17)
 
 160 commits since v2.6 — the "reach everything" release: the app now drives
