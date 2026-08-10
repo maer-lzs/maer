@@ -612,12 +612,19 @@ struct ArchiveSeriesPage: View {
 
     private func episodeRow(index: Int, track: ABSAudioTrack) -> some View {
         Button {
-            // Play THIS episode: the existing open + the existing seek — the
-            // player already handles offsets, no new playback path (O1).
             Task {
-                await playerCoordinator.open(item: LibraryItem(
-                    id: itemId, media: detail?.media, addedAt: nil))
-                await playerCoordinator.viewModel?.seek(to: track.startOffset ?? 0)
+                if flavor == .album {
+                    // An album track is an item of its own: it plays as itself,
+                    // keeps its own position and can be queued or added to a
+                    // playlist. A series part stays a section of its work.
+                    await playerCoordinator.open(item: LibraryItem(
+                        id: CatalogSongID.make(album: itemId, index: index),
+                        media: nil, addedAt: nil))
+                } else {
+                    await playerCoordinator.open(item: LibraryItem(
+                        id: itemId, media: detail?.media, addedAt: nil))
+                    await playerCoordinator.viewModel?.seek(to: track.startOffset ?? 0)
+                }
             }
         } label: {
             HStack(spacing: 10) {
@@ -662,5 +669,10 @@ struct ArchiveSeriesPage: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if flavor == .album {
+                CatalogQueueButtons(itemId: CatalogSongID.make(album: itemId, index: index))
+            }
+        }
     }
 }

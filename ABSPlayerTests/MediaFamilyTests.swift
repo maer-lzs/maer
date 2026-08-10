@@ -70,5 +70,39 @@ struct MediaFamilyTests {
         #expect(!DownloadManager.shared.isDownloaded(itemId: "lva:some-netlabel-release"),
                 "a catalogue stream is not offline available")
     }
+
+    @Test("a song address belongs to the same family as its release")
+    func songAddressStaysInTheFamily() {
+        // The suffix rides on the existing namespace, so routing and family
+        // assignment keep working — without this a song would fall into the
+        // unknown case and lose every affordance.
+        #expect(MediaFamily.of("lva:DWK123#3") == .catalog)
+        #expect(MediaFamily.of("lva:DWK123") == .catalog)
+        #expect(PlayerSourceTargets.isCatalog("lva:DWK123#3"))
+        #expect(!PlayerSourceTargets.isBook("lva:DWK123#3"))
+    }
+
+    @Test("song addresses parse back to release and index")
+    func songAddressesRoundTrip() {
+        let id = CatalogSongID.make(album: "lva:DWK123", index: 3)
+        #expect(id == "lva:DWK123#3")
+        #expect(CatalogSongID.parse(id)?.album == "lva:DWK123")
+        #expect(CatalogSongID.parse(id)?.index == 3)
+        #expect(CatalogSongID.album(of: id) == "lva:DWK123")
+        // A plain release is not a song — the caller then means the whole thing.
+        #expect(CatalogSongID.parse("lva:DWK123") == nil)
+        #expect(!CatalogSongID.isSong("lva:DWK123"))
+        #expect(CatalogSongID.album(of: "lva:DWK123") == "lva:DWK123")
+        // An identifier that itself contains a hash keeps its last segment.
+        #expect(CatalogSongID.parse("lva:odd#name#7")?.album == "lva:odd#name")
+        // Garbage after the separator is not an index.
+        #expect(CatalogSongID.parse("lva:x#abc") == nil)
+        #expect(CatalogSongID.parse("lva:x#-1") == nil)
+    }
+
+    @Test("a song can be queued and put on a playlist — that is the whole point")
+    func songsAreQueueable() {
+        #expect(PlayQueue.canEnqueue("lva:DWK123#3"))
+    }
 }
 #endif

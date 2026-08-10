@@ -224,6 +224,76 @@ final class FreeCatalogProvider: AudioProvider {
             description: description ?? known?.description)
     }
 
+    /// Marks releases whose stored album position was already carried over.
+    private static let migratedKey = "catalogSongPositionMigrated"
+
+    /// Carries a stored album position over to the song it falls into. Runs
+    /// once per release, changes nothing else, and never invents an entry.
+    static func migrateAlbumPositionToSong(albumId: String) async {
+        var done = Set(UserDefaults.standard.stringArray(forKey: migratedKey) ?? [])
+        guard !done.contains(albumId) else { return }
+        defer {
+            done.insert(albumId)
+            UserDefaults.standard.set(Array(done), forKey: migratedKey)
+        }
+        let key = AppStorageKeys.localPosition(albumId)
+        guard let stored = UserDefaults.standard.array(forKey: key) as? [Double],
+              stored.count >= 2, stored[0] > 0 else { return }
+        guard let detail = try? await shared.fetchAlbumDetail(albumId: albumId),
+              let tracks = detail.media.tracks,
+              let index = FreeCatalog.trackIndex(at: stored[0], tracks: tracks) else { return }
+        let songKey = AppStorageKeys.localPosition(CatalogSongID.make(album: albumId, index: index))
+        guard UserDefaults.standard.object(forKey: songKey) == nil else { return }
+        let within = stored[0] - (tracks[index].startOffset ?? 0)
+        UserDefaults.standard.set(
+            ProgressMark.entry(position: max(0, within),
+                               duration: tracks[index].duration ?? 0,
+                               nowMs: ProgressMark.timestamp(stored) ?? 0),
+            forKey: songKey)
+        Logger.library.notice("CATALOG carried album position to song index \(index) of \(albumId, privacy: .public)")
+    }
+
+    /// The release itself, without the song shortcut — used by the migration.
+    private func fetchAlbumDetail(albumId: String) async throws -> LibraryItemDetail {
+        let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
+        let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+        let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
+        guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
+        return LibraryItemDetail(id: albumId,
+                                 media: LibraryItemMedia(metadata: nil, duration: nil,
+                                                         chapters: nil, tracks: tracks),
+                                 userMediaProgress: nil)
+    }
+
+    /// One track of a release as an item of its own. Built from the release's
+    /// files, so the song carries the title and performer the source states —
+    /// not the album's.
+    private func songDetail(songId: String, album albumId: String,
+                            index: Int) async throws -> LibraryItemDetail {
+        let identifier = String(albumId.dropFirst(FreeCatalog.archivePrefix.count))
+        let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
+        let files = FreeCatalog.preferredAudioFiles(meta.files ?? [])
+            .sorted { FreeCatalog.orderKey($0) < FreeCatalog.orderKey($1) }
+        guard index < files.count else { throw URLError(.resourceUnavailable) }
+        let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: files)
+        guard index < tracks.count else { throw URLError(.resourceUnavailable) }
+        let file = files[index]
+        let track = tracks[index]
+        // The song starts at zero — it is the whole item now, not a section.
+        let single = ABSAudioTrack(index: 0, startOffset: 0, duration: track.duration,
+                                   contentUrl: track.contentUrl, metadata: track.metadata)
+        let performer = file.creator ?? meta.metadata?.creator?.joined
+        return LibraryItemDetail(
+            id: songId,
+            media: LibraryItemMedia(
+                metadata: detailMetadata(itemId: songId,
+                                         title: FreeCatalog.trackTitle(file),
+                                         authorName: performer,
+                                         description: file.album ?? meta.metadata?.title?.first),
+                duration: track.duration, chapters: nil, tracks: [single]),
+            userMediaProgress: nil)
+    }
+
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
             guard let book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
@@ -239,6 +309,16 @@ final class FreeCatalogProvider: AudioProvider {
                 userMediaProgress: nil)
         }
         if itemId.hasPrefix(FreeCatalog.archivePrefix) {
+            // A song address resolves to a SINGLE-track item: its own title,
+            // its own duration, and therefore its own position, its own place
+            // in a playlist and its own "played".
+            if let song = CatalogSongID.parse(itemId) {
+                return try await songDetail(songId: itemId, album: song.album, index: song.index)
+            }
+            // A position stored before tracks had addresses points at the whole
+            // release. It is carried over to the song it falls into, once, and
+            // the album entry stays untouched — nobody loses where they were.
+            await Self.migrateAlbumPositionToSong(albumId: itemId)
             let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
             let meta = try await ArchiveOrgClient.metadata(identifier: identifier)
             let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
