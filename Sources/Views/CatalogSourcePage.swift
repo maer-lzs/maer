@@ -630,10 +630,15 @@ struct ArchiveSeriesPage: View {
                 // meta line instead of being thrown away.
                 // Die OTR-Kopfmuster (Kuerzel/Datum/Nummer) gibt es nur bei
                 // Serien; Musik-Spurnamen bleiben unangetastet.
+                // The source's own track title wins; the file name stays the
+                // fallback for items that state none. The OTR head patterns
+                // (shorthand, date, running number) only exist in series —
+                // music track names are left untouched.
                 let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
+                let stated = track.metadata?.title
                 let episode = flavor == .series
                     ? FreeCatalog.otrEpisode(fromFileName: raw)
-                    : (title: raw, airDate: nil)
+                    : (title: stated ?? raw, airDate: nil)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: episode.title)
                         .font(.subheadline)

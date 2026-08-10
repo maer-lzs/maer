@@ -1108,5 +1108,48 @@ struct CatalogGenreAxisTests {
         #expect(FreeCatalog.catalogMetaLine(year: "  ", runtime: "") == " ")
     }
 
+
+    // MARK: - Track titles from the source
+
+    private func archiveFile(name: String, title: String? = nil, track: String? = nil,
+                             length: String = "180") -> ArchiveFile {
+        ArchiveFile(name: name, length: length, title: title, track: track, format: "VBR MP3")
+    }
+
+    @Test("the source's own track title wins over the file name")
+    func statedTitleWins() {
+        let file = archiveFile(name: "01 - dwk123_01_april_showers.mp3", title: "April Showers")
+        #expect(FreeCatalog.trackTitle(file) == "April Showers")
+        // Without a stated title the file name stays the fallback.
+        let bare = archiveFile(name: "gunsmoke_52-04-26.mp3")
+        #expect(FreeCatalog.trackTitle(bare) == FreeCatalog.trackDisplayTitle(contentUrl: "gunsmoke_52-04-26.mp3"))
+        // A blank title is not a title.
+        #expect(FreeCatalog.trackTitle(archiveFile(name: "x.mp3", title: "   ")).isEmpty == false)
+    }
+
+    @Test("track numbers order the release, in both spellings")
+    func trackNumbersOrderTheRelease() {
+        #expect(FreeCatalog.trackNumber(archiveFile(name: "a", track: "7")) == 7)
+        #expect(FreeCatalog.trackNumber(archiveFile(name: "a", track: "7/15")) == 7)
+        #expect(FreeCatalog.trackNumber(archiveFile(name: "a", track: nil)) == nil)
+        // Numbered files sort by number, not by name (10 after 9).
+        let nine = FreeCatalog.orderKey(archiveFile(name: "z_nine.mp3", track: "9"))
+        let ten = FreeCatalog.orderKey(archiveFile(name: "a_ten.mp3", track: "10"))
+        #expect(nine < ten)
+        // Without numbers the file name keeps the order it always had.
+        let a = FreeCatalog.orderKey(archiveFile(name: "a.mp3"))
+        let b = FreeCatalog.orderKey(archiveFile(name: "b.mp3"))
+        #expect(a < b)
+    }
+
+    @Test("the built tracks carry their title")
+    func builtTracksCarryTheirTitle() {
+        let files = [archiveFile(name: "02.mp3", title: "Downtown Irony", track: "2"),
+                     archiveFile(name: "01.mp3", title: "April Showers", track: "1")]
+        let tracks = FreeCatalog.archiveTracks(identifier: "DWK123", files: files)
+        #expect(tracks.count == 2)
+        #expect(tracks.first?.metadata?.title == "April Showers", "track 1 comes first")
+        #expect(tracks.last?.metadata?.title == "Downtown Irony")
+    }
 }
 #endif

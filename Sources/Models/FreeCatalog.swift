@@ -105,6 +105,12 @@ nonisolated struct ArchiveFile: Decodable, Sendable {
     let name: String?
     let length: String?
     let title: String?
+    /// Per-file tags the source ships and the app used to drop: on a netlabel
+    /// release these carry the real song title, its performer and the track
+    /// number, which is why track names had to be derived from file names.
+    var creator: String? = nil
+    var track: String? = nil
+    var album: String? = nil
     /// 37e4a23: archive.org's rendition label ("VBR MP3", "64Kbps MP3", …) —
     /// the format PREFERENCE chain picks by this, not by filename suffix.
     let format: String?
@@ -772,6 +778,27 @@ nonisolated enum FreeCatalog {
         return cleaned.isEmpty ? raw : cleaned
     }
 
+    /// Track numbers come as "7" or "7/15"; a source without them keeps the
+    /// file-name order, which is what the app relied on before.
+    static func trackNumber(_ file: ArchiveFile) -> Int? {
+        guard let raw = file.track?.split(separator: "/").first else { return nil }
+        return Int(raw.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// Sort key: the stated track number first, file name as the tie-break.
+    static func orderKey(_ file: ArchiveFile) -> String {
+        let number = trackNumber(file).map { String(format: "%05d", $0) } ?? "zzzzz"
+        return number + "|" + (file.name ?? "")
+    }
+
+    /// The name a track shows. The source's own title wins; the file name is
+    /// the fallback for items that state none.
+    static func trackTitle(_ file: ArchiveFile) -> String {
+        let stated = file.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !stated.isEmpty { return stated }
+        return trackDisplayTitle(contentUrl: file.name ?? "")
+    }
+
     static func trackDisplayTitle(contentUrl: String) -> String {
         let last = contentUrl.split(separator: "/").last.map(String.init) ?? contentUrl
         let decoded = last.removingPercentEncoding ?? last
@@ -800,7 +827,7 @@ nonisolated enum FreeCatalog {
         var start: Double = 0
         var out: [ABSAudioTrack] = []
         let playable = preferredAudioFiles(files)
-            .sorted { ($0.name ?? "") < ($1.name ?? "") }
+            .sorted { orderKey($0) < orderKey($1) }
         let encodedId = encodedPathSegment(identifier)
         for file in playable {
             guard let name = file.name else { continue }
@@ -811,7 +838,7 @@ nonisolated enum FreeCatalog {
             out.append(ABSAudioTrack(
                 index: out.count, startOffset: start, duration: duration,
                 contentUrl: "https://archive.org/download/\(encodedId)/\(encoded)",
-                metadata: nil))
+                metadata: ABSFileMetadata(size: nil, title: trackTitle(file))))
             start += duration ?? 0
         }
         return out

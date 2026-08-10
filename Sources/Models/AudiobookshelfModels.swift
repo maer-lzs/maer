@@ -277,6 +277,11 @@ nonisolated struct ABSAudioTrack: Codable {
 
 nonisolated struct ABSFileMetadata: Codable {
     let size: Int64?
+    /// The name of THIS track, when the source states one. Audiobookshelf
+    /// ships none (a book's parts have no titles of their own); catalogue
+    /// releases do, and without a place to put it the app fell back to the
+    /// file name.
+    var title: String? = nil
 }
 
 // MARK: - Progress
