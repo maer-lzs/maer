@@ -414,3 +414,53 @@ struct MaerPlaylistMenu: View {
         }
     }
 }
+
+/// A preview row whose content is SWITCHED by a selector strip above it —
+/// heading, optional sender line, the strip, and the row itself with its
+/// loading, empty and failure states.
+///
+/// One component for both places that need this shape: the radio-play charts
+/// (chips select a genre) and the 78rpm shelves (tiles select a shelf). The
+/// second one used the same layout, so it is a parameter, not a copy.
+struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
+    enum LoadState { case loading, failed, empty, ready }
+
+    let state: LoadState
+    /// Shown under the heading when the content comes from a named source.
+    var senderLine: String?
+    var emptyText: LocalizedStringKey = "Nothing here right now."
+    var failedText: LocalizedStringKey = "This could not be loaded. Check your connection."
+    @ViewBuilder var heading: () -> Heading
+    @ViewBuilder var selector: () -> Selector
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            heading()
+            if let senderLine {
+                Text(verbatim: senderLine)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
+            selector()
+            switch state {
+            case .loading:
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            case .failed:
+                message(failedText)
+            case .empty:
+                message(emptyText)
+            case .ready:
+                content()
+            }
+        }
+    }
+
+    private func message(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal)
+    }
+}

@@ -65,5 +65,28 @@ struct ArchiveMusicContractTests {
         #expect(ArchiveMusicCatalog.netlabels.query.contains("licenseurl:[* TO *]"))
         #expect(ArchiveMusicCatalog.netlabels.query.contains("collection:netlabels"))
     }
+
+    /// The selector under "Old Records" must never resolve to the undivided
+    /// collection: an unknown or missing key falls back to a SHELF, and every
+    /// shelf carries its subject constraint.
+    @Test("a selection always resolves to a shelf, never to the whole collection")
+    func selectionNeverEscapesTheShelves() {
+        for key in [nil, "", "does-not-exist", "shellac-jazz", "free-classical"] {
+            let area = ArchiveMusicCatalog.shelfOrFirst(key: key)
+            #expect(ArchiveMusicCatalog.shellacShelves.contains { $0.key == area.key },
+                    "\(key ?? "nil") must resolve to one of the shelves")
+            #expect(!area.subject.isEmpty, "a shelf without a subject would be the whole collection")
+            #expect(area.query.contains("subject:"), "the inclusion criterion must stay in the query")
+        }
+    }
+
+    /// Classical is a shelf now, and its address stays the same because
+    /// journeys and this contract address it by key.
+    @Test("classical is one of the shelves and keeps its address")
+    func classicalIsAShelf() {
+        #expect(ArchiveMusicCatalog.shellacShelves.contains { $0.key == "free-classical" })
+        #expect(ArchiveMusicCatalog.classical.subject == "classical")
+        #expect(!ArchiveMusicCatalog.classical.headerNote.isEmpty)
+    }
 }
 #endif

@@ -641,14 +641,6 @@ struct MusicCatalogAreaPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                if !store.rows.classical.isEmpty {
-                    VStack(alignment: .leading, spacing: 10) {
-                        RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
-                            .catalogShuffle(area: ArchiveMusicCatalog.classical,
-                                            coordinator: playerCoordinator)
-                        tileRow(store.rows.classical)
-                    }
-                }
                 if !store.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))

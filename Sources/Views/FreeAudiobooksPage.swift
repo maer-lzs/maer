@@ -287,44 +287,34 @@ struct FreeAudiobooksPage: View {
 
     @ViewBuilder
     private var chartsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // 12b5918: Apple is the SENDER (caption line), not a mechanic in
-            // the title; tiles like the rest of the page (list form = search).
-// H: two-stage — the heading leads to the charts page
-            // (genres as tile rows there); the chips HERE stay as the
-            // preview row's quick filter.
+        SwitchableTileRow(
+            state: chartsLoading && chartResults.isEmpty ? .loading
+                : (chartResults.isEmpty ? (chartsFailed ? .failed : .empty) : .ready),
+            senderLine: "Apple Podcasts",
+            emptyText: "Nothing in this genre right now.",
+            failedText: "The charts could not be loaded. Check your connection."
+        ) {
+            // Two stages: the heading leads to the charts page (genres as tile
+            // rows there), the chips stay as the preview row's quick filter.
             RowHeading(title: "Popular Radio-Play Podcasts",
                        total: chartResults.count,
                        shown: RowPreview.cut(chartResults).count,
                        destination: PodcastRoute.charts)
-            Text(verbatim: "Apple Podcasts")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal)
+        } selector: {
             chipRow
-            if chartsLoading && chartResults.isEmpty {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-            } else if chartResults.isEmpty {
-                Text(chartsFailed
-                     ? String(localized: "The charts could not be loaded. Check your connection.")
-                     : String(localized: "Nothing in this genre right now."))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
-                        ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
-                            RecommendationTile(result: result)
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.recommendationColumns(regularWidth: false),
-                                    span: 1, spacing: 12)
-                        }
+        } content: {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 12) {
+                    ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
+                        RecommendationTile(result: result)
+                            .containerRelativeFrame(.horizontal,
+                                count: CardMetrics.recommendationColumns(regularWidth: false),
+                                span: 1, spacing: 12)
                     }
-                    .padding(.horizontal)
                 }
-                .scrollClipDisabled()
+                .padding(.horizontal)
             }
+            .scrollClipDisabled()
         }
     }
 

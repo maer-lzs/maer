@@ -121,7 +121,6 @@ struct SourceAreaPage: View {
     @AppStorage(AppStorageKeys.radioEnabled) private var radioOn = false
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
-    @AppStorage(AppStorageKeys.freeClassicalEnabled) private var freeClassical = true
     @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
     @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
 
@@ -230,9 +229,6 @@ struct SourceAreaPage: View {
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
                 // Master off greys the area toggles — visibly subordinate,
                 // no silent double state.
-                .disabled(!freeCatalogsMaster)
-            Toggle("Show Free Classical", isOn: $freeClassical)
-                .accessibilityIdentifier("music-free-classical-toggle")
                 .disabled(!freeCatalogsMaster)
             Toggle("Show Netlabels", isOn: $netlabelsRow)
                 .accessibilityIdentifier("music-netlabels-toggle")

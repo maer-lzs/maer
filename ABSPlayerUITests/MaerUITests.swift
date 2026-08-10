@@ -1509,7 +1509,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.buttons["open-settings"].firstMatch.tap()
         let catalogArea = app.buttons["source-map-freeCatalogs"].firstMatch
         XCTAssertTrue(catalogArea.waitForExistence(timeout: 10)); catalogArea.tap()
-        let area = app.switches["music-free-classical-toggle"].firstMatch
+        let area = app.switches["music-netlabels-toggle"].firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 10))
         XCTAssertFalse(area.isEnabled, "area toggle must grey out while the master is off")
         backOut(app)

@@ -15,6 +15,9 @@ struct CategoryTile: View {
     /// Numeral top-right; nil hides it (Jellyfin genres ship no counts).
     var count: Int? = nil
     var accessibilityId: String? = nil
+    /// Selected tiles carry the accent fill — the same tile serves as a
+    /// navigation entry and as a selector, so the state is a parameter.
+    var isSelected: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -42,10 +45,12 @@ struct CategoryTile: View {
             .padding(.horizontal, 12)
             .frame(minHeight: 56)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.06)))
+                .fill(isSelected ? AnyShapeStyle(AppTheme.accent.opacity(0.18))
+                                 : AnyShapeStyle(Color.primary.opacity(0.06))))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(accessibilityId ?? "category-tile-\(title)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

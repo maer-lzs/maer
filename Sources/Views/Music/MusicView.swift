@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import OSLog
 import Combine
 
 /// Music tab (Subsonic/Navidrome/Jellyfin). Musik-Tab-Neuordnung (30.07):
@@ -36,6 +37,37 @@ struct MusicView: View {
     /// I1: same store rows as Home — no second fetch (Regel 2).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeDetailItem: LibraryItem?
+    /// Which 78rpm shelf the row below the tiles shows. Never empty — the
+    /// area exists only as named shelves.
+    @State private var selectedShelfKey = ArchiveMusicCatalog.shellacShelves[0].key
+    @State private var shellacTitles: [LibraryItem] = []
+    @State private var shellacLoading = false
+    @State private var shellacFailed = false
+
+    /// The selected shelf, falling back to the first one — a missing key must
+    /// resolve to a shelf, never to the undivided collection.
+    private var selectedShelf: ArchiveMusicArea {
+        ArchiveMusicCatalog.shelfOrFirst(key: selectedShelfKey)
+    }
+
+    private func loadShellacTitles() async {
+        shellacLoading = true
+        shellacFailed = false
+        defer { shellacLoading = false }
+        let area = selectedShelf
+        // Same daily rotation as the other popularity rows: the all-time
+        // ranking would otherwise never change.
+        let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12, on: Date())
+        do {
+            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
+            shellacTitles = docs.compactMap { FreeCatalogProvider.shared.remember(popular: $0) }
+            shellacFailed = shellacTitles.isEmpty
+        } catch {
+            shellacFailed = true
+            shellacTitles = []
+            Logger.library.error("SHELLAC row \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+        }
+    }
 
     /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
     /// at the "Free Catalogs" area of the source map > archive.org service
@@ -163,14 +195,6 @@ struct MusicView: View {
             // 40f21b3 I1: the free-music areas are REACHABLE from the music
             // tab again (tab parity) — same store rows as Home, no second
             // fetch (Regel 2). I2: future free sources join THIS block.
-            if freeClassicalArea, !freeCatalogStore.rows.classical.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Free Classical", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.classical))
-                            .catalogShuffle(area: ArchiveMusicCatalog.classical,
-                                            coordinator: playerCoordinator)
-                        freeTileRow(freeCatalogStore.rows.classical)
-                    }
-            }
             if netlabelsArea, !freeCatalogStore.rows.netlabels.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         RowHeading.entry("Netlabels", destination: MusicRoute.archiveMusic(ArchiveMusicCatalog.netlabels))
@@ -183,27 +207,40 @@ struct MusicView: View {
             // their genre shelves — the entry leads to the shelf list, never
             // to an undivided view of the collection.
             if shellacArea {
-                    VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
-                    // GT-Befund 09.08.: die Reihe zeigt die FAECHER, nicht
-                    // Titel — eine echte Vorschau ihrer Seite, und per
-                    // Konstruktion nie eine ungegliederte Auswahl (Auflage 1).
-                    // Kachelform = die Genre-Felder-Praezedenz (CategoryTile).
+                // The shelf tiles SELECT; the row below shows titles of the
+                // selected shelf. The chevron leads to that shelf's page, so
+                // "every row has a page" still holds. There is deliberately no
+                // "all" state — the safety of this area comes from its
+                // inclusion criterion, so nothing may bypass a shelf.
+                SwitchableTileRow(
+                    state: shellacLoading && shellacTitles.isEmpty ? .loading
+                        : (shellacTitles.isEmpty ? (shellacFailed ? .failed : .empty) : .ready),
+                    emptyText: "Nothing in this shelf right now.",
+                    failedText: "This shelf could not be loaded. Check your connection."
+                ) {
+                    RowHeading.entry("Old Records",
+                                     destination: MusicRoute.archiveMusic(selectedShelf))
+                        .catalogShuffle(area: selectedShelf, coordinator: playerCoordinator)
+                } selector: {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(spacing: 12) {
                             ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
                                 CategoryTile(title: shelf.title,
                                              systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
                                              count: nil,
-                                             accessibilityId: "shellac-tile-\(shelf.key)") {
-                                    pushRoute(MusicRoute.archiveMusic(shelf))
+                                             accessibilityId: "shellac-tile-\(shelf.key)",
+                                             isSelected: shelf.key == selectedShelfKey) {
+                                    selectedShelfKey = shelf.key
                                 }
                                 .frame(width: 200)
                             }
                         }
                         .padding(.horizontal)
                     }
-                    }
+                } content: {
+                    freeTileRow(shellacTitles)
+                }
+                .task(id: selectedShelfKey) { await loadShellacTitles() }
             }
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {

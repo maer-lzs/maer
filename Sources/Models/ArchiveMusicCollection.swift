@@ -37,17 +37,6 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
 
 /// The music catalogs we surface, as data.
 nonisolated enum ArchiveMusicCatalog {
-    /// 78rpm-era classical (georgeblood). Carries NO `licenseurl` at all —
-    /// the recording year is the only rights hint, so no capsule appears and
-    /// nothing claims public domain (P6a).
-    static let classical = ArchiveMusicArea(
-        key: "free-classical",
-        query: "collection:georgeblood AND subject:classical AND mediatype:(audio)",
-        title: String(localized: "Free Classical"),
-        headerNote: String(localized: "Free public-domain recordings from the Internet Archive — separate from your own library."),
-        placeholderSystemImage: "music.quarternote.3",
-        measuredTotal: 4_271)
-
     /// Netlabel releases under Creative Commons. Measured 08.08.: 76.950
     /// audio items, 61.111 WITH a stated licence — the query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
@@ -76,6 +65,11 @@ nonisolated enum ArchiveMusicCatalog {
     static let shellacShelves: [ArchiveMusicArea] = [
         shellac(subject: "jazz", key: "shellac-jazz", title: String(localized: "Jazz (78s)"), total: 6_794),
         shellac(subject: "opera", key: "shellac-opera", title: String(localized: "Opera (78s)"), total: 5_818),
+        // Classical is the same collection as the other shelves — measured
+        // overlap with opera and jazz is 0. It used to be its own area with a
+        // header claiming public domain, which the collection does not state.
+        // The key stays `free-classical`: it is an address, not a title.
+        shellac(subject: "classical", key: "free-classical", title: String(localized: "Classical (78s)"), total: 4_271),
         shellac(subject: "folk", key: "shellac-folk", title: String(localized: "Folk (78s)"), total: 3_834),
         shellac(subject: "blues", key: "shellac-blues", title: String(localized: "Blues (78s)"), total: 3_383),
         shellac(subject: "country", key: "shellac-country", title: String(localized: "Country (78s)"), total: 2_378),
@@ -102,5 +96,24 @@ nonisolated enum ArchiveMusicCatalog {
     }
 
     /// Every area that has its own full page (for contract tests).
-    static var all: [ArchiveMusicArea] { [classical, netlabels] + shellacShelves }
+    static var all: [ArchiveMusicArea] { [netlabels] + shellacShelves }
+
+    /// The shelf behind a key — for the few callers that address one directly
+    /// (search deck, the popularity row on Home).
+    static func shelf(key: String) -> ArchiveMusicArea? {
+        all.first { $0.key == key }
+    }
+
+    /// The 78rpm classical shelf. Named because three call sites address it
+    /// by meaning rather than by key.
+    static var classical: ArchiveMusicArea {
+        shelfOrFirst(key: "free-classical")
+    }
+
+    /// Resolving a selection to a shelf. An unknown or missing key falls back
+    /// to a SHELF, never to the undivided collection — the safety of this area
+    /// comes from its inclusion criterion, so nothing may bypass one.
+    static func shelfOrFirst(key: String?) -> ArchiveMusicArea {
+        key.flatMap { shelf(key: $0) } ?? shellacShelves[0]
+    }
 }

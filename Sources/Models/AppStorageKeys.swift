@@ -484,11 +484,10 @@ nonisolated enum AppStorageKeys {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
                                         feature: true, service: boolValue(jamendoRowEnabled))
     }
-    nonisolated static var freeClassicalActive: Bool {
-        FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
-                                        feature: boolValue(freeClassicalEnabled),
-                                        service: boolValue(archivePopularEnabled))
-    }
+    /// Classical is a shelf of the 78rpm records now, not an area of its own —
+    /// it follows their switch. The old key stays declared but unread: a new
+    /// key would silently reset the setting of every user.
+    nonisolated static var freeClassicalActive: Bool { shellacActive }
     nonisolated static var netlabelsActive: Bool {
         FreeCatalogActivation.effective(master: freeCatalogsMasterActive,
                                         feature: boolValue(netlabelsRowEnabled),
