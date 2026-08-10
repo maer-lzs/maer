@@ -931,7 +931,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 let now = Date().timeIntervalSince1970
                 if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
                     self.lastLocalSaveAt = now
-                    UserDefaults.standard.set([self.currentTime, now * 1000], forKey: key)
+                    // Befund 35cb1f4: dieser Weg schrieb ein ROHES Paar an
+                    // ProgressMark vorbei — jede geheilte Folge haette ihren
+                    // Bezugspunkt beim naechsten Anhoeren wieder verloren.
+                    // `advancing` traegt ihn fort, auch wenn hier keine Dauer
+                    // bekannt waere.
+                    let previous = UserDefaults.standard.array(forKey: key) as? [Double]
+                    UserDefaults.standard.set(
+                        ProgressMark.advancing(previous, position: self.currentTime,
+                                               duration: self.duration, nowMs: now * 1000),
+                        forKey: key)
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
                     // (cheap + idempotent; threshold logic stays in the store).

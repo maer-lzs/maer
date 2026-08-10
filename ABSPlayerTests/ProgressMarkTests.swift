@@ -45,6 +45,34 @@ struct ProgressMarkTests {
     }
 
 
+
+    @Test("ein Eintrag ohne Dauer loescht den vorhandenen Bezugspunkt NICHT")
+    func advancingCarriesTheReferencePoint() {
+        let good = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
+        // Der gpodder-Pull ohne `total` — vorher entstand hier eine
+        // Zwei-Werte-Marke, die die gute ueberschrieb.
+        let advanced = ProgressMark.advancing(good, position: 3_420, duration: 0, nowMs: 2_000)
+        #expect(ProgressMark.markedDuration(advanced) == 3_420)
+        #expect(advanced[1] == 2_000, "Position und Zeitstempel kommen weiterhin von der Quelle")
+        #expect(ProgressMark.isPlayed(stored: advanced, currentDuration: 3_600))
+        // Eine BEKANNTE neue Dauer gewinnt gegen die alte.
+        let fresher = ProgressMark.advancing(good, position: 3_500, duration: 3_500, nowMs: 3_000)
+        #expect(ProgressMark.markedDuration(fresher) == 3_500)
+        // Ohne Vorgaenger bleibt es beim alten Verhalten.
+        #expect(ProgressMark.advancing(nil, position: 10, duration: 0, nowMs: 1).count == 2)
+    }
+
+    @Test("Nachtragen ergaenzt nur die Dauer — und erfindet nie einen Eintrag")
+    func supplementingOnlyAddsTheMissingReference() {
+        let old: [Double] = [3_420, 1_000]
+        let healed = ProgressMark.supplementing(old, duration: 3_420)
+        #expect(healed == [3_420, 1_000, 3_420], "Position und Zeitstempel bleiben unangetastet")
+        // Nichts zu tun: hat schon einen Bezugspunkt …
+        #expect(ProgressMark.supplementing([3_420, 1_000, 3_420], duration: 3_600) == nil)
+        // … oder die Gegenseite kennt keine Dauer.
+        #expect(ProgressMark.supplementing(old, duration: 0) == nil)
+    }
+
     @Test("die vom Server gemeldete Dauer heilt einen bestehenden Eintrag")
     func serverTotalRepairsOldEntries() {
         // gpodder liefert Position UND total; damit ist der Bezugspunkt da,

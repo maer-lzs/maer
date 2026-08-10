@@ -433,28 +433,50 @@ final class GPodderSync {
         let since = defaults.integer(forKey: AppStorageKeys.gpodderEpisodeSince)
         let (actions, newSince) = try await client.episodeActions(since: since)
         var pulled = 0
+        /// Befund afdcc57: wie viele Alt-Eintraege ihren fehlenden
+        /// Bezugspunkt nachgetragen bekamen — einmal protokolliert, weil 44
+        /// Abos zu viel fuer Handarbeit sind und man sonst nicht sieht, ob die
+        /// Heilung ueberhaupt gegriffen hat.
+        var supplemented = 0
         for a in actions where (a.action?.lowercased() == "play") {
             guard let enc = a.episode, let pos = a.position,
                   let match = byEnclosure[PodcastSubscriptions.normalizeEnclosure(enc)] else { continue }
             guard let tsMs = Self.parseTimestamp(a.timestamp) else { continue }
             let localArr = defaults.array(forKey: AppStorageKeys.localPosition(match.id)) as? [Double]
             let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
+            let serverTotal = Double(a.total ?? 0)
             if tsMs > localTs {
-                // Der Server liefert `total` mit — die Dauer, die zum
-                // Hoerzeitpunkt galt (the operator's Messung: 38 von 41 Folgen liegen
-                // exakt darauf). Als dritter Wert gespeichert heilt sie
-                // BESTEHENDE Eintraege, ohne etwas zu raten: „gehoert" wird
-                // dann gegen die damalige Dauer geprueft statt gegen die
-                // heute behauptete.
+                // WEG 1 — UEBERNAHME: der Server ist neuer, sein Zustand gilt.
+                // `advancing` statt `entry`: Meldet der Server kein `total`,
+                // darf der vorhandene Bezugspunkt NICHT sterben (Befund
+                // ee4fca6 — genau so hat ein Hintergrund-Abgleich gute
+                // Drei-Werte-Marken durch Zwei-Werte-Marken ersetzt, im
+                // Zweifel sogar durch das eigene Echo, weil der Server
+                // Zeitstempel auf ganze Sekunden rundet).
                 defaults.set(
-                    ProgressMark.entry(position: Double(pos), duration: Double(a.total ?? 0), nowMs: tsMs),
+                    ProgressMark.advancing(localArr, position: Double(pos),
+                                           duration: serverTotal, nowMs: tsMs),
                     forKey: AppStorageKeys.localPosition(match.id))
                 pulled += 1
                 // Personen-Ebene: a gpodder-applied transition feeds the log.
                 PodcastListenLog.shared.noteReconciled(guids: [match.id])
+            } else if let localArr,
+                      let healed = ProgressMark.supplementing(localArr, duration: serverTotal) {
+                // WEG 2 — NACHTRAGEN (Befund afdcc57): Der lokale Eintrag
+                // stimmt inhaltlich, ihm fehlt nur der Bezugspunkt. Das ist
+                // KEINE Uebernahme, und deshalb hat es mit Zeitstempeln nichts
+                // zu tun — bei genau den betroffenen Folgen stammen beide
+                // Seiten vom SELBEN Ereignis, der Server ist nie neuer. Nur
+                // die Dauer wird ergaenzt; Position und Zeitstempel bleiben
+                // unangetastet, und es entsteht NIE ein Eintrag aus dem Nichts.
+                defaults.set(healed, forKey: AppStorageKeys.localPosition(match.id))
+                supplemented += 1
             }
         }
         defaults.set(newSince, forKey: AppStorageKeys.gpodderEpisodeSince)
+        if supplemented > 0 {
+            Logger.rss.notice("GPODDER supplemented \(supplemented) entries with the duration they were written against")
+        }
         if pulled > 0 {
             PodcastProgressStore.shared.reload()   // trigger UI + iCloud reconcile
             PodcastCloudSync.shared.reconcile()

@@ -34,8 +34,47 @@ nonisolated enum ProgressMark {
 
     /// Der zu speichernde Eintrag. Die Dauer kommt nur mit, wenn sie bekannt
     /// ist — ein erfundener Wert wäre schlimmer als keiner.
+    ///
+    /// **Nicht direkt aufrufen, wenn es die Stelle schon gibt** — dafür ist
+    /// `advancing` da. Diese Form baut NEU und verliert dabei, was sie nicht
+    /// weiß.
     static func entry(position: Double, duration: Double, nowMs: Double) -> [Double] {
         duration > 0 ? [position, nowMs, duration] : [position, nowMs]
+    }
+
+    /// **Fortschreiben statt neu bauen** (Befund ee4fca6).
+    ///
+    /// Ein eingehender Eintrag ohne bekannte Dauer darf einen VORHANDENEN
+    /// Bezugspunkt nicht löschen — er weiß es nicht besser, er weiß es gar
+    /// nicht. Genau das ist passiert: Der gpodder-Abgleich rief `entry` mit
+    /// `a.total ?? 0` auf, schrieb bei jüngerem Zeitstempel eine
+    /// Zwei-Werte-Marke über eine gute Drei-Werte-Marke, und weil der Server
+    /// Zeitstempel auf ganze Sekunden rundet, gewann dabei sogar das eigene
+    /// Echo. Ohne Abspielen, ohne Geste, im Takt der Synchronisierung.
+    ///
+    /// Dieselbe Klasse wie die Feldklassen beim Show-Merge: **Wissen, das nur
+    /// eine Seite hat, darf nicht daran sterben, dass die andere gewinnt.**
+    /// Deshalb steht es hier und nicht an den Aufrufstellen — dann kann auch
+    /// keine künftige den Bezugspunkt mehr verlieren.
+    static func advancing(_ existing: [Double]?,
+                          position: Double,
+                          duration: Double,
+                          nowMs: Double) -> [Double] {
+        let known = duration > 0 ? duration : (existing.flatMap { markedDuration($0) } ?? 0)
+        return entry(position: position, duration: known, nowMs: nowMs)
+    }
+
+    /// **Nachtragen** (Befund afdcc57): dem vorhandenen Eintrag NUR den
+    /// fehlenden Bezugspunkt ergänzen — Position und Zeitstempel bleiben
+    /// unangetastet. Kein Merge, keine Übernahme.
+    ///
+    /// `nil` heißt „nichts zu tun": Der Eintrag hat schon einen, oder die
+    /// Gegenseite kennt keine Dauer. Und es entsteht NIE ein Eintrag aus dem
+    /// Nichts — eine Heilung, die Gelöschtes zurückholt, wäre die Klasse, die
+    /// beim Abo-Abgleich die Massenlösch-Wache abfängt.
+    static func supplementing(_ existing: [Double], duration: Double) -> [Double]? {
+        guard duration > 0, existing.count >= 2, markedDuration(existing) == nil else { return nil }
+        return [existing[0], existing[1], duration]
     }
 
     /// Die Dauer, die beim Schreiben galt — falls der Eintrag sie trägt.

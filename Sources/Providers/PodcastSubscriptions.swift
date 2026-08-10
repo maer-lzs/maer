@@ -561,11 +561,10 @@ final class PodcastSubscriptions: ObservableObject {
         return guid
     }
 
-    /// Merge two shows of the same feed: keep the metadata of the richer one,
-    /// deduplicate episodes by guid, newest first.
-    /// Union two versions of a show by episode GUID, keeping the richer set and
-    /// losing nothing — the base is whichever already has more episodes. `internal`
-    /// so the RSS hardening (never shrink on a weak fetch) is unit-testable.
+    /// Zwei Fassungen derselben Sendung zusammenführen: Folgen als Vereinigung
+    /// nach `guid`, neueste zuerst. `internal`, damit die RSS-Härtung (bei
+    /// einem dünnen Abruf nie schrumpfen) im Unit-Test fahrbar ist.
+    ///
     /// Befund 955dbfa: **Felder klassifizieren statt Seiten waehlen.**
     ///
     /// Vorher waehlte der Merge die Seite mit mehr Folgen als Basis und flickte

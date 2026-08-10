@@ -233,5 +233,36 @@ struct ProjectFileIntegrityTests {
         #expect(offenders.isEmpty,
                 "diese Lesestellen verwerfen Eintraege mit mitgespeicherter Dauer still: \(offenders)")
     }
+
+    /// Befund 35cb1f4: Der Zaun deckte nur die LESER. Ein Schreiber, der ein
+    /// rohes `[position, ts]` ablegt, loescht den Bezugspunkt genauso still —
+    /// der Fuenf-Sekunden-Schreiber im Player tat das bei jeder Wiedergabe.
+    /// Also: Auf `localPosition` wird nur ueber `ProgressMark` geschrieben
+    /// (`entry`/`advancing`/`supplementing`) oder ein bestehender Wert
+    /// unveraendert umgezogen. Nie ein Array-Literal.
+    @Test("kein Array-Literal wird auf localPosition geschrieben")
+    func noRawArrayIsWrittenToAPositionKey() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let sources = root.appendingPathComponent("Sources")
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        var offenders: [String] = []
+        for file in files {
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            let lines = text.components(separatedBy: "\n")
+            for (index, line) in lines.enumerated() where line.contains("set([") {
+                // Schluessel und Wert stehen oft in derselben Anweisung ueber
+                // mehrere Zeilen — ein Fenster faengt beide Schreibweisen.
+                let start = max(0, index - 2)
+                let window = lines[start..<min(index + 3, lines.count)].joined(separator: " ")
+                if window.contains("localPosition") {
+                    offenders.append("\(file.lastPathComponent):\(index + 1)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty,
+                "diese Schreibstellen bauen den Eintrag selbst und verlieren dabei die mitgespeicherte Dauer: \(offenders)")
+    }
 }
 #endif
