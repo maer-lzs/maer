@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 /// Per-show settings: speed (used as the start rate), auto-download of new
 /// episodes and sorting. Reachable via the show's slider icon.
@@ -15,11 +16,69 @@ struct PodcastShowSettingsSheet: View {
     @State private var rate: Float?          // nil = default speed
     @State private var autoDownload = false
     @State private var autoDownloadError: String?
+    @State private var copiedReport = false
     @State private var inboxMode = "all"     // all | latest | off
     @State private var notify = true
     @State private var episodeLimit = 0      // 0 = unbegrenzt
     private let rates: [Float] = [0.8, 1.0, 1.1, 1.2, 1.5, 1.75, 2.0]
     private let limits: [Int] = [0, 5, 10, 25, 50, 100]
+
+    /// Eigene Eigenschaft, weil der `body` sonst die Typpruefung sprengt
+    /// (gemessen: Fehler „unable to type-check in reasonable time").
+    @ViewBuilder
+    private var diagnosisSection: some View {
+        // Befund 10.08. (gehoerte Folgen kippen zurueck): Das Messmittel,
+        // NICHT der Fix. Die Ursache liegt entweder in einer gewachsenen
+        // Dauer oder im Abgleich, und nur der gespeicherte Zeitstempel
+        // trennt beides — er liegt auf dem Geraet, also gehoert der
+        // Auslöser dorthin, wo der falsche Zustand auffaellt.
+        // Diagnose-UI ist bewusst verbatim (Projekt-Konvention).
+        Section {
+            Button {
+                UIPasteboard.general.string = progressReport()
+                copiedReport = true
+            } label: {
+                Label {
+                    Text(verbatim: "Fortschritts-Diagnose kopieren")
+                } icon: {
+                    Image(systemName: "doc.on.clipboard")
+                }
+            }
+            .accessibilityIdentifier("progress-diagnosis-copy")
+            if copiedReport {
+                Text(verbatim: "In die Zwischenablage gelegt.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text(verbatim: "Diagnose")
+        } footer: {
+            Text(verbatim: "Positionen, Zeitstempel und die heute gemeldete Dauer dieser Sendung — zum Weitergeben, wenn eine gehoerte Folge wieder als angefangen erscheint.")
+        }
+    }
+
+    /// Liest die gespeicherten Positionen dieser Sendung zusammen — read-only.
+    private func progressReport() -> String {
+        let show = PodcastSubscriptions.shared.shows.first { $0.id == showId }
+            ?? ABSPodcastProvider.shared.shows.first { $0.id == showId }
+        let defaults = UserDefaults.standard
+        let entries: [ProgressDiagnosis.Entry] = (show?.episodes ?? []).compactMap { episode in
+            guard let stored = defaults.array(forKey: AppStorageKeys.localPosition(episode.guid)) as? [Double],
+                  stored.count == 2, stored[0] > 0 else { return nil }
+            return ProgressDiagnosis.Entry(
+                title: episode.title, guid: episode.guid,
+                position: stored[0],
+                // Der Zeitstempel liegt in Millisekunden im Speicher.
+                updatedAt: stored[1] / 1000,
+                feedDuration: episode.duration)
+        }
+        let lastSync = SyncHistoryStore.shared.lastChecked[SyncHistoryEntry.Service.gpodder.rawValue]
+        return ProgressDiagnosis.report(
+            show: show?.title ?? showId,
+            entries: entries,
+            lastSync: lastSync?.timeIntervalSince1970,
+            now: Date().timeIntervalSince1970,
+            format: { Date(timeIntervalSince1970: $0).formatted(date: .abbreviated, time: .standard) })
+    }
 
     var body: some View {
         NavigationStack {
@@ -63,6 +122,8 @@ struct PodcastShowSettingsSheet: View {
                         }
                     }
                 }
+                diagnosisSection
+
                 Section("Sort") {
                     Picker("Order", selection: $newestFirst) {
                         Label("Newest First", systemImage: "arrow.down").tag(true)
