@@ -42,18 +42,20 @@ final class PodcastProgressStore: ObservableObject {
     /// episode/audiobook, and small enough for the Int conversions in the
     /// gpodder push. Without it, "mark as played" was a silent no-op for
     /// duration-less episodes (state() could never reach `time >= duration - 1`).
-    nonisolated static let playedSentinel: Double = 2_592_000
+    /// Eine Wahrheit, in `ProgressMark` — hier nur der vertraute Name.
+    nonisolated static var playedSentinel: Double { ProgressMark.playedSentinel }
 
     /// State directly from guid + duration — without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
         guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
-              stored.count == 2 else { return .unplayed }
+              stored.count >= 2 else { return .unplayed }
         let time = stored[0]
-        // Sentinel first: works independently of a (missing) duration.
-        if time >= Self.playedSentinel { return .played }
+        // „Gehoert" entscheidet ProgressMark — es kennt den Waechterwert UND
+        // die Dauer, die beim Markieren galt. Die heutige Dauer taugt dafuer
+        // nicht: bei dynamischer Werbung schwankt sie je Abruf (gemessen).
+        if ProgressMark.isPlayed(stored: stored, currentDuration: duration) { return .played }
         guard duration > 0 else { return .unplayed }
-        if time >= duration - 1 { return .played }
         if time > 1 { return .inProgress(fraction: min(max(time / duration, 0), 1), remaining: duration - time) }
         return .unplayed
     }
@@ -68,9 +70,15 @@ final class PodcastProgressStore: ObservableObject {
             // With a known duration write the real end; without one the sentinel
             // — previously the else branch wrote the UNPLAYED tombstone for
             // duration-less episodes, making "mark as played" a silent no-op.
+            // Die Dauer wandert als DRITTER Wert mit: sie ist der Bezugspunkt,
+            // gegen den spaeter geprueft wird (nach aussen geht unveraendert
+            // die echte Endposition).
             let duration = item.media?.duration ?? 0
             let position = duration > 0 ? duration : Self.playedSentinel
-            UserDefaults.standard.set([position, Date().timeIntervalSince1970 * 1000], forKey: key)
+            UserDefaults.standard.set(
+                ProgressMark.entry(position: position, duration: duration,
+                                   nowMs: Date().timeIntervalSince1970 * 1000),
+                forKey: key)
         } else {
             UserDefaults.standard.set([0.0, Date().timeIntervalSince1970 * 1000], forKey: key)
         }
@@ -98,7 +106,7 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     var bestTs = -1.0
     for id in ids {
         if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double],
-           arr.count == 2, arr[1] > bestTs {
+           arr.count >= 2, arr[1] > bestTs {
             bestTs = arr[1]; bestGuid = id
         }
     }

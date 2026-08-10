@@ -104,7 +104,7 @@ final class PodcastListenLog {
                 // A remote unplayed-tombstone ([0, ts]) must tombstone HERE
                 // too — otherwise devices diverge in the other direction.
                 if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
-                   arr.count == 2, arr[0] <= 0 {
+                   arr.count >= 2, arr[0] <= 0 {
                     markUnplayed(guid: guid, at: arr[1])
                 }
             case .inProgress:

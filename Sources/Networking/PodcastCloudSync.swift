@@ -70,7 +70,7 @@ final class PodcastCloudSync {
         var local: [String: [Double]] = [:]
         for (key, value) in defaults.dictionaryRepresentation() {
             guard podcastPrefixes.contains(where: { key.hasPrefix($0) }),
-                  let arr = Self.coerce(value), arr.count == 2 else { continue }
+                  let arr = Self.coerce(value), arr.count >= 2 else { continue }
             local[String(key.dropFirst(keyPrefix.count))] = arr
         }
 
@@ -78,7 +78,7 @@ final class PodcastCloudSync {
         var cloud: [String: [Double]] = [:]
         if let raw = store.dictionary(forKey: blobKey) {
             for (id, value) in raw {
-                if let arr = Self.coerce(value), arr.count == 2 { cloud[id] = arr }
+                if let arr = Self.coerce(value), arr.count >= 2 { cloud[id] = arr }
             }
         }
 
@@ -143,8 +143,8 @@ final class PodcastCloudSync {
     }
 
     nonisolated static func mergeSingle(local: [Double]?, cloud: [Double]?) -> SingleMergeOutcome {
-        let lts = (local?.count == 2) ? local![1] : -1
-        let cts = (cloud?.count == 2) ? cloud![1] : -1
+        let lts = (local?.count ?? 0) >= 2 ? local![1] : -1
+        let cts = (cloud?.count ?? 0) >= 2 ? cloud![1] : -1
         if cts > lts, let c = cloud {
             if local == nil { return .pushTombstone }
             return .adoptCloud(c)

@@ -105,7 +105,14 @@ extension PlayerViewModel {
                 if provider.capabilities.contains(.progressSync) && !isPodcast {
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
-                    UserDefaults.standard.set([currentTime, Date().timeIntervalSince1970 * 1000], forKey: key)
+                    // Die Dauer wandert mit (dritter Wert): am natuerlichen
+                    // Ende ist `currentTime == duration`, und ohne den Bezug
+                    // wuerde eine spaeter gewachsene Werbe-Dauer die fertige
+                    // Folge wieder als angefangen zeigen.
+                    UserDefaults.standard.set(
+                        ProgressMark.entry(position: currentTime, duration: duration,
+                                           nowMs: Date().timeIntervalSince1970 * 1000),
+                        forKey: key)
                     // gpodder: push the podcast position too (periodically + on
                     // pause/stop/seek). No-op without config; abspod: is mapped
                     // via the feed-guid bridge.
@@ -275,7 +282,10 @@ extension PlayerViewModel {
         // `localPosition` — set or remove it directly here.
         if !provider.capabilities.contains(.progressSync), let key = localPositionKey {
             if target {
-                UserDefaults.standard.set([duration, Date().timeIntervalSince1970 * 1000], forKey: key)
+                UserDefaults.standard.set(
+                    ProgressMark.entry(position: duration, duration: duration,
+                                       nowMs: Date().timeIntervalSince1970 * 1000),
+                    forKey: key)
             } else {
                 UserDefaults.standard.removeObject(forKey: key)
             }

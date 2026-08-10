@@ -205,7 +205,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         var out: [String: Double] = [:]
         for (key, value) in UserDefaults.standard.dictionaryRepresentation() {
             guard key.hasPrefix("localPosition.rss:") || key.hasPrefix("localPosition.abspod:"),
-                  let arr = value as? [Double], arr.count == 2 else { continue }
+                  let arr = value as? [Double], arr.count >= 2 else { continue }
             let epId = String(key.dropFirst("localPosition.".count))
             guard let showId = AppStorageKeys.podcastShowId(forEpisodeId: epId) else { continue }
             out[showId, default: 0] += max(arr[0], 0)

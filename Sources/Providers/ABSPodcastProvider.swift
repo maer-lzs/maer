@@ -255,7 +255,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
         var didPush = false
         for (absId, rssId) in absToRSS {
             guard let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(rssId)) as? [Double],
-                  arr.count == 2 else { continue }
+                  arr.count >= 2 else { continue }
             let localTime = arr[0], localTs = arr[1]
             let serverTs = episodeProgress[absId]?.lastUpdate ?? -1
             guard localTs > serverTs else { continue }

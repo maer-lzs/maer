@@ -56,7 +56,7 @@ enum PodcastSections {
                 equivalents[ep.guid] = ids
                 for id in ids where positions[id] == nil {
                     if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double],
-                       arr.count == 2 {
+                       arr.count >= 2 {
                         positions[id] = arr
                     }
                 }

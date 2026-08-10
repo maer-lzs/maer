@@ -55,11 +55,13 @@ final class LocalProvider: AudioProvider {
     /// Pure (tested): one stored `[time, lastUpdate]` pair + duration → the
     /// progress value. `nil` when the stored shape is not the expected pair.
     nonisolated static func storedProgress(_ stored: [Double]?, duration: Double) -> BookProgress? {
-        guard duration > 0, let stored, stored.count == 2 else { return nil }
+        guard duration > 0, let stored, stored.count >= 2 else { return nil }
         let time = stored[0]
         return BookProgress(
             fraction: min(max(time / duration, 0), 1),
-            isFinished: time >= duration - 1,
+            // Dieselbe eine Regel wie ueberall: kennt der Eintrag die Dauer
+            // von damals, gilt sie — sonst die heutige.
+            isFinished: ProgressMark.isPlayed(stored: stored, currentDuration: duration),
             lastUpdate: stored[1],
             currentTime: time
         )

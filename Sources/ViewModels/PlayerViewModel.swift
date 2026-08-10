@@ -447,7 +447,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
         if let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-           saved.count == 2,
+           saved.count >= 2,
            SyncRules.shouldRestoreLocalPosition(
                savedTime: saved[0], savedAtMs: saved[1],
                serverTime: serverProgress, serverUpdateMs: serverUpdateMs

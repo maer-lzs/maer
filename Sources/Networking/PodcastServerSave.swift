@@ -63,7 +63,7 @@ final class PodcastServerSave {
     /// and write it once to the ABS server.
     private func migrateProgress(from old: String, to new: String, duration: Double) async {
         let d = UserDefaults.standard
-        guard let arr = d.array(forKey: AppStorageKeys.localPosition(old)) as? [Double], arr.count == 2 else { return }
+        guard let arr = d.array(forKey: AppStorageKeys.localPosition(old)) as? [Double], arr.count >= 2 else { return }
         d.set(arr, forKey: AppStorageKeys.localPosition(new))
         d.removeObject(forKey: AppStorageKeys.localPosition(old))
         PodcastCloudSync.shared.reconcile()

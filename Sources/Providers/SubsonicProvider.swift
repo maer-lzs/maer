@@ -691,7 +691,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         for pl in playlists {
             let itemId = Self.itemId(playlistId: pl.id)
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
-                  stored.count == 2, let duration = pl.duration, duration > 0 else { continue }
+                  stored.count >= 2, let duration = pl.duration, duration > 0 else { continue }
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
@@ -699,7 +699,7 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         // sourced from the session's album cache.
         for album in cachedAlbumItems {
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(album.id)) as? [Double],
-                  stored.count == 2, let duration = album.media?.duration, duration > 0 else { continue }
+                  stored.count >= 2, let duration = album.media?.duration, duration > 0 else { continue }
             result[album.id] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }

@@ -91,7 +91,7 @@ final class RSSProvider: AudioProvider {
             let item = libraryItem(show: show, episode: episode)
             guard let duration = item.media?.duration, duration > 0,
                   let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-                  stored.count == 2 else { continue }
+                  stored.count >= 2 else { continue }
             let time = stored[0]
             map[item.id] = BookProgress(
                 fraction: min(max(time / duration, 0), 1),
