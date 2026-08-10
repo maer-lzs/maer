@@ -7,8 +7,8 @@ import SwiftUI
 
 /// Etappe E: Audiobookshelf as ONE source page like every other service —
 /// the shared source pattern: access (connect/log out), per-source sync
-/// button, source-specific extras (library picker). Lives in the
-/// tab-independent Sources section; the old per-tab Server/Sync scatter is
+/// button, source-specific extras (library picker). Reached from the
+/// tab-independent source map (Areas → Audiobooks); the old per-tab Server/Sync scatter is
 /// gone.
 struct ABSSourceView: View {
     @ObservedObject private var authViewModel = AppSession.shared.authViewModel

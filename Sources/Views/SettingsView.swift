@@ -314,7 +314,7 @@ struct SettingsView: View {
 
     /// Variante b, rule category "library": the tab level of the two-level
     /// gating — which media types appear. Same keys and reconfigure path as
-    /// before; the per-source switches stay under Sources above.
+    /// before; the per-source switches stay at their area on the map above.
     private var librariesSection: some View {
         Section {
             tabMasterToggle("Audiobooks", isOn: $audiobooksTab)
@@ -324,7 +324,7 @@ struct SettingsView: View {
         } header: {
             Text("Libraries")
         } footer: {
-            Text("Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches above are kept.")
+            Text("Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches at their area on the map above are kept.")
         }
     }
 

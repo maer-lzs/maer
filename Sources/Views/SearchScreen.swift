@@ -135,16 +135,12 @@ struct SearchScreen: View {
             let entries = libraryViewModel.entries
             let shows = PodcastAutoContinue.allShows()
             let albums = AppSession.shared.musicProvider.cachedAlbumItems
-            // SEARCHPROBE (device diagnosis): the build runs detached — this
-            // duration must NEVER appear as a main-thread stall. If the
-            // device freeze persists, this log tells whether the deck is
-            // even the right suspect.
-            let started = ContinuousClock.now
+            // The build runs DETACHED on purpose: it must never appear as a
+            // main-thread stall (that was the Such-Freeze of 01.08.). The
+            // measurement that proved it is gone — its question is answered.
             deck = await Task.detached(priority: .userInitiated) {
                 DeckData.build(entries: entries, shows: shows, albums: albums)
             }.value
-            let ms = Int(Double((ContinuousClock.now - started).components.attoseconds) / 1e15)
-            Logger.library.notice("SEARCHPROBE deckBuild entries=\(entries.count) shows=\(shows.count) ms=\(ms)")
         }
     }
 

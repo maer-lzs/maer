@@ -244,14 +244,6 @@ struct SubsonicClient {
 
     func playlists() async throws -> [SubsonicPlaylist] {
         let list = try await get("getPlaylists").playlists?.playlist ?? []
-        #if DEBUG
-        // TF2 log-first: confirm the junk-playlist shape on the real server
-        // (hypothesis: name == id, songCount 0). Device-side confirmation for
-        // the report — the filter itself is `PlaylistPresentation.realPlaylists`.
-        for p in list.prefix(4) {
-            Logger.music.log("TF2 raw playlist id=\(p.id, privacy: .public) name=\(p.name ?? "<nil>", privacy: .public) songCount=\(p.songCount ?? -1) nameEqualsId=\(p.name == p.id)")
-        }
-        #endif
         return list
     }
 

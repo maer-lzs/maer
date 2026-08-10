@@ -60,14 +60,20 @@ Konto-/Portal-Arbeit.
 
 ## CarPlay (separat, blockiert die Einreichung NICHT)
 
-- [ ] Entitlement beantragen: developer.apple.com/contact/carplay
-      (Kategorie Audio, Beschreibung „audiobook player for self-hosted
-      Audiobookshelf servers"). Wartezeit oft Wochen.
-- [ ] Nach Freigabe: Entitlement im Portal der Bundle-ID zuweisen, in Xcode
-      `CODE_SIGN_ENTITLEMENTS` der App auf eine Datei MIT
-      `com.apple.developer.carplay-audio` stellen (bisher nur in der
-      Simulator-Variante `ABSPlayer-CarPlay.entitlements`), neues Binary
-      hochladen. Bis dahin einfach ohne CarPlay einreichen.
+**Stand:** Das Entitlement ist am 26.07. erteilt — **für die App-ID
+`de.lzs.ABSPlayer`**. Es gibt nur noch EINE Entitlements-Datei
+(`ABSPlayer.entitlements`), die Simulator-Sonderdatei ist entfernt; Simulator
+und Gerät signieren gleich.
+
+**Das ist noch nicht das Ende:** Mit dem Wechsel auf die Kennung
+`fm.maer.app` (Auftrag `f52398e`/`03e5e0c`) entsteht eine NEUE App-ID, und die
+braucht einen **eigenen Antrag**. Er ist gestellt, die Freigabe steht aus.
+
+- [x] Entitlement für `de.lzs.ABSPlayer` beantragt und erteilt
+- [ ] Entitlement für `fm.maer.app` — beantragt, **ausstehend**
+- [ ] Erst NACH dieser Freigabe die Kennung umstellen. Andernfalls scheitert
+      die Gerätesignatur am `com.apple.developer.carplay-audio`, und die am
+      26.07. abgeschaffte Sonderbehandlung käme zurück.
 
 ## Upload & Abgabe
 

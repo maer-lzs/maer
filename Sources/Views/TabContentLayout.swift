@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import Combine
 
 /// Shared top inset and section spacing for the scrollable content of all three
 /// media tabs (audiobooks / podcasts / music). One source of truth so the
@@ -274,65 +275,46 @@ extension RowHeading {
 }
 
 
-/// M3 (Auftrag 09.08.): „Als Nächstes" / „Zuletzt einreihen" für Katalog-Titel.
-/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
-/// es fehlten nur die Einstiege. EIN Baustein für alle Katalog-Kacheln (Musik
-/// UND Bücher), damit die nächste Fläche ihn nicht neu erfindet.
-struct CatalogQueueButtons: View {
-    let itemId: String
-    /// Mehrere Kennungen (Album, Warteschlange) — dieselbe Aktion, nur mit
-    /// Menge statt Einzelstück.
-    var itemIds: [String]?
-    @ObservedObject private var playlists = MaerPlaylists.shared
-    @State private var newListName = ""
-    @State private var showNewList = false
-    @State private var message: String?
+/// BEFUND GT 10.08. (94eee6d), und er war meiner: Die Dialoge hingen am
+/// `Menu` — und dieses Menü steht INNERHALB eines `contextMenu`, dessen
+/// Hierarchie beim Schließen abgebaut wird. Also konnte der Namensdialog nie
+/// erscheinen, keine Liste entstehen, und die Regel-3-Meldungen („schon drin",
+/// „voll") blieben stumm. Die Falle steht im selben Repo dokumentiert
+/// (`MusicItemMenu`: „a contextMenu button can only flip a @State; the sheet is
+/// attached to the view") — ich habe sie beschrieben und dann hineingetreten.
+///
+/// Die Lösung trennt sauber: **das Menü löst nur aus, präsentiert wird an der
+/// Wurzel.** Ein Knopf im Kontextmenü setzt einen Zustand an dieser einen
+/// Stelle; `RootView` hängt die Dialoge an sich, wo sie den Abbau des Menüs
+/// überleben. Damit sind auch die neun Aufrufstellen erledigt, ohne dass jede
+/// eine Bindung durchreichen muss.
+@MainActor
+final class MaerPlaylistPresenter: ObservableObject {
+    static let shared = MaerPlaylistPresenter()
+    private init() {}
 
-    private var ids: [String] { itemIds ?? [itemId] }
+    /// Was hinzugefügt werden soll, sobald der Name steht.
+    @Published var pendingIds: [String] = []
+    @Published var askingForName = false
+    @Published var message: String?
 
-    var body: some View {
-        if PlayQueue.canEnqueue(itemId) {
-            Button {
-                for id in ids.reversed() { PlayQueue.shared.playNext(id) }
-            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
-            Button {
-                for id in ids { PlayQueue.shared.playLast(id) }
-            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
-            // ERWEITERUNG 7baf2c2: „Zur Playlist" gehoert ueberall hin, wo ein
-            // Element bedienbar ist — und deshalb in DIESE eine geteilte
-            // Komponente, nicht in acht Kontextmenues einzeln (Regel 2; genau
-            // die Falle, die „Als gehoert" heute schon einmal war).
-            Menu {
-                ForEach(playlists.playlists) { list in
-                    Button(list.name) {
-                        message = Self.text(for: playlists.add(itemIds: ids, to: list.id),
-                                            listName: list.name)
-                    }
-                }
-                if !playlists.playlists.isEmpty { Divider() }
-                Button {
-                    showNewList = true
-                } label: { Label("New Playlist", systemImage: "plus") }
-            } label: {
-                Label("Add to Playlist", systemImage: "text.badge.plus")
-            }
-            .alert("New Playlist", isPresented: $showNewList) {
-                TextField("Name", text: $newListName)
-                Button("Create") {
-                    let name = newListName.isEmpty ? String(localized: "Playlist") : newListName
-                    let list = playlists.create(name: name)
-                    message = Self.text(for: playlists.add(itemIds: ids, to: list.id), listName: name)
-                    newListName = ""
-                }
-                Button("Cancel", role: .cancel) { newListName = "" }
-            }
-            .alert("Playlist", isPresented: Binding(get: { message != nil },
-                                                    set: { if !$0 { message = nil } })) {
-                Button("OK", role: .cancel) { message = nil }
-            } message: {
-                if let message { Text(verbatim: message) }
-            }
-        }
+    func addToNewList(_ ids: [String]) {
+        pendingIds = ids
+        askingForName = true
+    }
+
+    func add(_ ids: [String], to list: MaerPlaylists.Playlist) {
+        message = Self.text(for: MaerPlaylists.shared.add(itemIds: ids, to: list.id),
+                            listName: list.name)
+    }
+
+    func createAndAdd(name rawName: String) {
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalName = name.isEmpty ? String(localized: "Playlist") : name
+        let list = MaerPlaylists.shared.create(name: finalName)
+        message = Self.text(for: MaerPlaylists.shared.add(itemIds: pendingIds, to: list.id),
+                            listName: finalName)
+        pendingIds = []
     }
 
     /// Regel 3: jedes Ergebnis bekommt einen Satz — auch „war schon drin" und
@@ -351,16 +333,74 @@ struct CatalogQueueButtons: View {
     }
 }
 
-/// Nur die Playlist-Aktion, für Flächen die Warteschlangen-Einträge schon
-/// haben (Podcast-Menü/-Swipe, Buch-Kachel). Dieselbe eine Quelle wie
-/// `CatalogQueueButtons` — die Aktion existiert genau einmal.
+extension View {
+    /// Gehört EINMAL an die Wurzel: hier werden die Playlist-Dialoge gezeigt,
+    /// weil sie an keiner Menü-Hierarchie hängen dürfen.
+    func maerPlaylistDialogs() -> some View { modifier(MaerPlaylistDialogs()) }
+}
+
+private struct MaerPlaylistDialogs: ViewModifier {
+    @ObservedObject private var presenter = MaerPlaylistPresenter.shared
+    @State private var newListName = ""
+
+    func body(content: Content) -> some View {
+        content
+            .alert("New Playlist", isPresented: $presenter.askingForName) {
+                TextField("Name", text: $newListName)
+                    .accessibilityIdentifier("new-playlist-name")
+                Button("Create") {
+                    presenter.createAndAdd(name: newListName)
+                    newListName = ""
+                }
+                Button("Cancel", role: .cancel) {
+                    presenter.pendingIds = []
+                    newListName = ""
+                }
+            }
+            .alert("Playlist", isPresented: Binding(get: { presenter.message != nil },
+                                                    set: { if !$0 { presenter.message = nil } })) {
+                Button("OK", role: .cancel) { presenter.message = nil }
+            } message: {
+                if let message = presenter.message { Text(verbatim: message) }
+            }
+    }
+}
+
+/// M3 (Auftrag 09.08.): „Als Nächstes" / „Zuletzt einreihen" für Katalog-Titel.
+/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
+/// es fehlten nur die Einstiege. EIN Baustein für alle Katalog-Kacheln (Musik
+/// UND Bücher), damit die nächste Fläche ihn nicht neu erfindet.
+struct CatalogQueueButtons: View {
+    let itemId: String
+    /// Mehrere Kennungen (Album, Warteschlange) — dieselbe Aktion, nur mit
+    /// Menge statt Einzelstück.
+    var itemIds: [String]?
+
+    private var ids: [String] { itemIds ?? [itemId] }
+
+    var body: some View {
+        if PlayQueue.canEnqueue(itemId) {
+            Button {
+                for id in ids.reversed() { PlayQueue.shared.playNext(id) }
+            } label: { Label("Play Next", systemImage: "text.line.first.and.arrowtriangle.forward") }
+            Button {
+                for id in ids { PlayQueue.shared.playLast(id) }
+            } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
+            // Die Playlist-Aktion existiert GENAU EINMAL (Regel 2). Sie stand
+            // hier vorher ein zweites Mal — the reviewer's Frage „warum zwei?" war
+            // berechtigt, und die Dopplung trug denselben Fehler zweimal.
+            MaerPlaylistMenu(itemId: itemId, itemIds: itemIds)
+        }
+    }
+}
+
+/// Die EINE Playlist-Aktion — Menüinhalt, sonst nichts. Präsentiert wird an
+/// der Wurzel (`maerPlaylistDialogs`), weil ein Kontextmenü seine Dialoge beim
+/// Schließen mitnimmt.
 struct MaerPlaylistMenu: View {
     let itemId: String
     var itemIds: [String]?
     @ObservedObject private var playlists = MaerPlaylists.shared
-    @State private var newListName = ""
-    @State private var showNewList = false
-    @State private var message: String?
 
     private var ids: [String] { itemIds ?? [itemId] }
 
@@ -368,32 +408,14 @@ struct MaerPlaylistMenu: View {
         if PlayQueue.canEnqueue(itemId) {
             Menu {
                 ForEach(playlists.playlists) { list in
-                    Button(list.name) {
-                        message = CatalogQueueButtons.text(
-                            for: playlists.add(itemIds: ids, to: list.id), listName: list.name)
-                    }
+                    Button(list.name) { MaerPlaylistPresenter.shared.add(ids, to: list) }
                 }
                 if !playlists.playlists.isEmpty { Divider() }
-                Button { showNewList = true } label: { Label("New Playlist", systemImage: "plus") }
+                Button {
+                    MaerPlaylistPresenter.shared.addToNewList(ids)
+                } label: { Label("New Playlist", systemImage: "plus") }
             } label: {
                 Label("Add to Playlist", systemImage: "text.badge.plus")
-            }
-            .alert("New Playlist", isPresented: $showNewList) {
-                TextField("Name", text: $newListName)
-                Button("Create") {
-                    let name = newListName.isEmpty ? String(localized: "Playlist") : newListName
-                    let list = playlists.create(name: name)
-                    message = CatalogQueueButtons.text(
-                        for: playlists.add(itemIds: ids, to: list.id), listName: name)
-                    newListName = ""
-                }
-                Button("Cancel", role: .cancel) { newListName = "" }
-            }
-            .alert("Playlist", isPresented: Binding(get: { message != nil },
-                                                    set: { if !$0 { message = nil } })) {
-                Button("OK", role: .cancel) { message = nil }
-            } message: {
-                if let message { Text(verbatim: message) }
             }
         }
     }

@@ -158,7 +158,6 @@ struct BookDetailScreen: View {
     @ViewBuilder
     private var authorPortrait: some View {
         if let url = authorImageURL {
-            let _ = Self.logAuthorImageProbe(url: url)
             let works = authorWorks
             // Frame INSIDE the success branch: while loading (and when the
             // server has no image) nothing renders and nothing reserves space —
@@ -193,28 +192,6 @@ struct BookDetailScreen: View {
             }
         }
     }
-
-    /// Y6 (DEBUG diagnosis): the success-only portrait branch hides load
-    /// errors by design — probe the image URL ONCE per page and log the status
-    /// code, so a missing portrait on device names its cause in the console.
-    #if DEBUG
-    private static var probedAuthorImageURLs = Set<URL>()
-    static func logAuthorImageProbe(url: URL) {
-        guard !probedAuthorImageURLs.contains(url) else { return }
-        probedAuthorImageURLs.insert(url)
-        Task.detached {
-            do {
-                let (data, response) = try await URLSession.coverImage.data(from: url)
-                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                Logger.library.log("Y6 author image \(url.absoluteString, privacy: .public) status \(status) bytes \(data.count)")
-            } catch {
-                Logger.library.log("Y6 author image \(url.absoluteString, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
-            }
-        }
-    }
-    #else
-    static func logAuthorImageProbe(url: URL) {}
-    #endif
 
     /// Side-by-side layout (iPad / iPhone landscape): cover column pinned to
     /// the screen edges on the left, scrollable info column on the right.
@@ -412,12 +389,6 @@ struct BookDetailScreen: View {
         .task {
             isLoading = true
             detail = try? await coordinator.provider.fetchItemDetail(itemId: entry.id)
-            #if DEBUG
-            // Y6 diagnosis step 1: does THIS server's expanded payload carry
-            // the authors block with ids?
-            let authorsProbe = detail?.media.metadata?.authors?.map(\.id).joined(separator: ",") ?? "MISSING"
-            Logger.library.log("Y6 authors block: \(authorsProbe, privacy: .public)")
-            #endif
             isLoading = false
         }
         .task(id: entry.id) {

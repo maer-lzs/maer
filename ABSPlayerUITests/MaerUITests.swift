@@ -321,35 +321,6 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "post-scroll")
     }
 
-    /// Teil 7 (brand-accent trial, decision prep): Start / audiobook library /
-    /// full player per candidate — 0 orange (today), 1 Mär blue, 2 anthracite.
-    /// A4: gray-shade decision screenshots — every candidate in light AND
-    /// dark (the shades are adaptive, both sides matter for the pick).
-    func testBrandAccentTrialScreenshots() {
-        for (tag, name) in [(0, "anthrazit"), (1, "schiefer"), (2, "graphit")] {
-            for mode in ["light", "dark"] {
-                let app = XCUIApplication()
-                app.launchArguments += ["-uitest", "-uitest-player",
-                                        "-brandAccentTrial", "\(tag)", "-appearance", mode]
-                app.launch()
-                XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-                XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
-                snap(app, "gray-\(name)-\(mode)-home")
-                let books = app.buttons["tab-audiobooks"].firstMatch
-                if books.waitForExistence(timeout: 10) { books.tap() }
-                _ = app.staticTexts["Seed Book One"].waitForExistence(timeout: 10)
-                snap(app, "gray-\(name)-\(mode)-library")
-                let mini = app.buttons["Now Playing Book"].firstMatch
-                if mini.waitForExistence(timeout: 10) {
-                    mini.tap()
-                    _ = app.staticTexts["Now Playing Book"].waitForExistence(timeout: 10)
-                    snap(app, "gray-\(name)-\(mode)-player")
-                }
-                app.terminate()
-            }
-        }
-    }
-
     /// F6/Y23: ONE query on the search PAGE finds the seeded book, episode and
     /// album, the "New Shows" catalog sits behind the explicit row (seeded
     /// directory — no real catalog request leaves the harness), the Y20 scope
@@ -1317,41 +1288,6 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Seed Episode One"].firstMatch.waitForExistence(timeout: 10),
                       "search results must render from a pushed podcast page")
         snap(app, "search-from-pushed-show")
-    }
-
-    /// Such-Freeze diagnosis (01.08): measured FIRST search open + first query
-    /// with the FrameProbe running — the long-frame counters around the open/
-    /// type moments are the before/after evidence. Gated like the hitch probes.
-    func testSearchFreezeProbe() throws {
-        try XCTSkipUnless(ProcessInfo.processInfo.environment["HITCH_PROBE"] == "1",
-                          "measurement probe; set HITCH_PROBE=1 to run")
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-huge", "-uitest-frameprobe"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
-        let books = app.buttons["tab-audiobooks"].firstMatch
-        XCTAssertTrue(books.waitForExistence(timeout: 15))
-        books.tap()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].firstMatch.waitForExistence(timeout: 15))
-        // Resolve all tap targets BEFORE the measured window — every XCUI
-        // element query snapshots the (huge) a11y tree and would dominate the
-        // measurement (sample-proven: ~50% XCTElementSnapshotRequest). The
-        // probe window uses raw coordinate taps + app-level typing only.
-        let search = app.buttons["global-search"].firstMatch
-        XCTAssertTrue(search.waitForExistence(timeout: 10))
-        let searchPoint = CGPoint(x: search.frame.midX, y: search.frame.midY)
-        let appOrigin = app.coordinate(withNormalizedOffset: .zero)
-        sleep(4)   // settle past the tab-entry spike → clean probe window
-        appOrigin.withOffset(CGVector(dx: searchPoint.x, dy: searchPoint.y)).tap()   // ← frozen moment
-        sleep(4)
-        // Focus the search field by position (bottom bar, Y17) — still no
-        // element query inside the window — then type the first query.
-        let frame = app.frame
-        appOrigin.withOffset(CGVector(dx: frame.midX, dy: frame.maxY - 40)).tap()
-        sleep(1)
-        app.typeText("a")   // ← first query
-        sleep(4)
-        app.terminate()
     }
 
     /// 0aa18b7 + 86cf180: radio play identity + the full-player title tap.

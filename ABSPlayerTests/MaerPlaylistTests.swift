@@ -51,14 +51,15 @@ struct MaerPlaylistTests {
     }
 
     @Test("jedes Ergebnis bekommt einen Satz — außer dem Erfolg")
+    @MainActor
     func everyOutcomeSpeaks() {
         // Regel 3: Erfolg braucht keine Meldung, alles andere schon.
-        #expect(CatalogQueueButtons.text(for: .added, listName: "L") == nil)
-        #expect(CatalogQueueButtons.text(for: .alreadyThere, listName: "L") != nil)
-        #expect(CatalogQueueButtons.text(for: .limitReached(limit: 5000), listName: "L") != nil)
-        #expect(CatalogQueueButtons.text(for: .notQueueable, listName: "L") != nil)
+        #expect(MaerPlaylistPresenter.text(for: .added, listName: "L") == nil)
+        #expect(MaerPlaylistPresenter.text(for: .alreadyThere, listName: "L") != nil)
+        #expect(MaerPlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L") != nil)
+        #expect(MaerPlaylistPresenter.text(for: .notQueueable, listName: "L") != nil)
         // Die Grenz-Meldung nennt die ZAHL, sonst ist sie nicht handelbar.
-        #expect(CatalogQueueButtons.text(for: .limitReached(limit: 5000), listName: "L")?
+        #expect(MaerPlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L")?
             .contains("5") == true)
     }
 

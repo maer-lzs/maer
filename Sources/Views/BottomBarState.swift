@@ -42,8 +42,9 @@ final class BottomBarState: ObservableObject {
 
     /// X21: instant the current scroll gesture began — the collapse morph is held
     /// back until `collapseDelaySeconds` past this, so it does not fire right at
-    /// scroll-start (a suspected scroll-hitch source, being diagnosed via the
-    /// signpost below).
+    /// scroll-start. The hitch was traced to a LAYOUT SHIFT, not to this flip
+    /// — the signpost below stays as standing instrumentation for device
+    /// traces, not because the question is still open.
     private var scrollStartedAt: Date = .distantPast
     /// Y31: true once a USER gesture drove the current surface's scrolling —
     /// cleared on reset(). Collapsing requires it: pushed pages emit large

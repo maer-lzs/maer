@@ -254,7 +254,7 @@ struct FreeAudiobooksPage: View {
     }
 
 
-    // ── Apple radio-play charts (moved from HoerspielePage, Paket 4) ──────
+    // ── Apple radio-play charts (moved from the retired HoerspielePage, Paket 4) ──────
 
     private var chipRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {

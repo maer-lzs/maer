@@ -240,6 +240,7 @@ Sources/
 │   ├── SubsonicProvider.swift      Subsonic/OpenSubsonic music (Navidrome, Gonic, Airsonic)
 │   ├── RadioProvider.swift         Internet radio (radio: namespace), Radio Browser + own URLs
 │   ├── RSSProvider.swift           Podcasts: RSS episodes mapped to library items
+│   ├── MaerPlaylists.swift         Mär playlists: the SECOND playlist type, mixing every id
 │   ├── ABSPodcastProvider.swift    Audiobookshelf podcast libraries (opt-in source)
 │   ├── PodcastSubscriptions.swift  Feed store + XMLParser-based RSS/Podcasting-2.0 parser
 │   ├── PodcastSubscriptionSync.swift  Reconciled local ↔ ABS subscription mirroring
@@ -260,9 +261,14 @@ Sources/
 │   ├── HomeSections.swift          Home aggregation (recency, fair interleave)
 │   ├── RediscoverSections.swift    Rediscover picks (paused / unheard / next in series)
 │   ├── SearchModels.swift          Search result/ranking types
-│   └── AppStorageKeys.swift        Central UserDefaults keys incl. per-book key cleanup
+│   ├── AppStorageKeys.swift        Central UserDefaults keys, one activation answer per source
+│   ├── SourceMap.swift             Pure: the five areas and what each needs (map states)
+│   ├── MaerPlaylistMerge.swift     Pure: per-list merge, rescued version, tombstones
+│   └── PodcastAutoDownloadRules.swift  Pure: what the automatic download may clean up
 ├── Networking/
 │   ├── APIClient.swift             All HTTP calls
+│   ├── AppUserAgent.swift          THE one identity the app shows foreign servers
+│   ├── MaerPlaylistCloudSync.swift Mär playlists across your own devices (iCloud KV)
 │   ├── KeychainStore.swift         Secure storage for server URL and token
 │   ├── DownloadManager.swift       Multi-track offline downloads and their cached metadata
 │   ├── FileDownloader.swift        Shared background URLSession download with progress reporting
@@ -296,7 +302,11 @@ Sources/
 │   ├── PlayerViewModel+SleepTimer.swift   Sleep timer incl. volume fade
 │   └── PlayerViewModel+NowPlaying.swift   Lock screen commands, NowPlaying info, artwork
 └── Views/
-    ├── SetupView.swift             Server + password or token sign-in
+    ├── SetupView.swift             First screen: the map of areas + start without a
+    │                               server; holds ABSLoginForm/ABSLoginPage (the ONE
+    │                               Audiobookshelf sign-in, also used behind "Connect")
+    ├── SourceMapCard.swift         THE map of areas — first screen AND the sources
+    │                               overview in the settings, plus SourceAreaPage
     ├── SettingsView.swift          Playback, appearance, storage, sync, server settings
     ├── RootView.swift              Switches between setup and library
     ├── LibraryView.swift           Book list, sort/filter, sections, adaptive grid

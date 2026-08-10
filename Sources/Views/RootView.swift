@@ -22,5 +22,11 @@ struct RootView: View {
                 SetupView(viewModel: authViewModel)
             }
         }
+        // Befund 94eee6d: die Playlist-Dialoge gehoeren HIERHER und nirgendwo
+        // sonst. Ausgeloest werden sie aus Kontextmenues, deren Hierarchie
+        // beim Schliessen verschwindet — ein dort angehaengter Alert kann nie
+        // erscheinen. An der Wurzel ueberlebt er, und alle Aufrufstellen
+        // teilen sich diese eine Praesentation.
+        .maerPlaylistDialogs()
     }
 }

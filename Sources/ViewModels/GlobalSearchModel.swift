@@ -188,14 +188,6 @@ final class GlobalSearchModel: ObservableObject {
     }
 
     private func run(query: String, activeTab: MediaType) async {
-        // SEARCHPROBE (device diagnosis, Such-Freeze 01.08): total wall time
-        // of the fan-out — the first-query hang shows up here if a provider
-        // computes on the main actor.
-        let started = ContinuousClock.now
-        defer {
-            let ms = Int(Double((ContinuousClock.now - started).components.attoseconds) / 1e15)
-            Logger.library.notice("SEARCHPROBE query len=\(query.count) ms=\(ms)")
-        }
         RecentSearches.record(query)   // Y30: an executed search is a recent one
         isSearching = true
         allSourcesFailed = false
