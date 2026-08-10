@@ -62,7 +62,17 @@ struct ArchiveMusicPage: View {
                                 FreeCatalogBookTile(
                                     item: item,
                                     placeholderSystemImage: area.placeholderSystemImage,
-                                    onTap: { Task { await playerCoordinator.open(item: item) } }
+                                    // Same tap convention as every other
+                                    // catalogue surface: one track plays,
+                                    // several open the album page. This one
+                                    // still started the whole release.
+                                    onTap: {
+                                        Task {
+                                            await CatalogTap.open(item: item,
+                                                                  coordinator: playerCoordinator,
+                                                                  pushMusicRoute: { pushRoute($0) })
+                                        }
+                                    }
                                 )
                                 .contextMenu {
                                     Button {
