@@ -23,11 +23,19 @@ nonisolated enum BookmarkProgressMath {
     }
 
     /// A `BookProgress` from an absolute position within a known total duration.
-    static func progress(currentTime: Double, duration: Double, lastUpdate: Double) -> BookProgress {
+    ///
+    /// `stored` is the raw mark when the position came from `localPosition` —
+    /// then the duration it was written against decides, not today's. Callers
+    /// that judge a server payload (position and duration from the same
+    /// response) pass nil.
+    static func progress(currentTime: Double, duration: Double, lastUpdate: Double,
+                         stored: [Double]? = nil) -> BookProgress {
         let fraction = duration > 0 ? min(max(currentTime / duration, 0), 1) : 0
+        let finished = stored.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) }
+            ?? (duration > 0 && currentTime >= duration - 1)   // progress-fence: server payload
         return BookProgress(
             fraction: fraction,
-            isFinished: duration > 0 && currentTime >= duration - 1,
+            isFinished: finished,
             lastUpdate: lastUpdate,
             currentTime: currentTime)
     }

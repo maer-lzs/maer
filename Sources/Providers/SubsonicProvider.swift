@@ -295,7 +295,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         return MediaProgress(
             currentTime: pick.time, duration: total,
             progress: min(max(pick.time / total, 0), 1),
-            isFinished: pick.time >= total - 1, lastUpdate: pick.ts)
+            isFinished: pick.time >= total - 1,   // progress-fence: server payload
+            lastUpdate: pick.ts)
     }
 
     /// Songs → player material via the shared `MusicTrackAssembly` (Regel 2).
@@ -693,7 +694,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
                   stored.count >= 2, let duration = pl.duration, duration > 0 else { continue }
             result[itemId] = BookmarkProgressMath.progress(
-                currentTime: stored[0], duration: duration, lastUpdate: stored[1])
+                currentTime: stored[0], duration: duration,
+                lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
         }
         // M1: albums join the local fallback — same localPosition machinery,
         // sourced from the session's album cache.
@@ -701,7 +703,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(album.id)) as? [Double],
                   stored.count >= 2, let duration = album.media?.duration, duration > 0 else { continue }
             result[album.id] = BookmarkProgressMath.progress(
-                currentTime: stored[0], duration: duration, lastUpdate: stored[1])
+                currentTime: stored[0], duration: duration,
+                lastUpdate: ProgressMark.timestamp(stored) ?? 0, stored: stored)
         }
         return result
     }

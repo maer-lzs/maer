@@ -692,6 +692,9 @@ struct LibraryView: View {
             case .radioStation(let station):
                 selectedMediaType = .radio
                 navigationPath.append(RadioRoute.station(station))
+            case .catalogAlbum(let itemId):
+                selectedMediaType = .music
+                navigationPath.append(MusicRoute.catalogAlbum(itemId))
             }
         }
     }

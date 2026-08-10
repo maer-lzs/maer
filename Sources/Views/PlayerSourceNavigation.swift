@@ -16,6 +16,8 @@ nonisolated enum PlayerSourceTarget {
     case podcastShow(feedURL: String)
     case podcastEpisode(itemId: String)
     case musicAlbum(LibraryItem)
+    /// A free-catalogue item — its page holds the tracks of the release.
+    case catalogAlbum(itemId: String)
     case musicArtist(MusicArtist)
     /// V10: the station detail page — radio has a source target now.
     case radioStation(RadioStation)
@@ -50,18 +52,13 @@ nonisolated enum PlayerSourceTargets {
     /// The PRIMARY tap target of the title/subtitle line per media kind:
     /// audiobook → book detail (title tap) · podcast → show page (subtitle
     /// tap) · music → album page (subtitle tap).
-    static func isBook(_ id: String) -> Bool {
-        !id.hasPrefix("rss:") && !id.hasPrefix("abspod:") && !id.hasPrefix("sub:")
-            && !id.hasPrefix("jf:") && !id.hasPrefix("radio:")
-    }
-    static func isPodcast(_ id: String) -> Bool {
-        id.hasPrefix("rss:") || id.hasPrefix("abspod:")
-    }
-    static func isMusic(_ id: String) -> Bool {
-        id.hasPrefix("sub:") || id.hasPrefix("jf:")
-    }
-    /// V10: radio ids (catalog AND manual) — the title taps to the detail.
-    static func isRadio(_ id: String) -> Bool {
-        id.hasPrefix("radio:")
-    }
+    /// All four ask `MediaFamily`, which defines every case positively. The
+    /// book test used to be the leftover, so a catalogue id counted as a book
+    /// and the title tap opened an empty audiobook page.
+    static func isBook(_ id: String) -> Bool { MediaFamily.of(id) == .book }
+    static func isPodcast(_ id: String) -> Bool { MediaFamily.of(id) == .podcast }
+    static func isMusic(_ id: String) -> Bool { MediaFamily.of(id) == .music }
+    static func isRadio(_ id: String) -> Bool { MediaFamily.of(id) == .radio }
+    /// Free catalogues resolve to their catalogue page, not to a library tab.
+    static func isCatalog(_ id: String) -> Bool { MediaFamily.of(id) == .catalog }
 }

@@ -458,6 +458,14 @@ struct PlayerView: View {
                 return .musicAlbum(LibraryItem(id: detail.id, media: detail.media, addedAt: nil))
             }
         }
+        // A catalogue item has its own page; without this it fell into the
+        // book branch and opened an empty audiobook detail.
+        if PlayerSourceTargets.isCatalog(id) { return .catalogAlbum(itemId: id) }
+        // G8: no target means no menu entry — and the reason is logged rather
+        // than swallowed, so an unknown namespace surfaces instead of hiding.
+        if MediaFamily.of(id) == .unknown {
+            Logger.library.error("PLAYERSOURCE no target for unknown id family: \(id, privacy: .public)")
+        }
         return nil
     }
 

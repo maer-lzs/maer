@@ -19,7 +19,7 @@ nonisolated enum SyncRules {
     /// One second of tolerance because the last tick rarely lands exactly on
     /// the duration.
     static func isFinished(currentTime: Double, duration: Double) -> Bool {
-        duration > 0 && currentTime >= duration - 1
+        duration > 0 && currentTime >= duration - 1   // progress-fence: server payload
     }
 
     /// Device reconcile: adopt the server state?

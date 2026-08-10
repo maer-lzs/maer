@@ -275,10 +275,11 @@ struct ProjectFileIntegrityTests {
     ///  * `.last` used as a timestamp on a `localPosition` entry (since the
     ///    third value exists, `.last` is the DURATION)
     ///
-    /// Exempt on purpose: `SyncRules`, `BookmarkProgressMath` and the Subsonic
-    /// bookmark path judge a SERVER payload (position and duration arrive in
-    /// the same response), not a stored mark — there is no third value that
-    /// could be lost there.
+    /// An exemption is bound to the LINE, not to a file: a marker
+    /// `// progress-fence: server payload` next to the comparison. A file name
+    /// in a list at the other end of the project exempts everything in it
+    /// forever — a 700-line provider went blind that way, and the tenth
+    /// occurrence of this very class hid behind it.
     @Test("the played decision is not reimplemented anywhere")
     func playedDecisionIsNotReimplemented() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -287,12 +288,11 @@ struct ProjectFileIntegrityTests {
         let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
             .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
         var offenders: [String] = []
-        let exempt = ["ProgressMark.swift", "SyncRules.swift", "BookmarkProgressMath.swift",
-                      "SubsonicProvider.swift"]
-        for file in files where !exempt.contains(file.lastPathComponent) {
+        for file in files where file.lastPathComponent != "ProgressMark.swift" {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             for (index, line) in text.components(separatedBy: "\n").enumerated() {
                 let code = line.split(separator: "/").first.map(String.init) ?? line
+                if line.contains("progress-fence:") { continue }
                 if code.contains(">= duration - 1") || code.contains(">= currentDuration - 1")
                     || code.contains(">= total - 1") {
                     offenders.append("\(file.lastPathComponent):\(index + 1) (Dauer-Vergleich)")

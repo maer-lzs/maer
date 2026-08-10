@@ -250,7 +250,15 @@ struct MusicView: View {
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
-                        onTap: { freeDetailItem = item })
+                        // Tab parity: the rows follow the same tap convention
+                        // as the full pages — one track plays, several open the
+                        // album page. They used to open a detail sheet instead.
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item, coordinator: playerCoordinator,
+                                                      pushMusicRoute: { pushRoute($0) })
+                            }
+                        })
                     .containerRelativeFrame(.horizontal,
                                             count: CardMetrics.recommendationColumns(regularWidth: false),
                                             spacing: 14)
