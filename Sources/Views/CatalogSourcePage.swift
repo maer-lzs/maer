@@ -481,9 +481,30 @@ struct ArchiveSeriesPage: View {
 
     private var tracks: [ABSAudioTrack] { detail?.media.tracks ?? [] }
 
-    /// O2: the ONE item position, honestly marked on the episode it falls in
-    /// — no per-episode progress system (own Auftrag if ever wanted).
+    /// Which row carries the "last heard" mark.
+    ///
+    /// The two flavours answer it from different places, because their tracks
+    /// are different things. An album track is an item with a position of its
+    /// own, so the most recently written SONG wins. A series part is a section
+    /// of one work, so the work's single position decides which part it falls
+    /// into.
     private var lastHeardIndex: Int? {
+        flavor == .album ? lastHeardSongIndex : lastHeardSectionIndex
+    }
+
+    private var lastHeardSongIndex: Int? {
+        var best: (index: Int, stamp: Double)?
+        for index in tracks.indices {
+            let key = AppStorageKeys.localPosition(CatalogSongID.make(album: itemId, index: index))
+            guard let stored = UserDefaults.standard.array(forKey: key) as? [Double],
+                  stored.count >= 2, stored[0] > 0,
+                  let stamp = ProgressMark.timestamp(stored) else { continue }
+            if best == nil || stamp > best!.stamp { best = (index, stamp) }
+        }
+        return best?.index
+    }
+
+    private var lastHeardSectionIndex: Int? {
         let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double]
         guard let position = saved?.first else { return nil }
         return FreeCatalog.trackIndex(at: position, tracks: tracks)

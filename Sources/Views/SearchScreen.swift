@@ -682,7 +682,9 @@ struct SearchScreen: View {
         // the DISCOVER context (search deck), the library list stays personal
         // — same CategoryTile, same route, same gates (pill toggle + master).
         + (freeClassicalDeckVisible
-            ? [DeckEntry(id: "music-free-classical", title: String(localized: "Free Classical"),
+            // The title comes from the DATA, so the shelf cannot be called one
+            // thing in the row and another in the deck.
+            ? [DeckEntry(id: "music-free-classical", title: ArchiveMusicCatalog.classical.title,
                          systemImage: "music.quarternote.3", count: nil) {
                 onOpenMusicRoute(.archiveMusic(ArchiveMusicCatalog.classical))
             }]
