@@ -188,9 +188,13 @@ final class DownloadManager: ObservableObject {
     // underscores, so folders avoid ambiguity when mapping files to books.)
 
     func isDownloaded(itemId: String) -> Bool {
-        // Sources without download capability (local files) are always offline
-        // available by definition — no download needed.
-        if !AppSession.shared.provider(for: itemId).capabilities.contains(.downloadable) { return true }
+        // Offline available is what LIES here: an own file, or a completed
+        // download. The rule used to read "cannot be downloaded, therefore
+        // already here" — which is true for local files and false for every
+        // stream. Catalogue items and radio carry no download capability
+        // either, so they counted as offline available while nothing of them
+        // plays without a network.
+        if AppSession.shared.provider(for: itemId).capabilities.contains(.alwaysLocal) { return true }
         return downloadedItemIds.contains(itemId)
     }
 

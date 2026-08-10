@@ -56,5 +56,19 @@ struct MediaFamilyTests {
                                   FreeCatalog.jamendoPrefix, FreeCatalog.gutenbergPrefix]
         #expect(mapped == owned, "a new catalogue namespace must be assigned here too")
     }
+
+    @Test("offline available means locally present, not undownloadable")
+    @MainActor
+    func offlineAvailabilityIsStatedPositively() {
+        // Local files ARE here.
+        #expect(LocalProvider.shared.capabilities.contains(.alwaysLocal))
+        // Streams are not — neither carries the download capability, and the
+        // old rule turned that into "already here".
+        #expect(!FreeCatalogProvider.shared.capabilities.contains(.alwaysLocal))
+        #expect(!RadioProvider.shared.capabilities.contains(.alwaysLocal))
+        #expect(!FreeCatalogProvider.shared.capabilities.contains(.downloadable))
+        #expect(!DownloadManager.shared.isDownloaded(itemId: "lva:some-netlabel-release"),
+                "a catalogue stream is not offline available")
+    }
 }
 #endif

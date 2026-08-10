@@ -23,6 +23,11 @@ struct ProviderCapabilities: OptionSet {
     /// without this flag (local files) are always offline available by
     /// definition — the core shows no download controls there.
     static let downloadable = ProviderCapabilities(rawValue: 1 << 4)
+    /// The items ARE local files — nothing to download, and nothing that
+    /// disappears without a network. Stated positively on purpose: "cannot be
+    /// downloaded" is not the same as "already here". Streams (catalogue,
+    /// radio) carry neither capability and are offline unavailable.
+    static let alwaysLocal = ProviderCapabilities(rawValue: 1 << 5)
 }
 
 /// Prebuilt "Continue"/"Recently Added" rows of a source — so the top library

@@ -26,7 +26,7 @@ final class LocalProvider: AudioProvider {
     var isAvailable: Bool { AppStorageKeys.audiobooksTabEnabledValue && !library.libraryItems().isEmpty }
     /// No capabilities: no server sync, no server bookmarks, no remote search,
     /// no password login.
-    var capabilities: ProviderCapabilities { [] }
+    var capabilities: ProviderCapabilities { [.alwaysLocal] }
     var streamAuthHeaders: [String: String] { [:] }
 
     func fetchLibraries() async throws -> [ABSLibrary] {
