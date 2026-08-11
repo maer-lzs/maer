@@ -571,6 +571,9 @@ struct LibraryView: View {
             // Fires when the app was ALREADY running (no scene-phase change).
             Task { await handlePendingResumeRequest() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .podcastNewEpisodesTapped)) { _ in
+            Task { await handlePendingPodcastRequest() }
+        }
         .onChange(of: networkMonitor.isConnected) { _, isConnected in
             // Covers the case that the app was open the whole time while the
             // connection returned — without this trigger the "offline" hint would
@@ -683,6 +686,9 @@ struct LibraryView: View {
             case .podcastEpisode(let itemId):
                 selectedMediaType = .podcasts
                 navigationPath.append(PodcastRoute.episode(itemId: itemId))
+            case .podcastLatest:
+                selectedMediaType = .podcasts
+                navigationPath.append(PodcastRoute.latestAll)
             case .musicAlbum(let item):
                 selectedMediaType = .music
                 navigationPath.append(MusicRoute.album(item))
@@ -1324,6 +1330,26 @@ struct LibraryView: View {
     // MARK: Resume from outside (quick action / Siri)
 
     /// Executes a pending "continue listening" request (home-screen quick
+    /// The tap on a new-episode message, carried out where tab and navigation
+    /// path live.
+    ///
+    /// The show page resolves its show from the subscriptions, and on a cold
+    /// launch those are not loaded yet — without the wait the page would show
+    /// "Show unavailable" for a show the reader has been subscribed to for
+    /// months. Same reason the player and CarPlay await this.
+    private func handlePendingPodcastRequest() async {
+        guard let target = PodcastOpenRequest.pending else { return }
+        PodcastOpenRequest.pending = nil
+        await PodcastSubscriptions.shared.ensureLoaded()
+        // Through the ONE navigation point, not past it — it also lowers the
+        // full player and closes the search, which a jump from outside needs
+        // just as much as a jump from the player.
+        switch target {
+        case .show(let feedURL): PlayerSourceRouter.shared.handler?(.podcastShow(feedURL: feedURL))
+        case .latestEpisodes:    PlayerSourceRouter.shared.handler?(.podcastLatest)
+        }
+    }
+
     /// action or Siri shortcut): open the last played book and play.
     private func handlePendingResumeRequest() async {
         // Siri "Play <book>": a specific book beats "continue last".

@@ -102,8 +102,10 @@ enum PodcastRefreshService {
         let defaults = UserDefaults.standard
         var lastSeen = (defaults.dictionary(forKey: lastSeenKey) as? [String: Double]) ?? [:]
         let globalOn = AppStorageKeys.podcastNewEpisodeNotificationsEnabled
-        // Bundled per show: one message per show instead of one per episode.
-        var perShow: [(show: String, count: Int, firstTitle: String)] = []
+        // Bundled per RUN: the run is the event, so the run gets the message
+        // (see NewEpisodeDigest) — per show it was five shows, five messages,
+        // five sounds.
+        var perShow: [NewEpisodeDigest.Show] = []
 
         for show in shows {
             let key = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
@@ -112,28 +114,38 @@ enum PodcastRefreshService {
             if globalOn, AppStorageKeys.podcastNotifyEnabled(show.id), let seen = lastSeen[key] {
                 let news = show.episodes.filter { $0.pubDate > seen }.sorted { $0.pubDate > $1.pubDate }
                 if !news.isEmpty {
-                    perShow.append((show.title, news.count, news.first?.title ?? ""))
+                    perShow.append(NewEpisodeDigest.Show(
+                        title: show.title, feedURL: show.feedURL,
+                        newCount: news.count,
+                        newestEpisodeTitle: news.first?.title ?? ""))
                 }
             }
             lastSeen[key] = max(lastSeen[key] ?? 0, newest)
         }
         defaults.set(lastSeen, forKey: lastSeenKey)
 
-        guard !perShow.isEmpty else { return }
-        await postNotifications(perShow)
+        guard let message = NewEpisodeDigest.message(for: perShow) else { return }
+        await post(message)
     }
 
-    private static func postNotifications(_ items: [(show: String, count: Int, firstTitle: String)]) async {
+    /// ONE request per run. The identifier is fresh so an earlier message stays
+    /// standing; the thread identifier groups them where the reader sees them.
+    private static func post(_ message: NewEpisodeDigest.Message) async {
         let center = UNUserNotificationCenter.current()
         guard await center.notificationSettings().authorizationStatus == .authorized else { return }
-        for it in items {
-            let content = UNMutableNotificationContent()
-            content.title = it.show
-            content.body = it.count == 1 ? it.firstTitle : String(localized: "\(it.count) new episodes")
-            content.sound = .default
-            try? await center.add(UNNotificationRequest(
-                identifier: UUID().uuidString, content: content, trigger: nil))
+        let content = UNMutableNotificationContent()
+        content.title = message.title
+        content.body = message.body
+        content.sound = .default
+        content.threadIdentifier = NewEpisodeDigest.threadIdentifier
+        // The target rides ALONG with the message — the tap must not have to
+        // guess what the message was about.
+        if case .show(let feedURL) = message.target {
+            content.userInfo = [PodcastOpenRequest.feedKey: feedURL]
         }
+        try? await center.add(UNNotificationRequest(
+            identifier: UUID().uuidString, content: content, trigger: nil))
+        Logger.rss.notice("PODCAST notify: one message per run, target=\(String(describing: message.target), privacy: .public)")
     }
 
     /// Request notification permission (when enabling the toggle).

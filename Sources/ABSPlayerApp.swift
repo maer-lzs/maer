@@ -19,8 +19,22 @@ enum ResumeRequest {
     static var pendingItemId: String?
 }
 
+/// Same shape for "open what the message was about": the tap only leaves a
+/// pending target + a signal, the library carries it out. One mechanism for
+/// every outside trigger — quick action, Siri, widget, notification.
+@MainActor
+enum PodcastOpenRequest {
+    /// The key the message carries its show under. It travels in `userInfo`,
+    /// which is untyped — so it is read in exactly one place and as a String.
+    /// `nonisolated` because the tap is delivered off the main actor and reads
+    /// it there; the pending target below stays main-actor state.
+    nonisolated static let feedKey = "maerPodcastFeedURL"
+    static var pending: NewEpisodeDigest.Target?
+}
+
 extension Notification.Name {
     static let resumeLastBookRequested = Notification.Name("resumeLastBookRequested")
+    static let podcastNewEpisodesTapped = Notification.Name("podcastNewEpisodesTapped")
 }
 
 /// Background download events + scene configuration (quick actions need their
@@ -32,6 +46,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     ) -> Bool {
         // Register BGTask handler — must happen before launch finishes.
         PodcastRefreshService.registerBackgroundTask()
+        // Without a delegate a tap is delivered nowhere: the app opens
+        // wherever it was left. Assigned here because a launch FROM a tap
+        // delivers the response right after this call.
+        UNUserNotificationCenter.current().delegate = self
         return true
     }
 
@@ -59,6 +77,29 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         let config = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         config.delegateClass = SceneDelegate.self
         return config
+    }
+}
+
+/// The tap on a new-episode message.
+///
+/// `nonisolated` by the same contract as the background-task handler: the
+/// system calls this off the main queue, and under the project's MainActor
+/// default an implicitly isolated conformance would trap at exactly the moment
+/// nobody tests — the first real tap. The untyped payload is read HERE and only
+/// a String crosses the hop.
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let feedURL = response.notification.request.content
+            .userInfo[PodcastOpenRequest.feedKey] as? String
+        Task { @MainActor in
+            PodcastOpenRequest.pending = feedURL.map { .show(feedURL: $0) } ?? .latestEpisodes
+            NotificationCenter.default.post(name: .podcastNewEpisodesTapped, object: nil)
+        }
+        completionHandler()
     }
 }
 

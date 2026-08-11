@@ -21,6 +21,10 @@ nonisolated enum PlayerSourceTarget {
     case musicArtist(MusicArtist)
     /// V10: the station detail page — radio has a source target now.
     case radioStation(RadioStation)
+    /// The list of latest episodes across shows — where a message about
+    /// SEVERAL shows leads. No single page can answer it, and this one was
+    /// already there.
+    case podcastLatest
 }
 
 /// Gate 2 (8913feb): the environment-based wiring was fragile — a mount
