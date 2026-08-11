@@ -65,7 +65,13 @@ final class FreeCatalogProvider: AudioProvider {
 
     private func rememberCollections(_ collections: [String]?, forItemId id: String) {
         guard let collections, !collections.isEmpty else { return }
-        itemCollections[id] = collections
+        let known = itemCollections.updateValue(collections, forKey: id)
+        // An item whose collections say nothing about its form keeps the
+        // surface's own default — a defensible choice, but never a silent one:
+        // it is named here, once per item, with what the source did say.
+        if known == nil, ArchiveItemForm.of(collections: collections) == nil {
+            Logger.library.notice("CATALOG form unknown for \(id, privacy: .public) — collections \(collections.joined(separator: ","), privacy: .public); the surface keeps its default")
+        }
     }
 
     /// Is the item one work in parts or an album of tracks? `nil` means the
