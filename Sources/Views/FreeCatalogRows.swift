@@ -352,15 +352,18 @@ final class FreeCatalogStore: ObservableObject {
     /// the fetch is not expressible any more — that is why the catalogues used
     /// to appear in the music tab only after a visit to Home.
     ///
-    /// The side effect is safe: `ensureLoaded` is idempotent, guarded by
-    /// `loaded`/`loading`, and hands its result through the calm gate.
+    /// The trigger asks the gate, which counts ATTEMPTS — see
+    /// `CatalogLoadGate` for why an empty pass has to count as one. Asking
+    /// whether CONTENT had arrived made every pass that came back empty start
+    /// the next one from the next body evaluation: publish, re-render, read,
+    /// start — the app kept drawing and stopped reacting to any touch.
     var rows: FreeCatalogLoader.Rows {
         startLoadIfNeeded()
         return storedRows
     }
     @Published private(set) var storedRows = FreeCatalogLoader.Rows()
     private(set) var loaded = false
-    private var loading = false
+    private var gate = CatalogLoadGate()
 
     /// Same for the source rows of the merged page.
     var sourceRows: CatalogSourceLoader.SourceRows {
@@ -369,13 +372,18 @@ final class FreeCatalogStore: ObservableObject {
     }
 
     private func startLoadIfNeeded() {
-        guard !loaded, !loading else { return }
-        Task { await ensureLoaded() }
+        // `loaded` still gates the automatic path: the harness seed fills the
+        // rows WITHOUT a pass, and a pass started next to it would publish its
+        // empty result over the seeded one.
+        guard !loaded,
+              gate.startIfNeeded(connected: NetworkMonitor.shared.isConnected) else { return }
+        Task { await runLoad() }
     }
 
     private func startSourceLoadIfNeeded() {
-        guard !sourcesLoaded, !sourcesLoading else { return }
-        Task { await ensureSourcesLoaded() }
+        guard !sourcesLoaded,
+              sourcesGate.startIfNeeded(connected: NetworkMonitor.shared.isConnected) else { return }
+        Task { await runSourcesLoad() }
     }
 
     /// 784aceb: language change ⇒ reload on the next compute pass; the old
@@ -383,6 +391,8 @@ final class FreeCatalogStore: ObservableObject {
     func invalidateForLanguageChange() {
         loaded = false
         sourcesLoaded = false
+        gate.reopen()
+        sourcesGate.reopen()
     }
 
     /// Paket 1: the merged page's source rows — loaded on first open of the
@@ -390,18 +400,25 @@ final class FreeCatalogStore: ObservableObject {
     /// belong to app start for a page that may never open this session).
     @Published private(set) var storedSourceRows = CatalogSourceLoader.SourceRows()
     private(set) var sourcesLoaded = false
-    private var sourcesLoading = false
+    private var sourcesGate = CatalogLoadGate()
 
-    /// A2: the error line's tap — clears the failed state and loads again.
+    /// A2: the error line's tap — opens a new attempt and loads again.
     func retrySources() async {
         sourcesLoaded = false
+        sourcesGate.reopen()
         await ensureSourcesLoaded()
     }
 
+    /// The explicit pass: a page's own task, pull to refresh, the retry above.
     func ensureSourcesLoaded() async {
-        guard !sourcesLoaded, !sourcesLoading, NetworkMonitor.shared.isConnected else { return }
-        sourcesLoading = true
-        defer { sourcesLoading = false }
+        guard !sourcesLoaded, NetworkMonitor.shared.isConnected,
+              sourcesGate.beginExplicit() else { return }
+        await runSourcesLoad()
+    }
+
+    /// The pass itself — one place, whoever started it.
+    private func runSourcesLoad() async {
+        defer { sourcesGate.finish() }
         let loaded = await CatalogSourceLoader.load()
         sourcesLoaded = !loaded.librivoxPopular.isEmpty || !loaded.gutenberg.isEmpty
             || !loaded.archiveBooks.isEmpty || !loaded.oldTimeRadio.isEmpty
@@ -426,9 +443,12 @@ final class FreeCatalogStore: ObservableObject {
     /// The single load pass (34c36e1 discipline: called from compute(),
     /// never from a lazily mounted empty view's own task).
     func ensureLoaded() async {
-        guard !loaded, !loading, NetworkMonitor.shared.isConnected else { return }
-        loading = true
-        defer { loading = false }
+        guard !loaded, NetworkMonitor.shared.isConnected, gate.beginExplicit() else { return }
+        await runLoad()
+    }
+
+    private func runLoad() async {
+        defer { gate.finish() }
         let loadedRows = await FreeCatalogLoader.load()
         loaded = !loadedRows.discoverBooks.isEmpty
             || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty || !loadedRows.netlabels.isEmpty
