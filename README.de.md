@@ -268,15 +268,6 @@ den App Store gilt eine eigene Endnutzer-Vereinbarung anstelle der von Apple:
 [docs/EULA.md](docs/EULA.md). Der Quelltext jeder veröffentlichten Fassung
 bleibt unter <https://codeberg.org/LzS/maer> verfügbar.
 
-### Beiträge
-
-Beiträge sind willkommen — siehe [CONTRIBUTING.md](CONTRIBUTING.md) (Mär baut
-ohne API-Schlüssel und ohne aufzulösende Abhängigkeiten).
-
-Mit einem Beitrag erklärst du dich damit einverstanden, dass er unter GPL-3.0
-lizenziert ist und dass der Rechteinhaber des Projekts die in LICENSE-ADDITIONAL-TERMS
-beschriebene zusätzliche App-Store-Erlaubnis auch für ihn erteilen darf.
-
 ---
 
 ## 1. Anmelde-Optionen
@@ -304,7 +295,11 @@ einer der beiden Wege existiert garantiert.
 
 ## 2. Bauen & installieren
 
-Das Repository enthält das komplette Xcode-Projekt — nichts muss zusammengebaut werden:
+Das Repository enthält das komplette Xcode-Projekt — nichts muss zusammengebaut werden.
+**Mär baut ohne API-Schlüssel** (zwei optionale App-Schlüssel für Jamendo und
+PodcastIndex werden aus `Config/AppKeys.local.xcconfig` gelesen, falls die Datei
+existiert; ohne sie bleiben nur diese beiden Reihen weg) und hat **keine
+Fremdabhängigkeiten** — kein Paketmanager-Schritt, nichts aufzulösen.
 
 1. Repo klonen und **`Maer.xcodeproj`** öffnen (Xcode mit iOS-26-SDK).
 2. **Signing** (Target `ABSPlayer` → Signing & Capabilities):

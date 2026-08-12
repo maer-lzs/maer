@@ -106,8 +106,6 @@ plainly instead of guessing.
 - **Licence**: GPL-3.0 with additional terms for app-store distribution, a
   name and artwork reservation, an EULA, and a licence header in every source
   file — with a test that keeps it there.
-- **CONTRIBUTING**: how to build without keys, where pull requests go (`dev`),
-  what happens after you open one, and the one commit rule.
 - **One identity to the outside world**: the app introduced itself to foreign
   servers under six hand-maintained user-agent strings, one of which named a
   private host. Now there is one, derived from the bundle version.

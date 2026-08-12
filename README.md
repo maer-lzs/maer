@@ -173,15 +173,6 @@ the App Store a custom end-user agreement applies instead of Apple's standard
 one: [docs/EULA.md](docs/EULA.md). The source of every released version stays
 available at <https://codeberg.org/LzS/maer>.
 
-### Contributing
-
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (it builds
-without any API keys and has no dependencies to resolve).
-
-By contributing you agree that your contribution is licensed under GPL-3.0 and
-that the project's copyright holder may grant the app-store additional
-permission described in LICENSE-ADDITIONAL-TERMS for it as well.
-
 ---
 
 ## 1. Sign-in options
@@ -201,7 +192,11 @@ If you are not sure which variant your server uses, try both. One of these paths
 
 ## 2. Build & install
 
-The repository ships the complete Xcode project — nothing needs to be assembled:
+The repository ships the complete Xcode project — nothing needs to be assembled.
+**Mär builds without any API keys** (two optional app keys for Jamendo and
+PodcastIndex are read from `Config/AppKeys.local.xcconfig` if that file exists;
+without it those two rows simply stay away) and it has **no third-party
+dependencies** — no package manager step, nothing to resolve.
 
 1. Clone the repo and open **`Maer.xcodeproj`** (Xcode with an iOS 26 SDK).
 2. **Signing** (target `ABSPlayer` → Signing & Capabilities):
