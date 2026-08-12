@@ -946,6 +946,37 @@ final class PodcastSubscriptions: ObservableObject {
         }
         shows = updated
         save()
+        healStoredProgress()
+    }
+
+    /// Give the EXISTING stock the reference point it was written without.
+    ///
+    /// The repair rode inside the gpodder pull — and that pull is incremental:
+    /// it only sees episodes with a fresh server action. A stock that was
+    /// imported once and never touched again carries a timestamp far older
+    /// than any `since`, so the repair never reached a single one of those
+    /// entries. Measured on a real device: about eighty finished episodes, not
+    /// one of them with a reference point. They read correctly today only
+    /// because no duration has grown yet — the day one does, they all fall
+    /// back to "started" at once, and then nobody can heal them any more.
+    ///
+    /// So the pass runs over the LOCAL stock, where the feed durations already
+    /// are, and it runs after every refresh: it is a few reads per episode, it
+    /// is a no-op on entries that already carry their duration, and a marker
+    /// would miss the episodes whose duration only appears in the feed later.
+    private func healStoredProgress() {
+        let defaults = UserDefaults.standard
+        let writes = PodcastProgressHealing.writes(
+            for: allEpisodes().map {
+                PodcastProgressHealing.Episode(guid: $0.episode.guid, duration: $0.episode.duration)
+            },
+            stored: { defaults.array(forKey: AppStorageKeys.localPosition($0)) as? [Double] })
+        for (guid, entry) in writes {
+            defaults.set(entry, forKey: AppStorageKeys.localPosition(guid))
+        }
+        if !writes.isEmpty {
+            Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")
+        }
     }
 
     /// Trim to the latest N episodes (0 = unlimited) and discard downloads of

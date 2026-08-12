@@ -77,6 +77,30 @@ nonisolated enum ProgressMark {
         return [existing[0], existing[1], duration]
     }
 
+    /// **The stock repair.** `supplementing` above needs someone who KNOWS the
+    /// duration an entry was written against — the server states it in its
+    /// action. For everything that never appears in such an action there is a
+    /// second, weaker but sufficient witness: the position itself.
+    ///
+    /// An entry that stands exactly at a duration was written when that
+    /// duration was reached. Nothing else produces that value. So where the
+    /// entry reads as finished against today's duration, today's duration IS
+    /// the one it was written against, and it may be recorded.
+    ///
+    /// Everything in between stays untouched: for a half-heard episode nobody
+    /// can say which duration applied, and a guess would be exactly the
+    /// invention this type exists to prevent. The sentinel is excluded too —
+    /// it needs no reference point, it was never written against a duration.
+    ///
+    /// The threshold is the READ side's (`isPlayed`), not exact equality, so
+    /// the repair covers precisely the entries that would otherwise fall below
+    /// the threshold when a duration grows.
+    static func supplementingFinished(_ stored: [Double], duration: Double) -> [Double]? {
+        guard let position = stored.first, duration > 0 else { return nil }
+        guard position < playedSentinel, position >= duration - 1 else { return nil }
+        return supplementing(stored, duration: duration)
+    }
+
     /// When the entry was last written (milliseconds since 1970).
     ///
     /// Read it through here, never as `.last`: since the mark carries a third
