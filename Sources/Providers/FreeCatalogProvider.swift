@@ -261,17 +261,19 @@ final class FreeCatalogProvider: AudioProvider {
         guard let stored = UserDefaults.standard.array(forKey: key) as? [Double],
               stored.count >= 2, stored[0] > 0 else { return }
         guard let detail = try? await shared.fetchAlbumDetail(albumId: albumId),
-              let tracks = detail.media.tracks,
-              let index = FreeCatalog.trackIndex(at: stored[0], tracks: tracks) else { return }
-        let songKey = AppStorageKeys.localPosition(CatalogSongID.make(album: albumId, index: index))
-        guard UserDefaults.standard.object(forKey: songKey) == nil else { return }
-        let within = stored[0] - (tracks[index].startOffset ?? 0)
-        UserDefaults.standard.set(
-            ProgressMark.entry(position: max(0, within),
-                               duration: tracks[index].duration ?? 0,
-                               nowMs: ProgressMark.timestamp(stored) ?? 0),
-            forKey: songKey)
-        Logger.library.notice("CATALOG carried album position to song index \(index) of \(albumId, privacy: .public)")
+              let tracks = detail.media.tracks else { return }
+        // The decision itself is pure and tested — including against an
+        // IMPORTED stock, which is what a new user starts with.
+        let songKeyFor = { (index: Int) in
+            AppStorageKeys.localPosition(CatalogSongID.make(album: albumId, index: index))
+        }
+        guard let carried = CatalogPositionMigration.songEntry(
+            albumPosition: stored, tracks: tracks,
+            songAlreadyHasEntry: FreeCatalog.trackIndex(at: stored[0], tracks: tracks)
+                .map { UserDefaults.standard.object(forKey: songKeyFor($0)) != nil } ?? false)
+        else { return }
+        UserDefaults.standard.set(carried.entry, forKey: songKeyFor(carried.index))
+        Logger.library.notice("CATALOG carried album position to song index \(carried.index) of \(albumId, privacy: .public)")
     }
 
     /// The release itself, without the song shortcut — used by the migration.

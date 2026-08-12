@@ -91,4 +91,43 @@ struct PodcastProgressHealingTests {
         // Without the reference point the same entry reads as started again.
         #expect(!ProgressMark.isPlayed(stored: [hour, stamp], currentDuration: hour + 180))
     }
+
+    /// **The normal case, not the special one:** every new user starts with an
+    /// import — OPML, Apple, a first sync. Hundreds of entries within a second,
+    /// identical timestamp, no reference point. And exactly then the delta is
+    /// EMPTY: the incremental pull sees nothing, so the old place healed
+    /// nothing. That condition is the core of this case.
+    @Test("an imported stock heals although the delta is empty")
+    func importedStockWithEmptyDelta() {
+        // One import moment for all of them, exactly as the measurement found
+        // it on the device (~80 entries, all on the same second).
+        let importStamp: Double = 1_753_180_608_000
+        let episodes = (0..<300).map {
+            PodcastProgressHealing.Episode(guid: "ep-\($0)", duration: 1800 + Double($0 % 5) * 60)
+        }
+        var stock: [String: [Double]] = [:]
+        for episode in episodes {
+            stock[episode.guid] = [episode.duration, importStamp]
+        }
+        // No server action anywhere — this is the empty delta.
+        let writes = PodcastProgressHealing.writes(for: episodes) { stock[$0] }
+        #expect(writes.count == 300)
+        #expect(writes["ep-7"] == [stock["ep-7"]![0], importStamp, stock["ep-7"]![0]])
+        // The import moment survives: a migration that stamps "now" would make
+        // its own copy win against the entry it came from.
+        #expect(writes.values.allSatisfy { ProgressMark.timestamp($0) == importStamp })
+    }
+
+    /// A second pass over the same, now healed stock must do nothing — the
+    /// repair runs after every refresh, so idempotence is not a nicety.
+    @Test("a second pass over the healed stock is a no-op")
+    func secondPassIsNoOp() {
+        let episodes = (0..<50).map { PodcastProgressHealing.Episode(guid: "ep-\($0)", duration: 1800) }
+        var stock: [String: [Double]] = [:]
+        for episode in episodes { stock[episode.guid] = [1800, 1_753_180_608_000] }
+        for (guid, entry) in PodcastProgressHealing.writes(for: episodes, stored: { stock[$0] }) {
+            stock[guid] = entry
+        }
+        #expect(PodcastProgressHealing.writes(for: episodes) { stock[$0] }.isEmpty)
+    }
 }
