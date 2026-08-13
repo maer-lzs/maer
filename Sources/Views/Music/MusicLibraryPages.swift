@@ -794,8 +794,12 @@ struct MaerPlaylistPage: View {
         // cache miss made these rows dead raw-id lines, although the app
         // could have fetched them a second later.
         let item = AppSession.shared.playableItem(forId: id)
-        let title = item?.title.isEmpty == false && item?.title != id
-            ? item!.title : (playlist?.titles[id] ?? id)
+        // A resolved item names itself; a STUB does not (its title is the
+        // unknown-placeholder, which must not beat the stored snapshot).
+        let title = item?.media?.metadata?.title
+            ?? playlist?.titles[id]
+            ?? item?.title
+            ?? id
         Button {
             if let item { Task { await playerCoordinator.open(item: item) } }
         } label: {

@@ -96,7 +96,11 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let shows = dedupedPodcastShows()
         guard !shows.isEmpty else { return nil }
 
-        let queue = PlayQueue.shared.ids.compactMap { AppSession.shared.libraryItem(forId: $0) }
+        // The fourth surface of the "not in memory means does not exist"
+        // class: a cold catalogue entry stays IN the car's queue and plays on
+        // tap (open resolves it); until then it carries the placeholder title.
+        // Dropping it would show a queue that lies about its content.
+        let queue = PlayQueue.shared.ids.compactMap { AppSession.shared.playableItem(forId: $0) }
 
         var continueItems: [(item: LibraryItem, date: Double)] = []
         for show in shows {

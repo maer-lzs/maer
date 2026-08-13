@@ -137,10 +137,12 @@ final class MaerPlaylists: ObservableObject {
     }
 
     /// The titles the session can answer right now — never the raw id.
+    /// Deliberately `libraryItem`, not `playableItem`: a stub's placeholder
+    /// title written into SYNCED data would poison every device's rows.
     private static func titleSnapshots(for itemIds: [String]) -> [String: String] {
         var titles: [String: String] = [:]
         for id in itemIds {
-            guard let title = AppSession.shared.libraryItem(forId: id)?.title,
+            guard let title = AppSession.shared.libraryItem(forId: id)?.media?.metadata?.title,
                   !title.isEmpty, title != id else { continue }
             titles[id] = title
         }
