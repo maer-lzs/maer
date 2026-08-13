@@ -176,8 +176,14 @@ enum PodcastImport {
             // count 1 — Apple resets state and playhead on completion. The
             // state alone missed 1,163 finished episodes.
             let playCountCol = firstPresent(["ZPLAYCOUNT", "ZPLAYEDCOUNT", "ZTIMESPLAYED"], in: episodeCols)
-            let timestampCol = firstPresent(
-                ["ZLASTDATEPLAYED", "ZPLAYSTATELASTMODIFIEDDATE", "ZLASTPLAYEDDATE"], in: episodeCols)
+            // Measured on the real store: ZPLAYSTATELASTMODIFIEDDATE is
+            // filled for BOTH played classes (hand-marked and listened
+            // through), ZLASTDATEPLAYED only for the listened-through ones.
+            // So both columns are read PER ROW: the playback date where it
+            // exists, the state-change date otherwise — practically nothing
+            // falls back to the import moment.
+            let playedDateCol = firstPresent(["ZLASTDATEPLAYED"], in: episodeCols)
+            let stateDateCol = firstPresent(["ZPLAYSTATELASTMODIFIEDDATE"], in: episodeCols)
             let titleCol = firstPresent(["ZTITLE", "ZCLEANEDTITLE"], in: episodeCols)
 
             var selected = [urlCol]
@@ -185,7 +191,8 @@ enum PodcastImport {
             if let durationCol { selected.append(durationCol) }
             if let playedCol { selected.append(playedCol) }
             if let playCountCol { selected.append(playCountCol) }
-            if let timestampCol { selected.append(timestampCol) }
+            if let playedDateCol { selected.append(playedDateCol) }
+            if let stateDateCol { selected.append(stateDateCol) }
             if let titleCol { selected.append(titleCol) }
 
             let sql = "SELECT \(selected.joined(separator: ", ")) FROM ZMTEPISODE WHERE \(urlCol) IS NOT NULL"
@@ -201,7 +208,9 @@ enum PodcastImport {
                 let duration = next(durationCol).flatMap(Double.init) ?? 0
                 let stateRaw = next(playedCol).flatMap(Double.init) ?? 0
                 let playCount = next(playCountCol).flatMap(Double.init) ?? 0
-                let timestamp = appleTimestampMs(next(timestampCol).flatMap(Double.init))
+                let playedDate = appleTimestampMs(next(playedDateCol).flatMap(Double.init))
+                let stateDate = appleTimestampMs(next(stateDateCol).flatMap(Double.init))
+                let timestamp = playedDate ?? stateDate
                 let title = next(titleCol)
                 // Apple: ZPLAYSTATE == 2 is "marked played" — OR the episode
                 // was actually listened through, which only the count knows.

@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import OSLog
 
 /// Musik-Tab-Neuordnung (30.07): the tab shows a library LIST (artists ·
 /// albums · songs · playlists · downloaded — the Apple-Music pattern); these
@@ -437,6 +438,7 @@ struct FreeJamendoPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var items: [LibraryItem] = []
     @State private var isLoading = false
+    @State private var loadFailed = false
     @State private var detailItem: LibraryItem?
     /// P8: server-loaded genre rows (shelf key → row items). Empty shelves
     /// hide themselves after the answer (G8: no empty shelf lies).
@@ -448,6 +450,15 @@ struct FreeJamendoPage: View {
         ScrollView {
             if items.isEmpty && isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 200)
+            } else if items.isEmpty && loadFailed {
+                // Same rule as the shelves: a failed load is not "no music".
+                ContentUnavailableView {
+                    Label("Free Music (Jamendo)", systemImage: "music.note")
+                } description: {
+                    Text("This could not be loaded. Check your connection.")
+                } actions: {
+                    Button("Retry") { Task { await loadAll() } }
+                }
             } else if items.isEmpty {
                 ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")
             } else {
@@ -495,11 +506,25 @@ struct FreeJamendoPage: View {
         .bottomBarClearance()
         .task {
             guard items.isEmpty else { return }
+            await loadAll()
+        }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private func loadAll() async {
             isLoading = true
+            loadFailed = false
             defer { isLoading = false }
             let provider = FreeCatalogProvider.shared
-            let tracks = (try? await JamendoClient.popularTracks(limit: 60)) ?? []
-            items = tracks.compactMap { provider.remember(track: $0) }
+            do {
+                let tracks = try await JamendoClient.popularTracks(limit: 60)
+                items = tracks.compactMap { provider.remember(track: $0) }
+            } catch {
+                Logger.library.error("JAMENDO trove FAILED: \(String(describing: error), privacy: .public)")
+                loadFailed = true
+            }
             // P8: shelf rows concurrently — a failing genre drops out instead
             // of taking the page down. Tracks (Sendable) cross the group
             // boundary; remember() runs afterwards on the main actor.
@@ -518,10 +543,6 @@ struct FreeJamendoPage: View {
             for (key, tracks) in shelfTracks {
                 shelfRows[key] = tracks.compactMap { provider.remember(track: $0) }
             }
-        }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
     }
 
     private func jamendoTileRow(_ rowItems: [LibraryItem]) -> some View {
@@ -565,6 +586,7 @@ struct JamendoShelfPage: View {
     @State private var detailItem: LibraryItem?
     @State private var isLoading = false
     @State private var reachedEnd = false
+    @State private var loadFailed = false
     @State private var offset = 0
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -595,13 +617,32 @@ struct JamendoShelfPage: View {
                         CatalogQueueButtons(itemId: item.id)
                     }
                 }
-                if !reachedEnd {
+                if !reachedEnd && !loadFailed {
                     Color.clear.frame(height: 1)
                         .onAppear { Task { await load() } }
                 }
             }
             .padding(.horizontal)
-            .bottomBarClearance()
+            // The archive shelves' pattern, reused: a page never goes black
+            // without a word — loading spins, a failed load says so WITH a way
+            // back in, and a truly empty shelf says that instead.
+            if isLoading {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if items.isEmpty && loadFailed {
+                ContentUnavailableView {
+                    Label { Text(verbatim: title) } icon: { Image(systemName: "music.note") }
+                } description: {
+                    Text("This shelf could not be loaded. Check your connection.")
+                } actions: {
+                    Button("Retry") { Task { await load(retry: true) } }
+                }
+                .padding(.top, 40)
+            } else if items.isEmpty && reachedEnd {
+                ContentUnavailableView("Nothing in this shelf right now.",
+                                       systemImage: "music.note")
+                    .padding(.top, 40)
+            }
+            Color.clear.frame(height: 1).bottomBarClearance()
         }
         .navigationTitle(Text(verbatim: title))
         .navigationBarTitleDisplayMode(.inline)
@@ -611,19 +652,30 @@ struct JamendoShelfPage: View {
         }
     }
 
-    private func load() async {
+    private func load(retry: Bool = false) async {
         guard !isLoading, !reachedEnd else { return }
+        if retry { loadFailed = false }
+        guard !loadFailed else { return }
         isLoading = true
         defer { isLoading = false }
         let provider = FreeCatalogProvider.shared
         let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
-        let tracks = (try? await JamendoClient.popularTracks(limit: pageSize, tags: tags,
-                                                             offset: offset)) ?? []
-        let new = tracks.compactMap { provider.remember(track: $0) }
-        var seen = Set(items.map(\.id))
-        items += new.filter { seen.insert($0.id).inserted }
-        offset += pageSize
-        if tracks.count < pageSize { reachedEnd = true }
+        do {
+            let tracks = try await JamendoClient.popularTracks(limit: pageSize, tags: tags,
+                                                               offset: offset)
+            let new = tracks.compactMap { provider.remember(track: $0) }
+            var seen = Set(items.map(\.id))
+            items += new.filter { seen.insert($0.id).inserted }
+            offset += pageSize
+            // "There is no more" is an answer only a SUCCESSFUL fetch can
+            // give. The failed first fetch used to set it too — the reload
+            // anchor vanished and the page never tried again: a black grid
+            // without a word.
+            if tracks.count < pageSize { reachedEnd = true }
+        } catch {
+            Logger.library.error("JAMENDO shelf=\(shelfKey, privacy: .public) offset=\(offset) FAILED: \(String(describing: error), privacy: .public)")
+            loadFailed = true
+        }
     }
 }
 
