@@ -125,9 +125,39 @@
     "%lld entries" : {
       "localizations" : {
         "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld Einträge"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 Eintrag"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Einträge"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "1 entry"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld entries"
+                }
+              }
+            }
           }
         }
       }
@@ -1591,16 +1621,6 @@
         }
       }
     },
-    "Connected with %@" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verbunden mit %@"
-          }
-        }
-      }
-    },
     "Connected." : {
       "localizations" : {
         "de" : {
@@ -2674,17 +2694,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Die freien Kataloge sind unter „Allgemein“ ganz abgeschaltet — diese Schalter wirken wieder, sobald sie dort an sind."
-          }
-        }
-      }
-    },
-    "Free Classical" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Klassik"
           }
         }
       }
@@ -5276,6 +5285,16 @@
         }
       }
     },
+    "Popularity ranking and streams for the free audiobooks and the %@ shelf." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher und das Fach „%@“."
+          }
+        }
+      }
+    },
     "Podcasts" : {
       "localizations" : {
         "de" : {
@@ -5362,16 +5381,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Beliebt diese Woche"
-          }
-        }
-      }
-    },
-    "Popularity ranking and streams for the free audiobooks and the Free Classical area." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebtheits-Ranking und Streams für die freien Hörbücher und den Freie-Klassik-Bereich."
           }
         }
       }
@@ -6384,17 +6393,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Freie Kataloge anzeigen"
-          }
-        }
-      }
-    },
-    "Show Free Classical" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie Klassik anzeigen"
           }
         }
       }

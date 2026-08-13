@@ -54,7 +54,7 @@ struct SourceMapCard: View {
     static func stateLine(_ area: SourceMapArea, facts: SourceMapFacts) -> Text {
         switch facts.state(of: area) {
         case .connected(let host):
-            return Text("Connected with \(host)")
+            return Text("Connected to \(host)")
         case .readySynced(let host):
             return Text("No account needed · synced with \(host)")
         case .needsServer:

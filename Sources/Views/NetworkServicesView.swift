@@ -86,8 +86,10 @@ struct NetworkServicesView: View {
                 }
                 .accessibilityIdentifier("network-librivox-toggle")
                 Toggle(isOn: $archivePopular) {
+                    // The shelf is named FROM THE DATA — this sentence was the
+                    // third of three places spelling its own name for it.
                     serviceLabel(NetworkServiceNames.internetArchive,
-                                 purpose: "Popularity ranking and streams for the free audiobooks and the Free Classical area.")
+                                 purpose: "Popularity ranking and streams for the free audiobooks and the \(ArchiveMusicCatalog.classical.title) shelf.")
                 }
                 .accessibilityIdentifier("network-archive-toggle")
                 Toggle(isOn: $jamendoRow) {
