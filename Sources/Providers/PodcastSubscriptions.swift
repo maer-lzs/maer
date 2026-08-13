@@ -184,6 +184,13 @@ final class PodcastSubscriptions: ObservableObject {
             // Listen log: one-time backfill so the history of the CURRENT
             // subscriptions survives later unsubscribes/rotation.
             PodcastListenLog.shared.backfillIfNeeded(shows: self.shows)
+            // The stock repair also runs at START, not only after a refresh:
+            // measured on a device, `refreshAll` is reached by the background
+            // task and the pull gesture alone — a user who imports and only
+            // looks would never trigger it. It runs HERE, inside the load
+            // task after the stock is set, so it can never see an empty
+            // stock and pass as a sham run.
+            self.healStoredProgress()
         }
     }
 
