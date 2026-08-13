@@ -41,11 +41,16 @@ struct PodcastShowView: View {
     }
     /// Sort direction remembered per show (default: newest first).
     @AppStorage private var newestFirst: Bool
+    /// Hide played episodes — remembered per show, like the sort. After an
+    /// import a caught-up show is hundreds of check marks with the new episode
+    /// somewhere between them.
+    @AppStorage private var unplayedOnly: Bool
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
         self.show = show
         _playerCoordinator = ObservedObject(wrappedValue: playerCoordinator)
         _newestFirst = AppStorage(wrappedValue: true, "podcastSort.\(show.id)")
+        _unplayedOnly = AppStorage(wrappedValue: false, "podcastFilter.\(show.id)")
     }
 
     /// Episodes of this show as LibraryItems, sorted by the toggle — lazy in the
@@ -60,6 +65,19 @@ struct PodcastShowView: View {
         // inside, positioned where the block's first part already stood.
         // Below the density threshold nothing moves at all.
         return PodcastWorkOrder.ordered(chronological, newestFirst: newestFirst) { $0.title }
+    }
+
+    /// What the list shows — the filter's edge is "counts as played"
+    /// (`ProgressMark`, the one decision), never "has progress": a half-heard
+    /// episode stays. The RUNNING episode stays too, even once it counts as
+    /// played — a list that pulls the playing row away from under the finger
+    /// answers a question nobody asked.
+    private var visibleItems: [LibraryItem] {
+        guard unplayedOnly else { return sortedItems }
+        return sortedItems.filter { item in
+            if item.id == playerCoordinator.activeItem?.id { return true }
+            return PodcastProgressStore.shared.state(for: item) != .played
+        }
     }
 
     /// Bulk mark every episode of this show as played/unplayed. One iCloud
@@ -92,7 +110,18 @@ struct PodcastShowView: View {
                         Label("Mark All as Unplayed", systemImage: "circle")
                     }
                 }
-            ForEach(sortedItems) { item in
+            // Regel 3: an empty cut says WHY it is empty — the filter is on
+            // and everything is heard; one tap shows all again.
+            if unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("All \(sortedItems.count) episodes are played.")
+                        .font(.subheadline)
+                    Button("Show all episodes") { unplayedOnly = false }
+                        .font(.subheadline)
+                }
+                .listRowSeparator(.hidden)
+            }
+            ForEach(visibleItems) { item in
                 // f0b9c8a (3): the row eyebrow repeating the show title is
                 // noise — the show page hands its title in, the pure rule
                 // decides (parity: other surfaces list MANY shows and keep it).
@@ -120,7 +149,8 @@ struct PodcastShowView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            PodcastShowSettingsSheet(showId: show.id, newestFirst: $newestFirst)
+            PodcastShowSettingsSheet(showId: show.id, newestFirst: $newestFirst,
+                                     unplayedOnly: $unplayedOnly)
         }
         .alert("Download failed", isPresented: Binding(
             get: { downloadError != nil },

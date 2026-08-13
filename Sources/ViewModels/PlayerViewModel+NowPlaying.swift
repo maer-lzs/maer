@@ -16,7 +16,9 @@ extension PlayerViewModel {
 
     /// True for a Subsonic music item (`sub:`) — its playing "work" is the song,
     /// not the album.
-    var isMusicItem: Bool { item?.id.hasPrefix("sub:") == true }
+    /// Bound to the ONE family mapping — the prefix comparison it replaces
+    /// knew only `sub:` and left Jellyfin items reading as books here.
+    var isMusicItem: Bool { item.map { MediaFamily.of($0.id) == .music } == true }
 
     /// F2: live radio (`radio:`) — no duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
@@ -118,6 +120,42 @@ extension PlayerViewModel {
             }
             return .success
         }
+
+        // The TITLE buttons (headphone double/triple press sends next/previous
+        // track). They were never registered, so the press evaporated — with
+        // music there was no way to change songs from the pocket at all. Same
+        // isolation contract as above: the system does not guarantee the
+        // calling thread, the body hops explicitly.
+        commandCenter.nextTrackCommand.removeTarget(nil)
+        commandCenter.previousTrackCommand.removeTarget(nil)
+        commandCenter.nextTrackCommand.addTarget { @Sendable [weak self] _ in
+            Task { @MainActor in self?.handleTitleButton(forward: true) }
+            return .success
+        }
+        commandCenter.previousTrackCommand.addTarget { @Sendable [weak self] _ in
+            Task { @MainActor in self?.handleTitleButton(forward: false) }
+            return .success
+        }
+    }
+
+    /// What a title button MEANS depends on what is playing, decided per
+    /// press, so an item switch needs no re-registration:
+    ///
+    ///  * **Music** — a real track change. That is what the button says.
+    ///  * **Books, podcasts, catalogue works** — the configured skip, like
+    ///    Audible: from the pocket a title press must never leap a chapter,
+    ///    and the pocket-series detection of the lock-screen skip rides along.
+    ///  * **Radio** — nothing; the commands are disabled for live streams.
+    func handleTitleButton(forward: Bool) {
+        guard let id = item?.id else { return }
+        switch MediaFamily.of(id) {
+        case .radio:
+            return
+        case .music:
+            jumpToAdjacentTrack(forward: forward)
+        default:
+            skipFromLockscreen(by: forward ? skipInterval : -skipInterval)
+        }
     }
 
     func updateNowPlayingInfo() {
@@ -129,6 +167,9 @@ extension PlayerViewModel {
         let commandCenter = MPRemoteCommandCenter.shared()
         commandCenter.skipForwardCommand.isEnabled = !isLiveStream
         commandCenter.skipBackwardCommand.isEnabled = !isLiveStream
+        // Title buttons follow the same rule — a live stream has no next.
+        commandCenter.nextTrackCommand.isEnabled = !isLiveStream
+        commandCenter.previousTrackCommand.isEnabled = !isLiveStream
 
         var info: [String: Any] = [:]
         // T9c/X14: the TITLE is ALWAYS the work (book/episode; the song for

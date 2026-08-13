@@ -859,6 +859,25 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    /// The real track change behind the music title buttons. The back edge:
+    /// within the first three seconds "previous" means the previous track,
+    /// afterwards it means the start of this one — the convention every
+    /// player follows.
+    func jumpToAdjacentTrack(forward: Bool) {
+        guard !tracks.isEmpty else { return }
+        let withinTrack = currentTime - trackAbsoluteStart(currentTrackIndex)
+        if forward {
+            guard currentTrackIndex + 1 < tracks.count else { return }
+            Task { await seek(to: trackAbsoluteStart(currentTrackIndex + 1)) }
+        } else if withinTrack > 3 {
+            Task { await seek(to: trackAbsoluteStart(currentTrackIndex)) }
+        } else if currentTrackIndex > 0 {
+            Task { await seek(to: trackAbsoluteStart(currentTrackIndex - 1)) }
+        } else {
+            Task { await seek(to: 0) }
+        }
+    }
+
     private var currentChapterIndex: Int? {
         guard let current = currentChapter else { return nil }
         return chapters.firstIndex(of: current)

@@ -12,6 +12,7 @@ import UIKit
 struct PodcastShowSettingsSheet: View {
     let showId: String
     @Binding var newestFirst: Bool
+    @Binding var unplayedOnly: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var rate: Float?          // nil = default speed
     @State private var autoDownload = false
@@ -127,6 +128,13 @@ struct PodcastShowSettingsSheet: View {
                     Picker("Order", selection: $newestFirst) {
                         Label("Newest First", systemImage: "arrow.down").tag(true)
                         Label("Oldest First", systemImage: "arrow.up").tag(false)
+                    }
+                    .pickerStyle(.inline)
+                    // The filter lives WITH the sort — both answer "what does
+                    // this show's list display", both remembered per show.
+                    Picker("Filter", selection: $unplayedOnly) {
+                        Label("All Episodes", systemImage: "circle.grid.2x2").tag(false)
+                        Label("Unplayed Only", systemImage: "circle").tag(true)
                     }
                     .pickerStyle(.inline)
                 }
