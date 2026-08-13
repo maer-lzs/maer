@@ -37,6 +37,60 @@ enum PodcastImport {
         let playhead: Double   // seconds
         let duration: Double   // seconds (0 if unknown)
         let isPlayed: Bool
+        /// The episode title, for the fallback match — enclosure URLs drift
+        /// (CDN tokens, host moves), and a drifted URL matches nothing.
+        var title: String? = nil
+        /// When Apple last recorded playback, in milliseconds since 1970 —
+        /// the entry's OWN moment. Stamping "now" instead made every imported
+        /// entry younger than everything it met, so it won merges it had no
+        /// business winning.
+        var timestampMs: Double? = nil
+    }
+
+    /// Apple stores dates on the Core-Data epoch (seconds since 2001-01-01).
+    /// Converted defensively: a value that does not land in the plausible
+    /// window is discarded rather than guessed at.
+    nonisolated static func appleTimestampMs(_ raw: Double?) -> Double? {
+        guard let raw, raw > 0 else { return nil }
+        let unixSeconds = raw + 978_307_200
+        // Podcasts app exists since 2012; a moment before that or in the
+        // far future is not a playback date.
+        guard unixSeconds > 1_325_376_000, unixSeconds < 4_102_444_800 else { return nil }
+        return unixSeconds * 1000
+    }
+
+    /// **Better-wins, against LOCAL too.** The import used to write raw
+    /// two-value literals with a fresh stamp unconditionally over the local
+    /// state — the dedup rule (played beats unplayed, then the further
+    /// position) existed only WITHIN the Apple data, never against what this
+    /// device already knew. Two finished marks were measurably destroyed that
+    /// way. `nil` means the local entry is the better knowledge and stays.
+    ///
+    /// The entry goes through `advancing`, so an existing reference point
+    /// survives, and it carries the APPLE moment where the store states one —
+    /// an import is old knowledge and must not beat newer entries elsewhere.
+    nonisolated static func adoptedEntry(local: [Double]?,
+                                         playhead: Double,
+                                         duration: Double,
+                                         isPlayed: Bool,
+                                         timestampMs: Double?,
+                                         nowMs: Double) -> [Double]? {
+        // Apple resets state AND playhead when an episode completes — a
+        // played episode without a known duration still deserves its mark,
+        // via the same sentinel every other "played without duration" uses.
+        let time: Double
+        if isPlayed {
+            time = duration > 0 ? max(duration, playhead) : ProgressMark.playedSentinel
+        } else {
+            time = playhead
+        }
+        guard time > 1 else { return nil }
+        let localPlayed = local.map { ProgressMark.isPlayed(stored: $0, currentDuration: duration) } ?? false
+        if localPlayed, !isPlayed { return nil }          // never reset finished
+        if localPlayed, isPlayed { return nil }           // nothing to gain
+        if !isPlayed, let local, let position = local.first, position >= time { return nil }
+        return ProgressMark.advancing(local, position: time, duration: duration,
+                                      nowMs: timestampMs ?? nowMs)
     }
 
     nonisolated struct AppleLibrary: Sendable {
@@ -116,30 +170,47 @@ enum PodcastImport {
             let playheadCol = firstPresent(["ZPLAYHEAD", "ZLASTPLAYHEADPOSITION", "ZPROGRESS"], in: episodeCols)
             let durationCol = firstPresent(["ZDURATION", "ZASSETDURATION"], in: episodeCols)
             let playedCol = firstPresent(["ZPLAYSTATE", "ZISPLAYED", "ZPLAYED"], in: episodeCols)
+            // The play COUNT is the second witness, and the decisive one:
+            // cross-tabulated on a real store, every hand-marked episode had
+            // state 2 and count 0, every listened-through one state 0 and
+            // count 1 — Apple resets state and playhead on completion. The
+            // state alone missed 1,163 finished episodes.
+            let playCountCol = firstPresent(["ZPLAYCOUNT", "ZPLAYEDCOUNT", "ZTIMESPLAYED"], in: episodeCols)
+            let timestampCol = firstPresent(
+                ["ZLASTDATEPLAYED", "ZPLAYSTATELASTMODIFIEDDATE", "ZLASTPLAYEDDATE"], in: episodeCols)
+            let titleCol = firstPresent(["ZTITLE", "ZCLEANEDTITLE"], in: episodeCols)
 
             var selected = [urlCol]
             if let playheadCol { selected.append(playheadCol) }
             if let durationCol { selected.append(durationCol) }
             if let playedCol { selected.append(playedCol) }
+            if let playCountCol { selected.append(playCountCol) }
+            if let timestampCol { selected.append(timestampCol) }
+            if let titleCol { selected.append(titleCol) }
 
             let sql = "SELECT \(selected.joined(separator: ", ")) FROM ZMTEPISODE WHERE \(urlCol) IS NOT NULL"
             for row in query(db, sql) {
                 guard let enclosure = row[0], !enclosure.isEmpty else { continue }
                 var idx = 1
-                let playhead = playheadCol != nil ? Double(row[idx] ?? "") ?? 0 : 0
-                if playheadCol != nil { idx += 1 }
-                let duration = durationCol != nil ? Double(row[idx] ?? "") ?? 0 : 0
-                if durationCol != nil { idx += 1 }
-                // Apple: ZPLAYSTATE == 2 means "played"; otherwise 1/0. For a
-                // plain bool field (ZISPLAYED/ZPLAYED) any value > 0 counts.
-                var isPlayed = false
-                if playedCol != nil {
-                    let raw = Double(row[idx] ?? "") ?? 0
-                    isPlayed = (playedCol == "ZPLAYSTATE") ? raw >= 2 : raw > 0
+                func next(_ col: String?) -> String? {
+                    guard col != nil else { return nil }
+                    defer { idx += 1 }
+                    return idx < row.count ? row[idx] : nil
                 }
+                let playhead = next(playheadCol).flatMap(Double.init) ?? 0
+                let duration = next(durationCol).flatMap(Double.init) ?? 0
+                let stateRaw = next(playedCol).flatMap(Double.init) ?? 0
+                let playCount = next(playCountCol).flatMap(Double.init) ?? 0
+                let timestamp = appleTimestampMs(next(timestampCol).flatMap(Double.init))
+                let title = next(titleCol)
+                // Apple: ZPLAYSTATE == 2 is "marked played" — OR the episode
+                // was actually listened through, which only the count knows.
+                let stateSaysPlayed = (playedCol == "ZPLAYSTATE") ? stateRaw >= 2 : stateRaw > 0
+                let isPlayed = stateSaysPlayed || playCount > 0
                 if playhead > 1 || isPlayed {
                     progress.append(AppleProgress(
-                        enclosureURL: enclosure, playhead: playhead, duration: duration, isPlayed: isPlayed
+                        enclosureURL: enclosure, playhead: playhead, duration: duration,
+                        isPlayed: isPlayed, title: title, timestampMs: timestamp
                     ))
                 }
             }

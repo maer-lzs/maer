@@ -56,9 +56,9 @@ final class PodcastProgressStore: ObservableObject {
             // The duration travels along as the THIRD value: it is the
             // reference the check uses later (outward, the real end position
             // still goes out unchanged).
-            // Die frischeste bekannte Laenge: nach einer Wiedergabe hat der
-            // Player die echte Assetlaenge in den Store geschrieben, waehrend
-            // das uebergebene Element noch die Feed-Behauptung tragen kann.
+            // The freshest KNOWN length: after a playback the player has
+            // written the real asset length into the store, while the passed
+            // item may still carry the feed's claim.
             let duration = PodcastSubscriptions.shared.episodeDuration(guid: item.id)
                 ?? item.media?.duration ?? 0
             let position = duration > 0 ? duration : Self.playedSentinel
@@ -67,7 +67,13 @@ final class PodcastProgressStore: ObservableObject {
                                    nowMs: Date().timeIntervalSince1970 * 1000),
                 forKey: key)
         } else {
-            UserDefaults.standard.set([0.0, Date().timeIntervalSince1970 * 1000], forKey: key)
+            // The unplayed tombstone goes through the one entry builder too —
+            // the fence's proof run flushed this literal out as the second
+            // writer its line-window predecessor had missed.
+            UserDefaults.standard.set(
+                ProgressMark.entry(position: 0, duration: 0,
+                                   nowMs: Date().timeIntervalSince1970 * 1000),
+                forKey: key)
         }
         changeToken += 1
         objectWillChange.send()

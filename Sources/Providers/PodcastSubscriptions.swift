@@ -859,27 +859,64 @@ final class PodcastSubscriptions: ObservableObject {
             byURL[key] = p
         }
 
+        // Fallback index by TITLE for entries whose enclosure URL drifted
+        // (CDN tokens, host moves): only an UNAMBIGUOUS title may match —
+        // one Apple entry, and no second episode of ours carrying it.
+        var byTitle: [String: PodcastImport.AppleProgress?] = [:]
+        for p in byURL.values {
+            guard let raw = p.title?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+                  !raw.isEmpty else { continue }
+            byTitle[raw] = byTitle.keys.contains(raw) ? nil : p
+        }
+        // An Apple entry that already matches an episode by URL is spoken
+        // for — the title fallback must not apply it a second time elsewhere.
+        var consumedAppleKeys: Set<String> = []
+        var ourTitleCounts: [String: Int] = [:]
+        for show in shows {
+            for episode in show.episodes {
+                let urlKey = Self.normalizeEnclosure(episode.audioURL)
+                if byURL[urlKey] != nil { consumedAppleKeys.insert(urlKey) }
+                let raw = episode.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                ourTitleCounts[raw, default: 0] += 1
+            }
+        }
+
         var updated = shows
         var applied = 0
+        var viaTitle = 0
+        var keptLocal = 0
+        let nowMs = Date().timeIntervalSince1970 * 1000
         for s in updated.indices {
             for e in updated[s].episodes.indices {
                 let episode = updated[s].episodes[e]
-                guard let match = byURL[Self.normalizeEnclosure(episode.audioURL)] else { continue }
+                var match = byURL[Self.normalizeEnclosure(episode.audioURL)]
+                if match == nil {
+                    let raw = episode.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    if ourTitleCounts[raw] == 1, let candidate = byTitle[raw] ?? nil,
+                       !consumedAppleKeys.contains(Self.normalizeEnclosure(candidate.enclosureURL)) {
+                        match = candidate
+                        viaTitle += 1
+                    }
+                }
+                guard let match else { continue }
                 // If the feed lacks the duration (no `itunes:duration`), take
                 // Apple's — otherwise "played" (time ≥ duration−1) can never apply.
                 if episode.duration <= 0, match.duration > 0 {
                     updated[s].episodes[e].duration = match.duration
                 }
-                let duration = updated[s].episodes[e].duration
-                let time = match.isPlayed ? max(duration, match.playhead) : match.playhead
-                guard time > 1 else { continue }
-                UserDefaults.standard.set(
-                    [time, Date().timeIntervalSince1970 * 1000],
-                    forKey: AppStorageKeys.localPosition(episode.guid)
-                )
+                let key = AppStorageKeys.localPosition(episode.guid)
+                guard let entry = PodcastImport.adoptedEntry(
+                    local: UserDefaults.standard.array(forKey: key) as? [Double],
+                    playhead: match.playhead,
+                    duration: updated[s].episodes[e].duration,
+                    isPlayed: match.isPlayed,
+                    timestampMs: match.timestampMs,
+                    nowMs: nowMs) else { keptLocal += 1; continue }
+                UserDefaults.standard.set(entry, forKey: key)
                 applied += 1
             }
         }
+        Logger.rss.notice("APPLE import: applied=\(applied) viaTitle=\(viaTitle) localKept=\(keptLocal)")
         if applied > 0 {
             shows = updated   // adopt possibly corrected durations (didSet rebuilds the index)
             save()

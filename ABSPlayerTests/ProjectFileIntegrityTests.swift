@@ -240,6 +240,28 @@ struct ProjectFileIntegrityTests {
     /// `localPosition` is only written through `ProgressMark`
     /// (`entry`/`advancing`/`supplementing`) or by moving an existing value
     /// unchanged. Never an array literal.
+    ///
+    /// The detector reads STATEMENTS, not lines: the Apple import wrote its
+    /// literal with the bracket on the next line, and the line-window version
+    /// of this fence ran green at exactly its target class. The proof run
+    /// below feeds that real offender back in.
+    private static func rawPositionWriters(in text: String) -> [Int] {
+        var offenders: [Int] = []
+        var search = text.startIndex
+        while let hit = text.range(of: ".set(", range: search..<text.endIndex) {
+            search = hit.upperBound
+            // The whole statement: from the call up to a window big enough for
+            // key + value in either order, whitespace collapsed.
+            let windowEnd = text.index(hit.upperBound, offsetBy: 300, limitedBy: text.endIndex) ?? text.endIndex
+            let statement = text[hit.lowerBound..<windowEnd]
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+            guard statement.hasPrefix(".set([") else { continue }
+            guard statement.contains("localPosition") else { continue }
+            offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
+        }
+        return offenders
+    }
+
     @Test("no array literal is written to a localPosition key")
     func noRawArrayIsWrittenToAPositionKey() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -250,19 +272,31 @@ struct ProjectFileIntegrityTests {
         var offenders: [String] = []
         for file in files {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
-            let lines = text.components(separatedBy: "\n")
-            for (index, line) in lines.enumerated() where line.contains("set([") {
-                // Key and value often sit in one statement across several
-                // lines — a window catches both spellings.
-                let start = max(0, index - 2)
-                let window = lines[start..<min(index + 3, lines.count)].joined(separator: " ")
-                if window.contains("localPosition") {
-                    offenders.append("\(file.lastPathComponent):\(index + 1)")
-                }
+            for line in Self.rawPositionWriters(in: text) {
+                offenders.append("\(file.lastPathComponent):\(line)")
             }
         }
         #expect(offenders.isEmpty,
                 "these writers build the entry themselves and lose the stored duration: \(offenders)")
+    }
+
+    /// The proof run: the fence must FIND the shape it went blind on — the
+    /// import's literal, verbatim, with the bracket on its own line.
+    @Test("the position fence catches the multi-line literal it once missed")
+    func positionFenceCatchesTheOldImportShape() {
+        let oldImport = """
+                UserDefaults.standard.set(
+                    [time, Date().timeIntervalSince1970 * 1000],
+                    forKey: AppStorageKeys.localPosition(episode.guid)
+                )
+        """
+        #expect(Self.rawPositionWriters(in: oldImport).count == 1)
+        // The single-line spelling stays caught, and the sanctioned writers
+        // stay exempt — the fence names literals, not ProgressMark calls.
+        #expect(Self.rawPositionWriters(
+            in: "defaults.set([pos, ts], forKey: AppStorageKeys.localPosition(id))").count == 1)
+        #expect(Self.rawPositionWriters(
+            in: "defaults.set(ProgressMark.advancing(a, position: p, duration: d, nowMs: t), forKey: AppStorageKeys.localPosition(id))").isEmpty)
     }
 
     /// **Whoever answers "played" calls `ProgressMark`.**
