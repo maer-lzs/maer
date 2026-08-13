@@ -162,6 +162,22 @@ final class AppSession: ObservableObject {
         return libraryViewModel.libraryItem(forId: itemId)
     }
 
+    /// The item to hand the PLAYER for an id — where "not in memory" must not
+    /// mean "does not exist".
+    ///
+    /// A catalogue id is self-describing: `fetchItemDetail` can resolve it at
+    /// any time, the session cache is only a shortcut. Three surfaces treated
+    /// the cache miss as nonexistence — the playlist row went dead, the queue
+    /// went visually empty, the advancer ended silently — for entries the app
+    /// could have fetched a second later. For every other namespace the cache
+    /// answer stays authoritative (a server title without its server really is
+    /// unavailable here).
+    func playableItem(forId itemId: String) -> LibraryItem? {
+        if let known = libraryItem(forId: itemId) { return known }
+        guard FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) else { return nil }
+        return LibraryItem(id: itemId, media: nil, addedAt: nil)
+    }
+
     private(set) lazy var libraryViewModel = LibraryViewModel(provider: provider)
     private(set) lazy var playerCoordinator = PlayerCoordinator(provider: provider)
 

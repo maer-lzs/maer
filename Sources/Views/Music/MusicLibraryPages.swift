@@ -782,20 +782,30 @@ struct MaerPlaylistPage: View {
             Button("Save") { store.rename(playlistId: playlistId, to: newName) }
             Button("Cancel", role: .cancel) {}
         }
+        // Entries added before the snapshots existed get theirs here, on the
+        // device that can still resolve them.
+        .task { store.backfillTitles(playlistId: playlistId) }
     }
 
     @ViewBuilder
     private func row(_ id: String) -> some View {
-        let item = AppSession.shared.libraryItem(forId: id)
+        // `playableItem` instead of the cache: a catalogue id is
+        // self-describing and resolves on demand — after a cold start the
+        // cache miss made these rows dead raw-id lines, although the app
+        // could have fetched them a second later.
+        let item = AppSession.shared.playableItem(forId: id)
+        let title = item?.title.isEmpty == false && item?.title != id
+            ? item!.title : (playlist?.titles[id] ?? id)
         Button {
             if let item { Task { await playerCoordinator.open(item: item) } }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: item?.title ?? id)
+                Text(verbatim: title)
                     .font(.subheadline)
                     .foregroundStyle(item == nil ? .secondary : .primary)
                 if item == nil {
-                    // Sichtbar behalten statt still entfernen.
+                    // Visibly kept instead of silently removed — resolvability
+                    // is a property of the DEVICE, never of the entry.
                     Text("Not available on this device")
                         .font(.caption).foregroundStyle(.secondary)
                 } else if let author = item?.author {

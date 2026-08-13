@@ -33,9 +33,22 @@ struct PlayQueueView: View {
     var body: some View {
         List {
             ForEach(queue.ids, id: \.self) { id in
+                // A cache miss must not blank the row: a catalogue id after a
+                // cold start resolves on demand — the row fetches its detail
+                // and fills in, everything else renders from the cache as
+                // before.
                 if let item = AppSession.shared.libraryItem(forId: id) {
                     PlayQueueRow(item: item, playerCoordinator: playerCoordinator)
                         .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                } else if let stub = AppSession.shared.playableItem(forId: id) {
+                    PlayQueueRow(item: stub, playerCoordinator: playerCoordinator)
+                        .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
+                        .task {
+                            // Fills the provider's session cache; the store
+                            // publish re-renders the row with its real title.
+                            _ = try? await FreeCatalogProvider.shared.fetchItemDetail(itemId: id)
+                            queue.objectWillChange.send()
+                        }
                 }
             }
             .onMove { queue.move(from: $0, to: $1) }

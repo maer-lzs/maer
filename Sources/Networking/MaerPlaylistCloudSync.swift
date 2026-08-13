@@ -54,7 +54,7 @@ final class MaerPlaylistCloudSync {
         var local = MaerPlaylistMerge.Snapshot(tombstones: MaerPlaylists.tombstones)
         for list in playlists.syncable {
             local.lists[list.id] = .init(name: list.name, updatedAt: list.updatedAt,
-                                         itemIds: list.itemIds)
+                                         itemIds: list.itemIds, titles: list.titles)
         }
 
         var cloud = MaerPlaylistMerge.Snapshot()
@@ -64,7 +64,11 @@ final class MaerPlaylistCloudSync {
                       let name = dict["name"] as? String,
                       let updatedAt = (dict["updatedAt"] as? NSNumber)?.doubleValue,
                       let items = dict["items"] as? [String] else { continue }
-                cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items)
+                // Blobs written before the snapshots existed carry none —
+                // tolerated, like every other added field.
+                let titles = (dict["titles"] as? [String: String]) ?? [:]
+                cloud.lists[id] = .init(name: name, updatedAt: updatedAt, itemIds: items,
+                                        titles: titles)
             }
         }
         if let raw = store.dictionary(forKey: tombKey) {
@@ -87,7 +91,8 @@ final class MaerPlaylistCloudSync {
         if outcome.lists != cloud.lists || outcome.tombstones != cloud.tombstones {
             var blob: [String: Any] = [:]
             for (id, entry) in outcome.lists {
-                blob[id] = ["name": entry.name, "updatedAt": entry.updatedAt, "items": entry.itemIds]
+                blob[id] = ["name": entry.name, "updatedAt": entry.updatedAt,
+                            "items": entry.itemIds, "titles": entry.titles]
             }
             store.set(blob, forKey: blobKey)
             store.set(outcome.tombstones, forKey: tombKey)

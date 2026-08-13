@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// Holds the currently running playback session, regardless of whether the full
 /// player screen is visible or not. This is the prerequisite for the mini-player
@@ -256,12 +257,23 @@ final class PlayerCoordinator: ObservableObject {
     /// longer resolve to a library item are skipped.
     private func nextPlayableQueueItem() -> LibraryItem? {
         let offline = !NetworkMonitor.shared.isConnected
+        let ids = PlayQueue.shared.ids
         guard let id = QueueContinuation.nextPlayable(
-            ids: PlayQueue.shared.ids,
+            ids: ids,
             isPlayable: { !offline || DownloadManager.shared.isDownloaded(itemId: $0) },
-            resolves: { AppSession.shared.libraryItem(forId: $0) != nil }
-        ) else { return nil }
-        return AppSession.shared.libraryItem(forId: id)
+            // Resolution on demand: a catalogue id is self-describing, the
+            // session cache is only a shortcut — a cache miss made the
+            // advancer end silently on entries it could have fetched.
+            resolves: { AppSession.shared.playableItem(forId: $0) != nil }
+        ) else {
+            // The end has a REASON, and it is told apart: an empty queue is
+            // normal, entries that cannot start now are a finding.
+            if !ids.isEmpty {
+                Logger.library.notice("QUEUE advance ends: \(ids.count) entries, none playable (offline=\(offline))")
+            }
+            return nil
+        }
+        return AppSession.shared.playableItem(forId: id)
     }
 
     /// Restores the last played session on app start — paused, so nothing plays

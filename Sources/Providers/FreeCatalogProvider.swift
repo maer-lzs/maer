@@ -306,7 +306,7 @@ final class FreeCatalogProvider: AudioProvider {
         let single = ABSAudioTrack(index: 0, startOffset: 0, duration: track.duration,
                                    contentUrl: track.contentUrl, metadata: track.metadata)
         let performer = file.creator ?? meta.metadata?.creator?.joined
-        return LibraryItemDetail(
+        let songDetail = LibraryItemDetail(
             id: songId,
             media: LibraryItemMedia(
                 metadata: detailMetadata(itemId: songId,
@@ -315,6 +315,16 @@ final class FreeCatalogProvider: AudioProvider {
                                          description: file.album ?? meta.metadata?.title?.first),
                 duration: track.duration, chapters: nil, tracks: [single]),
             userMediaProgress: nil)
+        rememberResolved(songDetail)
+        return songDetail
+    }
+
+    /// What a detail fetch resolved goes into the session cache — "not in
+    /// memory" must not stay true one fetch after the answer arrived. This is
+    /// what lets a queue or playlist row fill itself in on demand.
+    private func rememberResolved(_ detail: LibraryItemDetail) {
+        guard itemsById[detail.id] == nil else { return }
+        itemsById[detail.id] = LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
@@ -367,7 +377,7 @@ final class FreeCatalogProvider: AudioProvider {
                 throw URLError(.resourceUnavailable)
             }
             let total = tracks.compactMap(\.duration).reduce(0, +)
-            return LibraryItemDetail(
+            let detail = LibraryItemDetail(
                 id: itemId,
                 media: LibraryItemMedia(
                     // The hand-rescued title fallback is covered by the helper.
@@ -377,6 +387,8 @@ final class FreeCatalogProvider: AudioProvider {
                                              description: meta.metadata?.description?.joined),
                     duration: total > 0 ? total : nil, chapters: nil, tracks: tracks),
                 userMediaProgress: nil)
+            rememberResolved(detail)
+            return detail
         }
         if itemId.hasPrefix(FreeCatalog.jamendoPrefix) {
             guard let track = jamendoTracks[itemId], let audio = track.audio, !audio.isEmpty else {

@@ -32,10 +32,12 @@ final class MaerPlaylists: ObservableObject {
         /// from a missing entry.
         var updatedAt: Double
         var itemIds: [String]
+        /// Title snapshots per entry id — see `MaerPlaylistMerge.Entry.titles`.
+        var titles: [String: String] = [:]
 
         // Tolerant decoding: files written before the rescue mark existed have
         // no such field, and a missing field must not fail the whole store.
-        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds }
+        enum CodingKeys: String, CodingKey { case id, name, isRescue, updatedAt, itemIds, titles }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             id = try c.decode(String.self, forKey: .id)
@@ -43,13 +45,16 @@ final class MaerPlaylists: ObservableObject {
             isRescue = (try? c.decode(Bool.self, forKey: .isRescue)) ?? false
             updatedAt = try c.decode(Double.self, forKey: .updatedAt)
             itemIds = try c.decode([String].self, forKey: .itemIds)
+            titles = (try? c.decode([String: String].self, forKey: .titles)) ?? [:]
         }
-        init(id: String, name: String, isRescue: Bool = false, updatedAt: Double, itemIds: [String]) {
+        init(id: String, name: String, isRescue: Bool = false, updatedAt: Double,
+             itemIds: [String], titles: [String: String] = [:]) {
             self.id = id
             self.name = name
             self.isRescue = isRescue
             self.updatedAt = updatedAt
             self.itemIds = itemIds
+            self.titles = titles
         }
     }
 
@@ -91,10 +96,12 @@ final class MaerPlaylists: ObservableObject {
 
     @discardableResult
     func create(name: String, itemIds: [String] = []) -> Playlist {
+        let kept = itemIds.filter { PlayQueue.canEnqueue($0) }
         let list = Playlist(id: UUID().uuidString,
                             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             updatedAt: Date().timeIntervalSince1970,
-                            itemIds: itemIds.filter { PlayQueue.canEnqueue($0) })
+                            itemIds: kept,
+                            titles: Self.titleSnapshots(for: kept))
         playlists.append(list)
         save()
         return list
@@ -119,9 +126,38 @@ final class MaerPlaylists: ObservableObject {
         if playlists[index].itemIds.contains(itemId) { return .alreadyThere }
         guard totalEntries < Self.entryLimit else { return .limitReached(limit: Self.entryLimit) }
         playlists[index].itemIds.append(itemId)
+        // The snapshot is taken NOW, while the item is at hand — after a cold
+        // start on another device the id may be all that is left of it.
+        if let title = Self.titleSnapshots(for: [itemId])[itemId] {
+            playlists[index].titles[itemId] = title
+        }
         playlists[index].updatedAt = Date().timeIntervalSince1970
         save()
         return .added
+    }
+
+    /// The titles the session can answer right now — never the raw id.
+    private static func titleSnapshots(for itemIds: [String]) -> [String: String] {
+        var titles: [String: String] = [:]
+        for id in itemIds {
+            guard let title = AppSession.shared.libraryItem(forId: id)?.title,
+                  !title.isEmpty, title != id else { continue }
+            titles[id] = title
+        }
+        return titles
+    }
+
+    /// Fill snapshots a list is still missing — entries added before the
+    /// snapshot existed, on the device that can resolve them. Runs when the
+    /// list page appears; saves only when something was actually learned.
+    func backfillTitles(playlistId: String) {
+        guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
+        let missing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
+        guard !missing.isEmpty else { return }
+        let learned = Self.titleSnapshots(for: missing)
+        guard !learned.isEmpty else { return }
+        playlists[index].titles.merge(learned) { old, _ in old }
+        save()
     }
 
     /// Several at once (album, saving the queue) — the bound counts per entry,
@@ -173,13 +209,14 @@ final class MaerPlaylists: ObservableObject {
         var next = playlists.filter { $0.isRescue }
         for (id, entry) in merged {
             next.append(Playlist(id: id, name: entry.name,
-                                 updatedAt: entry.updatedAt, itemIds: entry.itemIds))
+                                 updatedAt: entry.updatedAt, itemIds: entry.itemIds,
+                                 titles: entry.titles))
         }
         let existing = next.map(\.itemIds)
         for candidate in rescued where MaerPlaylistMerge.needsRescue(candidate, existing: existing) {
             next.append(Playlist(id: UUID().uuidString, name: rescueName(candidate),
                                  isRescue: true, updatedAt: candidate.updatedAt,
-                                 itemIds: candidate.itemIds))
+                                 itemIds: candidate.itemIds, titles: candidate.titles))
         }
         Self.tombstones = marks
         playlists = next.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

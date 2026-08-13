@@ -60,6 +60,34 @@ struct MaerPlaylistMergeTests {
         #expect(out.rescued.isEmpty)
     }
 
+    /// Title snapshots are what a device shows for an entry it cannot resolve
+    /// — knowledge only one side has must not die because the other side wins.
+    @Test("a title the loser knew supplements the winner")
+    func loserTitleSupplementsWinner() {
+        var mine = entry("Abend", 200, ["x", "y"])
+        mine.titles = ["x": "Mondlicht"]
+        var theirs = entry("Abend", 100, ["x", "y"])
+        theirs.titles = ["x": "ANDERS", "y": "Nebel"]
+        let out = MaerPlaylistMerge.merge(
+            local: .init(lists: ["a": mine]), cloud: .init(lists: ["a": theirs]))
+        // The winner's own titles stay; only the missing one arrives.
+        #expect(out.lists["a"]?.titles == ["x": "Mondlicht", "y": "Nebel"])
+    }
+
+    @Test("supplemented titles stay within the winner's list")
+    func titlesFollowTheList() {
+        var mine = entry("Abend", 200, ["x"])
+        mine.titles = ["x": "Mondlicht"]
+        var theirs = entry("Abend", 100, ["x", "gone"])
+        theirs.titles = ["gone": "Geloescht"]
+        let out = MaerPlaylistMerge.merge(
+            local: .init(lists: ["a": mine]), cloud: .init(lists: ["a": theirs]))
+        // A title for an entry the winner no longer carries does not ride
+        // along — the list decides, titles only describe it.
+        #expect(out.lists["a"]?.titles == ["x": "Mondlicht"])
+        #expect(out.rescued.count == 1)
+    }
+
     @Test("the same rescue is not created twice")
     func rescueDoesNotMultiply() {
         let candidate = entry("Abend", 100, ["x", "y"])

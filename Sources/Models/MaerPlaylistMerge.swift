@@ -28,11 +28,18 @@ nonisolated enum MaerPlaylistMerge {
         var name: String
         var updatedAt: Double
         var itemIds: [String]
+        /// Title snapshots per entry id — what a row shows when the DEVICE
+        /// cannot resolve the id (a catalogue track after a cold start, a
+        /// server title without its server). Taken at the moment of adding,
+        /// when the item is at hand; they travel with the list, because the
+        /// device that needs them is precisely the one that never saw the item.
+        var titles: [String: String] = [:]
 
-        init(name: String, updatedAt: Double, itemIds: [String]) {
+        init(name: String, updatedAt: Double, itemIds: [String], titles: [String: String] = [:]) {
             self.name = name
             self.updatedAt = updatedAt
             self.itemIds = itemIds
+            self.titles = titles
         }
     }
 
@@ -79,7 +86,15 @@ nonisolated enum MaerPlaylistMerge {
             guard let winner else { continue }
             // A list stays deleted unless it was touched AFTER the deletion.
             if let deletedAt = outcome.tombstones[id], deletedAt >= winner.updatedAt { continue }
-            outcome.lists[id] = winner
+            var adopted = winner
+            // Knowledge only one side has must not die because the other side
+            // wins: a title the loser knew supplements the winner's list —
+            // for ids the winner still carries. The winner's own titles stay.
+            if let loser {
+                adopted.titles = winner.titles.merging(loser.titles) { mine, _ in mine }
+                    .filter { winner.itemIds.contains($0.key) }
+            }
+            outcome.lists[id] = adopted
             if let loser, loser.itemIds != winner.itemIds {
                 outcome.rescued.append(loser)
             }
