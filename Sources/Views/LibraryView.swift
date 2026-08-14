@@ -410,6 +410,13 @@ struct LibraryView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.bottom, 2)
+                // The bar avoids the keyboard ONLY while the search field can
+                // own one — that is the single reason the overlay ever wanted
+                // the inset. Outside search a keyboard inset that hangs around
+                // after dismissal (the screenshot class) lifted the whole bar
+                // into the middle of the screen; ignoring the zone there means
+                // a stuck inset has nothing to lift.
+                .ignoresSafeArea(.keyboard, edges: isShowingSearch ? [] : .bottom)
                 .task(id: playerCoordinator.activeItem?.id) {
                     let previousId = lastBottomAccentItemId
                     lastBottomAccentItemId = playerCoordinator.activeItem?.id

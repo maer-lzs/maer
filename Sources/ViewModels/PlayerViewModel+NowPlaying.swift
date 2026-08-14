@@ -128,14 +128,26 @@ extension PlayerViewModel {
         // calling thread, the body hops explicitly.
         commandCenter.nextTrackCommand.removeTarget(nil)
         commandCenter.previousTrackCommand.removeTarget(nil)
+        // A press that can do nothing answers commandFailed, not success — a
+        // silent success is how the queue gap stayed invisible. The answer
+        // needs the main actor SYNCHRONOUSLY: hop when the system calls from
+        // elsewhere, assume when it already is main (both legal; the blind
+        // assumeIsolated alone would be the known trap).
         commandCenter.nextTrackCommand.addTarget { @Sendable [weak self] _ in
-            Task { @MainActor in self?.handleTitleButton(forward: true) }
-            return .success
+            Self.answeredOnMain { self?.handleTitleButton(forward: true) ?? false }
+                ? .success : .commandFailed
         }
         commandCenter.previousTrackCommand.addTarget { @Sendable [weak self] _ in
-            Task { @MainActor in self?.handleTitleButton(forward: false) }
-            return .success
+            Self.answeredOnMain { self?.handleTitleButton(forward: false) ?? false }
+                ? .success : .commandFailed
         }
+    }
+
+    private nonisolated static func answeredOnMain(_ body: @MainActor @Sendable () -> Bool) -> Bool {
+        if Thread.isMainThread {
+            return MainActor.assumeIsolated(body)
+        }
+        return DispatchQueue.main.sync { MainActor.assumeIsolated(body) }
     }
 
     /// What a title button MEANS depends on what is playing, decided per
@@ -146,15 +158,17 @@ extension PlayerViewModel {
     ///    Audible: from the pocket a title press must never leap a chapter,
     ///    and the pocket-series detection of the lock-screen skip rides along.
     ///  * **Radio** — nothing; the commands are disabled for live streams.
-    func handleTitleButton(forward: Bool) {
-        guard let id = item?.id else { return }
+    /// Returns whether the press does anything — the command answer.
+    func handleTitleButton(forward: Bool) -> Bool {
+        guard let id = item?.id else { return false }
         switch MediaFamily.of(id) {
         case .radio:
-            return
+            return false
         case .music:
-            jumpToAdjacentTrack(forward: forward)
+            return jumpToAdjacentTrack(forward: forward)
         default:
             skipFromLockscreen(by: forward ? skipInterval : -skipInterval)
+            return true
         }
     }
 

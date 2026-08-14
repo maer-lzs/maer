@@ -3644,12 +3644,22 @@
         }
       }
     },
-    "Mär is an unofficial client for Audiobookshelf." : {
+    "Mär is an open-source player for self-hosted audio — audiobooks, podcasts, music and internet radio in one app." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mär ist ein inoffizieller Client für Audiobookshelf."
+            "value" : "Mär ist ein quelloffener Player für selbst gehostetes Audio — Hörbücher, Podcasts, Musik und Internetradio in einer App."
+          }
+        }
+      }
+    },
+    "%lld free feeds skipped — already subscribed as premium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld freie Feeds übersprungen — bereits als Premium abonniert"
           }
         }
       }

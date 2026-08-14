@@ -206,6 +206,16 @@ final class PlayerCoordinator: ObservableObject {
         viewModel.onBookFinished = { [weak self] finishedItemId in
             self?.advanceAfterFinish(finishedItemId: finishedItemId)
         }
+        // The headphone title button's queue hop. SKIPPING IS NOT FINISHING:
+        // the natural-end path above finalises the item as heard — a skip must
+        // not, or every skipped song joins the freshly healed class anew. This
+        // path shares the RESOLUTION (nextPlayableQueueItem) and nothing else;
+        // the skipped item keeps its position and its unheard state.
+        viewModel.onQueueSkipRequested = { [weak self] in
+            guard let self, let next = self.nextPlayableQueueItem() else { return false }
+            Task { await self.open(item: next) }
+            return true
+        }
     }
 
     /// The natural-end advance, shared by the real end-of-item handler and the

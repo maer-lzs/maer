@@ -686,6 +686,9 @@ struct PodcastSourceView: View {
         if r.paidSkipped > 0 {
             lines.append(String(localized: "\(r.paidSkipped) paid subscriptions can't be imported — use the provider's subscriber feed"))
         }
+        if r.freeTwinsSkipped > 0 {
+            lines.append(String(localized: "\(r.freeTwinsSkipped) free feeds skipped — already subscribed as premium"))
+        }
         return lines.joined(separator: "\n")
     }
 

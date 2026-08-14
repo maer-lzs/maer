@@ -648,6 +648,36 @@ final class PodcastSubscriptions: ObservableObject {
         let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = normalizedFeedURL(trimmed) else { return false }
         guard let show = await Self.fetchAndParse(feedURL: url) else { return false }
+        // The OTHER direction of the premium offer below: the ARRIVING feed is
+        // the free twin of a show already subscribed as premium (the Apple
+        // import walks Apple's list, which still carries the free feed). The
+        // exact-address check cannot see that, so the import subscribed the
+        // free ZEIT copy next to the paid one. Skipped here — and any stored
+        // progress under the skipped feed's guids is redirected onto the
+        // premium episodes first (target-empty guard, the replacement path's
+        // rule), so nothing the twin knew is lost.
+        if shows.first(where: { $0.id == show.id }) == nil,
+           !Self.isPremiumFeed(show.feedURL),
+           let premium = shows.first(where: {
+               Self.isPremiumFeed($0.feedURL)
+                   && PodcastPremiumMatch.sameShow(titleA: $0.title, titleB: show.title)
+           }) {
+            let matches = PodcastPremiumMatch.episodeMatches(free: show.episodes,
+                                                             premium: premium.episodes)
+            var redirected = 0
+            let defaults = UserDefaults.standard
+            for (freeGuid, premiumGuid) in matches {
+                guard let stored = defaults.array(forKey: AppStorageKeys.localPosition(freeGuid)) as? [Double],
+                      defaults.object(forKey: AppStorageKeys.localPosition(premiumGuid)) == nil
+                else { continue }
+                defaults.set(stored, forKey: AppStorageKeys.localPosition(premiumGuid))
+                redirected += 1
+            }
+            lastFreeTwinSkip = (show.title, redirected)
+            Logger.rss.notice("SUBSCRIBE skipped free twin of premium \(show.title, privacy: .public): progress redirected=\(redirected)")
+            if redirected > 0 { PodcastProgressStore.shared.reload() }
+            return true
+        }
         if let idx = shows.firstIndex(where: { $0.id == show.id }) {
             // Re-subscribe must not blindly replace: a weak parse (valid title,
             // few/zero episodes) would drop the cached episodes. Union instead.
@@ -810,7 +840,14 @@ final class PodcastSubscriptions: ObservableObject {
         var failed = 0            // feed not loadable
         var progressApplied = 0   // episodes with applied progress/played
         var paidSkipped = 0       // S21: paid/exclusive subs without a public feed
+        /// Free twins of an already-subscribed premium feed — skipped, their
+        /// stored progress redirected onto the premium episodes.
+        var freeTwinsSkipped = 0
     }
+
+    /// Set by `subscribe` when it skips a free twin (title, redirected count)
+    /// — read by the import loops for their counter, never shown raw.
+    private(set) var lastFreeTwinSkip: (title: String, redirected: Int)?
 
     /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
     /// `nil` when the file is not well-formed OPML/XML (O1: visible failure
@@ -819,7 +856,10 @@ final class PodcastSubscriptions: ObservableObject {
         guard let feeds = PodcastImport.parseOPML(data) else { return nil }
         var result = ImportResult()
         for feed in feeds {
-            if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
+            lastFreeTwinSkip = nil
+            if await subscribe(urlString: feed) {
+                if lastFreeTwinSkip != nil { result.freeTwinsSkipped += 1 } else { result.subscribed += 1 }
+            } else { result.failed += 1 }
         }
         return result
     }
@@ -834,7 +874,10 @@ final class PodcastSubscriptions: ObservableObject {
         }).value else { return nil }
         var result = ImportResult()
         for feed in library.feedURLs {
-            if await subscribe(urlString: feed) { result.subscribed += 1 } else { result.failed += 1 }
+            lastFreeTwinSkip = nil
+            if await subscribe(urlString: feed) {
+                if lastFreeTwinSkip != nil { result.freeTwinsSkipped += 1 } else { result.subscribed += 1 }
+            } else { result.failed += 1 }
         }
         result.progressApplied = applyAppleProgress(library.progress)
         result.paidSkipped = library.unimportablePaidCount

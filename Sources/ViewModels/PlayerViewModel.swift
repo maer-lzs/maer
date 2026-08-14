@@ -183,6 +183,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Called once when the book plays to its END (not on manual "mark
     /// finished") — the coordinator uses it for auto-play-next-in-series.
     var onBookFinished: ((String) -> Void)?
+    /// The title button ran off the end of this item's tracks — may the queue
+    /// take over? Answered by the coordinator (it owns queue and resolution);
+    /// returns whether a next item will start.
+    var onQueueSkipRequested: (() -> Bool)?
     var artworkImage: UIImage?
     /// Teil 2: the station logo (favicon) for live radio — the fallback the ICY
     /// now-playing cover reverts to when a song has no Cover Art Archive match.
@@ -863,12 +867,22 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// within the first three seconds "previous" means the previous track,
     /// afterwards it means the start of this one — the convention every
     /// player follows.
-    func jumpToAdjacentTrack(forward: Bool) {
-        guard !tracks.isEmpty else { return }
+    /// Returns whether anything will happen — a press that can do nothing
+    /// must not read as success to the system.
+    @discardableResult
+    func jumpToAdjacentTrack(forward: Bool) -> Bool {
+        guard !tracks.isEmpty else { return false }
         let withinTrack = currentTime - trackAbsoluteStart(currentTrackIndex)
         if forward {
-            guard currentTrackIndex + 1 < tracks.count else { return }
-            Task { await seek(to: trackAbsoluteStart(currentTrackIndex + 1)) }
+            if currentTrackIndex + 1 < tracks.count {
+                Task { await seek(to: trackAbsoluteStart(currentTrackIndex + 1)) }
+                return true
+            }
+            // Last (or only) track: the QUEUE is the next thing. A single-song
+            // item has one track, so the guard above failed on the MAIN case
+            // of music listening — a shuffled playlist of songs — and the
+            // press returned silently.
+            return onQueueSkipRequested?() ?? false
         } else if withinTrack > 3 {
             Task { await seek(to: trackAbsoluteStart(currentTrackIndex)) }
         } else if currentTrackIndex > 0 {
@@ -876,6 +890,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         } else {
             Task { await seek(to: 0) }
         }
+        return true
     }
 
     private var currentChapterIndex: Int? {

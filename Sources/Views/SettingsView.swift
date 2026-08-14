@@ -372,7 +372,9 @@ struct SettingsView: View {
         } header: {
             Text("About")
         } footer: {
-            Text("Mär is an unofficial client for Audiobookshelf.")
+            // The self-description that ships with the beta — the README's
+            // identity in one line, not the two-month-old single-server one.
+            Text("Mär is an open-source player for self-hosted audio — audiobooks, podcasts, music and internet radio in one app.")
         }
     }
 
