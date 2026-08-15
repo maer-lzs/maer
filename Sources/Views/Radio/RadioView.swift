@@ -91,8 +91,11 @@ struct RadioView: View {
                 // Sendern sagen nichts zweimal. Favoriten wandern KÜNFTIG
                 // davor, sobald sie Karten sind; bis dahin bleibt die Liste.
                 if !recents.isEmpty {
-                    cardRow(title: String(localized: "Recently Played"), stations: recents,
-                            mode: .playsOnTap)
+                    // a1077a9: the Zuletzt class is a CARD (Featured family),
+                    // Häufig below stays a tile — the owner's own precision.
+                    RadioFeaturedCardRow(title: String(localized: "Recently Played"),
+                                         stations: recents,
+                                         playerCoordinator: playerCoordinator)
                 }
                 if !mostPlayed.isEmpty, mostPlayedDiffersFromRecents {
                     cardRow(title: String(localized: "Most Played"), stations: mostPlayed,

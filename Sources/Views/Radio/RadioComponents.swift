@@ -266,6 +266,101 @@ struct RadioCardRow: View {
     }
 }
 
+/// a1077a9: "Zuletzt gespielt" is a CARD, not a tile — the Featured family
+/// the other tabs' continue rows use (cover face on top, text block on the
+/// card colour, radius 20). Tap plays, the info pill leads to the station
+/// page. Only the Zuletzt class renders this; Häufig stays a tile, the
+/// browse rows stay tiles.
+struct RadioFeaturedCard: View {
+    let station: RadioStation
+    let playerCoordinator: PlayerCoordinator
+    @Environment(\.pushRadioRoute) private var pushRadioRoute
+
+    private var tint: Color { RadioArtwork.color(for: station.id) }
+
+    var body: some View {
+        Button {
+            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                RadioArtwork(stationID: station.id,
+                             faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                             name: station.name)
+                    .frame(width: CardMetrics.featuredCardWidth,
+                           height: CardMetrics.featuredCardWidth)
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
+                    }
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(station.tags.first?.capitalized ?? " ")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                    Text(RadioMapping.displayName(station.name))
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(2, reservesSpace: true)
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                    HStack {
+                        LiveBadge()
+                        Spacer()
+                    }
+                }
+                .padding(12)
+                .frame(width: CardMetrics.featuredCardWidth, alignment: .leading)
+                .background(tint)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .topLeading) {
+            // The pill to the page — same contract as the Zuletzt tiles had.
+            Button {
+                pushRadioRoute(.station(station))
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(7)
+                    .background(Capsule().fill(.black.opacity(0.45)))
+            }
+            .buttonStyle(.plain)
+            .padding(10)
+            .accessibilityLabel(Text("Station Details"))
+        }
+        .contextMenu {
+            RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
+            RadioFavoriteButton(station: station)
+            RadioDetailsButton(station: station, push: pushRadioRoute)
+        }
+    }
+}
+
+/// The card row for the Zuletzt class — RadioView and Home share it.
+struct RadioFeaturedCardRow: View {
+    let title: String
+    let stations: [RadioStation]
+    let playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.title3).bold().padding(.horizontal)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(RowPreview.cut(stations)) { station in
+                        RadioFeaturedCard(station: station, playerCoordinator: playerCoordinator)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+        }
+    }
+}
+
 /// The full page behind a counted browse row: the whole stock as station
 /// rows — tap opens the page, play stays the explicit control (the one
 /// contract everywhere).

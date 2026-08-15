@@ -25,6 +25,9 @@ struct RadioArtwork: View {
 
     /// Gate result: nil until checked; .some(nil) = favicon rejected.
     @State private var gatedFavicon: UIImage??
+    /// 7b910db: a favicon that DECODED but sits below the gate — too small to
+    /// be the tile face, honest enough for a corner badge on the placeholder.
+    @State private var badgeFavicon: UIImage?
 
     var body: some View {
         Group {
@@ -39,14 +42,21 @@ struct RadioArtwork: View {
             // immediately; the cadenced chain upgrades the tile when it
             // arrives — awaiting the chain before showing anything left the
             // first session on initials.
-            if let quick = await RadioArtwork.faviconImage(for: faviconURL, stationID: stationID) {
+            let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID)
+            if let quick = probe.face {
                 if gatedFavicon == nil { gatedFavicon = .some(quick) }
+            } else if let small = probe.small {
+                // 7b910db: below the gate but decodable — the gate stays hard
+                // for the SURFACE, the small image becomes a corner badge on
+                // the placeholder instead of being thrown away.
+                badgeFavicon = small
             }
             let preferred = await RadioArtwork.chainImage(stationID: stationID)
             if let preferred {
                 gatedFavicon = .some(preferred)
+                badgeFavicon = nil   // the full image replaces the badge
             } else if gatedFavicon == nil {
-                gatedFavicon = .some(nil)   // decided: placeholder
+                gatedFavicon = .some(nil)   // decided: placeholder (badge may stay)
             }
         }
     }
@@ -70,17 +80,24 @@ struct RadioArtwork: View {
 
     /// Stage 1 — the catalog favicon, gated: available immediately.
     static func faviconImage(for url: URL?, stationID: String) async -> UIImage? {
+        await faviconProbe(for: url, stationID: stationID).face
+    }
+
+    /// The probe keeps what the gate rejects: `face` passed the gate, `small`
+    /// decoded but is below it — badge material, never a tile face.
+    static func faviconProbe(for url: URL?, stationID: String) async -> (face: UIImage?, small: UIImage?) {
         if let url, let image = await ImageCache.shared.thumbnail(for: url) {
             let width = Int(image.size.width * image.scale)
             let height = Int(image.size.height * image.scale)
             if RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height) {
-                return image
+                return (image, nil)
             }
             Logger.library.notice("RADIO favicon rejected (\(width)×\(height)): \(stationID, privacy: .public)")
+            return (nil, image)
         } else if url != nil {
             Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
         }
-        return nil
+        return (nil, nil)
     }
 
     /// Stage 2 — the preferred source (P154 first, first-party touch icon
@@ -114,6 +131,20 @@ struct RadioArtwork: View {
                     .background(.thinMaterial)
             } else {
                 placeholderFill
+                    .overlay(alignment: .bottomLeading) {
+                        // The show-badge form of the episode tiles: ~24 pt,
+                        // white border, bottom-left — small and sharp instead
+                        // of a stretched stamp or nothing.
+                        if let badge = badgeFavicon {
+                            Image(uiImage: badge)
+                                .resizable().aspectRatio(contentMode: .fit)
+                                .frame(width: 24, height: 24)
+                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .strokeBorder(.white, lineWidth: 1))
+                                .padding(5)
+                        }
+                    }
             }
         }
     }

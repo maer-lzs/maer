@@ -109,6 +109,12 @@ struct ITunesDirectory: PodcastDirectory {
     /// X²·3: the OERR live rule searches per broadcaster STOREFRONT — an
     /// explicit country overrides the suggestion-language default.
     func search(_ term: String, country: String?) async throws -> [PodcastSearchResult] {
+        // aa18a0f: the no-request gate sits AT the URL builders, not only at
+        // the selection — a future call site cannot slip past it. The import
+        // never runs through here (MTLibrary is local and carries the feed
+        // URLs); the lookup below is part of the CHART path, its only caller
+        // is topPodcasts (measured).
+        guard AppStorageKeys.appleCatalogEnabledValue else { return [] }
         var components = URLComponents(string: "https://itunes.apple.com/search")!
         // f79c40c: the FIRST selected suggestion language sets the search
         // storefront (a per-keystroke multi-storefront fan-out would be
@@ -166,6 +172,9 @@ struct ITunesDirectory: PodcastDirectory {
     }
 
     private func topPodcasts(storefront: String, genreId: Int?, limit: Int) async throws -> [PodcastSearchResult] {
+        // Same gate as search: chart AND the lookup behind it (the ID-to-feed
+        // resolution) run through this one entry.
+        guard AppStorageKeys.appleCatalogEnabledValue else { return [] }
         guard let chartURL = ITunesDirectory.chartURL(storefront: storefront, genreId: genreId, limit: limit) else { return [] }
         let (data, _) = try await RequestRetryPolicy.fetch(URLRequest(url: chartURL))
         let ids = (try JSONDecoder().decode(ChartResponse.self, from: data)).feed.entry.map { $0.id.attributes.imId }

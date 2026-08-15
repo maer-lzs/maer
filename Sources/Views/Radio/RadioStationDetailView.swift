@@ -95,15 +95,30 @@ struct RadioStationDetailView: View {
         }
         .task {
             guard networkMonitor.isConnected, similar.isEmpty, !station.isManual else { return }
-            let pool: [RadioStation]
-            if let tag = station.tags.first, !tag.isEmpty {
-                pool = (try? await RadioBrowserClient.byTag(tag: tag, limit: 20)) ?? []
-            } else if let cc = station.countryCode, !cc.isEmpty {
-                pool = (try? await RadioBrowserClient.byRegion(countryCode: cc, limit: 20)) ?? []
-            } else {
-                pool = []
+            // Geraetebefund cadb47c: "similar" was the FIRST community tag,
+            // worldwide — WDR 5 carries "chanson" and got the Russian Шансон
+            // top list. Similar means: from the SAME country, sharing tags.
+            // The country pool comes first and is ranked by tag overlap; the
+            // worldwide tag list only fills when the country yields nothing.
+            let stationTags = Set(station.tags.map { $0.lowercased() }.filter { !$0.isEmpty })
+            var pool: [RadioStation] = []
+            if let cc = station.countryCode, !cc.isEmpty {
+                let national = (try? await RadioBrowserClient.byRegion(countryCode: cc, limit: 80)) ?? []
+                pool = national
+                    .filter { !Set($0.tags.map { $0.lowercased() }).isDisjoint(with: stationTags) }
+                if pool.isEmpty { pool = national }
             }
-            let cleaned = Array(pool.filter { $0.id != station.id }.prefix(10))
+            if pool.isEmpty, let tag = station.tags.first, !tag.isEmpty {
+                pool = (try? await RadioBrowserClient.byTag(tag: tag, limit: 20)) ?? []
+            }
+            // Rank by tag overlap so the closest neighbours lead.
+            let ranked = pool
+                .filter { $0.id != station.id }
+                .sorted {
+                    Set($0.tags.map { $0.lowercased() }).intersection(stationTags).count
+                        > Set($1.tags.map { $0.lowercased() }).intersection(stationTags).count
+                }
+            let cleaned = Array(ranked.prefix(10))
             RadioProvider.shared.remember(cleaned)
             similar = cleaned
         }
