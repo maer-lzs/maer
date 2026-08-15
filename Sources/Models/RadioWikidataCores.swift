@@ -510,36 +510,32 @@ nonisolated enum RadioWikidataCores {
             "TRT World Radio",  // Q31190992
         ],
         "US": [
-            "Voice of America",  // Q228389
-            "Radio Free Europe/Radio Liberty",  // Q485500
-            "Radio Free Asia",  // Q40322
             "KEXP",  // Q761627
-            "Trans World Radio",  // Q702641
             "KCRW",  // Q588294
             "KROQ-FM",  // Q1191043
             "KIIS-FM",  // Q1582014
             "WABC",  // Q1322074
             "WHTZ",  // Q2355524
             "WINS",  // Q3564690
-            "SomaFM",  // Q944715
             "WFMU",  // Q1434878
             "WHSQ",  // Q1450606
             "WNYC",  // Q1551068
             "Apple Music 1",  // Q28127039
-            "ESPN Radio",  // Q3046168
-            "Fox News Radio",  // Q5476834
             "KRDC",  // Q605758
             "WQXR-FM",  // Q7954831
-            "K-LOVE",  // Q1286098
             "KDKA",  // Q1718482
-            "ESPN Deportes Radio",  // Q3046154
             "WOR",  // Q3564763
-            "Adventist World Radio",  // Q379826
-            "ABC News Radio",  // Q4650210
             "WYFR",  // Q550300
             "WDIA",  // Q1118627
-            "WWVB",  // Q14685146
             "WQHT",  // Q1630673
+            "WMVP",  // Q3564732
+            "WRMI",  // Q3564785
+            "WWJ",  // Q3564859
+            "WIMZ-FM",  // Q365258
+            "WBUR-FM",  // Q7947483
+            "WBZ",  // Q7947580
+            "WCCO",  // Q7947667
+            "WFUV",  // Q7949568
         ],
         "ZA": [
             "Springbok Radio",  // Q2313870

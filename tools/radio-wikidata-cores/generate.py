@@ -98,8 +98,13 @@ from u3_swifttabelle import swift_tabelle      # noqa: E402
 ENDPUNKT_VORGABE = "https://query.wikidata.org/sparql"
 KENNUNG = "Maer-radio-core-generator/1.0 (https://git.lschroeder.eu/the-owner/maer)"
 ERSTHAND = {"DE", "AT", "CH"}          # dort gelten die Ersthand-Tabellen
+# Anker-Laender: der EBU-Mitgliedschaftsfilter wird hier durch eine benannte
+# Anstalt ersetzt. `None` heisst: fuer dieses Land greift kein Anker, der Kern
+# kommt allein aus der laenderweiten Toplist — beim NPR-Anker war das der
+# gemessene Ballon-41-Befund (NPR ist ein VERBUND; die Mitgliedssender gehoeren
+# ihm nicht ueber P127/P137/P749), e9ee804 nimmt ihn deshalb ersatzlos raus.
 ANKER = {
-    "US": "Q671510",     # NPR
+    "US": None,          # NPR greift strukturell nicht (Verbund)
     "AU": "Q781365",     # Australian Broadcasting Corporation
     "JP": "Q212128",     # NHK
     "KR": "Q498825",     # Korean Broadcasting System
@@ -107,6 +112,16 @@ ANKER = {
     "ZA": "Q1419926",    # South African Broadcasting Corporation
     "IN": "Q1321122",    # All India Radio
 }
+# e9ee804 (owner decision, Option A): DATEN-Flag, kein Code-Sonderweg —
+# in diesen Laendern verlangt die Toplist zusaetzlich die Inlands-Lizenzstadt
+# (`wdt:P1408`, "licensed to broadcast to"). Sitelinks messen BEKANNTHEIT:
+# ohne den Filter fuehren die Auslandsdienste (VOA/RFE/RFA/TWR) die US-Liste
+# an, obwohl sie kein US-Publikum haben. Mit dem Filter fallen sie
+# STRUKTURELL raus (sie haben keine Lizenzstadt) — positive Einschluss-
+# Konstruktion statt Ausschlussliste. Ein Land mit demselben Problem ist
+# morgen eine Datenzeile hier.
+NUR_INLANDSLIZENZ = {"US"}
+
 MIN_KERN = 5
 MAX_KERN = 30
 LABEL_SPRACHEN = ("en,fr,de,it,es,pl,cs,nl,sv,da,no,fi,pt,hu,ro,el,tr,uk,ja,ko,zh")
@@ -212,12 +227,14 @@ SELECT DISTINCT ?station ?stationLabel ?sitelinks WHERE {{
 
 
 def abfrage_toplist_rang(ccode):
+    # Die Flag-Abfrage ist dieselbe Toplist mit einer Tripel-Zeile mehr.
+    lizenz = "  ?station wdt:P1408 ?lizenzstadt .\n" if ccode in NUR_INLANDSLIZENZ else ""
     return f"""
 SELECT DISTINCT ?station ?sitelinks WHERE {{
   ?station wdt:P31 wd:Q14350 .
   ?station wdt:P17 ?country .
   ?country wdt:P297 "{ccode}" .
-  ?station wikibase:sitelinks ?sitelinks .
+{lizenz}  ?station wikibase:sitelinks ?sitelinks .
   FILTER(?sitelinks >= 5)
 }} ORDER BY DESC(?sitelinks) LIMIT 60"""
 
@@ -230,6 +247,29 @@ SELECT ?station ?stationLabel ?sitelinks WHERE {{
   ?station wikibase:sitelinks ?sitelinks .
   SERVICE wikibase:label {{ bd:serviceParam wikibase:language "{LABEL_SPRACHEN}" . }}
 }}"""
+
+
+def _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen):
+    """Die zweistufige Landes-Toplist (erst ranken ohne Label-Dienst, dann nur
+    die Spitze beschriften — die Antwort auf ein 504). EINE Stelle fuer beide
+    Wege: mit Anker und ohne (e9ee804). `schlafen` kommt wie ueberall von
+    aussen herein, damit ein Test die Pause nicht wirklich abwartet."""
+    r_zeilen, r_urteil = _mit_urteil(abfrage_toplist_rang(ccode), endpunkt,
+                                     "toplist", **kw)
+    r_urteil["land"] = ccode
+    urteile.append(r_urteil)
+    if r_zeilen is None:
+        return
+    qids = [z["station"]["value"].rsplit("/", 1)[1] for z in r_zeilen]
+    schlafen(pause)
+    l_zeilen, l_urteil = _mit_urteil(abfrage_toplist_label(qids), endpunkt,
+                                     "toplist", **kw)
+    l_urteil["land"] = ccode
+    urteile.append(l_urteil)
+    if l_zeilen is not None:
+        # setdefault, NICHT je_land[ccode]: ohne Anker gibt es den Eintrag
+        # noch gar nicht — genau der US-Fall.
+        sammeln(l_zeilen, je_land.setdefault(ccode, {}))
 
 
 def sammeln(zeilen, hinein):
@@ -292,6 +332,13 @@ def messen(endpunkt, schlafen=time.sleep, oeffnen=None, nur_laender=None,
     for ccode, anker in sorted(ANKER.items()):
         if nur_laender and ccode not in nur_laender:
             continue
+        if anker is None:
+            # Datenlage, kein Fehlschlag: dieses Land traegt seinen Kern
+            # allein aus der Toplist (siehe ANKER-Kommentar).
+            anker_ohne_treffer.append(ccode)
+            schlafen(pause)
+            _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen)
+            continue
         schlafen(pause)
         a_zeilen, a_urteil = _mit_urteil(abfrage_anker(ccode, anker), endpunkt,
                                          "anker", **kw)
@@ -316,22 +363,7 @@ def messen(endpunkt, schlafen=time.sleep, oeffnen=None, nur_laender=None,
             sammeln(a_zeilen, je_land.setdefault(ccode, {}))
 
         schlafen(pause)
-        r_zeilen, r_urteil = _mit_urteil(abfrage_toplist_rang(ccode), endpunkt,
-                                         "toplist", **kw)
-        r_urteil["land"] = ccode
-        urteile.append(r_urteil)
-        if r_zeilen is None:
-            continue
-        qids = [z["station"]["value"].rsplit("/", 1)[1] for z in r_zeilen]
-        schlafen(pause)
-        l_zeilen, l_urteil = _mit_urteil(abfrage_toplist_label(qids), endpunkt,
-                                         "toplist", **kw)
-        l_urteil["land"] = ccode
-        urteile.append(l_urteil)
-        if l_zeilen is not None:
-            # setdefault, NICHT je_land[ccode]: bei leerem Anker gibt es den
-            # Eintrag noch gar nicht — genau der US-Fall.
-            sammeln(l_zeilen, je_land.setdefault(ccode, {}))
+        _toplist(ccode, endpunkt, pause, je_land, urteile, kw, schlafen)
 
     # Die ROHZAHL vor jeder Kappung — sie ist das, was gegen the reviewer's
     # Groessenordnungen abgeglichen wird. the implementer's Skript kappte zuerst und
