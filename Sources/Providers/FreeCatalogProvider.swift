@@ -136,6 +136,11 @@ final class FreeCatalogProvider: AudioProvider {
 
     func remember(popular doc: ArchivePopularDoc) -> LibraryItem? {
         guard let identifier = doc.identifier else { return nil }
+        // 🟡 P10: a KNOWN-dead identifier never becomes a tile again — the
+        // curated rows skip it and fill up. Search and direct navigation do
+        // not read this list (same line as "not interested"): they answer
+        // what the index holds, and a dead item there is honest.
+        guard !DeadCatalogItems.isDead(identifier) else { return nil }
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         rememberCollections(doc.collection?.values, forItemId: id)

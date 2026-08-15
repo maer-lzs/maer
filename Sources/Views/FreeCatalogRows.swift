@@ -130,6 +130,26 @@ enum FreeCatalogLoader {
     /// tiles mix into Discover; constant, not a setting.
     static let discoverBookCap = 3
 
+    /// Take the first `cap` items that are still ALIVE — probing forward
+    /// through the list, so a withdrawn record is replaced rather than
+    /// leaving a gap. `unknown` (service down) counts as usable: a network
+    /// failure must not empty the row (a throw is not an end).
+    static func livePicks(from items: [LibraryItem], cap: Int) async -> [LibraryItem] {
+        var out: [LibraryItem] = []
+        for item in items {
+            guard out.count < cap else { break }
+            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
+            guard item.id.hasPrefix(FreeCatalog.archivePrefix) else {
+                out.append(item)
+                continue
+            }
+            let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
+            DeadCatalogItems.note(liveness, for: identifier)
+            if liveness != .dead { out.append(item) }
+        }
+        return out
+    }
+
     static func load() async -> Rows {
         // 5034add: master off ⇒ nothing loads, nothing fetches — the whole
         // catalog feature is dark (UI gates hide the surfaces separately).
@@ -160,7 +180,15 @@ enum FreeCatalogLoader {
                     Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
                 }
                 let items = docs.compactMap { provider.remember(popular: $0) }
-                rows.discoverBooks = Array(items.prefix(Self.discoverBookCap))
+                // 🟡 P10: the FEW shown picks get a cheap liveness probe —
+                // one metadata GET each, and only for them. Rationale (the
+                // order left the choice): purely reactive marking would only
+                // remove a ghost record AFTER someone tapped it, which is
+                // exactly the experience being complained about; probing
+                // whole rows would cost dozens of requests per start.
+                // Three picks are affordable and fix the visible surface.
+                rows.discoverBooks = await Self.livePicks(from: items,
+                                                          cap: Self.discoverBookCap)
                 // cb99bf6: ONE fetch, two cuts — the tab row shows more.
                 rows.tabBooks = items
             } catch {

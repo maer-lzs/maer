@@ -284,11 +284,15 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     private var radioSection: some View {
         if RadioHomePresentation.showsSection(radioActive: RadioProvider.shared.isAvailable,
                                               recentsCount: radioRecents.count) {
-            // Zuletzt class: the Featured card, like the radio tab's own
-            // Zuletzt row (a1077a9 — Start-Radio-Reihe zieht mit).
-            RadioFeaturedCardRow(title: String(localized: "Radio"),
-                                 stations: radioRecents,
-                                 playerCoordinator: playerCoordinator)
+            // ceb2a6a (the owner): on START the compact TILE form — the big
+            // featured card is too dominant here, where every other row runs
+            // at tile density. The radio tab keeps its cards. Existing
+            // component with its frame for transparent PNGs, no copy; and
+            // the tap contract stays PLAY, because this is a Zuletzt surface.
+            RadioCardRow(title: String(localized: "Radio"),
+                         stations: radioRecents,
+                         playerCoordinator: playerCoordinator,
+                         mode: .playsOnTap)
         }
     }
 

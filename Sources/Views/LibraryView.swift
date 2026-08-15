@@ -28,6 +28,8 @@ struct LibraryView: View {
     /// Y20: single-select scope of the search page — starts at the opening
     /// tab's scope (Y13 successor).
     @State private var searchScope: SearchScope = .library
+    /// P11: inline, not persisted — like the Y3a episode grid.
+    @State private var allBooksExpanded = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
@@ -1367,17 +1369,41 @@ struct LibraryView: View {
                        destination: LibraryListRoute.allBooks)
             AudiobookStockGrid(viewModel: viewModel,
                                playerCoordinator: playerCoordinator,
-                               limit: AudiobookStockGrid.previewLimit)
+                               limit: allBooksPreviewLimit)
+            // P11: more IN PLACE, next to the heading chevron that leads to
+            // the full page. The shared expander (Regel 2); G8 decides its
+            // existence — with a small stock there is nothing to unfold.
+            ShowMoreRow(expanded: $allBooksExpanded,
+                        hasMore: allBooksHasMore,
+                        accessibilityId: "all-books-show-more")
         }
+    }
+
+    private var allBooksPreviewLimit: Int {
+        allBooksExpanded ? AudiobookStockGrid.expandedPreviewLimit
+                         : AudiobookStockGrid.previewLimit
     }
 
     /// Books visible in the preview window (a series stack counts its members).
     private var allBooksPreviewShown: Int {
         if viewModel.sortOption == .serie {
             return AudiobookStockGrid.previewBookCount(viewModel.seriesGroupedEntries,
-                                                       limit: AudiobookStockGrid.previewLimit)
+                                                       limit: allBooksPreviewLimit)
         }
-        return min(AudiobookStockGrid.previewLimit, viewModel.sortedFilteredEntries.count)
+        return min(allBooksPreviewLimit, viewModel.sortedFilteredEntries.count)
+    }
+
+    /// G8: is there anything left to unfold? Counted the way the GRID counts
+    /// (a series stack is one cell but several books), so the line never
+    /// promises a "more" that would unfold into the same picture.
+    private var allBooksHasMore: Bool {
+        if viewModel.sortOption == .serie {
+            return AudiobookStockGrid.previewBookCount(
+                viewModel.seriesGroupedEntries,
+                limit: AudiobookStockGrid.expandedPreviewLimit) > allBooksPreviewShown
+                || viewModel.seriesGroupedEntries.count > allBooksPreviewLimit
+        }
+        return viewModel.sortedFilteredEntries.count > allBooksPreviewShown
     }
 
     // MARK: Resume from outside (quick action / Siri)

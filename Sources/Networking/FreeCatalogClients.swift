@@ -368,8 +368,31 @@ nonisolated enum ArchiveOrgClient {
         }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
-        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        // 🟡 P10: this call is the place that LEARNS whether an item still
+        // exists — every detail open and every playback start goes through
+        // it. The three-way ladder decides what may be remembered; a
+        // transport failure throws and remembers nothing (unknown).
+        let (data, response) = try await RequestRetryPolicy.fetch(request)
+        DeadCatalogItems.note(
+            DeadCatalogItems.liveness(httpStatus: response?.statusCode, body: data),
+            for: identifier)
         return try JSONDecoder().decode(MetadataResponse.self, from: data)
+    }
+
+    /// The cheap liveness probe for the few PICKS a curated row shows — one
+    /// metadata GET per pick. Never throws: a service failure answers
+    /// `unknown` and leaves the stock untouched.
+    static func liveness(identifier: String) async -> DeadCatalogItems.Liveness {
+        guard let url = URL(string: "https://archive.org/metadata/\(identifier)") else {
+            return .unknown
+        }
+        var request = URLRequest(url: url)
+        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.maer.data(for: request) else {
+            return .unknown
+        }
+        return DeadCatalogItems.liveness(
+            httpStatus: (response as? HTTPURLResponse)?.statusCode, body: data)
     }
 }
 

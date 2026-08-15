@@ -456,8 +456,13 @@ struct AudiobookStockGrid: View {
     @State private var measuredWidth: CGFloat = 0
     @State private var visibleCount = AudiobookStockGrid.pageSize
     static let pageSize = 60
-    /// 3×3 on the phone (J1); adaptive column count keeps iPad rows full.
-    static let previewLimit = 9
+    /// P11 (the owner, 225er-Bestand): the preview showed too little to read
+    /// as a stock — 24 collapsed, 48 expanded via the shared `ShowMoreRow`.
+    /// The adaptive column count keeps iPad rows full either way.
+    static let previewLimit = 24
+    /// The one expansion step; beyond it the heading chevron leads to the
+    /// full page (two ways, same logic as the capsule rows).
+    static let expandedPreviewLimit = 48
 
     private let minColumnWidth: CGFloat = 108
     private let gridSpacing: CGFloat = 16

@@ -67,18 +67,11 @@ struct LatestEpisodesGrid: View {
             // so a withAnimation transaction there gives the identical curve in
             // both directions (Y45's goal) without the per-frame tracking.
             // Curve unchanged: Y62 `.easeInOut(0.35)` (no overshoot on collapse).
-            if !alwaysExpanded, items.count > cols * 2 {
-                Button {
-                    withAnimation(.easeInOut(duration: 0.35)) { expanded.toggle() }
-                } label: {
-                    Label(expanded ? String(localized: "Show Less")
-                                   : String(localized: "Show More"),
-                          systemImage: expanded ? "chevron.up" : "chevron.down")
-                        .font(.subheadline.weight(.medium))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(AppTheme.accent)
-                .padding(.horizontal)
+            // P11: the anatomy now lives in `ShowMoreRow` (Regel 2) — the
+            // trace finding above is preserved there, not restated here.
+            if !alwaysExpanded {
+                ShowMoreRow(expanded: $expanded, hasMore: items.count > cols * 2,
+                            accessibilityId: "episodes-show-more")
             }
         }
         .background(
