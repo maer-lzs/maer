@@ -31,6 +31,31 @@ struct PodcastPremiumMatchTests {
         #expect(PodcastPremiumMatch.episodeMatches(free: free, premium: premium) == ["rss:f:1": "rss:p:9"])
     }
 
+    /// The FRESH case of the twin gate: Apple's progress rows carry the free
+    /// feed's enclosures, our subscribed episodes carry the premium ones —
+    /// the bridge maps one onto the other with the SAME matching rule the
+    /// replacement path uses. Without it, arriving progress fell silently
+    /// wherever the global title fallback did not reach.
+    @Test("the enclosure bridge maps free enclosures onto premium guids")
+    func enclosureBridge() {
+        let free = [
+            episode("f1", title: "Folge 1", audio: "https://free.cdn/e1.mp3?x=1", pubDate: 100),
+            episode("f2", title: "Folge 2", audio: "https://free.cdn/e2.mp3", pubDate: 200),
+            episode("f3", title: "", audio: "", pubDate: 300),
+        ]
+        let premium = [
+            // Different host, different tokens — only the title+date rule can
+            // pair these, exactly the ZEIT shape.
+            episode("p1", title: "Folge 1", audio: "https://premium.cdn/a.mp3?tok=abc", pubDate: 100),
+            episode("p2", title: "Folge 2", audio: "https://premium.cdn/b.mp3?tok=abc", pubDate: 200),
+        ]
+        let bridge = PodcastPremiumMatch.enclosureBridge(free: free, premium: premium)
+        #expect(bridge["free.cdn/e1.mp3"] == "p1")
+        #expect(bridge["free.cdn/e2.mp3"] == "p2")
+        // An unmatchable episode contributes no key — nothing invented.
+        #expect(bridge.count == 2)
+    }
+
     @Test("ambiguous premium enclosures poison the key — no match")
     func ambiguousEnclosure() {
         let free = [episode("f1", title: "A", audio: "https://h/e.mp3")]

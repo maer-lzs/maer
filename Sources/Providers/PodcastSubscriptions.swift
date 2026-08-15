@@ -664,6 +664,13 @@ final class PodcastSubscriptions: ObservableObject {
            }) {
             let matches = PodcastPremiumMatch.episodeMatches(free: show.episodes,
                                                              premium: premium.episodes)
+            // The FRESH case needs a bridge, not only the redirect below:
+            // Apple's progress rows arrive AFTER this skip and carry the free
+            // feed's enclosures — without the bridge only the title fallback
+            // caught some of them, the rest fell silently.
+            twinEnclosureBridge.merge(
+                PodcastPremiumMatch.enclosureBridge(free: show.episodes,
+                                                    premium: premium.episodes)) { old, _ in old }
             var redirected = 0
             let defaults = UserDefaults.standard
             for (freeGuid, premiumGuid) in matches {
@@ -849,6 +856,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// — read by the import loops for their counter, never shown raw.
     private(set) var lastFreeTwinSkip: (title: String, redirected: Int)?
 
+    /// Normalized free enclosure → premium guid, collected while an import
+    /// skips free twins — `applyAppleProgress` reads it as its third matching
+    /// step. Cleared at the start of each Apple import.
+    private var twinEnclosureBridge: [String: String] = [:]
+
     /// Import an OPML file: subscribe to every `xmlUrl` feed (no progress).
     /// `nil` when the file is not well-formed OPML/XML (O1: visible failure
     /// instead of a silent partial import).
@@ -873,6 +885,7 @@ final class PodcastSubscriptions: ObservableObject {
             PodcastImport.readAppleLibrary(at: url)
         }).value else { return nil }
         var result = ImportResult()
+        twinEnclosureBridge = [:]
         for feed in library.feedURLs {
             lastFreeTwinSkip = nil
             if await subscribe(urlString: feed) {
@@ -924,15 +937,30 @@ final class PodcastSubscriptions: ObservableObject {
             }
         }
 
+        // Third step, the twin bridge: Apple rows whose enclosure belongs to
+        // a SKIPPED free twin map onto the premium episode the matcher chose.
+        var appleByPremiumGuid: [String: PodcastImport.AppleProgress] = [:]
+        for (key, p) in byURL {
+            if let premiumGuid = twinEnclosureBridge[key] {
+                appleByPremiumGuid[premiumGuid] = p
+            }
+        }
+
         var updated = shows
         var applied = 0
         var viaTitle = 0
+        var viaTwin = 0
         var keptLocal = 0
+        var matchedKeys: Set<String> = []
         let nowMs = Date().timeIntervalSince1970 * 1000
         for s in updated.indices {
             for e in updated[s].episodes.indices {
                 let episode = updated[s].episodes[e]
                 var match = byURL[Self.normalizeEnclosure(episode.audioURL)]
+                if match == nil, let bridged = appleByPremiumGuid[episode.guid] {
+                    match = bridged
+                    viaTwin += 1
+                }
                 if match == nil {
                     let raw = episode.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                     if ourTitleCounts[raw] == 1, let candidate = byTitle[raw] ?? nil,
@@ -942,6 +970,7 @@ final class PodcastSubscriptions: ObservableObject {
                     }
                 }
                 guard let match else { continue }
+                matchedKeys.insert(Self.normalizeEnclosure(match.enclosureURL))
                 // If the feed lacks the duration (no `itunes:duration`), take
                 // Apple's — otherwise "played" (time ≥ duration−1) can never apply.
                 if episode.duration <= 0, match.duration > 0 {
@@ -959,7 +988,10 @@ final class PodcastSubscriptions: ObservableObject {
                 applied += 1
             }
         }
-        Logger.rss.notice("APPLE import: applied=\(applied) viaTitle=\(viaTitle) localKept=\(keptLocal)")
+        // Nothing falls silently: rows no episode claimed are counted and
+        // named — they are the measurement for the next matching gap.
+        let unmatched = byURL.count - matchedKeys.count
+        Logger.rss.notice("APPLE import: applied=\(applied) viaTitle=\(viaTitle) viaTwin=\(viaTwin) localKept=\(keptLocal) unmatched=\(unmatched)")
         if applied > 0 {
             shows = updated   // adopt possibly corrected durations (didSet rebuilds the index)
             save()

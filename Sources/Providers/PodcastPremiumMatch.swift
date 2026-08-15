@@ -33,6 +33,24 @@ nonisolated enum PodcastPremiumMatch {
         return !a.isEmpty && a == normalizedTitle(titleB)
     }
 
+    /// Normalized FREE enclosure → premium guid — the bridge the import needs:
+    /// Apple's rows carry the free feed's enclosures, our subscribed episodes
+    /// carry the premium ones, and the two never meet by URL. Derived from
+    /// `episodeMatches`, so both directions share ONE matching rule.
+    static func enclosureBridge(
+        free: [PodcastEpisode], premium: [PodcastEpisode]
+    ) -> [String: String] {
+        let matches = episodeMatches(free: free, premium: premium)
+        var bridge: [String: String] = [:]
+        for episode in free {
+            guard let premiumGuid = matches[episode.guid] else { continue }
+            let key = PodcastSubscriptions.normalizeEnclosure(episode.audioURL)
+            guard !key.isEmpty else { continue }
+            bridge[key] = premiumGuid
+        }
+        return bridge
+    }
+
     /// freeGuid → premiumGuid. Primary: normalized enclosure URL equality.
     /// Fallback: normalized episode title UNIQUE on both sides AND publish
     /// dates within the window. Any ambiguity (duplicate enclosures/titles)
