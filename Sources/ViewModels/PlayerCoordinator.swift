@@ -92,7 +92,23 @@ final class PlayerCoordinator: ObservableObject {
         return remaining
     }
 
+    /// 🔴 P15: every `open()` draws a GENERATION. After each await the call
+    /// asks "am I still the current one?" — a stale return cleans itself up
+    /// (including a player it already built) instead of starting a second
+    /// audio track. Without this, hammering play on a bad connection queued
+    /// several calls in the network timeouts, and when the connection came
+    /// back they ALL returned and started: overlapping playback. The
+    /// `viewModel?.stop()` at the top cannot help there, because the racers
+    /// are long past it.
+    private var openGate = OpenGate()
+
+    private var openGeneration: Int { openGate.current }
+
     func open(item: LibraryItem, autoplay: Bool = true, restart: Bool = false) async {
+        // Coalesce + draw a generation — the rule itself lives in `OpenGate`
+        // (pure, tested): the same title already on its way answers nil.
+        guard let generation = openGate.begin(itemId: item.id, restart: restart) else { return }
+        defer { openGate.finish(generation) }
         // Whatever you START playing leaves the global "Up Next" queue — the
         // currently playing item is never in it ("launchpad, not playlist").
         // Covers audiobooks, podcasts and music alike.
@@ -138,48 +154,75 @@ final class PlayerCoordinator: ObservableObject {
         // Determine the item's source (server vs. local files) — the injected
         // `provider` is the default source, local items are routed away.
         let itemProvider = AppSession.shared.provider(for: item.id)
+        // 🔴 P15 (2): DOWNLOADED means LOCAL FIRST — always, not only when
+        // the monitor says "offline". The degraded case (connected but
+        // unusable, one bar of LTE) ran into the network timeouts although
+        // the book AND its detail were on the device. This is no new code
+        // path: the offline route becomes the DOWNLOAD route, and the
+        // network state only decides whether a background reconciliation
+        // follows.
+        if DownloadManager.shared.isDownloaded(itemId: item.id),
+           let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
+            await start(detail: cached, item: item, provider: itemProvider,
+                        offlineFallback: true, autoplay: autoplay, restart: restart,
+                        carriedSleep: carriedSleep, generation: generation)
+            // The server side follows AFTERWARDS and corrects the position
+            // through the existing server-wins/echo-guard mechanics — it must
+            // never hard-jump a RUNNING playback (that rule lives in
+            // `playWithServerCheck`, which is exactly what runs here).
+            return
+        }
         do {
             let detail = try await itemProvider.fetchItemDetail(itemId: item.id)
-            let newViewModel = PlayerViewModel(provider: itemProvider)
-            // X16: a finished title has nothing left to resume — its saved
-            // position is the end. A deliberate play (autoplay) therefore restarts
-            // from the beginning via the existing restart mechanic; a silent
-            // restore (autoplay == false) leaves it untouched.
-            let effectiveRestart = Self.resolvesToRestart(
-                explicitRestart: restart, autoplay: autoplay,
-                isFinished: detail.userMediaProgress?.isFinished == true)
-            await newViewModel.load(item: detail, restart: effectiveRestart)
-            if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
-            attachBookEndHandler(to: newViewModel)
-            viewModel = newViewModel
-            UserDefaults.standard.set(item.id, forKey: lastItemKey)
-            if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
-            if autoplay {
-                await newViewModel.playWithServerCheck()
-            }
+            guard generation == openGeneration else { return }
+            await start(detail: detail, item: item, provider: itemProvider,
+                        offlineFallback: false, autoplay: autoplay, restart: restart,
+                        carriedSleep: carriedSleep, generation: generation)
         } catch {
             // Server unreachable (e.g. offline on the go) — if the book is
             // downloaded, continue with the book details saved at download time
             // instead of failing entirely. Without this even a long-downloaded
             // book would need a working server connection just to open.
+            guard generation == openGeneration else { return }
             if let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
-                let newViewModel = PlayerViewModel(provider: itemProvider)
-                let effectiveRestart = Self.resolvesToRestart(
-                    explicitRestart: restart, autoplay: autoplay,
-                    isFinished: cached.userMediaProgress?.isFinished == true)
-                await newViewModel.load(item: cached, isOfflineFallback: true, restart: effectiveRestart)
-                if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
-                attachBookEndHandler(to: newViewModel)
-                viewModel = newViewModel
-                UserDefaults.standard.set(item.id, forKey: lastItemKey)
-                if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
-                if autoplay {
-                    await newViewModel.playWithServerCheck()
-                }
+                await start(detail: cached, item: item, provider: itemProvider,
+                            offlineFallback: true, autoplay: autoplay, restart: restart,
+                            carriedSleep: carriedSleep, generation: generation)
             } else {
                 loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 activeItem = nil
             }
+        }
+    }
+
+    /// The ONE start path for both routes (server detail and local detail) —
+    /// it was duplicated before, which is why the generation check would have
+    /// had to be written twice. Every await is followed by the generation
+    /// question: a stale return stops the player it built instead of leaving
+    /// a second track running.
+    private func start(detail: LibraryItemDetail, item: LibraryItem,
+                       provider: any AudioProvider, offlineFallback: Bool,
+                       autoplay: Bool, restart: Bool,
+                       carriedSleep: TimeInterval?, generation: Int) async {
+        let newViewModel = PlayerViewModel(provider: provider)
+        // X16: a finished title has nothing left to resume — its saved
+        // position is the end. A deliberate play (autoplay) therefore restarts
+        // from the beginning via the existing restart mechanic; a silent
+        // restore (autoplay == false) leaves it untouched.
+        let effectiveRestart = Self.resolvesToRestart(
+            explicitRestart: restart, autoplay: autoplay,
+            isFinished: detail.userMediaProgress?.isFinished == true)
+        await newViewModel.load(item: detail, isOfflineFallback: offlineFallback,
+                                restart: effectiveRestart)
+        guard generation == openGeneration else { newViewModel.stop(); return }
+        if effectiveRestart { onItemRestarted?(item.id) }   // X16b: clear the local finished flag
+        attachBookEndHandler(to: newViewModel)
+        viewModel = newViewModel
+        UserDefaults.standard.set(item.id, forKey: lastItemKey)
+        if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
+        if autoplay {
+            await newViewModel.playWithServerCheck()
+            guard generation == openGeneration else { newViewModel.stop(); return }
         }
     }
 
