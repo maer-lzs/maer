@@ -17,15 +17,14 @@ import Foundation
 /// logged. Semi-annual maintenance = replace a table with the next round's
 /// names.
 nonisolated enum RadioListenerCores {
-    /// The ONE visible priority mapping (72d233f (4)): a country with a
-    /// first-hand table wins; countries without one keep votes pure. (Stage
-    /// 2 — Wikidata cores for non-DACH — inserts between these two branches.)
+    /// The ONE visible priority mapping (72d233f (4)):
+    /// first-hand survey > Wikidata core > votes pure.
     static func national(countryCode: String?) -> [String]? {
         switch countryCode?.uppercased() {
         case "DE": return germanyNational
         case "AT": return austriaNational
         case "CH": return switzerlandNational
-        default: return nil
+        default: return RadioWikidataCores.national(countryCode: countryCode)
         }
     }
 

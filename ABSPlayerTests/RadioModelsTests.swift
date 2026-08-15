@@ -607,7 +607,14 @@ struct RadioListenerCoreTests {
             #expect(core != nil && !(core ?? []).isEmpty)
             #expect(Set(core ?? []).count == (core ?? []).count)   // no dupes
         }
-        #expect(RadioListenerCores.national(countryCode: "FR") == nil)
+        // Priority chain (72d233f (4)): countries without a survey fall to
+        // the Wikidata core; countries without either stay votes-pure.
+        #expect(RadioListenerCores.national(countryCode: "FR")?.isEmpty == false)
+        #expect(RadioListenerCores.national(countryCode: "FR")
+            == RadioWikidataCores.national(countryCode: "FR"))
+        #expect(RadioListenerCores.national(countryCode: "DE")
+            == RadioListenerCores.germanyNational)   // survey beats Wikidata
+        #expect(RadioListenerCores.national(countryCode: "XK") == nil)
         #expect(RadioListenerCores.national(countryCode: nil) == nil)
     }
 
@@ -684,6 +691,22 @@ struct RadioListenerCoreTests {
                    rb("r886", "radio 88.6", votes: 1450, cc: "AT")],
             countryCode: "AT")
         #expect(vienna.stations.map(\.name) == ["radio 88.6"])
+    }
+
+    @Test func wikidataCoresAreWellFormedAndProbePlausibly() {
+        // Abnahme (72d233f): UK/FR cores lead with the public broadcaster.
+        let gb = RadioWikidataCores.national(countryCode: "GB") ?? []
+        #expect(gb.prefix(5).allSatisfy { $0.contains("BBC") })
+        let fr = RadioWikidataCores.national(countryCode: "FR") ?? []
+        #expect(fr.prefix(6).filter { $0.contains("France") || $0 == "FIP" }.count >= 4)
+        for (code, table) in RadioWikidataCores.tables {
+            #expect(!table.isEmpty && Set(table).count == table.count, "\(code) dupes")
+        }
+        // First-hand countries stay OUT of the generated table — the
+        // priority place decides, the data never carries both.
+        for code in ["DE", "AT", "CH"] {
+            #expect(RadioWikidataCores.tables[code] == nil)
+        }
     }
 
     @Test func lookupQueriesCoverTheReferenceMisses() {
