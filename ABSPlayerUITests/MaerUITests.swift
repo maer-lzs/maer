@@ -426,8 +426,10 @@ nonisolated final class MaerUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 15),
                       "serverless start must land in the app")
-        XCTAssertFalse(app.buttons["tab-audiobooks"].firstMatch.exists,
-                       "no book source → no audiobooks tab")
+        // FLIPPED assurance (affb7e6): serverless, EVERY tab opens and
+        // shows its free core — a missing server hides sections, never tabs.
+        XCTAssertTrue(app.buttons["tab-audiobooks"].firstMatch.waitForExistence(timeout: 10),
+                      "serverless, the audiobooks tab must exist and carry the free area")
         app.terminate()
     }
 
@@ -459,9 +461,10 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// Y37: the source toggle drives the tab bar LIVE in both directions —
-    /// switching the music source off removes the Music tab without a restart,
-    /// switching it back on restores it.
+    /// FLIPPED assurance (affb7e6): the SOURCE toggle no longer touches the
+    /// tab bar — a tab is the user's master decision, a source only fills or
+    /// empties its section. The MASTER toggle (settings → Libraries) is what
+    /// removes and restores the tab, live.
     func testMusicSourceToggleUpdatesTabs() {
         let app = launchSeeded()
         let music = app.buttons["tab-music"].firstMatch
@@ -502,12 +505,34 @@ nonisolated final class MaerUITests: XCTestCase {
             done.tap()
         }
 
-        setMusicToggle()   // off
-        XCTAssertTrue(music.waitForNonExistence(timeout: 10),
-                      "switching the source off must remove the tab live")
-        setMusicToggle()   // on again
+        func setMasterToggle() {
+            let gear = app.buttons["open-settings"].firstMatch
+            XCTAssertTrue(gear.waitForExistence(timeout: 10))
+            gear.tap()
+            let toggle = app.switches["tab-master-music"].firstMatch
+            var swipes = 0
+            while !toggle.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
+            XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+            let before = toggle.value as? String
+            toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+            let flipped = NSPredicate(format: "value != %@", before ?? "")
+            XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
+                                          timeout: 5), .completed, "the master toggle must flip")
+            let done = app.buttons["settings-done"].firstMatch
+            XCTAssertTrue(done.waitForExistence(timeout: 5))
+            done.tap()
+        }
+
+        setMusicToggle()   // SOURCE off
         XCTAssertTrue(music.waitForExistence(timeout: 10),
-                      "switching the source on must restore the tab live")
+                      "the source toggle must NOT remove the tab — sections empty, tabs stay")
+        setMusicToggle()   // source on again
+        setMasterToggle()  // MASTER off
+        XCTAssertTrue(music.waitForNonExistence(timeout: 10),
+                      "the master toggle removes the tab live")
+        setMasterToggle()  // master on again
+        XCTAssertTrue(music.waitForExistence(timeout: 10),
+                      "the master toggle restores the tab live")
     }
 
     /// F4/F5: the radio tab appears with the source switched on (seeded
@@ -1310,15 +1335,24 @@ nonisolated final class MaerUITests: XCTestCase {
         // list row ("Seed Radio One") is the stable anchor at the top.
         let row = app.staticTexts["Seed Radio One"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
-        // The tap opens the FULL player. Under full-suite load a tap can
-        // land inside a settle animation and fizzle — one deliberate retry
-        // (same hardening as the drive-mode journey).
-        if !app.buttons["player-queue"].firstMatch.waitForExistence(timeout: 12) {
-            row.tap()
+        // NEW CONTRACT (e285465): the row tap NAVIGATES — play is the
+        // explicit control. The first favorites row carries the seed station,
+        // its play control starts playback and opens the full player.
+        let play = app.buttons.matching(identifier: "station-play").firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 10),
+                      "the explicit play control must exist on the row")
+        play.tap()
+        // Playback binds to the tapped station: the mini bar carries its name.
+        // Under full-suite load a tap can land inside a settle animation and
+        // fizzle — one deliberate retry (drive-mode hardening).
+        let miniBar = app.buttons["Seed Radio One"].firstMatch
+        if !miniBar.waitForExistence(timeout: 12) {
+            play.tap()
         }
-        XCTAssertTrue(app.buttons["player-queue"].firstMatch.waitForExistence(timeout: 20),
-                      "the full player must open from the row tap")
+        XCTAssertTrue(miniBar.waitForExistence(timeout: 20),
+                      "the play control must start the tapped station")
+        // The full player opens from the mini bar — the deterministic route.
+        miniBar.tap()
         // Identity + G8 in one: the tappable title source entry must exist
         // AND carry the tapped station's name (chevron renders only when
         // the target resolves).
