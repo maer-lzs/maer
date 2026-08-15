@@ -116,7 +116,10 @@ enum PodcastSections {
 
     nonisolated static func lastPlayed(id: String, snapshot: StateSnapshot) -> Double {
         (snapshot.equivalents[id] ?? [id]).reduce(0.0) { best, eqId in
-            let localTs = snapshot.positions[eqId]?.last ?? 0
+            // Through ProgressMark, never .last: on a three-value entry
+            // .last is the DURATION — Continue sorted hour-long episodes to
+            // the top regardless of when they were heard.
+            let localTs = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0
             let absTs = snapshot.serverProgress[eqId]?.lastUpdate ?? 0
             return max(best, max(localTs, absTs))
         }

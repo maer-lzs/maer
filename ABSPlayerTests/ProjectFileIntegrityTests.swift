@@ -314,6 +314,30 @@ struct ProjectFileIntegrityTests {
     /// in a list at the other end of the project exempts everything in it
     /// forever — a 700-line provider went blind that way, and the tenth
     /// occurrence of this very class hid behind it.
+    /// One line's verdict, factored so the proof run below can feed the fence
+    /// the exact shapes it went blind on.
+    private static func playedReimplementations(inLine line: String) -> [String] {
+        let code = line.split(separator: "/").first.map(String.init) ?? line
+        guard !line.contains("progress-fence:") else { return [] }
+        var kinds: [String] = []
+        if code.contains(">= duration - 1") || code.contains(">= currentDuration - 1")
+            || code.contains(">= total - 1") {
+            kinds.append("Dauer-Vergleich")
+        }
+        // Two spellings of the same read: the key builder in the expression,
+        // and the SNAPSHOT form — a dictionary of entries whose name no longer
+        // says "localPosition". The seventh occurrence hid exactly there, in
+        // the same file as the main find, because the fence only knew the
+        // first spelling.
+        // ".last", not ").last": the optional chain spells it ")?.last" and
+        // slipped through the stricter pattern — the proof run found that too.
+        if (code.contains("localPosition(") && code.contains(".last"))
+            || (code.contains("positions[") && code.contains(".last")) {
+            kinds.append(".last als Zeitstempel")
+        }
+        return kinds
+    }
+
     @Test("the played decision is not reimplemented anywhere")
     func playedDecisionIsNotReimplemented() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -325,19 +349,26 @@ struct ProjectFileIntegrityTests {
         for file in files where file.lastPathComponent != "ProgressMark.swift" {
             guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
             for (index, line) in text.components(separatedBy: "\n").enumerated() {
-                let code = line.split(separator: "/").first.map(String.init) ?? line
-                if line.contains("progress-fence:") { continue }
-                if code.contains(">= duration - 1") || code.contains(">= currentDuration - 1")
-                    || code.contains(">= total - 1") {
-                    offenders.append("\(file.lastPathComponent):\(index + 1) (Dauer-Vergleich)")
-                }
-                if code.contains("localPosition(") && code.contains(").last") {
-                    offenders.append("\(file.lastPathComponent):\(index + 1) (.last als Zeitstempel)")
+                for kind in Self.playedReimplementations(inLine: line) {
+                    offenders.append("\(file.lastPathComponent):\(index + 1) (\(kind))")
                 }
             }
         }
         #expect(offenders.isEmpty,
                 "these places reimplement the played decision instead of calling ProgressMark: \(offenders)")
+    }
+
+    /// The proof run: the widened read fence must FIND the seventh occurrence
+    /// verbatim — and keep finding the first spelling.
+    @Test("the read fence catches the snapshot spelling it once missed")
+    func readFenceCatchesTheSnapshotSpelling() {
+        #expect(Self.playedReimplementations(
+            inLine: "            let localTs = snapshot.positions[eqId]?.last ?? 0") == [".last als Zeitstempel"])
+        #expect(Self.playedReimplementations(
+            inLine: "let ts = defaults.array(forKey: AppStorageKeys.localPosition(id))?.last") == [".last als Zeitstempel"])
+        // The sanctioned read stays exempt.
+        #expect(Self.playedReimplementations(
+            inLine: "let ts = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0").isEmpty)
     }
 }
 #endif

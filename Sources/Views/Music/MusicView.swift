@@ -103,6 +103,7 @@ struct MusicView: View {
                 FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
             }
         .task {
+            guard serverConfigured else { return }   // no source, no fetch
             vm.sort = musicSort   // honour the persisted sort on the first load
             await vm.loadIfNeeded()
         }
@@ -153,10 +154,18 @@ struct MusicView: View {
         }
     }
 
+    /// Is any music SERVER configured? G8: the server section renders only
+    /// when it has a source behind it — the tab is on by default, so a
+    /// serverless user saw a sentence about "the connected music server"
+    /// that had no referent, with a retry that could never succeed.
+    private var serverConfigured: Bool {
+        AppStorageKeys.subsonicActive || AppStorageKeys.jellyfinActive
+    }
+
     private var content: some View {
         LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
             // Inline hint when a refresh failed but content is still shown.
-            if let error = vm.errorText {
+            if serverConfigured, let error = vm.errorText {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -169,10 +178,14 @@ struct MusicView: View {
             playlistRow
 
             // The server section decides for ITSELF — never for the tab.
+            // And only WITH a server behind it — a section without a source
+            // is omitted, not rendered with an excuse.
             // Every state has a way out (Regel 3): loading spins, an error
             // names itself with retry, and an empty answer is a sentence with
             // retry instead of a dead end that survives until a hard restart.
-            if vm.albums.isEmpty && vm.isLoading {
+            if !serverConfigured {
+                EmptyView()
+            } else if vm.albums.isEmpty && vm.isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 120)
             } else if let error = vm.errorText, vm.albums.isEmpty {
                 ContentUnavailableView {
@@ -199,8 +212,8 @@ struct MusicView: View {
             // Welle 3: shelves have their page now — chevron per COUNTING
             // (the row source loads 20, shows 12; a 20-album library shows
             // no chevron on the page-sized cut, which is the rule working).
-            if !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
-            if !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
+            if serverConfigured, !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
+            if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
             // 40f21b3 I1: the free-music areas are REACHABLE from the music
             // tab again (tab parity) — same store rows as Home, no second
             // fetch (Regel 2). I2: future free sources join THIS block.
