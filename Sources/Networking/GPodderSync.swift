@@ -137,16 +137,8 @@ final class GPodderSync {
               let serverURLs = try? await client.subscriptions() else { return nil }
         let serverRaw = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
                                    uniquingKeysWith: { a, _ in a })
-        // Y52: token feeds never take part in gpodder sync (pushing them would
-        // hand the secret to the server) — invisible to the resolution UI too.
-        // Pinchflat (a7fa35e): MIRRORED feeds (origin != nil) stay out the
-        // same way — a mirrored server group is no subscription set of the
-        // user's, and other devices without mesh access would inherit dead
-        // feeds. They mirror the server themselves instead.
-        let localRaw = Dictionary(PodcastSubscriptions.shared.shows
-            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) && $0.origin == nil }
-            .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
-            uniquingKeysWith: { a, _ in a })
+        let visible = GPodderVisibleSubscriptions.current()
+        let localRaw = visible.byNorm
         return ConflictSnapshot(localNorms: Set(localRaw.keys), serverNorms: Set(serverRaw.keys),
                                 localRaw: localRaw, serverRaw: serverRaw)
     }
@@ -271,15 +263,13 @@ final class GPodderSync {
         let serverURLs = try await client.subscriptions()
         let serverByNorm = Dictionary(serverURLs.map { (PodcastSubscriptions.normalizeFeedURL($0), $0) },
                                       uniquingKeysWith: { a, _ in a })
-        // Y52: token feeds are LOCAL-ONLY — excluded from the entire sync
-        // comparison (never pushed; their absence on the server must not read
-        // as a removal either). A token feed pushed BEFORE this policy shows up
-        // as server-only and converges off the server via the normal guarded
-        // removal path.
-        let localByNorm = Dictionary(subs.shows
-            .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) }
-            .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
-            uniquingKeysWith: { a, _ in a })
+        // The ONE source of "which local subscriptions does gpodder see"
+        // (see GPodderVisibleSubscriptions): this comparison set used to
+        // carry only HALF the rule — the mirror exclusion its own comment
+        // promised was missing, so every capsule-carrying device pushed the
+        // mirror URLs and mesh-less devices inherited them as dead feeds.
+        let visible = GPodderVisibleSubscriptions.current()
+        let localByNorm = visible.byNorm
         let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
         // 2–3-feed removals awaiting their second confirmation (from last run).
         let prevPendingLocal = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveLocal) as? [String]) ?? [])
@@ -294,7 +284,8 @@ final class GPodderSync {
         let merge = GPodderSubscriptionMerge.compute(
             local: local, server: server, prev: prev,
             pendingRemoveLocally: prevPendingLocal, pendingRemoveFromServer: prevPendingServer,
-            userRemovedLocally: PodcastSubscriptions.userRemovedFeeds())
+            userRemovedLocally: PodcastSubscriptions.userRemovedFeeds(),
+            hiddenLocally: visible.hiddenNorms)
         if merge.recoveredFromServer {
             Logger.gpodder.error("gpodder RECOVERY: local store empty, prev=\(prev.count) server=\(server.count) — adopting the server wholesale (pull only)")
         }

@@ -66,10 +66,19 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         return (apply, candidates.subtracting(apply))
     }
 
+    /// `hiddenLocally` (🔴 P1): normalized URLs that exist locally but are
+    /// invisible to gpodder (token feeds, Pinchflat mirrors — see
+    /// GPodderVisibleSubscriptions). They are absent from `local` by
+    /// construction, so a copy still sitting on the server would otherwise
+    /// read as "new on the server" and be subscribed a SECOND time. They
+    /// stay adoptable-never; their removal from the server runs through the
+    /// normal guarded path (prev ∩ server − local), which is exactly how the
+    /// leftovers converge away.
     static func compute(local: Set<String>, server: Set<String>, prev: Set<String>,
                         pendingRemoveLocally prevPendingLocal: Set<String> = [],
                         pendingRemoveFromServer prevPendingServer: Set<String> = [],
-                        userRemovedLocally: Set<String> = [])
+                        userRemovedLocally: Set<String> = [],
+                        hiddenLocally: Set<String> = [])
         -> GPodderSubscriptionMerge {
         var merge = GPodderSubscriptionMerge()
 
@@ -93,7 +102,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
                 // Fully user-explained → no recovery; fall through to the
                 // normal path, where the intent removes propagate.
             } else {
-                merge.addLocally = unexplained
+                merge.addLocally = unexplained.subtracting(hiddenLocally)
                 merge.recoveredFromServer = true
                 // The explained removes still go out (user intent, immediate).
                 merge.removeFromServer = explained.intersection(server)
@@ -104,6 +113,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
 
         merge.addToServer = local.subtracting(server).subtracting(prev)
         merge.addLocally = server.subtracting(local).subtracting(prev)
+            .subtracting(hiddenLocally)
         let removeFromServer = prev.intersection(server).subtracting(local)
         let removeLocally = prev.intersection(local).subtracting(server)
 
@@ -121,7 +131,17 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         // Server side: same shape — but USER-intended removes never count
         // toward implausibility (unsubscribing all five feeds is a decision,
         // not a glitch; 486b293).
-        let derivedServerRemoves = removeFromServer.subtracting(userRemovedLocally)
+        // 🔴 P1 cleanup: a hidden feed (mirror/token) STILL sitting on the
+        // server is a leftover from before the rule — removing it is a
+        // grounded decision, not a suspect derivation, so it does not count
+        // toward implausibility (same treatment the user's own unsubscribes
+        // get, 486b293). Without this the everyday case — more than three
+        // mirrored capsules — would be blocked FOREVER instead of cleaned.
+        // The second-confirmation guard still applies: it runs through the
+        // existing intent channel, no new sync path.
+        let cleanupIntent = hiddenLocally.intersection(removeFromServer)
+        let derivedServerRemoves = removeFromServer
+            .subtracting(userRemovedLocally).subtracting(cleanupIntent)
         if removesImplausible(count: derivedServerRemoves.count, of: server.count) {
             let text = "local state would unsubscribe \(removeFromServer.count) of \(server.count) server feeds — skipped as implausible."
             merge.warning = merge.warning.map { $0 + " " + text } ?? "gpodder: " + text
@@ -129,7 +149,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             merge.blockedRemoveFromServer = removeFromServer
         } else {
             let c = confirmRemovals(candidates: removeFromServer, prevPending: prevPendingServer,
-                                    userIntent: userRemovedLocally,
+                                    userIntent: userRemovedLocally.union(cleanupIntent),
                                     requireIntentForSingles: true)
             merge.removeFromServer = c.apply
             merge.pendingRemoveFromServer = c.pending

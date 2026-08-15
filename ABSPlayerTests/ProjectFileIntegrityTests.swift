@@ -402,3 +402,69 @@ struct ProjectFileIntegrityTests {
     }
 }
 #endif
+
+// MARK: - 🔴 P1: gpodder comparison sets read ONE visibility rule
+
+extension ProjectFileIntegrityTests {
+    /// Finds hand-rolled "what does gpodder see" filters: a `.filter {` whose
+    /// statement mentions `isTokenFeedURL`. The ONE sanctioned answer is
+    /// `GPodderVisibleSubscriptions` — the third instance of "rule sits only
+    /// where it was reported" was exactly this: two comparison sets, one of
+    /// them missing the mirror half its own comment promised.
+    ///
+    /// Statements, not lines (same mechanic as the position fence): the
+    /// offending filter spanned three lines with the condition on the second.
+    static func handRolledGPodderFilters(in text: String) -> [Int] {
+        var offenders: [Int] = []
+        var search = text.startIndex
+        while let hit = text.range(of: ".filter", range: search..<text.endIndex) {
+            search = hit.upperBound
+            let windowEnd = text.index(hit.upperBound, offsetBy: 240, limitedBy: text.endIndex) ?? text.endIndex
+            let statement = text[hit.lowerBound..<windowEnd]
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+            guard statement.contains("isTokenFeedURL") else { continue }
+            offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
+        }
+        return offenders
+    }
+
+    @Test("gpodder's visible-subscription rule lives in exactly one place")
+    func gpodderVisibilityRuleIsNotCopied() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let sources = root.appendingPathComponent("Sources")
+        let files = FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        var offenders: [String] = []
+        for file in files {
+            // The one sanctioned home carries the rule itself.
+            guard file.lastPathComponent != "GPodderVisibleSubscriptions.swift" else { continue }
+            guard let text = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            for line in Self.handRolledGPodderFilters(in: text) {
+                offenders.append("\(file.lastPathComponent):\(line)")
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these build their own gpodder comparison set and will drift from the mirror rule: \(offenders)")
+    }
+
+    /// Proof run: the fence must find the shape that shipped the 🔴 — the
+    /// half rule, spread over three lines exactly as it stood.
+    @Test("the gpodder fence catches the half-rule filter that shipped")
+    func gpodderFenceCatchesTheShippedHalfRule() {
+        let shipped = """
+                let localByNorm = Dictionary(subs.shows
+                    .filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) }
+                    .map { (PodcastSubscriptions.normalizeFeedURL($0.feedURL), $0.feedURL) },
+                    uniquingKeysWith: { a, _ in a })
+        """
+        #expect(Self.handRolledGPodderFilters(in: shipped).count == 1)
+        // The COMPLETE hand-rolled rule is caught too — copying both halves
+        // is still a copy, and the next change would touch only one of them.
+        #expect(Self.handRolledGPodderFilters(
+            in: ".filter { !PodcastSubscriptions.isTokenFeedURL($0.feedURL) && $0.origin == nil }").count == 1)
+        // Reading the one source is not an offence.
+        #expect(Self.handRolledGPodderFilters(
+            in: "let visible = GPodderVisibleSubscriptions.current()").isEmpty)
+    }
+}
