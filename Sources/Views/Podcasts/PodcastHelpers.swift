@@ -152,14 +152,46 @@ enum PodcastAutoDownload {
     static func flagKey(_ showId: String) -> String { "podcastAutoDownload.\(showId)" }
     private static func sinceKey(_ showId: String) -> String { "podcastAutoDownloadSince.\(showId)" }
 
+    private static func modeKey(_ showId: String) -> String { "podcastAutoDownloadMode.\(showId)" }
+
+    /// What the automatism fetches — a CHOICE per show, not one direction for
+    /// everyone: a news show wants the newest, a backlog wants the beginning.
+    /// Replacing the direction outright would have handed the news normal
+    /// case the OLDEST episodes.
+    enum Mode: String, CaseIterable {
+        case off
+        /// The prior behaviour, and the migration target for every show that
+        /// had the old toggle ON: the newest N since enabling.
+        case newest
+        /// The first N unheard, ascending — listening through from the start.
+        case inOrder
+    }
+
+    static func mode(_ showId: String) -> Mode {
+        if let raw = UserDefaults.standard.string(forKey: modeKey(showId)),
+           let stored = Mode(rawValue: raw) {
+            return stored
+        }
+        // Migration from the old toggle: ON meant "newest since enabling" —
+        // that meaning is preserved, nobody's news show flips to the archive.
+        return UserDefaults.standard.bool(forKey: flagKey(showId)) ? .newest : .off
+    }
+
+    static func setMode(_ showId: String, _ mode: Mode) {
+        UserDefaults.standard.set(mode.rawValue, forKey: modeKey(showId))
+        // The old flag mirrors on/off so every existing reader keeps working.
+        UserDefaults.standard.set(mode != .off, forKey: flagKey(showId))
+        if mode == .newest {
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId))
+        }
+    }
+
     static func isEnabled(_ showId: String) -> Bool {
-        UserDefaults.standard.bool(forKey: flagKey(showId))
+        mode(showId) != .off
     }
 
     static func setEnabled(_ showId: String, _ on: Bool) {
-        UserDefaults.standard.set(on, forKey: flagKey(showId))
-        // On enabling, set the cutoff date → new episodes from now on.
-        if on { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: sinceKey(showId)) }
+        setMode(showId, on ? .newest : .off)
     }
 
     /// What the automatism itself downloaded — the cleanup below touches
@@ -191,22 +223,35 @@ enum PodcastAutoDownload {
         }
         let dm = DownloadManager.shared
         for show in shows where isEnabled(show.id) {
-            // Direction "in order": the first N unheard episodes, ascending —
-            // the automatism fetches where the listener actually is, not the
-            // newest arrivals. The pure rule carries the decision; played and
-            // already-local episodes fall out before the cap.
-            let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
-            let picked = PodcastAutoDownloadRules.nextInOrder(
-                show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
-                isPlayed: { guid in
-                    guard let episode = byGuid[guid] else { return false }
-                    return PodcastProgressStore.shared.state(
-                        guid: guid, duration: episode.duration) == .played
-                },
-                isDownloaded: { dm.isDownloaded(itemId: $0) },
-                limit: perShow)
-            let candidates = picked.compactMap { guid in
-                byGuid[guid].map { podcastLibraryItem(show: show, episode: $0) }
+            // The DIRECTION is the show's choice. "Newest" keeps the prior
+            // behaviour (since-cutoff, newest first); "in order" fetches the
+            // first N unheard ascending — where a backlog listener actually
+            // is. Played and already-local episodes fall out before the cap.
+            let candidates: [LibraryItem]
+            switch mode(show.id) {
+            case .off:
+                continue
+            case .newest:
+                let since = UserDefaults.standard.double(forKey: sinceKey(show.id))
+                candidates = show.episodes
+                    .filter { $0.pubDate >= since }
+                    .sorted { $0.pubDate > $1.pubDate }
+                    .prefix(perShow)
+                    .map { podcastLibraryItem(show: show, episode: $0) }
+            case .inOrder:
+                let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
+                let picked = PodcastAutoDownloadRules.nextInOrder(
+                    show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
+                    isPlayed: { guid in
+                        guard let episode = byGuid[guid] else { return false }
+                        return PodcastProgressStore.shared.state(
+                            guid: guid, duration: episode.duration) == .played
+                    },
+                    isDownloaded: { dm.isDownloaded(itemId: $0) },
+                    limit: perShow)
+                candidates = picked.compactMap { guid in
+                    byGuid[guid].map { podcastLibraryItem(show: show, episode: $0) }
+                }
             }
             var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {

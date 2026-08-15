@@ -72,5 +72,21 @@ struct PodcastAutoDownloadRulesTests {
         #expect(PodcastAutoDownloadRules.nextInOrder(
             episodes, isPlayed: { _ in true }, isDownloaded: { _ in false }, limit: 3).isEmpty)
     }
+
+    /// The bookkeeping-date heal: a duration-scale playedAt takes the REAL
+    /// moment from the position store — a read, not an invention. Checked
+    /// against the imported shape too: many entries, one real timestamp each.
+    @Test("duration-scale playedAt heals from the stored timestamp")
+    func playedAtHealsFromStore() {
+        let realTs = 1_753_180_608_000.0
+        // The broken booking: playedAt = 3600 (a duration).
+        #expect(PodcastListenLog.healedPlayedAt(current: 3600, stored: [3600, realTs, 3600]) == realTs)
+        #expect(PodcastListenLog.healedPlayedAt(current: 0, stored: [10, realTs]) == realTs)
+        // Healthy entries stay; missing store heals nothing; a store whose
+        // timestamp is itself duration-scale must not be copied.
+        #expect(PodcastListenLog.healedPlayedAt(current: realTs, stored: [3600, realTs]) == nil)
+        #expect(PodcastListenLog.healedPlayedAt(current: 3600, stored: nil) == nil)
+        #expect(PodcastListenLog.healedPlayedAt(current: 3600, stored: [10, 99]) == nil)
+    }
 }
 #endif

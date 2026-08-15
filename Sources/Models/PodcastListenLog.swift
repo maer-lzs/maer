@@ -199,6 +199,37 @@ final class PodcastListenLog {
         }
         entries = decoded
         migrateSynthesizedFlag()
+        healBookkeepingDates()
+    }
+
+    /// The eighth `.last` occurrence booked `playedAt = duration` — seconds
+    /// scale, rendered as 1970. The REAL moment is not lost: the position
+    /// store still carries the entry's timestamp, so this is a read, not an
+    /// invention. Runs at every load, in memory; a healed value is
+    /// millisecond-scale and never matches the criterion again.
+    private func healBookkeepingDates() {
+        var healed = 0
+        for (guid, entry) in entries {
+            guard let corrected = Self.healedPlayedAt(
+                current: entry.playedAt,
+                stored: UserDefaults.standard.array(
+                    forKey: AppStorageKeys.localPosition(guid)) as? [Double]) else { continue }
+            var fixed = entry
+            fixed.playedAt = corrected
+            entries[guid] = fixed
+            healed += 1
+        }
+        if healed > 0 {
+            persist()
+            Logger.rss.notice("LISTENLOG healed \(healed) bookkeeping dates from the position store")
+        }
+    }
+
+    /// A duration is seconds (< 1e5 covers 27 hours), a real moment is
+    /// milliseconds since 1970 — the scales cannot collide. nil = leave it.
+    nonisolated static func healedPlayedAt(current: Double, stored: [Double]?) -> Double? {
+        guard current < 100_000, let ts = ProgressMark.timestamp(stored), ts >= 100_000 else { return nil }
+        return ts
     }
 
     /// 49dc2c3: entries written before the flag existed cannot be told apart

@@ -15,7 +15,7 @@ struct PodcastShowSettingsSheet: View {
     @Binding var unplayedOnly: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var rate: Float?          // nil = default speed
-    @State private var autoDownload = false
+    @State private var autoDownloadMode = PodcastAutoDownload.Mode.off
     @State private var autoDownloadError: String?
     @State private var copiedReport = false
     @State private var inboxMode = "all"     // all | latest | off
@@ -104,7 +104,13 @@ struct PodcastShowSettingsSheet: View {
                     Text("For high-frequency shows, set this to Latest only or Off so they don't flood New Episodes, and turn off notifications.")
                 }
                 Section {
-                    Toggle("Auto-download new episodes", isOn: $autoDownload)
+                    // A choice, not a direction for everyone: news shows want
+                    // the newest, a backlog wants the beginning.
+                    Picker("Auto-download", selection: $autoDownloadMode) {
+                        Text("Off").tag(PodcastAutoDownload.Mode.off)
+                        Text("Newest episodes").tag(PodcastAutoDownload.Mode.newest)
+                        Text("In order (from the start)").tag(PodcastAutoDownload.Mode.inOrder)
+                    }
                     Picker("Keep only latest", selection: $episodeLimit) {
                         ForEach(limits, id: \.self) { n in
                             Text(n == 0 ? String(localized: "All") : "\(n)").tag(n)
@@ -146,7 +152,7 @@ struct PodcastShowSettingsSheet: View {
             }
             .onAppear {
                 rate = UserDefaults.standard.object(forKey: AppStorageKeys.podcastShowRate(showId)) as? Float
-                autoDownload = PodcastAutoDownload.isEnabled(showId)
+                autoDownloadMode = PodcastAutoDownload.mode(showId)
                 autoDownloadError = PodcastAutoDownload.lastError(showId)
                 inboxMode = AppStorageKeys.podcastInboxModeValue(showId)
                 notify = AppStorageKeys.podcastNotifyEnabled(showId)
@@ -157,8 +163,8 @@ struct PodcastShowSettingsSheet: View {
                 if let new { UserDefaults.standard.set(new, forKey: key) }
                 else { UserDefaults.standard.removeObject(forKey: key) }
             }
-            .onChange(of: autoDownload) { _, on in
-                PodcastAutoDownload.setEnabled(showId, on)
+            .onChange(of: autoDownloadMode) { _, mode in
+                PodcastAutoDownload.setMode(showId, mode)
             }
             .onChange(of: inboxMode) { _, m in
                 UserDefaults.standard.set(m, forKey: AppStorageKeys.podcastInboxMode(showId))

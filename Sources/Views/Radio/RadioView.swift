@@ -25,6 +25,11 @@ struct RadioView: View {
     @State private var popular: [RadioStation] = []
     @State private var regional: [RadioStation] = []
     @State private var discoveryLoaded = false
+    /// Fourth instance of the throw-is-not-the-end class, mild form: the
+    /// fetches swallowed their errors and `discoveryLoaded` was set
+    /// unconditionally — a failed first run counted as "loaded", and the
+    /// empty text advised searching a catalog that had simply not arrived.
+    @State private var discoveryFailed = false
     private let localeCode = RadioCatalog.deviceRegionCode()
     /// The ONE user-chosen state (persisted); nil = not chosen yet. Plain
     /// state + manual defaults I/O (an optional-String @AppStorage misbehaved
@@ -117,7 +122,19 @@ struct RadioView: View {
                     genreSection
                 }
                 if !hasAnyContent {
-                    if networkMonitor.isConnected && !discoveryLoaded {
+                    if discoveryFailed {
+                        // A failed load is not "no stations" — the old advice
+                        // ("search the catalog") pointed at a catalog that had
+                        // simply not arrived.
+                        ContentUnavailableView {
+                            Label("Radio", systemImage: "dot.radiowaves.left.and.right")
+                        } description: {
+                            Text("This could not be loaded. Check your connection.")
+                        } actions: {
+                            Button("Retry") { Task { await loadDiscovery(force: true) } }
+                        }
+                        .padding(.top, 60)
+                    } else if networkMonitor.isConnected && !discoveryLoaded {
                         HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
                             .frame(maxWidth: .infinity).padding(.top, 60)
                     } else {
@@ -363,10 +380,18 @@ struct RadioView: View {
         // National: country top-votes instead of world —
         // less foreign-language noise; search covers the exotics. b1ab99d:
         // the country follows the cascade (choice beats guess).
+        discoveryFailed = false
         async let topTask = Self.nationalPopular(effectiveCountryCode)
         async let regionTask = Self.stateStations(chosenState)
-        let topResult = await topTask
+        let (topResult, topFailed) = await topTask
         let regionResult = await regionTask
+        // A throw is not an end: the failed run does NOT count as loaded, the
+        // section says so with a way back in, and the next attempt is free.
+        if topFailed, topResult.isEmpty, popular.isEmpty {
+            discoveryFailed = true
+            Logger.library.error("RADIO discovery failed — retry offered, not counted as loaded")
+            return
+        }
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
         // The state list of the effective country (once per session) — a
         // country without states leaves the region section silently hidden.
@@ -407,7 +432,7 @@ struct RadioView: View {
         return RediscoverSections.daySeed(for: Date())
     }
 
-    private static func nationalPopular(_ countryCode: String?) async -> [RadioStation] {
+    private static func nationalPopular(_ countryCode: String?) async -> (stations: [RadioStation], failed: Bool) {
         guard let countryCode else {
             // a4e747e: WITHOUT a country the list is the WORLD top-votes —
             // measured: US/FR/IR/RU/GB in the first 40, one German station.
@@ -417,23 +442,36 @@ struct RadioView: View {
             // fallback. It stays, because a list beats an empty tab; the
             // TITLE says "Popular Stations" instead of naming a country, and
             // the log names it so a report is decidable.
-            let world = RadioMapping.dedupeForDisplay((try? await RadioBrowserClient.popular()) ?? [])
-            Logger.library.notice("RADIO popular: NO country code — showing WORLD top-votes (\(world.count) stations)")
-            return world
+            do {
+                let world = RadioMapping.dedupeForDisplay(try await RadioBrowserClient.popular())
+                Logger.library.notice("RADIO popular: NO country code — showing WORLD top-votes (\(world.count) stations)")
+                return (world, false)
+            } catch {
+                Logger.library.error("RADIO world popular FAILED: \(String(describing: error), privacy: .public)")
+                return ([], true)
+            }
         }
-        async let votesList = (try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: 30)) ?? []
-        async let trendList = (try? await RadioBrowserClient.byRegionClicktrend(countryCode: countryCode, limit: 30)) ?? []
+        // The two sources stay best-effort against each other — FAILED means
+        // both threw, an empty but successful answer stays an answer.
+        async let votesList: [RadioStation]? = try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: 30)
+        async let trendList: [RadioStation]? = try? await RadioBrowserClient.byRegionClicktrend(countryCode: countryCode, limit: 30)
+        let rawVotes = await votesList
+        let rawTrend = await trendList
+        if rawVotes == nil && rawTrend == nil {
+            Logger.library.error("RADIO national popular FAILED for \(countryCode, privacy: .public)")
+            return ([], true)
+        }
         // a4e747e: the country context travels WITH the lists — a station
         // carrying a DIFFERENT country's code has no business being the
         // default in a country-filtered list, however good its bitrate.
         let votes = RadioMapping.dedupeForDisplay(
-            RadioMapping.keepingCountry(countryCode, in: await votesList))
+            RadioMapping.keepingCountry(countryCode, in: rawVotes ?? []))
         let trend = RadioMapping.dedupeForDisplay(
-            RadioMapping.keepingCountry(countryCode, in: await trendList))
-        return RadioRotation.compose(
+            RadioMapping.keepingCountry(countryCode, in: rawTrend ?? []))
+        return (RadioRotation.compose(
             votes: votes, clicktrend: trend,
             seed: RadioRotation.seed(day: rotationDay(), countryCode: countryCode),
-            limit: 12)
+            limit: 12), false)
     }
 
     /// The REAL region: stations of the user-chosen state (never guessed,
