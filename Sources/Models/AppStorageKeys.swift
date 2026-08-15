@@ -155,6 +155,15 @@ nonisolated enum AppStorageKeys {
 
     /// Radio source toggle — the tab appears once switched on.
     static let radioEnabled = "radioEnabled"
+    /// feb46bb: may APPLE's catalog be contacted at all? Default on; off is
+    /// a hard no-request gate — every Apple path resolves through
+    /// `PodcastDirectorySelection`, nothing asks Apple behind this flag.
+    static let appleCatalogEnabled = "appleCatalogEnabled"
+    static var appleCatalogEnabledValue: Bool {
+        get { UserDefaults.standard.object(forKey: appleCatalogEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: appleCatalogEnabled) }
+    }
+
     static var radioEnabledValue: Bool {
         // affb7e6, Leitsatz "alles am Anfang an": radio needs no account and
         // no server — a default of off hid a whole area from everyone who

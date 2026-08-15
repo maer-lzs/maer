@@ -91,11 +91,22 @@ final class PodcastRecommendationsStore: ObservableObject {
             ? SuggestionLanguages.podcastIndexLangParameter(chosen)
             : dominantLanguage()
 
-        let piConfigured = AppStorageKeys.podcastIndexConfigured
-        let directory: PodcastDirectory = piConfigured
-            ? PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
-                                    secret: AppStorageKeys.podcastIndexEffectiveSecret)
-            : ITunesDirectory()
+        // feb46bb: the ONE selection — Apple off is a hard no-request gate.
+        // Without any directory the pool stays empty, honestly: recommending
+        // needs a catalog to recommend FROM.
+        let directory: PodcastDirectory
+        switch PodcastDirectorySelection.current {
+        case .podcastIndex:
+            directory = PodcastIndexDirectory(key: AppStorageKeys.podcastIndexEffectiveKey,
+                                              secret: AppStorageKeys.podcastIndexEffectiveSecret)
+        case .itunes:
+            directory = ITunesDirectory()
+        case .none:
+            results = []
+            loadedAt = Date()
+            Logger.rss.notice("RECO skipped — Apple catalog off, no PodcastIndex key")
+            return
+        }
 
         var pool: [PodcastSearchResult] = []
         var authorHits = Set<String>()   // normalized feed URLs from author expansion

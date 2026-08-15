@@ -895,6 +895,16 @@
         }
       }
     },
+    "Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address) — never an account, never your subscriptions, never a listening profile; all queries are derived on this device. Off: recommendations and search run via PodcastIndex where configured, Apple's genre charts fall away." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple sieht Suchbegriffe, Genre-Nummern und dein Storefront-Land (plus übliche Anfragedaten wie deine IP-Adresse) — nie ein Konto, nie deine Abos, nie ein Hörprofil; alle Anfragen entstehen auf diesem Gerät. Aus: Empfehlungen und Suche laufen über PodcastIndex, sofern eingerichtet, Apples Genre-Charts entfallen."
+          }
+        }
+      }
+    },
     "Areas" : {
       "localizations" : {
         "de" : {

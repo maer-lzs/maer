@@ -702,8 +702,19 @@ struct PodcastSourceView: View {
                 key: AppStorageKeys.podcastIndexEffectiveKey,
                 secret: AppStorageKeys.podcastIndexEffectiveSecret
             )
-        } else {
+        } else if AppStorageKeys.appleCatalogEnabledValue {
             directory = ITunesDirectory()
+        } else if AppStorageKeys.podcastIndexConfigured {
+            // Apple off: the search runs via PodcastIndex (feb46bb).
+            directory = PodcastIndexDirectory(
+                key: AppStorageKeys.podcastIndexEffectiveKey,
+                secret: AppStorageKeys.podcastIndexEffectiveSecret
+            )
+        } else {
+            // No directory may be asked — an honest empty result, no request.
+            results = []
+            isSearching = false
+            return
         }
         results = (try? await directory.search(term)) ?? []
         isSearching = false

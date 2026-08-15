@@ -15,6 +15,7 @@ struct NetworkServicesView: View {
     @AppStorage(AppStorageKeys.musicHighResCovers) private var highResCovers = true
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @AppStorage(AppStorageKeys.homeRecommendations) private var homeRecommendations = true
+    @AppStorage(AppStorageKeys.appleCatalogEnabled) private var appleCatalog = true
     @AppStorage(AppStorageKeys.radioEnabled) private var radioEnabled = false
     @AppStorage(AppStorageKeys.radioLogoChainEnabled) private var radioLogoChain = true
     @AppStorage(AppStorageKeys.librivoxRowsEnabled) private var librivoxRows = true
@@ -53,9 +54,12 @@ struct NetworkServicesView: View {
                                  purpose: "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them.")
                 }
                 .accessibilityIdentifier("network-lrclib-toggle")
-                Toggle(isOn: $homeRecommendations) {
+                // feb46bb: the APPLE switch is its own, with the honest
+                // transparency line — what Apple sees and what it never
+                // does. The Discover FEATURE toggle stays in the settings.
+                Toggle(isOn: $appleCatalog) {
                     serviceLabel(NetworkServiceNames.appleCatalog,
-                                 purpose: "Discover and Rediscover suggestions; searching the catalog and genre charts stays on demand.")
+                                 purpose: "Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address) — never an account, never your subscriptions, never a listening profile; all queries are derived on this device. Off: recommendations and search run via PodcastIndex where configured, Apple's genre charts fall away.")
                 }
                 .accessibilityIdentifier("network-itunes-toggle")
                 Toggle(isOn: $radioEnabled) {

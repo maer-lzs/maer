@@ -36,5 +36,17 @@ struct PodcastImportSelectionTests {
         #expect(r.feeds.count == 2)
         #expect(r.paidUnimportable == 0)
     }
+
+    /// feb46bb, the no-request fence at the ONE selection: Apple off may
+    /// never resolve to the Apple directory — PodcastIndex takes over where
+    /// configured, and "nobody" is an honest answer, not a fallback to Apple.
+    @Test("the Apple switch is a hard gate at the one directory selection")
+    func appleSwitchGatesTheSelection() {
+        #expect(PodcastDirectorySelection.kind(appleEnabled: true, piConfigured: false) == .itunes)
+        #expect(PodcastDirectorySelection.kind(appleEnabled: true, piConfigured: true) == .podcastIndex)
+        #expect(PodcastDirectorySelection.kind(appleEnabled: false, piConfigured: true) == .podcastIndex)
+        // The case the fence exists for: off and no key — NOBODY is asked.
+        #expect(PodcastDirectorySelection.kind(appleEnabled: false, piConfigured: false) == .none)
+    }
 }
 #endif

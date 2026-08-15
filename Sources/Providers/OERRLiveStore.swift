@@ -76,6 +76,7 @@ final class OERRLiveStore: ObservableObject {
             var hits: [PodcastSearchResult] = []
             var seenHits = Set<String>()
             for term in terms {
+                guard AppStorageKeys.appleCatalogEnabledValue else { continue }
                 let found = (try? await ITunesDirectory().search(term, country: storefront)) ?? []
                 for hit in found where seenHits.insert(hit.feedURL).inserted { hits.append(hit) }
             }

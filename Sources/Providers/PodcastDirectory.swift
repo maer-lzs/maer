@@ -63,6 +63,26 @@ nonisolated enum PodcastGenres {
 // MARK: - iTunes / Apple (no key)
 
 /// Apple's podcast search — keyless, returns the feed URL directly.
+/// The ONE place that answers which directory may be asked (feb46bb): the
+/// Apple switch is a hard no-request gate, PodcastIndex takes over where it
+/// is configured, and "nobody" is an honest answer — the surfaces then show
+/// only what needs no directory.
+nonisolated enum PodcastDirectorySelection {
+    enum Kind: Equatable { case itunes, podcastIndex, none }
+
+    static func kind(appleEnabled: Bool, piConfigured: Bool) -> Kind {
+        if piConfigured { return .podcastIndex }
+        return appleEnabled ? .itunes : .none
+    }
+
+    /// Convenience over the live flags.
+    @MainActor
+    static var current: Kind {
+        kind(appleEnabled: AppStorageKeys.appleCatalogEnabledValue,
+             piConfigured: AppStorageKeys.podcastIndexConfigured)
+    }
+}
+
 struct ITunesDirectory: PodcastDirectory {
     private struct Response: Decodable {
         struct Item: Decodable {

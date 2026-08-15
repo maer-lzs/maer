@@ -141,7 +141,7 @@ struct FreeAudiobooksPage: View {
                 // the feed rows are static curation and render instantly.
                 feedSection(.oerr)
                 feedSection(.independents)
-                chartsSection
+                if AppStorageKeys.appleCatalogEnabledValue { chartsSection }
                 tileSection(.oldTimeRadio, items: rows.oldTimeRadio,
                             placeholder: "waveform.and.mic")
                 librivoxSection
@@ -351,6 +351,13 @@ struct FreeAudiobooksPage: View {
         #if DEBUG
         if UITestSeed.isActive { chartResults = []; return }
         #endif
+        guard AppStorageKeys.appleCatalogEnabledValue else {
+            // Apple off: the chart section falls away honestly — these charts
+            // have no second source (measured in the PI pre-check: overlap ~0).
+            chartResults = []
+            chartsFailed = false
+            return
+        }
         let directory = ITunesDirectory()
         var pool: [PodcastSearchResult] = []
         for genreId in chip.genreIds {
