@@ -288,6 +288,9 @@ struct RadioFeaturedCard: View {
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
     private var cardColor: Color { colorLoader.hasAccent ? colorLoader.accent : tint }
+    // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
+    // exactly like Book-/PodcastFeaturedCard's.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
 
     var body: some View {
         Button {
@@ -296,7 +299,8 @@ struct RadioFeaturedCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 RadioArtwork(stationID: station.id,
                              faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                             name: station.name)
+                             name: station.name,
+                             cardBackground: cardColor)
                     .frame(width: CardMetrics.featuredCardWidth,
                            height: CardMetrics.featuredCardWidth)
                     .clipped()
@@ -306,25 +310,24 @@ struct RadioFeaturedCard: View {
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(station.tags.first?.capitalized ?? " ")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
+                    // 48e514e (2): the caption line belongs to the running
+                    // show (9d22148) — the raw first community tag is gone;
+                    // a card without a known show carries just name + LIVE.
+                    RadioCardNowPlayingLeaf(stationID: station.id,
+                                            host: .featuredCard,
+                                            coordinator: playerCoordinator)
                     Text(RadioMapping.displayName(station.name))
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack {
-                        // The ACTIVE station carries its running show; every
-                        // other card keeps the plain live mark.
-                        RadioCardNowPlayingLeaf(stationID: station.id,
-                                                host: .featuredCard,
-                                                coordinator: playerCoordinator)
+                        LiveBadge()
                         Spacer()
                     }
                 }
-                .padding(12)
+                .padding(14)
+                .padding(.bottom, pillReserve)   // room for the overlay pill
                 .frame(width: CardMetrics.featuredCardWidth, alignment: .leading)
                 .background(cardColor)
             }
@@ -341,20 +344,11 @@ struct RadioFeaturedCard: View {
                 ?? station.faviconURL.flatMap { URL(string: $0) }
             await colorLoader.load(from: url)
         }
-        .overlay(alignment: .topLeading) {
-            // The pill to the page — same contract as the Zuletzt tiles had.
-            Button {
-                pushRadioRoute(.station(station))
-            } label: {
-                Image(systemName: "info.circle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(7)
-                    .background(Capsule().fill(.black.opacity(0.45)))
-            }
-            .buttonStyle(.plain)
-            .padding(10)
-            .accessibilityLabel(Text("Station Details"))
+        // 48e514e (1): the family's pill at the family's place — bottom-left
+        // in the text zone, the SHARED CardDetailPill (a1077a9 had asked for
+        // exactly this; the top-left ⓘ was the deviation).
+        .overlay(alignment: .bottomLeading) {
+            CardDetailPill(value: RadioRoute.station(station)).padding(12)
         }
         .contextMenu {
             RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
@@ -370,9 +364,10 @@ struct RadioFeaturedCard: View {
 /// tile ever opens a stream for it: the catalog has no now-playing, and
 /// twelve connections per row would be rude to the stations.
 private struct RadioCardNowPlayingLeaf: View {
-    /// The two hosts differ in idle honesty and ink: the featured card keeps
-    /// its live mark when no title is known (white ink on the card color),
-    /// the Häufig tile shows nothing it doesn't know (secondary ink).
+    /// The two hosts differ in idle honesty and ink: the featured card's
+    /// CAPTION line reserves its height when no title is known (white ink on
+    /// the card colour), the tile shows nothing it doesn't know (secondary
+    /// ink, no reserve).
     enum Host { case featuredCard, tile }
 
     let stationID: String
@@ -391,7 +386,9 @@ private struct RadioCardNowPlayingLeaf: View {
     }
 
     @ViewBuilder private var idleMark: some View {
-        if host == .featuredCard { LiveBadge() }
+        if host == .featuredCard {
+            Text(verbatim: " ").font(.caption)   // reserved caption height
+        }
     }
 
     private struct IcyLine: View {
@@ -414,9 +411,9 @@ private struct RadioCardNowPlayingLeaf: View {
                         .frame(width: RadioStationCard.width, alignment: .leading)
                 }
             } else if host == .featuredCard {
-                // A stream without ICY leaves the line honestly empty on the
-                // tile; the featured card keeps its live mark instead.
-                LiveBadge()
+                // A stream without ICY leaves the caption honestly empty —
+                // the card then carries just name + LIVE (48e514e).
+                Text(verbatim: " ").font(.caption)
             }
         }
     }

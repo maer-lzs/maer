@@ -22,6 +22,12 @@ struct RadioArtwork: View {
     var name: String = ""
     /// Hero = the big player cover; otherwise a row/tile thumbnail.
     var isHero = false
+    /// 48e514e (3): card context — the tile frame (inset + material) stays
+    /// for small tiles where it serves transparent PNGs, but on a featured
+    /// card the surface runs to the card's edge and sits on the CARD's own
+    /// colour, so the gradient into the text zone is ONE soft transition
+    /// instead of two unrelated surfaces meeting hard.
+    var cardBackground: Color? = nil
 
     /// Gate result: nil until checked; .some(nil) = favicon rejected.
     @State private var gatedFavicon: UIImage??
@@ -119,16 +125,40 @@ struct RadioArtwork: View {
     private var thumbnail: some View {
         Group {
             if let image = gatedFavicon.flatMap({ $0 }) {
-                // Nachtrag (1): every logo sits on a TILE surface — a
-                // transparent PNG never floats on black; the deterministic
-                // tint doubles as the station identity behind it.
-                tint.opacity(0.35)
-                    .overlay(
-                        Image(uiImage: image)
-                            .resizable().aspectRatio(contentMode: .fit)
-                            .padding(6)
-                    )
-                    .background(.thinMaterial)
+                if let cardBackground {
+                    // Card context: near-square art fills edge-to-edge like a
+                    // music cover; a wordmark can't fill a square honestly and
+                    // sits centered on the card colour instead — either way no
+                    // inner frame, the surface reaches the card's edge.
+                    let ratio = image.size.height > 0
+                        ? image.size.width / image.size.height : 1
+                    if (0.75...1.33).contains(ratio) {
+                        Color.clear
+                            .overlay(
+                                Image(uiImage: image)
+                                    .resizable().aspectRatio(contentMode: .fill)
+                            )
+                            .clipped()
+                    } else {
+                        cardBackground
+                            .overlay(
+                                Image(uiImage: image)
+                                    .resizable().aspectRatio(contentMode: .fit)
+                                    .padding(24)
+                            )
+                    }
+                } else {
+                    // Nachtrag (1): every logo sits on a TILE surface — a
+                    // transparent PNG never floats on black; the deterministic
+                    // tint doubles as the station identity behind it.
+                    tint.opacity(0.35)
+                        .overlay(
+                            Image(uiImage: image)
+                                .resizable().aspectRatio(contentMode: .fit)
+                                .padding(6)
+                        )
+                        .background(.thinMaterial)
+                }
             } else {
                 placeholderFill
                     .overlay(alignment: .bottomLeading) {
