@@ -5,6 +5,7 @@
 
 import Foundation
 import Combine
+import OSLog
 
 @MainActor
 final class AuthViewModel: ObservableObject {
@@ -21,6 +22,18 @@ final class AuthViewModel: ObservableObject {
     @Published var isLoggedIn: Bool
     @Published var isLoading = false
     @Published var errorMessage: String?
+    /// 🔴 P5: the session is DOUBTED, never dissolved. A homeserver coming
+    /// back up answers 401 for minutes; the old path logged out and DELETED
+    /// the keychain token, which no restart could heal (the owner had to
+    /// reinstall). The rule this state exists for: **credentials are deleted
+    /// by the user, never by a server answer.** While suspect the app keeps
+    /// the token, shows the state at the source entry (G8) and re-probes
+    /// itself — on network return and periodically.
+    @Published private(set) var sessionSuspect = false
+    /// Set once a probe reached the server AND it still said 401: then the
+    /// token really is invalid and re-signing in is offered (prefilled) —
+    /// still without deleting anything behind the user's back.
+    @Published private(set) var needsReauth = false
 
     let apiClient: APIClient
 
@@ -33,11 +46,10 @@ final class AuthViewModel: ObservableObject {
         self.apiClient = APIClient(baseURL: url, token: storedToken)
         self.isLoggedIn = (storedToken?.isEmpty == false) && !storedURLString.isEmpty
 
-        // If the token expires (401), automatically go back to the setup screen.
+        // A 401 marks the session SUSPECT — it never destroys the login.
         apiClient.onUnauthorized = { [weak self] in
             guard let self, self.isLoggedIn else { return }
-            self.errorMessage = String(localized: "Session expired — please sign in again.")
-            self.logout()
+            self.markSessionSuspect()
         }
     }
 
@@ -128,12 +140,54 @@ final class AuthViewModel: ObservableObject {
         }
     }
 
+    /// The 401 path: doubt, probe, and only offer a fresh sign-in once the
+    /// server is demonstrably reachable and still rejects us. Nothing is
+    /// deleted here — not even then.
+    func markSessionSuspect() {
+        guard !sessionSuspect else { return }
+        sessionSuspect = true
+        errorMessage = String(localized: "Session expired — checking the server…")
+        Logger.library.warning("ABS session SUSPECT after 401 — token kept, probing")
+        Task { await probeSession() }
+    }
+
+    /// Self-healing probe: as long as the server does not answer at all we
+    /// stay suspect and try again later (the reverse-proxy start window);
+    /// a clean answer resolves the doubt; a reachable server that still
+    /// says 401 means the token is really invalid → offer re-auth.
+    func probeSession() async {
+        var delaySeconds: UInt64 = 5
+        while sessionSuspect, !needsReauth {
+            switch await apiClient.probeAuthorization() {
+            case .authorized:
+                sessionSuspect = false
+                errorMessage = nil
+                Logger.library.notice("ABS session RECOVERED — server answered again")
+                return
+            case .rejected:
+                needsReauth = true
+                errorMessage = String(localized: "Session expired — please sign in again.")
+                Logger.library.warning("ABS session REJECTED by a reachable server — sign-in offered, token kept")
+                return
+            case .unreachable:
+                // Exactly the homeserver-restart window: keep everything,
+                // back off, try again (capped at a minute).
+                try? await Task.sleep(nanoseconds: delaySeconds * 1_000_000_000)
+                delaySeconds = min(delaySeconds * 2, 60)
+            }
+        }
+    }
+
+    /// The USER's sign-out — the only path that may drop the token.
     func logout() {
         KeychainStore.delete(forKey: KeychainKey.apiToken)
         // F10: empty the client too — `isAvailable` (tab visibility, search
         // fan-out) must flip with the logout, not only the root switch.
         apiClient.clearToken()
         isLoggedIn = false
+        sessionSuspect = false
+        needsReauth = false
+        Logger.library.notice("ABS logout by USER — token removed from the keychain")
         AppSession.shared.notifySourcesChanged()
     }
 

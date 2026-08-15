@@ -1167,6 +1167,11 @@ struct LibraryView: View {
                 // library scroll. Above the fold the row always materializes,
                 // so the 34c36e1 lazy rule does not bite; the FILL still comes
                 // from the one central compute() pass (shared store).
+                // 🔴 P5 (G8): a doubted session says so HERE — the tab keeps
+                // its content (the token is intact, the server is merely
+                // unreachable), and the line names the state instead of the
+                // library silently looking empty.
+                AbsSessionStateBanner()
                 if !AppSession.shared.authViewModel.isLoggedIn {
                     // Serverless (dd87a56): the free area IS the tab's core —
                     // the page's sections, embedded (one parameterised

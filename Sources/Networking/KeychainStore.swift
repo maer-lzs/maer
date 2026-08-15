@@ -101,13 +101,19 @@ nonisolated enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    static func delete(forKey key: String) {
+    /// 🔴 P5 measuring order: every deletion names its CALLER. the owner also
+    /// lost the Subsonic password, for which no automatic deletion path is
+    /// measurable — so the next incident must leave a trail instead of a
+    /// guess. Only the key name is logged, never a value.
+    static func delete(forKey key: String, caller: StaticString = #function,
+                       file: StaticString = #fileID) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key
         ]
-        SecItemDelete(query as CFDictionary)
+        let status = SecItemDelete(query as CFDictionary)
+        Logger.library.notice("KEYCHAIN delete key=\(key, privacy: .public) by=\(String(describing: file), privacy: .public)#\(String(describing: caller), privacy: .public) status=\(status)")
     }
 }
 

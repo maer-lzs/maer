@@ -471,6 +471,26 @@ final class APIClient {
         return try await perform(request)
     }
 
+    /// 🔴 P5: the probe behind the SUSPECT session state — it separates
+    /// "server not there yet" (the homeserver restart window) from "server
+    /// there and says no". Deliberately a plain, cheap authorized request
+    /// WITHOUT the retry/`onUnauthorized` machinery: this is the question
+    /// itself, not a request that may ask it again.
+    enum AuthorizationProbe { case authorized, rejected, unreachable }
+
+    func probeAuthorization() async -> AuthorizationProbe {
+        guard let token, !token.isEmpty else { return .rejected }
+        var request = URLRequest(url: baseURL.appendingPathComponent("api/me"))
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 15
+        guard let (_, response) = try? await URLSession.maer.data(for: request),
+              let http = response as? HTTPURLResponse else { return .unreachable }
+        if (200...299).contains(http.statusCode) { return .authorized }
+        if http.statusCode == 401 { return .rejected }
+        // 502/503/504 are the proxy still coming up — not an answer about us.
+        return .unreachable
+    }
+
     /// Y33: ONE request path with the self-healing policy — a 401 is probed
     /// once more before the logout fires (outage gateways answer 401
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
