@@ -87,5 +87,22 @@ struct RadioLogoCacheTests {
         let url = ArtistPortraitLookup.commonsThumbURL(fileName: "X.svg", width: 800)
         #expect(url?.query?.contains("width=800") == true)
     }
+
+    /// cb8bac1: the v3 healing — a positive persisted as a width=400 Commons
+    /// URL becomes FILE-based, so the read builds today's width; touch icons
+    /// and negatives stay as they are. The width change that shipped without
+    /// a bump left devices on rejected 400×46 renders for 14 days.
+    @Test("v3 heals persisted Commons positives to file names")
+    func v3HealsCommonsPositives() throws {
+        let file = "Deutschlandfunk Kultur Logo 2017.svg"
+        #expect(RadioLogoService.commonsFileName(
+            fromStoredURL: "https://commons.wikimedia.org/wiki/Special:FilePath/Deutschlandfunk%20Kultur%20Logo%202017.svg?width=400") == file)
+        // Touch icons and garbage answer nil — they are not healed, kept.
+        #expect(RadioLogoService.commonsFileName(fromStoredURL: "https://www.dlf.de/apple-touch-icon.png") == nil)
+        #expect(RadioLogoService.commonsFileName(fromStoredURL: nil) == nil)
+        // And the current width rides in the rebuilt URL.
+        let rebuilt = ArtistPortraitLookup.commonsThumbURL(fileName: file, width: RadioLogoService.commonsWidth)
+        #expect(rebuilt?.query?.contains("width=800") == true)
+    }
 }
 #endif

@@ -275,8 +275,13 @@ struct RadioFeaturedCard: View {
     let station: RadioStation
     let playerCoordinator: PlayerCoordinator
     @Environment(\.pushRadioRoute) private var pushRadioRoute
+    /// f7b7941: the card colour comes from the COVER, like BookFeaturedCard —
+    /// the hash tint stays the placeholder colour until an accent is loaded
+    /// (DLF Kultur was orange logo on hash-green card).
+    @StateObject private var colorLoader = CoverColorLoader()
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
+    private var cardColor: Color { colorLoader.hasAccent ? colorLoader.accent : tint }
 
     var body: some View {
         Button {
@@ -290,7 +295,7 @@ struct RadioFeaturedCard: View {
                            height: CardMetrics.featuredCardWidth)
                     .clipped()
                     .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [.clear, tint],
+                        LinearGradient(colors: [.clear, cardColor],
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth * 0.3)
                     }
@@ -311,11 +316,21 @@ struct RadioFeaturedCard: View {
                 }
                 .padding(12)
                 .frame(width: CardMetrics.featuredCardWidth, alignment: .leading)
-                .background(tint)
+                .background(cardColor)
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
+        // Recompute on station AND image change: the await follows the
+        // cadenced chain, so the accent lands when the two-stage artwork's
+        // final image does — favicon-only stations take theirs directly.
+        .task(id: station.id) {
+            let url = await RadioLogoService.shared.logoURL(
+                stationID: station.id, name: RadioMapping.displayName(station.name),
+                homepage: station.homepage)
+                ?? station.faviconURL.flatMap { URL(string: $0) }
+            await colorLoader.load(from: url)
+        }
         .overlay(alignment: .topLeading) {
             // The pill to the page — same contract as the Zuletzt tiles had.
             Button {

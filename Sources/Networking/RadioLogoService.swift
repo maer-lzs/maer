@@ -33,9 +33,17 @@ actor RadioLogoService {
     /// NEGATIVES once on first launch; positives are kept (they were never
     /// in doubt).
     private static let storageVersionKey = "radioLogoChainVersion"
-    private static let storageVersion = 2
+    /// v3 (cb8bac1): the width change 400→800 shipped WITHOUT a bump — and
+    /// positives are kept on migration, so devices held width=400 URLs whose
+    /// render the gate rejects (400×46 for wide wordmarks): every surface
+    /// fell back to the mush favicon for 14 days. v3 HEALS the positives.
+    private static let storageVersion = 3
     /// Testable mirror of the constant above.
     nonisolated static var currentStorageVersion: Int { storageVersion }
+
+    /// The one Commons render width — the URL is built at READ time from the
+    /// persisted FILE NAME, so the next width change needs no migration.
+    nonisolated static let commonsWidth = 800
 
     /// The rule the poisoning broke, as a pure decision (95c5c16): a run that
     /// FAILED says nothing about the station and must not be written down —
@@ -53,21 +61,60 @@ actor RadioLogoService {
     nonisolated static func migratePersisted(defaults: UserDefaults, storedVersion: Int) -> Int {
         guard storedVersion < storageVersion else { return 0 }
         guard let data = defaults.data(forKey: persistKey),
-              let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else {
+              var stored = try? JSONDecoder().decode([String: Stored].self, from: data) else {
             defaults.set(storageVersion, forKey: storageVersionKey)
             return 0
         }
-        let kept = stored.filter { $0.value.url != nil }
-        if let encoded = try? JSONEncoder().encode(kept) {
+        var changed = 0
+        // v1 → v2: the poisoned negatives go (error/no-hit was missing).
+        if storedVersion < 2 {
+            let kept = stored.filter { $0.value.url != nil }
+            changed += stored.count - kept.count
+            stored = kept
+        }
+        // v2 → v3: HEAL the positives — a persisted Commons URL carries the
+        // width it was written with; the file name is extracted so the URL
+        // is built fresh at every read from the current constant.
+        if storedVersion < 3 {
+            for (id, entry) in stored {
+                guard entry.commonsFile == nil,
+                      let file = commonsFileName(fromStoredURL: entry.url) else { continue }
+                stored[id] = Stored(url: nil, resolvedAt: entry.resolvedAt, commonsFile: file)
+                changed += 1
+            }
+        }
+        if let encoded = try? JSONEncoder().encode(stored) {
             defaults.set(encoded, forKey: persistKey)
         }
         defaults.set(storageVersion, forKey: storageVersionKey)
-        return stored.count - kept.count
+        return changed
+    }
+
+    /// The file name inside a persisted Commons FilePath URL — nil for touch
+    /// icons and anything else (those entries stay as they are).
+    nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
+        guard let raw, raw.contains("commons.wikimedia.org"),
+              let components = URLComponents(string: raw),
+              let range = components.path.range(of: "Special:FilePath/") else { return nil }
+        let file = String(components.path[range.upperBound...])
+        return file.isEmpty ? nil : file
     }
 
     nonisolated fileprivate struct Stored: Codable {
-        var url: String?          // nil = negative hit
+        var url: String?          // nil = negative hit (touch icons keep a URL)
         var resolvedAt: Double    // epoch seconds
+        /// Commons results persist the FILE NAME, never the finished URL —
+        /// the width is applied at read time from the current constant.
+        var commonsFile: String?
+    }
+
+    /// The URL an entry answers TODAY — file-based entries render at the
+    /// current width, legacy/touch entries keep their stored URL.
+    nonisolated fileprivate static func effectiveURL(_ entry: Stored) -> URL? {
+        if let file = entry.commonsFile {
+            return ArtistPortraitLookup.commonsThumbURL(fileName: file, width: commonsWidth)
+        }
+        return entry.url.flatMap(URL.init(string:))
     }
 
     private func loadPersistedIfNeeded() {
@@ -85,15 +132,20 @@ actor RadioLogoService {
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
         for (id, entry) in stored {
-            if entry.url == nil, now - entry.resolvedAt > Self.negativeTTL { continue }
-            cache[id] = entry.url.flatMap(URL.init(string:))
+            let isNegative = entry.url == nil && entry.commonsFile == nil
+            if isNegative, now - entry.resolvedAt > Self.negativeTTL { continue }
+            cache[id] = Self.effectiveURL(entry)
         }
     }
 
-    private func persistResult(stationID: String, url: URL?) {
+    private func persistResult(stationID: String, url: URL?, commonsFile: String?) {
         var stored = (UserDefaults.standard.data(forKey: Self.persistKey))
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
-        stored[stationID] = Stored(url: url?.absoluteString, resolvedAt: Date().timeIntervalSince1970)
+        // Commons: the file name is the durable fact, the URL only today's
+        // rendering of it. Touch icons have no file and keep their URL.
+        stored[stationID] = Stored(url: commonsFile == nil ? url?.absoluteString : nil,
+                                   resolvedAt: Date().timeIntervalSince1970,
+                                   commonsFile: commonsFile)
         if let data = try? JSONEncoder().encode(stored) {
             UserDefaults.standard.set(data, forKey: Self.persistKey)
         }
@@ -174,14 +226,14 @@ actor RadioLogoService {
     private func runChain(stationID: String, name: String, homepage: String?) async -> URL? {
         let outcome = await resolve(name: name, homepage: homepage)
         switch outcome {
-        case .hit(let url):
+        case .hit(let url, let commonsFile):
             cache[stationID] = url
-            persistResult(stationID: stationID, url: url)
+            persistResult(stationID: stationID, url: url, commonsFile: commonsFile)
             return url
         case .noHit:
             // Every stage ran cleanly and found nothing — THIS may be booked.
             cache[stationID] = URL?.none
-            persistResult(stationID: stationID, url: nil)
+            persistResult(stationID: stationID, url: nil, commonsFile: nil)
             Logger.library.notice("RADIO logo chain: no-hit for \(name, privacy: .public)")
             return nil
         case .failed(let stage):
@@ -194,7 +246,7 @@ actor RadioLogoService {
 
     /// The chain's outcome, kept apart on purpose (95c5c16).
     private enum ChainOutcome {
-        case hit(URL)
+        case hit(URL, commonsFile: String?)
         case noHit
         case failed(String)
     }
@@ -227,8 +279,8 @@ actor RadioLogoService {
                    // 960×110 — at 400 the render's short side lands at ~46 px
                    // and the quality gate would reject the very source the
                    // decision made primary; at 800 it clears 64 px with room).
-                   let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: 800) {
-                    return .hit(thumb)
+                   let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: Self.commonsWidth) {
+                    return .hit(thumb, commonsFile: fileName)
                 }
                 break   // entity found but no P154 → deeper terms won't help this language pair
             }
@@ -240,12 +292,12 @@ actor RadioLogoService {
         if case .failed = page { return .failed("homepage") }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
-            return .hit(icon)
+            return .hit(icon, commonsFile: nil)
         }
         // The convention URL is a guess, not a finding — but a reachable one:
         // it only follows a page we actually loaded (or an honest empty).
         if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
-            return .hit(convention)
+            return .hit(convention, commonsFile: nil)
         }
         return .noHit
     }
