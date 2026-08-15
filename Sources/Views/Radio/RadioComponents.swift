@@ -26,10 +26,13 @@ struct RadioStationRow: View {
         // The tap OPENS the station page (owner decision e285465) — the
         // page used to be reachable only through player and context menu.
         // Play stays explicit, as its own trailing control.
-        Button {
-            pushRadioRoute(.station(station))
-        } label: {
-            HStack(spacing: 0) {
+        // SIBLINGS, not nesting: a play button inside the navigation
+        // button's label is flattened away by accessibility — the explicit
+        // control must be its own element.
+        HStack(spacing: 0) {
+            Button {
+                pushRadioRoute(.station(station))
+            } label: {
                 MediaRowContent(
                     coverURL: nil,
                     eyebrow: station.tags.first,
@@ -43,18 +46,18 @@ struct RadioStationRow: View {
                         faviconURL: station.faviconURL.flatMap { URL(string: $0) },
                         name: station.name)
                 )
-                RadioPlayButton(station: station, playerCoordinator: playerCoordinator)
-                    .disabled(unavailable)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal)
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+            .disabled(unavailable)
+            .contextMenu {
+                RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
+                RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
+            }
+            RadioPlayButton(station: station, playerCoordinator: playerCoordinator)
+                .disabled(unavailable)
         }
-        .buttonStyle(.plain)
-        .disabled(unavailable)
-        .contextMenu {
-            RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
-            RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
-        }
+        .padding(.horizontal)
         }
     }
 }
@@ -75,6 +78,7 @@ struct RadioPlayButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("Play"))
+        .accessibilityIdentifier("station-play")
     }
 }
 

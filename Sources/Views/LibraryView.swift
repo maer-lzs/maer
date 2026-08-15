@@ -111,12 +111,14 @@ struct LibraryView: View {
         mountedTabs.contains(type) || selectedMediaType == type
     }
 
-    /// Available content types from all active sources (deduplicated, in a fixed
-    /// order). Today `[.audiobooks]`.
+    /// Which tabs exist — POSITIVE and in ONE place (affb7e6): every tab the
+    /// USER has on is there. Whether a server answers is a section's question,
+    /// never the tab's — coupling tabs to provider availability made the app
+    /// look empty to exactly the people the free catalogs are for. Serverless,
+    /// every tab opens and shows its free core.
     private var availableMediaTypes: [MediaType] {
-        let present = Set(AppSession.shared.allProviders.filter(\.isAvailable).map(\.mediaType))
         // Home is an aggregation tab (no source) — always first.
-        return [.home] + MediaType.allCases.filter { $0 != .home && present.contains($0) }
+        [.home] + MediaType.allCases.filter { $0 != .home && $0.userMasterEnabled }
     }
 
     let provider: any AudioProvider
@@ -1102,6 +1104,20 @@ struct LibraryView: View {
         content
     }
 
+    /// Serverless: the way to files on this device — a section, not a buried
+    /// settings row.
+    private var localFilesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RowHeading.plain("Local Files")
+            NavigationLink {
+                LocalFilesView()
+            } label: {
+                Label("Files on this device", systemImage: "folder")
+                    .padding(.horizontal)
+            }
+        }
+    }
+
     /// The library section's own three states — inline, each with a way out.
     @ViewBuilder
     private var librarySectionState: some View {
@@ -1151,15 +1167,28 @@ struct LibraryView: View {
                 // library scroll. Above the fold the row always materializes,
                 // so the 34c36e1 lazy rule does not bite; the FILL still comes
                 // from the one central compute() pass (shared store).
-                if freeAudiobooksArea && !freeCatalogStore.rows.tabBooks.isEmpty {
-                    freeAudiobooksSection
-                }
-                // The library's loading/error/empty state sits WHERE the
-                // library renders — the catalogue row above and the sections
-                // below stay standing whatever the server says.
-                librarySectionState
-                if !viewModel.entries.isEmpty {
-                    allBooksSection
+                if !AppSession.shared.authViewModel.isLoggedIn {
+                    // Serverless (dd87a56): the free area IS the tab's core —
+                    // the page's sections, embedded (one parameterised
+                    // version, no drifting copy), plus local files as their
+                    // own section. No server sentence renders here (G8):
+                    // there is no server to speak about.
+                    FreeAudiobooksPage(playerCoordinator: playerCoordinator, embedded: true)
+                    localFilesSection
+                    if !viewModel.entries.isEmpty {
+                        allBooksSection
+                    }
+                } else {
+                    if freeAudiobooksArea && !freeCatalogStore.rows.tabBooks.isEmpty {
+                        freeAudiobooksSection
+                    }
+                    // The library's loading/error/empty state sits WHERE the
+                    // library renders — the catalogue row above and the
+                    // sections below stay standing whatever the server says.
+                    librarySectionState
+                    if !viewModel.entries.isEmpty {
+                        allBooksSection
+                    }
                 }
                 if viewModel.isLoadingMore {
                     // Progressive loading is still running — subtle hint that

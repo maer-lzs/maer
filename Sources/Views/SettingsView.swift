@@ -318,9 +318,13 @@ struct SettingsView: View {
     private var librariesSection: some View {
         Section {
             tabMasterToggle("Audiobooks", isOn: $audiobooksTab)
+                .accessibilityIdentifier("tab-master-audiobooks")
             tabMasterToggle("Podcasts", isOn: $podcastsTab)
+                .accessibilityIdentifier("tab-master-podcasts")
             tabMasterToggle("Music", isOn: $musicTab)
+                .accessibilityIdentifier("tab-master-music")
             tabMasterToggle("Radio", isOn: $radioTab)
+                .accessibilityIdentifier("tab-master-radio")
         } header: {
             Text("Libraries")
         } footer: {

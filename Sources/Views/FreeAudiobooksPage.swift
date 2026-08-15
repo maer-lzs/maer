@@ -47,6 +47,10 @@ extension EnvironmentValues {
 
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    /// dd87a56: serverless, the audiobooks TAB shows this page's sections as
+    /// its core — embedded, the host provides scroll and title, and there is
+    /// exactly ONE version of the sections (parameterised, not copied).
+    var embedded = false
     /// X²·3: re-render when the live OERR entries land (calm-gated).
     @ObservedObject private var oerrStore = OERRLiveStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
@@ -90,7 +94,42 @@ struct FreeAudiobooksPage: View {
     }
 
     var body: some View {
+        if embedded {
+            sectionStack
+                .task { await store.ensureSourcesLoaded() }
+                .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
+                .task(id: selectedChip) { await loadCharts() }
+                .onChange(of: networkMonitor.isConnected) { _, connected in
+                    if connected { Task { await store.ensureSourcesLoaded() } }
+                }
+                .sheet(item: $detailItem) { item in
+                    FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+                }
+        } else {
+            standalone
+        }
+    }
+
+    private var standalone: some View {
         ScrollView {
+            sectionStack
+                .padding(.top, TabContentLayout.topInset)
+                .bottomBarClearance()
+        }
+        .navigationTitle(Text("Free Audiobooks & Radio Plays"))
+        .task { await store.ensureSourcesLoaded() }
+        .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
+        .task(id: selectedChip) { await loadCharts() }
+        // Connection returns while the page is open: load then.
+        .onChange(of: networkMonitor.isConnected) { _, connected in
+            if connected { Task { await store.ensureSourcesLoaded() } }
+        }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private var sectionStack: some View {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 // The rights bases differ per source — the capsule per title
                 // says which; this line only names the FAMILIES.
@@ -126,21 +165,6 @@ struct FreeAudiobooksPage: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)
             }
-            .padding(.top, TabContentLayout.topInset)
-            .bottomBarClearance()
-        }
-        .navigationTitle(Text("Free Audiobooks & Radio Plays"))
-        .task { await store.ensureSourcesLoaded() }
-        // X²·3: kick the live OERR rule once (seed renders immediately).
-        .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
-        .task(id: selectedChip) { await loadCharts() }
-        // Connection returns while the page is open: load then.
-        .onChange(of: networkMonitor.isConnected) { _, connected in
-            if connected { Task { await store.ensureSourcesLoaded() } }
-        }
-        .sheet(item: $detailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
     }
 
     /// 3d6b412 E: feed sources are TILE rows too — the list form belongs to

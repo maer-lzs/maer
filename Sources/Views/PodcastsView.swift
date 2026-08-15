@@ -107,6 +107,21 @@ struct PodcastsView: View {
                 // caps the last full grid). Do NOT flip this back to lazy
                 // without re-running the tile-row journey measurement.
                 VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
+                    // Serverless (affb7e6): the tab opens with DISCOVER as its
+                    // core — the former full-screen empty state blanketed the
+                    // recommendation and radio-play rows that need no account.
+                    // The add path stays, as a section instead of a wall.
+                    if allShows.isEmpty && downloaded.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("No podcasts yet")
+                                .font(.title3).bold()
+                            Text("Subscribe to a show or import your subscriptions from Apple Podcasts.")
+                                .font(.footnote).foregroundStyle(.secondary)
+                            Button("Add Podcasts") { showAddPodcasts = true }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.horizontal)
+                    }
                     nextUpSection
                     hoerspieleSection
                     recommendationsSection
@@ -131,20 +146,7 @@ struct PodcastsView: View {
         // Podcast routes are registered once on the NavigationStack root in
         // LibraryView (the Home tab pushes them too) — not here.
         // No subscription → instead of blank, an empty state with a path to add/import.
-        .overlay {
-            // The queue no longer renders on this tab (its home is the player),
-            // so queued items don't keep the empty state away anymore.
-            if allShows.isEmpty && downloaded.isEmpty {
-                ContentUnavailableView {
-                    Label("No podcasts yet", systemImage: "dot.radiowaves.left.and.right")
-                } description: {
-                    Text("Subscribe to a show or import your subscriptions from Apple Podcasts.")
-                } actions: {
-                    Button("Add Podcasts") { showAddPodcasts = true }
-                        .buttonStyle(.borderedProminent)
-                }
-            }
-        }
+
         .sheet(isPresented: $showAddPodcasts) {
             NavigationStack { PodcastSourceView() }
         }

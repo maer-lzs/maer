@@ -156,7 +156,10 @@ nonisolated enum AppStorageKeys {
     /// Radio source toggle — the tab appears once switched on.
     static let radioEnabled = "radioEnabled"
     static var radioEnabledValue: Bool {
-        get { UserDefaults.standard.bool(forKey: radioEnabled) }
+        // affb7e6, Leitsatz "alles am Anfang an": radio needs no account and
+        // no server — a default of off hid a whole area from everyone who
+        // never found the toggle.
+        get { UserDefaults.standard.object(forKey: radioEnabled) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: radioEnabled) }
     }
 

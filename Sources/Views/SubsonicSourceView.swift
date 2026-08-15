@@ -52,7 +52,10 @@ struct SubsonicSourceView: View {
             }
 
             Section {
-                Toggle("Show Music tab", isOn: $enabled)
+                // affb7e6: the tab is the USER's master (settings →
+                // Libraries); this switch governs the SOURCE — its old label
+                // ("Show Music tab") promised tab behaviour it no longer has.
+                Toggle("Music server (Subsonic)", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("music-tab-toggle")
                     // Y37: the toggle acts IMMEDIATELY (like the ABS podcast

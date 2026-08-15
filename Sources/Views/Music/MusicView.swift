@@ -177,6 +177,18 @@ struct MusicView: View {
             // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
+            // Serverless (13ccc6c): the free-music collection is the tab's
+            // core — the entry leads to the ONE collection page (Jamendo,
+            // records, netlabels), and the Jamendo row renders here directly.
+            if !serverConfigured && freeCatalogsMaster {
+                VStack(alignment: .leading, spacing: 10) {
+                    RowHeading.entry("Free Music", destination: MusicRoute.freeCatalogArea)
+                    if !freeCatalogStore.rows.freeMusic.isEmpty {
+                        freeTileRow(freeCatalogStore.rows.freeMusic)
+                    }
+                }
+            }
+
             // The server section decides for ITSELF — never for the tab.
             // And only WITH a server behind it — a section without a source
             // is omitted, not rendered with an excuse.
