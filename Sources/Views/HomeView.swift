@@ -189,8 +189,11 @@ struct HomeView: View {
         .onReceive(NetworkMonitor.shared.$isConnected) { connected in
             guard connected, isActive else { return }
             Task {
-                await freeCatalogStore.ensureLoaded()
-                await freeCatalogStore.ensureSourcesLoaded()
+                // Befund-V-Pfad: hier werden die Lader WIRKLICH angestossen
+                // (nicht auf einen laufenden gewartet) — mit Budget, damit
+                // ein toter Server die Wiederkehr nicht wieder blockiert.
+                await SourceBudget.run { await freeCatalogStore.ensureLoaded() }
+                await SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
             }
         }
         // E3: recompute the Discover filter only when its inputs change.
@@ -513,12 +516,33 @@ RowHeading(title: "Rediscover",
     // MARK: - Snapshot compute (off the body)
 
     private func compute() async {
-        // Y10: the episode pool must not depend on the podcast tab having been
-        // visited — Home kicks the SAME loading chain itself (tab parity).
-        // Both calls are idempotent/throttled, so no double load happens when
-        // the podcast tab already ran them.
-        await PodcastSubscriptions.shared.ensureLoaded()
-        await ABSPodcastProvider.shared.refreshIfStale()
+        // 🟡 P7: the sources no longer hold each other hostage. Every await
+        // below used to sit in ONE serial chain in front of ONE apply, so a
+        // hanging source (an unreachable homeserver!) kept the WHOLE start
+        // page empty — "source instead of start", the hostage class one
+        // level up from "section instead of tab". The refresh KICKS now and
+        // is awaited with a budget: what is there appears, what is missing
+        // is missing (the serverless principle holds for Start too), and a
+        // late source lands in its own apply through the calm gate.
+        // The independent sources start TOGETHER — otherwise their budgets
+        // add up (three dead music calls = three budgets before anything
+        // renders). Started here, awaited where each result is needed: the
+        // wait becomes the SLOWEST source, not their sum.
+        let musicProvider = AppSession.shared.musicProvider
+        async let musicProgressTask = SourceBudget.value(default: [String: BookProgress]()) {
+            (try? await musicProvider.fetchAllProgress()) ?? [:]
+        }
+        async let newAlbumsTask = SourceBudget.value(default: [LibraryItem]()) {
+            (try? await musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
+        }
+        async let recentMusicTask = SourceBudget.value(default: [LibraryItem]()) {
+            (try? await musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
+        }
+        async let freeRowsTask: Void = SourceBudget.run { await freeCatalogStore.ensureLoaded() }
+        async let freeSourcesTask: Void = SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
+
+        await SourceBudget.run { await PodcastSubscriptions.shared.ensureLoaded() }
+        await SourceBudget.run { await ABSPodcastProvider.shared.refreshIfStale() }
         let shows = PodcastAutoContinue.allShows()
         let snapshot = PodcastSections.snapshot(shows: shows)
         let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
@@ -547,8 +571,9 @@ RowHeading(title: "Rediscover",
         // Package 3: in-progress music playlists as a THIRD stream (no merge
         // rewrite — byRecency already takes N streams). Keep the progress map so
         // the playlist card can render its bar + resume.
-        let musicProvider = AppSession.shared.musicProvider
-        let musicProgress = (try? await musicProvider.fetchAllProgress()) ?? [:]
+        // The music server is the source that vanished with the Tiny — its
+        // absence must cost the start page nothing but the music rows.
+        let musicProgress = await musicProgressTask
         // M1: albums join playlists in the continue stream (same machinery).
         let music = musicProgress
             .filter { key, value in
@@ -592,20 +617,20 @@ RowHeading(title: "Rediscover",
         // present (a pure time sort let the music library's fresher timestamps take
         // every slot, so books vanished).
         let bookItems = libraryViewModel.recentlyAdded.map(\.item)
-        let newAlbums = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
+        let newAlbums = await newAlbumsTask
         // M4: recently played music — the ONE provider access point again.
-        let recentMusic = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
+        let recentMusic = await recentMusicTask
         // 34c36e1: free-catalog rows load HERE (compute always runs) — once
         // per session, but retried while empty (a failed first pass heals on
         // the next recompute instead of deciding forever, Y37 class).
         // cb99bf6: the fill lives in the shared store now.
-        await freeCatalogStore.ensureLoaded()
+        await freeRowsTask
         // L2: the mixed audiobooks row needs the catalog SOURCE rows too —
         // same 34c36e1 rule (below-the-fold .task is unreliable, compute
         // always runs; idempotent, so a podcast-tab visit costs nothing).
         // This deliberately widens the old "not in the Home pass" line: the
         // row now RENDERS on Start, so Start owns a load kick.
-        await freeCatalogStore.ensureSourcesLoaded()
+        await freeSourcesTask
         let byId = Dictionary((bookItems + newAlbums).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let mergedIds = HomeSections.interleave([bookItems.map(\.id), newAlbums.map(\.id)], limit: 12)
         // Uncapped counterpart for the page behind the row (3a3b1aa).
@@ -625,7 +650,7 @@ RowHeading(title: "Rediscover",
             (rediscover, pool) = computeRediscover(
                 bookContinue: pausedCandidates, episodeContinue: episodesShown,
                 visibleContinue: Set(rankedContinue))
-            await recommendations.refreshIfNeeded()
+            await SourceBudget.run { await recommendations.refreshIfNeeded() }
         } else {
             rediscover = []
         }
