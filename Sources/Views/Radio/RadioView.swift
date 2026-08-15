@@ -425,7 +425,7 @@ struct RadioView: View {
         // the country follows the cascade (choice beats guess).
         discoveryFailed = false
         async let topTask = Self.nationalPopular(effectiveCountryCode)
-        async let regionTask = Self.stateStations(chosenState)
+        async let regionTask = Self.stateStations(chosenState, countryCode: effectiveCountryCode)
         let (topResult, topFailed) = await topTask
         let regionResult = await regionTask
         // A throw is not an end: the failed run does NOT count as loaded, the
@@ -494,9 +494,14 @@ struct RadioView: View {
                 return ([], true)
             }
         }
+        // 19a8b4c: a country with a first-hand listener core resolves it
+        // against a DEEP vote pool (the core's whole point is that ma-big
+        // stations can rank LOW in votes — a shallow pool would miss them).
+        let core = RadioListenerCores.national(countryCode: countryCode)
+        let poolLimit = core == nil ? 30 : 300
         // The two sources stay best-effort against each other — FAILED means
         // both threw, an empty but successful answer stays an answer.
-        async let votesList: [RadioStation]? = try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: 30)
+        async let votesList: [RadioStation]? = try? await RadioBrowserClient.byRegion(countryCode: countryCode, limit: poolLimit)
         async let trendList: [RadioStation]? = try? await RadioBrowserClient.byRegionClicktrend(countryCode: countryCode, limit: 30)
         let rawVotes = await votesList
         let rawTrend = await trendList
@@ -511,10 +516,48 @@ struct RadioView: View {
             RadioMapping.keepingCountry(countryCode, in: rawVotes ?? []))
         let trend = RadioMapping.dedupeForDisplay(
             RadioMapping.keepingCountry(countryCode, in: rawTrend ?? []))
-        return (RadioRotation.compose(
-            votes: votes, clicktrend: trend,
-            seed: RadioRotation.seed(day: rotationDay(), countryCode: countryCode),
-            limit: 12), false)
+        let seed = RadioRotation.seed(day: rotationDay(), countryCode: countryCode)
+        guard let core else {
+            return (RadioRotation.compose(
+                votes: votes, clicktrend: trend, seed: seed, limit: 12), false)
+        }
+        let resolved = await resolveCore(core, pool: votes + trend, countryCode: countryCode)
+        return (RadioRotation.composeWithCore(
+            core: resolved, votes: votes, clicktrend: trend,
+            seed: seed, limit: 12), false)
+    }
+
+    /// 19a8b4c: resolve a first-hand core against the fetched pool; names
+    /// the pool does not carry get a BOUNDED number of targeted catalog
+    /// lookups (the ladder's query forms, politely sequential, capped) —
+    /// then the honest quote goes to the log, misses are never silent.
+    private static func resolveCore(_ core: [String], pool: [RadioStation],
+                                    countryCode: String) async -> [RadioStation] {
+        var resolution = RadioCoreResolve.resolve(core: core, pool: pool, countryCode: countryCode)
+        // Lookups only for misses within the row-relevant head of the core —
+        // a rank-90 miss changes nothing visible and costs a request.
+        let relevant = resolution.misses.filter { core.firstIndex(of: $0).map { $0 < 20 } ?? false }
+        var lookedUp: [RadioStation] = []
+        for missName in relevant.prefix(6) {
+            for query in RadioCoreResolve.lookupQueries(missName, countryCode: countryCode).prefix(3) {
+                guard let found = try? await RadioBrowserClient.search(name: query, limit: 10) else { continue }
+                let candidates = RadioMapping.keepingCountry(countryCode, in: found)
+                let probe = RadioCoreResolve.resolve(core: [missName], pool: candidates,
+                                                     countryCode: countryCode)
+                if !probe.stations.isEmpty {
+                    lookedUp += candidates
+                    break
+                }
+            }
+        }
+        if !lookedUp.isEmpty {
+            resolution = RadioCoreResolve.resolve(core: core, pool: pool + lookedUp,
+                                                  countryCode: countryCode)
+        }
+        RadioProvider.shared.remember(resolution.stations)
+        let renames = resolution.mapping.map { "\($0.core)→\($0.matched)" }.joined(separator: " · ")
+        Logger.library.notice("RADIO core \(countryCode, privacy: .public) resolved=\(resolution.stations.count)/\(core.count) misses=\(resolution.misses.joined(separator: " · "), privacy: .public) renames=\(renames, privacy: .public)")
+        return resolution.stations
     }
 
     /// The REAL region: stations of the user-chosen state (never guessed,
@@ -522,7 +565,7 @@ struct RadioView: View {
     /// b942da6: the query runs against ALL merged name variants (persisted at
     /// choice time) — otherwise the other spelling's stations vanish; results
     /// dedupe by station id, first (best-voted of the winner name) stays.
-    private static func stateStations(_ state: String?) async -> [RadioStation] {
+    private static func stateStations(_ state: String?, countryCode: String?) async -> [RadioStation] {
         guard let state, !state.isEmpty else { return [] }
         let names = (UserDefaults.standard.array(forKey: AppStorageKeys.radioRegionQueryNames) as? [String])
             .flatMap { $0.isEmpty ? nil : $0 } ?? [state]
@@ -562,9 +605,22 @@ struct RadioView: View {
         let votesOrdered = votesMerged.sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }
         var seen = Set<String>()
         let votesUnique = votesOrdered.filter { seen.insert($0.id).inserted }
+        // 19a8b4c: the Bundesland core (ma Top Ten / Radiotest column). The
+        // published lists carry NATIONWIDE stations too (Deutschlandfunk in
+        // a Länder top ten), which the by-state pool may not tag — the
+        // country vote pool joins the resolution pool for exactly those.
+        var core: [RadioStation] = []
+        if let coreNames = RadioListenerCores.regional(countryCode: countryCode, regionName: state) {
+            let countryPool = (try? await RadioBrowserClient.byRegion(
+                countryCode: countryCode ?? "", limit: 300)) ?? []
+            core = await resolveCore(coreNames,
+                                     pool: votesMerged + RadioMapping.keepingCountry(countryCode ?? "", in: countryPool),
+                                     countryCode: countryCode ?? "")
+        }
         // 71b277f (B, Screenshot-entschieden): regional socket sits on VOTES;
         // clicktrend joins the pool only above a minimum-votes floor.
-        let composed = RadioRotation.compose(
+        let composed = RadioRotation.composeWithCore(
+            core: core,
             votes: RadioMapping.dedupeForDisplay(votesUnique),
             clicktrend: RadioMapping.dedupeForDisplay(trendMerged),
             seed: RadioRotation.seed(day: rotationDay(), countryCode: state),

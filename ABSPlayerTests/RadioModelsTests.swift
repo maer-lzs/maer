@@ -589,3 +589,142 @@ struct RadioStateQueryTests {
     }
 }
 #endif
+
+// MARK: - 19a8b4c: first-hand listener cores
+
+/// The resolve ladder is fixture-tested against REAL catalog names from the
+/// reference run (2026-08-15, de1.api.radio-browser.info) — every fixture
+/// name below is a real RB entry that shaped a ladder rule.
+struct RadioListenerCoreTests {
+    private func rb(_ id: String, _ name: String, votes: Int = 0, cc: String = "DE") -> RadioStation {
+        RadioStation(id: "radio:rb:\(id)", name: name, streamURL: "https://s/\(id)",
+                     countryCode: cc, votes: votes)
+    }
+
+    @Test func coreTablesAreWellFormed() {
+        for code in ["DE", "AT", "CH"] {
+            let core = RadioListenerCores.national(countryCode: code)
+            #expect(core != nil && !(core ?? []).isEmpty)
+            #expect(Set(core ?? []).count == (core ?? []).count)   // no dupes
+        }
+        #expect(RadioListenerCores.national(countryCode: "FR") == nil)
+        #expect(RadioListenerCores.national(countryCode: nil) == nil)
+    }
+
+    @Test func regionalTablesMatchTheCanon() {
+        // Every regional core key must resolve through the canon — a typo in
+        // a table key would silently disable that Land's core.
+        for (code, table) in [("DE", RadioListenerCores.germanyRegional),
+                              ("AT", RadioListenerCores.austriaRegional)] {
+            let canonDisplays = Set((RadioRegionCanon.tables[code] ?? []).map(\.display))
+            for key in table.keys {
+                #expect(canonDisplays.contains(key), "\(code)/\(key) not in canon")
+                #expect(RadioListenerCores.regional(countryCode: code, regionName: key) != nil)
+            }
+        }
+        #expect(RadioListenerCores.germanyRegional.count == 16)
+        #expect(RadioListenerCores.austriaRegional.count == 9)
+        // Aliases resolve too (the picker may hand the alias spelling).
+        #expect(RadioListenerCores.regional(countryCode: "DE", regionName: "NRW") != nil)
+        // CH regional stays votes (language regions ≠ canton canon).
+        #expect(RadioListenerCores.regional(countryCode: "CH", regionName: "Zürich") == nil)
+    }
+
+    @Test func foldingAndJoins() {
+        #expect(RadioCoreResolve.foldKey("Ö 3") == "o3")
+        #expect(RadioCoreResolve.foldKey("88.6 - so rockt das Leben") == "886sorocktdasleben")
+        #expect(RadioCoreResolve.tokens("R.SH Radio Schleswig-Holstein") == ["r", "sh", "radio", "schleswig", "holstein"])
+        let joins = RadioCoreResolve.joins(["orf", "hitradio", "o3"])
+        #expect(joins.contains("o3") && joins.contains("orfhitradioo3") && joins.contains("hitradioo3"))
+        #expect(!joins.contains("orfo3"))   // contiguous only
+    }
+
+    @Test func resolveLadderOnRealCatalogShapes() {
+        let pool = [
+            rb("bayern1", "Bayern 1 Oberbayern", votes: 4358),
+            rb("bayern1f", "Bayern 1 Franken", votes: 400),
+            rb("wien", "ORF Radio Wien", votes: 300, cc: "AT"),
+            rb("oe3", "ORF Hitradio Ö3", votes: 2000, cc: "AT"),
+            rb("oe1", "Ö1 | ORF | HQ", votes: 900, cc: "AT"),
+            rb("pilatus", "Radio Pilatus", votes: 500, cc: "CH"),
+            rb("r24", "Radio24", votes: 400, cc: "CH"),
+            rb("fm4", "FM4 | ORF", votes: 800, cc: "AT"),
+            rb("swr4bw", "SWR4 BW [48 aac]", votes: 60),
+            rb("ant1", "antenne 1", votes: 90),
+            rb("rshlive", "R.SH Live", votes: 283),
+            rb("diggi", "1LIVE Diggi", votes: 700),
+            rb("einslive", "1LIVE", votes: 5000),
+        ]
+        // Rule 3: core key as contiguous join of the catalog name.
+        let de = RadioCoreResolve.resolve(
+            core: ["BAYERN 1", "SWR4 BW", "Hitradio antenne 1", "1LIVE",
+                   "R.SH Radio Schleswig-Holstein"],
+            pool: pool, countryCode: "DE")
+        #expect(de.stations.map(\.name) == ["Bayern 1 Oberbayern", "SWR4 BW [48 aac]",
+                                            "antenne 1", "1LIVE", "R.SH Live"])
+        #expect(de.misses.isEmpty)
+        let at = RadioCoreResolve.resolve(
+            core: ["Ö 3", "Österreich 1", "Radio Wien", "FM4"],
+            pool: pool, countryCode: "AT")
+        #expect(at.stations.map(\.name) == ["ORF Hitradio Ö3", "Ö1 | ORF | HQ",
+                                            "ORF Radio Wien", "FM4 | ORF"])
+        let ch = RadioCoreResolve.resolve(
+            core: ["Pilatus", "Radio 24"], pool: pool, countryCode: "CH")
+        #expect(ch.stations.map(\.name) == ["Radio Pilatus", "Radio24"])
+        // "1LIVE" must take the exact match, never the Diggi sub-brand.
+        // Misses are returned, not swallowed.
+        let miss = RadioCoreResolve.resolve(core: ["Bayern Funkpaket"], pool: pool, countryCode: "DE")
+        #expect(miss.stations.isEmpty && miss.misses == ["Bayern Funkpaket"])
+        // Proximity beats votes within rule 3: the survey's ASCII " - "
+        // claim tail is cut, and "radio 88.6" (1978-vote sub-brand "88.6
+        // Hard Rock" sits beside it) wins by closeness.
+        let vienna = RadioCoreResolve.resolve(
+            core: ["88.6 - so rockt das Leben"],
+            pool: [rb("hardrock", "88.6 Hard Rock", votes: 1978, cc: "AT"),
+                   rb("r886", "radio 88.6", votes: 1450, cc: "AT")],
+            countryCode: "AT")
+        #expect(vienna.stations.map(\.name) == ["radio 88.6"])
+    }
+
+    @Test func lookupQueriesCoverTheReferenceMisses() {
+        // "R.SH" (prefix before the Radio tail) found R.SH Live in the run;
+        // "DAS HITRADIO" (leading number dropped) finds the Aachen station.
+        #expect(RadioCoreResolve.lookupQueries("R.SH Radio Schleswig-Holstein", countryCode: "DE")
+            .contains("R.SH"))
+        #expect(RadioCoreResolve.lookupQueries("100,5 DAS HITRADIO.", countryCode: "DE")
+            .contains("DAS HITRADIO"))
+        #expect(RadioCoreResolve.lookupQueries("SWR1 RP", countryCode: "DE")
+            .contains("SWR1 Rheinland-Pfalz"))
+    }
+
+    @Test func composeWithCoreKeepsHeadStableAndFillDiscoverable() {
+        let core = (1...10).map { rb("core\($0)", "Core \($0)", votes: 10) }
+        let votes = (1...20).map { rb("vote\($0)", "Vote \($0)", votes: 1000 - $0) }
+        var headSeen = Set<String>()
+        var tails = Set<String>()
+        for day in 1...14 {
+            let seed = RadioRotation.seed(day: 20_260_800 + day, countryCode: "DE")
+            let row = RadioRotation.composeWithCore(
+                core: core, votes: votes, clicktrend: [], seed: seed, limit: 12)
+            #expect(row.count == 12)
+            #expect(Set(row.map(\.id)).count == 12)   // no dupes
+            // Head: the core's published top 3, EVERY day.
+            headSeen.insert(row.prefix(3).map(\.id).joined(separator: ","))
+            // Core pot: exactly limit - fillMinimum seats.
+            let coreSeats = row.filter { $0.id.hasPrefix("radio:rb:core") }.count
+            #expect(coreSeats == 12 - RadioRotation.fillMinimum)
+            tails.insert(row.dropFirst(3).map(\.id).joined(separator: ","))
+        }
+        #expect(headSeen == ["radio:rb:core1,radio:rb:core2,radio:rb:core3"])
+        #expect(tails.count > 1)   // rotation actually rotates within pots
+        // Without a core the call is EXACTLY the coreless composition.
+        let seed = RadioRotation.seed(day: 20_260_801, countryCode: "DE")
+        #expect(RadioRotation.composeWithCore(core: [], votes: votes, clicktrend: [],
+                                              seed: seed, limit: 12).map(\.id)
+            == RadioRotation.compose(votes: votes, clicktrend: [], seed: seed, limit: 12).map(\.id))
+        // A short core fills the row from votes, no seat lost.
+        let short = RadioRotation.composeWithCore(
+            core: Array(core.prefix(2)), votes: votes, clicktrend: [], seed: seed, limit: 12)
+        #expect(short.count == 12 && short[0].id == "radio:rb:core1")
+    }
+}

@@ -621,6 +621,53 @@ nonisolated enum RadioRotation {
     /// the clicktrend socket (proven correct on the device).
     enum SocketSource { case clicktrend, votes }
 
+    /// 19a8b4c: minimum seats the VOTES fill keeps even when the core could
+    /// fill the whole row — webradios stay discoverable, they only leave the
+    /// top positions.
+    static let fillMinimum = 4
+
+    /// 19a8b4c: core-first composition — the first-hand core (published rank
+    /// order) takes the head of the row, today's vote/trend pool fills the
+    /// rest. Daily rotation runs WITHIN each pot: the core's top
+    /// `socketSize` stay fixed (the row must read as "what the country
+    /// really hears"), the remaining core seats draw day-seeded weighted by
+    /// published rank; the fill pot rotates exactly like the coreless row.
+    static func composeWithCore(core: [RadioStation],
+                                votes: [RadioStation], clicktrend: [RadioStation],
+                                seed: UInt64, limit: Int,
+                                socket: SocketSource = .clicktrend,
+                                minTrendVotes: Int = 0) -> [RadioStation] {
+        guard !core.isEmpty else {
+            return compose(votes: votes, clicktrend: clicktrend, seed: seed,
+                           limit: limit, socket: socket, minTrendVotes: minTrendVotes)
+        }
+        let coreSeats = min(core.count, max(0, limit - fillMinimum))
+        var out = Array(core.prefix(socketSize))
+        // Remaining core seats: day-seeded weighted draw by published rank.
+        var candidates = Array(core.dropFirst(socketSize))
+        var generator = RediscoverSections.SplitMix64(seed: seed ^ 0x1_9a8b_4c)
+        while out.count < coreSeats, !candidates.isEmpty {
+            let poolMax = candidates.count + 1
+            let weights = candidates.indices.map { UInt64(poolMax - $0) }
+            let total = weights.reduce(0, +)
+            var pick = generator.next() % max(total, 1)
+            var chosen = 0
+            for (index, weight) in weights.enumerated() {
+                if pick < weight { chosen = index; break }
+                pick -= weight
+            }
+            out.append(candidates.remove(at: chosen))
+        }
+        // Fill pot: the existing rotation over the pools, core rows excluded.
+        let coreKeys = Set(core.map { RadioMapping.displayIdentityKey($0) })
+        let fill = compose(
+            votes: votes.filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) },
+            clicktrend: clicktrend.filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) },
+            seed: seed, limit: limit - out.count,
+            socket: socket, minTrendVotes: minTrendVotes)
+        return out + fill
+    }
+
     static func compose(votes: [RadioStation], clicktrend: [RadioStation],
                         seed: UInt64, limit: Int,
                         socket: SocketSource = .clicktrend,
