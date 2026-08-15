@@ -43,6 +43,15 @@ struct LatestEpisodesGrid: View {
         // Paket B: membership resolved ONCE per render (cell-cost rule),
         // handed to the tiles as a value.
         let mirrored = PodcastSubscriptions.shared.mirroredEpisodeGuids()
+        // P13 (same cell-cost rule): the premium classification is a
+        // keychain/defaults lookup — resolved ONCE per render for the shown
+        // episodes, handed to the tiles as a value. Starts "Latest Episodes"
+        // was the one episode surface without the lock (measured).
+        let premiumEpisodes = Set(shown.compactMap { item -> String? in
+            guard let feed = PodcastSubscriptions.shared.feedURL(forEpisodeId: item.id),
+                  PodcastSubscriptions.isPremiumFeed(feed) else { return nil }
+            return item.id
+        })
         VStack(alignment: .leading, spacing: 10) {
             if !alwaysExpanded {
                 // Welle 3b: the heading carries the page chevron (counted —
@@ -56,7 +65,8 @@ struct LatestEpisodesGrid: View {
                 alignment: .leading, spacing: 14
             ) {
                 ForEach(shown) { item in
-                    episodeTile(item, mirrored: mirrored)
+                    episodeTile(item, mirrored: mirrored,
+                                isPremium: premiumEpisodes.contains(item.id))
                 }
             }
             .padding(.horizontal)
@@ -83,7 +93,8 @@ struct LatestEpisodesGrid: View {
         )
     }
 
-    private func episodeTile(_ item: LibraryItem, mirrored: Set<String>) -> some View {
+    private func episodeTile(_ item: LibraryItem, mirrored: Set<String>,
+                             isPremium: Bool) -> some View {
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             MediaTile(
                 title: item.title,
@@ -99,6 +110,7 @@ struct LatestEpisodesGrid: View {
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
             }
+            .premiumLock(isPremium)
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
     }

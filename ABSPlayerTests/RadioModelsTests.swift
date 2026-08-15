@@ -751,3 +751,30 @@ struct RadioListenerCoreTests {
         #expect(short.count == 12 && short[0].id == "radio:rb:core1")
     }
 }
+
+// MARK: - P12: National- und Regional-Wahl sind entkoppelt
+
+struct RadioCountryDecouplingTests {
+    @Test("ohne eigene National-Wahl gilt die geteilte Kaskade (Migration ohne Sprung)")
+    func migrationKeepsTodaysBehaviour() {
+        // Niemand hat entkoppelt: National folgt dem gemeinsamen Wert —
+        // exakt das heutige Verhalten, ohne dass etwas geschrieben wird.
+        #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: "DE") == "DE")
+        #expect(RadioCountryCascade.nationalCode(explicitNational: "", shared: "DE") == "DE")
+        #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: nil) == nil)
+    }
+
+    @Test("the owner's Fall: National CH, Region NRW gleichzeitig")
+    func nationalAndRegionAreIndependent() {
+        // Die Region impliziert DE (NRW), die National-Wahl ist CH.
+        let shared = RadioCountryCascade.effectiveCode(explicit: nil, regionImplied: "DE",
+                                                       locale: "DE")
+        #expect(shared == "DE")                                   // Region-Reihe
+        #expect(RadioCountryCascade.nationalCode(explicitNational: "CH", shared: shared) == "CH")
+        // Und die Kerne folgen je Reihe ihrem Land.
+        #expect(RadioListenerCores.national(countryCode: "CH")
+                == RadioListenerCores.switzerlandNational)
+        #expect(RadioListenerCores.regional(countryCode: "DE",
+                                            regionName: "Nordrhein-Westfalen") != nil)
+    }
+}

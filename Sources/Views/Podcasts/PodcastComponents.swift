@@ -55,6 +55,16 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
+        // P13 sweep: the Continue card carries the lock too — a free and a
+        // premium copy of the SAME show can sit next to each other here
+        // (the owner's ZEIT case), and then the mark is what tells them apart.
+        // TOP trailing, not the canonical bottom one: that corner belongs to
+        // the download badge on this card.
+        .overlay(alignment: .topTrailing) {
+            PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
+                AppSession.shared.rssProvider.show(forEpisodeId: item.id)?.feedURL ?? ""))
+                .padding(6)
+        }
         // X6b: the SHARED download/offline badge family at the card corner —
         // identical to the book card (was PodcastDownloadButton before).
         .overlay(alignment: .bottomTrailing) {
@@ -188,18 +198,8 @@ struct RecentShowTile: View {
                             .padding(8)
                     }
                 }
-                // 92e25d6: premium badge — one truth with the management.
-                .overlay(alignment: .bottomTrailing) {
-                    if PodcastSubscriptions.isPremiumFeed(info.show.feedURL) {
-                        Image(systemName: "lock.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Circle().fill(.black.opacity(0.55)))
-                            .padding(6)
-                            .accessibilityLabel(Text("Premium Feed"))
-                    }
-                }
+                // 92e25d6/P13: THE premium badge (shared component).
+                .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL))
 
                 if info.newCount > 0 {
                     Text("\(info.newCount)")
@@ -234,18 +234,8 @@ struct ShowTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
-                // 92e25d6: same premium badge as the recent-shows grid.
-                .overlay(alignment: .bottomTrailing) {
-                    if PodcastSubscriptions.isPremiumFeed(show.feedURL) {
-                        Image(systemName: "lock.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.white)
-                            .padding(5)
-                            .background(Circle().fill(.black.opacity(0.55)))
-                            .padding(6)
-                            .accessibilityLabel(Text("Premium Feed"))
-                    }
-                }
+                // 92e25d6/P13: same shared badge as the recent-shows grid.
+                .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL))
             Text(show.title)
                 .font(.caption)
                 // Jank convention: reserved lines — a short title must not

@@ -45,6 +45,13 @@ struct RadioView: View {
     @State private var chosenCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryCode)
     @State private var chosenCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryName)
     @State private var impliedCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryCode)
+    /// P12: the NATIONAL row's own country — independent of the region.
+    @State private var nationalCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryCode)
+    @State private var nationalCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryName)
+    /// Which row a country choice applies to (the picker serves both).
+    @State private var countryPickerTarget: CountryPickerTarget = .national
+
+    enum CountryPickerTarget { case national, region }
     #if DEBUG
     @State private var seedRegionApplied = false
     #endif
@@ -56,6 +63,18 @@ struct RadioView: View {
                                           regionImplied: impliedCountryCode,
                                           locale: localeCode)
     }
+
+    /// P12: the NATIONAL row's country. Own choice first; without one the
+    /// shared cascade — that IS the migration: whoever never decouples sees
+    /// exactly today's behaviour, without a jump on first launch.
+    private var nationalEffectiveCode: String? {
+        RadioCountryCascade.nationalCode(explicitNational: nationalCountryCode,
+                                         shared: effectiveCountryCode)
+    }
+
+    /// The REGION row's country (its own cascade step, unchanged): the
+    /// country implied by the chosen region, else the shared cascade.
+    private var regionEffectiveCode: String? { effectiveCountryCode }
 
     /// English country name for the Radio Browser states path.
     private var effectiveCountryName: String? {
@@ -122,6 +141,9 @@ struct RadioView: View {
                         // title), same style/position as "Change region";
                         // ONE mechanism (the existing cascade) behind both.
                         Button {
+                            // P12: this link sits under the NATIONAL row and
+                            // therefore changes only its country.
+                            countryPickerTarget = .national
                             showCountryPicker = true
                         } label: {
                             Text("Change Country")
@@ -171,13 +193,16 @@ struct RadioView: View {
             NavigationStack {
                 RadioCountryPickerList { code, name in
                     showCountryPicker = false
-                    chooseCountry(code: code, name: name)
+                    switch countryPickerTarget {
+                    case .national: chooseNationalCountry(code: code, name: name)
+                    case .region: chooseCountry(code: code, name: name)
+                    }
                 }
             }
         }
         .sheet(isPresented: $showRegionPicker) {
             RadioRegionPickerSheet(states: availableStates,
-                                   countryTitle: nationalCountryDisplayName,
+                                   countryTitle: regionCountryDisplayName,
                                    onChooseRegion: chooseRegion,
                                    onChooseCountry: chooseCountry)
         }
@@ -185,7 +210,12 @@ struct RadioView: View {
 
     /// Localized display name of the effective country (sheet subtitle).
     private var nationalCountryDisplayName: String? {
-        effectiveCountryCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }
+        nationalEffectiveCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }
+    }
+
+    /// The REGION row's country name, for its own picker layer.
+    private var regionCountryDisplayName: String? {
+        regionEffectiveCode.flatMap { Locale.current.localizedString(forRegionCode: $0) }
     }
 
     // MARK: - Sections
@@ -351,6 +381,16 @@ struct RadioView: View {
 
     /// Region choice: persist display name + ALL merged raw names (the query
     /// runs against every variant) + the implied country (cascade step b).
+    /// P12: the NATIONAL choice — writes only its own keys, the region row
+    /// stays untouched (that is the whole point of the decoupling).
+    private func chooseNationalCountry(code: String, name: String) {
+        nationalCountryCode = code
+        nationalCountryName = name
+        UserDefaults.standard.set(code, forKey: AppStorageKeys.radioNationalCountryCode)
+        UserDefaults.standard.set(name, forKey: AppStorageKeys.radioNationalCountryName)
+        Task { await loadDiscovery(force: true) }
+    }
+
     private func chooseRegion(_ entry: RadioBrowseCuration.Curated) {
         chosenState = entry.display
         UserDefaults.standard.set(entry.display, forKey: AppStorageKeys.radioRegionState)
@@ -424,7 +464,7 @@ struct RadioView: View {
         // less foreign-language noise; search covers the exotics. b1ab99d:
         // the country follows the cascade (choice beats guess).
         discoveryFailed = false
-        async let topTask = Self.nationalPopular(effectiveCountryCode)
+        async let topTask = Self.nationalPopular(nationalEffectiveCode)
         async let regionTask = Self.stateStations(chosenState, countryCode: effectiveCountryCode)
         let (topResult, topFailed) = await topTask
         let regionResult = await regionTask

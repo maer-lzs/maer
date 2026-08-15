@@ -340,6 +340,12 @@ nonisolated enum AppStorageKeys {
     static let radioRegionCountryCode = "radioRegionCountryCode"
     static let radioRegionCountryName = "radioRegionCountryName"
     /// Explicitly chosen country (cascade step a — beats every guess).
+    /// P12: the NATIONAL row has its own country now — living where you are
+    /// and coming from somewhere else are two different facts (the owner:
+    /// "Beliebt in der Schweiz" plus the home stations from NRW). The region
+    /// row keeps `radioRegionCountryCode`/`-Name` + `radioRegionState`.
+    static let radioNationalCountryCode = "radioNationalCountryCode"
+    static let radioNationalCountryName = "radioNationalCountryName"
     static let radioChosenCountryCode = "radioChosenCountryCode"
     static let radioChosenCountryName = "radioChosenCountryName"
 

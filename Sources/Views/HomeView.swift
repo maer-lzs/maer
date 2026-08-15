@@ -136,10 +136,13 @@ struct HomeView: View {
                         discoverAudiobooksSection
                     }
                     upNextSection
-                    radioSection
+                    // P14: ONE row for albums AND stations (both: start
+                    // again, no position) — replaces the separate radio and
+                    // recent-music rows. Sits where the radio row sat, as a
+                    // "recently used" shelf after the planned queue.
+                    recentlyPlayedSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
-                    recentMusicSection
                     recentlyAddedSection
                     if isEmpty { emptyState }
                 }
@@ -275,24 +278,49 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
         }
     }
 
-    /// Radio on Home: "recently listened" stations as the SAME card row the
-    /// radio tab uses (`RadioCardRow`) — the fourth media type joins the hub.
-    /// Placed after Up Next (planned queue) and before Latest Episodes, like a
-    /// "recently used" shelf. Unlike the radio tab, favorites are NOT filtered
-    /// out — Home has no favorites list to duplicate against.
+    /// P14: "Recently Played" — albums and stations in ONE row, ordered by
+    /// TIME (never a fair interleave: this is a truth row, see
+    /// `RecentlyPlayedRow`). Same tiles as before, one heading; a tap plays
+    /// in both classes. Albums with an open position stay in Continue — the
+    /// boundary is position, not media type.
     @ViewBuilder
-    private var radioSection: some View {
-        if RadioHomePresentation.showsSection(radioActive: RadioProvider.shared.isAvailable,
-                                              recentsCount: radioRecents.count) {
-            // ceb2a6a (the owner): on START the compact TILE form — the big
-            // featured card is too dominant here, where every other row runs
-            // at tile density. The radio tab keeps its cards. Existing
-            // component with its frame for transparent PNGs, no copy; and
-            // the tap contract stays PLAY, because this is a Zuletzt surface.
-            RadioCardRow(title: String(localized: "Radio"),
-                         stations: radioRecents,
-                         playerCoordinator: playerCoordinator,
-                         mode: .playsOnTap)
+    private var recentlyPlayedSection: some View {
+        let radioOn = RadioProvider.shared.isAvailable
+        let entries = RecentlyPlayedRow.merged(
+            albums: recentMusicItems.map(\.id),
+            albumTimes: musicContinueProgress.compactMapValues { $0.lastUpdate > 0 ? $0.lastUpdate / 1000 : nil },
+            continued: Set(continueIds),
+            stations: radioOn ? radioRecents.map(\.id) : [],
+            stationTimes: radioOn ? RadioStore.recentTimes() : [:],
+            limit: RowPreview.limit)
+        if !entries.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                // No chevron: there is no page behind this MIXED row (the
+                // music-only shelf still has its own page from the music
+                // tab). Counting rule — no target, no chevron.
+                RowHeading.plain("Recently Played")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(entries, id: \.self) { entry in
+                            switch entry {
+                            case .album(let id):
+                                if let item = recentMusicItems.first(where: { $0.id == id }) {
+                                    AlbumCell(item: item, width: 150,
+                                              playerCoordinator: playerCoordinator)
+                                        .frame(width: 150, alignment: .top)
+                                }
+                            case .station(let id):
+                                if let station = radioRecents.first(where: { $0.id == id }) {
+                                    RadioStationCard(station: station,
+                                                     playerCoordinator: playerCoordinator,
+                                                     mode: .playsOnTap)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
         }
     }
 
@@ -475,30 +503,6 @@ RowHeading(title: "Rediscover",
         }
     }
 
-    /// M4 "Zuletzt gehört (Musik)": the provider's recently-played album
-    /// shelf as a horizontal AlbumCell row — the SAME shelf mechanics and
-    /// cell as Recently Added (Regel 2: no Home-specific tile).
-    @ViewBuilder
-    private var recentMusicSection: some View {
-        if !recentMusicItems.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                // Welle 3: same page as the music tab's shelf (Regel 2).
-                RowHeading(title: "Recently Played (Music)",
-                           total: recentMusicItems.count,
-                           shown: RowPreview.cut(recentMusicItems).count,
-                           destination: MusicRoute.shelfPage(.recent))
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 16) {
-                        ForEach(RowPreview.cut(recentMusicItems)) { item in
-                            AlbumCell(item: item, width: 150, playerCoordinator: playerCoordinator)
-                                .frame(width: 150, alignment: .top)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-            }
-        }
-    }
 
     /// A recently-added id resolves to a library book → the book grid cell,
     /// otherwise (an album) → the album cell.

@@ -386,6 +386,23 @@ nonisolated enum RadioStore {
         list.removeAll { $0.id == station.id }
         list.insert(station, at: 0)
         save(Array(list.prefix(recentsCap)), recentsKey, defaults: defaults)
+        // P14: the MRU ORDER alone cannot be merged with another class — a
+        // joint "recently played" row needs a comparable TIME. Kept beside
+        // the ring (not inside the station), so nothing about the station
+        // model changes.
+        var stamps = recentTimes(defaults: defaults)
+        stamps[station.id] = Date().timeIntervalSince1970
+        let live = Set(recents(defaults: defaults).map(\.id))
+        defaults.set(stamps.filter { live.contains($0.key) }, forKey: recentTimesKey)
+    }
+
+    private static let recentTimesKey = "radioRecentTimes"
+
+    /// station id → last played (seconds). Missing for stations heard before
+    /// this existed — the caller ranks those after the dated ones instead of
+    /// inventing a time.
+    static func recentTimes(defaults: UserDefaults = .standard) -> [String: Double] {
+        (defaults.dictionary(forKey: recentTimesKey) as? [String: Double]) ?? [:]
     }
 
     /// Resolve any known station by id (favorites, manual, recents).
@@ -979,6 +996,15 @@ nonisolated enum RadioFaviconGate {
 }
 
 nonisolated enum RadioCountryCascade {
+    /// P12: the NATIONAL row's country. Its own explicit choice wins;
+    /// without one it follows the shared cascade — which IS the migration:
+    /// whoever never decouples sees exactly today's behaviour, and there is
+    /// no jump on first launch because nothing is written eagerly.
+    static func nationalCode(explicitNational: String?, shared: String?) -> String? {
+        if let explicitNational, !explicitNational.isEmpty { return explicitNational }
+        return shared
+    }
+
     static func effectiveCode(explicit: String?, regionImplied: String?, locale: String?) -> String? {
         if let explicit, !explicit.isEmpty { return explicit }
         if let regionImplied, !regionImplied.isEmpty { return regionImplied }
