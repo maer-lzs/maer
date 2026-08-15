@@ -1092,26 +1092,33 @@ struct LibraryView: View {
         }
     }
 
-    /// Audiobook tab: loading/error/empty states and the actual list.
+    /// Audiobook tab. The library states used to be decided for the WHOLE
+    /// tab, so an unreachable or empty server hid the free-catalogue row with
+    /// it — the same hostage structure the music tab carried. The scroll
+    /// always renders now; the LIBRARY section carries its own three states
+    /// inside `content`.
     @ViewBuilder
     private var audiobooksContent: some View {
+        content
+    }
+
+    /// The library section's own three states — inline, each with a way out.
+    @ViewBuilder
+    private var librarySectionState: some View {
         if viewModel.isLoading && viewModel.entries.isEmpty {
-            Spacer()
             ProgressView("Loading library…")
-            Spacer()
+                .frame(maxWidth: .infinity, minHeight: 120)
         } else if let error = viewModel.errorMessage, viewModel.entries.isEmpty {
-            Spacer()
             VStack(spacing: 12) {
                 Text(error).multilineTextAlignment(.center)
                 Button("Try Again") {
                     Task { await viewModel.loadLibrary() }
                 }
             }
+            .frame(maxWidth: .infinity)
             .padding()
-            Spacer()
         } else if viewModel.entries.isEmpty {
             // Connected, but the server has no books (yet).
-            Spacer()
             ContentUnavailableView {
                 Label("No Audiobooks", systemImage: "books.vertical")
             } description: {
@@ -1123,9 +1130,7 @@ struct LibraryView: View {
                     Task { await viewModel.loadLibrary() }
                 }
             }
-            Spacer()
-        } else {
-            content
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -1149,7 +1154,13 @@ struct LibraryView: View {
                 if freeAudiobooksArea && !freeCatalogStore.rows.tabBooks.isEmpty {
                     freeAudiobooksSection
                 }
-                allBooksSection
+                // The library's loading/error/empty state sits WHERE the
+                // library renders — the catalogue row above and the sections
+                // below stay standing whatever the server says.
+                librarySectionState
+                if !viewModel.entries.isEmpty {
+                    allBooksSection
+                }
                 if viewModel.isLoadingMore {
                     // Progressive loading is still running — subtle hint that
                     // more titles are on the way.

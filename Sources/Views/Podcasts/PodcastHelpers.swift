@@ -191,12 +191,23 @@ enum PodcastAutoDownload {
         }
         let dm = DownloadManager.shared
         for show in shows where isEnabled(show.id) {
-            let since = UserDefaults.standard.double(forKey: sinceKey(show.id))
-            let candidates = show.episodes
-                .filter { $0.pubDate >= since }
-                .sorted { $0.pubDate > $1.pubDate }
-                .prefix(perShow)
-                .map { podcastLibraryItem(show: show, episode: $0) }
+            // Direction "in order": the first N unheard episodes, ascending —
+            // the automatism fetches where the listener actually is, not the
+            // newest arrivals. The pure rule carries the decision; played and
+            // already-local episodes fall out before the cap.
+            let byGuid = Dictionary(show.episodes.map { ($0.guid, $0) }) { first, _ in first }
+            let picked = PodcastAutoDownloadRules.nextInOrder(
+                show.episodes.map { .init(guid: $0.guid, pubDate: $0.pubDate) },
+                isPlayed: { guid in
+                    guard let episode = byGuid[guid] else { return false }
+                    return PodcastProgressStore.shared.state(
+                        guid: guid, duration: episode.duration) == .played
+                },
+                isDownloaded: { dm.isDownloaded(itemId: $0) },
+                limit: perShow)
+            let candidates = picked.compactMap { guid in
+                byGuid[guid].map { podcastLibraryItem(show: show, episode: $0) }
+            }
             var failure: String?
             for item in candidates where !dm.isDownloaded(itemId: item.id) {
                 let provider = AppSession.shared.provider(for: item.id)

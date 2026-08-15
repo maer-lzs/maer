@@ -35,6 +35,35 @@ nonisolated enum PodcastAutoDownloadRules {
         }
     }
 
+    /// Which episodes the automatism fetches next: **the first N unheard, in
+    /// order** — the direction of listening THROUGH a show from its start.
+    ///
+    /// The rule used to be "the newest N since enabling", which serves news
+    /// shows and nobody who works a backlog: whoever hears a show from the
+    /// beginning got the episodes farthest from where they actually are.
+    /// Played and already-downloaded episodes fall out; the cleanup rules
+    /// below stay untouched, they answer a different question.
+    struct Candidate: Equatable, Sendable {
+        let guid: String
+        let pubDate: Double
+
+        init(guid: String, pubDate: Double) {
+            self.guid = guid
+            self.pubDate = pubDate
+        }
+    }
+
+    static func nextInOrder(_ episodes: [Candidate],
+                            isPlayed: (String) -> Bool,
+                            isDownloaded: (String) -> Bool,
+                            limit: Int) -> [String] {
+        episodes
+            .sorted { $0.pubDate < $1.pubDate }
+            .filter { !isPlayed($0.guid) && !isDownloaded($0.guid) }
+            .prefix(limit)
+            .map(\.guid)
+    }
+
     /// Which downloads may go now — never anything outside `ownedByAutomation`.
     static func expired(_ items: [Item],
                         ownedByAutomation: Set<String>,

@@ -324,18 +324,35 @@ struct ProjectFileIntegrityTests {
             || code.contains(">= total - 1") {
             kinds.append("Dauer-Vergleich")
         }
-        // Two spellings of the same read: the key builder in the expression,
-        // and the SNAPSHOT form — a dictionary of entries whose name no longer
-        // says "localPosition". The seventh occurrence hid exactly there, in
-        // the same file as the main find, because the fence only knew the
-        // first spelling.
-        // ".last", not ").last": the optional chain spells it ")?.last" and
-        // slipped through the stricter pattern — the proof run found that too.
-        if (code.contains("localPosition(") && code.contains(".last"))
-            || (code.contains("positions[") && code.contains(".last")) {
-            kinds.append(".last als Zeitstempel")
-        }
         return kinds
+    }
+
+    /// `.last` on a progress entry, read as STATEMENTS like the writer fence —
+    /// the eighth occurrence broke the expression between `)?` and `.last`
+    /// across two lines, and the line-based read fence (and the line-based
+    /// sweep that claimed the repo clean) were blind exactly like the writer
+    /// fence had been before its proof run.
+    ///
+    /// Two spellings of the read are known: the key builder in the expression
+    /// (`localPosition(`) and the snapshot form (`positions[`) — the seventh
+    /// occurrence hid behind the second, the eighth behind the line break.
+    private static func lastAsTimestampReads(in text: String) -> [Int] {
+        var offenders: [Int] = []
+        for needle in ["localPosition(", "positions["] {
+            var search = text.startIndex
+            while let hit = text.range(of: needle, range: search..<text.endIndex) {
+                search = hit.upperBound
+                let windowEnd = text.index(hit.upperBound, offsetBy: 160, limitedBy: text.endIndex) ?? text.endIndex
+                let window = text[hit.lowerBound..<windowEnd]
+                guard !window.contains("progress-fence:") else { continue }
+                let collapsed = window.components(separatedBy: .whitespacesAndNewlines).joined()
+                // `.last` as its own member — not `.lastPathComponent` etc.
+                if collapsed.range(of: #"\.last($|[^A-Za-z])"#, options: .regularExpression) != nil {
+                    offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
+                }
+            }
+        }
+        return offenders
     }
 
     @Test("the played decision is not reimplemented anywhere")
@@ -353,22 +370,35 @@ struct ProjectFileIntegrityTests {
                     offenders.append("\(file.lastPathComponent):\(index + 1) (\(kind))")
                 }
             }
+            for line in Self.lastAsTimestampReads(in: text) {
+                offenders.append("\(file.lastPathComponent):\(line) (.last als Zeitstempel)")
+            }
         }
         #expect(offenders.isEmpty,
                 "these places reimplement the played decision instead of calling ProgressMark: \(offenders)")
     }
 
-    /// The proof run: the widened read fence must FIND the seventh occurrence
-    /// verbatim — and keep finding the first spelling.
-    @Test("the read fence catches the snapshot spelling it once missed")
-    func readFenceCatchesTheSnapshotSpelling() {
-        #expect(Self.playedReimplementations(
-            inLine: "            let localTs = snapshot.positions[eqId]?.last ?? 0") == [".last als Zeitstempel"])
-        #expect(Self.playedReimplementations(
-            inLine: "let ts = defaults.array(forKey: AppStorageKeys.localPosition(id))?.last") == [".last als Zeitstempel"])
-        // The sanctioned read stays exempt.
-        #expect(Self.playedReimplementations(
-            inLine: "let ts = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0").isEmpty)
+    /// The proof run: the read fence must FIND every shape it went blind on —
+    /// the seventh occurrence (snapshot spelling), the optional chain, and the
+    /// eighth (the expression broken across two lines).
+    @Test("the read fence catches every shape it once missed")
+    func readFenceCatchesTheOldShapes() {
+        #expect(Self.lastAsTimestampReads(
+            in: "            let localTs = snapshot.positions[eqId]?.last ?? 0").count == 1)
+        #expect(Self.lastAsTimestampReads(
+            in: "let ts = defaults.array(forKey: AppStorageKeys.localPosition(id))?.last").count == 1)
+        // The eighth occurrence, verbatim: the line break between `)?` and
+        // `.last` blinded the line-based fence AND the line-based sweep.
+        let eighth = """
+        let ts = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double])?
+            .last ?? Date().timeIntervalSince1970 * 1000
+        """
+        #expect(Self.lastAsTimestampReads(in: eighth).count == 1)
+        // Sanctioned reads stay exempt — the wrapper and unrelated members.
+        #expect(Self.lastAsTimestampReads(
+            in: "let ts = ProgressMark.timestamp(snapshot.positions[eqId]) ?? 0").isEmpty)
+        #expect(Self.lastAsTimestampReads(
+            in: "let name = AppStorageKeys.localPosition(id); let x = url.lastPathComponent").isEmpty)
     }
 }
 #endif

@@ -48,5 +48,29 @@ struct PodcastAutoDownloadRulesTests {
                                                    stillDownloaded: ["b"])
         #expect(left == ["b"], "deleted by us AND deleted by hand both leave the note")
     }
+
+    /// The direction of working a backlog: first N unheard, ascending —
+    /// played and already-local episodes fall out BEFORE the cap, so the cap
+    /// always buys N new listenable files.
+    @Test("nextInOrder picks the first unheard episodes, ascending")
+    func nextInOrderPicksOldestUnheard() {
+        let episodes = [
+            PodcastAutoDownloadRules.Candidate(guid: "e5", pubDate: 500),
+            PodcastAutoDownloadRules.Candidate(guid: "e1", pubDate: 100),
+            PodcastAutoDownloadRules.Candidate(guid: "e3", pubDate: 300),
+            PodcastAutoDownloadRules.Candidate(guid: "e2", pubDate: 200),
+            PodcastAutoDownloadRules.Candidate(guid: "e4", pubDate: 400),
+        ]
+        // e1 is heard, e3 is already local: the first three UNHEARD, in order.
+        let picked = PodcastAutoDownloadRules.nextInOrder(
+            episodes,
+            isPlayed: { $0 == "e1" },
+            isDownloaded: { $0 == "e3" },
+            limit: 3)
+        #expect(picked == ["e2", "e4", "e5"])
+        // Everything heard or local: nothing to fetch, never an invention.
+        #expect(PodcastAutoDownloadRules.nextInOrder(
+            episodes, isPlayed: { _ in true }, isDownloaded: { _ in false }, limit: 3).isEmpty)
+    }
 }
 #endif

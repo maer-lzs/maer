@@ -65,8 +65,11 @@ final class PodcastListenLog {
     func noteIfPlayed(guid: String, duration: Double, episodeTitle: String,
                       showTitle: String, feedURL: String, synthesized: Bool = false) {
         guard case .played = PodcastProgressStore.shared.state(guid: guid, duration: duration) else { return }
-        let ts = (UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double])?
-            .last ?? Date().timeIntervalSince1970 * 1000
+        // Through ProgressMark, never .last: on a three-value entry .last is
+        // the DURATION — the history booked playedAt = 3600 and rendered 1970.
+        let ts = ProgressMark.timestamp(
+            UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double])
+            ?? Date().timeIntervalSince1970 * 1000
         upsertPlayed(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle,
                      feedURL: feedURL, duration: duration, playedAt: ts,
                      synthesized: synthesized)
