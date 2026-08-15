@@ -23,6 +23,7 @@ struct GPodderSettingsView: View {
     @State private var statusIsError = false
     // S20: last sync outcome, persisted across restarts (sticky guard warning).
     @State private var storedReport = GPodderSync.shared.storedReport
+    @AppStorage(AppStorageKeys.gpodderSyncsPremiumFeeds) private var syncsPremium = false
 
     var body: some View {
         Form {
@@ -50,8 +51,12 @@ struct GPodderSettingsView: View {
                         }
                     }
                 LabeledContent("Device", value: AppStorageKeys.gpodderDeviceIdValue)
+                // P2 (1): the premium opt-in belongs to THIS account — it is
+                // a statement about this server, not a global setting.
+                Toggle("Private server — sync premium feeds too", isOn: $syncsPremium)
+                    .accessibilityIdentifier("gpodder-premium-toggle")
             } footer: {
-                Text("Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf.")
+                Text("Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Premium feeds whose link contains your personal token stay on this device unless you allow them above — only enable that for a server you run yourself. Feeds with a user name and password never travel this way; they follow your iCloud keychain.")
             }
 
             Section {

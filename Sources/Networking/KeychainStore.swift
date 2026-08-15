@@ -21,8 +21,13 @@ nonisolated enum KeychainStore {
     /// WhenUnlocked default makes every background/locked read fail, and a
     /// failed credential read used to cascade into "source logged out".
     /// The parameter exists for tests that need to construct legacy items.
+    /// P2 (2): `synchronizable` puts an item into the iCloud keychain — the
+    /// channel for what gpodder cannot carry (Basic-auth credentials). URL
+    /// and secret are a PAIR: whoever stores one synchronized must store the
+    /// other the same way, or a second device inherits half a state.
     static func save(_ value: String, forKey key: String,
-                     accessible: CFString = kSecAttrAccessibleAfterFirstUnlock) {
+                     accessible: CFString = kSecAttrAccessibleAfterFirstUnlock,
+                     synchronizable: Bool = false) {
         let data = Data(value.utf8)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -34,6 +39,7 @@ nonisolated enum KeychainStore {
         var attributes = query
         attributes[kSecValueData as String] = data
         attributes[kSecAttrAccessible as String] = accessible
+        if synchronizable { attributes[kSecAttrSynchronizable as String] = kCFBooleanTrue }
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
@@ -80,10 +86,14 @@ nonisolated enum KeychainStore {
     }
 
     static func load(forKey key: String) -> String? {
+        // Synchronizable ANY: a device that inherited an item through the
+        // iCloud keychain must find it here, and a local item must keep
+        // being found after the switch was flipped (P2).
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -107,10 +117,13 @@ nonisolated enum KeychainStore {
     /// guess. Only the key name is logged, never a value.
     static func delete(forKey key: String, caller: StaticString = #function,
                        file: StaticString = #fileID) {
+        // `kSecAttrSynchronizableAny`: a delete must reach BOTH worlds —
+        // otherwise a synchronized twin survives an apparent deletion.
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
         ]
         let status = SecItemDelete(query as CFDictionary)
         Logger.library.notice("KEYCHAIN delete key=\(key, privacy: .public) by=\(String(describing: file), privacy: .public)#\(String(describing: caller), privacy: .public) status=\(status)")

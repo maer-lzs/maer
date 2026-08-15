@@ -516,6 +516,7 @@ struct LibraryView: View {
             // Same switch, same store, same moment — the playlists travel with
             // the podcast progress or not at all.
             MaerPlaylistCloudSync.shared.start()
+            PremiumClassificationCloudSync.shared.start()
         }
         .fullScreenCover(isPresented: Binding(
             get: { driveMode.isActive },

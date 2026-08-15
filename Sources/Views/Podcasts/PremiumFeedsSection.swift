@@ -45,14 +45,29 @@ struct PremiumFeedsSection: View {
         return grouped.keys.sorted().map { (host: $0, shows: grouped[$0] ?? []) }
     }
 
-    private var twins: [(freeId: String, premiumId: String, title: String)] {
-        PodcastPremiumMatch.twins(
+    private var twinState: PodcastPremiumMatch.TwinState {
+        PodcastPremiumMatch.twinState(
             shows: subs.shows.map { (id: $0.id, title: $0.title, feedURL: $0.feedURL) },
             isPremium: { PodcastSubscriptions.isPremiumFeed($0) })
     }
 
+    private var twins: [PodcastPremiumMatch.Pair] {
+        if case .pairs(let pairs) = twinState { return pairs }
+        return []
+    }
+
     var body: some View {
         Section {
+            // P2 (3): the suppressed state says so instead of showing
+            // nothing — a pair on the device with no way to it was the
+            // finding, not the missing detection.
+            if twinState == .waitingForRotationMerge {
+                Label("A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged — that happens by itself on the next refresh.",
+                      systemImage: "clock.arrow.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("premium-twin-waiting")
+            }
             // 97b1f7c: twin repair first — the actionable finding on top.
             ForEach(twins, id: \.freeId) { twin in
                 VStack(alignment: .leading, spacing: 6) {

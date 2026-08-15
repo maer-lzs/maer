@@ -355,6 +355,7 @@ struct SettingsView: View {
                 if on {
                     PodcastCloudSync.shared.start()
                     MaerPlaylistCloudSync.shared.start()
+                    PremiumClassificationCloudSync.shared.start()
                 }
             }
         } header: {

@@ -37,12 +37,19 @@ nonisolated enum GPodderVisibleSubscriptions {
     /// Split the local subscription list into what gpodder may compare and
     /// what stays local-only. Pure over the passed list — the `current()`
     /// convenience reads the live store.
-    static func split(_ shows: [(feedURL: String, origin: String?)]) -> Result {
+    /// P2 (1): `premiumOptIn` is the per-account switch "my own server may
+    /// carry my premium feeds". It lifts the TOKEN exclusion only — mirrors
+    /// stay hidden in every case, and the Basic-auth class travels through
+    /// the iCloud channel instead (a URL without its credentials would be
+    /// half a state).
+    static func split(_ shows: [(feedURL: String, origin: String?)],
+                      premiumOptIn: Bool = false) -> Result {
         var byNorm: [String: String] = [:]
         var hidden = Set<String>()
         for show in shows {
             let norm = PodcastSubscriptions.normalizeFeedURL(show.feedURL)
-            if PodcastSubscriptions.isTokenFeedURL(show.feedURL) || show.origin != nil {
+            let tokenHidden = PodcastSubscriptions.isTokenFeedURL(show.feedURL) && !premiumOptIn
+            if tokenHidden || show.origin != nil {
                 hidden.insert(norm)
             } else if byNorm[norm] == nil {
                 byNorm[norm] = show.feedURL
@@ -56,6 +63,7 @@ nonisolated enum GPodderVisibleSubscriptions {
 
     @MainActor
     static func current() -> Result {
-        split(PodcastSubscriptions.shared.shows.map { ($0.feedURL, $0.origin) })
+        split(PodcastSubscriptions.shared.shows.map { ($0.feedURL, $0.origin) },
+              premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled)
     }
 }

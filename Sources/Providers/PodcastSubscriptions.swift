@@ -361,6 +361,14 @@ final class PodcastSubscriptions: ObservableObject {
         guard keys.insert(feedKey(feedURL)).inserted else { return }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.blockedFeedKeys)
         Logger.rss.notice("PREMIUM feed-blocked signal: \(maskedFeedURL(feedURL), privacy: .public)")
+        // P2 (2): a block signal is a statement about the FEED, not about
+        // this device — it travels with the classification channel.
+        let key = feedKey(feedURL)
+        Task { @MainActor in
+            let sync = PremiumClassificationCloudSync.shared
+            sync.noteAddition(key, from: AppStorageKeys.blockedFeedKeys)
+            sync.reconcile()
+        }
     }
 
     nonisolated static func isFeedBlocked(_ feedURL: String,
@@ -406,8 +414,17 @@ final class PodcastSubscriptions: ObservableObject {
     nonisolated static func setManualPremium(_ marked: Bool, feedURL: String,
                                              defaults: UserDefaults = .standard) {
         var keys = manualPremiumFeedKeys(defaults: defaults)
-        if marked { keys.insert(feedKey(feedURL)) } else { keys.remove(feedKey(feedURL)) }
+        let key = feedKey(feedURL)
+        if marked { keys.insert(key) } else { keys.remove(key) }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.premiumMarkedFeeds)
+        // P2 (2): the statement travels — an un-marking as its own signal,
+        // so the union on the other device cannot resurrect it.
+        Task { @MainActor in
+            let sync = PremiumClassificationCloudSync.shared
+            if marked { sync.noteAddition(key, from: AppStorageKeys.premiumMarkedFeeds) }
+            else { sync.noteRemoval(key, from: AppStorageKeys.premiumMarkedFeeds) }
+            sync.reconcile()
+        }
     }
 
     nonisolated static func normalizeFeedURL(_ raw: String) -> String {

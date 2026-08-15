@@ -91,6 +91,18 @@ nonisolated enum AppStorageKeys {
     static var podcastIndexConfigured: Bool {
         !podcastIndexEffectiveKey.isEmpty && !podcastIndexEffectiveSecret.isEmpty
     }
+    /// P2 (1): opt-in PER gpodder account — "private server: sync premium
+    /// feeds too". Default OFF = the Y52 rule unchanged (token feeds never
+    /// leave the device). The rationale for the switch existing at all: for
+    /// a self-hoster their own oPodSync IS the trusted place of the vision;
+    /// the Y52 lock protects the FOREIGN-server case (gpodder.net), not the
+    /// own one. Pinchflat mirrors stay out either way — their reason is
+    /// reachability, not secrecy.
+    static let gpodderSyncsPremiumFeeds = "gpodderSyncsPremiumFeeds"
+    nonisolated static var gpodderSyncsPremiumFeedsEnabled: Bool {
+        UserDefaults.standard.bool(forKey: gpodderSyncsPremiumFeeds)
+    }
+
     // MARK: - gpodder / oPodSync (open podcast sync next to iCloud/ABS)
 
     static let gpodderServerURL = "gpodderServerURL"

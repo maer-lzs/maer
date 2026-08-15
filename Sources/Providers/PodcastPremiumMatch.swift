@@ -109,6 +109,39 @@ extension PodcastPremiumMatch {
     /// Grüezi. Hallo." case — a detection hole let both live side by side).
     /// Pure: same-show title match, exactly one side premium; the repair
     /// path offers the one-tap cleanup on each pair.
+    /// P2 (3): the state INCLUDING its reason. The pair detection has been
+    /// built since 97b1f7c — what was missing is why it sometimes says
+    /// nothing: while unresolved token-rotation twins exist the offer is
+    /// suppressed (accepting it could move progress into the copy that will
+    /// not survive the merge), and that suppression was SILENT. A person
+    /// then sees the free+premium pair on the device and no way to it —
+    /// exactly the owner's ZEIT case. The guard stays; it just says so now.
+    enum TwinState: Equatable {
+        case pairs([Pair])
+        /// Suppressed until the rotation twins are collapsed (bootstrap).
+        case waitingForRotationMerge
+    }
+
+    struct Pair: Equatable {
+        let freeId: String
+        let premiumId: String
+        let title: String
+    }
+
+    nonisolated static func twinState(
+        shows: [(id: String, title: String, feedURL: String)],
+        isPremium: (String) -> Bool
+    ) -> TwinState {
+        var maskedSeen = Set<String>()
+        for show in shows where isPremium(show.feedURL) {
+            if !maskedSeen.insert(PodcastSubscriptions.collapseKey(show.feedURL)).inserted {
+                return .waitingForRotationMerge
+            }
+        }
+        return .pairs(twins(shows: shows, isPremium: isPremium)
+            .map { Pair(freeId: $0.freeId, premiumId: $0.premiumId, title: $0.title) })
+    }
+
     nonisolated static func twins(
         shows: [(id: String, title: String, feedURL: String)],
         isPremium: (String) -> Bool

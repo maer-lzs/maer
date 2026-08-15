@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "A free and a premium subscription of the same show were found. The cleanup waits until the changed premium links have been merged — that happens by itself on the next refresh." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es gibt ein kostenloses und ein Premium-Abo derselben Sendung. Das Aufräumen wartet, bis die geänderten Premium-Links zusammengeführt sind – das passiert beim nächsten Abgleich von selbst."
+          }
+        }
+      }
+    },
     "Nothing here yet — Jamendo needs a client key, which you can add under Network Services." : {
       "localizations" : {
         "de" : {
@@ -24,6 +34,16 @@
         }
       }
     },
+    "Private server — sync premium feeds too" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privater Server – Premium-Feeds mitsynchronisieren"
+          }
+        }
+      }
+    },
     "Session expired — checking the server…" : {
       "localizations" : {
         "de" : {
@@ -40,6 +60,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Erneut anmelden"
+          }
+        }
+      }
+    },
+    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Premium feeds whose link contains your personal token stay on this device unless you allow them above — only enable that for a server you run yourself. Feeds with a user name and password never travel this way; they follow your iCloud keychain." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abos (und Hörverlauf) gleichen sich mit diesem Server ab, neben iCloud und Audiobookshelf. Premium-Feeds, deren Link deinen persönlichen Token enthält, bleiben auf diesem Gerät, solange du es oben nicht erlaubst – schalte das nur für einen Server frei, den du selbst betreibst. Feeds mit Benutzername und Passwort reisen nie auf diesem Weg; sie folgen deinem iCloud-Schlüsselbund."
           }
         }
       }
