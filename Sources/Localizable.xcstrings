@@ -4316,6 +4316,26 @@
         }
       }
     },
+    "No music on your server" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Musik auf deinem Server"
+          }
+        }
+      }
+    },
+    "The connected music server reported an empty library." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der verbundene Musik-Server meldet eine leere Bibliothek."
+          }
+        }
+      }
+    },
     "No music" : {
       "localizations" : {
         "de" : {

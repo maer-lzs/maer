@@ -70,7 +70,12 @@ final class MusicViewModel: ObservableObject {
     @Published var errorText: String?
 
     private let source: MusicSource
-    private var loaded = false
+    /// The attempt gate, in the CatalogLoadGate form: it counts ATTEMPTS, and
+    /// a CANCELLED first run is no attempt. `loaded = true` used to be set
+    /// before the run — a first load cancelled by a tab switch became final,
+    /// and the tab showed "No music" until a hard restart. Third instance of
+    /// the throw-is-not-the-end class.
+    private var gate = CatalogLoadGate()
     /// Teil 2: active album-grid sort (server-side). Shelves stay fixed.
     var sort: MusicSortOption = .nameAZ
 
@@ -87,17 +92,23 @@ final class MusicViewModel: ObservableObject {
     }
 
     func loadIfNeeded() async {
-        guard !loaded else { return }
-        loaded = true
+        guard gate.startIfNeeded(connected: true) else { return }
+        defer { gate.finish() }
         await reload()
         // One quiet retry before surfacing the error state on first entry —
         // the sporadic failure resolves itself on immediate re-request.
-        if errorText != nil, albums.isEmpty {
+        if errorText != nil, albums.isEmpty, !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-            guard !Task.isCancelled else { return }
-            Logger.music.info("first music load failed — retrying once")
-            await reload()
+            if !Task.isCancelled {
+                Logger.music.info("first music load failed — retrying once")
+                await reload()
+            }
         }
+        // A cancelled run decided nothing — the next appearance starts fresh
+        // instead of inheriting an empty forever. Both faces of the abort are
+        // covered: the task itself cancelled (tab switch) and the source
+        // throwing its cancellation into reload's silent exit.
+        if Task.isCancelled || lastRunCancelled { gate.reopen() }
     }
 
     /// S5 — staged loading: the shelves (small, parallel) render first, the
@@ -105,10 +116,16 @@ final class MusicViewModel: ObservableObject {
     /// artists/playlists arrive best-effort in parallel. Error policy unchanged:
     /// full-screen error only when the FIRST album page fails on an empty
     /// library; stale always beats empty; cancellation is silent.
+    /// Whether the LAST run ended in a cancellation — the silent exit above
+    /// is right for the UI (no fake error), but the attempt gate must know:
+    /// a cancelled run decided nothing, a completed empty one did.
+    private(set) var lastRunCancelled = false
+
     func reload() async {
         isLoading = true
         defer { isLoading = false }
         errorText = nil
+        lastRunCancelled = false
 
         // Parallel best-effort extras — assigned as they arrive; on failure/
         // cancellation the previous state stays instead of blanking with [].
@@ -136,8 +153,10 @@ final class MusicViewModel: ObservableObject {
             }
         } catch is CancellationError {
             // Refreshable settled/was cancelled — not an error, keep everything.
+            lastRunCancelled = true
             return
         } catch let error as URLError where error.code == .cancelled {
+            lastRunCancelled = true
             return
         } catch {
             // Real error: report it, but KEEP the already-loaded library

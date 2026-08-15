@@ -86,39 +86,22 @@ struct MusicView: View {
     }
 
     var body: some View {
-        Group {
-            // Full-screen error ONLY when there is nothing to show — a failed
-            // refresh must never displace the already-loaded library (stale
-            // beats empty, like the book library).
-            if let error = vm.errorText, vm.albums.isEmpty {
-                ContentUnavailableView {
-                    Label("Music unavailable", systemImage: "music.note")
-                } description: {
-                    Text(error)
-                } actions: {
-                    Button("Retry") { Task { await vm.reload() } }
-                }
-            } else if vm.albums.isEmpty && vm.isLoading {
-                ProgressView().frame(maxWidth: .infinity, minHeight: 200)
-            } else if vm.albums.isEmpty {
-                ContentUnavailableView("No music", systemImage: "music.note")
-            } else {
-                // S17b: `bottomBarClearance()` must sit INSIDE the ScrollView (on
-                // the content) — like the podcast + audiobook tabs — so the scroll
-                // stays full-bleed and the content scrolls UNDER the glass bar.
-                // Applied OUTSIDE it inset the ScrollView, exposing the dark
-                // background behind the bar (the "residual background").
-                ScrollView { content.bottomBarClearance() }
-                    // S17: bind the Music tab to the shared BottomBarState like
-                    // the other tabs — without this its scroll never reported, so
-                    // the bar stayed expanded (heavy/opaque look) and never
-                    // collapsed. One binding, both symptoms.
-                    .reportsBottomBarScroll(active: isActive)
-        .sheet(item: $freeDetailItem) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
-        }
+        // The tab is no longer hostage to the server albums: the state used to
+        // be decided for the WHOLE tab, so an unreachable or empty server hid
+        // the catalogues and the playlists with it. The scroll always renders;
+        // the SERVER section carries its own three states inside `content`.
+        // S17b: `bottomBarClearance()` must sit INSIDE the ScrollView (on
+        // the content) — like the podcast + audiobook tabs — so the scroll
+        // stays full-bleed and the content scrolls UNDER the glass bar.
+        ScrollView { content.bottomBarClearance() }
+            // S17: bind the Music tab to the shared BottomBarState like
+            // the other tabs — without this its scroll never reported, so
+            // the bar stayed expanded (heavy/opaque look) and never
+            // collapsed. One binding, both symptoms.
+            .reportsBottomBarScroll(active: isActive)
+            .sheet(item: $freeDetailItem) { item in
+                FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
             }
-        }
         .task {
             vm.sort = musicSort   // honour the persisted sort on the first load
             await vm.loadIfNeeded()
@@ -185,7 +168,33 @@ struct MusicView: View {
             // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
-            libraryList
+            // The server section decides for ITSELF — never for the tab.
+            // Every state has a way out (Regel 3): loading spins, an error
+            // names itself with retry, and an empty answer is a sentence with
+            // retry instead of a dead end that survives until a hard restart.
+            if vm.albums.isEmpty && vm.isLoading {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            } else if let error = vm.errorText, vm.albums.isEmpty {
+                ContentUnavailableView {
+                    Label("Music unavailable", systemImage: "music.note")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Retry") { Task { await vm.reload() } }
+                }
+                .frame(maxWidth: .infinity)
+            } else if vm.albums.isEmpty {
+                ContentUnavailableView {
+                    Label("No music on your server", systemImage: "music.note")
+                } description: {
+                    Text("The connected music server reported an empty library.")
+                } actions: {
+                    Button("Retry") { Task { await vm.reload() } }
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                libraryList
+            }
 
             // Welle 3: shelves have their page now — chevron per COUNTING
             // (the row source loads 20, shows 12; a 20-album library shows

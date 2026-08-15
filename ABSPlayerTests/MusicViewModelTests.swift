@@ -46,6 +46,34 @@ struct MusicViewModelTests {
         ))
     }
 
+    /// The measured hang: a first load CANCELLED by a tab switch used to set
+    /// `loaded` before the run and made the empty state final — "No music"
+    /// until a hard restart. A cancelled run is no attempt: the next
+    /// appearance loads fresh.
+    @Test("a cancelled first load stays retryable")
+    func cancelledFirstLoadStaysRetryable() async {
+        let controls = Controls()
+        let albums = [album("a1")]
+        let vm = MusicViewModel(source: MusicSource(
+            albumsPage: { _, _, _ in
+                controls.pageRequests.append(0)
+                if controls.pageRequests.count == 1 { throw CancellationError() }
+                return controls.pageRequests.count <= 2 ? albums : []
+            },
+            shelf: { _, _ in [] },
+            artists: { [] },
+            playlists: { [] }
+        ))
+        // First appearance: the load is cancelled mid-run — silent, no error.
+        await vm.loadIfNeeded()
+        #expect(vm.albums.isEmpty)
+        #expect(vm.errorText == nil)
+        // Second appearance: the gate reopened, the tab loads instead of
+        // showing the dead "No music" forever.
+        await vm.loadIfNeeded()
+        #expect(vm.albums.count == 1)
+    }
+
     @Test("S5: pages the catalog until a partial page arrives")
     func pagesUntilPartial() async {
         let controls = Controls()
