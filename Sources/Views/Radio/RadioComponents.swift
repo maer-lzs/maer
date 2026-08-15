@@ -169,6 +169,12 @@ struct RadioStationCard: View {
                     // card heights otherwise).
                     .lineLimit(2, reservesSpace: true)
                     .frame(width: Self.width, alignment: .topLeading)
+                // 9d22148: the ACTIVE station's tile carries its running show
+                // (one extra line, only on that tile); dormant tiles show
+                // nothing stale and never touch a stream for it.
+                RadioCardNowPlayingLeaf(stationID: station.id,
+                                        host: .tile,
+                                        coordinator: playerCoordinator)
             }
         }
         .buttonStyle(.plain)
@@ -310,7 +316,11 @@ struct RadioFeaturedCard: View {
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack {
-                        LiveBadge()
+                        // The ACTIVE station carries its running show; every
+                        // other card keeps the plain live mark.
+                        RadioCardNowPlayingLeaf(stationID: station.id,
+                                                host: .featuredCard,
+                                                coordinator: playerCoordinator)
                         Spacer()
                     }
                 }
@@ -350,6 +360,64 @@ struct RadioFeaturedCard: View {
             RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
             RadioFavoriteButton(station: station)
             RadioDetailsButton(station: station, push: pushRadioRoute)
+        }
+    }
+}
+
+/// 9d22148: the running show on the ACTIVE station's card — the ICY title
+/// the player already parses, observed in this ONE leaf so only the active
+/// card re-renders on a title tick. Dormant tiles never mount it, and no
+/// tile ever opens a stream for it: the catalog has no now-playing, and
+/// twelve connections per row would be rude to the stations.
+private struct RadioCardNowPlayingLeaf: View {
+    /// The two hosts differ in idle honesty and ink: the featured card keeps
+    /// its live mark when no title is known (white ink on the card color),
+    /// the Häufig tile shows nothing it doesn't know (secondary ink).
+    enum Host { case featuredCard, tile }
+
+    let stationID: String
+    let host: Host
+    /// The card itself keeps the coordinator as a plain reference (cell-cost
+    /// rule) — THIS leaf carries the only subscription, so the active flip
+    /// and the title ticks re-render leaves, never cards.
+    @ObservedObject var coordinator: PlayerCoordinator
+
+    var body: some View {
+        if coordinator.activeItem?.id == stationID, let vm = coordinator.viewModel {
+            IcyLine(viewModel: vm, host: host)
+        } else {
+            idleMark
+        }
+    }
+
+    @ViewBuilder private var idleMark: some View {
+        if host == .featuredCard { LiveBadge() }
+    }
+
+    private struct IcyLine: View {
+        @ObservedObject var viewModel: PlayerViewModel
+        let host: Host
+
+        var body: some View {
+            if let line = viewModel.icyDisplayLine {
+                switch host {
+                case .featuredCard:
+                    Text(verbatim: line)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                case .tile:
+                    Text(verbatim: line)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .frame(width: RadioStationCard.width, alignment: .leading)
+                }
+            } else if host == .featuredCard {
+                // A stream without ICY leaves the line honestly empty on the
+                // tile; the featured card keeps its live mark instead.
+                LiveBadge()
+            }
         }
     }
 }
