@@ -40,13 +40,29 @@ struct RadioArtwork: View {
 
     private var tint: Color { RadioArtwork.color(for: stationID) }
 
-    /// Load through the shared ImageCache, then apply the pure gate.
-    /// Rejections log the reason and stay silent toward the user (spec).
-    /// e4bd910: a rejected/missing favicon falls through the AGREED source
-    /// chain (Wikidata P154 → homepage touch icon, session-cached incl.
-    /// negatives) before the placeholder — every call site (tiles, hero,
-    /// lock screen/CarPlay) inherits the chain from this ONE resolver.
+    /// Load order per the owner's decision: **Wikidata P154 is the PRIMARY
+    /// source on every surface**, the station favicon (and the chain's touch
+    /// icon) are the fallback. Measured on the case that decided it: the
+    /// DLF-Kultur favicon is a ~1.8 KB wordmark and answers unreliably, the
+    /// P154 delivery is a vector render (960×110, crisp at every tile size) —
+    /// the pixel gate cannot see legibility, so the source ORDER carries it.
+    /// The gate itself, the caches and the polite cadence stay mandatory and
+    /// unchanged; every call site (tiles, hero, lock screen/CarPlay) inherits
+    /// the order from this ONE resolver.
     static func gatedImage(for url: URL?, stationID: String) async -> UIImage? {
+        // Primary: the chain (P154 first, first-party touch icon behind it).
+        if let station = RadioProvider.shared.station(forId: stationID),
+           let logoURL = await RadioLogoService.shared.logoURL(
+               stationID: stationID, name: RadioMapping.displayName(station.name),
+               homepage: station.homepage),
+           let logo = await ImageCache.shared.thumbnail(for: logoURL) {
+            let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
+            if RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) {
+                return logo
+            }
+            Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
+        }
+        // Fallback: the catalog's favicon, gated as before.
         if let url, let image = await ImageCache.shared.thumbnail(for: url) {
             let width = Int(image.size.width * image.scale)
             let height = Int(image.size.height * image.scale)
@@ -57,18 +73,7 @@ struct RadioArtwork: View {
         } else if url != nil {
             Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
         }
-        // Chain: the station record carries name + homepage.
-        guard let station = RadioProvider.shared.station(forId: stationID) else { return nil }
-        guard let logoURL = await RadioLogoService.shared.logoURL(
-            stationID: stationID, name: RadioMapping.displayName(station.name),
-            homepage: station.homepage) else { return nil }
-        guard let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
-        let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
-        guard RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) else {
-            Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
-            return nil
-        }
-        return logo
+        return nil
     }
 
     private var thumbnail: some View {

@@ -222,7 +222,12 @@ actor RadioLogoService {
                 if case .failed = entityResult { return .failed("wikidata-entity") }
                 if case .data(let entityData) = entityResult,
                    let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
-                   let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName) {
+                   // width 800, not the portrait default of 400: station
+                   // logos are often WIDE wordmarks (DLF Kultur measures
+                   // 960×110 — at 400 the render's short side lands at ~46 px
+                   // and the quality gate would reject the very source the
+                   // decision made primary; at 800 it clears 64 px with room).
+                   let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: 800) {
                     return .hit(thumb)
                 }
                 break   // entity found but no P154 → deeper terms won't help this language pair

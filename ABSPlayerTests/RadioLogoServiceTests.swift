@@ -69,5 +69,23 @@ struct RadioLogoCacheTests {
         #expect(RadioLogoService.mayPersist(outcomeFailed: false,
                                             foundURL: URL(string: "https://logo.example/a.png")))
     }
+
+    /// The decided case, as numbers: DLF Kultur's P154 logo measures 960×110.
+    /// At the portrait default width of 400 the render's short side lands at
+    /// ~46 px — the gate would reject the very source the decision made
+    /// primary. At 800 it clears the 64 px gate with room.
+    @Test("the requested width keeps wide wordmark logos above the gate")
+    func requestedWidthClearsTheGate() {
+        func shortSide(renderWidth: Int, logoW: Double, logoH: Double) -> Int {
+            Int(Double(renderWidth) * min(logoW, logoH) / max(logoW, logoH))
+        }
+        #expect(!RadioFaviconGate.acceptable(
+            pixelWidth: 400, pixelHeight: shortSide(renderWidth: 400, logoW: 960, logoH: 110)))
+        #expect(RadioFaviconGate.acceptable(
+            pixelWidth: 800, pixelHeight: shortSide(renderWidth: 800, logoW: 960, logoH: 110)))
+        // And the requested width is actually 800 — the URL carries it.
+        let url = ArtistPortraitLookup.commonsThumbURL(fileName: "X.svg", width: 800)
+        #expect(url?.query?.contains("width=800") == true)
+    }
 }
 #endif
