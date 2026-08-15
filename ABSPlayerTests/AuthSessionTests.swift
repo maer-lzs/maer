@@ -41,6 +41,25 @@ struct AuthSessionTests {
         #expect(await offline.probeAuthorization() == .unreachable)
     }
 
+    @Test("eine erfolgreiche Neu-Anmeldung raeumt den Zweifel ab")
+    func successfulSignInClearsTheDoubt() {
+        // Der vierte Fall (fae9a66): reject → Neu-Anmeldung → Zustand weg.
+        // Geprueft an der QUELLE, weil der Erfolgspfad einen echten Server
+        // braucht: der connect()-Erfolgszweig muss beide Flags raeumen —
+        // die Probe-Schleife tut es nach `needsReauth` nicht mehr.
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let file = root.appendingPathComponent("Sources/ViewModels/AuthViewModel.swift")
+        let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
+        guard let range = text.range(of: "isLoggedIn = true") else {
+            Issue.record("der Erfolgspfad wurde umgebaut — Zaun pruefen")
+            return
+        }
+        let success = text[range.lowerBound...].prefix(500)
+        #expect(success.contains("sessionSuspect = false"))
+        #expect(success.contains("needsReauth = false"))
+    }
+
     @Test("nur der Nutzer-Abmelde-Weg raeumt den Schluessel")
     func onlyTheUserPathDeletes() {
         // Der Zaun in Textform: der 401-Rueckruf zeigt auf markSessionSuspect,

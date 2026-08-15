@@ -133,6 +133,12 @@ final class AuthViewModel: ObservableObject {
             apiToken = ""
             password = ""
             isLoggedIn = true
+            // fae9a66: a SUCCESSFUL sign-in ends the doubt. Without this the
+            // banner and both flags survived the fresh login until the next
+            // app start — and the probe loop no longer runs once
+            // `needsReauth` is set, so nothing else would have cleared them.
+            sessionSuspect = false
+            needsReauth = false
             // Y37/F10: the book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
