@@ -701,37 +701,31 @@ struct MusicCatalogAreaPage: View {
                         tileRow(store.rows.netlabels)
                     }
                 }
-                if !store.rows.freeMusic.isEmpty {
+                // 🟡 P8 side note, measured: the section did not "fall
+                // away for a reason" — it vanished SILENTLY whenever the
+                // rows were empty, although the service is switched on
+                // (Jamendo needs a client key; without one the catalogue
+                // answers nothing). An enabled service that shows nothing
+                // has to say why (G8), otherwise the page reads as broken.
+                if AppStorageKeys.jamendoActive {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                             .jamendoShuffle(coordinator: playerCoordinator)
-                        tileRow(store.rows.freeMusic)
-                    }
-                }
-                // Auflage 1: the 78s are reachable only through their
-                // shelves — the entry leads to the shelf list, never to an
-                // undivided view of the collection.
-                VStack(alignment: .leading, spacing: 10) {
-                    RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
-                    // GT-Befund 09.08.: die Reihe zeigt die FAECHER, nicht
-                    // Titel — eine echte Vorschau ihrer Seite, und per
-                    // Konstruktion nie eine ungegliederte Auswahl (Auflage 1).
-                    // Kachelform = die Genre-Felder-Praezedenz (CategoryTile).
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 12) {
-                            ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
-                                CategoryTile(title: shelf.title,
-                                             systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
-                                             count: nil,
-                                             accessibilityId: "shellac-tile-\(shelf.key)") {
-                                    pushRoute(MusicRoute.archiveMusic(shelf))
-                                }
-                                .frame(width: 200)
-                            }
+                        if store.rows.freeMusic.isEmpty {
+                            Text("Nothing here yet — Jamendo needs a client key, which you can add under Network Services.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal)
+                        } else {
+                            tileRow(store.rows.freeMusic)
                         }
-                        .padding(.horizontal)
                     }
                 }
+                // 🟡 P8: the SAME section as the music tab (shared
+                // component, not a copy) — the page rendered navigation
+                // tiles only: capsules were operable and led into
+                // emptiness, with no row, no loading and no failure state.
+                ShellacSection(playerCoordinator: playerCoordinator)
             }
             .padding(.top, 12)
             .bottomBarClearance()

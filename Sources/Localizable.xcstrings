@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "Nothing here yet — Jamendo needs a client key, which you can add under Network Services." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hier ist noch nichts – Jamendo braucht einen Client-Key, den du unter Netzdienste eintragen kannst."
+          }
+        }
+      }
+    },
     "Nothing was deleted. Sign in again to continue — your address and user name are already filled in." : {
       "localizations" : {
         "de" : {

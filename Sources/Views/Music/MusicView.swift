@@ -39,35 +39,10 @@ struct MusicView: View {
     @State private var freeDetailItem: LibraryItem?
     /// Which 78rpm shelf the row below the tiles shows. Never empty — the
     /// area exists only as named shelves.
-    @State private var selectedShelfKey = ArchiveMusicCatalog.shellacShelves[0].key
-    @State private var shellacTitles: [LibraryItem] = []
-    @State private var shellacLoading = false
-    @State private var shellacFailed = false
 
     /// The selected shelf, falling back to the first one — a missing key must
     /// resolve to a shelf, never to the undivided collection.
-    private var selectedShelf: ArchiveMusicArea {
-        ArchiveMusicCatalog.shelfOrFirst(key: selectedShelfKey)
-    }
 
-    private func loadShellacTitles() async {
-        shellacLoading = true
-        shellacFailed = false
-        defer { shellacLoading = false }
-        let area = selectedShelf
-        // Same daily rotation as the other popularity rows: the all-time
-        // ranking would otherwise never change.
-        let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12, on: Date())
-        do {
-            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
-            shellacTitles = docs.compactMap { FreeCatalogProvider.shared.remember(popular: $0) }
-            shellacFailed = shellacTitles.isEmpty
-        } catch {
-            shellacFailed = true
-            shellacTitles = []
-            Logger.library.error("SHELLAC row \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
-        }
-    }
 
     /// The gate is ALREADY composed in `AppStorageKeys` (master > area toggle
     /// at the "Free Catalogs" area of the source map > archive.org service
@@ -249,44 +224,7 @@ struct MusicView: View {
                 // into its full page. There is deliberately no "all" state —
                 // the safety of this area comes from its inclusion
                 // criterion, so nothing may bypass a shelf.
-                SwitchableTileRow(
-                    state: shellacLoading && shellacTitles.isEmpty ? .loading
-                        : (shellacTitles.isEmpty ? (shellacFailed ? .failed : .empty) : .ready),
-                    emptyText: "Nothing in this shelf right now.",
-                    failedText: "This shelf could not be loaded. Check your connection."
-                ) {
-                    RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
-                } selector: {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyHStack(spacing: 12) {
-                            ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
-                                CategoryTile(title: shelf.title,
-                                             systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
-                                             count: nil,
-                                             accessibilityId: "shellac-tile-\(shelf.key)",
-                                             isSelected: shelf.key == selectedShelfKey) {
-                                    selectedShelfKey = shelf.key
-                                }
-                                .frame(width: 200)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    // 284095b: the shelf line — names what the title row
-                    // below currently shows, counted chevron into the
-                    // shelf's full page; the shuffle acts on the ACTIVE
-                    // shelf, so it rides here, not on the area head.
-                    RowHeading(title: "", verbatimTitle: selectedShelf.title,
-                               font: .headline,
-                               total: selectedShelf.measuredTotal,
-                               shown: shellacTitles.count,
-                               showsTotal: true,
-                               destination: MusicRoute.archiveMusic(selectedShelf))
-                        .catalogShuffle(area: selectedShelf, coordinator: playerCoordinator)
-                } content: {
-                    freeTileRow(shellacTitles)
-                }
-                .task(id: selectedShelfKey) { await loadShellacTitles() }
+                ShellacSection(playerCoordinator: playerCoordinator)
             }
             if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
