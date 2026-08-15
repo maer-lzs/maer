@@ -85,22 +85,34 @@ struct RadioView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                if !mostPlayed.isEmpty {
-                    cardRow(title: String(localized: "Most Played"), stations: mostPlayed)
+                // owner decision b525ab9: Zuletzt gespielt ist die ERSTE
+                // Reihe (das Radio-Pendant der Fortsetzen-Karten), Häufig nur
+                // bei echtem Unterschied — zwei Reihen mit denselben acht
+                // Sendern sagen nichts zweimal. Favoriten wandern KÜNFTIG
+                // davor, sobald sie Karten sind; bis dahin bleibt die Liste.
+                if !recents.isEmpty {
+                    cardRow(title: String(localized: "Recently Played"), stations: recents,
+                            mode: .playsOnTap)
+                }
+                if !mostPlayed.isEmpty, mostPlayedDiffersFromRecents {
+                    cardRow(title: String(localized: "Most Played"), stations: mostPlayed,
+                            mode: .playsOnTap)
                 }
                 if !favorites.isEmpty {
                     listSection(title: String(localized: "Favorites"), stations: favorites)
                 }
-                if !recents.isEmpty {
-                    // The radio library's prominent "card" (parity with the other
-                    // tabs' continue/playlist cards): Recently Played as the
-                    // reused RadioStationCard row, not a plain list. Favorites
-                    // stays a list. Regel 2 — same card as "Most Played".
-                    cardRow(title: String(localized: "Recently Played"), stations: recents)
-                }
                 if showsPopular {
                     VStack(alignment: .leading, spacing: 4) {
-                        cardRow(title: nationalTitle, stations: popular)
+                        VStack(alignment: .leading, spacing: 8) {
+                            // 3f73f15: the browse rows carry the counting
+                            // heading and a full page — every row is a
+                            // preview, and this preview has a page behind it.
+                            RowHeading<RadioRoute>(
+                                title: "", verbatimTitle: nationalTitle,
+                                total: popular.count,
+                                destination: .stationList(title: nationalTitle, stations: popular))
+                            browseCardScroller(stations: popular)
+                        }
                         // e4bd910 Zuschnitts-Korrektur: the country switch
                         // follows the REGION pattern exactly — a "Change
                         // country" link under the section (no ▾ on the
@@ -189,9 +201,31 @@ struct RadioView: View {
     }
 
     /// Regel 2: the row itself is the shared `RadioCardRow` (also on Home).
-    private func cardRow(title: String, stations: [RadioStation]) -> some View {
+    private func cardRow(title: String, stations: [RadioStation],
+                         mode: RadioStationCard.TapMode = .navigates) -> some View {
         RadioCardRow(title: title, stations: stations,
-                     playerCoordinator: playerCoordinator, onFavoriteToggled: reload)
+                     playerCoordinator: playerCoordinator, mode: mode,
+                     onFavoriteToggled: reload)
+    }
+
+    /// The card strip WITHOUT its own title — the counted RowHeading above
+    /// carries title and page entry (3f73f15).
+    private func browseCardScroller(stations: [RadioStation]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(RowPreview.cut(stations)) { station in
+                    RadioStationCard(station: station, playerCoordinator: playerCoordinator,
+                                     onFavoriteToggled: reload)
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    /// Two rows showing the same eight stations say nothing twice — Häufig
+    /// appears only when its preview actually differs from Zuletzt.
+    private var mostPlayedDiffersFromRecents: Bool {
+        Set(RowPreview.cut(mostPlayed).map(\.id)) != Set(RowPreview.cut(recents).map(\.id))
     }
 
     private var genreSection: some View {
@@ -271,7 +305,13 @@ struct RadioView: View {
                 }
             } else {
                 VStack(alignment: .leading, spacing: 4) {
-                    cardRow(title: chosenState, stations: regional)
+                    VStack(alignment: .leading, spacing: 8) {
+                        RowHeading<RadioRoute>(
+                            title: "", verbatimTitle: chosenState,
+                            total: regional.count,
+                            destination: .stationList(title: chosenState, stations: regional))
+                        browseCardScroller(stations: regional)
+                    }
                     Button {
                         self.chosenState = nil
                         UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionState)

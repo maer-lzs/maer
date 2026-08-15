@@ -281,9 +281,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     private var radioSection: some View {
         if RadioHomePresentation.showsSection(radioActive: RadioProvider.shared.isAvailable,
                                               recentsCount: radioRecents.count) {
+            // Recents class: keeps tap-to-play like the radio tab's own
+            // Zuletzt row (the detail pill carries the way to the page).
             RadioCardRow(title: String(localized: "Radio"),
                          stations: radioRecents,
-                         playerCoordinator: playerCoordinator)
+                         playerCoordinator: playerCoordinator,
+                         mode: .playsOnTap)
         }
     }
 

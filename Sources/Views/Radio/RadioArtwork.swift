@@ -34,7 +34,20 @@ struct RadioArtwork: View {
         // station without one is exactly the case that needs the chain, and
         // keying on nil made every logo-less tile share one task identity.
         .task(id: stationID) {
-            gatedFavicon = .some(await RadioArtwork.gatedImage(for: faviconURL, stationID: stationID))
+            // Two stages (266eb2d): the PREFERENCE decides who wins, not who
+            // may appear first. The favicon is available NOW and paints
+            // immediately; the cadenced chain upgrades the tile when it
+            // arrives — awaiting the chain before showing anything left the
+            // first session on initials.
+            if let quick = await RadioArtwork.faviconImage(for: faviconURL, stationID: stationID) {
+                if gatedFavicon == nil { gatedFavicon = .some(quick) }
+            }
+            let preferred = await RadioArtwork.chainImage(stationID: stationID)
+            if let preferred {
+                gatedFavicon = .some(preferred)
+            } else if gatedFavicon == nil {
+                gatedFavicon = .some(nil)   // decided: placeholder
+            }
         }
     }
 
@@ -50,19 +63,13 @@ struct RadioArtwork: View {
     /// unchanged; every call site (tiles, hero, lock screen/CarPlay) inherits
     /// the order from this ONE resolver.
     static func gatedImage(for url: URL?, stationID: String) async -> UIImage? {
-        // Primary: the chain (P154 first, first-party touch icon behind it).
-        if let station = RadioProvider.shared.station(forId: stationID),
-           let logoURL = await RadioLogoService.shared.logoURL(
-               stationID: stationID, name: RadioMapping.displayName(station.name),
-               homepage: station.homepage),
-           let logo = await ImageCache.shared.thumbnail(for: logoURL) {
-            let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
-            if RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) {
-                return logo
-            }
-            Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
-        }
-        // Fallback: the catalog's favicon, gated as before.
+        // One-shot form (set-once surfaces): preference order, full await.
+        if let preferred = await chainImage(stationID: stationID) { return preferred }
+        return await faviconImage(for: url, stationID: stationID)
+    }
+
+    /// Stage 1 — the catalog favicon, gated: available immediately.
+    static func faviconImage(for url: URL?, stationID: String) async -> UIImage? {
         if let url, let image = await ImageCache.shared.thumbnail(for: url) {
             let width = Int(image.size.width * image.scale)
             let height = Int(image.size.height * image.scale)
@@ -74,6 +81,22 @@ struct RadioArtwork: View {
             Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
         }
         return nil
+    }
+
+    /// Stage 2 — the preferred source (P154 first, first-party touch icon
+    /// behind it), gated; cadenced, so it may take its time.
+    static func chainImage(stationID: String) async -> UIImage? {
+        guard let station = RadioProvider.shared.station(forId: stationID),
+              let logoURL = await RadioLogoService.shared.logoURL(
+                  stationID: stationID, name: RadioMapping.displayName(station.name),
+                  homepage: station.homepage),
+              let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
+        let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
+        guard RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) else {
+            Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
+            return nil
+        }
+        return logo
     }
 
     private var thumbnail: some View {

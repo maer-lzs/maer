@@ -23,41 +23,86 @@ struct RadioStationRow: View {
         // Live radio is a pure net gate (never "downloaded") — the ONE
         // observing leaf wraps the row so dim AND disabled stay reactive.
         MediaAvailabilityScope(itemId: station.id, isDownloadedOverride: { false }) { unavailable in
+        // The tap OPENS the station page (owner decision e285465) — the
+        // page used to be reachable only through player and context menu.
+        // Play stays explicit, as its own trailing control.
         Button {
-            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+            pushRadioRoute(.station(station))
         } label: {
-            MediaRowContent(
-                coverURL: nil,
-                eyebrow: station.tags.first,
-                title: RadioMapping.displayName(station.name),
-                titleDimmed: unavailable,
-                coverDimmed: unavailable,
-                offlineBadge: unavailable,
-                placeholderSystemImage: "dot.radiowaves.left.and.right",
-                coverOverride: RadioArtwork(
-                    stationID: station.id,
-                    faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                    name: station.name)
-            )
+            HStack(spacing: 0) {
+                MediaRowContent(
+                    coverURL: nil,
+                    eyebrow: station.tags.first,
+                    title: RadioMapping.displayName(station.name),
+                    titleDimmed: unavailable,
+                    coverDimmed: unavailable,
+                    offlineBadge: unavailable,
+                    placeholderSystemImage: "dot.radiowaves.left.and.right",
+                    coverOverride: RadioArtwork(
+                        stationID: station.id,
+                        faviconURL: station.faviconURL.flatMap { URL(string: $0) },
+                        name: station.name)
+                )
+                RadioPlayButton(station: station, playerCoordinator: playerCoordinator)
+                    .disabled(unavailable)
+            }
             .padding(.horizontal)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(unavailable)
         .contextMenu {
+            RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
             RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
-            RadioDetailsButton(station: station, push: pushRadioRoute)
         }
         }
+    }
+}
+
+/// The ONE explicit play control of the station surfaces — the circular glyph
+/// the podcast tiles use for their corner action, here with play semantics.
+struct RadioPlayButton: View {
+    let station: RadioStation
+    let playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        Button {
+            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+        } label: {
+            Image(systemName: "play.circle.fill")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("Play"))
+    }
+}
+
+/// The same action as a context-menu entry, shared by row and card.
+struct RadioPlayMenuButton: View {
+    let station: RadioStation
+    let playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        Button {
+            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+        } label: { Label("Play", systemImage: "play.fill") }
     }
 }
 
 /// F4-discovery: a station as a compact card for the horizontal browse rows
 /// (Popular / From your region) — the shared `RadioArtwork` (Y58) over the name.
 struct RadioStationCard: View {
+    /// What the CARD's tap does. The big Häufig/Zuletzt cards keep playing
+    /// (they are the radio library's continue cards — owner correction
+    /// b525ab9) and carry a detail pill instead; every browse surface
+    /// navigates, with play as the explicit corner glyph.
+    enum TapMode { case navigates, playsOnTap }
+
     let station: RadioStation
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
+    var mode: TapMode = .navigates
     var onFavoriteToggled: () -> Void = {}
     @Environment(\.pushRadioRoute) private var pushRadioRoute
 
@@ -65,7 +110,10 @@ struct RadioStationCard: View {
 
     var body: some View {
         Button {
-            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+            switch mode {
+            case .navigates: pushRadioRoute(.station(station))
+            case .playsOnTap: RadioPlay.play(station, playerCoordinator: playerCoordinator)
+            }
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 RadioArtwork(stationID: station.id,
@@ -73,6 +121,42 @@ struct RadioStationCard: View {
                              name: station.name)
                     .frame(width: Self.width, height: Self.width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(alignment: .bottomTrailing) {
+                        if mode == .navigates {
+                            // Play stays reachable in ONE tap — the corner
+                            // glyph, like the podcast tiles' corner action.
+                            Button {
+                                RadioPlay.play(station, playerCoordinator: playerCoordinator)
+                            } label: {
+                                Image(systemName: "play.fill")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(7)
+                                    .background(Circle().fill(.black.opacity(0.45)))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(6)
+                            .accessibilityLabel(Text("Play"))
+                        }
+                    }
+                    .overlay(alignment: .bottomLeading) {
+                        if mode == .playsOnTap {
+                            // The continue-card pill: the way to the page,
+                            // without giving up tap-to-play.
+                            Button {
+                                pushRadioRoute(.station(station))
+                            } label: {
+                                Image(systemName: "info.circle")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .padding(7)
+                                    .background(Capsule().fill(.black.opacity(0.45)))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(6)
+                            .accessibilityLabel(Text("Station Details"))
+                        }
+                    }
                 Text(RadioMapping.displayName(station.name))
                     .font(.caption.weight(.medium))
                     // Layout-shift/a11y: reserve both lines at the CURRENT type
@@ -85,6 +169,7 @@ struct RadioStationCard: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
+            RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
             RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
             RadioDetailsButton(station: station, push: pushRadioRoute)
         }
@@ -156,6 +241,7 @@ struct RadioCardRow: View {
     let stations: [RadioStation]
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
+    var mode: RadioStationCard.TapMode = .navigates
     var onFavoriteToggled: () -> Void = {}
 
     var body: some View {
@@ -167,12 +253,36 @@ struct RadioCardRow: View {
                     // the cold start felt sluggish (every station a cell).
                     ForEach(RowPreview.cut(stations)) { station in
                         RadioStationCard(station: station, playerCoordinator: playerCoordinator,
-                                         onFavoriteToggled: onFavoriteToggled)
+                                         mode: mode, onFavoriteToggled: onFavoriteToggled)
                     }
                 }
                 .padding(.horizontal)
             }
         }
+    }
+}
+
+/// The full page behind a counted browse row: the whole stock as station
+/// rows — tap opens the page, play stays the explicit control (the one
+/// contract everywhere).
+struct RadioStationListPage: View {
+    let title: String
+    let stations: [RadioStation]
+    let playerCoordinator: PlayerCoordinator
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(stations) { station in
+                    RadioStationRow(station: station, playerCoordinator: playerCoordinator)
+                    Divider().padding(.leading, 88)
+                }
+            }
+            .padding(.top, 12)
+            .bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: title))
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

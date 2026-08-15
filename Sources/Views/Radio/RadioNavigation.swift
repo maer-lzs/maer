@@ -14,6 +14,9 @@ enum RadioRoute: Hashable {
     case genre(tag: String, title: String)
     /// Teil 1: a station's detail page (info + codec/bitrate variant picker).
     case station(RadioStation)
+    /// The full page behind a counted browse row (Regel 2: one parameterised
+    /// page, the row passes its whole stock).
+    case stationList(title: String, stations: [RadioStation])
 }
 
 /// Teil 1: push a RadioRoute from a non-link surface (a context-menu button) —
@@ -38,6 +41,9 @@ extension View {
                 RadioGenreView(tag: tag, title: title, playerCoordinator: playerCoordinator)
             case .station(let station):
                 RadioStationDetailView(station: station, playerCoordinator: playerCoordinator)
+            case .stationList(let title, let stations):
+                RadioStationListPage(title: title, stations: stations,
+                                     playerCoordinator: playerCoordinator)
             }
         }
     }
