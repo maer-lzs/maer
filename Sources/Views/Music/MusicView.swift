@@ -242,19 +242,20 @@ struct MusicView: View {
             // to an undivided view of the collection.
             if shellacArea {
                 // The shelf tiles SELECT; the row below shows titles of the
-                // selected shelf. The chevron leads to that shelf's page, so
-                // "every row has a page" still holds. There is deliberately no
-                // "all" state — the safety of this area comes from its
-                // inclusion criterion, so nothing may bypass a shelf.
+                // selected shelf. a738dc4/284095b: three levels, each with
+                // its own target — the ROW head means the AREA (genre
+                // overview), the capsules switch in place, and the shelf
+                // LINE under them names the active shelf and leads counted
+                // into its full page. There is deliberately no "all" state —
+                // the safety of this area comes from its inclusion
+                // criterion, so nothing may bypass a shelf.
                 SwitchableTileRow(
                     state: shellacLoading && shellacTitles.isEmpty ? .loading
                         : (shellacTitles.isEmpty ? (shellacFailed ? .failed : .empty) : .ready),
                     emptyText: "Nothing in this shelf right now.",
                     failedText: "This shelf could not be loaded. Check your connection."
                 ) {
-                    RowHeading.entry("Old Records",
-                                     destination: MusicRoute.archiveMusic(selectedShelf))
-                        .catalogShuffle(area: selectedShelf, coordinator: playerCoordinator)
+                    RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
                 } selector: {
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(spacing: 12) {
@@ -271,6 +272,17 @@ struct MusicView: View {
                         }
                         .padding(.horizontal)
                     }
+                    // 284095b: the shelf line — names what the title row
+                    // below currently shows, counted chevron into the
+                    // shelf's full page; the shuffle acts on the ACTIVE
+                    // shelf, so it rides here, not on the area head.
+                    RowHeading(title: "", verbatimTitle: selectedShelf.title,
+                               font: .headline,
+                               total: selectedShelf.measuredTotal,
+                               shown: shellacTitles.count,
+                               showsTotal: true,
+                               destination: MusicRoute.archiveMusic(selectedShelf))
+                        .catalogShuffle(area: selectedShelf, coordinator: playerCoordinator)
                 } content: {
                     freeTileRow(shellacTitles)
                 }

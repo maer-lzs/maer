@@ -318,14 +318,19 @@ struct FreeAudiobooksPage: View {
             emptyText: "Nothing in this genre right now.",
             failedText: "The charts could not be loaded. Check your connection."
         ) {
-            // Two stages: the heading leads to the charts page (genres as tile
-            // rows there), the chips stay as the preview row's quick filter.
-            RowHeading(title: "Popular Radio-Play Podcasts",
-                       total: chartResults.count,
-                       shown: RowPreview.cut(chartResults).count,
-                       destination: PodcastRoute.charts)
+            // a738dc4/284095b sibling check: same three levels as the 78s
+            // row — the head means the AREA (charts overview, chevron
+            // earned by the page's existence), the chips switch in place,
+            // and the genre LINE below leads counted into the active
+            // genre's chart page.
+            RowHeading.entry("Popular Radio-Play Podcasts", destination: PodcastRoute.charts)
         } selector: {
             chipRow
+            RowHeading(title: "", verbatimTitle: activeChipTitle,
+                       font: .headline,
+                       total: chartResults.count,
+                       shown: RowPreview.cut(chartResults).count,
+                       destination: PodcastRoute.chartGenre(selectedChip))
         } content: {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 12) {
@@ -340,6 +345,10 @@ struct FreeAudiobooksPage: View {
             }
             .scrollClipDisabled()
         }
+    }
+
+    private var activeChipTitle: String {
+        CatalogGenreAxis.hoerspielChips.first(where: { $0.key == selectedChip })?.title ?? ""
     }
 
     private func loadCharts() async {
