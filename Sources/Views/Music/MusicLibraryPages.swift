@@ -852,11 +852,21 @@ struct MaerPlaylistPage: View {
             ?? playlist?.titles[id]
             ?? item?.title
             ?? id
+        // P4: a STUB row (self-describing catalogue id, no metadata) names
+        // itself by fetching its detail — the promise "resolves on demand"
+        // held for PLAYING, never for NAMING, which is why a shared list
+        // stayed at the placeholder on every device. The won title is
+        // written back as the snapshot, so the healing travels with the list.
+        let needsName = item?.media == nil && playlist?.titles[id] == nil
         Button {
             if let item { Task { await playerCoordinator.open(item: item) } }
         } label: {
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: title)
+                    .task(id: id) {
+                        guard needsName else { return }
+                        await store.fetchMissingTitles([id], playlistId: playlistId)
+                    }
                     .font(.subheadline)
                     .foregroundStyle(item == nil ? .secondary : .primary)
                 if item == nil {

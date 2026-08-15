@@ -797,7 +797,8 @@ private struct MusicItemMenu: ViewModifier {
                         addTarget = AddToPlaylistTarget(itemId: item.id)
                     } label: { Label("Add to Server Playlist", systemImage: "text.badge.plus") }
                 }
-                MaerPlaylistMenu(itemId: item.id)
+                MaerPlaylistMenu(itemId: item.id,
+                                 knownTitles: [item.id: item.title])
 
                 if DownloadManager.shared.isDownloaded(itemId: item.id) {
                     Button(role: .destructive) {

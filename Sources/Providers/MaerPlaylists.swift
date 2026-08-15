@@ -119,8 +119,13 @@ final class MaerPlaylists: ObservableObject {
         case notQueueable
     }
 
+    /// P4: `knownTitle` comes from the SURFACE that added the entry — it had
+    /// the name on screen at the moment of the tap. The cache lookup is only
+    /// the fallback now: with a cold catalogue cache it answers nil, and the
+    /// snapshot loop used to `continue` wordlessly, which is how the owner's
+    /// shared list ended up as two "Unknown Title" rows on both devices.
     @discardableResult
-    func add(itemId: String, to playlistId: String) -> AddOutcome {
+    func add(itemId: String, to playlistId: String, knownTitle: String? = nil) -> AddOutcome {
         guard PlayQueue.canEnqueue(itemId) else { return .notQueueable }
         guard let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return .notQueueable }
         if playlists[index].itemIds.contains(itemId) { return .alreadyThere }
@@ -128,12 +133,33 @@ final class MaerPlaylists: ObservableObject {
         playlists[index].itemIds.append(itemId)
         // The snapshot is taken NOW, while the item is at hand — after a cold
         // start on another device the id may be all that is left of it.
-        if let title = Self.titleSnapshots(for: [itemId])[itemId] {
+        if let title = Self.usableTitle(knownTitle, for: itemId)
+            ?? Self.titleSnapshots(for: [itemId])[itemId] {
             playlists[index].titles[itemId] = title
+        } else {
+            // Regel 3: the one routine whose only job is holding the name on
+            // says so when it comes away empty.
+            Logger.library.notice("PLAYLIST snapshot EMPTY for id=\(itemId, privacy: .public) — row will need the detail fetch")
         }
         playlists[index].updatedAt = Date().timeIntervalSince1970
         save()
         return .added
+    }
+
+    /// A title is only worth persisting when it NAMES the entry: never the
+    /// raw id, never the unknown-placeholder — a placeholder written into
+    /// SYNCED data would poison every device's rows (the fence the old
+    /// comment asked for, now one testable place).
+    static func usableTitle(_ candidate: String?, for itemId: String) -> String? {
+        guard let text = candidate?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !text.isEmpty, text != itemId else { return nil }
+        // The placeholder is rejected in the BASE spelling as well as in this
+        // device's language: the snapshots are synced data, so a German
+        // device's "Unbekannter Titel" must not reach an English one either
+        // — and a stub carries whichever spelling its device produced.
+        let placeholders: Set<String> = ["Unknown Title", String(localized: "Unknown Title")]
+        guard !placeholders.contains(text) else { return nil }
+        return text
     }
 
     /// The titles the session can answer right now — never the raw id.
@@ -157,8 +183,34 @@ final class MaerPlaylists: ObservableObject {
         let missing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
         guard !missing.isEmpty else { return }
         let learned = Self.titleSnapshots(for: missing)
-        guard !learned.isEmpty else { return }
+        if !learned.isEmpty {
+            playlists[index].titles.merge(learned) { old, _ in old }
+            save()
+        }
+        // P4: the cache is only the shortcut — what it cannot answer goes
+        // the SAME reload way the row goes, so a shared list heals itself
+        // instead of staying at the placeholder forever.
+        let stillMissing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }
+        guard !stillMissing.isEmpty else { return }
+        Task { await fetchMissingTitles(stillMissing, playlistId: playlistId) }
+    }
+
+    /// Resolve entries the session cache does not carry (catalogue ids are
+    /// self-describing) and write the won title BACK as the snapshot — the
+    /// healing then travels to every device with the list.
+    func fetchMissingTitles(_ itemIds: [String], playlistId: String) async {
+        var learned: [String: String] = [:]
+        for id in itemIds {
+            let provider = AppSession.shared.provider(for: id)
+            guard let detail = try? await provider.fetchItemDetail(itemId: id) else { continue }
+            if let title = Self.usableTitle(detail.media.metadata?.title, for: id) {
+                learned[id] = title
+            }
+        }
+        guard !learned.isEmpty,
+              let index = playlists.firstIndex(where: { $0.id == playlistId }) else { return }
         playlists[index].titles.merge(learned) { old, _ in old }
+        Logger.library.notice("PLAYLIST healed \(learned.count) title(s) via detail fetch")
         save()
     }
 
@@ -166,10 +218,11 @@ final class MaerPlaylists: ObservableObject {
     /// as much is appended as fits, and the caller learns when something did
     /// not.
     @discardableResult
-    func add(itemIds: [String], to playlistId: String) -> AddOutcome {
+    func add(itemIds: [String], to playlistId: String,
+             knownTitles: [String: String] = [:]) -> AddOutcome {
         var outcome = AddOutcome.added
         for id in itemIds {
-            let result = add(itemId: id, to: playlistId)
+            let result = add(itemId: id, to: playlistId, knownTitle: knownTitles[id])
             if case .limitReached = result { outcome = result; break }
         }
         return outcome

@@ -31,6 +31,54 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
+    // MARK: - P4: der Titel-Schnappschuss scheitert nicht mehr still
+
+    @Test("bei kaltem Katalog-Cache trägt die Fläche den Titel bei")
+    func snapshotComesFromTheAddingSurface() {
+        let store = fresh()
+        let list = store.create(name: "Test")
+        // Genau the owner's Fall: der Cache kennt die Katalog-Kennung nicht
+        // (kalter Start), die Fläche hatte den Namen aber auf dem Schirm.
+        #expect(store.add(itemId: "jam:1886432", to: list.id,
+                          knownTitle: "Sonata No. 3") == .added)
+        #expect(store.playlist(id: list.id)?.titles["jam:1886432"] == "Sonata No. 3")
+        // Ohne Mitgabe bleibt der Schnappschuss leer (und wird geloggt) —
+        // das ist der Zustand, den die Zeile per Detail-Abruf heilt.
+        #expect(store.add(itemId: "jam:99", to: list.id) == .added)
+        #expect(store.playlist(id: list.id)?.titles["jam:99"] == nil)
+        store.delete(playlistId: list.id)
+    }
+
+    @Test("ein Platzhalter darf NIE Schnappschuss werden")
+    func placeholderIsNeverPersisted() {
+        // Der Zaun, vor dem der alte Kommentar zu Recht warnte — jetzt an
+        // einer prüfbaren Stelle statt als Absicht.
+        #expect(MaerPlaylists.usableTitle("Unknown Title", for: "jam:1") == nil)
+        // Synchronisierte Daten: auch die Fassung eines fremdsprachigen
+        // Geräts darf nicht durchrutschen.
+        #expect(MaerPlaylists.usableTitle(String(localized: "Unknown Title"), for: "jam:1") == nil)
+        #expect(MaerPlaylists.usableTitle("jam:1", for: "jam:1") == nil)
+        #expect(MaerPlaylists.usableTitle("   ", for: "jam:1") == nil)
+        #expect(MaerPlaylists.usableTitle(nil, for: "jam:1") == nil)
+        #expect(MaerPlaylists.usableTitle("  Echter Titel ", for: "jam:1") == "Echter Titel")
+        // Und er kommt auch über die Mitgabe nicht in die geteilten Daten.
+        let store = fresh()
+        let list = store.create(name: "Test")
+        #expect(store.add(itemId: "jam:7", to: list.id, knownTitle: "Unknown Title") == .added)
+        #expect(store.playlist(id: list.id)?.titles["jam:7"] == nil)
+        store.delete(playlistId: list.id)
+    }
+
+    @Test("die Mehrfach-Zugabe reicht die Titel je Kennung durch")
+    func multiAddCarriesTitles() {
+        let store = fresh()
+        let list = store.create(name: "Test")
+        #expect(store.add(itemIds: ["jam:1", "jam:2"], to: list.id,
+                          knownTitles: ["jam:1": "Erster", "jam:2": "Zweiter"]) == .added)
+        #expect(store.playlist(id: list.id)?.titles["jam:2"] == "Zweiter")
+        store.delete(playlistId: list.id)
+    }
+
     @Test("eine Liste mischt Namensräume — das ist ihr Zweck")
     func mixesNamespaces() {
         let store = fresh()

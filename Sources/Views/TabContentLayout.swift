@@ -293,13 +293,20 @@ final class MaerPlaylistPresenter: ObservableObject {
     @Published var askingForName = false
     @Published var message: String?
 
-    func addToNewList(_ ids: [String]) {
+    /// P4: the titles travel WITH the ids — the adding surface knows them,
+    /// the resolving routine may not (cold catalogue cache).
+    @Published var pendingTitles: [String: String] = [:]
+
+    func addToNewList(_ ids: [String], titles: [String: String] = [:]) {
         pendingIds = ids
+        pendingTitles = titles
         askingForName = true
     }
 
-    func add(_ ids: [String], to list: MaerPlaylists.Playlist) {
-        message = Self.text(for: MaerPlaylists.shared.add(itemIds: ids, to: list.id),
+    func add(_ ids: [String], to list: MaerPlaylists.Playlist,
+             titles: [String: String] = [:]) {
+        message = Self.text(for: MaerPlaylists.shared.add(itemIds: ids, to: list.id,
+                                                         knownTitles: titles),
                             listName: list.name)
     }
 
@@ -307,9 +314,11 @@ final class MaerPlaylistPresenter: ObservableObject {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = name.isEmpty ? String(localized: "Playlist") : name
         let list = MaerPlaylists.shared.create(name: finalName)
-        message = Self.text(for: MaerPlaylists.shared.add(itemIds: pendingIds, to: list.id),
+        message = Self.text(for: MaerPlaylists.shared.add(itemIds: pendingIds, to: list.id,
+                                                         knownTitles: pendingTitles),
                             listName: finalName)
         pendingIds = []
+        pendingTitles = [:]
     }
 
     /// Regel 3: every outcome gets a sentence — including "was already in
@@ -370,6 +379,8 @@ struct CatalogQueueButtons: View {
     let itemId: String
     /// Several ids (album, queue) — the same action with a set instead of one.
     var itemIds: [String]?
+    /// Titles the surface has at hand (P4) — passed straight through.
+    var knownTitles: [String: String] = [:]
 
     private var ids: [String] { itemIds ?? [itemId] }
 
@@ -383,7 +394,7 @@ struct CatalogQueueButtons: View {
             } label: { Label("Play Last", systemImage: "text.line.last.and.arrowtriangle.forward") }
             // The playlist action exists EXACTLY ONCE (Regel 2). A second
             // copy here carried the same defect twice.
-            MaerPlaylistMenu(itemId: itemId, itemIds: itemIds)
+            MaerPlaylistMenu(itemId: itemId, itemIds: itemIds, knownTitles: knownTitles)
         }
     }
 }
@@ -394,6 +405,10 @@ struct CatalogQueueButtons: View {
 struct MaerPlaylistMenu: View {
     let itemId: String
     var itemIds: [String]?
+    /// P4: what the calling surface has ON SCREEN for these ids. The
+    /// snapshot routine resolves through the cache, which answers nil after
+    /// a cold start — then this is the only place the name still exists.
+    var knownTitles: [String: String] = [:]
     @ObservedObject private var playlists = MaerPlaylists.shared
 
     private var ids: [String] { itemIds ?? [itemId] }
@@ -402,11 +417,13 @@ struct MaerPlaylistMenu: View {
         if PlayQueue.canEnqueue(itemId) {
             Menu {
                 ForEach(playlists.playlists) { list in
-                    Button(list.name) { MaerPlaylistPresenter.shared.add(ids, to: list) }
+                    Button(list.name) {
+                        MaerPlaylistPresenter.shared.add(ids, to: list, titles: knownTitles)
+                    }
                 }
                 if !playlists.playlists.isEmpty { Divider() }
                 Button {
-                    MaerPlaylistPresenter.shared.addToNewList(ids)
+                    MaerPlaylistPresenter.shared.addToNewList(ids, titles: knownTitles)
                 } label: { Label("New Playlist", systemImage: "plus") }
             } label: {
                 Label("Add to Playlist", systemImage: "text.badge.plus")
