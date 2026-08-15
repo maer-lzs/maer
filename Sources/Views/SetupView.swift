@@ -72,11 +72,9 @@ struct ABSLoginForm: View {
     var body: some View {
         Group {
             Section {
-                TextField("e.g. audio.example.com", text: $viewModel.serverURLString)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .textContentType(.URL)   // F7: password-manager AutoFill
+                CredentialField.serverURL("e.g. audio.example.com",
+                                          text: $viewModel.serverURLString,
+                                          id: "setup-url")
             } header: {
                 Text("Server")
             }
@@ -90,16 +88,13 @@ struct ABSLoginForm: View {
 
                 switch viewModel.loginMode {
                 case .password:
-                    TextField("Username", text: $viewModel.username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .textContentType(.username)
-                    SecureField("Password", text: $viewModel.password)
-                        .textContentType(.password)
+                    CredentialField.username("Username", text: $viewModel.username,
+                                             id: "setup-username")
+                    CredentialField.secret("Password", text: $viewModel.password,
+                                           id: "setup-password")
                 case .token:
-                    SecureField("API Token", text: $viewModel.apiToken)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    CredentialField.secret("API Token", text: $viewModel.apiToken,
+                                           id: "setup-token")
                 }
             } header: {
                 Text("Sign In")

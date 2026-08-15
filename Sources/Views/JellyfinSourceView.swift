@@ -22,17 +22,12 @@ struct JellyfinSourceView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Server URL", text: $serverURL)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                TextField("Username", text: $username)
-                    .textContentType(.username)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
+                CredentialField.serverURL("Server URL", text: $serverURL,
+                                          id: "jellyfin-url")
+                CredentialField.username("Username", text: $username,
+                                         id: "jellyfin-username")
+                CredentialField.secret("Password", text: $password,
+                                       id: "jellyfin-password")
             } header: {
                 Text("Jellyfin Server")
             } footer: {

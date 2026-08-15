@@ -373,18 +373,17 @@ struct PodcastSourceView: View {
             }
             .accessibilityIdentifier("pinchflat-toggle")
             DisclosureGroup(isExpanded: $showPinchflat) {
-                TextField("Server URL", text: $pinchflatURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
+                CredentialField.serverURL("Server URL", text: $pinchflatURL,
+                                          id: "pinchflat-url")
                 // 13c5094: token FIELD + help line — no HTML scraping.
-                SecureField("Route token", text: $pinchflatToken)
+                CredentialField.secret("Route token", text: $pinchflatToken,
+                                       id: "pinchflat-token")
                 Text("Find the route token in Pinchflat under Settings.")
                     .font(.caption).foregroundStyle(.secondary)
-                TextField("Username (optional)", text: $pinchflatUser)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password (optional)", text: $pinchflatPassword)
+                CredentialField.username("Username (optional)", text: $pinchflatUser,
+                                         id: "pinchflat-username")
+                CredentialField.secret("Password (optional)", text: $pinchflatPassword,
+                                       id: "pinchflat-password")
                 if let status = pinchflatStatus {
                     Text(status).font(.caption).foregroundStyle(.secondary)
                 }
@@ -476,14 +475,12 @@ struct PodcastSourceView: View {
     private var addByURLSection: some View {
         Section {
             DisclosureGroup(isExpanded: $showAddByURL) {
-                TextField("Feed URL", text: $feedURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                TextField("Username (optional)", text: $feedUser)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password (optional)", text: $feedPassword)
+                CredentialField.serverURL("Feed URL", text: $feedURL,
+                                          id: "feed-url")
+                CredentialField.username("Username (optional)", text: $feedUser,
+                                         id: "feed-username")
+                CredentialField.secret("Password (optional)", text: $feedPassword,
+                                       id: "feed-password")
                 // Teil 5 (provider premium, foundation cut): another show of a
                 // provider you already have a login for — reuse it, visibly.
                 if let source = providerLoginSource {
