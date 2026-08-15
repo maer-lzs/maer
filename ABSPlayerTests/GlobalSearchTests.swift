@@ -105,7 +105,13 @@ struct GlobalSearchModelTests {
         return model
     }
 
-    private func waitUntil(_ deadline: Duration = .seconds(3),
+    /// 2c6bc8f-Kriterium (Suite ZWEIMAL hintereinander gruen): die alte
+    /// Frist von 3 s machte das Gruen lastabhaengig — im zweiten Lauf auf
+    /// demselben Simulator brauchten die Faelle 4,2 s und fielen rot, ohne
+    /// dass etwas kaputt war. Die Schleife bricht ab, sobald die Bedingung
+    /// wahr ist; eine grosszuegige Frist kostet nur im Fehlerfall Zeit und
+    /// sagt dort dasselbe aus.
+    private func waitUntil(_ deadline: Duration = .seconds(20),
                            _ condition: @MainActor () -> Bool) async {
         let start = ContinuousClock.now
         while !condition(), ContinuousClock.now - start < deadline {

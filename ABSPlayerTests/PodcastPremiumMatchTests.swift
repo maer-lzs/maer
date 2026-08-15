@@ -384,7 +384,12 @@ struct ProviderTokenChainTests {
     @Test("U4-Zaun: Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
     func artworkFailureIsNotAbsence() async {
         let service = FeedArtworkService()
-        let feed = "https://tube.example/sources/u4/feed.xml"
+        // 2c6bc8f: the service persists its POSITIVE results in the real
+        // UserDefaults, so a fixed URL made this test poison ITSELF — the
+        // healing step of one run answered the "poisoned" first call of the
+        // next one from storage (green only on a freshly erased simulator).
+        // A per-run URL isolates the persistence and checks the same rule.
+        let feed = "https://tube.example/sources/u4/\(UUID().uuidString)/feed.xml"
         let head = "<rss><channel><itunes:image href=\"https://tube.example/cover.jpg\"/></channel></rss>"
         // First call: the endpoint answers 401 (server connected before the
         // artwork switch) — a FAILURE, not "feed states no image".
@@ -402,7 +407,7 @@ struct ProviderTokenChainTests {
         })
         #expect(healed?.absoluteString == "https://tube.example/cover.jpg")
         // A successfully read head WITHOUT an image is the honest negative.
-        let empty = await service.artworkURL(feedURL: "https://tube.example/none/feed.xml", fetch: { request in
+        let empty = await service.artworkURL(feedURL: "https://tube.example/none/\(UUID().uuidString)/feed.xml", fetch: { request in
             (Data("<rss></rss>".utf8),
              HTTPURLResponse(url: request.url!, statusCode: 200,
                              httpVersion: nil, headerFields: nil))

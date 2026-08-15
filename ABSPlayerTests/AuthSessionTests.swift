@@ -20,6 +20,10 @@ struct AuthSessionTests {
         defer { KeychainStore.delete(forKey: key) }
 
         let auth = AppSession.shared.authViewModel
+        // 2c6bc8f-Klasse: dieser Test veraendert einen SINGLETON — er stellt
+        // den Ausgangszustand danach wieder her, sonst traegt der naechste
+        // Test in derselben Suite den Zweifel weiter.
+        defer { auth.logout() }   // im Testlauf ist kein echter Zugang gesetzt
         // Der Dauerregen: viele 401 hintereinander, so wie das Hochfahren
         // des Reverse-Proxys sie liefert.
         for _ in 0..<25 { auth.markSessionSuspect() }
