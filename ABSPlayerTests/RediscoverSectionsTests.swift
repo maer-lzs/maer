@@ -399,5 +399,30 @@ struct PodcastCategoryMappingTests {
         #expect(mapped.count == 6)
         #expect(Array(mapped.prefix(3)) == ["Society", "Culture", "Health"])
     }
+
+    /// 51612b4: the chart share rotates daily THROUGH ITS OWN SLOTS — the
+    /// personally justified entries keep their signal order and positions.
+    @Test("chart entries rotate daily, personal entries keep their slots")
+    func chartRotationKeepsPersonalSlots() {
+        func r(_ id: String) -> PodcastSearchResult {
+            PodcastSearchResult(title: id, author: nil, artworkURL: nil, feedURL: "https://\(id)")
+        }
+        // Slots: personal P1 at 0, charts at 1/2/4, personal P2 at 3.
+        let list = [r("P1"), r("C1"), r("C2"), r("P2"), r("C3")]
+        let isChart: (PodcastSearchResult) -> Bool = { $0.title.hasPrefix("C") }
+        let day0 = PodcastRecommendationsStore.rotatingCharts(list, isChart: isChart, daySeed: 0)
+        #expect(day0.map(\.title) == ["P1", "C1", "C2", "P2", "C3"])
+        let day1 = PodcastRecommendationsStore.rotatingCharts(list, isChart: isChart, daySeed: 1)
+        #expect(day1.map(\.title) == ["P1", "C2", "C3", "P2", "C1"])
+        // Personal entries never move, whatever the day says.
+        for day in 0..<7 {
+            let rotated = PodcastRecommendationsStore.rotatingCharts(list, isChart: isChart, daySeed: day)
+            #expect(rotated[0].title == "P1")
+            #expect(rotated[3].title == "P2")
+        }
+        // One chart entry (or none): nothing to rotate.
+        #expect(PodcastRecommendationsStore.rotatingCharts([r("P1"), r("C1")], isChart: isChart, daySeed: 3)
+            .map(\.title) == ["P1", "C1"])
+    }
 }
 #endif

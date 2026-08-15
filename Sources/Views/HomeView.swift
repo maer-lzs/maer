@@ -346,6 +346,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     RecommendationTile(
                                         result: result,
                                         subtitle: reasonText(recommendations.reason(for: result)))
+                                        .recommendationHideMenu(result)
                                 } else if let book = slot.book {
                                     // 8203d12 parity: the SAME free-catalog tile
                                     // as the audiobook rows — tap plays. It used

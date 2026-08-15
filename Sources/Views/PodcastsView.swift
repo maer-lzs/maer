@@ -351,6 +351,7 @@ RowHeading(title: "Recommended",
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
         RecommendationTile(result: r)
+            .recommendationHideMenu(r)
     }
 
     // MARK: - Latest episodes (X1c: the SHARED grid, identical on Home)
@@ -693,6 +694,7 @@ struct RecommendationsPage: View {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                 ForEach(pool) { result in
                     RecommendationTile(result: result)
+                        .recommendationHideMenu(result)
                 }
             }
             .padding(.horizontal)
@@ -1023,3 +1025,19 @@ struct PinchflatHideButton: View {
     }
 }
 
+extension View {
+    /// "Not interested" — the permanent opt-out, offered ONLY on the three
+    /// recommendation surfaces (Home row, tab row, full page). Search, genre
+    /// charts and links never carry it: what the user actively steers to is
+    /// not a recommendation (correction 6ee3f4e). The release path lives in
+    /// the podcast settings.
+    func recommendationHideMenu(_ result: PodcastSearchResult) -> some View {
+        contextMenu {
+            Button(role: .destructive) {
+                PodcastRecommendationsStore.shared.hide(result)
+            } label: {
+                Label("Not interested", systemImage: "hand.thumbsdown")
+            }
+        }
+    }
+}

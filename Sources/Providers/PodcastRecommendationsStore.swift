@@ -179,8 +179,33 @@ final class PodcastRecommendationsStore: ObservableObject {
         }
 
         let filtered = excludeSubscribed(pool)
-        results = rank(filtered, authorHits: authorHits, categoryWeights: topCats).prefix(30).map { $0 }
+        let ranked = rank(filtered, authorHits: authorHits, categoryWeights: topCats).prefix(30).map { $0 }
+        // 51612b4: the CHART share rotates daily — the personally justified
+        // entries (author/genre) keep their signal order and their slots.
+        // One pool feeds Home, tab and full page, so all three turn together.
+        results = Self.rotatingCharts(
+            ranked,
+            isChart: { self.reason(for: $0) == .popular },
+            daySeed: CatalogRotation.dayIndex(on: Date()))
         loadedAt = Date()
+    }
+
+    /// Slots-preserving daily rotation: the chart entries move through their
+    /// OWN slots, everything with a personal reason stays exactly where the
+    /// ranking put it. Pure and tested.
+    nonisolated static func rotatingCharts(
+        _ list: [PodcastSearchResult],
+        isChart: (PodcastSearchResult) -> Bool,
+        daySeed: Int
+    ) -> [PodcastSearchResult] {
+        let chartIndexes = list.indices.filter { isChart(list[$0]) }
+        guard chartIndexes.count > 1 else { return list }
+        let charts = chartIndexes.map { list[$0] }
+        let shift = daySeed % charts.count
+        let rotated = Array(charts[shift...] + charts[..<shift])
+        var out = list
+        for (slot, entry) in zip(chartIndexes, rotated) { out[slot] = entry }
+        return out
     }
 
     /// Below this many category hits the generic chart fills up — the row
@@ -191,6 +216,34 @@ final class PodcastRecommendationsStore: ObservableObject {
     func remove(feedURL: String) {
         let n = PodcastSubscriptions.normalizeFeedURL(feedURL)
         results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+    }
+
+    // MARK: - "Not interested" (5add86b, correction 6ee3f4e)
+
+    /// Permanently hidden recommendations — a dictionary so the RELEASE page
+    /// can show a name, not a feed URL. Filtering happens in THIS store, whose
+    /// results only ever feed the three recommendation surfaces: search,
+    /// genre charts and links never ask here, so what the user actively
+    /// steers to stays visible — the correction holds structurally.
+    private static let hiddenKey = "podcastRecommendationsHidden"
+    private(set) var hiddenByFeed: [String: String] = {
+        (UserDefaults.standard.dictionary(forKey: hiddenKey) as? [String: String]) ?? [:]
+    }()
+
+    /// "Not interested": out of all three surfaces at once, permanently.
+    func hide(_ result: PodcastSearchResult) {
+        let n = PodcastSubscriptions.normalizeFeedURL(result.feedURL)
+        hiddenByFeed[n] = result.title
+        UserDefaults.standard.set(hiddenByFeed, forKey: Self.hiddenKey)
+        results.removeAll { PodcastSubscriptions.normalizeFeedURL($0.feedURL) == n }
+    }
+
+    /// The release path (settings): the show may be recommended again.
+    func unhide(normalizedFeed: String) {
+        hiddenByFeed.removeValue(forKey: normalizedFeed)
+        UserDefaults.standard.set(hiddenByFeed, forKey: Self.hiddenKey)
+        loadedAt = nil   // the next refresh may bring it back
+        objectWillChange.send()
     }
 
     // MARK: - Signals from your own usage
@@ -300,10 +353,14 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     private func excludeSubscribed(_ list: [PodcastSearchResult]) -> [PodcastSearchResult] {
         let shows = PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.shows
-        return Self.excludingSubscribed(
+        let visible = Self.excludingSubscribed(
             list,
             subscribedNormalizedFeeds: Set(shows.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) }),
             subscribedTitles: shows.map(\.title))
+        // Same mechanics as the subscribed filter, one more set.
+        return visible.filter {
+            hiddenByFeed[PodcastSubscriptions.normalizeFeedURL($0.feedURL)] == nil
+        }
     }
 
     /// Pure (tested): drop already-subscribed feeds + duplicates, order kept.

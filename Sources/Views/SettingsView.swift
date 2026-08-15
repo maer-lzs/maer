@@ -499,6 +499,14 @@ struct SettingsView: View {
                 Label("Suggestion Languages", systemImage: "globe")
             }
             .accessibilityIdentifier("settings-suggestion-languages")
+            // 5add86b: the release path — "not interested" is permanent, so
+            // there must be a place where the decision can be taken back.
+            NavigationLink {
+                HiddenRecommendationsView()
+            } label: {
+                Label("Hidden Recommendations", systemImage: "hand.thumbsdown")
+            }
+            .accessibilityIdentifier("settings-hidden-recommendations")
         } header: {
             Text("Home")
         } footer: {
@@ -616,5 +624,33 @@ struct SettingsView: View {
             return "\(version) (\(build)) · \(sha)"
         }
         return "\(version) (\(build))"
+    }
+}
+
+/// The release path for "not interested": every hidden show by name, one tap
+/// brings it back into the pool (the next refresh may recommend it again).
+struct HiddenRecommendationsView: View {
+    @ObservedObject private var store = PodcastRecommendationsStore.shared
+
+    var body: some View {
+        List {
+            if store.hiddenByFeed.isEmpty {
+                Text("Nothing hidden. Choosing \u{2018}Not interested\u{2019} on a recommendation puts it here.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(store.hiddenByFeed.sorted(by: { $0.value < $1.value }), id: \.key) { feed, title in
+                    HStack {
+                        Text(verbatim: title)
+                        Spacer()
+                        Button("Allow again") {
+                            store.unhide(normalizedFeed: feed)
+                        }
+                        .font(.callout)
+                    }
+                }
+            }
+        }
+        .navigationTitle("Hidden Recommendations")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
