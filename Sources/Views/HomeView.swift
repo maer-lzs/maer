@@ -27,7 +27,9 @@ struct HomeView: View {
     @State private var recentlyAddedAll: [LibraryItem] = []
     /// Package 3: progress per in-progress music playlist (id → progress), so a
     /// playlist continue card can show its bar and resume at the right spot.
-    @State private var musicContinueProgress: [String: BookProgress] = [:]
+    /// Q3a: store-backed (LateMusicValues) — a late result publishes here
+    /// instead of expiring; the view only reads.
+    private var musicContinueProgress: [String: BookProgress] { lateMusic.progress }
     /// X1b "Latest Episodes": newest episode of each recently-active show, shown
     /// as episode tiles in a 2-row adaptive grid.
     @State private var recentEpisodeItems: [LibraryItem] = []
@@ -56,6 +58,7 @@ struct HomeView: View {
     /// compute() (retry rides the recompute token like everything else).
     /// cb99bf6: shared store — the audiobooks tab row reads the same fill.
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
+    @ObservedObject private var lateMusic = LateMusicValues.shared
     /// 5034add: master flip hides the Home surfaces live (loaded rows stay
     /// in the store; the render gate wins).
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
@@ -65,7 +68,7 @@ struct HomeView: View {
     /// M4: recently PLAYED music albums ("Zuletzt gehört (Musik)") — the
     /// provider's `.recent` shelf; empty (no music server / nothing played)
     /// hides the section.
-    @State private var recentMusicItems: [LibraryItem] = []
+    private var recentMusicItems: [LibraryItem] { lateMusic.recentAlbums }
     /// TF4/E3: the Discover row's subscribed-Set + excluding-subscribed filter,
     /// computed off the body (only when subscriptions/recommendations change)
     /// instead of on every render.
@@ -544,18 +547,43 @@ RowHeading(title: "Rediscover",
         // is awaited with a budget: what is there appears, what is missing
         // is missing (the serverless principle holds for Start too), and a
         // late source lands in its own apply through the calm gate.
+        // Q3a point 2 — sections land INDEPENDENTLY: what is local is there
+        // NOW. The radio recents are a synchronous defaults read; making
+        // them wait for the music server (which is what the single apply at
+        // the end did) is exactly the hostage the P7 order was about.
+        if RadioProvider.shared.isAvailable {
+            let localRadio = RadioStore.recents()
+            if !localRadio.isEmpty, radioRecents.isEmpty {
+                BottomBarState.shared.runWhenCalm {
+                    radioRecents = localRadio
+                    ready = true          // the page is usable with what it has
+                }
+            }
+        }
         // The independent sources start TOGETHER — otherwise their budgets
         // add up (three dead music calls = three budgets before anything
         // renders). Started here, awaited where each result is needed: the
         // wait becomes the SLOWEST source, not their sum.
         let musicProvider = AppSession.shared.musicProvider
-        async let musicProgressTask = SourceBudget.value(default: [String: BookProgress]()) {
+        // Q3a: a LATE result no longer expires — it applies itself through
+        // the same calm gate, so the row fills up by itself instead of
+        // waiting for a tab switch (the recompute token only changes there).
+        async let musicProgressTask = SourceBudget.value(
+            default: [String: BookProgress](),
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setProgress(late) } }
+        ) {
             (try? await musicProvider.fetchAllProgress()) ?? [:]
         }
-        async let newAlbumsTask = SourceBudget.value(default: [LibraryItem]()) {
+        async let newAlbumsTask = SourceBudget.value(
+            default: [LibraryItem](),
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setNewAlbums(late) } }
+        ) {
             (try? await musicProvider.albumShelf(shelf: .newest, size: 12)) ?? []
         }
-        async let recentMusicTask = SourceBudget.value(default: [LibraryItem]()) {
+        async let recentMusicTask = SourceBudget.value(
+            default: [LibraryItem](),
+            onLate: { late in await MainActor.run { LateMusicValues.shared.setRecentAlbums(late) } }
+        ) {
             (try? await musicProvider.albumShelf(shelf: .recent, size: 12)) ?? []
         }
         async let freeRowsTask: Void = SourceBudget.run { await freeCatalogStore.ensureLoaded() }
@@ -682,10 +710,10 @@ RowHeading(title: "Rediscover",
             continueIds = rankedContinue
             continueIdsAll = allContinue
             recentlyAddedAll = allAddedItems
-            musicContinueProgress = musicProgress
+            LateMusicValues.shared.setProgress(musicProgress)
             recentEpisodeItems = episodeItems
             recentlyAddedItems = addedItems
-            recentMusicItems = recentMusic
+            LateMusicValues.shared.setRecentAlbums(recentMusic)
             rediscoverPicks = rediscover
             rediscoverPool = pool
             withAnimation(initialFill ? .easeOut(duration: 0.25) : nil) { ready = true }

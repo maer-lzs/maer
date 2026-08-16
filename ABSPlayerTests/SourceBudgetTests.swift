@@ -27,6 +27,34 @@ struct SourceBudgetTests {
         #expect(waited < SourceBudget.seconds + 2)
     }
 
+    @Test("ein SPAETES Ergebnis verfaellt nicht — es wendet sich selbst an")
+    func lateResultAppliesItself() async {
+        // Q3a-Messung: kuenstlich langsame Quelle (deutlich ueber dem
+        // Budget) — die Flaeche rendert sofort ohne sie, und der Wert kommt
+        // danach VON SELBST an (kein Tab-Wechsel, kein Nutzer-Anstoss).
+        actor Late { 
+            var value: String?
+            func set(_ v: String) { value = v }
+        }
+        let late = Late()
+        let started = Date()
+        let immediate = await SourceBudget.value(default: "leer",
+                                                 onLate: { await late.set($0) }) {
+            try? await Task.sleep(for: .seconds(SourceBudget.seconds + 2))
+            return "spaet"
+        }
+        #expect(immediate == "leer")
+        #expect(Date().timeIntervalSince(started) < SourceBudget.seconds + 1.5)
+        // Warten, bis die langsame Quelle geliefert hat.
+        var seen: String?
+        for _ in 0..<40 {
+            seen = await late.value
+            if seen != nil { break }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        #expect(seen == "spaet")
+    }
+
     @Test("eine antwortende Quelle wird NICHT beschnitten")
     func fastSourceIsUntouched() async {
         let value = await SourceBudget.value(default: "leer") { "da" }

@@ -32,21 +32,62 @@ nonisolated enum SourceBudget {
     /// Await `work`, but at most for the budget. Returns `fallback` when the
     /// budget runs out — the source is not cancelled, it simply stops being
     /// waited for.
+    ///
+    /// **Q3a (the gap in the first version):** for STORE-backed sources the
+    /// promise "the load lands in the next pass" holds, because the store
+    /// publishes. For DIRECT values it did not — a result arriving after the
+    /// deadline was dropped, and nothing triggered a recompute, so the row
+    /// stayed empty until a tab switch. `onLate` closes that: a late result
+    /// applies ITSELF. The contract now reads: **no result expires, no user
+    /// action needed.**
     static func value<T: Sendable>(default fallback: T, label: StaticString = #function,
+                                   onLate: (@Sendable (T) async -> Void)? = nil,
                                    _ work: @escaping @Sendable () async -> T) async -> T {
-        await withTaskGroup(of: T?.self) { group in
-            group.addTask { await work() }
-            group.addTask {
-                try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-                return nil
+        // Deliberately NOT a TaskGroup: a group awaits ALL its children when
+        // the block ends, so the surviving work task would hold the caller
+        // for its full runtime — the budget would stop bounding anything
+        // (measured: 60 s instead of 4). The work therefore runs as its own
+        // task, and a one-shot gate hands the FIRST of the two outcomes to
+        // the caller.
+        let gate = FirstAnswer<T>()
+        let workTask = Task { await work() }
+        Task {
+            let value = await workTask.value
+            if await gate.claim(value) == false {
+                // The deadline won — this value is LATE and applies itself
+                // (Q3a: no result expires, no user action needed).
+                await onLate?(value)
             }
-            defer { group.cancelAll() }
-            for await first in group {
-                if let first { return first }
-                Logger.library.notice("SOURCE budget exceeded (\(String(describing: label), privacy: .public)) — rendering without it, the load keeps running")
-                return fallback
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            if await gate.claim(fallback) {
+                Logger.library.notice("SOURCE budget exceeded (\(String(describing: label), privacy: .public)) — rendering without it; the late result applies itself")
             }
-            return fallback
+        }
+        return await gate.value()
+    }
+
+    /// One-shot handover: whoever claims first answers the caller, the other
+    /// learns that it was late. The continuation is resumed exactly once.
+    private actor FirstAnswer<T: Sendable> {
+        private var answer: T?
+        private var waiter: CheckedContinuation<T, Never>?
+
+        /// - Returns: true if THIS call was the first one.
+        func claim(_ value: T) -> Bool {
+            guard answer == nil else { return false }
+            answer = value
+            if let waiter { self.waiter = nil; waiter.resume(returning: value) }
+            return true
+        }
+
+        func value() async -> T {
+            if let answer { return answer }
+            return await withCheckedContinuation { continuation in
+                if let answer { continuation.resume(returning: answer) }
+                else { waiter = continuation }
+            }
         }
     }
 
