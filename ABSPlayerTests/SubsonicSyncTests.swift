@@ -149,7 +149,12 @@ struct SubsonicSyncTests {
     // Kompat-Paket 170ff18: Booksonic negotiates the protocol version down.
     @Test("Version negotiation persists per host")
     func versionNegotiation() {
-        let host = "test-booksonic.example"
+        // dec8332: the HOST is unique per run. With a constant one the
+        // CFPrefs flush race bit: the defer-removal was not flushed at
+        // process end while the write was, so the NEXT run found the key
+        // already there. A per-run host makes the flush irrelevant — same
+        // class as the U4 fence (a test must not describe the real store).
+        let host = "test-booksonic-\(UUID().uuidString).example"
         defer { UserDefaults.standard.removeObject(forKey: "subsonicApiVersion.\(host)") }
         #expect(SubsonicClient.negotiatedVersion(host: host) == nil)
         SubsonicClient.persistNegotiated("1.15.0", host: host)
