@@ -143,7 +143,13 @@ nonisolated enum ProgressDiagnosis {
         // judges differently from the thing it measures is measuring itself.
         if let local = sources.localPosition, let localAt = sources.localSavedAtMs,
            let serverAt = sources.serverUpdatedAtMs, let server = sources.serverPosition {
-            if localAt > serverAt && abs(local - server) > 5 {
+            // e32454e: ASK the shared rule, never restate it. My first draft
+            // compared inline — identical today, silently divergent the day
+            // someone changes the tolerance or the shape in SyncRules. The
+            // whole justification of this instrument is that it judges like
+            // the thing it measures.
+            if SyncRules.shouldRestoreLocalPosition(savedTime: local, savedAtMs: localAt,
+                                                    serverTime: server, serverUpdateMs: serverAt) {
                 lines.append("Start würde beim LOKALEN Stand beginnen (er ist neuer).")
             } else {
                 lines.append("Start würde beim SERVER-Stand beginnen.")

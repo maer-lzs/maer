@@ -526,3 +526,22 @@ extension ProjectFileIntegrityTests {
             in: "rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }").isEmpty)
     }
 }
+
+// MARK: - e32454e: das Instrument fragt die Regel, es kopiert sie nicht
+
+extension ProjectFileIntegrityTests {
+    @Test("die Fortschritts-Diagnose vergleicht nicht selbst")
+    func diagnosisAsksTheSharedRule() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent(
+            "Sources/Models/ProgressDiagnosis.swift"), encoding: .utf8)
+        // Sie MUSS die geteilte Regel rufen …
+        #expect(text.contains("SyncRules.shouldRestoreLocalPosition"))
+        // … und darf den Vergleich nicht danebenstellen (die Form, die
+        // ausgeliefert war: `localAt > serverAt && abs(...) > 5`).
+        let collapsed = text.replacingOccurrences(of: " ", with: "")
+        #expect(!collapsed.contains("localAt>serverAt&&abs("),
+                "die Startregel ist wieder kopiert statt gefragt")
+    }
+}

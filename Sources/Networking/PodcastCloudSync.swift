@@ -25,9 +25,23 @@ final class PodcastCloudSync {
 
     private let store = NSUbiquitousKeyValueStore.default
     private let blobKey = "podcastProgress"
-    /// Sync only podcast positions — audiobook/local positions go via the
-    /// server or are device-internal.
-    private let podcastPrefixes = ["localPosition.rss:", "localPosition.abspod:"]
+    /// e32454e/2100b09: the EXISTING progress channel now also carries the
+    /// classes that have no server behind them — catalog works and local
+    /// sideloads keep their position in the very same `localPosition` store,
+    /// and the owner's goal for these rounds is "identical state on all
+    /// devices". A second channel for the same question would be exactly the
+    /// second version we are abolishing everywhere else.
+    ///
+    /// Server-owned ids (ABS books) stay out: they travel with the server
+    /// sync, which owns their truth.
+    ///
+    /// **Edge, deliberately not filtered:** a `local:` sideload only exists
+    /// on the device that holds the file — its POSITION still travels. That
+    /// is harmless and right: device B shows the book once the file is there,
+    /// and then the position is already correct.
+    private let podcastPrefixes = ["localPosition.rss:", "localPosition.abspod:",
+                                   "localPosition.local:"]
+        + FreeCatalog.allPrefixes.map { "localPosition.\($0)" }
     private let keyPrefix = "localPosition."
 
     private init() {}
