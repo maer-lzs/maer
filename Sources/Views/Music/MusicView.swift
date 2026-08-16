@@ -29,6 +29,8 @@ struct MusicView: View {
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
     // F5: create-playlist flow.
     @State private var showNewPlaylist = false
+    @State private var showNewMaerPlaylist = false
+    @State private var newMaerPlaylistName = ""
     @State private var newPlaylistName = ""
 
     /// F5: playlists newest-changed first (default sort).
@@ -364,7 +366,27 @@ struct MusicView: View {
                 .scrollClipDisabled()
             }
             maerPlaylistRow
+            newMaerPlaylistAlert
         }
+    }
+
+    /// c6468d0: creating a DEVICE list, reachable from the row.
+    @ViewBuilder private var newMaerPlaylistAlert: some View {
+        EmptyView()
+            .alert("New Playlist", isPresented: $showNewMaerPlaylist) {
+                TextField("Name", text: $newMaerPlaylistName)
+                Button("Cancel", role: .cancel) { newMaerPlaylistName = "" }
+                Button("Create") {
+                    let name = newMaerPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    _ = MaerPlaylists.shared.create(name: name.isEmpty
+                                                    ? String(localized: "Playlist") : name)
+                    newMaerPlaylistName = ""
+                }
+            } message: {
+                // The explanation lands in the MOMENT of the decision — no
+                // onboarding text needed (order point 2).
+                Text("Lives on your devices and can mix everything: server music, catalog titles and local files.")
+            }
     }
 
     /// Paket 1: die Maer-Listen — quellenuebergreifend, auf den Geraeten.
@@ -397,6 +419,11 @@ struct MusicView: View {
                             .buttonStyle(.plain)
                             .accessibilityIdentifier("maer-playlist-\(list.id)")
                         }
+                        // c6468d0 (1): the entry point sits WHERE one looks
+                        // for it — at the playlist row itself. It existed for
+                        // server playlists but not here, so device lists could
+                        // only be created from a context menu somewhere else.
+                        NewPlaylistCard { showNewMaerPlaylist = true }
                     }
                     .padding(.horizontal)
                 }

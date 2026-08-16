@@ -24,6 +24,16 @@
         }
       }
     },
+    "Lives on your devices and can mix everything: server music, catalog titles and local files." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liegt auf deinen Geräten und darf alles mischen: Server-Musik, Katalog-Titel und lokale Dateien."
+          }
+        }
+      }
+    },
     "Remove" : {
       "localizations" : {
         "de" : {
