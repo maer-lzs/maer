@@ -106,6 +106,18 @@ actor RadioLogoService {
         /// Commons results persist the FILE NAME, never the finished URL —
         /// the width is applied at read time from the current constant.
         var commonsFile: String?
+        /// 🔴 Punkt 6: the GATE the verdict was made under. A stored "no"
+        /// is only valid for the thresholds that produced it — when they
+        /// change, the no must be re-tried. Same class as the baked-in
+        /// width (v3), one level up: for JUDGEMENTS instead of URLs.
+        var gate: String?
+    }
+
+    /// The current gate signature. Deliberately DERIVED from the thresholds
+    /// instead of a hand-counted version: nobody has to remember to bump it
+    /// — that is exactly the trap the 400→800 width fell into (cb8bac1).
+    nonisolated static var gateSignature: String {
+        "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)"
     }
 
     /// The URL an entry answers TODAY — file-based entries render at the
@@ -131,10 +143,20 @@ actor RadioLogoService {
         guard let data = defaults.data(forKey: Self.persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return }
         let now = Date().timeIntervalSince1970
+        var staleGate = 0
         for (id, entry) in stored {
             let isNegative = entry.url == nil && entry.commonsFile == nil
             if isNegative, now - entry.resolvedAt > Self.negativeTTL { continue }
+            // A NO made under different thresholds is re-tried; a YES stays
+            // (a positive does not become wrong because the gate loosened).
+            if isNegative, entry.gate != Self.gateSignature {
+                staleGate += 1
+                continue
+            }
             cache[id] = Self.effectiveURL(entry)
+        }
+        if staleGate > 0 {
+            Logger.library.notice("RADIO logo cache: \(staleGate) negative(s) re-opened — gate changed to \(Self.gateSignature, privacy: .public)")
         }
     }
 
@@ -145,7 +167,8 @@ actor RadioLogoService {
         // rendering of it. Touch icons have no file and keep their URL.
         stored[stationID] = Stored(url: commonsFile == nil ? url?.absoluteString : nil,
                                    resolvedAt: Date().timeIntervalSince1970,
-                                   commonsFile: commonsFile)
+                                   commonsFile: commonsFile,
+                                   gate: Self.gateSignature)
         if let data = try? JSONEncoder().encode(stored) {
             UserDefaults.standard.set(data, forKey: Self.persistKey)
         }

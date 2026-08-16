@@ -106,3 +106,22 @@ struct RadioLogoCacheTests {
     }
 }
 #endif
+
+// MARK: - 🔴 Punkt 6: ein Urteil gilt nur unter seinem Tor
+
+struct RadioLogoGateVersioningTests {
+    /// Der SRF-1-Fixfall: die Kette liefert (463 px), aber ein NEIN aus der
+    /// 64er-Zeit blockierte die Wiedervorlage — ein Schwellen-Fix erreichte
+    /// das Geraet nie. Dieselbe Klasse wie die eingebackene Breite (v3), nur
+    /// fuer Urteile statt URLs.
+    @Test("die Tor-Signatur leitet sich aus den Schwellen ab — kein Handzaehler")
+    func signatureFollowsTheThresholds() {
+        let signature = RadioLogoService.gateSignature
+        #expect(signature.contains("\(RadioFaviconGate.minSide)"))
+        #expect(signature.contains("\(RadioFaviconGate.touchIconMinSide)"))
+        // Genau das ist der Punkt: aendert jemand eine Schwelle, aendert
+        // sich die Signatur MIT — niemand muss an eine Version denken
+        // (die Falle, in die der 400→800-Wechsel lief).
+        #expect(signature == "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)")
+    }
+}
