@@ -124,3 +124,21 @@ struct MaerPlaylistTests {
     }
 }
 #endif
+
+// MARK: - f208790: Playlisten sind SONGS
+
+@MainActor
+struct PlaylistSongSemanticsTests {
+    @Test("ein WERK bleibt EIN Eintrag, ein Song bleibt er selbst")
+    func worksAndSongsPassThrough() async {
+        // Ohne bekannte Form (kein Detail gesehen) wird NICHT geraten — der
+        // Eintrag bleibt, wie er ist. Und eine Song-Kennung ist bereits ein
+        // Titel, sie wird nie noch einmal expandiert.
+        let songId = CatalogSongID.make(album: "ia:some-album", index: 2)
+        let out = await MaerPlaylistPresenter.expandedForPlaylist([songId])
+        #expect(out.ids == [songId])
+        // Nicht-Katalog-Kennungen laufen unveraendert durch.
+        let server = await MaerPlaylistPresenter.expandedForPlaylist(["sub:song:1", "lv:176"])
+        #expect(server.ids.contains("sub:song:1"))
+    }
+}

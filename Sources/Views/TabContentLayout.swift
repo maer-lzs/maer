@@ -305,20 +305,71 @@ final class MaerPlaylistPresenter: ObservableObject {
 
     func add(_ ids: [String], to list: MaerPlaylists.Playlist,
              titles: [String: String] = [:]) {
-        message = Self.text(for: MaerPlaylists.shared.add(itemIds: ids, to: list.id,
-                                                         knownTitles: titles),
-                            listName: list.name)
+        Task {
+            let expanded = await Self.expandedForPlaylist(ids)
+            message = Self.text(for: MaerPlaylists.shared.add(itemIds: expanded.ids,
+                                                             to: list.id,
+                                                             knownTitles: titles.merging(expanded.titles) { a, _ in a }),
+                                listName: list.name)
+        }
+    }
+
+    /// f208790 — "playlists are SONGS, not albums": an ALBUM lands as its
+    /// tracks (identical to a server album, which expands via its itemIds);
+    /// a WORK (reading, radio play) stays ONE entry, because that is what it
+    /// is. The `ArchiveItemForm` switch decides — at THIS one place, so the
+    /// next catalog family cannot be filed wrongly again.
+    ///
+    /// Why the first build only half-arrived (order point 4): the catalog
+    /// provider grew out of the AUDIOBOOK path, where one id IS the whole
+    /// work — the playlist add inherited that assumption and never asked the
+    /// form switch, although it already existed.
+    static func expandedForPlaylist(_ ids: [String]) async -> (ids: [String], titles: [String: String]) {
+        var out: [String] = []
+        var titles: [String: String] = [:]
+        for id in ids {
+            guard id.hasPrefix(FreeCatalog.archivePrefix),
+                  CatalogSongID.parse(id) == nil else { out.append(id); continue }
+            let provider = FreeCatalogProvider.shared
+            var form = provider.archiveForm(itemId: id)
+            if form == nil {
+                // The form is only known once the detail was seen — ask for
+                // it rather than guessing from the id.
+                _ = try? await provider.fetchItemDetail(itemId: id)
+                form = provider.archiveForm(itemId: id)
+            }
+            guard form == .album,
+                  let detail = try? await provider.fetchItemDetail(itemId: id),
+                  let tracks = detail.media.tracks, tracks.count > 1 else {
+                out.append(id)
+                continue
+            }
+            for index in tracks.indices {
+                let songId = CatalogSongID.make(album: id, index: index)
+                out.append(songId)
+                if let stated = tracks[index].metadata?.title, !stated.isEmpty {
+                    titles[songId] = stated
+                }
+            }
+        }
+        return (out, titles)
     }
 
     func createAndAdd(name rawName: String) {
         let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalName = name.isEmpty ? String(localized: "Playlist") : name
         let list = MaerPlaylists.shared.create(name: finalName)
-        message = Self.text(for: MaerPlaylists.shared.add(itemIds: pendingIds, to: list.id,
-                                                         knownTitles: pendingTitles),
-                            listName: finalName)
+        let ids = pendingIds
+        let carried = pendingTitles
         pendingIds = []
         pendingTitles = [:]
+        Task {
+            let expanded = await Self.expandedForPlaylist(ids)
+            message = Self.text(for: MaerPlaylists.shared.add(itemIds: expanded.ids,
+                                                             to: list.id,
+                                                             knownTitles: carried.merging(expanded.titles) { a, _ in a }),
+                                listName: finalName)
+        }
     }
 
     /// Regel 3: every outcome gets a sentence — including "was already in

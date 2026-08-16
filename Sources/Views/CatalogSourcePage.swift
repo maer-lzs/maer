@@ -644,6 +644,16 @@ struct ArchiveSeriesPage: View {
         return String(localized: "\(total) min")
     }
 
+    /// The title the ROW shows — the same derivation, so what lands in a
+    /// playlist is what the person tapped (P4).
+    private func trackTitle(_ track: ABSAudioTrack) -> String {
+        let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
+        let stated = track.metadata?.title
+        return effectiveFlavor == .series
+            ? FreeCatalog.otrEpisode(fromFileName: raw).title
+            : (stated ?? raw)
+    }
+
     private func episodeRow(index: Int, track: ABSAudioTrack) -> some View {
         Button {
             Task {
@@ -703,7 +713,13 @@ struct ArchiveSeriesPage: View {
         .buttonStyle(.plain)
         .contextMenu {
             if effectiveFlavor == .album {
-                CatalogQueueButtons(itemId: CatalogSongID.make(album: itemId, index: index))
+                let songId = CatalogSongID.make(album: itemId, index: index)
+                CatalogQueueButtons(itemId: songId)
+                // f208790: "playlists are SONGS" — a catalog track is as
+                // enqueueable as a server song, and it hands its title over
+                // (P4 rule) so a cold cache cannot turn it into a placeholder.
+                MaerPlaylistMenu(itemId: songId,
+                                 knownTitles: [songId: trackTitle(track)])
             }
         }
     }
