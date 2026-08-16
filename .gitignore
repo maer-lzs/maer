@@ -61,3 +61,7 @@ Icon
 
 ## App-Schluessel (Z1): Werte NIE im Repo
 Config/AppKeys.local.xcconfig
+
+# Python bytecode from the repo tooling (8c50ff4)
+__pycache__/
+*.pyc

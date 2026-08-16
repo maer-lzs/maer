@@ -807,3 +807,21 @@ struct NowPlayingTitleSourceTests {
         }
     }
 }
+
+// MARK: - 10eb85f: das Tor kennt die Zielgroesse (EINE Stelle)
+
+struct RadioGateTargetSizeTests {
+    @Test("die Anforderung folgt der Flaeche, gedeckelt vom strengen Default")
+    func requirementFollowsTheSurface() {
+        // Ohne Zielgroesse: unveraendert streng.
+        #expect(RadioFaviconGate.required(targetSide: nil) == RadioFaviconGate.minSide)
+        // Eine WINZIGE Flaeche darf weniger verlangen …
+        #expect(RadioFaviconGate.required(targetSide: 16, scale: 3) == 48)
+        // … eine grosse aber NIE mehr als die allgemeine Regel (Deckel):
+        #expect(RadioFaviconGate.required(targetSide: 128, scale: 3) == RadioFaviconGate.minSide)
+        #expect(RadioFaviconGate.required(targetSide: 64, scale: 3) == RadioFaviconGate.minSide)
+        // Und das Tor selbst nutzt genau diese Anforderung.
+        #expect(RadioFaviconGate.acceptable(pixelWidth: 50, pixelHeight: 50, targetSide: 16))
+        #expect(!RadioFaviconGate.acceptable(pixelWidth: 50, pixelHeight: 50))
+    }
+}

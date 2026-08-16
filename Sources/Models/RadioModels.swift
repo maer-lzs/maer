@@ -988,8 +988,21 @@ nonisolated enum RadioFaviconGate {
         min(pixelWidth, pixelHeight) >= touchIconMinSide
     }
 
-    static func acceptable(pixelWidth: Int, pixelHeight: Int) -> Bool {
-        min(pixelWidth, pixelHeight) >= minSide
+    /// 10eb85f: the gate takes the SURFACE's target size. A 48-px favicon is
+    /// mush on a hero and perfectly sharp in a 32-pt search row — the
+    /// absolute 64 answered both the same way. `targetSide` is the rendered
+    /// point size; the requirement is what that surface actually needs at
+    /// screen scale (capped by the strict default, so no surface can ask for
+    /// MORE than the general rule). nil = strict default, unchanged.
+    static func acceptable(pixelWidth: Int, pixelHeight: Int,
+                           targetSide: CGFloat? = nil) -> Bool {
+        min(pixelWidth, pixelHeight) >= required(targetSide: targetSide)
+    }
+
+    /// Pure and testable: what a surface needs in pixels.
+    static func required(targetSide: CGFloat?, scale: CGFloat = 3) -> Int {
+        guard let targetSide, targetSide > 0 else { return minSide }
+        return min(minSide, Int((targetSide * scale).rounded()))
     }
 
     /// Station initials for the placeholder: first character of the first

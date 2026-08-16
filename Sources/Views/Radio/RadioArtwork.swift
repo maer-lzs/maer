@@ -29,6 +29,12 @@ struct RadioArtwork: View {
     /// instead of two unrelated surfaces meeting hard.
     var cardBackground: Color? = nil
 
+    /// 10eb85f: the surface's TARGET size in points — small rows (search)
+    /// may show a sub-64 favicon FULL, because it covers what they actually
+    /// render. nil = the strict default (hero, cards, tiles): the absolute
+    /// gate. One gate with a parameter, never a second one.
+    var targetSide: CGFloat? = nil
+
     /// The share of the card artwork the colour gradient covers at the
     /// bottom (RadioFeaturedCard) — the wordmark centres in what is LEFT.
     static let cardGradientShare: CGFloat = 0.3
@@ -52,7 +58,8 @@ struct RadioArtwork: View {
             // immediately; the cadenced chain upgrades the tile when it
             // arrives — awaiting the chain before showing anything left the
             // first session on initials.
-            let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID)
+            let probe = await RadioArtwork.faviconProbe(for: faviconURL, stationID: stationID,
+                                                        targetSide: targetSide)
             if let quick = probe.face {
                 if gatedFavicon == nil { gatedFavicon = .some(quick) }
             } else if let small = probe.small {
@@ -95,11 +102,13 @@ struct RadioArtwork: View {
 
     /// The probe keeps what the gate rejects: `face` passed the gate, `small`
     /// decoded but is below it — badge material, never a tile face.
-    static func faviconProbe(for url: URL?, stationID: String) async -> (face: UIImage?, small: UIImage?) {
+    static func faviconProbe(for url: URL?, stationID: String,
+                             targetSide: CGFloat? = nil) async -> (face: UIImage?, small: UIImage?) {
         if let url, let image = await ImageCache.shared.thumbnail(for: url) {
             let width = Int(image.size.width * image.scale)
             let height = Int(image.size.height * image.scale)
-            if RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height) {
+            if RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height,
+                                           targetSide: targetSide) {
                 return (image, nil)
             }
             Logger.library.notice("RADIO favicon rejected (\(width)×\(height)): \(stationID, privacy: .public)")
@@ -179,21 +188,31 @@ struct RadioArtwork: View {
                 }
             } else {
                 placeholderFill
-                    .overlay(alignment: .bottomLeading) {
-                        // The show-badge form of the episode tiles: ~24 pt,
-                        // white border, bottom-left — small and sharp instead
-                        // of a stretched stamp or nothing.
-                        if let badge = badgeFavicon {
-                            Image(uiImage: badge)
-                                .resizable().aspectRatio(contentMode: .fit)
-                                .frame(width: 24, height: 24)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .strokeBorder(.white, lineWidth: 1))
-                                .padding(5)
-                        }
+                    // d43a06b: the ANCHOR is decided by the component, not
+                    // per call site. In a CARD the bottom edge is the soft
+                    // cover→colour gradient — a badge there gets dimmed and
+                    // swallowed, so the card uses the opposite corner. Plain
+                    // tiles keep the family position (bottom-leading).
+                    .overlay(alignment: cardBackground == nil ? .bottomLeading : .topLeading) {
+                        badgeMark
                     }
             }
+        }
+    }
+
+    /// The show-badge form of the episode tiles: ~24 pt, white border —
+    /// plus a small shadow, so the contrast holds on ANY ground (a card's
+    /// gradient included). One mark, one place that defines it.
+    @ViewBuilder private var badgeMark: some View {
+        if let badge = badgeFavicon {
+            Image(uiImage: badge)
+                .resizable().aspectRatio(contentMode: .fit)
+                .frame(width: 24, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .strokeBorder(.white, lineWidth: 1))
+                .shadow(color: .black.opacity(0.35), radius: 2, y: 1)
+                .padding(5)
         }
     }
 
