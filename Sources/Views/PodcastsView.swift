@@ -343,9 +343,7 @@ RowHeading(title: "Recommended",
                             recommendationTile(r)
                                 // Kachel-Auftrag: screen-relative slots + peek
                                 // instead of the fixed 126 pt.
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
-                                    span: 1, spacing: 12)
+                                .cardRowSlot()
                         }
                     }
                     .padding(.horizontal)
@@ -437,9 +435,7 @@ RowHeading(title: "Recommended",
                                 RecentShowTile(info: info)
                             }
                             .buttonStyle(.plain)
-                            .containerRelativeFrame(.horizontal,
-                                count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
-                                span: 1, spacing: 14)
+                            .cardRowSlot(spacing: 14)
                             .contextMenu {
                                 PinchflatHideButton(show: info.show)
                             }
@@ -796,9 +792,7 @@ struct RadioPlayChartsPage: View {
                                 LazyHStack(alignment: .top, spacing: 12) {
                                     ForEach(RowPreview.cut(results), id: \.feedURL) { result in
                                         RecommendationTile(result: result)
-                                            .containerRelativeFrame(.horizontal,
-                                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                span: 1, spacing: 12)
+                                            .cardRowSlot()
                                     }
                                 }
                                 .padding(.horizontal)

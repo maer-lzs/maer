@@ -242,9 +242,37 @@ enum CardMetrics {
     // responsive replacement of fixed pt widths (screen-relative slots + a
     // natural peek of the next card). Design dial: the counts are tuned on
     // device; regular width (iPad/landscape) shows roughly double.
-    static func recommendationColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
-    static func playlistColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
-    static func rediscoverColumns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
+    //
+    // 88c4eb6: deliberately `fileprivate` and asked by the ONE modifier below.
+    // As a public function taking a Bool it invited the wrong answer, and
+    // fifteen of nineteen call sites took it up: they passed the literal
+    // `false`, which on an iPad means full width ÷ 3 — record covers the size
+    // of a palm. A caller cannot answer an environment question; the row can.
+    // The three former dials (recommendation / playlist / rediscover) held the
+    // same numbers and are one dial again.
+    fileprivate static func columns(regularWidth: Bool) -> Int { regularWidth ? 6 : 3 }
+}
+
+/// THE slot of a horizontal card row. It reads the size class itself, so no
+/// caller can misstate it — the difference between iPhone and iPad is not a
+/// property of the row's content.
+private struct CardRowSlot: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    let spacing: CGFloat
+
+    func body(content: Content) -> some View {
+        content.containerRelativeFrame(
+            .horizontal,
+            count: CardMetrics.columns(regularWidth: horizontalSizeClass == .regular),
+            span: 1, spacing: spacing)
+    }
+}
+
+extension View {
+    /// Card rows use 12 pt between tiles, the artwork-heavy music rows 14.
+    func cardRowSlot(spacing: CGFloat = 12) -> some View {
+        modifier(CardRowSlot(spacing: spacing))
+    }
 }
 
 // MARK: - Shuffle gesture as a shared extension

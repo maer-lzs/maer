@@ -559,9 +559,7 @@ struct FreeJamendoPage: View {
                                                       pushMusicRoute: pushRoute)
                             }
                         })
-                    .containerRelativeFrame(.horizontal,
-                                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                                            spacing: 14)
+                    .cardRowSlot(spacing: 14)
                     .contextMenu {
                         Button {
                             Task { await playerCoordinator.open(item: item) }
@@ -753,9 +751,7 @@ struct MusicCatalogAreaPage: View {
                                                       pushMusicRoute: pushRoute)
                             }
                         })
-                    .containerRelativeFrame(.horizontal,
-                                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                                            spacing: 14)
+                    .cardRowSlot(spacing: 14)
                     .contextMenu {
                         Button {
                             detailItem = item

@@ -142,9 +142,7 @@ struct CatalogSourcePage: View {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(RowPreview.cut(store.sourceRows.librivoxNew)) { item in
                             tile(item)
-                                .containerRelativeFrame(.horizontal,
-                                                        count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                        spacing: 14)
+                                .cardRowSlot(spacing: 14)
                         }
                     }
                     .padding(.horizontal)
@@ -188,9 +186,7 @@ struct CatalogSourcePage: View {
                     LazyHStack(alignment: .top, spacing: 14) {
                         ForEach(RowPreview.cut(filtered)) { item in
                             tile(item)
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.recommendationColumns(regularWidth: false),
-                                    spacing: 14)
+                                .cardRowSlot(spacing: 14)
                         }
                     }
                     .padding(.horizontal)

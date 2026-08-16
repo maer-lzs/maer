@@ -282,9 +282,7 @@ struct MusicView: View {
                                                       pushMusicRoute: { pushRoute($0) })
                             }
                         })
-                    .containerRelativeFrame(.horizontal,
-                                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                                            spacing: 14)
+                    .cardRowSlot(spacing: 14)
                     .contextMenu {
                         Button {
                             Task { await playerCoordinator.open(item: item) }

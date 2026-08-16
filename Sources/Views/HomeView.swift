@@ -74,8 +74,6 @@ struct HomeView: View {
     /// instead of on every render.
     @State private var discoverShown: [PodcastSearchResult] = []
     @State private var ready = false
-    /// Kachel-Auftrag: column counts of the horizontal rows per width class.
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     /// TF4/E4: explicit height for the lazy "Recently Added" cells — the fixed
     /// 150 cover plus a Dynamic-Type-scaling text block, so every cell matches
     /// and none clips. (Device candidate: the text allowance.)
@@ -422,9 +420,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                 }
                             }
                             // Kachel-Auftrag: screen-relative slots + peek.
-                            .containerRelativeFrame(.horizontal,
-                                count: CardMetrics.recommendationColumns(regularWidth: horizontalSizeClass == .regular),
-                                span: 1, spacing: 12)
+                            .cardRowSlot()
                         }
                     }
                     .padding(.horizontal)
@@ -476,9 +472,7 @@ RowHeading(title: "Rediscover",
                             rediscoverTile(pick)
                                 // Kachel-Auftrag: screen-relative slots + peek
                                 // instead of the fixed 140 pt.
-                                .containerRelativeFrame(.horizontal,
-                                    count: CardMetrics.rediscoverColumns(regularWidth: horizontalSizeClass == .regular),
-                                    span: 1, spacing: 12)
+                                .cardRowSlot()
                         }
                     }
                     .padding(.horizontal)

@@ -1091,9 +1091,7 @@ struct LibraryView: View {
                                 freeBookDetail = item
                             } label: { Label("Details", systemImage: "info.circle") }
                         }
-                        .containerRelativeFrame(.horizontal,
-                                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                spacing: 14)
+                        .cardRowSlot(spacing: 14)
                     }
                 }
                 .padding(.horizontal)

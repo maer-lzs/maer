@@ -61,9 +61,7 @@ struct FreeCatalogRows: View {
                                 ? "music.note" : "book.closed",
                             onTap: { detailItem = item }
                         )
-                        .containerRelativeFrame(.horizontal,
-                                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                spacing: 14)
+                        .cardRowSlot(spacing: 14)
                         .contextMenu {
                             Button {
                                 Task { await playerCoordinator.open(item: item) }

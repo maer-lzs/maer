@@ -204,9 +204,7 @@ struct FreeAudiobooksPage: View {
                         artworkURL: entry.artworkURL, feedURL: entry.feedURL),
                         subtitle: entry.form?.label,
                         badgeText: entry.ccLicense)
-                        .containerRelativeFrame(.horizontal,
-                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                            span: 1, spacing: 12)
+                        .cardRowSlot()
                 }
             }
             .padding(.horizontal)
@@ -267,9 +265,7 @@ struct FreeAudiobooksPage: View {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
                     tile(item, placeholder: placeholder)
-                        .containerRelativeFrame(.horizontal,
-                                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                spacing: 14)
+                        .cardRowSlot(spacing: 14)
                 }
             }
             .padding(.horizontal)
@@ -336,9 +332,7 @@ struct FreeAudiobooksPage: View {
                 LazyHStack(alignment: .top, spacing: 12) {
                     ForEach(RowPreview.cut(chartResults), id: \.feedURL) { result in
                         RecommendationTile(result: result)
-                            .containerRelativeFrame(.horizontal,
-                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                span: 1, spacing: 12)
+                            .cardRowSlot()
                     }
                 }
                 .padding(.horizontal)
@@ -433,9 +427,7 @@ struct OERRCountriesPage: View {
                                         RecommendationTile(result: PodcastSearchResult(
                                             title: entry.title, author: entry.author,
                                             artworkURL: entry.artworkURL, feedURL: entry.feedURL))
-                                            .containerRelativeFrame(.horizontal,
-                                                count: CardMetrics.recommendationColumns(regularWidth: false),
-                                                span: 1, spacing: 12)
+                                            .cardRowSlot()
                                     }
                                 }
                                 .padding(.horizontal)

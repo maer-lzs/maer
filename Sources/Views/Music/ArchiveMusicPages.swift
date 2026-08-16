@@ -208,9 +208,7 @@ struct ShellacShelvesPage: View {
                                                       pushMusicRoute: pushRoute)
                             }
                         })
-                    .containerRelativeFrame(.horizontal,
-                                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                                            spacing: 14)
+                    .cardRowSlot(spacing: 14)
                     .contextMenu {
                         Button {
                             detailItem = item

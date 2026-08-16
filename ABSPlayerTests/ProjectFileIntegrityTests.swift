@@ -616,3 +616,52 @@ extension ProjectFileIntegrityTests {
         #expect(builds == 1, "a journey builds the app itself again (\(builds) places)")
     }
 }
+
+// MARK: - 88c4eb6: the size class is not a caller's question
+
+extension ProjectFileIntegrityTests {
+    /// Every place that spans a horizontal tile slot itself instead of asking
+    /// the shared `cardRowSlot`. Whitespace-collapsed, so the usual line break
+    /// after `.horizontal,` hides nothing.
+    static func ownSlotSites(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        let pattern = #"\.containerRelativeFrame\(\.horizontal,"#
+        let re = try? NSRegularExpression(pattern: pattern)
+        return re?.numberOfMatches(in: collapsed,
+                                   range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
+    }
+
+    @Test("nur der geteilte Schlitz spannt eine Kachelreihe auf")
+    func cardRowsAskTheSharedSlot() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let sources = FileManager.default.enumerator(
+            at: root.appendingPathComponent("Sources"), includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+        #expect(!sources.isEmpty)
+        var offenders: [String] = []
+        for file in sources where file.lastPathComponent != "TabContentLayout.swift" {
+            if Self.ownSlotSites(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces span the tile slot themselves: \(offenders)")
+    }
+
+    /// Proof run on the shape that shipped: fifteen places passed the literal
+    /// `false`, which on an iPad meant full width ÷ 3.
+    @Test("der Schlitz-Zaun faengt die ausgelieferte Form")
+    func slotFenceCatchesTheShippedShape() {
+        #expect(Self.ownSlotSites(in: """
+                    .containerRelativeFrame(.horizontal,
+                        count: CardMetrics.recommendationColumns(regularWidth: false),
+                        spacing: 14)
+        """) == 1)
+        // The honest variant is a violation too: it copies the slot, and the
+        // next copy drifts again.
+        #expect(Self.ownSlotSites(in:
+            ".containerRelativeFrame(.horizontal, count: 6, span: 1, spacing: 12)") == 1)
+        #expect(Self.ownSlotSites(in: ".cardRowSlot(spacing: 14)") == 0)
+    }
+}

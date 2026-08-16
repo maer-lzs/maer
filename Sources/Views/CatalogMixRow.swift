@@ -25,9 +25,7 @@ struct CatalogMixRow: View {
             LazyHStack(alignment: .top, spacing: 12) {
                 ForEach(tiles) { tile in
                     tileView(tile)
-                        .containerRelativeFrame(.horizontal,
-                            count: CardMetrics.recommendationColumns(regularWidth: false),
-                            span: 1, spacing: 12)
+                        .cardRowSlot()
                 }
             }
             .padding(.horizontal)
