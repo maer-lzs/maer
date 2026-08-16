@@ -459,6 +459,15 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = saved[0]
             restoredFromLocal = true
         }
+        // cce35fc (4): a backward jump is never silent again. Whatever the
+        // cause, the person notices it — so the log names it, with both
+        // sides and their timestamps. Threshold 60 s: below that it is the
+        // normal re-position, above it is a finding.
+        if let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+           saved.count >= 2, saved[0] - startTime > 60 {
+            let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms fromLocal=\(restoredFromLocal)"
+            Logger.library.warning("PROGRESS backward jump \(Int(saved[0] - startTime))s on \(item.id, privacy: .public): \(detail, privacy: .public)")
+        }
         // Explicit replay: ignore any saved/server position and begin at 0.
         if restart {
             startTime = 0
