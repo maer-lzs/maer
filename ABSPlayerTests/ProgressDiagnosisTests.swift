@@ -62,4 +62,56 @@ struct ProgressDiagnosisTests {
         #expect(text.contains("Keine gespeicherten Positionen"))
     }
 }
+
+
+// MARK: - c9529f1: die BUCH-Ansicht desselben Instruments
+
+struct BookProgressDiagnosisTests {
+    private func stamp(_ s: Double) -> String { String(Int(s)) }
+    private func time(_ s: Double) -> String { String(Int(s)) + "s" }
+
+    @Test("der Bericht nennt den Ruecksprung, den der Start ausloesen wuerde")
+    func namesTheBackwardJump() {
+        // the owner's Winterfell-Lage: lokal deutlich weiter, aber ÄLTER
+        // gestempelt als der Serverstand ⇒ der Start nimmt den Server und
+        // wirft zurueck. Genau das muss das Instrument sagen.
+        let sources = ProgressDiagnosis.BookSources(
+            serverPosition: 3600, serverUpdatedAtMs: 2_000_000,
+            localPosition: 4800, localSavedAtMs: 1_000_000,
+            cachedPosition: 3600, cachedUpdatedAtMs: 2_000_000,
+            duration: 36000, isDownloaded: true, pendingSyncOperations: 0)
+        let report = ProgressDiagnosis.bookReport(title: "Winterfell", sources: sources,
+                                                  now: 3_000, format: stamp, formatTime: time)
+        #expect(report.contains("SERVER-Stand"))
+        #expect(report.contains("1200 s zurück"))
+        #expect(report.contains("heruntergeladen: ja"))
+    }
+
+    @Test("ein NEUERER lokaler Stand gewinnt — und der Bericht sagt es")
+    func localWinsWhenNewer() {
+        let sources = ProgressDiagnosis.BookSources(
+            serverPosition: 3600, serverUpdatedAtMs: 1_000_000,
+            localPosition: 4800, localSavedAtMs: 2_000_000,
+            cachedPosition: 3600, cachedUpdatedAtMs: 1_000_000,
+            duration: 36000, isDownloaded: true, pendingSyncOperations: 2)
+        let report = ProgressDiagnosis.bookReport(title: "Winterfell", sources: sources,
+                                                  now: 3_000, format: stamp, formatTime: time)
+        #expect(report.contains("LOKALEN Stand"))
+        #expect(report.contains("offene Sync-Aufträge: 2"))
+    }
+
+    @Test("fehlende Seiten werden benannt, nicht erfunden")
+    func missingSidesAreNamed() {
+        let sources = ProgressDiagnosis.BookSources(
+            serverPosition: nil, serverUpdatedAtMs: nil,
+            localPosition: 900, localSavedAtMs: 5_000,
+            cachedPosition: nil, cachedUpdatedAtMs: nil,
+            duration: 0, isDownloaded: false, pendingSyncOperations: 0)
+        let report = ProgressDiagnosis.bookReport(title: "X", sources: sources,
+                                                  now: 3_000, format: stamp, formatTime: time)
+        #expect(report.contains("Server-Stand: —"))
+        #expect(report.contains("Dauer: unbekannt"))
+        #expect(report.contains("Nicht beide Seiten bekannt"))
+    }
+}
 #endif

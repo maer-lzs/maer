@@ -93,6 +93,70 @@ nonisolated enum ProgressDiagnosis {
 
     /// The text block to hand on. Deliberately plain and complete: readable
     /// without the app, hiding no interpretation.
+    /// c9529f1: the BOOK view of the same instrument. A book has one
+    /// position, not many — but the interesting part is WHERE that position
+    /// comes from, so the report puts the sources side by side with their
+    /// timestamps. Same model, second view; no second version.
+    ///
+    /// It is deliberately the measuring tool for the rücksprung candidates
+    /// (cce35fc): server vs. local backup vs. cached detail, each with its
+    /// own time, plus what the sync queue still owes.
+    struct BookSources {
+        let serverPosition: Double?
+        let serverUpdatedAtMs: Double?
+        let localPosition: Double?
+        let localSavedAtMs: Double?
+        /// The position inside the detail stored at download time — the one
+        /// the local start path (P15) begins from.
+        let cachedPosition: Double?
+        let cachedUpdatedAtMs: Double?
+        let duration: Double
+        let isDownloaded: Bool
+        let pendingSyncOperations: Int
+    }
+
+    static func bookReport(title: String,
+                           sources: BookSources,
+                           now: Double,
+                           format: (Double) -> String,
+                           formatTime: (Double) -> String) -> String {
+        var lines: [String] = []
+        lines.append("Fortschritts-Diagnose (Buch) — \(title)")
+        lines.append("erstellt: \(format(now))")
+        lines.append("heruntergeladen: \(sources.isDownloaded ? "ja" : "nein")")
+        lines.append("offene Sync-Aufträge: \(sources.pendingSyncOperations)")
+        lines.append("")
+        func line(_ label: String, _ position: Double?, _ atMs: Double?) {
+            guard let position else {
+                lines.append("\(label): —")
+                return
+            }
+            let stamp = atMs.map { format($0 / 1000) } ?? "ohne Zeitstempel"
+            lines.append("\(label): \(formatTime(position)) (\(stamp))")
+        }
+        line("Server-Stand", sources.serverPosition, sources.serverUpdatedAtMs)
+        line("lokaler Sekunden-Backup", sources.localPosition, sources.localSavedAtMs)
+        line("gecachter Detail-Stand", sources.cachedPosition, sources.cachedUpdatedAtMs)
+        lines.append("Dauer: \(sources.duration > 0 ? formatTime(sources.duration) : "unbekannt")")
+        lines.append("")
+        // The verdict the app WOULD reach right now — an instrument that
+        // judges differently from the thing it measures is measuring itself.
+        if let local = sources.localPosition, let localAt = sources.localSavedAtMs,
+           let serverAt = sources.serverUpdatedAtMs, let server = sources.serverPosition {
+            if localAt > serverAt && abs(local - server) > 5 {
+                lines.append("Start würde beim LOKALEN Stand beginnen (er ist neuer).")
+            } else {
+                lines.append("Start würde beim SERVER-Stand beginnen.")
+                if local - server > 60 {
+                    lines.append("⚠️ Das wirft \(Int(local - server)) s zurück — genau der gemeldete Rücksprung.")
+                }
+            }
+        } else {
+            lines.append("Nicht beide Seiten bekannt — der Start nimmt, was da ist.")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     static func report(show: String,
                        entries: [Entry],
                        lastSync: Double?,
