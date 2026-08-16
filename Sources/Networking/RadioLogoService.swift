@@ -279,6 +279,17 @@ actor RadioLogoService {
     /// answered cleanly; the first transport failure aborts with `.failed`,
     /// so nothing gets written down on the strength of a broken network.
     private func resolve(name: String, homepage: String?) async -> ChainOutcome {
+        // 🔴 e32454e: the GENERATED data first — for the core stations the
+        // answer is already known (P154 plus the Commons file search, run
+        // tool-side). This spares the device the whole chain for exactly the
+        // stations everyone sees; the runtime chain below stays the fallback
+        // for the long tail. Only the FILE NAME is stored, the width is
+        // applied at read time (cb8bac1).
+        if let file = RadioLogoData.commonsFile(forName: name),
+           let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: file,
+                                                            width: Self.commonsWidth) {
+            return .hit(thumb, commonsFile: file)
+        }
         // Stage 1: Wikidata P154 — term variants (full name de/en, brand
         // stem) because the de full-name search missed real entries
         // (90s90s-Diagnose); the conservative fold-match guards each hit.

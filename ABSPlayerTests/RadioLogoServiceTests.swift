@@ -125,3 +125,27 @@ struct RadioLogoGateVersioningTests {
         #expect(signature == "\(RadioFaviconGate.minSide)-\(RadioFaviconGate.touchIconMinSide)")
     }
 }
+
+// MARK: - e32454e: die generierten Daten sind die erste Stufe
+
+struct RadioLogoDataTests {
+    @Test("die Tabelle traegt DATEINAMEN, nie fertige URLs")
+    func storesFileNamesOnly() {
+        // Die cb8bac1-Regel strukturell geprueft: kein Eintrag ist eine URL,
+        // sonst waere die Breite wieder eingebacken.
+        for (_, file) in RadioLogoData.commonsFiles {
+            #expect(!file.contains("http"))
+            #expect(!file.contains("width="))
+        }
+    }
+
+    @Test("Kern-Sender werden ohne Netz beantwortet")
+    func coreStationsResolveOffline() {
+        // Stichproben aus den DACH-Kernen — sie sind der Grund fuer die
+        // Tabelle: das Geraet soll fuer sie gar nicht erst die Kette laufen.
+        let hits = ["SWR3", "WDR 2", "Ö 3", "SRF 1"]
+            .compactMap { RadioLogoData.commonsFile(forName: $0) }
+        #expect(hits.count >= 3, "die Kern-Koepfe sollten in den Daten stehen")
+        #expect(RadioLogoData.commonsFile(forName: "Ein Sender ohne Eintrag") == nil)
+    }
+}
