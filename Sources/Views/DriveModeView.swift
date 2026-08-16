@@ -313,7 +313,7 @@ struct DriveModeView: View {
 
     private var idleTiles: some View {
         VStack(spacing: 16) {
-            Text("Continue Listening")
+            Text("Keep Listening")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(.white)
             ForEach(libraryViewModel.continueListening.prefix(3)) { entry in

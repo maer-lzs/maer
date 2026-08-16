@@ -1267,7 +1267,7 @@ struct LibraryView: View {
         VStack(alignment: .leading, spacing: 10) {
             // 6fcb301/3a3b1aa: the row is a PREVIEW — capped, and the chevron
             // appears only when something is actually hidden behind it.
-            RowHeading(title: "Continue", font: .title2,
+            RowHeading(title: "Keep Listening", font: .title2,
                        total: viewModel.continueListening.count,
                        shown: RowPreview.cut(viewModel.continueListening).count,
                        destination: LibraryListRoute.continueListening)

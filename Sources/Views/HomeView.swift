@@ -123,6 +123,9 @@ struct HomeView: View {
                 // Rediscover → Recently Added.
                 LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                     continueSection
+                    // 9443ff7: the HEARING BLOCK — first what has a position, directly
+                    // below what you start over. Discover/recommendation rows follow.
+                    recentlyPlayedSection
                     if recommendationsEnabled { discoverSection }
                     // 0714d26/34c36e1: free-catalog rows — data loads in
                     // compute() (a lazy below-the-fold view never ran its
@@ -139,11 +142,6 @@ struct HomeView: View {
                         discoverAudiobooksSection
                     }
                     upNextSection
-                    // P14: ONE row for albums AND stations (both: start
-                    // again, no position) — replaces the separate radio and
-                    // recent-music rows. Sits where the radio row sat, as a
-                    // "recently used" shelf after the planned queue.
-                    recentlyPlayedSection
                     latestEpisodesSection
                     if recommendationsEnabled { rediscoverSection }
                     recentlyAddedSection
@@ -231,7 +229,7 @@ struct HomeView: View {
                 // `shown` is the ACTUAL visible count — Home's own cap (10)
                 // bites before RowPreview's (12), so deriving it is the only
                 // way the rule stays true when either number changes.
-                RowHeading(title: "Continue", font: .title2,
+                RowHeading(title: "Keep Listening", font: .title2,
                            total: continueIdsAll.count,
                            shown: RowPreview.cut(continueIds).count,
                            destination: MixedRowRoute.continueListening)
@@ -306,7 +304,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                 // No chevron: there is no page behind this MIXED row (the
                 // music-only shelf still has its own page from the music
                 // tab). Counting rule — no target, no chevron.
-                RowHeading.plain("Recently Played")
+                RowHeading.plain("Listen Again")
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(entries, id: \.self) { entry in

@@ -20,7 +20,7 @@ nonisolated enum MixedRowRoute: Hashable {
     /// Same wording as the row — the page IS that row, unabridged.
     var title: String {
         switch self {
-        case .continueListening: String(localized: "Continue")
+        case .continueListening: String(localized: "Keep Listening")
         case .recentlyAdded:     String(localized: "Recently Added")
         case .rediscoverPool:    String(localized: "Rediscover")
         }

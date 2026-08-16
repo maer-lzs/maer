@@ -26,7 +26,7 @@ nonisolated enum LibraryListRoute: Hashable {
     /// Same wording as the row it belongs to — the page IS that row, unabridged.
     var title: String {
         switch self {
-        case .continueListening: String(localized: "Continue")
+        case .continueListening: String(localized: "Keep Listening")
         case .recentlyAdded:     String(localized: "Recently Added")
         case .allBooks:          String(localized: "All Books")
         }

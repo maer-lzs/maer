@@ -4,6 +4,26 @@
     "" : {
       "shouldTranslate" : false
     },
+    "Keep Listening" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiterhören"
+          }
+        }
+      }
+    },
+    "Listen Again" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wieder anhören"
+          }
+        }
+      }
+    },
     "Show all %lld" : {
       "localizations" : {
         "de" : {

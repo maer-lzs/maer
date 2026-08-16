@@ -259,7 +259,7 @@ struct PodcastsView: View {
     private var nextUpSection: some View {
         if !nextUpShown.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-RowHeading(title: "Continue", font: .title2,
+RowHeading(title: "Keep Listening", font: .title2,
                            total: nextUpShown.count,
                            shown: RowPreview.cut(nextUpShown).count,
                            destination: PodcastRoute.nextUpAll)
