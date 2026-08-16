@@ -831,7 +831,12 @@ nonisolated final class MaerUITests: XCTestCase {
     /// (second access point, one truth).
     func testSettingsConsolidation() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        // 7040713: the precondition was a bet on the fold — "Seed Book One"
+        // lives BELOW it (the first viewport is the Continue hero plus the
+        // recommendation row), and in a lazy container what is not visible
+        // does not exist in the hierarchy. The sibling journeys have used
+        // `waitScrollingTo` for exactly this assertion all along.
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
         let settings = app.buttons["open-settings"].firstMatch
         XCTAssertTrue(settings.waitForExistence(timeout: 10))
         settings.tap()

@@ -15,6 +15,19 @@ import Foundation
 @MainActor
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
+
+    /// 32ff1e7: seeded recommendations. The harness must never reach the
+    /// directory — otherwise the row's HEIGHT depends on network latency and
+    /// a journey's precondition becomes a coin toss. Seeded rather than
+    /// empty, so the start page keeps its realistic geometry.
+    static let recommendations: [PodcastSearchResult] = [
+        PodcastSearchResult(title: "Seed Recommendation One", author: "Seed Author",
+                            artworkURL: nil, feedURL: "https://seed.example/rec1.xml"),
+        PodcastSearchResult(title: "Seed Recommendation Two", author: "Seed Author",
+                            artworkURL: nil, feedURL: "https://seed.example/rec2.xml"),
+        PodcastSearchResult(title: "Seed Recommendation Three", author: "Seed Author",
+                            artworkURL: nil, feedURL: "https://seed.example/rec3.xml"),
+    ]
     /// iPad hitch probes: a deep library (120 books) so wide/landscape grids
     /// still scroll far past the collapse threshold.
     static var isBulk: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-bulk") }

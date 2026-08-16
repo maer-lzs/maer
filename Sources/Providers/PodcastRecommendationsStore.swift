@@ -77,6 +77,20 @@ final class PodcastRecommendationsStore: ObservableObject {
     func refreshIfNeeded() async {
         guard !isLoading else { return }
         if !results.isEmpty, let at = loadedAt, Date().timeIntervalSince(at) < 6 * 3600 { return }
+        #if DEBUG
+        // 32ff1e7: in the UI-test harness this row loaded LIVE from the
+        // directory — the seed gated the library but nobody gated the
+        // recommendations. That made a journey's precondition a bet on
+        // network latency: a fast answer filled the row, pushed the seed book
+        // out of the lazy viewport and turned the verdict red; a slow one
+        // left it green. A transport event must never decide a verdict.
+        // Seeded instead of empty, so the row GEOMETRY stays realistic.
+        if UITestSeed.isActive {
+            results = UITestSeed.recommendations
+            loadedAt = Date()
+            return
+        }
+        #endif
         isLoading = true
         defer { isLoading = false }
 
