@@ -107,9 +107,15 @@ struct RadioStationCard: View {
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
     var mode: TapMode = .navigates
+    /// P16a: the ROW defines the metric, not the class. In a MIXED row
+    /// (Start's "Recently Played": albums next to stations) the album size is
+    /// the reference for Start's density — the tile takes it as a parameter
+    /// instead of a second version being built.
+    var width: CGFloat = RadioStationCard.width
     var onFavoriteToggled: () -> Void = {}
     @Environment(\.pushRadioRoute) private var pushRadioRoute
 
+    /// The tile's own default metric (browse rows, the radio tab).
     static let width: CGFloat = 128
 
     var body: some View {
@@ -123,7 +129,7 @@ struct RadioStationCard: View {
                 RadioArtwork(stationID: station.id,
                              faviconURL: station.faviconURL.flatMap { URL(string: $0) },
                              name: station.name)
-                    .frame(width: Self.width, height: Self.width)
+                    .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(alignment: .bottomTrailing) {
                         if mode == .navigates {
@@ -168,7 +174,7 @@ struct RadioStationCard: View {
                     // the default size (clipped at accessibility sizes, uneven
                     // card heights otherwise).
                     .lineLimit(2, reservesSpace: true)
-                    .frame(width: Self.width, alignment: .topLeading)
+                    .frame(width: width, alignment: .topLeading)
                 // 9d22148: the ACTIVE station's tile carries its running show
                 // (one extra line, only on that tile); dormant tiles show
                 // nothing stale and never touch a stream for it.
@@ -408,7 +414,9 @@ private struct RadioCardNowPlayingLeaf: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                        .frame(width: RadioStationCard.width, alignment: .leading)
+                        // P16a: inherit the TILE's width instead of pinning
+                        // the default one — the row decides the metric now.
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else if host == .featuredCard {
                 // A stream without ICY leaves the caption honestly empty —

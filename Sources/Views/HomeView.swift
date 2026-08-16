@@ -283,6 +283,11 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// `RecentlyPlayedRow`). Same tiles as before, one heading; a tap plays
     /// in both classes. Albums with an open position stay in Continue — the
     /// boundary is position, not media type.
+    /// P16a: ONE tile metric for the mixed row — the album size is Start's
+    /// reference density; both classes take it, and `alignment: .top` gives
+    /// the covers and their captions one baseline.
+    private static let recentlyPlayedTileWidth: CGFloat = 150
+
     @ViewBuilder
     private var recentlyPlayedSection: some View {
         let radioOn = RadioProvider.shared.isAvailable
@@ -305,15 +310,22 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                             switch entry {
                             case .album(let id):
                                 if let item = recentMusicItems.first(where: { $0.id == id }) {
-                                    AlbumCell(item: item, width: 150,
+                                    AlbumCell(item: item, width: Self.recentlyPlayedTileWidth,
                                               playerCoordinator: playerCoordinator)
-                                        .frame(width: 150, alignment: .top)
+                                        .frame(width: Self.recentlyPlayedTileWidth,
+                                               alignment: .top)
                                 }
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
+                                    // P16a: the ROW's metric, not the class's —
+                                    // the album size is Start's density, and a
+                                    // mixed row with two sizes reads as torn.
                                     RadioStationCard(station: station,
                                                      playerCoordinator: playerCoordinator,
-                                                     mode: .playsOnTap)
+                                                     mode: .playsOnTap,
+                                                     width: Self.recentlyPlayedTileWidth)
+                                        .frame(width: Self.recentlyPlayedTileWidth,
+                                               alignment: .top)
                                 }
                             }
                         }
