@@ -313,7 +313,8 @@ struct RadioFeaturedCard: View {
                     .overlay(alignment: .bottom) {
                         LinearGradient(colors: [.clear, cardColor],
                                        startPoint: .top, endPoint: .bottom)
-                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
+                            .frame(height: CardMetrics.featuredCardWidth
+                                   * RadioArtwork.cardGradientShare)
                     }
                 VStack(alignment: .leading, spacing: 5) {
                     // 48e514e (2): the caption line belongs to the running

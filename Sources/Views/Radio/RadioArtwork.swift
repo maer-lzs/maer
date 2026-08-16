@@ -29,6 +29,10 @@ struct RadioArtwork: View {
     /// instead of two unrelated surfaces meeting hard.
     var cardBackground: Color? = nil
 
+    /// The share of the card artwork the colour gradient covers at the
+    /// bottom (RadioFeaturedCard) — the wordmark centres in what is LEFT.
+    static let cardGradientShare: CGFloat = 0.3
+
     /// Gate result: nil until checked; .some(nil) = favicon rejected.
     @State private var gatedFavicon: UIImage??
     /// 7b910db: a favicon that DECODED but sits below the gate — too small to
@@ -144,11 +148,21 @@ struct RadioArtwork: View {
                             )
                             .clipped()
                     } else {
+                        // 65243f2 (2): the wordmark IS centred — but the
+                        // card's gradient covers the bottom third, so it
+                        // reads as sitting high and small. It is therefore
+                        // centred in the VISIBLE part and given more width
+                        // (the inset was tuned for a full square).
                         cardBackground
                             .overlay(
-                                Image(uiImage: image)
-                                    .resizable().aspectRatio(contentMode: .fit)
-                                    .padding(24)
+                                GeometryReader { geo in
+                                    Image(uiImage: image)
+                                        .resizable().aspectRatio(contentMode: .fit)
+                                        .padding(.horizontal, 14)
+                                        .frame(width: geo.size.width,
+                                               height: geo.size.height * (1 - Self.cardGradientShare),
+                                               alignment: .center)
+                                }
                             )
                     }
                 } else {
@@ -217,6 +231,19 @@ struct RadioArtwork: View {
                     .resizable().aspectRatio(contentMode: .fit)
                     .frame(width: 150, height: 150)
                     .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(radius: 8, y: 3)
+            } else if let badge = badgeFavicon {
+                // 65243f2 (1): the Y58 promise — "the gradient carries a
+                // small, sharp logo" — held only for gated favicons. A
+                // decodable-but-small one landed in `badgeFavicon` and the
+                // hero showed the bare initials, although the mini player
+                // proved the image was there. Same badge material, hero size.
+                Image(uiImage: badge)
+                    .resizable().aspectRatio(contentMode: .fit)
+                    .frame(width: 110, height: 110)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(.white.opacity(0.9), lineWidth: 1))
                     .shadow(radius: 8, y: 3)
             } else {
                 placeholderMark(side: 220)
