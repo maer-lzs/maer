@@ -74,6 +74,10 @@ struct RadioView: View {
 
     /// The REGION row's country (its own cascade step, unchanged): the
     /// country implied by the chosen region, else the shared cascade.
+    /// Q5b sweep: every consumer of the OLD shared cascade was walked and
+    /// assigned to a layer. Everything below reads one of the two named
+    /// properties — `effectiveCountryCode` itself is the shared FALLBACK and
+    /// is not read directly by any surface any more.
     private var regionEffectiveCode: String? { effectiveCountryCode }
 
     /// English country name for the Radio Browser states path.
@@ -85,9 +89,11 @@ struct RadioView: View {
         return Locale(identifier: "en_US").localizedString(forRegionCode: code)
     }
 
-    /// "Popular in Switzerland" — follows the country cascade, localized.
+    /// "Popular in Switzerland" — follows the NATIONAL row's country (Q5b:
+    /// this read the shared cascade while the row's CONTENT already followed
+    /// the decoupled one, so the heading said Germany over Swiss stations).
     private var nationalTitle: String {
-        guard let code = effectiveCountryCode,
+        guard let code = nationalEffectiveCode,
               let name = Locale.current.localizedString(forRegionCode: code) else {
             return String(localized: "Popular Stations")
         }
@@ -95,7 +101,7 @@ struct RadioView: View {
     }
 
     private var showsPopular: Bool { RadioCatalog.showsPopular(isConnected: networkMonitor.isConnected, popular: popular) }
-    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: effectiveCountryCode, regional: regional) }
+    private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionEffectiveCode, regional: regional) }
     private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
     private var hasAnyContent: Bool {
         !mostPlayed.isEmpty || !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
@@ -395,7 +401,7 @@ struct RadioView: View {
         chosenState = entry.display
         UserDefaults.standard.set(entry.display, forKey: AppStorageKeys.radioRegionState)
         UserDefaults.standard.set(entry.queryNames, forKey: AppStorageKeys.radioRegionQueryNames)
-        if let code = effectiveCountryCode {
+        if let code = regionEffectiveCode {
             impliedCountryCode = code
             UserDefaults.standard.set(code, forKey: AppStorageKeys.radioRegionCountryCode)
         }
@@ -465,7 +471,7 @@ struct RadioView: View {
         // the country follows the cascade (choice beats guess).
         discoveryFailed = false
         async let topTask = Self.nationalPopular(nationalEffectiveCode)
-        async let regionTask = Self.stateStations(chosenState, countryCode: effectiveCountryCode)
+        async let regionTask = Self.stateStations(chosenState, countryCode: regionEffectiveCode)
         let (topResult, topFailed) = await topTask
         let regionResult = await regionTask
         // A throw is not an end: the failed run does NOT count as loaded, the
@@ -481,13 +487,15 @@ struct RadioView: View {
         // Decoupled from chosenState (fixlet 4575a76): a returner with a
         // persisted state must still get the picker list when changing.
         // b942da6: raw entries run through the pure curation (merge/filter/sort).
+        // The STATE list belongs to the region layer (its country decides
+        // which states exist) — Q5b assignment.
         if availableStates.isEmpty, let countryName = effectiveCountryName {
             let raw = (try? await RadioBrowserClient.states(countryName: countryName)) ?? []
             // cd5cc4a (2): core countries (DE/CH/AT) show their CANONICAL
             // regions (aliases pooled, nationwide names dropped, unmapped
             // pooled into "Other"); everyone else keeps the generic curation.
             availableStates = RadioRegionCanon.curated(
-                raw, countryCode: effectiveCountryCode,
+                raw, countryCode: regionEffectiveCode,
                 otherLabel: String(localized: "Other regions"))
                 ?? RadioBrowseCuration.curated(raw)
         }

@@ -112,7 +112,11 @@ struct ShellacSection: View {
         let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12, on: Date())
         do {
             let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
-            titles = docs.compactMap { FreeCatalogProvider.shared.remember(popular: $0) }
+            // 🟡 P10-Nachfassung: a shown preview goes through the ONE probed
+            // entry point — this row was a sibling surface that kept showing
+            // withdrawn items.
+            titles = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,
+                                                 provider: FreeCatalogProvider.shared)
             failed = titles.isEmpty
         } catch {
             failed = true

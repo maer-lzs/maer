@@ -468,3 +468,61 @@ extension ProjectFileIntegrityTests {
             in: "let visible = GPodderVisibleSubscriptions.current()").isEmpty)
     }
 }
+
+// MARK: - 🟡 P10-Nachfassung: kuratierte Picks kommen aus EINER geprobten Quelle
+
+extension ProjectFileIntegrityTests {
+    /// Finds preview rows that build their items themselves instead of going
+    /// through the probed entry point. The class this fences: "the rule was
+    /// built where it was reported, the sibling surface stayed unprotected"
+    /// — `livePicks` covered only the audiobook picks, so "Discover · Music"
+    /// kept showing withdrawn archive.org records (fourth instance).
+    ///
+    /// The boundary is deliberate: FULL pages and grids (CatalogSourcePage)
+    /// stay unprobed — dozens of requests per visit — and heal reactively.
+    /// Only the row LOADERS are fenced.
+    static func unprobedPickRows(in text: String) -> [Int] {
+        var offenders: [Int] = []
+        var search = text.startIndex
+        while let hit = text.range(of: "rows.", range: search..<text.endIndex) {
+            search = hit.upperBound
+            let windowEnd = text.index(hit.upperBound, offsetBy: 200, limitedBy: text.endIndex) ?? text.endIndex
+            let statement = text[hit.lowerBound..<windowEnd]
+                .components(separatedBy: .whitespacesAndNewlines).joined()
+            // A row assignment that resolves docs itself is the offence.
+            guard statement.contains("=docs.compactMap{provider.remember(popular:")
+                    || statement.contains("=docs.compactMap{FreeCatalogProvider.shared.remember(popular:")
+            else { continue }
+            // The wider second cut of an already probed fetch is sanctioned
+            // (cb99bf6) — it is not a preview.
+            guard !statement.hasPrefix("rows.tabBooks") else { continue }
+            offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
+        }
+        return offenders
+    }
+
+    @Test("kuratierte Vorschau-Reihen beziehen ihre Picks ueber den geprobten Eintrittspunkt")
+    func previewPicksComeFromTheProbedEntryPoint() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let file = root.appendingPathComponent("Sources/Views/FreeCatalogRows.swift")
+        let text = try String(contentsOf: file, encoding: .utf8)
+        #expect(Self.unprobedPickRows(in: text).isEmpty,
+                "diese Vorschau-Reihe umgeht die Lebend-Probe: \(Self.unprobedPickRows(in: text))")
+    }
+
+    /// Beweislauf: der Zaun muss die Form finden, die ausgeliefert war.
+    @Test("der Pick-Zaun faengt die ungeprobte Zuweisung, die ausgeliefert war")
+    func pickFenceCatchesTheShippedShape() {
+        let shipped = """
+                        rows.netlabels = docs.compactMap { provider.remember(popular: $0) }
+        """
+        #expect(Self.unprobedPickRows(in: shipped).count == 1)
+        // Der geprobte Eintrittspunkt ist kein Verstoss …
+        #expect(Self.unprobedPickRows(
+            in: "rows.netlabels = await Self.picks(docs, cap: 6, provider: provider)").isEmpty)
+        // … und der breitere Zweitschnitt bleibt ausdruecklich erlaubt.
+        #expect(Self.unprobedPickRows(
+            in: "rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }").isEmpty)
+    }
+}

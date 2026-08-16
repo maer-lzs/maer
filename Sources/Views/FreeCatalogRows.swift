@@ -130,6 +130,21 @@ enum FreeCatalogLoader {
     /// tiles mix into Discover; constant, not a setting.
     static let discoverBookCap = 3
 
+    /// 🟡 P10-Nachfassung: THE entry point for curated PREVIEW picks. Every
+    /// surface that shows a small number of archive.org picks goes through
+    /// here — the first version probed only the audiobook picks, and the
+    /// sibling surface ("Discover · Music") kept showing fresh ghost records.
+    /// Fourth instance of "the rule was built where it was reported".
+    ///
+    /// **The boundary, deliberately:** curated PREVIEW yes, mass no. Full
+    /// grids and pages keep loading unprobed (dozens of requests per visit)
+    /// — there the reactive marking heals, which is why a ghost record
+    /// disappears there after the first tap.
+    static func picks(_ docs: [ArchivePopularDoc], cap: Int,
+                      provider: FreeCatalogProvider) async -> [LibraryItem] {
+        await livePicks(from: docs.compactMap { provider.remember(popular: $0) }, cap: cap)
+    }
+
     /// Take the first `cap` items that are still ALIVE — probing forward
     /// through the list, so a withdrawn record is replaced rather than
     /// leaving a gap. `unknown` (service down) counts as usable: a network
@@ -179,18 +194,12 @@ enum FreeCatalogLoader {
                 if docs.isEmpty {
                     Logger.library.notice("FREECAT discover-books EMPTY: no docs for the active languages")
                 }
-                let items = docs.compactMap { provider.remember(popular: $0) }
-                // 🟡 P10: the FEW shown picks get a cheap liveness probe —
-                // one metadata GET each, and only for them. Rationale (the
-                // order left the choice): purely reactive marking would only
-                // remove a ghost record AFTER someone tapped it, which is
-                // exactly the experience being complained about; probing
-                // whole rows would cost dozens of requests per start.
-                // Three picks are affordable and fix the visible surface.
-                rows.discoverBooks = await Self.livePicks(from: items,
-                                                          cap: Self.discoverBookCap)
-                // cb99bf6: ONE fetch, two cuts — the tab row shows more.
-                rows.tabBooks = items
+                // 🟡 P10: the shown picks go through the ONE probed entry
+                // point; the tab row is the same fetch, second cut (cb99bf6)
+                // and stays unprobed — it is the wider list, not a preview.
+                rows.discoverBooks = await Self.picks(docs, cap: Self.discoverBookCap,
+                                                      provider: provider)
+                rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }
             } catch {
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
             }
@@ -206,7 +215,7 @@ enum FreeCatalogLoader {
                 let docs = try await ArchiveOrgClient.popularMusic(
                     area: ArchiveMusicCatalog.classical, rows: 12, page: page)
                 Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
-                rows.classical = docs.compactMap { provider.remember(popular: $0) }
+                rows.classical = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
                 Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
             }
@@ -219,7 +228,7 @@ enum FreeCatalogLoader {
                 let docs = try await ArchiveOrgClient.popularMusic(
                     area: ArchiveMusicCatalog.netlabels, rows: 12, page: page)
                 Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
-                rows.netlabels = docs.compactMap { provider.remember(popular: $0) }
+                rows.netlabels = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
                 Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
             }
@@ -328,16 +337,16 @@ enum CatalogSourceLoader {
                 rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
             }
             if let docs = value(await popularTask, .librivox, failures: &rows.failures) {
-                rows.librivoxPopular = docs.compactMap { provider.remember(popular: $0) }
+                rows.librivoxPopular = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
             }
         } else { _ = await newTask; _ = await popularTask }
         if archiveOn {
             if let docs = value(await archiveTask, .archiveBooks, failures: &rows.failures) {
-                rows.archiveBooks = docs.compactMap { provider.remember(popular: $0) }
+                rows.archiveBooks = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
             }
             if codes.contains("en") {
                 if let docs = value(await otrTask, .oldTimeRadio, failures: &rows.failures) {
-                    rows.oldTimeRadio = docs.compactMap { provider.remember(popular: $0) }
+                    rows.oldTimeRadio = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
                 }
             } else { _ = await otrTask }
         } else { _ = await archiveTask; _ = await otrTask }

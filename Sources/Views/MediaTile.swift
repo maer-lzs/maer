@@ -25,6 +25,9 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// Small badge at the image's bottom-left (e.g. the show cover on an
     /// episode tile) — hidden when nil.
     var cornerBadgeURL: URL? = nil
+    /// Q7: the premium lock is anchored BY THE COMPONENT — on the cover, at
+    /// the family position, never at the text. Call sites only say yes/no.
+    var isPremium: Bool = false
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
     /// ea6e002: third text line (the library card's time line) — laid out
@@ -61,7 +64,8 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
 
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         cornerBadgeURL: URL? = nil, isPremium: Bool = false,
+         progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
          coverOverride: CoverOverride?,
@@ -72,6 +76,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         self.placeholderSystemImage = placeholderSystemImage
         self.imageContentMode = imageContentMode
         self.cornerBadgeURL = cornerBadgeURL
+        self.isPremium = isPremium
         self.progress = progress
         self.unavailable = unavailable
         self.meta = meta
@@ -91,6 +96,13 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
+                // Q7: on the COVER. Documented deviation from the family's
+                // bottom-trailing spot (3f0c072 "consistency first, reasoned
+                // deviation allowed — never silently per surface"): that
+                // corner carries this tile's play control, so the lock takes
+                // the free top one. The show tiles, which have no corner
+                // control, keep the bottom position.
+                .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium) }
                 // Sibling overlay: corner-control taps must not also fire onTap.
                 .overlay(alignment: .bottomTrailing) { corner().padding(5) }
                 .overlay(alignment: .bottomLeading) { cornerBadge }
@@ -212,13 +224,15 @@ extension MediaTile where CoverOverride == EmptyView {
     /// Corner-carrying tiles without a cover override (the standard grid tile).
     init(title: String, subtitle: String? = nil, coverURL: URL?,
          placeholderSystemImage: String = "mic", imageContentMode: ContentMode = .fill,
-         cornerBadgeURL: URL? = nil, progress: Double? = nil, unavailable: Bool = false,
+         cornerBadgeURL: URL? = nil, isPremium: Bool = false,
+         progress: Double? = nil, unavailable: Bool = false,
          meta: String? = nil, titleLineLimit: Int = 2, badgeText: String? = nil,
          badgeSystemImage: String? = nil,
          onTap: @escaping () -> Void, @ViewBuilder corner: @escaping () -> Corner) {
         self.init(title: title, subtitle: subtitle, coverURL: coverURL,
                   placeholderSystemImage: placeholderSystemImage,
                   imageContentMode: imageContentMode, cornerBadgeURL: cornerBadgeURL,
+                  isPremium: isPremium,
                   progress: progress, unavailable: unavailable,
                   meta: meta, titleLineLimit: titleLineLimit, badgeText: badgeText,
                   badgeSystemImage: badgeSystemImage, coverOverride: nil,

@@ -55,15 +55,14 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // P13 sweep: the Continue card carries the lock too — a free and a
+        // P13/Q7: the Continue card carries the lock too — a free and a
         // premium copy of the SAME show can sit next to each other here
-        // (the owner's ZEIT case), and then the mark is what tells them apart.
-        // TOP trailing, not the canonical bottom one: that corner belongs to
-        // the download badge on this card.
+        // (the owner's ZEIT case), and then the mark tells them apart. It sits
+        // on the COVER (the card's cover fills the top), never at the text;
+        // the bottom corners carry the info pill and the download badge.
         .overlay(alignment: .topTrailing) {
             PremiumLockBadge(isPremium: PodcastSubscriptions.isPremiumFeed(
                 AppSession.shared.rssProvider.show(forEpisodeId: item.id)?.feedURL ?? ""))
-                .padding(6)
         }
         // X6b: the SHARED download/offline badge family at the card corner —
         // identical to the book card (was PodcastDownloadButton before).

@@ -100,6 +100,9 @@ struct LatestEpisodesGrid: View {
                 title: item.title,
                 coverURL: AppSession.shared.coverURL(forItemId: item.id),
                 cornerBadgeURL: showBadgeURL(for: item),
+                // Q7: the tile anchors the lock itself — on the cover, not
+                // over the title text (where the outer modifier put it).
+                isPremium: isPremium,
                 progress: episodeProgress(item),
                 unavailable: unavailable,
                 // Paket B: origin capsule for mirrored episodes (host-computed
@@ -110,7 +113,6 @@ struct LatestEpisodesGrid: View {
             ) {
                 MediaTilePlayBadge { Task { await playerCoordinator.open(item: item) } }
             }
-            .premiumLock(isPremium)
         }
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
     }
