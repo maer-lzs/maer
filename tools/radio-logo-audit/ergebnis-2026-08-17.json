@@ -2,554 +2,657 @@
  {
   "station": "Bayern 1 Oberbayern",
   "raw": "Bayern 1 Oberbayern",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "512px"
+  "detail": "touch-icon https://www.br.de/apple-touch-icon.png",
+  "favicon_ok": "512px"
  },
  {
   "station": "SWR3",
   "raw": "SWR3",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "SWR3 Logo.svg 240px",
+  "favicon_ok": "180px"
  },
  {
   "station": "WDR 2 Rheinland",
   "raw": "WDR 2 Rheinland",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "touch-icon https://www1.wdr.de/resources-v5.178.3/img/favicon/apple-tou",
+  "favicon_ok": "180px"
  },
  {
   "station": "Antenne Bayern",
   "raw": "Antenne Bayern",
   "source": "chain",
   "stage": null,
-  "detail": "Antenne Bayern erstes Logo.svg 492px"
+  "detail": "Antenne Bayern erstes Logo.svg 492px",
+  "favicon_ok": null
  },
  {
   "station": "1LIVE",
   "raw": "1LIVE",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "1live.svg 242px",
+  "favicon_ok": "180px"
  },
  {
   "station": "Bayern 3",
   "raw": "Bayern 3",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "512px"
+  "detail": "Bayern3 logo 2015.svg 400px",
+  "favicon_ok": "512px"
  },
  {
   "station": "NDR 2",
   "raw": "NDR 2",
   "source": "chain",
   "stage": null,
-  "detail": "NDR 2 Logo.svg 563px"
+  "detail": "NDR 2 Logo.svg 563px",
+  "favicon_ok": null
  },
  {
   "station": "Radio BOB!",
   "raw": "Radio BOB!",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q872) + no-homepage",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "Rock Antenne",
   "raw": "Rock Antenne",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "Rock Antenne Logo 2017.svg 441px",
+  "favicon_ok": "180px"
  },
  {
   "station": "SWR1 BW",
   "raw": "SWR1 BW",
   "source": "chain",
   "stage": "favicon-http-404",
-  "detail": "touch-icon https://www.swr.de/assets/swr/swr1/apple-touch-icon.png"
+  "detail": "touch-icon https://www.swr.de/assets/swr/swr1/apple-touch-icon.png",
+  "favicon_ok": null
  },
  {
   "station": "Hit Radio FFH",
   "raw": "Hit Radio FFH",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "192px"
+  "detail": "FFH-RGB.svg 482px",
+  "favicon_ok": "192px"
  },
  {
   "station": "SWR4 BW [48 aac]",
   "raw": "SWR4 BW [48 aac]",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "SWR4 Baden-Württemberg Logo.svg 274px",
+  "favicon_ok": "180px"
  },
  {
   "station": "Radio FFN",
   "raw": "Radio FFN",
   "source": "chain",
   "stage": null,
-  "detail": "Radio FFN Logo 2015.svg 719px"
+  "detail": "Radio FFN Logo 2015.svg 719px",
+  "favicon_ok": null
  },
  {
   "station": "MDR Sachsen",
   "raw": "MDR Sachsen",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "120px"
+  "detail": "MDR 1 Radio Sachsen alt.svg 800px",
+  "favicon_ok": "120px"
  },
  {
   "station": "HR3",
   "raw": "HR3",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "Hr3-Logo 2015.svg 800px",
+  "favicon_ok": "180px"
  },
  {
   "station": "80s80s Radio",
   "raw": "80s80s Radio",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "512px"
+  "detail": "1400x1400 80s80s bg-black colored.png 800px",
+  "favicon_ok": "512px"
  },
  {
   "station": "MDR Jump",
   "raw": "MDR Jump",
   "source": "chain",
   "stage": null,
-  "detail": "MDR JUMP Logo.svg 400px"
+  "detail": "MDR JUMP Logo.svg 400px",
+  "favicon_ok": null
  },
  {
   "station": "Sunshine Live",
   "raw": "Sunshine Live",
   "source": "chain",
   "stage": null,
-  "detail": "Sunshine live logo.svg 204px"
+  "detail": "Sunshine live logo.svg 204px",
+  "favicon_ok": null
+ },
+ {
+  "station": "hr4",
+  "raw": "hr4 ",
+  "source": "chain",
+  "stage": null,
+  "detail": "Hr4-Logo 2015.svg 600px",
+  "favicon_ok": "180px"
+ },
+ {
+  "station": "RPR1 Old School Hip Hop",
+  "raw": "RPR1 Old School Hip Hop",
+  "source": "chain",
+  "stage": null,
+  "detail": "RPR1. Das Original.png 388px",
+  "favicon_ok": "200px"
+ },
+ {
+  "station": "MDR Thüringen",
+  "raw": "MDR Thüringen",
+  "source": "chain",
+  "stage": null,
+  "detail": "MDR1 Radio Thüringen.svg 198px",
+  "favicon_ok": "120px"
  },
  {
   "station": "WDR4",
   "raw": "WDR4",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "touch-icon https://www1.wdr.de/resources-v5.178.3/img/favicon/apple-tou",
+  "favicon_ok": "180px"
  },
  {
   "station": "WDR 5",
   "raw": "WDR 5",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "WDR5 Logo 2012.svg 320px",
+  "favicon_ok": "180px"
  },
  {
   "station": "bigFM Deutsch Rap",
   "raw": "bigFM Deutsch Rap",
   "source": "NONE",
   "stage": "favicon-http-404 + no-P154 (Q858376) + homepage-http-403",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "Deutschlandfunk",
   "raw": "Deutschlandfunk | DLF | MP3 128k",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "128px"
+  "detail": "Deutschlandfunk Logo 2017.svg 119px",
+  "favicon_ok": "128px"
  },
  {
   "station": "WDR 3",
   "raw": "WDR 3",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "WDR 3 logo 2012.svg 320px",
+  "favicon_ok": "180px"
  },
  {
   "station": "ORF Hitradio Ö3",
   "raw": "ORF Hitradio Ö3 | HQ",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "152px"
+  "detail": "touch-icon https://tubestatic.orf.at/mojo/1_3/storyserver//tube/common/",
+  "favicon_ok": "152px"
  },
  {
   "station": "Kronehit",
   "raw": "Kronehit",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "377px"
+  "detail": "Kronehit Logo2018 Nachtblau rgb.svg 579px",
+  "favicon_ok": "377px"
  },
  {
   "station": "88.6",
   "raw": "88.6",
   "source": "chain",
   "stage": "favicon-missing",
-  "detail": "touch-icon https://www.radio886.at/apple-touch-icon.png"
+  "detail": "touch-icon https://www.radio886.at/apple-touch-icon.png",
+  "favicon_ok": null
  },
  {
   "station": "ORF Radio Niederösterreich",
   "raw": "ORF Radio Niederösterreich | HQ",
   "source": "chain",
   "stage": null,
-  "detail": "Radio NÖ.svg 240px"
+  "detail": "Radio NÖ.svg 240px",
+  "favicon_ok": null
  },
  {
   "station": "ORF Radio Wien",
   "raw": "ORF Radio Wien",
   "source": "chain",
   "stage": null,
-  "detail": "Logo Radio Wien.svg 800px"
+  "detail": "Logo Radio Wien.svg 800px",
+  "favicon_ok": null
  },
  {
   "station": "ORF Radio Steiermark",
   "raw": "ORF Radio Steiermark | HQ",
   "source": "chain",
   "stage": null,
-  "detail": "Radio St.svg 240px"
+  "detail": "Radio St.svg 240px",
+  "favicon_ok": null
  },
  {
   "station": "ORF Radio Oberösterreich",
   "raw": "ORF Radio Oberösterreich",
   "source": "chain",
   "stage": null,
-  "detail": "Radio OÖ.svg 240px"
+  "detail": "Radio OÖ.svg 240px",
+  "favicon_ok": null
  },
  {
   "station": "FM4",
   "raw": "FM4 | ORF",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "120px"
+  "detail": "FM4.svg 737px",
+  "favicon_ok": "120px"
  },
  {
   "station": "Antenne Steiermark",
   "raw": "Antenne Steiermark",
   "source": "chain",
   "stage": null,
-  "detail": "Antenne Steiermark logo (2024).svg 437px"
+  "detail": "Antenne Steiermark logo (2024).svg 437px",
+  "favicon_ok": null
  },
  {
   "station": "Life Radio",
   "raw": "Life Radio",
   "source": "chain",
   "stage": null,
-  "detail": "LifeRadio LOGO.png 620px"
+  "detail": "LifeRadio LOGO.png 620px",
+  "favicon_ok": null
  },
  {
   "station": "ORF Radio Salzburg HQ",
   "raw": "ORF Radio Salzburg HQ",
   "source": "chain",
   "stage": "favicon-http-404",
-  "detail": "touch-icon https://salzburg.orf.at/player/apple-touch-icon-57x57.png"
+  "detail": "touch-icon https://salzburg.orf.at/player/apple-touch-icon-57x57.png",
+  "favicon_ok": null
  },
  {
   "station": "SRF 1",
   "raw": "SRF 1",
   "source": "chain",
   "stage": null,
-  "detail": "Logo SRF 1.svg 463px"
+  "detail": "Logo SRF 1.svg 463px",
+  "favicon_ok": null
  },
  {
   "station": "Radio Swiss Pop",
   "raw": "Radio Swiss Pop",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "64px"
+  "detail": "Radio Swiss Pop Logo 2018.svg 800px",
+  "favicon_ok": "64px"
  },
  {
   "station": "SRF 3",
   "raw": "SRF 3",
   "source": "chain",
   "stage": "favicon-http-400",
-  "detail": "touch-icon http://www.srf.ch/build/assets/srf-apple-touch-icon-BRxTgjQQ"
+  "detail": "touch-icon http://www.srf.ch/build/assets/srf-apple-touch-icon-BRxTgjQQ",
+  "favicon_ok": null
  },
  {
   "station": "RTS Première",
   "raw": "RTS Première",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "512px"
+  "detail": "La Première logo 2016.svg 277px",
+  "favicon_ok": "512px"
  },
  {
   "station": "SRF Musikwelle",
   "raw": "SRF Musikwelle",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "touch-icon http://www.srf.ch/build/assets/srf-apple-touch-icon-BRxTgjQQ",
+  "favicon_ok": "180px"
  },
  {
   "station": "Radio Pilatus",
   "raw": "Radio Pilatus",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "192px"
+  "detail": "Radio Pilatus logo.svg 399px",
+  "favicon_ok": "192px"
  },
  {
   "station": "Radio24",
   "raw": "Radio24",
   "source": "NONE",
   "stage": "favicon-too-small-54 + no-P154 (Q12332727) + touchicon-too-small-16",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "Energy Zürich (NRJ)",
   "raw": "Energy Zürich (NRJ)",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "touch-icon https://energy.ch/ech-new/images/ech/apple-touch-icon.png",
+  "favicon_ok": "180px"
  },
  {
   "station": "Radio Zürisee",
   "raw": "Radio Zürisee",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q1676279) + touchicon-missing",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "Radio Central",
   "raw": "Radio Central",
   "source": "favicon",
   "stage": null,
-  "detail": "64px"
+  "detail": "64px",
+  "favicon_ok": "64px"
  },
  {
   "station": "Vintage Radio",
   "raw": "Vintage Radio",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q81942576) + touchicon-missing",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "RADIO ARGOVIA",
   "raw": "RADIO ARGOVIA",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "480px"
+  "detail": "Argovia-logo.svg 627px",
+  "favicon_ok": "480px"
  },
  {
   "station": "RADIO FM1",
   "raw": "RADIO FM1",
   "source": "favicon",
   "stage": null,
-  "detail": "191px"
+  "detail": "191px",
+  "favicon_ok": "191px"
  },
  {
   "station": "SRF 4 News",
   "raw": "SRF 4 News",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "Radio SRF 4 News Logo 2020.svg 300px",
+  "favicon_ok": "180px"
  },
  {
   "station": "Energy Bern",
   "raw": "Energy Bern",
   "source": "chain",
   "stage": null,
-  "detail": "Energy Bern Logo.png 638px"
+  "detail": "Energy Bern Logo.png 638px",
+  "favicon_ok": null
  },
  {
   "station": "Radio Melody",
   "raw": "Radio Melody",
   "source": "chain",
   "stage": null,
-  "detail": "Radio Melody Logo.svg 338px"
+  "detail": "Radio Melody Logo.svg 338px",
+  "favicon_ok": null
  },
  {
   "station": "Virgin Radio Switzerland",
   "raw": "Virgin Radio Switzerland",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q50133002) + touchicon-too-small-18",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "LFM",
   "raw": "LFM",
   "source": "favicon",
   "stage": null,
-  "detail": "180px"
+  "detail": "180px",
+  "favicon_ok": "180px"
  },
  {
   "station": "FLASHBACK FM",
   "raw": "FLASHBACK FM",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q1001925) + touchicon-too-small-16",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "Radio Top (Ostschweiz)",
   "raw": "Radio Top (Ostschweiz)",
   "source": "NONE",
   "stage": "favicon-undecodable + no-P154 (Q872) + touchicon-undecodable",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  },
  {
   "station": "France Culture",
   "raw": "France Culture",
   "source": "chain",
   "stage": null,
-  "detail": "France Culture logo.png 800px"
+  "detail": "France Culture logo.png 800px",
+  "favicon_ok": null
  },
  {
   "station": "France Info",
   "raw": "France Info",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "120px"
+  "detail": "Franceinfo.svg 122px",
+  "favicon_ok": "120px"
  },
  {
   "station": "France Inter",
   "raw": "France Inter",
   "source": "chain",
   "stage": null,
-  "detail": "France Inter logo 2021.svg 800px"
+  "detail": "France Inter logo 2021.svg 800px",
+  "favicon_ok": null
  },
  {
   "station": "France Musique",
   "raw": "France Musique",
   "source": "chain",
   "stage": null,
-  "detail": "France Musique logo.png 800px"
+  "detail": "France Musique logo.png 800px",
+  "favicon_ok": null
  },
  {
   "station": "FIP",
   "raw": "FIP",
   "source": "chain",
   "stage": null,
-  "detail": "France Inter Paris (1971).png 599px"
+  "detail": "France Inter Paris (1971).png 599px",
+  "favicon_ok": null
  },
  {
   "station": "RTL",
   "raw": "RTL",
   "source": "chain",
   "stage": null,
-  "detail": "RTL Logo 2017.svg 140px"
+  "detail": "RTL Logo 2017.svg 140px",
+  "favicon_ok": null
  },
  {
   "station": "Mouv'",
   "raw": "Mouv'",
   "source": "chain",
   "stage": null,
-  "detail": "France Le Mouv' logo.png 800px"
+  "detail": "France Le Mouv' logo.png 800px",
+  "favicon_ok": null
  },
  {
   "station": "RTL2",
   "raw": "RTL2",
   "source": "chain",
   "stage": "favicon-missing",
-  "detail": "touch-icon http://www.rtl2.fr/apple-touch-icon.png"
+  "detail": "touch-icon http://www.rtl2.fr/apple-touch-icon.png",
+  "favicon_ok": null
  },
  {
   "station": "Fun Radio",
   "raw": "Fun Radio",
   "source": "chain",
   "stage": null,
-  "detail": "Logo Fun Radio (2021).svg 481px"
+  "detail": "Logo Fun Radio (2021).svg 481px",
+  "favicon_ok": null
  },
  {
   "station": "France Bleu Vaucluse",
   "raw": "France Bleu Vaucluse",
   "source": "chain",
   "stage": "favicon-http-404",
-  "detail": "touch-icon https://www.francebleu.fr/images/apple-touch-icon.png"
+  "detail": "touch-icon https://www.francebleu.fr/images/apple-touch-icon.png",
+  "favicon_ok": null
  },
  {
   "station": "BBC World Service",
   "raw": "BBC World Service",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "145px"
+  "detail": "BBC World Service 2022 (Boxed).svg 800px",
+  "favicon_ok": "145px"
  },
  {
   "station": "BBC Radio 1",
   "raw": "BBC Radio 1",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "145px"
+  "detail": "BBC Radio 1 2021.svg 343px",
+  "favicon_ok": "145px"
  },
  {
   "station": "BBC Radio 4",
   "raw": "BBC Radio 4",
   "source": "chain",
   "stage": null,
-  "detail": "BBC Radio 4 2022.svg 343px"
+  "detail": "BBC Radio 4 2022.svg 343px",
+  "favicon_ok": null
  },
  {
   "station": "BBC Radio 2",
   "raw": "BBC Radio 2",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "145px"
+  "detail": "BBC Radio 2 2022.svg 343px",
+  "favicon_ok": "145px"
  },
  {
   "station": "BBC Radio 3",
   "raw": "BBC Radio 3",
   "source": "chain",
   "stage": null,
-  "detail": "BBC Radio 3 2022.svg 343px"
+  "detail": "BBC Radio 3 2022.svg 343px",
+  "favicon_ok": null
  },
  {
   "station": "BBC Radio 5 Live (128k)",
   "raw": "BBC Radio 5 Live (128k)",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "145px"
+  "detail": "touch-icon https://static.files.bbci.co.uk/sounds/web/sounds-web/img/so",
+  "favicon_ok": "145px"
  },
  {
   "station": "BBC Radio 6 Music",
   "raw": "BBC Radio 6 Music",
   "source": "chain",
   "stage": null,
-  "detail": "BBC Radio 6 Music.svg 336px"
+  "detail": "BBC Radio 6 Music.svg 336px",
+  "favicon_ok": null
  },
  {
   "station": "BBC Radio 4 Extra",
   "raw": "BBC Radio 4 Extra",
   "source": "chain",
   "stage": null,
-  "detail": "BBC Radio 4 Extra logo 2022.svg 183px"
+  "detail": "BBC Radio 4 Extra logo 2022.svg 183px",
+  "favicon_ok": null
  },
  {
   "station": "BBC Asian Network (128k)",
   "raw": "BBC Asian Network (128k)",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "145px"
+  "detail": "touch-icon https://static.files.bbci.co.uk/sounds/web/sounds-web/img/so",
+  "favicon_ok": "145px"
  },
  {
   "station": "KEXP 90.3 Seattle, WA",
   "raw": "KEXP 90.3 Seattle, WA",
   "source": "chain",
   "stage": null,
-  "detail": "Kexp logo.png 800px"
+  "detail": "Kexp logo.png 800px",
+  "favicon_ok": null
  },
  {
   "station": "102.7 KIIS FM",
   "raw": "102.7 KIIS FM",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "167px"
+  "detail": "touch-icon https://i.iheart.com/v3/re/assets.brands/654287501105190f82d",
+  "favicon_ok": "167px"
  },
  {
   "station": "WABC",
   "raw": "WABC",
-  "source": "favicon",
+  "source": "chain",
   "stage": null,
-  "detail": "180px"
+  "detail": "77 WABC word logo 2011 gold.png 373px",
+  "favicon_ok": "180px"
  },
  {
   "station": "Z100 - New York's #1 Hit Music Station WHTZ",
   "raw": "Z100 - New York's #1 Hit Music Station WHTZ",
   "source": "chain",
   "stage": "favicon-too-small-32",
-  "detail": "touch-icon https://i.iheart.com/v3/re/assets.brands/6634ba78abde65ec04e"
+  "detail": "touch-icon https://i.iheart.com/v3/re/assets.brands/6634ba78abde65ec04e",
+  "favicon_ok": null
  },
  {
   "station": "WFMU 91.1 East Orange, NJ",
   "raw": "WFMU 91.1 East Orange, NJ",
   "source": "chain",
   "stage": "favicon-missing",
-  "detail": "touch-icon https://wfmu.org/apple-touch-icon.png"
+  "detail": "touch-icon https://wfmu.org/apple-touch-icon.png",
+  "favicon_ok": null
  },
  {
   "station": "WNYC-FM 93.9 New York Public Radio",
   "raw": "WNYC-FM 93.9 New York Public Radio",
   "source": "NONE",
   "stage": "favicon-missing + no-P154 (Q24204255) + touchicon-missing",
-  "detail": ""
+  "detail": "",
+  "favicon_ok": null
  }
 ]

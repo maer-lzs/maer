@@ -133,8 +133,13 @@ def audit_station(station, pause):
     """→ dict: source, stage (on failure), detail."""
     name = display_name(station["name"])
     result = {"station": name, "raw": station["name"], "source": "NONE",
-              "stage": None, "detail": ""}
+              "stage": None, "detail": "", "favicon_ok": None}
 
+    # --- ORDER: the app prefers the CHAIN (P154 is the primary source since
+    # 31129bd); the favicon is the fallback that paints immediately. The first
+    # audit run asked the favicon FIRST and stopped when it passed — that is
+    # why WDR 5 (which HAS P154) was counted as a favicon case. The total was
+    # right, the SOURCE split was biased against the chain.
     # --- stage A: the catalog favicon, gated ---------------------------------
     favicon = (station.get("favicon") or "").strip()
     if favicon:
@@ -149,12 +154,18 @@ def audit_station(station, pause):
         elif side < MIN_SIDE:
             result["stage"] = f"favicon-too-small-{side}"
         else:
-            result["source"] = "favicon"
-            result["detail"] = f"{side}px"
-            return result
+            result["favicon_ok"] = f"{side}px"
     else:
         result["stage"] = "favicon-missing"
-    favicon_stage = result["stage"]
+    favicon_stage = result.get("stage") or "favicon-ok"
+
+    def fallback_to_favicon():
+        if result.get("favicon_ok"):
+            result["source"] = "favicon"
+            result["detail"] = result["favicon_ok"]
+            result["stage"] = None
+            return True
+        return False
 
     # --- stage B: Wikidata P154 ---------------------------------------------
     entity = None
@@ -172,6 +183,8 @@ def audit_station(station, pause):
             result["source"] = "chain"
             result["detail"] = f"touch-icon {icon[:60]}"
             return result
+        if fallback_to_favicon():
+            return result
         result["stage"] = f"{favicon_stage} + wikidata-no-entity + {why}"
         return result
 
@@ -182,6 +195,8 @@ def audit_station(station, pause):
         if icon:
             result["source"] = "chain"
             result["detail"] = f"touch-icon {icon[:60]}"
+            return result
+        if fallback_to_favicon():
             return result
         result["stage"] = f"{favicon_stage} + no-P154 ({entity}) + {why}"
         return result
@@ -200,6 +215,9 @@ def audit_station(station, pause):
         result["source"] = "chain"
         result["detail"] = f"{file_name} {side}px"
         result["stage"] = None
+        return result
+    # Chain measured but unusable → the favicon is the app's fallback.
+    fallback_to_favicon()
     return result
 
 
