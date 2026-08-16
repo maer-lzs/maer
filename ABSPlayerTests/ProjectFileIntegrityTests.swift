@@ -593,27 +593,72 @@ extension ProjectFileIntegrityTests {
             in: "for _ in 0..<swipes { app.swipeUp() }") == 0)
     }
 
+    /// Blind waits on the seed book. NOTE the collapse eats the spaces INSIDE
+    /// the string literal too, so the needle is the spaceless form — that is
+    /// what the proof run below pins down.
+    static func blindSeedBookWaits(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return collapsed.components(
+            separatedBy: #"staticTexts["SeedBookOne"].waitForExistence"#).count - 1
+    }
+
+    static func appBuildSites(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return collapsed.components(separatedBy: "XCUIApplication()").count - 1
+    }
+
     /// The start precondition belongs in `launchSeeded` — one place, not
     /// twelve copies, and none that bets on an element below the fold.
     @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start")
     func launchPreconditionLivesInLaunchSeeded() throws {
         let text = try Self.journeyText()
-        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
-        #expect(!collapsed.contains(#"staticTexts["SeedBookOne"].waitForExistence"#),
+        #expect(Self.blindSeedBookWaits(in: text) == 0,
                 "a journey bets on the seed book being in the first viewport again")
         #expect(text.contains(#"app.buttons["open-settings"].firstMatch.waitForExistence"#),
                 "the shared launch lost its precondition")
     }
 
+    /// Proof run on the form that shipped — twelve times, word for word.
+    @Test("der Vorbedingungs-Zaun faengt die ausgelieferte Form")
+    func preconditionFenceCatchesTheShippedShape() {
+        #expect(Self.blindSeedBookWaits(
+            in: #"XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10))"#) == 1)
+        // The multi-line variant with a message counted too.
+        #expect(Self.blindSeedBookWaits(in: """
+                XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20),
+                              "the seeded library must render")
+        """) == 1)
+        // Scrolling to the book is exactly what the fence wants instead.
+        #expect(Self.blindSeedBookWaits(
+            in: #"XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))"#) == 0)
+    }
+
+    /// Exactly ONE place may build the app — the shared `launch`. Everything
+    /// else forgot the foreground wait once already, which is why the radio
+    /// journeys tapped into a launch animation.
     @Test("nur der geteilte Start baut die App auf")
     func journeysLaunchThroughTheSharedEntry() throws {
-        // Exactly ONE place may build the app — the shared `launch`. Everything
-        // else forgot the foreground wait once already, which is why the radio
-        // journeys tapped into a launch animation.
-        let collapsed = try Self.journeyText()
-            .components(separatedBy: .whitespacesAndNewlines).joined()
-        let builds = collapsed.components(separatedBy: "XCUIApplication()").count - 1
+        let builds = Self.appBuildSites(in: try Self.journeyText())
         #expect(builds == 1, "a journey builds the app itself again (\(builds) places)")
+    }
+
+    /// Proof run on the form that shipped: thirteen journeys built their own
+    /// app, two of them without ever waiting for the foreground.
+    @Test("der Start-Zaun faengt die ausgelieferte Form")
+    func launchFenceCatchesTheShippedShape() {
+        #expect(Self.appBuildSites(in: """
+                let app = XCUIApplication()
+                app.launchArguments += ["-uitest", "-radioEnabled", "1"]
+                app.launch()
+                app.buttons["tab-radio"].firstMatch.tap()
+        """) == 1)
+        #expect(Self.appBuildSites(in: """
+                var app = XCUIApplication()
+                app.launch()
+                app = XCUIApplication()
+                app.launch()
+        """) == 2)
+        #expect(Self.appBuildSites(in: "let app = launchSeeded(extra: [\"-uitest-huge\"])") == 0)
     }
 }
 
