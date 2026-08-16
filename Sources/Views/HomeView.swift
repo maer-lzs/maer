@@ -289,6 +289,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// the covers and their captions one baseline.
     private static let recentlyPlayedTileWidth: CGFloat = 150
 
+    /// What the SOURCES carry (the row shows a preview of it).
+    private var listenAgainTotal: Int {
+        let stations = RadioProvider.shared.isAvailable ? RadioStore.recents().count : 0
+        return recentMusicItems.filter { !continueIds.contains($0.id) }.count + stations
+    }
+
     @ViewBuilder
     private var recentlyPlayedSection: some View {
         let radioOn = RadioProvider.shared.isAvailable
@@ -301,10 +307,12 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             limit: RowPreview.limit)
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                // No chevron: there is no page behind this MIXED row (the
-                // music-only shelf still has its own page from the music
-                // tab). Counting rule — no target, no chevron.
-                RowHeading.plain("Listen Again")
+                // af56ac0: now there IS a page — counted chevron by the rule
+                // (only when the sources carry more than the row shows).
+                RowHeading(title: "Listen Again", font: .title2,
+                           total: listenAgainTotal,
+                           shown: entries.count,
+                           destination: MixedRowRoute.listenAgain)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {
                         ForEach(entries, id: \.self) { entry in

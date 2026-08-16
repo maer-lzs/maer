@@ -35,6 +35,16 @@ struct RadioArtwork: View {
     /// gate. One gate with a parameter, never a second one.
     var targetSide: CGFloat? = nil
 
+    /// THE criterion (af56ac0): does this image cover its square surface?
+    /// Near-square art fills edge-to-edge — a wordmark cannot fill a square
+    /// honestly and keeps its ground. One criterion for card AND tile, so the
+    /// two can never disagree about the same logo.
+    static func coversItsSurface(_ image: UIImage) -> Bool {
+        guard image.size.height > 0 else { return false }
+        let ratio = image.size.width / image.size.height
+        return (0.75...1.33).contains(ratio)
+    }
+
     /// The share of the card artwork the colour gradient covers at the
     /// bottom (RadioFeaturedCard) — the wordmark centres in what is LEFT.
     static let cardGradientShare: CGFloat = 0.3
@@ -147,9 +157,7 @@ struct RadioArtwork: View {
                     // music cover; a wordmark can't fill a square honestly and
                     // sits centered on the card colour instead — either way no
                     // inner frame, the surface reaches the card's edge.
-                    let ratio = image.size.height > 0
-                        ? image.size.width / image.size.height : 1
-                    if (0.75...1.33).contains(ratio) {
+                    if Self.coversItsSurface(image) {
                         Color.clear
                             .overlay(
                                 Image(uiImage: image)
@@ -174,6 +182,18 @@ struct RadioArtwork: View {
                                 }
                             )
                     }
+                } else if Self.coversItsSurface(image) {
+                    // af56ac0 (2): a logo that COVERS its surface needs no
+                    // frame — the tile frame was built for transparent PNGs,
+                    // and around a full-bleed logo (the DLF brand design is
+                    // white bars on blue) it reads as an error. Same single
+                    // criterion the card uses, not a copy of it.
+                    Color.clear
+                        .overlay(
+                            Image(uiImage: image)
+                                .resizable().aspectRatio(contentMode: .fill)
+                        )
+                        .clipped()
                 } else {
                     // Nachtrag (1): every logo sits on a TILE surface — a
                     // transparent PNG never floats on black; the deterministic

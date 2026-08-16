@@ -16,6 +16,9 @@ nonisolated enum MixedRowRoute: Hashable {
     case recentlyAdded
     /// 13c5094: the Rediscover pool page.
     case rediscoverPool
+    /// af56ac0: the mixed "listen again" row, unabridged — the sources carry
+    /// more than the row shows (radio MRU + album progress).
+    case listenAgain
 
     /// Same wording as the row — the page IS that row, unabridged.
     var title: String {
@@ -23,6 +26,7 @@ nonisolated enum MixedRowRoute: Hashable {
         case .continueListening: String(localized: "Keep Listening")
         case .recentlyAdded:     String(localized: "Recently Added")
         case .rediscoverPool:    String(localized: "Rediscover")
+        case .listenAgain:       String(localized: "Listen Again")
         }
     }
 }
@@ -93,6 +97,27 @@ struct MixedMediaPage: View {
     /// stacked single-column on a phone ("Blaupause Zuletzt hinzugefügt").
     private var cardWidth: CGFloat { 150 }
 
+    /// af56ac0: the page shows the same mixture with a longer history.
+    /// 120 is a pragmatic ceiling — the radio MRU is capped anyway and the
+    /// album shelf answers a page, so beyond that there is nothing to show.
+    private static let listenAgainLimit = 120
+
+    private var listenAgainAlbums: [LibraryItem] { LateMusicValues.shared.recentAlbums }
+    private var listenAgainStations: [RadioStation] {
+        RadioProvider.shared.isAvailable ? RadioStore.recents() : []
+    }
+
+    private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
+        RecentlyPlayedRow.merged(
+            albums: listenAgainAlbums.map(\.id),
+            albumTimes: LateMusicValues.shared.progress
+                .compactMapValues { $0.lastUpdate > 0 ? $0.lastUpdate / 1000 : nil },
+            continued: Set(continueIds),
+            stations: listenAgainStations.map(\.id),
+            stationTimes: RadioStore.recentTimes(),
+            limit: Self.listenAgainLimit)
+    }
+
     var body: some View {
         ScrollView {
             LazyVGrid(
@@ -119,6 +144,27 @@ struct MixedMediaPage: View {
                                               playerCoordinator: playerCoordinator,
                                               libraryViewModel: libraryViewModel)
                             .frame(width: cardWidth, alignment: .top)
+                    }
+                case .listenAgain:
+                    // af56ac0: same mixture, same tiles, longer history — the
+                    // row is the preview of THIS page (one composition rule,
+                    // `RecentlyPlayedRow`, only a wider limit).
+                    ForEach(listenAgainEntries, id: \.self) { entry in
+                        switch entry {
+                        case .album(let id):
+                            if let item = listenAgainAlbums.first(where: { $0.id == id }) {
+                                AlbumCell(item: item, width: cardWidth,
+                                          playerCoordinator: playerCoordinator)
+                                    .frame(width: cardWidth, alignment: .top)
+                            }
+                        case .station(let id):
+                            if let station = listenAgainStations.first(where: { $0.id == id }) {
+                                RadioStationCard(station: station,
+                                                 playerCoordinator: playerCoordinator,
+                                                 mode: .playsOnTap, width: cardWidth)
+                                    .frame(width: cardWidth, alignment: .top)
+                            }
+                        }
                     }
                 }
             }
