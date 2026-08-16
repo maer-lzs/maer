@@ -381,13 +381,15 @@
 			files = (
 			);
 			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
 			);
 			name = "Stamp git SHA";
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/gitsha.stamp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "SHA=$(cd \"${SRCROOT}\" && /usr/bin/git rev-parse --short HEAD 2>/dev/null || echo dev)\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\nif [ -f \"$PLIST\" ]; then\n  /usr/libexec/PlistBuddy -c \"Set :GitSHA $SHA\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GitSHA string $SHA\" \"$PLIST\"\nfi\n";
+			shellScript = "# The stamp is only worth anything if it CANNOT go missing. This phase\n# declares the BUILT Info.plist as its input — that is the edge that orders\n# it after ProcessInfoPlistFile. Without it Xcode was free to schedule the\n# phase earlier, and on an incremental build the regenerated plist dropped\n# the key: the device then showed a version line without its commit, which\n# is worse than none because it still looks trustworthy.\nSHA=$(cd \"${SRCROOT}\" && /usr/bin/git rev-parse --short HEAD 2>/dev/null || echo dev)\nPLIST=\"${TARGET_BUILD_DIR}/${INFOPLIST_PATH}\"\n# A missing plist used to mean 'do nothing quietly' — the very silence that\n# hid this for months. It is a build error now.\nif [ ! -f \"$PLIST\" ]; then\n  echo \"error: Info.plist missing at stamp time: $PLIST\"\n  exit 1\nfi\n/usr/libexec/PlistBuddy -c \"Set :GitSHA $SHA\" \"$PLIST\" 2>/dev/null || /usr/libexec/PlistBuddy -c \"Add :GitSHA string $SHA\" \"$PLIST\"\nmkdir -p \"${DERIVED_FILE_DIR}\" && touch \"${DERIVED_FILE_DIR}/gitsha.stamp\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
