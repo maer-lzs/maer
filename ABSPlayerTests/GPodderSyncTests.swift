@@ -74,3 +74,33 @@ struct GPodderVisibilityTests {
         #expect(!merge.blockedRemoveFromServer.isEmpty)
     }
 }
+
+// MARK: - 24857d7: „aus" heisst vollstaendig unsichtbar (keine Asymmetrie)
+
+struct GPodderPremiumAsymmetryTests {
+    private func show(_ url: String) -> (feedURL: String, origin: String?) { (url, nil) }
+
+    @Test("Schalter AUS: ein gepushter Token-Feed wird weder adoptiert noch aufgeraeumt")
+    func offMeansInvisibleInBothDirections() {
+        let token = "https://premium.example/feed?auth=SECRETTOKEN1234567890"
+        let normal = "https://example.org/a.xml"
+        let tokenNorm = PodcastSubscriptions.normalizeFeedURL(token)
+        let normalNorm = PodcastSubscriptions.normalizeFeedURL(normal)
+
+        // Das Geraet mit Schalter AUS sieht den Token-Feed lokal NICHT …
+        let split = GPodderVisibleSubscriptions.split([show(normal)], premiumOptIn: false)
+        #expect(split.byNorm.keys.contains(normalNorm))
+
+        // … und die SERVER-Seite wird fuer dieses Geraet ebenfalls gefiltert:
+        // ohne diesen Schnitt waere der Feed „server-only" ⇒ adoptiert, und
+        // eine Runde spaeter „lokal unsichtbar + auf dem Server" ⇒ entfernt.
+        let merge = GPodderSubscriptionMerge.compute(
+            local: [normalNorm], server: [normalNorm], prev: [normalNorm],
+            hiddenLocally: split.hiddenNorms)
+        #expect(merge.addLocally.isEmpty)
+        #expect(merge.removeFromServer.isEmpty)
+        // Gegenprobe: MIT Schalter an ist der Feed sichtbar und reist normal.
+        let on = GPodderVisibleSubscriptions.split([show(normal), show(token)], premiumOptIn: true)
+        #expect(on.byNorm.keys.contains(tokenNorm))
+    }
+}

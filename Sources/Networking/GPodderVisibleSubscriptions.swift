@@ -61,6 +61,18 @@ nonisolated enum GPodderVisibleSubscriptions {
         return Result(byNorm: byNorm, hiddenNorms: hidden)
     }
 
+    /// 24857d7: the SERVER side of the same question — which of the server's
+    /// URLs does this device see at all? With the premium opt-in off, token
+    /// feeds are invisible in BOTH directions: not adopted, not cleaned up.
+    /// (Without this the asymmetry became a tug-of-war: one device pushes,
+    /// the other adopts and then removes it again.) The rule lives HERE, so
+    /// the fence that keeps it in one place stays honest.
+    static func visibleServerURLs(_ byNorm: [String: String],
+                                  premiumOptIn: Bool) -> [String: String] {
+        guard !premiumOptIn else { return byNorm }
+        return byNorm.filter { !PodcastSubscriptions.isTokenFeedURL($0.value) }
+    }
+
     @MainActor
     static func current() -> Result {
         split(PodcastSubscriptions.shared.shows.map { ($0.feedURL, $0.origin) },

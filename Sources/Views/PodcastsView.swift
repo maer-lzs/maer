@@ -166,6 +166,12 @@ struct PodcastsView: View {
             let work = Task {
                 isRefreshing = true
                 defer { isRefreshing = false }
+                // 7f81c2b: the strongest "fetch everything now" gesture left
+                // OUT the very reconcile people wait for (subscriptions,
+                // premium feeds, removals) — only the background service did
+                // it. Reconcile FIRST, so freshly adopted shows are loaded by
+                // the refresh that follows. Existing path, in-flight-safe.
+                await GPodderSync.shared.reconcile()
                 await subs.refreshAll()
                 await absPodcast.refresh()
             }

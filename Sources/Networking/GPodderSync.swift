@@ -270,13 +270,19 @@ final class GPodderSync {
         // mirror URLs and mesh-less devices inherited them as dead feeds.
         let visible = GPodderVisibleSubscriptions.current()
         let localByNorm = visible.byNorm
+        // 24857d7: the SERVER side goes through the SAME visibility source —
+        // with the opt-in off, token feeds are invisible in both directions
+        // (neither adopted nor cleaned up), otherwise the asymmetry becomes
+        // a tug-of-war between two devices.
+        let visibleServerByNorm = GPodderVisibleSubscriptions.visibleServerURLs(
+            serverByNorm, premiumOptIn: AppStorageKeys.gpodderSyncsPremiumFeedsEnabled)
         let prev = Set((defaults.array(forKey: AppStorageKeys.gpodderLastSyncedFeeds) as? [String]) ?? [])
         // 2–3-feed removals awaiting their second confirmation (from last run).
         let prevPendingLocal = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveLocal) as? [String]) ?? [])
         let prevPendingServer = Set((defaults.array(forKey: AppStorageKeys.gpodderPendingRemoveServer) as? [String]) ?? [])
 
         let local = Set(localByNorm.keys)
-        let server = Set(serverByNorm.keys)
+        let server = Set(visibleServerByNorm.keys)
 
         // Pure 3-way merge WITH mass-delete guard — an implausible server
         // answer must not wipe the local subscription list. 2–3-feed removals
@@ -312,13 +318,13 @@ final class GPodderSync {
         if !merge.addToServer.isEmpty || !merge.removeFromServer.isEmpty {
             try await client.uploadSubscriptions(
                 add: merge.addToServer.compactMap { localByNorm[$0] },
-                remove: merge.removeFromServer.compactMap { serverByNorm[$0] }
+                remove: merge.removeFromServer.compactMap { visibleServerByNorm[$0] }
             )
             report.pushedToServer = merge.addToServer.count
             // R2: applied user-intent removes are consumed (one-shot).
             PodcastSubscriptions.consumeUserRemovedFeeds(merge.removeFromServer)
             for norm in merge.removeFromServer {
-                let raw = serverByNorm[norm] ?? norm
+                let raw = visibleServerByNorm[norm] ?? norm
                 report.removedFromServer += 1
                 report.removedFeeds.append(PodcastSubscriptions.maskedFeedURL(raw))
                 Logger.gpodder.warning("gpodder removal APPLIED (server): url=\(PodcastSubscriptions.maskedFeedURL(raw), privacy: .public) inPrev=\(prev.contains(norm))")
@@ -327,7 +333,7 @@ final class GPodderSync {
         // Local side: subscribe to new feeds, remove unsubscribed ones.
         var addedLocallyNorms = Set<String>()
         for norm in merge.addLocally {
-            if let raw = serverByNorm[norm], await subs.subscribe(urlString: raw) {
+            if let raw = visibleServerByNorm[norm], await subs.subscribe(urlString: raw) {
                 report.addedLocally += 1
                 addedLocallyNorms.insert(norm)
             }
