@@ -459,14 +459,48 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = saved[0]
             restoredFromLocal = true
         }
+        // c59e96e: the flushed witness — what THIS device last pushed. For a
+        // downloaded book it is usually the ONLY local source: the crash
+        // backup above is gone after every successful sync, and `item` here is
+        // the detail saved at DOWNLOAD time, whose progress never moves. The
+        // rule decides; it never wins against a newer foreign device.
+        var restoredFromFlushed = false
+        if !restoredFromLocal,
+           let flushed = UserDefaults.standard.array(
+               forKey: AppStorageKeys.flushedPosition(item.id)) as? [Double],
+           flushed.count >= 2,
+           SyncRules.shouldPreferFlushedWitness(
+               flushedTime: flushed[0], flushedAtMs: flushed[1],
+               serverTime: serverProgress, serverUpdateMs: serverUpdateMs
+           ) {
+            startTime = flushed[0]
+            restoredFromFlushed = true
+        }
         // cce35fc (4): a backward jump is never silent again. Whatever the
         // cause, the person notices it — so the log names it, with both
         // sides and their timestamps. Threshold 60 s: below that it is the
         // normal re-position, above it is a finding.
-        if let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
-           saved.count >= 2, saved[0] - startTime > 60 {
-            let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms fromLocal=\(restoredFromLocal)"
+        // The reference is whichever local witness EXISTS: the crash backup, or
+        // else the flushed one. Measured cause of the silent null start: with
+        // the backup deleted there was no reference at all, so the jump could
+        // not be logged — the loudest case was the quietest.
+        let localWitness = (UserDefaults.standard.array(
+                forKey: AppStorageKeys.localPosition(item.id)) as? [Double])
+            ?? (UserDefaults.standard.array(
+                forKey: AppStorageKeys.flushedPosition(item.id)) as? [Double])
+        if let saved = localWitness, saved.count >= 2, saved[0] - startTime > 60 {
+            let source = restoredFromLocal ? "local" : (restoredFromFlushed ? "flushed" : "server")
+            let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms from=\(source)"
             Logger.library.warning("PROGRESS backward jump \(Int(saved[0] - startTime))s on \(item.id, privacy: .public): \(detail, privacy: .public)")
+            // efc68ca (2): the log line alone is out of reach — system logs
+            // are not practical to hand over. The diagnosis is the only
+            // window, so the last five jumps live in a ring beside it.
+            var ring = (UserDefaults.standard.array(
+                forKey: AppStorageKeys.jumpRing(item.id)) as? [[Double]]) ?? []
+            ring.append([Date().timeIntervalSince1970 * 1000, startTime,
+                         serverProgress, serverUpdateMs, saved[0], saved[1]])
+            UserDefaults.standard.set(Array(ring.suffix(5)),
+                                      forKey: AppStorageKeys.jumpRing(item.id))
         }
         // Explicit replay: ignore any saved/server position and begin at 0.
         if restart {

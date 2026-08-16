@@ -604,6 +604,15 @@ nonisolated enum AppStorageKeys {
 
     static func playbackRate(_ itemId: String) -> String { "playbackRate.\(itemId)" }
     static func localPosition(_ itemId: String) -> String { "localPosition.\(itemId)" }
+    /// c59e96e: what THIS device last pushed successfully, and when —
+    /// `[time, atMs]`. Its own key on purpose: `localPosition` is the crash
+    /// backup with its own reader group, and a changed shape there would need
+    /// a full sweep. The two facts are also different: the backup is a value
+    /// the server never saw, this one is a value the server already had.
+    static func flushedPosition(_ itemId: String) -> String { "flushedPosition.\(itemId)" }
+    /// efc68ca (2): the last few backward jumps of this book — the diagnosis
+    /// is the only window the person has, system logs are not practical.
+    static func jumpRing(_ itemId: String) -> String { "jumpRing.\(itemId)" }
 
     /// Per-show playback speed (start rate for this show's episodes until an
     /// episode has its own saved rate).

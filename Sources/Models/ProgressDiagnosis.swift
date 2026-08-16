@@ -110,6 +110,14 @@ nonisolated enum ProgressDiagnosis {
         /// the local start path (P15) begins from.
         let cachedPosition: Double?
         let cachedUpdatedAtMs: Double?
+        /// c59e96e: what THIS device last pushed successfully. For a downloaded
+        /// book it is usually the only local source — the two above are the
+        /// deleted backup and the frozen download-time state.
+        var flushedPosition: Double? = nil
+        var flushedAtMs: Double? = nil
+        /// efc68ca (2): the last backward jumps, newest last —
+        /// `[atMs, start, serverTime, serverAtMs, localTime, localAtMs]`.
+        var jumpRing: [[Double]] = []
         let duration: Double
         let isDownloaded: Bool
         let pendingSyncOperations: Int
@@ -137,6 +145,7 @@ nonisolated enum ProgressDiagnosis {
         line("Server-Stand", sources.serverPosition, sources.serverUpdatedAtMs)
         line("lokaler Sekunden-Backup", sources.localPosition, sources.localSavedAtMs)
         line("gecachter Detail-Stand", sources.cachedPosition, sources.cachedUpdatedAtMs)
+        line("zuletzt selbst gesendet", sources.flushedPosition, sources.flushedAtMs)
         lines.append("Dauer: \(sources.duration > 0 ? formatTime(sources.duration) : "unbekannt")")
         lines.append("")
         // The verdict the app WOULD reach right now — an instrument that
@@ -159,6 +168,28 @@ nonisolated enum ProgressDiagnosis {
             }
         } else {
             lines.append("Nicht beide Seiten bekannt — der Start nimmt, was da ist.")
+        }
+        // The push witness answers the question the sources alone cannot:
+        // did our write reach the server, or is the server's value OUR echo?
+        if let flushed = sources.flushedPosition, let flushedAt = sources.flushedAtMs {
+            if let server = sources.serverPosition, let serverAt = sources.serverUpdatedAtMs {
+                if flushedAt > serverAt {
+                    lines.append("Unser letzter Push ist NEUER als der Server-Stand — " +
+                                 "er ist dort nicht angekommen (Transport).")
+                } else if abs(flushed - server) <= 1 {
+                    lines.append("Der Server-Stand IST unser eigener Push (Echo).")
+                }
+            } else {
+                lines.append("Der Server nennt keinen Stand — unser Push ist der einzige Zeuge.")
+            }
+        }
+        if !sources.jumpRing.isEmpty {
+            lines.append("")
+            lines.append("Rücksprünge (neueste zuletzt):")
+            for e in sources.jumpRing where e.count >= 6 {
+                lines.append("• \(format(e[0] / 1000)): Start \(formatTime(e[1])) " +
+                             "· Server \(formatTime(e[2])) · lokal \(formatTime(e[4]))")
+            }
         }
         return lines.joined(separator: "\n")
     }

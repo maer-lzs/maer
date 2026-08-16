@@ -76,6 +76,34 @@ nonisolated enum SyncRules {
         savedAtMs > serverUpdateMs && abs(savedTime - serverTime) > tolerance
     }
 
+    /// c59e96e — the FLUSHED witness: what this device last pushed to the
+    /// server successfully. It is the start source whenever the server has
+    /// nothing better to say: no answer at all (offline), an answer that
+    /// arrived after the reconcile window, or an answer without a progress
+    /// entry. Measured: without it a downloaded book has NO local source —
+    /// the crash backup is deleted after every successful sync and the cached
+    /// detail carries the download-time state forever — so it starts at 0.
+    ///
+    /// Deliberately NOT a crash-restore candidate (`shouldRestoreLocalPosition`
+    /// stays untouched): that rule is for a value the server never saw, this
+    /// one for a value the server already had. Keeping them apart is what
+    /// stops the flushed value from resurrecting against a NEWER foreign
+    /// device — the timestamp comparison below is the whole guard.
+    static func shouldPreferFlushedWitness(
+        flushedTime: Double,
+        flushedAtMs: Double,
+        serverTime: Double,
+        serverUpdateMs: Double,
+        tolerance: Double = 5
+    ) -> Bool {
+        guard flushedTime > 0 else { return false }
+        // The server said nothing datable — ours is the only witness there is.
+        if serverUpdateMs <= 0 { return true }
+        // Another device may legitimately be ahead: only a NEWER own push,
+        // and only a noticeably higher one, beats the server's answer.
+        return flushedAtMs > serverUpdateMs && flushedTime > serverTime + tolerance
+    }
+
     /// A non-user-initiated backward jump considered suspicious?
     static func isSuspiciousDrop(
         currentTime: Double,

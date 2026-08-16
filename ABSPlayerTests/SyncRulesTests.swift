@@ -113,6 +113,62 @@ struct SyncRulesTests {
     }
 }
 
+/// c59e96e — the flushed witness. Every case here is one the MEASUREMENT
+/// produced on the simulator, not an invented one.
+@Suite("Der geflusht-Zeuge traegt den Start nur, wenn der Server nichts Besseres sagt")
+struct FlushedWitnessTests {
+
+    /// The measured incident: downloaded book, crash backup deleted, cached
+    /// detail without progress, server silent (offline). Without the witness
+    /// the start is 0.
+    @Test func serverSilentMakesOurPushTheOnlyTruth() {
+        #expect(SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 40, flushedAtMs: 1_000, serverTime: 0, serverUpdateMs: 0))
+    }
+
+    /// the reviewer's case 3: the server ANSWERS, but without a progress entry. An
+    /// answer without a date is not a statement about the position.
+    @Test func answerWithoutDateDoesNotBeatTheWitness() {
+        #expect(SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 40, flushedAtMs: 1_000, serverTime: 0, serverUpdateMs: 0))
+    }
+
+    /// The guard that matters: another device that is genuinely ahead keeps
+    /// winning. Otherwise the fix would trade a null start for a rollback.
+    @Test func newerForeignDeviceStillWins() {
+        #expect(!SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 40, flushedAtMs: 1_000, serverTime: 900, serverUpdateMs: 2_000))
+    }
+
+    /// Our own echo: the server holds exactly what we pushed, dated later.
+    /// Taking the witness here would be pointless, not wrong — but it must
+    /// not fire, so the server stays the store of record.
+    @Test func ownEchoDoesNotFire() {
+        #expect(!SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 40, flushedAtMs: 1_000, serverTime: 40, serverUpdateMs: 1_500))
+    }
+
+    /// A witness at 0 is no witness — a fresh install must not be dragged to 0.
+    @Test func zeroIsNotAWitness() {
+        #expect(!SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 0, flushedAtMs: 9_999, serverTime: 0, serverUpdateMs: 0))
+    }
+
+    /// Import is the normal case: every existing install has NO witness. The
+    /// nil branch lives at the call site, so the rule only has to stay honest
+    /// about a witness that is older than the server's answer.
+    @Test func olderOwnPushLosesAgainstADatedServerAnswer() {
+        #expect(!SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 300, flushedAtMs: 1_000, serverTime: 100, serverUpdateMs: 5_000))
+    }
+
+    /// Below the tolerance nothing changes — the same 5 s the sibling rule uses.
+    @Test func tinyDifferenceIsNotWorthAJump() {
+        #expect(!SyncRules.shouldPreferFlushedWitness(
+            flushedTime: 103, flushedAtMs: 5_000, serverTime: 100, serverUpdateMs: 1_000))
+    }
+}
+
 struct TrackMathTests {
 
     private func track(index: Int, start: Double? = nil, duration: Double?) -> ABSAudioTrack {

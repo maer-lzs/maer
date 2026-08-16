@@ -103,6 +103,16 @@ extension PlayerViewModel {
                 // the local crash backup removed after a successful sync.
                 let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
                 if provider.capabilities.contains(.progressSync) && !isPodcast {
+                    // c59e96e: the crash backup has done its job and goes —
+                    // but WHAT we pushed and WHEN stays. A deleted witness is
+                    // not a fact; that is the same lesson as the `[0, now]`
+                    // tombstone further down, one level further. Without this
+                    // a downloaded book has no local source at all (the cached
+                    // detail keeps the download-time state forever) and starts
+                    // at 0 whenever the server is missing, late or empty.
+                    UserDefaults.standard.set(
+                        [currentTime, Date().timeIntervalSince1970 * 1000],
+                        forKey: AppStorageKeys.flushedPosition(item.id))
                     UserDefaults.standard.removeObject(forKey: key)
                 } else {
                     // The duration travels along as the third value: at the

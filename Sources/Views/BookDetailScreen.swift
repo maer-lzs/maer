@@ -329,6 +329,7 @@ struct BookDetailScreen: View {
         let defaults = UserDefaults.standard
         let saved = defaults.array(forKey: AppStorageKeys.localPosition(entry.id)) as? [Double]
         let cached = DownloadManager.shared.loadCachedDetail(forItemId: entry.id)
+        let flushed = defaults.array(forKey: AppStorageKeys.flushedPosition(entry.id)) as? [Double]
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: entry.progress?.currentTime,
             serverUpdatedAtMs: entry.progress?.lastUpdate,
@@ -336,6 +337,9 @@ struct BookDetailScreen: View {
             localSavedAtMs: (saved?.count ?? 0) >= 2 ? saved?[1] : nil,
             cachedPosition: cached?.userMediaProgress?.currentTime,
             cachedUpdatedAtMs: cached?.userMediaProgress?.lastUpdate,
+            flushedPosition: (flushed?.count ?? 0) >= 2 ? flushed?[0] : nil,
+            flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
+            jumpRing: defaults.array(forKey: AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
             // There is no separate progress QUEUE (positions push directly);
@@ -551,6 +555,7 @@ struct BookDetailScreen: View {
                 }
                 .modifier(AdaptiveGlassBackground(shape: buttonShape))
                 .disabled(isThisBookLoading)
+                .accessibilityIdentifier("book-play")
             }
         }
         .padding(.horizontal, withPadding ? 16 : 0)
@@ -778,6 +783,7 @@ struct BookDetailScreen: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(Text("Available Offline"))
+                .accessibilityIdentifier("book-download-done")
                 // X22b: ONE height source for the whole action row — every
                 // capsule is min. the 44 pt control height + 2 pt padding, so
                 // the offline and mark-played capsules always line up.
@@ -882,6 +888,10 @@ struct BookDetailScreen: View {
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
                 // Offline a download can't start — disable instead of failing.
                 .disabled(detail == nil || !NetworkMonitor.shared.isConnected)
+                // Locale-independent handles for the offline states — the
+                // labels are translated AND state-dependent ("Save Offline"
+                // vs. "Load Missing Files"), so they cannot serve as anchors.
+                .accessibilityIdentifier("book-download-start")
             }
         }
     }
@@ -997,5 +1007,9 @@ private struct ActivePlayButton<S: Shape>: View {
             .foregroundStyle(.primary)
         }
         .modifier(AdaptiveGlassBackground(shape: shape))
+        // The active button is a SECOND control at the same place — without
+        // its own handle nothing can tell "this book is running" from "this
+        // book offers to start".
+        .accessibilityIdentifier("book-play-toggle")
     }
 }

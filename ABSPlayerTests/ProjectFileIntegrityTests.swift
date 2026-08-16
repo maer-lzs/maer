@@ -544,6 +544,38 @@ extension ProjectFileIntegrityTests {
         #expect(!collapsed.contains("localAt>serverAt&&abs("),
                 "die Startregel ist wieder kopiert statt gefragt")
     }
+
+    /// c59e96e: the start path decides where a book begins. Both witnesses are
+    /// judged by the SHARED rules — the same reason as above, and the same
+    /// failure mode: identical today, silently divergent the day a tolerance
+    /// moves.
+    @Test("der Start fragt beide Zeugen-Regeln, statt selbst zu vergleichen")
+    func startAsksTheSharedWitnessRules() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)
+        #expect(text.contains("SyncRules.shouldRestoreLocalPosition"))
+        #expect(text.contains("SyncRules.shouldPreferFlushedWitness"),
+                "der geflusht-Zeuge wird nicht mehr ueber die geteilte Regel entschieden")
+        let collapsed = text.replacingOccurrences(of: " ", with: "")
+        #expect(!collapsed.contains("flushed[1]>serverUpdateMs&&"),
+                "die Zeugen-Regel ist neben die geteilte kopiert")
+    }
+
+    /// The witness only helps if it SURVIVES the sync. The deletion is the
+    /// shipped shape that caused the null start; it may not come back without
+    /// the tombstone beside it.
+    @Test("der Sync loescht den Zeugen nicht ersatzlos")
+    func syncKeepsAWitness() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(collapsed.contains("AppStorageKeys.flushedPosition(item.id))"),
+                "der Sync schreibt keinen geflusht-Zeugen mehr")
+    }
 }
 
 

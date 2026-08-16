@@ -55,11 +55,15 @@ struct CardDownloadBadge: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Cancel Download"))
+            // Locale-independent handles: the three states must be tellable
+            // apart without reading a translated label.
+            .accessibilityIdentifier("download-cancel")
         } else if downloads.isDownloaded(itemId: itemId) {
             badge {
                 Image(systemName: "checkmark").font(.subheadline.weight(.bold))
             }
             .accessibilityLabel(Text("Downloaded"))
+            .accessibilityIdentifier("download-done")
         } else if networkMonitor.isConnected {
             Button { Task { await startDownload() } } label: {
                 badge {
@@ -68,6 +72,7 @@ struct CardDownloadBadge: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Download"))
+            .accessibilityIdentifier("download-start")
         }
     }
 
