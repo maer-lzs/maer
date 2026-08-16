@@ -864,6 +864,28 @@ final class LibraryViewModel: ObservableObject {
     private var lastProgress: [String: BookProgress] = [:]
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
+    /// 96cb043/2100b09: started titles outside the server library — resolved
+    /// HERE because the item lookup is main-actor bound, then handed to the
+    /// off-main rebuild as plain data.
+    @MainActor
+    static func continueExtras() -> [LibraryEntry] {
+        ContinueSources.started(in: UserDefaults.standard.dictionaryRepresentation(),
+                                serverKnows: [])
+            .compactMap { extra in
+                guard let item = AppSession.shared.playableItem(forId: extra.id) else { return nil }
+                // `isStarted` reads the FRACTION, so it needs a duration —
+                // with one from the mark it is exact, without one the entry
+                // counts as barely started instead of silently dropping out.
+                let fraction = extra.duration > 0
+                    ? min(max(extra.position / extra.duration, 0), 1) : 0.01
+                return LibraryEntry(
+                    item: item,
+                    progress: BookProgress(fraction: fraction, isFinished: false,
+                                           lastUpdate: extra.updatedAtMs,
+                                           currentTime: extra.position))
+            }
+    }
+
     nonisolated struct RebuildInput: Sendable {
         let items: [LibraryItem]
         let progress: [String: BookProgress]
@@ -877,6 +899,10 @@ final class LibraryViewModel: ObservableObject {
         let downloadedIds: Set<String>
         /// df0b3bb 3: per-item "not under Continue any more" markers.
         var hiddenMarkers: [String: Double] = [:]
+        /// 96cb043/2100b09: started titles OUTSIDE the server library —
+        /// local sideloads and catalog works, resolved by the caller (their
+        /// item lookup is main-actor bound).
+        var continueExtras: [LibraryEntry] = []
     }
 
     nonisolated struct RebuildOutput: Sendable {
@@ -923,6 +949,16 @@ final class LibraryViewModel: ObservableObject {
         //     invented, so a title cannot sit in both rows at once.
         // (2) CAP: a row is the preview of a page (3a3b1aa); the complete
         //     stock belongs behind the chevron.
+        // 96cb043/2100b09: the row takes the OTHER classes too — locally
+        // sideloaded books and catalog works keep their position in the same
+        // second-backup, and both were structurally invisible here (the row
+        // only knew the source it was born from). One collection, so the
+        // next class plugs in instead of being forgotten again.
+        // Dedupe: the SERVER identity leads — a downloaded ABS book stays one
+        // entry, local sideloads are their own identity.
+        for extra in input.continueExtras where byId[extra.id] == nil && continueById[extra.id] == nil {
+            continueById[extra.id] = extra
+        }
         let continueAll = continueById.values
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
         // The AGE CUTOFF is GONE.
@@ -986,7 +1022,8 @@ final class LibraryViewModel: ObservableObject {
             seedRecent: librarySeed.recentlyAdded,
             sort: sortOption, ascending: sortAscending, filter: filterOption,
             downloadedIds: DownloadManager.shared.downloadedItemIds,
-            hiddenMarkers: ContinueHiddenStore.markers()
+            hiddenMarkers: ContinueHiddenStore.markers(),
+            continueExtras: Self.continueExtras()
         )
         let output = await Task.detached(priority: .userInitiated) {
             // Regression guard: the library rebuild must stay off the main actor

@@ -299,3 +299,44 @@ struct LibraryDerivedListsTests {
     }
 }
 #endif
+
+// MARK: - 96cb043 + 2100b09: Weiterhoeren kennt ALLE Quellen
+
+struct ContinueSourcesTests {
+    private func mark(_ pos: Double, _ ms: Double, _ dur: Double? = nil) -> [Double] {
+        dur.map { [pos, ms, $0] } ?? [pos, ms]
+    }
+
+    @Test("lokale Buecher UND Katalog-Werke zaehlen, Server-Kennungen nicht")
+    func localAndCatalogCount() {
+        let defaults: [String: Any] = [
+            "localPosition.local:winterfell": mark(3600, 2_000, 72_000),
+            "localPosition.lv:176": mark(600, 1_000, 7_200),
+            // Ein reines Server-Buch fuehrt seinen Stand woanders — hier
+            // taucht es nicht auf (und wenn doch, fuehrt die Server-Identitaet).
+            "localPosition.abs-item-1": mark(900, 3_000),
+            "irrelevant": 42,
+        ]
+        let out = ContinueSources.started(in: defaults, serverKnows: [])
+        #expect(out.map(\.id) == ["local:winterfell", "lv:176"])   // neuester zuerst
+    }
+
+    @Test("Dedupe: was der Server kennt, kommt hier nicht doppelt")
+    func serverIdentityLeads() {
+        let defaults: [String: Any] = ["localPosition.lv:176": mark(600, 1_000, 7_200)]
+        #expect(ContinueSources.started(in: defaults, serverKnows: ["lv:176"]).isEmpty)
+    }
+
+    @Test("angetippt ist nicht angefangen, fertig ist nicht weiterhoerbar")
+    func edgesAreHonest() {
+        // 10 Sekunden sind ein Tipp, kein begonnenes Buch.
+        #expect(ContinueSources.started(in: ["localPosition.lv:1": mark(10, 1)],
+                                        serverKnows: []).isEmpty)
+        // Position am Ende ⇒ gehoert, nicht „weiterhoeren".
+        #expect(ContinueSources.started(in: ["localPosition.lv:2": mark(7_200, 1, 7_200)],
+                                        serverKnows: []).isEmpty)
+        // Ohne bekannte Dauer bleibt der Eintrag drin (nichts wird erfunden).
+        #expect(ContinueSources.started(in: ["localPosition.lv:3": mark(600, 1)],
+                                        serverKnows: []).count == 1)
+    }
+}
