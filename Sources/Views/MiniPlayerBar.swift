@@ -69,12 +69,15 @@ struct MiniPlayerBar: View {
                     // more room remains for the title text.
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
-                        // 71b277f Mini 1: display-name parity — the trim
-                        // from e4a0822 applies to the mini bar too (pipe/
-                        // codec junk never reaches ANY surface).
-                        Text(item.id.hasPrefix("radio:")
-                             ? RadioMapping.displayName(item.title)
-                             : item.title)
+                        // f0e7f4e: the RUNNING track's title comes from the
+                        // SESSION (`nowPlayingTitle` — the one derivation the
+                        // full player, lock screen and CarPlay already use).
+                        // The item resolution is never the truth here: for a
+                        // catalog id it answers a stub whose title is the
+                        // placeholder, which is why the mini bar said
+                        // "Unknown Title" while the full player was right.
+                        // Radio trimming lives inside that derivation too.
+                        Text(viewModel.nowPlayingTitle)
                             .font(.body).bold()
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -87,7 +90,7 @@ struct MiniPlayerBar: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text(item.title))
+            .accessibilityLabel(Text(viewModel.nowPlayingTitle))
             .accessibilityHint(Text("Opens the player"))
 
             MiniPlayerTransport(viewModel: viewModel,

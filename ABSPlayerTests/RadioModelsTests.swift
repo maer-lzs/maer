@@ -778,3 +778,32 @@ struct RadioCountryDecouplingTests {
                                             regionName: "Nordrhein-Westfalen") != nil)
     }
 }
+
+// MARK: - f0e7f4e: EINE Session-Titel-Quelle fuer den laufenden Track
+
+struct NowPlayingTitleSourceTests {
+    /// Der Zaun in Textform (die Flaechen selbst brauchen eine Session):
+    /// keine Now-Playing-Flaeche darf den laufenden Titel aus der
+    /// ITEM-Aufloesung nehmen — die liefert fuer Katalog-Kennungen einen
+    /// Stub mit Platzhalter, und genau so sagte die Mini-Leiste
+    /// „Unbekannter Titel", waehrend der grosse Player recht hatte.
+    @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item")
+    func surfacesReadTheSessionTitle() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        for name in ["Sources/Views/MiniPlayerBar.swift", "Sources/Views/DriveModeView.swift"] {
+            let text = try String(contentsOf: root.appendingPathComponent(name), encoding: .utf8)
+            #expect(text.contains("nowPlayingTitle"), "\(name) liest die Session nicht")
+            // Nur die ANZEIGE ist gemeint: `activeItem.title` bleibt dort
+            // richtig, wo der Sender-NAME gebraucht wird (Artwork-Initialen)
+            // — deshalb prueft der Zaun Text(...)-Zeilen, nicht jede
+            // Verwendung. Die Praezisierung kam aus einem Fehlschlag genau
+            // dieser Art.
+            for line in text.split(separator: "\n") where line.contains("Text(") {
+                let collapsed = line.replacingOccurrences(of: " ", with: "")
+                #expect(!collapsed.contains("Text(item.title)"), "\(name): \(line)")
+                #expect(!collapsed.contains("Text(coordinator.activeItem?.title"), "\(name): \(line)")
+            }
+        }
+    }
+}

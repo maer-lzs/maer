@@ -179,11 +179,12 @@ struct DriveModeView: View {
 
     private func titleBlock(_ vm: PlayerViewModel) -> some View {
         VStack(spacing: 4) {
-            // 6b3a35d (4): the shared display normalization trims the
-            // pipe-separated name junk for live stations.
-            Text(liveItemId != nil
-                 ? RadioMapping.displayName(coordinator.activeItem?.title ?? "")
-                 : (coordinator.activeItem?.title ?? ""))
+            // f0e7f4e sweep: ONE session source for the running title, like
+            // every other now-playing surface. The live/non-live split fell
+            // away with it — `nowPlayingTitle` already carries the station
+            // trimming (6b3a35d) and the ICY line for streams, and the item
+            // title is a stub for catalog ids.
+            Text(vm.nowPlayingTitle)
                 .font(.title.weight(.bold))
                 .lineLimit(1)
             if let chapter = vm.currentChapter?.title {
