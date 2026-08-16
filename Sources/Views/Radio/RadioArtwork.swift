@@ -115,7 +115,11 @@ struct RadioArtwork: View {
                   homepage: station.homepage),
               let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
         let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
-        guard RadioFaviconGate.acceptable(pixelWidth: w, pixelHeight: h) else {
+        // 8360dac: a chain result is a DECLARED logo (Commons P154 render or
+        // the site's own apple-touch-icon), not a scraped favicon — it is
+        // measured against the touch-icon floor. Four of the audit set's
+        // misses were 57 px brand icons rejected by the favicon gate.
+        guard RadioFaviconGate.acceptableTouchIcon(pixelWidth: w, pixelHeight: h) else {
             Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
             return nil
         }

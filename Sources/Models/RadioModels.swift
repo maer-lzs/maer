@@ -977,6 +977,16 @@ nonisolated enum RadioRegionCanon {
 nonisolated enum RadioFaviconGate {
     /// Below this shortest side a favicon becomes a stretched stamp.
     static let minSide = 64
+    /// 8360dac (measured): the CHAIN's stage-2 icons are apple-touch-icons —
+    /// square brand marks in Apple's standard sizes (57/60/72/76/114/120…).
+    /// The 64 gate exists against favicon MUSH; it also threw away four
+    /// perfectly good 57 px brand icons in the audit set. A touch icon is a
+    /// declared logo, not a scraped favicon, so it gets its own floor.
+    static let touchIconMinSide = 48
+
+    static func acceptableTouchIcon(pixelWidth: Int, pixelHeight: Int) -> Bool {
+        min(pixelWidth, pixelHeight) >= touchIconMinSide
+    }
 
     static func acceptable(pixelWidth: Int, pixelHeight: Int) -> Bool {
         min(pixelWidth, pixelHeight) >= minSide
