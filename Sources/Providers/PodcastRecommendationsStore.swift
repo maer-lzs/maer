@@ -194,11 +194,42 @@ final class PodcastRecommendationsStore: ObservableObject {
         // 51612b4: the CHART share rotates daily — the personally justified
         // entries (author/genre) keep their signal order and their slots.
         // One pool feeds Home, tab and full page, so all three turn together.
+        // bc69cd8 (3): the SHOWN picks prefer candidates whose artwork can
+        // actually load — the same idea as the catalog picks, with podcast
+        // means. Three-way ladder: a missing/404 artwork DEFERS the entry
+        // (the next candidate moves up), a transport failure is `unknown`
+        // and stays usable — a service outage must never empty the row.
+        let probed = await Self.preferLoadableArtwork(ranked, shown: 6)
         results = Self.rotatingCharts(
-            ranked,
+            probed,
             isChart: { self.reason(for: $0) == .popular },
             daySeed: CatalogRotation.dayIndex(on: Date()))
         loadedAt = Date()
+    }
+
+    /// Move entries whose artwork demonstrably does not load behind the
+    /// others — only for the FEW that are shown, and only reordering: nothing
+    /// is dropped, so a wholesale outage costs order, not content.
+    static func preferLoadableArtwork(_ entries: [PodcastSearchResult],
+                                      shown: Int) async -> [PodcastSearchResult] {
+        var good: [PodcastSearchResult] = []
+        var deferred: [PodcastSearchResult] = []
+        for entry in entries.prefix(shown * 2) {
+            if await artworkLoads(entry) { good.append(entry) } else { deferred.append(entry) }
+            if good.count >= shown { break }
+        }
+        let probedIDs = Set((good + deferred).map(\.id))
+        return good + deferred + entries.filter { !probedIDs.contains($0.id) }
+    }
+
+    private static func artworkLoads(_ entry: PodcastSearchResult) async -> Bool {
+        guard let raw = entry.artworkURL, let url = URL(string: raw) else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 6
+        guard let (_, response) = try? await URLSession.maer.data(for: request),
+              let http = response as? HTTPURLResponse else { return true }   // unknown stays usable
+        return (200...299).contains(http.statusCode)
     }
 
     /// Slots-preserving daily rotation: the chart entries move through their
@@ -259,8 +290,17 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - Signals from your own usage
 
+    /// bc69cd8: the SEED of the recommendations — deliberately WITHOUT
+    /// mirrored feeds. A Pinchflat capsule is a private mirror; feeding its
+    /// author/categories into a PUBLIC catalog search produced the owner's
+    /// "because you listen to IDA" → Institute for Defense Analyses (four of
+    /// six tiles were misses on a bare author string). Same capsule rule as
+    /// in the gpodder sync: a mirror is not a subscription of the user's in
+    /// the public sense. Filtering here covers authors, categories AND
+    /// listening time at once — one place, not three.
     private var mineShows: [PodcastShow] {
-        PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows
+        (PodcastSubscriptions.shared.shows + ABSPodcastProvider.shared.activeShows)
+            .filter { $0.origin == nil }
     }
 
     /// Listening time per show (proxy: sum of the stored `localPosition` seconds

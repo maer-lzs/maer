@@ -305,3 +305,30 @@ struct PodcastSectionsTests {
     }
 }
 #endif
+
+// MARK: - bc69cd8: Spiegel seeden nicht, tote Kacheln ruecken nach
+
+struct RecommendationSeedTests {
+    private func result(_ id: String, artwork: String?) -> PodcastSearchResult {
+        PodcastSearchResult(title: id, author: nil, artworkURL: artwork,
+                            feedURL: "https://x.example/\(id).xml")
+    }
+
+    @Test("Umordnen statt Wegwerfen — ein flaechiger Ausfall kostet Ordnung, nicht Inhalt")
+    func reorderingNeverDrops() async {
+        // Keine Artwork-URL ⇒ nachgereiht; nichts verschwindet.
+        let entries = [result("a", artwork: nil), result("b", artwork: nil)]
+        let out = await PodcastRecommendationsStore.preferLoadableArtwork(entries, shown: 6)
+        #expect(out.count == entries.count)
+        #expect(Set(out.map(\.id)) == Set(entries.map(\.id)))
+    }
+
+    @Test("nicht geprobte Kandidaten bleiben in ihrer Reihenfolge hinten dran")
+    func unprobedKeepTheirOrder() async {
+        let entries = (1...20).map { result("e\($0)", artwork: nil) }
+        let out = await PodcastRecommendationsStore.preferLoadableArtwork(entries, shown: 2)
+        #expect(out.count == 20)
+        // Der Schwanz (nie geprobt) behaelt seine Ordnung.
+        #expect(out.suffix(5).map(\.id) == entries.suffix(5).map(\.id))
+    }
+}
