@@ -28,8 +28,6 @@ struct LibraryView: View {
     /// Y20: single-select scope of the search page — starts at the opening
     /// tab's scope (Y13 successor).
     @State private var searchScope: SearchScope = .library
-    /// P11: inline, not persisted — like the Y3a episode grid.
-    @State private var allBooksExpanded = false
     @State private var navigationPath = NavigationPath()
     @State private var isShowingFullPlayer = false
     @State private var showDeleteAllDownloads = false
@@ -1370,19 +1368,21 @@ struct LibraryView: View {
             AudiobookStockGrid(viewModel: viewModel,
                                playerCoordinator: playerCoordinator,
                                limit: allBooksPreviewLimit)
-            // P11: more IN PLACE, next to the heading chevron that leads to
-            // the full page. The shared expander (Regel 2); G8 decides its
-            // existence — with a small stock there is nothing to unfold.
-            ShowMoreRow(expanded: $allBooksExpanded,
-                        hasMore: allBooksHasMore,
-                        accessibilityId: "all-books-show-more")
+            // bb3d42c: the line NAVIGATES to the full page (with its sorting
+            // and filters) instead of unfolding a second, poorer copy of it.
+            // Both entries stay: chevron above, line below — otherwise you
+            // scroll back up to reach the page. G8 unchanged: the line only
+            // exists when there is more than the preview shows.
+            ShowAllRow(total: viewModel.entries.count,
+                       hasMore: allBooksHasMore,
+                       destination: LibraryListRoute.allBooks,
+                       accessibilityId: "all-books-show-all")
         }
     }
 
-    private var allBooksPreviewLimit: Int {
-        allBooksExpanded ? AudiobookStockGrid.expandedPreviewLimit
-                         : AudiobookStockGrid.previewLimit
-    }
+    /// bb3d42c: no expansion step here any more — the preview is 24, and
+    /// everything beyond it lives on the page.
+    private var allBooksPreviewLimit: Int { AudiobookStockGrid.previewLimit }
 
     /// Books visible in the preview window (a series stack counts its members).
     private var allBooksPreviewShown: Int {
@@ -1398,10 +1398,7 @@ struct LibraryView: View {
     /// promises a "more" that would unfold into the same picture.
     private var allBooksHasMore: Bool {
         if viewModel.sortOption == .serie {
-            return AudiobookStockGrid.previewBookCount(
-                viewModel.seriesGroupedEntries,
-                limit: AudiobookStockGrid.expandedPreviewLimit) > allBooksPreviewShown
-                || viewModel.seriesGroupedEntries.count > allBooksPreviewLimit
+            return viewModel.seriesGroupedEntries.count > allBooksPreviewLimit
         }
         return viewModel.sortedFilteredEntries.count > allBooksPreviewShown
     }

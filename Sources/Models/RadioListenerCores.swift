@@ -16,6 +16,15 @@ import Foundation
 /// entries like "RADIO NRW", combination packages) drops out honestly and is
 /// logged. Semi-annual maintenance = replace a table with the next round's
 /// names.
+///
+/// 7976f4d — **what does NOT belong in here:** combination/marketer/framing
+/// constructs ("radio NRW" is the framing programme of ~44 local stations,
+/// "… Funkpaket" a bundle of local stations, "bigFM (Gesamt)" a sum row,
+/// "… City-Kombi"/"… Premium" a sales package). Their listener figures
+/// belong to the stations underneath, and a listener would never name them
+/// as THEIR station. Most never resolved against the catalog anyway — the
+/// few that do (the framing programme streams!) are why this rule is
+/// written down: the next round must not re-enter them.
 nonisolated enum RadioListenerCores {
     /// The ONE visible priority mapping (72d233f (4)):
     /// first-hand survey > Wikidata core > votes pure.
@@ -67,17 +76,14 @@ nonisolated enum RadioListenerCores {
     /// Einzelsender-Ranking as openly published by the trade press
     /// (radioszene.de/215607, full table, 2026-07). Round: ma 2026 Audio II.
     static let germanyNational: [String] = [
-        "RADIO NRW",
         "BAYERN 1",
         "SWR3",
         "WDR 2",
-        "Bayern Funkpaket",
         "ANTENNE BAYERN",
         "1LIVE",
         "BAYERN 3",
         "NDR 2",
         "RADIO BOB!",
-        "bigFM (Gesamt)",
         "ROCK ANTENNE",
         "SWR1 BW",
         "HIT RADIO FFH",
@@ -89,7 +95,6 @@ nonisolated enum RadioListenerCores {
         "80s80s RADIO",
         "MDR JUMP",
         "bigFM biggste Beats",
-        "ENERGY National",
         "Antenne Niedersachsen",
         "SUNSHINE LIVE",
         "hr4",
@@ -111,7 +116,6 @@ nonisolated enum RadioListenerCores {
         "Radio 7",
         "SWR4 RP",
         "bigFM BADEN-WÜRTTEMBERG",
-        "SACHSEN FUNKPAKET",
         "90s90s RADIO",
         "RADIO PSR",
         "Bayern 2",
@@ -126,7 +130,6 @@ nonisolated enum RadioListenerCores {
         "ANTENNE THÜRINGEN",
         "104.6 RTL",
         "Berliner Rundfunk 91.4",
-        "ENERGY DAB+ National",
         "DIE NEUE 107.7",
         "Radio Paloma",
         "rbb 88.8",
@@ -143,9 +146,7 @@ nonisolated enum RadioListenerCores {
         "94,3 rs2",
         "JAM FM",
         "ROCK ANTENNE Hamburg",
-        "NIEDERSACHSEN FUNKPAKET",
         "Bremen Vier",
-        "Niedersachsen Funkpaket",
         "Beats Radio",
         "ENERGY Sachsen",
         "Fritz",
@@ -172,7 +173,6 @@ nonisolated enum RadioListenerCores {
         "ROCK FM",
         "ENERGY Bremen",
         "NOSTALGIE",
-        "Radio Group City-Kombi",
         "Bremen NEXT",
         "egoFM",
         "100,5 DAS HITRADIO.",
@@ -214,7 +214,6 @@ nonisolated enum RadioListenerCores {
         ],
         "Bayern": [
             "Bayern 1",
-            "Bayern Funkpaket",
             "Antenne Bayern",
             "Bayern 3",
             "Rock Antenne",
@@ -305,11 +304,9 @@ nonisolated enum RadioListenerCores {
             "Radio 21",
             "NDR info",
             "89.0 RTL",
-            "Niedersachsen Funkpaket",
             "Radio Bob!",
         ],
         "Nordrhein-Westfalen": [
-            "Radio NRW",
             "WDR 2",
             "1Live",
             "WDR 4",
@@ -329,7 +326,6 @@ nonisolated enum RadioListenerCores {
             "Rockland Radio",
             "Deutschlandfunk",
             "Hit Radio FFH",
-            "Antenne NRW Premium",
             "DasDing / UnserDing",
         ],
         "Saarland": [
@@ -346,7 +342,6 @@ nonisolated enum RadioListenerCores {
         ],
         "Sachsen": [
             "MDR Sachsen",
-            "Sachsen Funkpaket",
             "Radio PSR",
             "MDR Jump",
             "Hitradio RTL Sachsen",

@@ -23,6 +23,12 @@ struct ShowMoreRow: View {
 
     var body: some View {
         if hasMore {
+            expandButton
+        }
+    }
+
+    @ViewBuilder private var expandButton: some View {
+        Group {
             Button {
                 // The toggle is the ONLY flip site — a withAnimation
                 // transaction here gives the same curve in both directions
@@ -37,6 +43,38 @@ struct ShowMoreRow: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(AppTheme.accent)
+            .padding(.horizontal)
+            .accessibilityIdentifier(accessibilityId)
+        }
+    }
+}
+
+/// bb3d42c (owner decision nach Diskussion): the counting "show all" line
+/// that NAVIGATES. Inline expansion is out where a real full page exists —
+/// it duplicated the page without its sorting and filters, and the platform
+/// convention (preview + "See All" → page) says the same.
+///
+/// **Two entries, one target** — chevron above, line below: without the
+/// lower one you scroll all the way back up to reach the page. That is
+/// Apple's own pattern for long sections, not a G8 case.
+struct ShowAllRow<Destination: Hashable>: View {
+    /// The honest number: "Show all 225".
+    let total: Int
+    let hasMore: Bool
+    let destination: Destination
+    var accessibilityId: String = "show-all-row"
+
+    var body: some View {
+        if hasMore {
+            NavigationLink(value: destination) {
+                HStack(spacing: 6) {
+                    Text("Show all \(total)")
+                    Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(AppTheme.accent)
+            }
+            .buttonStyle(.plain)
             .padding(.horizontal)
             .accessibilityIdentifier(accessibilityId)
         }

@@ -151,18 +151,40 @@ enum FreeCatalogLoader {
     /// failure must not empty the row (a throw is not an end).
     static func livePicks(from items: [LibraryItem], cap: Int) async -> [LibraryItem] {
         var out: [LibraryItem] = []
+        // 🟢 Q10a: a pick whose COVER does not load right now is not dead —
+        // the thumbnail service answers 504 for perfectly healthy items. Such
+        // a pick is DEFERRED, not dropped: the next candidate moves up, and
+        // it comes back at the end if the row still has room. Nothing is
+        // remembered about it (a service failure is never a finding).
+        var deferred: [LibraryItem] = []
         for item in items {
             guard out.count < cap else { break }
-            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
             guard item.id.hasPrefix(FreeCatalog.archivePrefix) else {
                 out.append(item)
                 continue
             }
+            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
             let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
             DeadCatalogItems.note(liveness, for: identifier)
-            if liveness != .dead { out.append(item) }
+            guard liveness != .dead else { continue }
+            if await coverLoads(for: item) { out.append(item) } else { deferred.append(item) }
         }
+        // If every cover is stuck the row shows placeholders — honestly, and
+        // never emptier than before (a service outage must not blank it).
+        for item in deferred where out.count < cap { out.append(item) }
         return out
+    }
+
+    /// Cheap cover probe for a PICK: does the thumbnail answer at all? A 5xx
+    /// or a transport failure answers false and is not written down anywhere.
+    private static func coverLoads(for item: LibraryItem) async -> Bool {
+        guard let url = FreeCatalogProvider.shared.coverURL(forItemId: item.id) else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "HEAD"
+        request.timeoutInterval = 8
+        guard let (_, response) = try? await URLSession.maer.data(for: request),
+              let http = response as? HTTPURLResponse else { return false }
+        return (200...299).contains(http.statusCode)
     }
 
     static func load() async -> Rows {
