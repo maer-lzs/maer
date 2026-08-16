@@ -74,7 +74,8 @@ struct ABSLoginForm: View {
             Section {
                 CredentialField.serverURL("e.g. audio.example.com",
                                           text: $viewModel.serverURLString,
-                                          id: "setup-url")
+                                          id: "setup-url",
+                                          service: .audiobookshelf)
             } header: {
                 Text("Server")
             }

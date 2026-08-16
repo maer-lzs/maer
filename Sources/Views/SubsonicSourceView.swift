@@ -23,7 +23,8 @@ struct SubsonicSourceView: View {
         Form {
             Section {
                 CredentialField.serverURL("Server URL", text: $serverURL,
-                                          id: "subsonic-url")
+                                          id: "subsonic-url",
+                                          service: .subsonic)
                 CredentialField.username("Username", text: $username,
                                          id: "subsonic-username")
                 CredentialField.secret("Password", text: $password,
@@ -69,6 +70,8 @@ struct SubsonicSourceView: View {
                     isTesting = true
                     Task {
                         let err = await SubsonicProvider.shared.testConnection()
+                        // d990695: only a WORKING address is remembered.
+                        if err == nil { KnownServers.remember(serverURL, service: .subsonic) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

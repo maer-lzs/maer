@@ -29,7 +29,8 @@ struct GPodderSettingsView: View {
         Form {
             Section {
                 CredentialField.serverURL("Server URL", text: $serverURL,
-                                          id: "gpodder-url")
+                                          id: "gpodder-url",
+                                          service: .gpodder)
                 CredentialField.username("Username", text: $username,
                                          id: "gpodder-username")
                 CredentialField.secret("Password", text: $password,
@@ -72,6 +73,8 @@ struct GPodderSettingsView: View {
                     isTesting = true
                     Task {
                         let err = await GPodderSync.shared.testConnection()
+                        // d990695: only a WORKING address is remembered.
+                        if err == nil { KnownServers.remember(serverURL, service: .gpodder) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

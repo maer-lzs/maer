@@ -374,7 +374,8 @@ struct PodcastSourceView: View {
             .accessibilityIdentifier("pinchflat-toggle")
             DisclosureGroup(isExpanded: $showPinchflat) {
                 CredentialField.serverURL("Server URL", text: $pinchflatURL,
-                                          id: "pinchflat-url")
+                                          id: "pinchflat-url",
+                                          service: .pinchflat)
                 // 13c5094: token FIELD + help line — no HTML scraping.
                 CredentialField.secret("Route token", text: $pinchflatToken,
                                        id: "pinchflat-token")
@@ -460,6 +461,8 @@ struct PodcastSourceView: View {
         }
         do {
             let count = try await PinchflatSync.mirror()
+            // d990695: only a WORKING address is remembered.
+            KnownServers.remember(pinchflatURL, service: .pinchflat)
             pinchflatStatus = String(localized: "Connected — \(count) channels in the group.")
         } catch PinchflatClient.FetchError.unauthorized {
             pinchflatStatus = String(localized: "The server rejected the token or login (401).")

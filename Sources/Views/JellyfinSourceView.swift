@@ -23,7 +23,8 @@ struct JellyfinSourceView: View {
         Form {
             Section {
                 CredentialField.serverURL("Server URL", text: $serverURL,
-                                          id: "jellyfin-url")
+                                          id: "jellyfin-url",
+                                          service: .jellyfin)
                 CredentialField.username("Username", text: $username,
                                          id: "jellyfin-username")
                 CredentialField.secret("Password", text: $password,
@@ -49,6 +50,8 @@ struct JellyfinSourceView: View {
                     isTesting = true
                     Task {
                         let err = await JellyfinProvider.shared.testConnection()
+                        // d990695: only a WORKING address is remembered.
+                        if err == nil { KnownServers.remember(serverURL, service: .jellyfin) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
                     }

@@ -517,6 +517,16 @@ struct LibraryView: View {
             // the podcast progress or not at all.
             MaerPlaylistCloudSync.shared.start()
             PremiumClassificationCloudSync.shared.start()
+            // d990695 (4): one-off backfill — the addresses already
+            // configured move into the register, so the memory is not empty
+            // on the first launch after the update.
+            KnownServers.backfill([
+                (KeychainStore.load(forKey: KeychainKey.serverURL) ?? "", .audiobookshelf),
+                (AppStorageKeys.subsonicServerURLValue, .subsonic),
+                (AppStorageKeys.jellyfinServerURLValue, .jellyfin),
+                (AppStorageKeys.gpodderServerURLValue, .gpodder),
+                (PinchflatClient.serverURL?.absoluteString ?? "", .pinchflat),
+            ].filter { !$0.0.isEmpty })
         }
         .fullScreenCover(isPresented: Binding(
             get: { driveMode.isActive },

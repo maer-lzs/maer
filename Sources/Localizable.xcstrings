@@ -24,6 +24,16 @@
         }
       }
     },
+    "Remove" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernen"
+          }
+        }
+      }
+    },
     "Show all %lld" : {
       "localizations" : {
         "de" : {

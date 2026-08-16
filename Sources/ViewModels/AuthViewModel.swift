@@ -128,6 +128,9 @@ final class AuthViewModel: ObservableObject {
         apiClient.updateToken(token)
         do {
             _ = try await apiClient.fetchLibraries()
+            // d990695: a WORKING address goes into the known-server register —
+            // only on success, never credentials, never logged.
+            KnownServers.remember(url.absoluteString, service: .audiobookshelf)
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
             KeychainStore.save(token, forKey: KeychainKey.apiToken)
             apiToken = ""
