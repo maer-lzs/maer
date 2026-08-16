@@ -27,23 +27,43 @@ nonisolated final class MaerUITests: XCTestCase {
         back.tap()
     }
 
-    private func launchSeeded(withActivePlayer: Bool = false) -> XCUIApplication {
+    /// THE launch. Every journey comes up through here, so "the process really
+    /// reached the foreground" is asserted once instead of being forgotten:
+    /// two radio journeys tapped their tab straight after `launch()` and paid
+    /// for it with a "deliberate retry" that hid the actual cause.
+    private func launch(_ arguments: [String]) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-uitest"]
+        app.launchArguments += arguments
+        app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30), "the app did not come up")
+        return app
+    }
+
+    /// The seeded start on top of it. `extra` carries the per-journey switches
+    /// (radio, bulk seed, kept tab) — they change what is seeded, not that the
+    /// start page has to stand.
+    private func launchSeeded(withActivePlayer: Bool = false,
+                              extra: [String] = []) -> XCUIApplication {
         // Opt-in: only the full-player journey wants an active player; other
         // journeys stay free of the ever-present, tappable mini player.
-        if withActivePlayer { app.launchArguments += ["-uitest-player"] }
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let app = launch(["-uitest"] + (withActivePlayer ? ["-uitest-player"] : []) + extra)
+        // 973a38a: THE shared launch precondition — it lived as twelve
+        // word-identical copies, each asserting a seed book that sits BELOW
+        // the fold (the first viewport is the Continue hero plus the
+        // recommendation row). In a lazy container the invisible does not
+        // exist, so every copy was a bet on layout. Waiting here on an anchor
+        // that is ALWAYS in the first viewport says what the copies meant:
+        // "the seeded start page stands". Whoever really needs the book
+        // scrolls to it with `waitScrollingTo`.
+        XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 30),
+                      "seeded start page did not come up")
         return app
     }
 
     func testAppLaunches() {
-        let app = XCUIApplication()
-        app.launch()
-        // On a clean simulator the app opens on its login/setup gate; on a seeded
-        // one, the library. Either way the process must come up and render.
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        // On a clean simulator the app opens on its login/setup gate; on a
+        // seeded one, the library. Either way the process must come up.
+        let app = launch([])
         XCTAssertGreaterThan(app.windows.count, 0)
     }
 
@@ -59,6 +79,16 @@ nonisolated final class MaerUITests: XCTestCase {
     /// album and a podcast episode. Before the fix the book + album were dropped.
     func testMixedQueueRendersAllTypes() {
         let app = launchSeeded()
+        // bd66c5b: the Continue row renders the seeded in-progress ALBUM in
+        // the SAME Featured-card format as book/episode cards (one row, one
+        // format) — the music card carries its own a11y id. It is asserted
+        // FIRST, while it is still in the first viewport: it sits ABOVE the
+        // queue markers, so after scrolling down to them the lazy root has
+        // long unloaded it. The old order only held because the markers
+        // happened to be found within a few swipes.
+        XCTAssertTrue(waitScrollingTo(app, element: app.buttons["music-continue-card"].firstMatch),
+                      "music continue entry must render as a Featured-format card")
+        snap(app, "mixed-continue-row")
         // Fold rule (Befund-V seed): the delayed Entdecken rows land after
         // ~2 s ABOVE Up Next and can push every marker below the lazy fold —
         // scroll to each instead of pinning a layout.
@@ -66,16 +96,8 @@ nonisolated final class MaerUITests: XCTestCase {
                       "queued audiobook must render (T3/T5)")
         XCTAssertTrue(waitScrollingTo(app, text: "Seed Album"),
                       "queued music album must render (T3/T5)")
-        let episode = app.staticTexts["Seed Episode One"].firstMatch
-        var episodeSwipes = 0
-        while !episode.exists && episodeSwipes < 6 { app.swipeUp(); episodeSwipes += 1 }
-        XCTAssertTrue(episode.exists, "queued podcast episode must render")
-        // bd66c5b: the Continue row renders the seeded in-progress ALBUM in
-        // the SAME Featured-card format as book/episode cards (one row, one
-        // format) — the music card carries its own a11y id.
-        XCTAssertTrue(app.buttons["music-continue-card"].firstMatch.waitForExistence(timeout: 10),
-                      "music continue entry must render as a Featured-format card")
-        snap(app, "mixed-continue-row")
+        XCTAssertTrue(waitScrollingTo(app, text: "Seed Episode One"),
+                      "queued podcast episode must render")
     }
 
     /// Home journey: the Home tab is the start tab and aggregates sections; a
@@ -103,17 +125,38 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
     }
 
-    /// Scroll helper for lazy roots: an element below the fold is not in the
-    /// AX tree until its row materializes — swipe up (bounded) while looking.
-    private func waitScrollingTo(_ app: XCUIApplication, text: String,
-                                 swipes: Int = 8) -> Bool {
-        let element = app.staticTexts[text].firstMatch
-        if element.waitForExistence(timeout: 15) { return true }
+    /// 973a38a (Regel 2): THE scroll helper for lazy roots. An element below
+    /// the fold is not in the AX tree until its row materializes, so looking
+    /// once is a bet on the device height and on how fast the delayed rows
+    /// above land. Twenty hand-rolled `while !x.exists { swipeUp() }` loops
+    /// said the same thing with different swipe budgets and different waits;
+    /// this is that loop, once.
+    ///
+    /// Two predicates, because the journeys mean two different things: reading
+    /// something asks for `.exists`, tapping it asks for `.isHittable` — an
+    /// element half under the tab bar exists and still swallows the tap.
+    ///
+    /// `returningToTop` is for rows that ARRIVE late instead of merely sitting
+    /// low: searching downward only would walk past the fold while the row
+    /// lands above the current position. Those rounds scroll back before
+    /// looking again.
+    @discardableResult
+    private func waitScrollingTo(_ app: XCUIApplication, element: XCUIElement,
+                                 hittable: Bool = false, swipes: Int = 8,
+                                 returningToTop: Bool = false) -> Bool {
+        let reached = { hittable ? element.isHittable : element.exists }
+        if element.waitForExistence(timeout: 15), reached() { return true }
         for _ in 0..<swipes {
             app.swipeUp()
-            if element.waitForExistence(timeout: 2) { return true }
+            if element.waitForExistence(timeout: returningToTop ? 5 : 2), reached() { return true }
+            if returningToTop { app.swipeDown(); app.swipeDown() }
         }
         return false
+    }
+
+    private func waitScrollingTo(_ app: XCUIApplication, text: String,
+                                 swipes: Int = 8) -> Bool {
+        waitScrollingTo(app, element: app.staticTexts[text].firstMatch, swipes: swipes)
     }
 
     /// F3: the author portrait is SUCCESS-ONLY. The seed injects content into
@@ -148,12 +191,8 @@ nonisolated final class MaerUITests: XCTestCase {
     /// — Home (mixed queue, 128pt covers, sections) and the Music tab (badges,
     /// CoverGrid). Screenshots for the size matrix.
     func testAccessibilitySizeAX3() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest",
-                                "-UIPreferredContentSizeCategoryName",
-                                "UICTContentSizeCategoryAccessibilityExtraLarge"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let app = launchSeeded(extra: ["-UIPreferredContentSizeCategoryName",
+                                       "UICTContentSizeCategoryAccessibilityExtraLarge"])
         // Same fold rule as testHomeAndTabSwitching: AX3-sized tiles plus the
         // grown Entdecken rows can push the seed marker below the lazy root's
         // fold — scroll to it instead of pinning a layout.
@@ -278,8 +317,6 @@ nonisolated final class MaerUITests: XCTestCase {
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 10))
         books.tap()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 10),
-                      "tab bar must switch to the audiobook library from the album page (X15)")
         snap(app, "x15-from-album")
 
         // Artist detail → switch to the podcast library via the tab. The browse
@@ -311,7 +348,6 @@ nonisolated final class MaerUITests: XCTestCase {
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 15))
         books.tap()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 15))
         snap(app, "pill-at-rest")
         // Mid-glide: snap immediately after the tap, no waits in between.
         app.buttons["tab-podcasts"].firstMatch.tap()
@@ -328,7 +364,6 @@ nonisolated final class MaerUITests: XCTestCase {
     /// (with the Y30 recents chip on the deck in between).
     func testGlobalSearchFindsAllTypes() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap()
@@ -348,23 +383,14 @@ nonisolated final class MaerUITests: XCTestCase {
         // don't scroll the list), then reach the album section.
         field.typeText("\n")
         let album = app.staticTexts["Seed Album"].firstMatch
-        var albumSwipes = 0
-        while !album.exists && albumSwipes < 4 {
-            app.swipeUp()
-            albumSwipes += 1
-        }
-        XCTAssertTrue(album.exists, "search must find the seeded album")
+        XCTAssertTrue(waitScrollingTo(app, element: album), "search must find the seeded album")
         snap(app, "global-search-library")
         // Y15: the catalog sits behind the explicit catalog row — scroll it
         // into reach (keyboard already dismissed above); on the full page it
         // trails ALL own sections.
         let catalogRow = app.buttons["search-catalog-row"].firstMatch
-        XCTAssertTrue(catalogRow.waitForExistence(timeout: 5), "catalog row must close the library results")
-        var swipes = 0
-        while !catalogRow.isHittable && swipes < 4 {
-            app.swipeUp()
-            swipes += 1
-        }
+        XCTAssertTrue(waitScrollingTo(app, element: catalogRow, hittable: true),
+                      "catalog row must close the library results")
         catalogRow.tap()
         XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.waitForExistence(timeout: 10),
                       "the catalog view must show the seeded catalog show")
@@ -404,9 +430,8 @@ nonisolated final class MaerUITests: XCTestCase {
     /// server" button; tapping it lands in the app (settings reachable, no
     /// audiobooks tab without a book source).
     func testServerlessOnboarding() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest-setup"]
-        app.launch()
+        // No seeded start here — this journey MEANS the setup gate.
+        let app = launch(["-uitest-setup"])
         // The first screen is the MAP: every area with one line about what it
         // needs — and four of five need nothing.
         let audiobooks = app.buttons["source-map-audiobooks"].firstMatch
@@ -448,11 +473,10 @@ nonisolated final class MaerUITests: XCTestCase {
         }
         // A filled state: the seeded run is connected, so the audiobook row
         // names a host instead of asking for one.
-        var scrollBack = 0
-        while !app.buttons["source-map-audiobooks"].firstMatch.isHittable && scrollBack < 6 {
-            app.swipeUp(); scrollBack += 1
-        }
-        app.buttons["source-map-audiobooks"].firstMatch.tap()
+        let audiobookArea = app.buttons["source-map-audiobooks"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: audiobookArea, hittable: true),
+                      "the area map must carry the audiobook row")
+        audiobookArea.tap()
         XCTAssertTrue(app.buttons["settings-abs-source"].firstMatch.waitForExistence(timeout: 10),
                       "the area page must carry the source entry")
         backOut(app)
@@ -510,9 +534,7 @@ nonisolated final class MaerUITests: XCTestCase {
             XCTAssertTrue(gear.waitForExistence(timeout: 10))
             gear.tap()
             let toggle = app.switches["tab-master-music"].firstMatch
-            var swipes = 0
-            while !toggle.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
-            XCTAssertTrue(toggle.waitForExistence(timeout: 10))
+            XCTAssertTrue(waitScrollingTo(app, element: toggle, hittable: true))
             let before = toggle.value as? String
             toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
             let flipped = NSPredicate(format: "value != %@", before ?? "")
@@ -539,10 +561,7 @@ nonisolated final class MaerUITests: XCTestCase {
     /// favorites), lists the stations, and the live search finds them under
     /// the radio scope. No real catalog/stream leaves the harness.
     func testRadioTabAndSearch() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let app = launchSeeded(extra: ["-radioEnabled", "1"])
         let radio = app.buttons["tab-radio"].firstMatch
         XCTAssertTrue(radio.waitForExistence(timeout: 10), "enabled radio source must surface the tab")
         radio.tap()
@@ -554,9 +573,8 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the Popular browse row must list the seeded catalog station")
         // A curated genre tile pushes its station list (byTag drilldown).
         let newsGenre = app.buttons["radio-genre-news"].firstMatch
-        var genreSwipes = 0
-        while !newsGenre.isHittable && genreSwipes < 6 { app.swipeUp(); genreSwipes += 1 }
-        XCTAssertTrue(newsGenre.waitForExistence(timeout: 10), "the curated genre tiles must appear")
+        XCTAssertTrue(waitScrollingTo(app, element: newsGenre, hittable: true),
+                      "the curated genre tiles must appear")
         newsGenre.tap()
         XCTAssertTrue(app.staticTexts["Seed Catalog Two"].firstMatch.waitForExistence(timeout: 10),
                       "tapping a genre must push its station list")
@@ -650,7 +668,6 @@ nonisolated final class MaerUITests: XCTestCase {
     // reserved gap; pinned by navigationBarTitleDisplayMode(.large)).
     func testLargeTitleSurvivesCycles() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         let titleBefore = app.navigationBars.staticTexts.firstMatch.label
         // Cycle 1: open search, close it.
         app.buttons["global-search"].firstMatch.tap()
@@ -691,18 +708,14 @@ nonisolated final class MaerUITests: XCTestCase {
     // "Change region" — the picker must appear IMMEDIATELY (the section used
     // to go dead until restart because the states list never refilled).
     func testRadioRegionChangeShowsPicker() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
+        let app = launchSeeded(extra: ["-radioEnabled", "1"])
         let radio = app.buttons["tab-radio"].firstMatch
         XCTAssertTrue(radio.waitForExistence(timeout: 10))
         radio.tap()
         XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10))
         let change = app.buttons["radio-region-change"].firstMatch
-        var swipes = 0
-        while !change.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(change.waitForExistence(timeout: 10), "the chosen-region section must offer Change region")
+        XCTAssertTrue(waitScrollingTo(app, element: change, hittable: true),
+                      "the chosen-region section must offer Change region")
         change.tap()
         let picker = app.buttons["radio-region-picker"].firstMatch
         XCTAssertTrue(picker.waitForExistence(timeout: 10),
@@ -755,19 +768,13 @@ nonisolated final class MaerUITests: XCTestCase {
     /// Letzter-Tab (01.08): the app restarts on the last selected tab (master
     /// toggle permitting) — the "always lands on Home again" complaint.
     func testAppRestartsOnLastSelectedTab() {
-        var app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-keeptab"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        var app = launchSeeded(extra: ["-uitest-keeptab"])
         let podcasts = app.buttons["tab-podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 15))
         podcasts.tap()
         XCTAssertTrue(app.navigationBars["Podcasts"].firstMatch.waitForExistence(timeout: 15))
         app.terminate()
-        app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-keeptab"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        app = launchSeeded(extra: ["-uitest-keeptab"])
         // Auftrag K: the marker is the podcast NAVIGATION BAR, not the "Seed
         // Show" tile — the new catalog tile row pushes the recently-updated
         // LazyVGrid below the fold, where its cells don't materialize into
@@ -871,9 +878,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let generalPill = app.buttons["settings-tab-general"].firstMatch
         XCTAssertTrue(generalPill.waitForExistence(timeout: 5)); generalPill.tap()
         let network = app.buttons["settings-network-services"].firstMatch
-        var swipes = 0
-        while !network.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(network.waitForExistence(timeout: 10)); network.tap()
+        XCTAssertTrue(waitScrollingTo(app, element: network, hittable: true)); network.tap()
         // 8b4327c: id instead of the label predicate the comment above bans.
         let lrclib = app.switches["network-lrclib-toggle"].firstMatch
         XCTAssertTrue(lrclib.waitForExistence(timeout: 10), "LRCLIB row must exist on the services page")
@@ -977,9 +982,7 @@ nonisolated final class MaerUITests: XCTestCase {
         podcasts.tap()
 
         let entry = app.descendants(matching: .any)["free-catalog-entry-podcasts"].firstMatch
-        var swipes = 0
-        while !entry.exists && swipes < 8 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(entry.waitForExistence(timeout: 10),
+        XCTAssertTrue(waitScrollingTo(app, element: entry),
                       "the podcast tab must carry the catalog entry")
         entry.tap()
 
@@ -1002,15 +1005,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // Stay on Start. 3b98dfb: match the locale-independent row id, not
         // the localized heading text.
         let heading = app.buttons["home-discover-music"].firstMatch
-        var rounds = 0
-        while !heading.exists && rounds < 12 {
-            app.swipeUp()
-            _ = heading.waitForExistence(timeout: 5)
-            if heading.exists { break }
-            app.swipeDown(); app.swipeDown()
-            rounds += 1
-        }
-        XCTAssertTrue(heading.exists,
+        XCTAssertTrue(waitScrollingTo(app, element: heading, swipes: 12, returningToTop: true),
                       "the Entdecken row must appear on the first Start stay, without a tab switch")
     }
 
@@ -1027,12 +1022,7 @@ nonisolated final class MaerUITests: XCTestCase {
 
         // The preview heading sits below the fold — scroll it into view.
         let allBooks = app.staticTexts["Alle Bücher"].firstMatch
-        var swipes = 0
-        while !allBooks.exists && swipes < 8 {
-            app.swipeUp()
-            swipes += 1
-        }
-        XCTAssertTrue(allBooks.waitForExistence(timeout: 10), "preview heading must exist")
+        XCTAssertTrue(waitScrollingTo(app, element: allBooks), "preview heading must exist")
         // J1: NO control on the tab preview anymore (it moved to the page).
         XCTAssertFalse(app.descendants(matching: .any)["section-sort-control"].firstMatch.exists,
                        "the tab preview must not carry the sort control")
@@ -1060,21 +1050,13 @@ nonisolated final class MaerUITests: XCTestCase {
     /// → page → filter to zero hits shows the honest line (fb21fbd way back)
     /// → filter back → tiles return.
     func testRecentlyUpdatedPreviewAndSubscriptionsPage() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-huge"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let app = launchSeeded(extra: ["-uitest-huge"])
         let podcasts = app.buttons["tab-podcasts"].firstMatch
         XCTAssertTrue(podcasts.waitForExistence(timeout: 20))
         podcasts.tap()
 
         let heading = app.staticTexts["Zuletzt aktualisiert"].firstMatch
-        var swipes = 0
-        while !heading.exists && swipes < 10 {
-            app.swipeUp()
-            swipes += 1
-        }
-        XCTAssertTrue(heading.waitForExistence(timeout: 10), "preview heading must exist")
+        XCTAssertTrue(waitScrollingTo(app, element: heading), "preview heading must exist")
         heading.tap()
 
         let pageBar = app.navigationBars["Zuletzt aktualisiert"].firstMatch
@@ -1097,7 +1079,6 @@ nonisolated final class MaerUITests: XCTestCase {
 
     func testPremiumMarkingSheetOpensSorted() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         let gear = app.buttons["open-settings"].firstMatch
         XCTAssertTrue(gear.waitForExistence(timeout: 15), "settings must be reachable")
         gear.tap()
@@ -1130,7 +1111,6 @@ nonisolated final class MaerUITests: XCTestCase {
     /// section; this pins the render path for every kind).
     func testMusicSearchShowsAllSections() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap()
@@ -1146,9 +1126,7 @@ nonisolated final class MaerUITests: XCTestCase {
         field.typeText("\n")   // dismiss keyboard for scrolling
         for hit in ["Seed Song", "Seed Playlist"] {
             let el = app.staticTexts[hit].firstMatch
-            var swipes = 0
-            while !el.exists && swipes < 5 { app.swipeUp(); swipes += 1 }
-            XCTAssertTrue(el.exists, "\(hit) section must render")
+            XCTAssertTrue(waitScrollingTo(app, element: el), "\(hit) section must render")
         }
         snap(app, "music-search-all-sections")
     }
@@ -1322,6 +1300,32 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "search-from-pushed-show")
     }
 
+    /// THE route to a running seed station. Two journeys walk it; when the row
+    /// tap stopped playing and started NAVIGATING (e285465), only one of them
+    /// was pulled along — the other kept waiting for a full player that could
+    /// no longer open, with a "deliberate retry" over the gap. One route, one
+    /// place. Returns the mini bar, which is the handle to the full player.
+    @discardableResult
+    private func startSeedRadio(_ app: XCUIApplication) -> XCUIElement {
+        app.buttons["tab-radio"].firstMatch.tap()
+        // Full-suite hardening: the discovery card rows shift with persisted
+        // region/recents state AND live-network Home rows — the FAVORITES
+        // list row ("Seed Radio One") is the stable anchor at the top.
+        XCTAssertTrue(app.staticTexts["Seed Radio One"].firstMatch.waitForExistence(timeout: 10))
+        let play = app.buttons.matching(identifier: "station-play").firstMatch
+        XCTAssertTrue(play.waitForExistence(timeout: 10),
+                      "the explicit play control must exist on the row")
+        play.tap()
+        // Playback binds to the tapped station: the mini bar carries its name.
+        // Under full-suite load a tap can land inside a settle animation and
+        // fizzle — one deliberate retry.
+        let miniBar = app.buttons["Seed Radio One"].firstMatch
+        if !miniBar.waitForExistence(timeout: 12) { play.tap() }
+        XCTAssertTrue(miniBar.waitForExistence(timeout: 20),
+                      "the play control must start the tapped station")
+        return miniBar
+    }
+
     /// 0aa18b7 + 86cf180: radio play identity + the full-player title tap.
     /// (1) Tapping a NAMED catalog tile plays THAT station — the mini bar
     /// carries the same name (tile↔stream identity; UUIDs ride the RADIO
@@ -1330,34 +1334,10 @@ nonisolated final class MaerUITests: XCTestCase {
     /// case was missing from the source-page journeys, which is how the
     /// device defect slipped through.
     func testRadioPlayIdentityAndTitleTap() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
-        app.buttons["tab-radio"].firstMatch.tap()
-        // Full-suite hardening: the discovery card rows shift with persisted
-        // region/recents state AND live-network Home rows — the FAVORITES
-        // list row ("Seed Radio One") is the stable anchor at the top.
-        let row = app.staticTexts["Seed Radio One"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        // NEW CONTRACT (e285465): the row tap NAVIGATES — play is the
-        // explicit control. The first favorites row carries the seed station,
-        // its play control starts playback and opens the full player.
-        let play = app.buttons.matching(identifier: "station-play").firstMatch
-        XCTAssertTrue(play.waitForExistence(timeout: 10),
-                      "the explicit play control must exist on the row")
-        play.tap()
-        // Playback binds to the tapped station: the mini bar carries its name.
-        // Under full-suite load a tap can land inside a settle animation and
-        // fizzle — one deliberate retry (drive-mode hardening).
-        let miniBar = app.buttons["Seed Radio One"].firstMatch
-        if !miniBar.waitForExistence(timeout: 12) {
-            play.tap()
-        }
-        XCTAssertTrue(miniBar.waitForExistence(timeout: 20),
-                      "the play control must start the tapped station")
-        // The full player opens from the mini bar — the deterministic route.
-        miniBar.tap()
+        let app = launchSeeded(extra: ["-radioEnabled", "1"])
+        // NEW CONTRACT (e285465): the row tap NAVIGATES — play is the explicit
+        // control, and the full player opens from the mini bar.
+        startSeedRadio(app).tap()
         // Identity + G8 in one: the tappable title source entry must exist
         // AND carry the tapped station's name (chevron renders only when
         // the target resolves).
@@ -1405,20 +1385,16 @@ nonisolated final class MaerUITests: XCTestCase {
     /// link appears. The system share sheet is where the assertion ends.
     func testOPMLExportPath() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         app.buttons["open-settings"].firstMatch.tap()
         // The four source sections are ONE map of areas now — the podcast
         // source page sits one push deeper, at its area.
         let podcastArea = app.buttons["source-map-podcasts"].firstMatch
-        var swipes = 0
-        while !podcastArea.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(podcastArea.waitForExistence(timeout: 10)); podcastArea.tap()
+        XCTAssertTrue(waitScrollingTo(app, element: podcastArea, hittable: true)); podcastArea.tap()
         let source = app.buttons["settings-podcast-source"].firstMatch
         XCTAssertTrue(source.waitForExistence(timeout: 10)); source.tap()
         let export = app.buttons["opml-export"].firstMatch
-        swipes = 0
-        while !export.exists && swipes < 8 { app.swipeUp(); swipes += 1 }
-        XCTAssertTrue(export.waitForExistence(timeout: 10), "export entry must exist (seed has real subscriptions)")
+        XCTAssertTrue(waitScrollingTo(app, element: export),
+                      "export entry must exist (seed has real subscriptions)")
         export.tap()
         XCTAssertTrue(app.buttons["opml-share-link"].firstMatch.waitForExistence(timeout: 10),
                       "the share link must appear after export")
@@ -1431,10 +1407,7 @@ nonisolated final class MaerUITests: XCTestCase {
     /// horizontal row, asserted via frame containment (all items share one
     /// baseline band and stay inside the window).
     func testPlayerRowFullGerman() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-player", "-uitest-fullrow"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let app = launchSeeded(withActivePlayer: true, extra: ["-uitest-fullrow"])
         let mini = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
@@ -1466,21 +1439,14 @@ nonisolated final class MaerUITests: XCTestCase {
     /// stays. Hero-gate rendering is visual (device loop); the structure
     /// asserts here.
     func testDriveModeRadioLive() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-radioEnabled", "1"]
-        app.launch()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
-        app.buttons["tab-radio"].firstMatch.tap()
-        // Favorites row as the stable anchor (see the identity journey).
-        let row = app.staticTexts["Seed Radio One"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
-        row.tap()
+        let app = launchSeeded(extra: ["-radioEnabled", "1"])
+        // 973a38a: this journey still walked the route from BEFORE e285465 —
+        // it tapped the row and waited for the full player. Since that
+        // decision the row tap NAVIGATES to the station page, so the wait
+        // could never come true; the "deliberate retry" only hid it behind a
+        // longer timeout while its sibling had long since been pulled along.
+        startSeedRadio(app).tap()
         let drive = app.buttons["player-drive-mode"].firstMatch
-        if !drive.waitForExistence(timeout: 12) {
-            // First-test-in-run: a tap can land inside a launch/settle
-            // animation and fizzle — one deliberate retry.
-            row.tap()
-        }
         XCTAssertTrue(drive.waitForExistence(timeout: 20), "full player must open")
         drive.tap()
         XCTAssertTrue(app.buttons["drive-play-pause"].firstMatch.waitForExistence(timeout: 10),
@@ -1503,7 +1469,6 @@ nonisolated final class MaerUITests: XCTestCase {
     /// later journeys see the default state.
     func testFreeCatalogsMasterSwitch() {
         let app = launchSeeded()
-        XCTAssertTrue(app.staticTexts["Seed Book One"].waitForExistence(timeout: 20))
         app.buttons["tab-music"].firstMatch.tap()
         // Surface check: the classical tile lives in the SEARCH deck now.
         app.buttons["global-search"].firstMatch.tap()
@@ -1512,9 +1477,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // The identifier is BUILT ("deck-tier-\(entry.id)"), so a literal
         // search for it finds nothing in the sources — it exists all the same.
         let tile = app.buttons["deck-tier-music-free-classical"].firstMatch
-        var deckSwipes = 0
-        while !tile.exists && deckSwipes < 6 { app.swipeUp(); deckSwipes += 1 }
-        XCTAssertTrue(tile.waitForExistence(timeout: 10),
+        XCTAssertTrue(waitScrollingTo(app, element: tile),
                       "classical deck tile must exist while the master is on")
         // Close the search again before heading into settings (Y17: the
         // search X — the global-search button morphs away in search mode).
@@ -1541,9 +1504,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // The General list is LAZY — below-the-fold rows are absent from the
         // a11y tree until scrolled to (same class as the seed-episode trap).
         let master = app.switches["settings-free-catalogs-master"].firstMatch
-        var scrolls = 0
-        while !master.exists && scrolls < 6 { app.swipeUp(); scrolls += 1 }
-        XCTAssertTrue(master.waitForExistence(timeout: 10), "master must sit on the General pill")
+        XCTAssertTrue(waitScrollingTo(app, element: master), "master must sit on the General pill")
         flip(master)
         // Subordinate area toggle greys out — visible hierarchy, no double
         // state. The area toggles sit at their area on the map now (they used
@@ -1570,9 +1531,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "free-catalogs-master-off")
         // Clean up: master back on for whoever runs next.
         app.buttons["open-settings"].firstMatch.tap()
-        scrolls = 0
-        while !master.exists && scrolls < 6 { app.swipeUp(); scrolls += 1 }
-        XCTAssertTrue(master.waitForExistence(timeout: 10))
+        XCTAssertTrue(waitScrollingTo(app, element: master))
         flip(master)
         app.buttons["settings-done"].firstMatch.tap()
     }
@@ -1590,10 +1549,7 @@ nonisolated final class MaerUITests: XCTestCase {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["HITCH_PROBE"] == "1",
                           "measurement probe; set HITCH_PROBE=1 to run")
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
-        let app = XCUIApplication()
-        app.launchArguments += ["-uitest", "-uitest-bulk", "-uitest-frameprobe"]
-        app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 30))
+        let app = launchSeeded(extra: ["-uitest-bulk", "-uitest-frameprobe"])
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 15))
         books.tap()

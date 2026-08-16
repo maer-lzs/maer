@@ -545,3 +545,74 @@ extension ProjectFileIntegrityTests {
                 "die Startregel ist wieder kopiert statt gefragt")
     }
 }
+
+
+// MARK: - 973a38a: one precondition, one scroll helper
+
+extension ProjectFileIntegrityTests {
+    /// The journey file as text — the fences here measure its SHAPE, because a
+    /// UI test cannot measure itself.
+    private static func journeyText() throws -> String {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        return try String(contentsOf: root.appendingPathComponent(
+            "ABSPlayerUITests/MaerUITests.swift"), encoding: .utf8)
+    }
+
+    /// Every hand-rolled loop of the shape
+    /// `while !x.exists/.isHittable && n < N { app.swipeUp(); n += 1 }`.
+    /// Whitespace-collapsed, so a line break cannot hide one.
+    static func handRolledScrollLoops(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        let pattern = #"while!\w+(\.firstMatch)?\.(exists|isHittable)&&\w+<\d+\{app\.swipeUp\(\)"#
+        let re = try? NSRegularExpression(pattern: pattern)
+        return re?.numberOfMatches(in: collapsed,
+                                   range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
+    }
+
+    @Test("die Journeys rollen die Scroll-Suche nicht selbst")
+    func journeysUseTheSharedScrollHelper() throws {
+        #expect(Self.handRolledScrollLoops(in: try Self.journeyText()) == 0,
+                "a journey searches with its own swipe loop again instead of waitScrollingTo")
+    }
+
+    /// Proof run: the fence must catch the shape that shipped — single-line as
+    /// well as multi-line, with both predicates.
+    @Test("der Scroll-Zaun faengt die ausgelieferten Formen")
+    func scrollFenceCatchesTheShippedShapes() {
+        #expect(Self.handRolledScrollLoops(
+            in: "while !toggle.isHittable && swipes < 6 { app.swipeUp(); swipes += 1 }") == 1)
+        #expect(Self.handRolledScrollLoops(in: """
+                while !album.exists && albumSwipes < 4 {
+                    app.swipeUp()
+                    albumSwipes += 1
+                }
+        """) == 1)
+        // The shared helper itself is no violation.
+        #expect(Self.handRolledScrollLoops(
+            in: "for _ in 0..<swipes { app.swipeUp() }") == 0)
+    }
+
+    /// The start precondition belongs in `launchSeeded` — one place, not
+    /// twelve copies, and none that bets on an element below the fold.
+    @Test("die Start-Vorbedingung steht genau einmal, im geteilten Start")
+    func launchPreconditionLivesInLaunchSeeded() throws {
+        let text = try Self.journeyText()
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(!collapsed.contains(#"staticTexts["SeedBookOne"].waitForExistence"#),
+                "a journey bets on the seed book being in the first viewport again")
+        #expect(text.contains(#"app.buttons["open-settings"].firstMatch.waitForExistence"#),
+                "the shared launch lost its precondition")
+    }
+
+    @Test("nur der geteilte Start baut die App auf")
+    func journeysLaunchThroughTheSharedEntry() throws {
+        // Exactly ONE place may build the app — the shared `launch`. Everything
+        // else forgot the foreground wait once already, which is why the radio
+        // journeys tapped into a launch animation.
+        let collapsed = try Self.journeyText()
+            .components(separatedBy: .whitespacesAndNewlines).joined()
+        let builds = collapsed.components(separatedBy: "XCUIApplication()").count - 1
+        #expect(builds == 1, "a journey builds the app itself again (\(builds) places)")
+    }
+}
