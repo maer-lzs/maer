@@ -13,11 +13,16 @@ import Combine
 struct PlayQueueSheet: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
+    /// The queue lives INSIDE a sheet, so the root's playlist host cannot
+    /// present over it — this hierarchy carries its own.
+    @State private var playlistHost = UUID()
+
     var body: some View {
         NavigationStack {
             PlayQueueView(playerCoordinator: playerCoordinator)
         }
         .presentationDragIndicator(.visible)
+        .playlistDialogs(id: playlistHost)
     }
 }
 
@@ -25,9 +30,8 @@ struct PlayQueueSheet: View {
 /// (`.onMove`/EditButton), swipe to remove, tap a row to play it (and remove it
 /// from the queue). Rows render uniformly via `PlayQueueRow`.
 struct PlayQueueView: View {
-    @State private var showSaveSheet = false
-    @State private var newListName = ""
     @ObservedObject var playerCoordinator: PlayerCoordinator
+    @Environment(\.playlistHost) private var playlistHost
     @ObservedObject private var queue = PlayQueue.shared
 
     var body: some View {
@@ -66,23 +70,18 @@ struct PlayQueueView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showSaveSheet = true
+                    // ERWEITERUNG 7baf2c2 Punkt 4: die naheliegendste Art,
+                    // eine Playlist anzulegen — statt jeden Titel einzeln zu
+                    // suchen. Runs through the ONE create dialog, so a queued
+                    // ALBUM lands as its songs here too.
+                    PlaylistPresenter.shared.askToCreate(place: .device,
+                                                         ids: PlayQueue.shared.ids,
+                                                         host: playlistHost)
                 } label: { Image(systemName: "text.badge.plus") }
                 .accessibilityLabel(Text("Save as Playlist"))
                 .accessibilityIdentifier("queue-save-as-playlist")
                 .disabled(PlayQueue.shared.ids.isEmpty)
             }
-        }
-        .alert("Save as Playlist", isPresented: $showSaveSheet) {
-            TextField("Name", text: $newListName)
-            Button("Create") {
-                // ERWEITERUNG 7baf2c2 Punkt 4: die naheliegendste Art, eine
-                // Playlist anzulegen — statt jeden Titel einzeln zu suchen.
-                let name = newListName.isEmpty ? String(localized: "Playlist") : newListName
-                MaerPlaylists.shared.create(name: name, itemIds: PlayQueue.shared.ids)
-                newListName = ""
-            }
-            Button("Cancel", role: .cancel) { newListName = "" }
         }
         .toolbar {
             if !queue.isEmpty {

@@ -759,4 +759,87 @@ extension ProjectFileIntegrityTests {
             ".containerRelativeFrame(.horizontal, count: 6, span: 1, spacing: 12)") == 1)
         #expect(Self.ownSlotSites(in: ".cardRowSlot(spacing: 14)") == 0)
     }
+
+    // MARK: - Playlisten: ein Weg hinein, ein Ort der Anlage
+
+    /// Every source file, so a sweep sees the whole class instead of the
+    /// files someone remembered.
+    static func sourceFiles() -> [URL] {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        return FileManager.default.enumerator(
+            at: root.appendingPathComponent("Sources"), includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" } ?? []
+    }
+
+    /// The surfaces that used to carry their own way into the playlists: a
+    /// server-only sheet with its own binding, a device-only menu, a target
+    /// type per call site. Statement-based, because the calls span lines.
+    static func ownPlaylistRoutes(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return ["MaerPlaylistMenu(", "AddToPlaylistTarget(", ".addToPlaylistSheet(",
+                "MaerPlaylistPresenter."]
+            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("keine Flaeche haelt sich einen eigenen Playlist-Weg")
+    func playlistRoutesAreShared() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if Self.ownPlaylistRoutes(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces carry their own playlist route again: \(offenders)")
+    }
+
+    /// Proof run on the three shapes that shipped — the server-only sheet, its
+    /// target type and the device-only menu.
+    @Test("der Playlist-Weg-Zaun faengt die ausgelieferten Formen")
+    func playlistRouteFenceCatchesTheShippedShapes() {
+        #expect(Self.ownPlaylistRoutes(in: """
+                    MaerPlaylistMenu(itemId: item.id,
+                                     knownTitles: [item.id: item.title])
+        """) == 1)
+        #expect(Self.ownPlaylistRoutes(
+            in: "addTarget = AddToPlaylistTarget(itemId: music.itemId(songId: songId))") == 1)
+        #expect(Self.ownPlaylistRoutes(in: ".addToPlaylistSheet(target: $addTarget)") == 1)
+        // The shared action is no violation.
+        #expect(Self.ownPlaylistRoutes(
+            in: "AddToPlaylistButton(itemId: item.id, knownTitles: [item.id: item.title])") == 0)
+    }
+
+    /// A list is created in ONE place. Four dialogs used to do it, and which
+    /// world you landed in depended on which one you found.
+    static func directListCreations(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return ["MaerPlaylists.shared.create(", "musicProvider.createPlaylist("]
+            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("angelegt wird an genau einer Stelle")
+    func creatingHappensInOnePlace() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "AddToPlaylistSheet.swift" {
+            if Self.directListCreations(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces create a playlist past the one dialog: \(offenders)")
+    }
+
+    /// Proof run: both worlds' shipped create calls are caught, the routing
+    /// through the shared dialog is not.
+    @Test("der Anlage-Zaun faengt die ausgelieferten Formen")
+    func creationFenceCatchesTheShippedShapes() {
+        #expect(Self.directListCreations(
+            in: "MaerPlaylists.shared.create(name: name, itemIds: PlayQueue.shared.ids)") == 1)
+        #expect(Self.directListCreations(in: """
+                    _ = try? await AppSession.shared.musicProvider.createPlaylist(name: name)
+        """) == 1)
+        #expect(Self.directListCreations(
+            in: "PlaylistPresenter.shared.askToCreate(place: .device, host: playlistHost)") == 0)
+    }
 }

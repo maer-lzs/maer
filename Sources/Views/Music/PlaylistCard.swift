@@ -23,7 +23,10 @@ struct PlaylistCardSource: Identifiable {
     /// a formatted string: zones exist in the display only.
     let changedAtMs: Double?
     let songCount: Int
-    let durationSeconds: Int
+    /// nil = this world cannot state a running time without resolving every
+    /// entry first; the meta line then carries the count alone instead of a
+    /// zero that would read as "empty".
+    let durationSeconds: Int?
     /// Where the detail pill leads.
     let detailRoute: MusicRoute
     /// Tap on the card body — plays in normal order. Takes the coordinator
@@ -169,10 +172,11 @@ struct PlaylistCard: View {
     }
 
     private var metaLine: String {
-        let duration = PlaylistPresentation.durationText(seconds: source.durationSeconds)
-        // 24a220e: "tracks" (klein) ist KEINE Casing-Dublette zu "Tracks" —
-        // dieses hier steht MITTEN im Satz ("18 tracks · 1:12").
-        return "\(source.songCount) \(String(localized: "tracks")) · \(duration)"
+        // 24a220e: "tracks" (lowercase) is NOT a casing duplicate of "Tracks" —
+        // this one sits INSIDE a sentence ("18 tracks · 1:12").
+        let count = "\(source.songCount) \(String(localized: "tracks"))"
+        guard let seconds = source.durationSeconds else { return count }
+        return "\(count) · \(PlaylistPresentation.durationText(seconds: seconds))"
     }
 }
 
@@ -206,5 +210,41 @@ extension PlaylistCardSource {
                 try? await music.deletePlaylist(itemId: itemId)
                 music.librarySynced.send()
             })
+    }
+
+    /// The DEVICE world's factory — the second world the card was split for.
+    /// A Mär list stores IDS, so everything the card shows is resolved here
+    /// and nowhere else: covers and artists come from whatever this device can
+    /// answer, entries it cannot resolve simply contribute nothing to the
+    /// mosaic (resolvability is a property of the device, never of the entry).
+    @MainActor
+    static func device(_ list: MaerPlaylists.Playlist) -> PlaylistCardSource {
+        PlaylistCardSource(
+            id: list.id,
+            title: list.name,
+            // The store keeps seconds; the card speaks milliseconds.
+            changedAtMs: list.updatedAt * 1000,
+            songCount: list.itemIds.count,
+            // A running time would mean resolving every entry across every
+            // provider — the count stands alone instead of guessing.
+            durationSeconds: nil,
+            detailRoute: .maerPlaylist(list.id),
+            open: { coordinator in await coordinator.playInOrder(items: items(of: list)) },
+            shufflePool: { items(of: list) },
+            mosaic: {
+                let covers = list.itemIds
+                    .compactMap { AppSession.shared.coverURL(forItemId: $0) }
+                    .reduce(into: [URL]()) { out, url in if !out.contains(url) { out.append(url) } }
+                let artists = PlaylistPresentation.topArtists(items(of: list).compactMap(\.author))
+                return (Array(covers.prefix(4)), artists)
+            },
+            rename: { newName in MaerPlaylists.shared.rename(playlistId: list.id, to: newName) },
+            delete: { MaerPlaylists.shared.delete(playlistId: list.id) })
+    }
+
+    /// What this device can actually play of the list, in list order.
+    @MainActor
+    private static func items(of list: MaerPlaylists.Playlist) -> [LibraryItem] {
+        list.itemIds.compactMap { AppSession.shared.playableItem(forId: $0) }
     }
 }

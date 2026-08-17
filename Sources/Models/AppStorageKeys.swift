@@ -570,6 +570,10 @@ nonisolated enum AppStorageKeys {
     static var radioActive: Bool {
         SourceActivation.effective(tabEnabled: radioTabEnabledValue, sourceEnabled: radioEnabledValue)
     }
+    /// Is there a music SERVER behind the music surfaces? Everything that
+    /// offers a server-side action asks THIS — the composed answer lives here
+    /// like the other source gates, not as a copied `||` per surface.
+    static var musicServerActive: Bool { subsonicActive || jellyfinActive }
 
     /// Notify about new podcast episodes (background refresh). Opt-in.
     static let podcastNewEpisodeNotifications = "podcastNewEpisodeNotifications"

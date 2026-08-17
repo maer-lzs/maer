@@ -714,8 +714,8 @@ struct ArchiveSeriesPage: View {
                 // f208790: "playlists are SONGS" — a catalog track is as
                 // enqueueable as a server song, and it hands its title over
                 // (P4 rule) so a cold cache cannot turn it into a placeholder.
-                MaerPlaylistMenu(itemId: songId,
-                                 knownTitles: [songId: trackTitle(track)])
+                AddToPlaylistButton(itemId: songId,
+                                    knownTitles: [songId: trackTitle(track)])
             }
         }
     }

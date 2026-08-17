@@ -27,11 +27,8 @@ struct MusicView: View {
     // Teil 2: server-side album sort, persisted; shared with the toolbar menu in
     // LibraryView via the same AppStorage key.
     @AppStorage(AppStorageKeys.musicSortOption) private var musicSort = MusicSortOption.nameAZ
-    // F5: create-playlist flow.
-    @State private var showNewPlaylist = false
-    @State private var showNewMaerPlaylist = false
-    @State private var newMaerPlaylistName = ""
-    @State private var newPlaylistName = ""
+    /// Which presentation hierarchy the row cards ask (root, here).
+    @Environment(\.playlistHost) private var playlistHost
 
     /// F5: playlists newest-changed first (default sort).
     /// 5034add: master flip re-renders the browse deck live.
@@ -112,32 +109,13 @@ struct MusicView: View {
         .overlay(alignment: .top) {
             if vm.isLoading && !vm.albums.isEmpty { RefreshActivityPill() }
         }
-        // F5: create a server playlist (songs are added later via the song
-        // context menu). The server is the source of truth.
-        .alert("New Playlist", isPresented: $showNewPlaylist) {
-            TextField("Name", text: $newPlaylistName)
-            Button("Create") {
-                let name = newPlaylistName.trimmingCharacters(in: .whitespaces)
-                newPlaylistName = ""
-                guard !name.isEmpty else { return }
-                Task {
-                    _ = try? await AppSession.shared.musicProvider.createPlaylist(name: name)
-                    await vm.reload()
-                }
-            }
-            Button("Cancel", role: .cancel) { newPlaylistName = "" }
-        } message: {
-            Text("Create an empty playlist on your music server.")
-        }
     }
 
     /// Is any music SERVER configured? G8: the server section renders only
     /// when it has a source behind it — the tab is on by default, so a
     /// serverless user saw a sentence about "the connected music server"
     /// that had no referent, with a retry that could never succeed.
-    private var serverConfigured: Bool {
-        AppStorageKeys.subsonicActive || AppStorageKeys.jellyfinActive
-    }
+    private var serverConfigured: Bool { AppStorageKeys.musicServerActive }
 
     private var content: some View {
         LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
@@ -348,7 +326,7 @@ struct MusicView: View {
                         ForEach(sortedPlaylists) {
                             PlaylistCard(source: .server($0), playerCoordinator: playerCoordinator)
                         }
-                        NewPlaylistCard { showNewPlaylist = true }
+                        NewPlaylistCard { askToCreate(.server) }
                     }
                     .padding(.horizontal)
                 }
@@ -357,34 +335,24 @@ struct MusicView: View {
                 RowHeading.plain("Playlists")
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
-                        NewPlaylistCard { showNewPlaylist = true }
+                        // Nothing to show yet: the ONE card leads into the one
+                        // dialog, which asks WHERE — with no server behind it
+                        // there is nothing to ask and it says so instead (G8).
+                        NewPlaylistCard { askToCreate(serverConfigured ? .server : .device) }
                     }
                     .padding(.horizontal)
                 }
                 .scrollClipDisabled()
             }
             maerPlaylistRow
-            newMaerPlaylistAlert
         }
     }
 
-    /// c6468d0: creating a DEVICE list, reachable from the row.
-    @ViewBuilder private var newMaerPlaylistAlert: some View {
-        EmptyView()
-            .alert("New Playlist", isPresented: $showNewMaerPlaylist) {
-                TextField("Name", text: $newMaerPlaylistName)
-                Button("Cancel", role: .cancel) { newMaerPlaylistName = "" }
-                Button("Create") {
-                    let name = newMaerPlaylistName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    _ = MaerPlaylists.shared.create(name: name.isEmpty
-                                                    ? String(localized: "Playlist") : name)
-                    newMaerPlaylistName = ""
-                }
-            } message: {
-                // The explanation lands in the MOMENT of the decision — no
-                // onboarding text needed (order point 2).
-                Text("Lives on your devices and can mix everything: server music, catalog titles and local files.")
-            }
+    /// c6468d0: BOTH row cards lead into the ONE create dialog — the row they
+    /// sit in only preselects the place, the choice and its two explaining
+    /// lines stay visible there.
+    private func askToCreate(_ place: PlaylistPlace) {
+        PlaylistPresenter.shared.askToCreate(place: place, host: playlistHost)
     }
 
     /// Paket 1: die Maer-Listen — quellenuebergreifend, auf den Geraeten.
@@ -395,33 +363,21 @@ struct MusicView: View {
             VStack(alignment: .leading, spacing: 8) {
                 RowHeading.plain("Playlists · On your devices")
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 16) {
+                        // f208790 Punkt 3: the device lists render as THE
+                        // shared card — mosaic, artist line, colour derivation
+                        // and the height parity with the featured cards. The
+                        // small box they used to get was the second version
+                        // this row was never supposed to have.
                         ForEach(lists) { list in
-                            Button {
-                                pushRoute(.maerPlaylist(list.id))
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Image(systemName: "music.note.list")
-                                        .font(.title2)
-                                        .foregroundStyle(AppTheme.accent)
-                                    Text(verbatim: list.name)
-                                        .font(.subheadline.weight(.medium))
-                                        .lineLimit(2)
-                                    Text("\(list.itemIds.count) entries")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                .frame(width: 150, alignment: .leading)
-                                .padding(12)
-                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("maer-playlist-\(list.id)")
+                            PlaylistCard(source: .device(list), playerCoordinator: playerCoordinator)
+                                .accessibilityIdentifier("maer-playlist-\(list.id)")
                         }
                         // c6468d0 (1): the entry point sits WHERE one looks
                         // for it — at the playlist row itself. It existed for
                         // server playlists but not here, so device lists could
                         // only be created from a context menu somewhere else.
-                        NewPlaylistCard { showNewMaerPlaylist = true }
+                        NewPlaylistCard { askToCreate(.device) }
                     }
                     .padding(.horizontal)
                 }
@@ -544,7 +500,6 @@ extension View {
 private struct MusicItemMenu: ViewModifier {
     let item: LibraryItem
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    @State private var addTarget: AddToPlaylistTarget?
 
     func body(content: Content) -> some View {
         content
@@ -566,20 +521,12 @@ private struct MusicItemMenu: ViewModifier {
                     } label: { Label("Play Last", systemImage: "text.append") }
                 }
 
-                // Paket 1: ZWEI Ziele, sichtbar getrennt. Die Server-Liste
-                // gibt es nur fuer Titel, die dem Server gehoeren — das Gate
-                // bleibt, es ist keine Willkuer, sondern die Natur der Sache
-                // (Navidrome kann keine Katalog-Adresse referenzieren). Die
-                // Maer-Liste gibt es fuer alles, was auch in die Warteschlange
-                // darf. Nichts scheitert still: wo das eine fehlt, steht das
-                // andere mit Grund.
-                if AppSession.shared.musicProvider.owns(itemId: item.id) {
-                    Button {
-                        addTarget = AddToPlaylistTarget(itemId: item.id)
-                    } label: { Label("Add to Server Playlist", systemImage: "text.badge.plus") }
-                }
-                MaerPlaylistMenu(itemId: item.id,
-                                 knownTitles: [item.id: item.title])
+                // ONE action, both worlds. The two targets used to sit here
+                // as two entries, and which one you got depended on the
+                // surface you long-pressed — the sheet states the choice
+                // instead, and leaves out what the entry cannot reach.
+                AddToPlaylistButton(itemId: item.id,
+                                    knownTitles: [item.id: item.title])
 
                 if DownloadManager.shared.isDownloaded(itemId: item.id) {
                     Button(role: .destructive) {
@@ -596,6 +543,5 @@ private struct MusicItemMenu: ViewModifier {
                     } label: { Label("Download", systemImage: "arrow.down.circle") }
                 }
             }
-            .addToPlaylistSheet(target: $addTarget)
     }
 }

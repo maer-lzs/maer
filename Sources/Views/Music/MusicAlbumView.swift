@@ -26,7 +26,6 @@ struct MusicAlbumView: View {
     /// IMMEDIATELY (server cover shows), cached files stay for re-enable.
     @AppStorage(AppStorageKeys.musicHighResCovers) private var hiResCovers = true
     /// Package 1: the single song a user long-pressed to add to a playlist.
-    @State private var addTarget: AddToPlaylistTarget?
     /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
     /// not a single server cover — up to four distinct album covers.
     @State private var mosaicCoverURLs: [URL] = []
@@ -145,14 +144,18 @@ struct MusicAlbumView: View {
                                     }
                                 }
                             } label: { Label("Play Last", systemImage: "text.append") }
-                            Button {
-                                Task {
-                                    let music = AppSession.shared.musicProvider
-                                    if let songId = await music.songId(forItemId: item.id, trackIndex: index) {
-                                        addTarget = AddToPlaylistTarget(itemId: music.itemId(songId: songId))
-                                    }
+                            // The track's own address is only known after the
+                            // server answered — the shared action takes a
+                            // resolver so this row needs no second copy.
+                            AddToPlaylistButton(itemId: item.id) {
+                                let music = AppSession.shared.musicProvider
+                                guard let songId = await music.songId(forItemId: item.id,
+                                                                      trackIndex: index) else {
+                                    return ([], [:])
                                 }
-                            } label: { Label("Add to Playlist", systemImage: "text.badge.plus") }
+                                let songItemId = music.itemId(songId: songId)
+                                return ([songItemId], [songItemId: track.title])
+                            }
                             if downloadManager.isDownloaded(itemId: item.id) {
                                 Button(role: .destructive) {
                                     downloadManager.deleteDownload(itemId: item.id)
@@ -186,7 +189,6 @@ struct MusicAlbumView: View {
         .navigationTitle(item.title)
         .navigationBarTitleDisplayMode(.inline)
         .barAwareList()
-        .addToPlaylistSheet(target: $addTarget)
         .toolbar {
             // Y63: page actions inboard, the settings cog OUTERMOST — declared
             // last so it sits at the trailing edge and never vanishes behind

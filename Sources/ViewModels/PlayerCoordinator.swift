@@ -266,10 +266,18 @@ final class PlayerCoordinator: ObservableObject {
     /// now; the shuffled tail becomes the Up-Next context and plays through the
     /// existing cross-media auto-continue. An empty pool is a no-op.
     func shufflePlay(items: [LibraryItem]) async {
-        let order = MediaShuffle.shuffled(items)
-        guard let first = order.first else { return }
+        await playInOrder(items: MediaShuffle.shuffled(items))
+    }
+
+    /// Play a set of items in the ORDER given — the shared tail of every
+    /// "play this collection" surface: the first item starts now, the rest
+    /// becomes the Up-Next context and plays through the existing
+    /// auto-continue. Shuffle is the same path with a shuffled order, so the
+    /// two do not drift apart. An empty set is a no-op.
+    func playInOrder(items: [LibraryItem]) async {
+        guard let first = items.first else { return }
         // The tail replaces Up Next; open() also drops `first` if it lingers.
-        PlayQueue.shared.setUpNext(order.dropFirst().map(\.id))
+        PlayQueue.shared.setUpNext(items.dropFirst().map(\.id))
         await open(item: first, restart: true)
     }
 

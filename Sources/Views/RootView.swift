@@ -26,6 +26,6 @@ struct RootView: View {
         // triggered from context menus whose hierarchy is torn down on close,
         // so an alert attached there can never be presented. At the root it
         // survives, and every call site shares this one presentation.
-        .maerPlaylistDialogs()
+        .playlistDialogs()
     }
 }

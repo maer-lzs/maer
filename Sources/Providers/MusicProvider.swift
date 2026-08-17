@@ -8,7 +8,10 @@ import Combine
 
 /// What kind of music item an item id denotes (provider-namespaced ids stay
 /// opaque to the UI — it asks the provider instead of parsing prefixes).
-enum MusicItemKind {
+/// `nonisolated` because the pure playlist rules switch on it off the main
+/// actor — it is a plain value, the isolation would be an accident of the
+/// project default.
+nonisolated enum MusicItemKind {
     case album, playlist, song, artist
 }
 

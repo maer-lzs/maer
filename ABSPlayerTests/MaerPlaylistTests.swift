@@ -102,12 +102,12 @@ struct MaerPlaylistTests {
     @MainActor
     func everyOutcomeSpeaks() {
         // Regel 3: Erfolg braucht keine Meldung, alles andere schon.
-        #expect(MaerPlaylistPresenter.text(for: .added, listName: "L") == nil)
-        #expect(MaerPlaylistPresenter.text(for: .alreadyThere, listName: "L") != nil)
-        #expect(MaerPlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L") != nil)
-        #expect(MaerPlaylistPresenter.text(for: .notQueueable, listName: "L") != nil)
+        #expect(PlaylistPresenter.text(for: .added, listName: "L") == nil)
+        #expect(PlaylistPresenter.text(for: .alreadyThere, listName: "L") != nil)
+        #expect(PlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L") != nil)
+        #expect(PlaylistPresenter.text(for: .notQueueable, listName: "L") != nil)
         // Die Grenz-Meldung nennt die ZAHL, sonst ist sie nicht handelbar.
-        #expect(MaerPlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L")?
+        #expect(PlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L")?
             .contains("5") == true)
     }
 
@@ -135,10 +135,54 @@ struct PlaylistSongSemanticsTests {
         // Eintrag bleibt, wie er ist. Und eine Song-Kennung ist bereits ein
         // Titel, sie wird nie noch einmal expandiert.
         let songId = CatalogSongID.make(album: "ia:some-album", index: 2)
-        let out = await MaerPlaylistPresenter.expandedForPlaylist([songId])
+        let out = await PlaylistPresenter.expandedForDevice([songId])
         #expect(out.ids == [songId])
         // Nicht-Katalog-Kennungen laufen unveraendert durch.
-        let server = await MaerPlaylistPresenter.expandedForPlaylist(["sub:song:1", "lv:176"])
+        let server = await PlaylistPresenter.expandedForDevice(["sub:song:1", "lv:176"])
         #expect(server.ids.contains("sub:song:1"))
+    }
+
+    // MARK: - Die Regel selbst (rein, ohne Anbieter)
+
+    @Test("ein Server-ALBUM ist Titel, ein Server-Song ist einer")
+    func serverContainersExpand() {
+        // Der eigentliche Fund: bis hierher fragte nur der Katalog-Pfad nach
+        // der Form — ein Server-Album landete als EIN Eintrag in einer
+        // Geraeteliste, dieselbe Fehlerklasse einen Namensraum weiter.
+        #expect(PlaylistDestination.expansion(for: "sub:album:1", serverKind: .album)
+                == .serverContainer)
+        #expect(PlaylistDestination.expansion(for: "sub:playlist:1", serverKind: .playlist)
+                == .serverContainer)
+        #expect(PlaylistDestination.expansion(for: "sub:song:1", serverKind: .song) == .asIs)
+    }
+
+    @Test("eine Katalog-Veroeffentlichung fragt die Form, eine Titel-Adresse nicht")
+    func catalogReleasesAskTheForm() {
+        #expect(PlaylistDestination.expansion(for: "lva:some-release", serverKind: nil)
+                == .catalogRelease)
+        let songId = CatalogSongID.make(album: "lva:some-release", index: 0)
+        #expect(PlaylistDestination.expansion(for: songId, serverKind: nil) == .asIs)
+        // Ein Hoerbuch, eine Folge, eine Lesung: EIN Eintrag.
+        #expect(PlaylistDestination.expansion(for: "lv:176", serverKind: nil) == .asIs)
+        #expect(PlaylistDestination.expansion(for: "rss:abc#1", serverKind: nil) == .asIs)
+    }
+
+    @Test("der Server-Ort steht nur mit Server UND nur fuer seine Titel")
+    func placesAreHonest() {
+        // G8: kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
+        // Adresse — die Sektion erscheint dann gar nicht.
+        #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: true)
+                == [.server, .device])
+        #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: false)
+                == [.device])
+        #expect(PlaylistDestination.places(serverConfigured: false, allOwnedByServer: true)
+                == [.device])
+        // Der Geraete-Ort steht IMMER — jede einreihbare Adresse passt dorthin.
+        for server in [true, false] {
+            for owned in [true, false] {
+                #expect(PlaylistDestination.places(serverConfigured: server,
+                                                   allOwnedByServer: owned).contains(.device))
+            }
+        }
     }
 }
