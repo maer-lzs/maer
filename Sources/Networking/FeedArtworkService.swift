@@ -71,7 +71,8 @@ actor FeedArtworkService {
                     fetch: @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse?) = { try await RequestRetryPolicy.fetch($0) }) async -> URL? {
         loadPersistedIfNeeded()
         if let cached = cache[feedURL] { return cached }
-        guard let url = URL(string: feedURL), await NetworkMonitor.shared.isConnected else { return nil }
+        guard let url = PodcastFeedAddress.requestURL(feedURL),
+              await NetworkMonitor.shared.isConnected else { return nil }
 
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")

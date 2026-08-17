@@ -57,7 +57,7 @@ struct PodcastShowPreviewView: View {
         .navigationBarTitleDisplayMode(.inline)
         .reportsBottomBarScroll()
         .task {
-            guard let url = URL(string: feedURL) else { failed = true; return }
+            guard let url = PodcastFeedAddress.requestURL(feedURL) else { failed = true; return }
             if let fetched = await PodcastSubscriptions.fetchAndParse(feedURL: url) {
                 show = fetched
             } else {

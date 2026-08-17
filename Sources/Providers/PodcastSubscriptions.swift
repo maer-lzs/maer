@@ -1065,7 +1065,8 @@ final class PodcastSubscriptions: ObservableObject {
         guard AppStorageKeys.rssActive else { return }
         var updated = shows
         for (index, show) in shows.enumerated() {
-            if let url = URL(string: show.feedURL), let fresh = await Self.fetchAndParse(feedURL: url) {
+            if let url = PodcastFeedAddress.requestURL(show.feedURL),
+               let fresh = await Self.fetchAndParse(feedURL: url) {
                 // Never shrink on a single weak fetch: a parse that returns a
                 // valid title but far fewer episodes (server hiccup, empty but
                 // valid <channel>) would otherwise wipe the cached episode list.
@@ -1171,9 +1172,7 @@ final class PodcastSubscriptions: ObservableObject {
     }
 
     private func normalizedFeedURL(_ raw: String) -> URL? {
-        var s = raw
-        if !s.hasPrefix("http://") && !s.hasPrefix("https://") { s = "https://" + s }
-        return URL(string: s)
+        PodcastFeedAddress.requestURL(raw)
     }
 
     // MARK: - Loading + Parsing
@@ -1185,7 +1184,10 @@ final class PodcastSubscriptions: ObservableObject {
     // work that must not block the UI.
     /// Y2b: fetch + parse a feed WITHOUT persisting anything — the temporary
     /// show preview uses this; `subscribe` persists the result.
-    @concurrent nonisolated static func fetchAndParse(feedURL: URL) async -> PodcastShow? {
+    @concurrent nonisolated static func fetchAndParse(feedURL rawURL: URL) async -> PodcastShow? {
+        // THE funnel for every feed request — the rule sits here so a call
+        // site that builds its own URL cannot get cleartext past it.
+        let feedURL = PodcastFeedAddress.upgraded(rawURL)
         // Private/premium feeds: send the Basic auth header if stored.
         var request = URLRequest(url: feedURL)
         for (field, value) in PodcastFeedAuth.authHeader(feedKey: feedKey(feedURL.absoluteString)) {

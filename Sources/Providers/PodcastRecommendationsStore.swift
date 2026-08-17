@@ -213,7 +213,13 @@ final class PodcastRecommendationsStore: ObservableObject {
         // means. Three-way ladder: a missing/404 artwork DEFERS the entry
         // (the next candidate moves up), a transport failure is `unknown`
         // and stays usable — a service outage must never empty the row.
-        let probed = await Self.preferLoadableArtwork(ranked, shown: 6)
+        // The DIRECTORY already answered "is this deliverable" for every feed
+        // it indexes — reading that costs no request and runs before the
+        // artwork probe, so the probe does not spend its budget on feeds the
+        // index gave up on. An order, never a filter: a directory having a bad
+        // day must not be able to empty the row.
+        let byHealth = PodcastFeedLiveness.demotingDoubtful(ranked) { $0.liveness }
+        let probed = await Self.preferLoadableArtwork(byHealth, shown: 6)
         results = Self.rotatingCharts(
             probed,
             isChart: { self.reason(for: $0) == .popular },

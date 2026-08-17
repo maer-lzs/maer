@@ -16,6 +16,9 @@ struct PodcastSearchResult: Identifiable {
     var feedURL: String
     /// Categories of the feed (PodcastIndex only) — for the recommendation ranking.
     var categories: [String]? = nil
+    /// What the directory says about the feed's health (PodcastIndex only).
+    /// nil = it did not say, which is not bad news.
+    var liveness: FeedLiveness? = nil
 
     var id: String { feedURL }
 }
@@ -241,6 +244,12 @@ struct PodcastIndexDirectory: PodcastDirectory {
             let image: String?
             let url: String?
             let categories: [String: String]?   // {id: name}
+            // The index already knows which feeds it can no longer reach —
+            // reading it costs nothing and spares a per-device guess.
+            let dead: Int?
+            let lastHttpStatus: Int?
+            let parseErrors: Int?
+            let crawlErrors: Int?
         }
         let feeds: [Feed]
     }
@@ -252,7 +261,11 @@ struct PodcastIndexDirectory: PodcastDirectory {
             author: feed.author,
             artworkURL: feed.image,
             feedURL: feedURL,
-            categories: feed.categories.map { Array($0.values) }
+            categories: feed.categories.map { Array($0.values) },
+            liveness: FeedLiveness(dead: feed.dead,
+                                   lastHttpStatus: feed.lastHttpStatus,
+                                   parseErrors: feed.parseErrors,
+                                   crawlErrors: feed.crawlErrors)
         )
     }
 

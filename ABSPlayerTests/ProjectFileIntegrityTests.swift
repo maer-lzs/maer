@@ -842,4 +842,43 @@ extension ProjectFileIntegrityTests {
         #expect(Self.directListCreations(
             in: "PlaylistPresenter.shared.askToCreate(place: .device, host: playlistHost)") == 0)
     }
+
+    // MARK: - Feed-Anfragen gehen nie im Klartext raus
+
+    /// A feed request built straight from a stored/directory address. ATS
+    /// allows cleartext for MEDIA only, so such a request can never succeed —
+    /// it just makes a living feed look dead. Statement-based, because the
+    /// guards span lines.
+    static func rawFeedRequestSites(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return ["URL(string:feedURL)", "URL(string:show.feedURL)", "URL(string:urlString)"]
+            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("keine Feed-Anfrage baut ihre Adresse selbst")
+    func feedRequestsAskTheSharedAddress() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "PodcastFeedAddress.swift" {
+            if Self.rawFeedRequestSites(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces build a feed request URL themselves: \(offenders)")
+    }
+
+    /// Proof run on the three shapes that shipped — the preview, the refresh
+    /// loop and the artwork probe each built their own URL.
+    @Test("der Feed-Adress-Zaun faengt die ausgelieferten Formen")
+    func feedAddressFenceCatchesTheShippedShapes() {
+        #expect(Self.rawFeedRequestSites(
+            in: "guard let url = URL(string: feedURL) else { failed = true; return }") == 1)
+        #expect(Self.rawFeedRequestSites(in: """
+                    if let url = URL(string: show.feedURL),
+                       let fresh = await Self.fetchAndParse(feedURL: url) {
+        """) == 1)
+        // The shared rule is no violation.
+        #expect(Self.rawFeedRequestSites(
+            in: "guard let url = PodcastFeedAddress.requestURL(feedURL) else { return nil }") == 0)
+    }
 }
