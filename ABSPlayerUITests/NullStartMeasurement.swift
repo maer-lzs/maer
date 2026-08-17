@@ -7,7 +7,7 @@ import XCTest
 
 /// c59e96e / ac97fb6 — the MEASUREMENT for the null start, not a regression
 /// test. It runs against a stand-in server in the scratchpad (see
-/// `tools/nullstart-measurement/`), never against a real account: after a null
+/// `tools/nullstart-messung/`), never against a real account: after a null
 /// start `lastSyncedTime` is 0 and the 5-second sync threshold fires within
 /// seconds, so the app may push a 0. Measuring that on real data would destroy
 /// what it measures.
@@ -32,6 +32,41 @@ nonisolated final class NullStartMeasurement: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
+    }
+
+    /// These cases are a MEASUREMENT, not a regression test: they need the
+    /// stand-in server from `tools/nullstart-messung/`. Without it there is
+    /// nothing to sign in to, and a plain suite run would report three reds
+    /// forever — a missing precondition is "not applicable", never "broken".
+    /// Probed instead of declared, because a flag would have to be threaded
+    /// through xcodebuild and would then lie whenever the stand-in died.
+    private func skipWithoutStandIn() throws {
+        try XCTSkipUnless(standInAnswers(),
+                          "the stand-in server is not running — start it via tools/nullstart-messung/")
+    }
+
+    /// A TCP connect is enough and needs no trust store: the stand-in speaks
+    /// TLS with its own CA, which only the SIMULATOR trusts, so an HTTP probe
+    /// from this process would fail even with the server up.
+    private func standInAnswers() -> Bool {
+        guard let components = URLComponents(string: serverURL),
+              let host = components.host else { return false }
+        let port = UInt16(components.port ?? 443)
+        let handle = socket(AF_INET, SOCK_STREAM, 0)
+        guard handle >= 0 else { return false }
+        defer { close(handle) }
+        var address = sockaddr_in()
+        address.sin_family = sa_family_t(AF_INET)
+        address.sin_port = port.bigEndian
+        address.sin_addr.s_addr = inet_addr(host)
+        var limit = timeval(tv_sec: 2, tv_usec: 0)
+        setsockopt(handle, SOL_SOCKET, SO_SNDTIMEO, &limit,
+                   socklen_t(MemoryLayout<timeval>.size))
+        return withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                connect(handle, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0
+            }
+        }
     }
 
     private func launch(_ extra: [String] = []) -> XCUIApplication {
@@ -87,7 +122,8 @@ nonisolated final class NullStartMeasurement: XCTestCase {
 
     // MARK: - A: produce the state (runs once, against mode `ok`)
 
-    func testAProduceDownloadedStateAndListen() {
+    func testAProduceDownloadedStateAndListen() throws {
+        try skipWithoutStandIn()
         let app = launch(["-uitest-setup"])
         signIn(app)
         downloadAndListen(app)
@@ -187,7 +223,8 @@ nonisolated final class NullStartMeasurement: XCTestCase {
     /// keeps the container.
     ///
     /// Reads the START position from the mini bar, which names it directly.
-    func testCNullStartInOneRun() {
+    func testCNullStartInOneRun() throws {
+        try skipWithoutStandIn()
         let app = launch(["-uitest-setup"])
         signIn(app)
         downloadAndListen(app)
@@ -231,7 +268,8 @@ nonisolated final class NullStartMeasurement: XCTestCase {
     /// verdict is NOT here — it is in the stand-in's write log and in the
     /// app container, both read by the harness. This case only has to reach
     /// the state without failing.
-    func testBOpenDownloadedBook() {
+    func testBOpenDownloadedBook() throws {
+        try skipWithoutStandIn()
         let app = launch()
         // Via the START page, not the library list: measured, the list comes
         // from the SERVER, so with the server down or slow the downloaded book
