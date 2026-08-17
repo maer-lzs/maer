@@ -1,0 +1,210 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import SwiftUI
+import Combine
+
+/// f208790 Punkt 3: THE playlist card. It lived `private` inside `MusicView`
+/// and was welded to `MusicPlaylist` — which is why the device playlists could
+/// not have it, and why building them a second card was the thing worth
+/// waiting for (the mosaic, the artist line, the colour derivation and the
+/// height parity with the Featured cards are the card, not decoration).
+///
+/// The split is deliberate: everything server-specific is a VALUE or a
+/// CLOSURE in `PlaylistCardSource`, the card itself knows neither provider nor
+/// namespace. A second world plugs in by writing one factory, not one card.
+struct PlaylistCardSource: Identifiable {
+    /// Stable id for the deterministic tint and for `task(id:)`.
+    let id: String
+    let title: String
+    /// ms since 1970 — the caption line ("changed 3 days ago"). Epoch, never
+    /// a formatted string: zones exist in the display only.
+    let changedAtMs: Double?
+    let songCount: Int
+    let durationSeconds: Int
+    /// Where the detail pill leads.
+    let detailRoute: MusicRoute
+    /// Tap on the card body — plays in normal order. Takes the coordinator
+    /// the card was handed instead of reaching for a global one: the card is
+    /// injected, and a factory must not quietly widen that.
+    let open: (PlayerCoordinator) async -> Void
+    /// The songs, for the shared shuffle path.
+    let shufflePool: () async -> [LibraryItem]
+    /// Mosaic covers and the most frequent artists, fetched together because
+    /// they come from the same source.
+    let mosaic: () async -> (covers: [URL], artists: [String])
+    /// nil = this world cannot rename/delete here; the menu entry then stays
+    /// away instead of offering something that fails (G8).
+    let rename: ((String) async -> Void)?
+    let delete: (() async -> Void)?
+}
+
+struct PlaylistCard: View {
+    let source: PlaylistCardSource
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var showRename = false
+    @State private var renameText = ""
+    @State private var showDeleteConfirm = false
+    @State private var coverURLs: [URL] = []
+    /// 961a14e: the playlist's most frequent artists as ONE truncating line
+    /// (empty = no data → blank, height reserved so the card never jiggles).
+    @State private var artistNames: [String] = []
+    /// b9898dd Fix 1: the mixed card color comes from the BOTTOM (big) mosaic
+    /// cover — it borders the text block (color continuity).
+    @StateObject private var colorLoader = CoverColorLoader()
+    // b9898dd Fix 2: EXACT height parity with the Featured-card anatomy.
+    @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
+    @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
+
+    /// Deterministic per-id tint as the instant fallback; the extracted
+    /// bottom-cover color takes over once loaded.
+    private var tint: Color {
+        colorLoader.hasAccent ? colorLoader.accent : PlaylistArtwork.color(for: source.id)
+    }
+
+    var body: some View {
+        // The SAME card format as BookFeaturedCard / PodcastFeaturedCard
+        // (featuredCardWidth, cover face on top, text block on the card color
+        // below, radius 20) — mosaic as the cover. 1b16f2c: the card TAP PLAYS
+        // in normal order (pill left = detail, corner right = shuffle).
+        Button {
+            Task { await source.open(playerCoordinator) }
+        } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                PlaylistArtwork(playlistID: source.id, coverURLs: coverURLs, cornerRadius: 0)
+                    .overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint],
+                                       startPoint: .top, endPoint: .bottom)
+                            .frame(height: CardMetrics.featuredCardWidth * 0.3)
+                    }
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(changedText ?? " ")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                    Text(source.title)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, minHeight: titleMinHeight, alignment: .topLeading)
+                    Text(metaLine)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, minHeight: metaMinHeight, alignment: .topLeading)
+                    Text(artistNames.isEmpty ? " " : artistNames.joined(separator: ", "))
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                }
+                .padding(14)
+                .padding(.bottom, pillReserve)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(width: CardMetrics.featuredCardWidth)
+        .background(tint)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
+        // 5219ea7: the SAME two card controls as the Featured cards, at the
+        // SAME positions — Details pill bottom-left, corner button bottom-right.
+        .overlay(alignment: .bottomLeading) {
+            CardDetailPill(value: source.detailRoute).padding(12)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            CardCornerButton(systemImage: "shuffle",
+                             accessibilityLabel: Text("Shuffle"),
+                             accessibilityId: "playlist-shuffle-badge") {
+                Task { await playerCoordinator.shufflePlay(items: await source.shufflePool()) }
+            }
+            .padding(12)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
+        .contextMenu {
+            ShufflePlayButton(playerCoordinator: playerCoordinator,
+                              style: .menuItem, pool: source.shufflePool)
+            if source.rename != nil {
+                Button {
+                    renameText = source.title
+                    showRename = true
+                } label: { Label("Rename Playlist", systemImage: "pencil") }
+            }
+            if source.delete != nil {
+                Button(role: .destructive) { showDeleteConfirm = true } label: {
+                    Label("Delete Playlist", systemImage: "trash")
+                }
+            }
+        }
+        .alert("Rename Playlist", isPresented: $showRename) {
+            TextField("Name", text: $renameText)
+            Button("Rename") {
+                let name = renameText
+                Task { await source.rename?(name) }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Delete this playlist?", isPresented: $showDeleteConfirm,
+                            titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) {
+                Task { await source.delete?() }
+            }
+        }
+        .task(id: source.id) {
+            let loaded = await source.mosaic()
+            coverURLs = loaded.covers
+            artistNames = loaded.artists
+        }
+    }
+
+    /// Caption line: when the playlist last changed (the row sorts by this).
+    private var changedText: String? {
+        guard let ms = source.changedAtMs else { return nil }
+        return Date(timeIntervalSince1970: ms / 1000).formatted(.relative(presentation: .named))
+    }
+
+    private var metaLine: String {
+        let duration = PlaylistPresentation.durationText(seconds: source.durationSeconds)
+        // 24a220e: "tracks" (klein) ist KEINE Casing-Dublette zu "Tracks" —
+        // dieses hier steht MITTEN im Satz ("18 tracks · 1:12").
+        return "\(source.songCount) \(String(localized: "tracks")) · \(duration)"
+    }
+}
+
+extension PlaylistCardSource {
+    /// The SERVER world's factory — everything provider-bound lives here, so
+    /// the card above stays free of it.
+    @MainActor
+    static func server(_ playlist: MusicPlaylist) -> PlaylistCardSource {
+        let music = AppSession.shared.musicProvider
+        let itemId = music.itemId(playlistId: playlist.id)
+        return PlaylistCardSource(
+            id: itemId,
+            title: playlist.name ?? String(localized: "Playlist"),
+            changedAtMs: playlist.changedAt,
+            songCount: playlist.songCount ?? 0,
+            durationSeconds: Int(playlist.duration ?? 0),
+            detailRoute: .album(playlistLibraryItem(playlist)),
+            open: { coordinator in await coordinator.open(item: playlistLibraryItem(playlist)) },
+            shufflePool: { await music.songItems(forItemId: itemId) },
+            mosaic: {
+                let ids = await music.playlistMosaicCoverIDs(forItemId: itemId)
+                let artists = PlaylistPresentation.topArtists(
+                    await music.playlistArtistNames(forItemId: itemId))
+                return (ids.compactMap { music.coverURL(coverArtId: $0) }, artists)
+            },
+            rename: { newName in
+                try? await music.renamePlaylist(itemId: itemId, newName: newName)
+                music.librarySynced.send()
+            },
+            delete: {
+                try? await music.deletePlaylist(itemId: itemId)
+                music.librarySynced.send()
+            })
+    }
+}
