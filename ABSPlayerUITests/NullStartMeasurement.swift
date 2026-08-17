@@ -89,7 +89,11 @@ nonisolated final class NullStartMeasurement: XCTestCase {
 
     func testAProduceDownloadedStateAndListen() {
         let app = launch(["-uitest-setup"])
+        signIn(app)
+        downloadAndListen(app)
+    }
 
+    private func signIn(_ app: XCUIApplication) {
         // The setup map: the audiobook area carries the ABS login.
         let area = app.buttons["source-map-audiobooks"].firstMatch
         XCTAssertTrue(area.waitForExistence(timeout: 20), "setup map must offer the audiobook area")
@@ -131,6 +135,9 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         XCTAssertTrue(scrollTo(app, book, swipes: 10), "the stand-in's book must reach the library")
         snap(app, "measurement-library")
         book.tap()
+    }
+
+    private func downloadAndListen(_ app: XCUIApplication) {
 
         // Download it — this is the moment the cached detail is written, and
         // the whole finding hangs on WHAT it contains at this moment.
@@ -169,6 +176,43 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         toggle.tap()
         Thread.sleep(forTimeInterval: 5)
         snap(app, "measurement-listened")
+    }
+
+    /// The whole measurement in ONE case — because splitting it was the bug.
+    /// Measured: every `test-without-building` run REINSTALLS the app and gets
+    /// a fresh data container (container id changed between the runs), so the
+    /// state case A produced never reached case B. That, not the 5-second
+    /// throttle, is why the write log and the position stayed empty while the
+    /// case still reported green. `terminate()` + `launch()` inside one case
+    /// keeps the container.
+    ///
+    /// Reads the START position from the mini bar, which names it directly.
+    func testCNullStartInOneRun() {
+        let app = launch(["-uitest-setup"])
+        signIn(app)
+        downloadAndListen(app)
+        // Second launch, same container: this is the moment of the incident.
+        app.terminate()
+        let again = launch()
+        let book = again.staticTexts["Mock Buch"].firstMatch
+        XCTAssertTrue(scrollTo(again, book, swipes: 10),
+                      "the continue card must stand after the restart")
+        book.tap()
+        let play = again.buttons["book-play"].firstMatch
+        if play.waitForExistence(timeout: 5) { play.tap() }
+        let mini = again.buttons["Mock Buch"].firstMatch
+        XCTAssertTrue(mini.waitForExistence(timeout: 25), "playback must start")
+        // The mini bar carries the position in its label ("ab 0:00:41 …").
+        // Long enough for the 5-second local writer to record where we
+        // actually are — that number IS the start position plus the time
+        // played, and it is the only readable one.
+        Thread.sleep(forTimeInterval: 15)
+        let label = mini.label
+        let shot = XCTAttachment(string: "START-LABEL: \(label)")
+        shot.name = "start-position"
+        shot.lifetime = .keepAlways
+        add(shot)
+        snap(again, "measurement-start-position")
     }
 
     // MARK: - B: open the downloaded book, whatever the stand-in does
