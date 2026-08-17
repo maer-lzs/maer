@@ -576,6 +576,24 @@ extension ProjectFileIntegrityTests {
         #expect(collapsed.contains("AppStorageKeys.flushedPosition(item.id))"),
                 "der Sync schreibt keinen geflusht-Zeugen mehr")
     }
+
+    /// 2a993f6 (Glied 4): the cached detail is the start source of a
+    /// downloaded book. Written only at download time it freezes — the
+    /// cb8bac1 class. It must keep a SECOND writer, the one that carries the
+    /// server's answer into it.
+    @Test("das gecachte Detail wird nicht nur beim Herunterladen geschrieben")
+    func cachedDetailIsKeptCurrent() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let manager = try String(contentsOf: root.appendingPathComponent(
+            "Sources/Networking/DownloadManager.swift"), encoding: .utf8)
+        #expect(manager.contains("func updateCachedProgress(itemId:"),
+                "der Fortschreibe-Weg ins gecachte Detail fehlt")
+        let sync = try String(contentsOf: root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)
+        #expect(sync.contains("updateCachedProgress(itemId:"),
+                "der Server-Abgleich schreibt seinen Stand nicht mehr ins Detail")
+    }
 }
 
 

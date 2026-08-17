@@ -414,6 +414,24 @@ final class DownloadManager: ObservableObject {
         return try? JSONDecoder().decode(LibraryItemDetail.self, from: data)
     }
 
+    /// 2a993f6 (Glied 4): the cached detail is the START SOURCE of a
+    /// downloaded book — and it was written exactly ONCE, at download time.
+    /// Its progress therefore stayed frozen at whatever it was back then,
+    /// forever. That is the cb8bac1 class: generated data must not freeze a
+    /// derived value. The flushed witness fixed only the case where THIS
+    /// device pushed; a book downloaded here and listened to on ANOTHER
+    /// device has no witness at all and still opened at 0 offline.
+    ///
+    /// Only the progress field is rewritten, deliberately: chapters, tracks
+    /// and duration are the reason this file exists, and a partial answer
+    /// must never shrink them.
+    func updateCachedProgress(itemId: String, progress: MediaProgress) {
+        guard downloadedItemIds.contains(itemId),
+              let existing = loadCachedDetail(forItemId: itemId) else { return }
+        saveDetail(LibraryItemDetail(id: existing.id, media: existing.media,
+                                     userMediaProgress: progress))
+    }
+
     private func saveDetail(_ detail: LibraryItemDetail) {
         let url = metadataDirectory.appendingPathComponent("\(detail.id).json")
         guard let data = try? JSONEncoder().encode(detail) else { return }
