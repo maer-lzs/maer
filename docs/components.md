@@ -11,6 +11,10 @@ Present-tense, current state only — history lives in git.
 2. Coverage claims in reports ("all media tabs", "every download surface") cite a
    row here — this table is the source, not prose.
 
+Hazards that are not a component live beside this file: see
+`playlist-migration.md` for why rewriting playlist entry ids needs a travelling
+`superseded` set.
+
 **Convention — swallowed errors (25.07, third find of the class; sharpened
 01.08):** a `catch` that drops an error, or a `try?` on a throwing call, is
 only allowed when the same block carries a comment saying WHY dropping is
