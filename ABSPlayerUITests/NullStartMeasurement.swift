@@ -198,10 +198,20 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         XCTAssertTrue(scrollTo(again, book, swipes: 10),
                       "the continue card must stand after the restart")
         book.tap()
+        // the reviewer's hint, and it was the miss: after terminate() + launch() the
+        // player is restored PAUSED. "The mini bar stands" and "it plays" are
+        // two different statements — the 5-second ticker writes only while
+        // playing. So press play through WHICHEVER handle the page offers:
+        // the start button on an idle book, the toggle on the active one.
         let play = again.buttons["book-play"].firstMatch
-        if play.waitForExistence(timeout: 5) { play.tap() }
+        let toggle = again.buttons["book-play-toggle"].firstMatch
+        if play.waitForExistence(timeout: 5) {
+            play.tap()
+        } else if toggle.waitForExistence(timeout: 10) {
+            toggle.tap()
+        }
         let mini = again.buttons["Mock Buch"].firstMatch
-        XCTAssertTrue(mini.waitForExistence(timeout: 25), "playback must start")
+        XCTAssertTrue(mini.waitForExistence(timeout: 25), "the player must come up")
         // The mini bar carries the position in its label ("ab 0:00:41 …").
         // Long enough for the 5-second local writer to record where we
         // actually are — that number IS the start position plus the time
