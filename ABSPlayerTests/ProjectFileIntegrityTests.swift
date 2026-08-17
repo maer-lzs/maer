@@ -945,6 +945,28 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
+    /// The invariant's first half: playback writes locally for EVERY class.
+    /// The ticker is class-blind by construction — the moment a call-site
+    /// condition appears around it, one class loses its local truth again, and
+    /// that asymmetry is where the whole null-start family came from.
+    @Test("der Sekundenschreiber kennt keine Klassen-Ausnahme")
+    func theTickerWritesForEveryClass() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent(
+            "Sources/ViewModels/PlayerViewModel.swift"), encoding: .utf8)
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        #expect(collapsed.contains("ListeningStore.record("),
+                "der Ticker schreibt nicht mehr in den Bestand")
+        // The class question is answered INSIDE the stock (a live stream keeps
+        // no position); a second answer at the call site would drift from it.
+        for smell in ["hasPrefix(\"li_\")", "hasPrefix(\"local:\")",
+                      "ListeningClasses.keepsPosition"] {
+            #expect(!collapsed.contains(smell + "),ListeningStore.record"),
+                    "die Klassenfrage wird an der Aufrufstelle zweitbeantwortet")
+        }
+    }
+
     @Test("keine Flaeche liest die Fortschritts-Schluessel selbst")
     func everySurfaceAsksTheStock() throws {
         var offenders: [String] = []

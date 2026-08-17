@@ -84,6 +84,31 @@ struct ListeningStoreTests {
         #expect(ListeningStore.allBackups(in: d).isEmpty)
     }
 
+    @Test("die Invariante gilt fuer JEDE Klasse")
+    func everyClassKeepsALocalStand() {
+        // One representative per class the app can play. The asymmetry that
+        // produced the whole weekend's error family was exactly this list
+        // having a hole in it.
+        let classes: [(name: String, id: String)] = [
+            ("ABS-Buch",        "li_abcdef"),
+            ("ABS-Podcast",     "abspod:show#1"),
+            ("RSS-Podcast",     "rss:https://feed#42"),
+            ("Musik-Titel",     "sub:song:17"),
+            ("Musik (Jellyfin)","jf:song:17"),
+            ("Katalog-Werk",    "lv:176"),
+            ("Katalog-Spur",    "lva:release#3"),
+            ("Sideload",        "local:file-1"),
+        ]
+        for (name, id) in classes {
+            let d = suite()
+            ListeningStore.record(id, position: 123, duration: 456,
+                                  atMs: 1_700_000_000_000, in: d)
+            let mark = ListeningStore.mark(id, in: d)
+            #expect(mark?.position == 123, "\(name) haelt keinen lokalen Stand")
+            #expect(mark?.updatedAtMs == 1_700_000_000_000, "\(name) haelt keinen Zeitstempel")
+        }
+    }
+
     // MARK: - Umzug und Vergessen
 
     @Test("ein Umzug malt nicht ueber einen neueren Stand")
