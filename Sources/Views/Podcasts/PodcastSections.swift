@@ -55,7 +55,7 @@ enum PodcastSections {
                 let ids = ABSPodcastProvider.shared.equivalentIds(ep.guid)
                 equivalents[ep.guid] = ids
                 for id in ids where positions[id] == nil {
-                    if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double],
+                    if let arr = ListeningStore.backup(id),
                        arr.count >= 2 {
                         positions[id] = arr
                     }

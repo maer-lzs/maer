@@ -327,9 +327,9 @@ struct BookDetailScreen: View {
     /// the start would take.
     private func progressReport() -> String {
         let defaults = UserDefaults.standard
-        let saved = defaults.array(forKey: AppStorageKeys.localPosition(entry.id)) as? [Double]
+        let saved = ListeningStore.backup(entry.id, in: defaults)
         let cached = DownloadManager.shared.loadCachedDetail(forItemId: entry.id)
-        let flushed = defaults.array(forKey: AppStorageKeys.flushedPosition(entry.id)) as? [Double]
+        let flushed = ListeningStore.flushed(entry.id, in: defaults)
         let sources = ProgressDiagnosis.BookSources(
             serverPosition: entry.progress?.currentTime,
             serverUpdatedAtMs: entry.progress?.lastUpdate,

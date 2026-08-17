@@ -39,7 +39,7 @@ final class PodcastProgressStore: ObservableObject {
     /// State directly from guid + duration — without building a `LibraryItem`
     /// (so the podcast sections compute over thousands of episodes without overhead).
     func state(guid: String, duration: Double) -> EpisodePlayState {
-        let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double]
+        let stored = ListeningStore.backup(guid)
         return ProgressMark.state(stored: stored, currentDuration: duration)
     }
 
@@ -98,7 +98,7 @@ func podcastPlayState(for item: LibraryItem) -> EpisodePlayState {
     var bestGuid: String?
     var bestTs = -1.0
     for id in ids {
-        if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double],
+        if let arr = ListeningStore.backup(id),
            arr.count >= 2, arr[1] > bestTs {
             bestTs = arr[1]; bestGuid = id
         }

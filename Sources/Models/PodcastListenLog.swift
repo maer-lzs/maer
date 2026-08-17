@@ -68,7 +68,7 @@ final class PodcastListenLog {
         // Through ProgressMark, never .last: on a three-value entry .last is
         // the DURATION — the history booked playedAt = 3600 and rendered 1970.
         let ts = ProgressMark.timestamp(
-            UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double])
+            ListeningStore.backup(guid))
             ?? Date().timeIntervalSince1970 * 1000
         upsertPlayed(guid: guid, episodeTitle: episodeTitle, showTitle: showTitle,
                      feedURL: feedURL, duration: duration, playedAt: ts,
@@ -106,7 +106,7 @@ final class PodcastListenLog {
             case .unplayed:
                 // A remote unplayed-tombstone ([0, ts]) must tombstone HERE
                 // too — otherwise devices diverge in the other direction.
-                if let arr = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(guid)) as? [Double],
+                if let arr = ListeningStore.backup(guid),
                    arr.count >= 2, arr[0] <= 0 {
                     markUnplayed(guid: guid, at: arr[1])
                 }
@@ -212,8 +212,7 @@ final class PodcastListenLog {
         for (guid, entry) in entries {
             guard let corrected = Self.healedPlayedAt(
                 current: entry.playedAt,
-                stored: UserDefaults.standard.array(
-                    forKey: AppStorageKeys.localPosition(guid)) as? [Double]) else { continue }
+                stored: ListeningStore.backup(guid)) else { continue }
             var fixed = entry
             fixed.playedAt = corrected
             entries[guid] = fixed

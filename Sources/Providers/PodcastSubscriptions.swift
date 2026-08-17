@@ -691,7 +691,7 @@ final class PodcastSubscriptions: ObservableObject {
             var redirected = 0
             let defaults = UserDefaults.standard
             for (freeGuid, premiumGuid) in matches {
-                guard let stored = defaults.array(forKey: AppStorageKeys.localPosition(freeGuid)) as? [Double],
+                guard let stored = ListeningStore.backup(freeGuid, in: defaults),
                       defaults.object(forKey: AppStorageKeys.localPosition(premiumGuid)) == nil
                 else { continue }
                 defaults.set(stored, forKey: AppStorageKeys.localPosition(premiumGuid))
@@ -1107,7 +1107,7 @@ final class PodcastSubscriptions: ObservableObject {
             for: allEpisodes().map {
                 PodcastProgressHealing.Episode(guid: $0.episode.guid, duration: $0.episode.duration)
             },
-            stored: { defaults.array(forKey: AppStorageKeys.localPosition($0)) as? [Double] })
+            stored: { ListeningStore.backup($0, in: defaults) })
         for (guid, entry) in writes {
             defaults.set(entry, forKey: AppStorageKeys.localPosition(guid))
         }

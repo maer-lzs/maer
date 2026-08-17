@@ -796,7 +796,7 @@ RowHeading(title: "Rediscover",
     /// Last-played timestamp of an item from the local position store (same
     /// source podcast auto-continue uses), 0 if none.
     private func localTimestamp(_ id: String) -> Double {
-        ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]) ?? 0
+        ProgressMark.timestamp(ListeningStore.backup(id)) ?? 0
     }
 }
 

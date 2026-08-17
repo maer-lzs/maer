@@ -39,7 +39,7 @@ extension View {
                 Button {
                     // Same local stamp the Continue rows sort by (the last
                     // saved position), so hide/return use ONE clock.
-                    let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
+                    let stamp = ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0
                     ContinueHiddenStore.hide(id: item.id, lastUpdate: stamp)
                 } label: {
                     Label("Don't show under Continue", systemImage: "eye.slash")
@@ -285,7 +285,7 @@ enum PodcastAutoDownload {
         let owned = ownedByAutomation
         guard !owned.isEmpty else { return }
         let items: [PodcastAutoDownloadRules.Item] = owned.map { id in
-            let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]
+            let stored = ListeningStore.backup(id)
             let position = stored?.first ?? 0
             // The mark already carries the moment it was written (milliseconds)
             // — no second bookkeeping for "finished when".

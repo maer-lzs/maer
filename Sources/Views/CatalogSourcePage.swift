@@ -515,7 +515,7 @@ struct ArchiveSeriesPage: View {
     }
 
     private var lastHeardSectionIndex: Int? {
-        let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double]
+        let saved = ListeningStore.backup(itemId)
         guard let position = saved?.first else { return nil }
         return FreeCatalog.trackIndex(at: position, tracks: tracks)
     }

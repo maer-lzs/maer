@@ -90,7 +90,7 @@ final class RSSProvider: AudioProvider {
         for (show, episode) in subs.allEpisodes() {
             let item = libraryItem(show: show, episode: episode)
             guard let duration = item.media?.duration, duration > 0,
-                  let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+                  let stored = ListeningStore.backup(item.id),
                   stored.count >= 2 else { continue }
             let time = stored[0]
             map[item.id] = BookProgress(

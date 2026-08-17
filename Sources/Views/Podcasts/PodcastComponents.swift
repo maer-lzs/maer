@@ -79,7 +79,7 @@ struct PodcastFeaturedCard: View {
 
     /// Last played (relative) from local/ABS progress.
     private var lastPlayedText: String {
-        let localTs = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
+        let localTs = ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0
         let absTs = ABSPodcastProvider.shared.episodeProgress[item.id]?.lastUpdate ?? 0
         let ts = max(localTs, absTs)
         guard ts > 0 else { return relativeDateText(item) }

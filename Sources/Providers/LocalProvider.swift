@@ -80,7 +80,7 @@ final class LocalProvider: AudioProvider {
         return await Task.detached(priority: .userInitiated) {
             var map: [String: BookProgress] = [:]
             for (id, duration) in inputs {
-                let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(id)) as? [Double]
+                let stored = ListeningStore.backup(id)
                 if let progress = Self.storedProgress(stored, duration: duration) {
                     map[id] = progress
                 }

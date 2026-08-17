@@ -935,6 +935,41 @@ extension ProjectFileIntegrityTests {
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
+    /// The other half of ownership: nobody READS the raw keys either. As long
+    /// as call sites index the `[Double]` shape themselves, the "`.last` is the
+    /// duration, not the timestamp" class can come back — it did, seven times.
+    static func rawProgressReads(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return ["array(forKey:AppStorageKeys.localPosition(",
+                "array(forKey:AppStorageKeys.flushedPosition("]
+            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("keine Flaeche liest die Fortschritts-Schluessel selbst")
+    func everySurfaceAsksTheStock() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
+            if Self.rawProgressReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces read the progress keys themselves: \(offenders)")
+    }
+
+    /// Proof run on the two shipped shapes — the global store and a scoped
+    /// `defaults` (the gpodder/iCloud paths hand their own suite around).
+    @Test("der Lese-Zaun faengt die ausgelieferten Formen")
+    func readFenceCatchesTheShippedShapes() {
+        #expect(Self.rawProgressReads(in: """
+                    let saved = UserDefaults.standard.array(
+                        forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
+        """) == 1)
+        #expect(Self.rawProgressReads(
+            in: "defaults.array(forKey: AppStorageKeys.flushedPosition(e.id)) as? [Double]") == 1)
+        #expect(Self.rawProgressReads(in: "ListeningStore.backup(item.id, in: defaults)") == 0)
+    }
+
     @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos")
     func noPathRemovesAListeningState() throws {
         var offenders: [String] = []

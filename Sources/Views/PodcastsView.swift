@@ -250,7 +250,7 @@ struct PodcastsView: View {
         let markers = ContinueHiddenStore.markers()
         guard !markers.isEmpty else { return nextUp }
         return nextUp.filter { item in
-            let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
+            let stamp = ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0
             return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
         }
     }
@@ -669,7 +669,7 @@ struct PodcastContinuePage: View {
             let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
             let markers = ContinueHiddenStore.markers()
             items = sections.nextUp.filter { item in
-                let stamp = ProgressMark.timestamp(UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double]) ?? 0
+                let stamp = ProgressMark.timestamp(ListeningStore.backup(item.id)) ?? 0
                 return !ContinueHidden.isHidden(id: item.id, lastUpdate: stamp, markers: markers)
             }
         }

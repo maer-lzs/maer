@@ -438,7 +438,7 @@ final class GPodderSync {
             guard let enc = a.episode, let pos = a.position,
                   let match = byEnclosure[PodcastSubscriptions.normalizeEnclosure(enc)] else { continue }
             guard let tsMs = Self.parseTimestamp(a.timestamp) else { continue }
-            let localArr = defaults.array(forKey: AppStorageKeys.localPosition(match.id)) as? [Double]
+            let localArr = ListeningStore.backup(match.id, in: defaults)
             let localTs = (localArr?.count ?? 0) >= 2 ? localArr![1] : -1
             let serverTotal = Double(a.total ?? 0)
             if tsMs > localTs {
@@ -480,7 +480,7 @@ final class GPodderSync {
         let lastPush = defaults.double(forKey: AppStorageKeys.gpodderLastEpisodePush)
         var out: [[String: Any]] = []
         for (show, ep) in subs.allEpisodes() {
-            guard let arr = defaults.array(forKey: AppStorageKeys.localPosition(ep.guid)) as? [Double],
+            guard let arr = ListeningStore.backup(ep.guid, in: defaults),
                   arr.count >= 2 else { continue }
             let pos = arr[0], tsMs = arr[1]
             guard tsMs / 1000 > lastPush else { continue }

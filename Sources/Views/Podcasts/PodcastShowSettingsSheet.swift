@@ -61,7 +61,7 @@ struct PodcastShowSettingsSheet: View {
             ?? ABSPodcastProvider.shared.shows.first { $0.id == showId }
         let defaults = UserDefaults.standard
         let entries: [ProgressDiagnosis.Entry] = (show?.episodes ?? []).compactMap { episode in
-            guard let stored = defaults.array(forKey: AppStorageKeys.localPosition(episode.guid)) as? [Double],
+            guard let stored = ListeningStore.backup(episode.guid, in: defaults),
                   stored.count >= 2, stored[0] > 0 else { return nil }
             return ProgressDiagnosis.Entry(
                 title: episode.title, guid: episode.guid,

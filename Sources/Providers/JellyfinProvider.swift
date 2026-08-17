@@ -439,7 +439,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         var result: [String: BookProgress] = [:]
         for pl in playlists {
             let itemId = Self.itemId(playlistId: pl.id)
-            guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(itemId)) as? [Double],
+            guard let stored = ListeningStore.backup(itemId),
                   stored.count >= 2, let duration = pl.duration, duration > 0 else { continue }
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
@@ -447,7 +447,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         // M1: albums join the local fallback (Jellyfin continue stays local —
         // no per-song bookmark API; honest capability note in the report).
         for album in cachedAlbumItems {
-            guard let stored = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(album.id)) as? [Double],
+            guard let stored = ListeningStore.backup(album.id),
                   stored.count >= 2, let duration = album.media?.duration, duration > 0 else { continue }
             result[album.id] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])

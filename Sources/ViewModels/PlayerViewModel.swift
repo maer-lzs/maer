@@ -456,7 +456,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Crash safety: if the per-second local backup is NEWER than the server
         // state and differs noticeably (the app died before the next sync),
         // continue there and flush it right away.
-        if let saved = UserDefaults.standard.array(forKey: AppStorageKeys.localPosition(item.id)) as? [Double],
+        if let saved = ListeningStore.backup(item.id),
            saved.count >= 2,
            SyncRules.shouldRestoreLocalPosition(
                savedTime: saved[0], savedAtMs: saved[1],
@@ -472,8 +472,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // rule decides; it never wins against a newer foreign device.
         var restoredFromFlushed = false
         if !restoredFromLocal,
-           let flushed = UserDefaults.standard.array(
-               forKey: AppStorageKeys.flushedPosition(item.id)) as? [Double],
+           let flushed = ListeningStore.flushed(item.id),
            flushed.count >= 2,
            SyncRules.shouldPreferFlushedWitness(
                flushedTime: flushed[0], flushedAtMs: flushed[1],
@@ -490,10 +489,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // else the flushed one. Measured cause of the silent null start: with
         // the backup deleted there was no reference at all, so the jump could
         // not be logged — the loudest case was the quietest.
-        let localWitness = (UserDefaults.standard.array(
-                forKey: AppStorageKeys.localPosition(item.id)) as? [Double])
-            ?? (UserDefaults.standard.array(
-                forKey: AppStorageKeys.flushedPosition(item.id)) as? [Double])
+        let localWitness = (ListeningStore.backup(item.id))
+            ?? (ListeningStore.flushed(item.id))
         if let saved = localWitness, saved.count >= 2, saved[0] - startTime > 60 {
             let source = restoredFromLocal ? "local" : (restoredFromFlushed ? "flushed" : "server")
             let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms from=\(source)"
