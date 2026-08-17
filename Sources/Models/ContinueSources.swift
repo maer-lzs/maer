@@ -31,6 +31,22 @@ nonisolated enum ContinueSources {
         id.hasPrefix("local:") || FreeCatalog.allPrefixes.contains(where: id.hasPrefix)
     }
 
+    /// 305a292: "started" must be asked of the SAME won source the start uses,
+    /// not of the raw cached progress. Measured: a downloaded book whose cached
+    /// detail froze at zero counted as unbegun and fell out of the Continue row
+    /// entirely — the third appearance of the frozen zero, after the null start
+    /// and the false 00:00 display.
+    ///
+    /// The flushed witness is what this device last pushed, so it is proof of
+    /// having started even when every server-fed value says otherwise.
+    static func isStarted(serverSaysStarted: Bool,
+                          flushed: [Double]?,
+                          minimumSeconds: Double = 30) -> Bool {
+        if serverSaysStarted { return true }
+        guard let flushed, flushed.count >= 2 else { return false }
+        return flushed[0] >= minimumSeconds
+    }
+
     /// Read the started titles from the second-backup store. Pure over the
     /// passed dictionary so the rule is testable without UserDefaults.
     ///

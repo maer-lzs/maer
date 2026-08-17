@@ -936,10 +936,18 @@ final class LibraryViewModel: ObservableObject {
         let byId = Dictionary(combined.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
         var continueById: [String: LibraryEntry] = [:]
-        for e in combined where e.progress?.isStarted ?? false { continueById[e.id] = e }
+        // 305a292: ask the won source, not the raw one — a frozen cached zero
+        // must not delete a book from the row it belongs in.
+        let defaults = UserDefaults.standard
+        func started(_ e: LibraryEntry) -> Bool {
+            ContinueSources.isStarted(
+                serverSaysStarted: e.progress?.isStarted ?? false,
+                flushed: defaults.array(forKey: AppStorageKeys.flushedPosition(e.id)) as? [Double])
+        }
+        for e in combined where started(e) { continueById[e.id] = e }
         for item in input.seedContinue where byId[item.id] == nil {
             let e = makeEntry(item: item, progress: input.progress, queued: input.queued)
-            if e.progress?.isStarted ?? false { continueById[e.id] = e }
+            if started(e) { continueById[e.id] = e }
         }
         // df0b3bb: two things were missing here, and their absence was not a
         // concept — `recentlyAdded` two lines below has had a cap all along.

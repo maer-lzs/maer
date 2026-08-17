@@ -187,6 +187,29 @@ struct StompWindowTests {
     }
 }
 
+/// 305a292 — die dritte Erscheinung der eingefrorenen Null.
+@Suite("Weiterhoeren fragt die gewonnene Quelle")
+struct ContinueStartedTests {
+
+    /// the reviewer's Testfall: heruntergeladen, Detail-Progress leer, Server voraus —
+    /// die Karte MUSS stehen. Der Zeuge ist der Beweis des Angefangenhabens.
+    @Test func frozenZeroDoesNotDeleteTheCard() {
+        #expect(ContinueSources.isStarted(serverSaysStarted: false,
+                                          flushed: [8_000, 1_000]))
+    }
+
+    @Test func serverSaysStartedIsEnough() {
+        #expect(ContinueSources.isStarted(serverSaysStarted: true, flushed: nil))
+    }
+
+    /// Ein Antippen ist kein begonnenes Buch — dieselbe 30-s-Kante wie in
+    /// `started(in:)`, nicht eine zweite erfunden.
+    @Test func aTapIsNotAStartedBook() {
+        #expect(!ContinueSources.isStarted(serverSaysStarted: false, flushed: [12, 1_000]))
+        #expect(!ContinueSources.isStarted(serverSaysStarted: false, flushed: nil))
+    }
+}
+
 struct TrackMathTests {
 
     private func track(index: Int, start: Double? = nil, duration: Double?) -> ABSAudioTrack {
