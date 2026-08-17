@@ -34,8 +34,14 @@ final class ListeningStatsStore: ObservableObject {
         }
     }
 
+    /// The day key is STORED data, so it must not depend on the device.
+    /// Without a fixed locale a non-Gregorian calendar (Buddhist, Japanese and
+    /// others are selectable in iOS settings) formats the same instant as a
+    /// different year: the statistics would split into two key spaces and a
+    /// calendar change would orphan the history.
     private static let dayFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()

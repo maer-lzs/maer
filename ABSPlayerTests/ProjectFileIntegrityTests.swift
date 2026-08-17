@@ -1018,4 +1018,65 @@ extension ProjectFileIntegrityTests {
         #expect(Self.rawProgressRemovals(in: "ListeningStore.forgetUserDeleted(id)") == 0)
         #expect(Self.rawProgressRemovals(in: "ListeningStore.clearBackup(item.id)") == 0)
     }
+
+    // MARK: - Stempel-Regel: ein festes Format braucht ein festes Gebietsschema
+
+    /// A `DateFormatter` with a fixed `dateFormat` but no fixed locale. Under a
+    /// non-Gregorian calendar (selectable in iOS settings) the same instant
+    /// formats as a different year — and where the result is STORED or
+    /// COMPARED, that is a silent data split, not a cosmetic issue.
+    ///
+    /// `ISO8601DateFormatter` is deliberately not covered: it takes no locale
+    /// and reads the offset from the string, which is exactly what the rule
+    /// asks for.
+    static func localeLessFixedFormats(in text: String) -> Int {
+        var count = 0
+        var search = text.startIndex
+        while let hit = text.range(of: "DateFormatter()", range: search..<text.endIndex) {
+            search = hit.upperBound
+            // ISO8601DateFormatter() also ends in "DateFormatter()" — skip it.
+            let isoStart = text.index(hit.lowerBound, offsetBy: -7, limitedBy: text.startIndex)
+            if let isoStart, text[isoStart..<hit.lowerBound] == "ISO8601" { continue }
+            let windowEnd = text.index(hit.upperBound, offsetBy: 400,
+                                       limitedBy: text.endIndex) ?? text.endIndex
+            let block = String(text[hit.upperBound..<windowEnd])
+            guard block.contains("dateFormat") else { continue }
+            if !block.contains("en_US_POSIX") { count += 1 }
+        }
+        return count
+    }
+
+    @Test("kein festes Datumsformat ohne festes Gebietsschema")
+    func fixedFormatsCarryAFixedLocale() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if Self.localeLessFixedFormats(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these formatters pin a format but not a calendar: \(offenders)")
+    }
+
+    /// Proof run on the two shipped shapes — the listening statistics, whose
+    /// day string is a STORED KEY, and the catalogue air-date parse.
+    @Test("der Gebietsschema-Zaun faengt die ausgelieferten Formen")
+    func localeFenceCatchesTheShippedShapes() {
+        #expect(Self.localeLessFixedFormats(in: """
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd"
+        """) == 1)
+        #expect(Self.localeLessFixedFormats(in: """
+                let iso = DateFormatter()
+                iso.dateFormat = "yyyy-MM-dd"
+                iso.timeZone = TimeZone(identifier: "UTC")
+        """) == 1)
+        // Fixed locale present, and the zone-free ISO parser, are both fine.
+        #expect(Self.localeLessFixedFormats(in: """
+                let f = DateFormatter()
+                f.locale = Locale(identifier: "en_US_POSIX")
+                f.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        """) == 0)
+        #expect(Self.localeLessFixedFormats(in: "let f = ISO8601DateFormatter()") == 0)
+    }
 }

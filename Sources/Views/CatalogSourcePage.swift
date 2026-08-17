@@ -611,6 +611,10 @@ struct ArchiveSeriesPage: View {
         var parts: [String] = []
         if let airDate {
             let iso = DateFormatter()
+            // Fixed locale: a fixed format is only fixed with one. Under a
+            // non-Gregorian calendar the parse fails and the date silently
+            // leaves the line.
+            iso.locale = Locale(identifier: "en_US_POSIX")
             iso.dateFormat = "yyyy-MM-dd"
             iso.timeZone = TimeZone(identifier: "UTC")
             if let date = iso.date(from: airDate) {
