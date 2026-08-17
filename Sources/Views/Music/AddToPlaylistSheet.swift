@@ -400,7 +400,9 @@ struct AddToPlaylistSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(busy)
+                    Button("Cancel") { dismiss() }
+                        .disabled(busy)
+                        .accessibilityIdentifier("playlist-dialog-cancel")
                 }
             }
             .overlay { if busy { ProgressView().controlSize(.large) } }
@@ -497,7 +499,9 @@ struct PlaylistCreateForm: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }.disabled(busy)
+                Button("Cancel") { dismiss() }
+                    .disabled(busy)
+                    .accessibilityIdentifier("playlist-dialog-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Create") {

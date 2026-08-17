@@ -234,7 +234,7 @@ struct MusicView: View {
             Divider().padding(.leading, 52)
             // UMZUG (klassik-in-die-suche): the Free-Classical entry moved to
             // the music SEARCH deck — the browse list stays the personal
-            // library (Katalog-Einstiege wohnen im Entdecken-Kontext); the
+            // library (catalogue entries live in the discover context); the
             // Home teaser and both gates are untouched.
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)
         }
@@ -313,12 +313,11 @@ struct MusicView: View {
         // card format as the other libraries' card rows (featuredCardWidth,
         // text block on the card color), with the mosaic as the cover face.
         VStack(alignment: .leading, spacing: 8) {
-            // Paket 1: ZWEI Playlist-Typen, sichtbar unterschieden — ein
-            // Nutzer muss wissen, was ein anderer Client sehen wird. Die
-            // Server-Listen synchronisieren ueberallhin und tragen nur
-            // Server-Titel; die Maer-Listen leben auf den Geraeten und duerfen
-            // alles mischen. Die Unterscheidung ist Pflicht, die Wortwahl
-            // unsere.
+            // TWO playlist kinds, visibly told apart — one has to know what
+            // another client of the same server will see. The server lists
+            // sync everywhere and carry server titles only; the device lists
+            // live on the devices and may mix everything. The distinction is
+            // mandatory, the wording is ours.
             if !sortedPlaylists.isEmpty {
                 RowHeading.plain("Playlists · On your server")
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -355,7 +354,7 @@ struct MusicView: View {
         PlaylistPresenter.shared.askToCreate(place: place, host: playlistHost)
     }
 
-    /// Paket 1: die Maer-Listen — quellenuebergreifend, auf den Geraeten.
+    /// The device lists — across sources, living on the devices.
     @ViewBuilder
     private var maerPlaylistRow: some View {
         let lists = maerPlaylists.playlists
@@ -430,6 +429,12 @@ private struct NewPlaylistCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(width: CardMetrics.featuredCardWidth)
+            // The face is a STROKED outline — a stroke has no interior, so
+            // without this the middle of the card is not hit-testable and the
+            // tap lands nowhere. Measured: the card looked and read like a
+            // button and answered only on the dashed line and on its label.
+            // The real cards carry the same shape for the same reason.
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)

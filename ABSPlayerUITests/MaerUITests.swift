@@ -624,6 +624,23 @@ nonisolated final class MaerUITests: XCTestCase {
             tries += 1
         }
         XCTAssertTrue(newCardOnScreen(), "the New Playlist card must scroll into reach")
+        // c6468d0 (2): the create flow used to be an ALERT, and an alert with
+        // a text field could not carry a place choice with its explaining
+        // lines — which is why this case used to stop here and leave the
+        // presentation to the device loop. It is a sheet now, so the contract
+        // is testable: the card opens the form, and the form ASKS WHERE.
+        newCard.tap()
+        XCTAssertTrue(app.textFields["new-playlist-name"].firstMatch.waitForExistence(timeout: 10),
+                      "the New Playlist card must open the one create dialog")
+        XCTAssertTrue(app.buttons["new-playlist-place-server"].firstMatch.exists,
+                      "with a music server the dialog must offer the server place")
+        XCTAssertTrue(app.buttons["new-playlist-place-device"].firstMatch.exists,
+                      "the device place is always offered")
+        snap(app, "playlist-create-dialog")
+        app.buttons["playlist-dialog-cancel"].firstMatch.tap()
+        XCTAssertTrue(app.textFields["new-playlist-name"].firstMatch
+                        .waitForNonExistence(timeout: 10),
+                      "cancel must close the dialog")
         // 5219ea7 + 4ca91e6 (#83): the shuffle badge is a nested button
         // inside the card's play button — a real gesture-conflict blind spot.
         // Tapping the BADGE must start playback WITHOUT navigating; the card
@@ -643,6 +660,64 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.buttons["music-route-albums"].firstMatch.exists,
                       "badge tap must NOT navigate — the tab root stays visible")
         snap(app, "music-playlist-cards")
+        app.terminate()
+    }
+
+    /// c6468d0 (3): ONE add sheet showing BOTH worlds. A server ALBUM belongs
+    /// in both, so both sections must stand — the acceptance case for "one
+    /// leaf with both worlds".
+    func testAddToPlaylistSheetShowsBothWorlds() {
+        let app = launchSeeded()
+        let music = app.buttons["tab-music"].firstMatch
+        XCTAssertTrue(music.waitForExistence(timeout: 15))
+        music.tap()
+        let albums = app.buttons["music-route-albums"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: albums),
+                      "the music tab must lead to the albums page")
+        albums.tap()
+        let album = app.staticTexts["Seed Album"].firstMatch
+        XCTAssertTrue(waitScrollingTo(app, element: album),
+                      "the seeded album must stand in the albums grid")
+        album.press(forDuration: 1.2)
+
+        let add = app.buttons["add-to-playlist"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10),
+                      "every song surface must offer the one playlist action")
+        add.tap()
+
+        XCTAssertTrue(app.staticTexts["Auf deinem Server"].firstMatch.waitForExistence(timeout: 10),
+                      "a server-owned item must offer the server section")
+        XCTAssertTrue(app.staticTexts["Auf deinen Geräten"].firstMatch.exists,
+                      "the device section always stands")
+        snap(app, "playlist-add-sheet")
+        app.buttons["playlist-dialog-cancel"].firstMatch.tap()
+        app.terminate()
+    }
+
+    /// The presentation host. A sheet cannot be presented from the root while
+    /// another sheet is already up — so the queue, which LIVES in a sheet,
+    /// carries its own host and the request is stamped with it. Without that
+    /// the create form would never appear here, and nothing in the compiler
+    /// would say so.
+    func testQueueSheetPresentsTheCreateDialogOverItself() {
+        let app = launchSeeded(withActivePlayer: true)
+        let miniPlayer = app.buttons["Now Playing Book"].firstMatch
+        XCTAssertTrue(miniPlayer.waitForExistence(timeout: 20))
+        miniPlayer.press(forDuration: 1.6)
+        let menuEntry = app.buttons["mini-queue-entry"].firstMatch
+        XCTAssertTrue(menuEntry.waitForExistence(timeout: 10))
+        menuEntry.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["play-queue-list"].firstMatch
+                        .waitForExistence(timeout: 10),
+                      "queue sheet must open from the mini player")
+
+        let save = app.buttons["queue-save-as-playlist"].firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: 10),
+                      "the queue must offer saving itself as a playlist")
+        save.tap()
+        XCTAssertTrue(app.textFields["new-playlist-name"].firstMatch.waitForExistence(timeout: 10),
+                      "the create dialog must present from INSIDE the queue sheet")
+        snap(app, "playlist-dialog-over-sheet")
         app.terminate()
     }
 

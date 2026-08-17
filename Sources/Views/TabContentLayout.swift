@@ -304,7 +304,7 @@ extension RowHeading {
 }
 
 
-/// M3 (Auftrag 09.08.): „Als Nächstes" / „Zuletzt einreihen" für Katalog-Titel.
+/// "Play Next" / "Play Last" for catalogue titles.
 /// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend —
 /// only the entry points were missing. ONE building block for every catalogue
 /// tile (music AND books), so the next surface does not reinvent it.

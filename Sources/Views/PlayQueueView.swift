@@ -70,10 +70,10 @@ struct PlayQueueView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    // ERWEITERUNG 7baf2c2 Punkt 4: die naheliegendste Art,
-                    // eine Playlist anzulegen — statt jeden Titel einzeln zu
-                    // suchen. Runs through the ONE create dialog, so a queued
-                    // ALBUM lands as its songs here too.
+                    // The most obvious way to build a playlist — instead of
+                    // searching every title again one by one. Runs through the
+                    // ONE create dialog, so a queued ALBUM lands as its songs
+                    // here too.
                     PlaylistPresenter.shared.askToCreate(place: .device,
                                                          ids: PlayQueue.shared.ids,
                                                          host: playlistHost)
