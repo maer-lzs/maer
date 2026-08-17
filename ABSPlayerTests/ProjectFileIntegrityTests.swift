@@ -250,16 +250,33 @@ struct ProjectFileIntegrityTests {
         var search = text.startIndex
         while let hit = text.range(of: ".set(", range: search..<text.endIndex) {
             search = hit.upperBound
-            // The whole statement: from the call up to a window big enough for
-            // key + value in either order, whitespace collapsed.
-            let windowEnd = text.index(hit.upperBound, offsetBy: 300, limitedBy: text.endIndex) ?? text.endIndex
-            let statement = text[hit.lowerBound..<windowEnd]
+            // The statement ends at the parenthesis that CLOSES the call — a
+            // fixed-size window read past it into the next function and
+            // condemned an innocent writer for its neighbour's key.
+            guard let end = Self.matchingParen(in: text, openAfter: hit.upperBound) else { continue }
+            let statement = text[hit.lowerBound..<end]
                 .components(separatedBy: .whitespacesAndNewlines).joined()
             guard statement.hasPrefix(".set([") else { continue }
             guard statement.contains("localPosition") else { continue }
             offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
         }
         return offenders
+    }
+
+    /// Index just past the `)` that closes an already-open parenthesis.
+    private static func matchingParen(in text: String,
+                                      openAfter index: String.Index) -> String.Index? {
+        var depth = 1
+        var i = index
+        while i < text.endIndex {
+            if text[i] == "(" { depth += 1 }
+            if text[i] == ")" {
+                depth -= 1
+                if depth == 0 { return text.index(after: i) }
+            }
+            i = text.index(after: i)
+        }
+        return nil
     }
 
     @Test("no array literal is written to a localPosition key")
@@ -278,6 +295,23 @@ struct ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "these writers build the entry themselves and lose the stored duration: \(offenders)")
+    }
+
+    /// Second proof run, from the day the fence condemned an innocent writer:
+    /// a fixed window read past the closing parenthesis into the NEXT
+    /// function and borrowed its key. The two statements below are the real
+    /// pair — the flushed witness (legitimate, two values, its own key) and
+    /// the backup removal that follows it.
+    @Test("der Schreiber-Zaun endet an der Klammer, nicht am Zeichenfenster")
+    func writerFenceStopsAtTheStatementEnd() {
+        #expect(Self.rawPositionWriters(in: """
+                defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
+            }
+
+            static func clearBackup(_ itemId: String) {
+                defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
+            }
+        """).isEmpty, "ein Schreiber wird fuer den Schluessel seines Nachbarn verurteilt")
     }
 
     /// The proof run: the fence must FIND the shape it went blind on — the
@@ -573,8 +607,12 @@ extension ProjectFileIntegrityTests {
         let text = try String(contentsOf: root.appendingPathComponent(
             "Sources/ViewModels/PlayerViewModel+Sync.swift"), encoding: .utf8)
         let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
-        #expect(collapsed.contains("AppStorageKeys.flushedPosition(item.id))"),
+        // The statement is unchanged, its expression moved into the stock:
+        // the sync notes what it pushed instead of deleting the backup bare.
+        #expect(collapsed.contains("ListeningStore.noteFlushed("),
                 "der Sync schreibt keinen geflusht-Zeugen mehr")
+        #expect(!collapsed.contains("UserDefaults.standard.removeObject(forKey:key)"),
+                "der Sync entfernt die Sicherung wieder roh, am Bestand vorbei")
     }
 
     /// 2a993f6 (Glied 4): the cached detail is the start source of a
@@ -880,5 +918,47 @@ extension ProjectFileIntegrityTests {
         // The shared rule is no violation.
         #expect(Self.rawFeedRequestSites(
             in: "guard let url = PodcastFeedAddress.requestURL(feedURL) else { return nil }") == 0)
+    }
+
+    // MARK: - Hoerstand-Invariante: kein Pfad entfernt einen Stand ersatzlos
+
+    /// A raw removal of a progress key. The whole weekend's error family came
+    /// from exactly one such line: the sync deleted the local witness after
+    /// pushing, so a downloaded book had no local truth at all and started at
+    /// zero whenever the server was missing, late or empty. Replacing is
+    /// allowed, removing is not — except for the ONE named user intent inside
+    /// the stock itself.
+    static func rawProgressRemovals(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        return ["removeObject(forKey:AppStorageKeys.localPosition(",
+                "removeObject(forKey:AppStorageKeys.flushedPosition("]
+            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos")
+    func noPathRemovesAListeningState() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
+            if Self.rawProgressRemovals(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these paths remove a listening state instead of replacing it: \(offenders)")
+    }
+
+    /// Proof run on the shipped shapes — the sync deletion that caused the
+    /// null start, and the re-keying that overwrote a newer stand.
+    @Test("der Invarianten-Zaun faengt die ausgelieferten Formen")
+    func invariantFenceCatchesTheShippedShapes() {
+        #expect(Self.rawProgressRemovals(
+            in: "UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(id))") == 1)
+        #expect(Self.rawProgressRemovals(in: """
+                    d.removeObject(
+                        forKey: AppStorageKeys.flushedPosition(item.id))
+        """) == 1)
+        // Going through the stock is no violation — it is the point.
+        #expect(Self.rawProgressRemovals(in: "ListeningStore.forgetUserDeleted(id)") == 0)
+        #expect(Self.rawProgressRemovals(in: "ListeningStore.clearBackup(item.id)") == 0)
     }
 }

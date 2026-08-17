@@ -1018,17 +1018,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 // 5s (UserDefaults writes aren't free). The loss window on crash
                 // is thus at most ~5s instead of 30s.
                 let now = Date().timeIntervalSince1970
-                if self.isPlaying, now - self.lastLocalSaveAt >= 5, let key = self.localPositionKey {
+                if self.isPlaying, now - self.lastLocalSaveAt >= 5, let id = self.item?.id {
                     self.lastLocalSaveAt = now
-                    // This path used to store a RAW pair, bypassing
-                    // ProgressMark — every repaired episode would have lost its
-                    // reference point on the next listen. `advancing` carries it
-                    // forward even when no duration is known here.
-                    let previous = UserDefaults.standard.array(forKey: key) as? [Double]
-                    UserDefaults.standard.set(
-                        ProgressMark.advancing(previous, position: self.currentTime,
-                                               duration: self.duration, nowMs: now * 1000),
-                        forKey: key)
+                    // The stock decides what a local state IS for this class:
+                    // a live stream has no end to be at, so it gets no growing
+                    // number that a later surface would read as progress.
+                    ListeningStore.record(id, position: self.currentTime,
+                                                 duration: self.duration, atMs: now * 1000)
                     // Listen log: a podcast crossing its played threshold in
                     // normal playback lands in the show-independent history
                     // (cheap + idempotent; threshold logic stays in the store).

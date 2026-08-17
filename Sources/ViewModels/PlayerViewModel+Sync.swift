@@ -115,10 +115,10 @@ extension PlayerViewModel {
                     // a downloaded book has no local source at all (the cached
                     // detail keeps the download-time state forever) and starts
                     // at 0 whenever the server is missing, late or empty.
-                    UserDefaults.standard.set(
-                        [currentTime, Date().timeIntervalSince1970 * 1000],
-                        forKey: AppStorageKeys.flushedPosition(item.id))
-                    UserDefaults.standard.removeObject(forKey: key)
+                    ListeningStore.noteFlushed(
+                        item.id, position: currentTime,
+                        atMs: Date().timeIntervalSince1970 * 1000)
+                    ListeningStore.clearBackup(item.id)
                 } else {
                     // The duration travels along as the third value: at the
                     // natural end `currentTime == duration`, and without that

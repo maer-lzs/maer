@@ -163,8 +163,10 @@ final class LocalLibrary: ObservableObject {
         try? FileManager.default.removeItem(at: itemDir(entry))
         entries.removeAll { $0.id == id }
         save()
-        // Clean up per-book keys (position, rate) too.
-        UserDefaults.standard.removeObject(forKey: AppStorageKeys.localPosition(id))
+        // The ONE legitimate removal: the user deleted the item itself, so
+        // its state has nothing left to belong to. Every other path replaces
+        // instead of removing.
+        ListeningStore.forgetUserDeleted(id)
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.playbackRate(id))
     }
 

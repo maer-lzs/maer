@@ -62,10 +62,12 @@ final class PodcastServerSave {
     /// Move the local/iCloud progress of the rss episode onto the server episode
     /// and write it once to the ABS server.
     private func migrateProgress(from old: String, to new: String, duration: Double) async {
-        let d = UserDefaults.standard
-        guard let arr = d.array(forKey: AppStorageKeys.localPosition(old)) as? [Double], arr.count >= 2 else { return }
-        d.set(arr, forKey: AppStorageKeys.localPosition(new))
-        d.removeObject(forKey: AppStorageKeys.localPosition(old))
+        guard let arr = ListeningStore.backup(old), arr.count >= 2 else { return }
+        // The state MOVES; it does not paint over whatever the target holds.
+        // Unconditional overwriting killed a NEWER stand on the server-side
+        // twin — a device that had already listened there lost it by being
+        // re-keyed.
+        ListeningStore.move(from: old, to: new)
         PodcastCloudSync.shared.reconcile()
 
         let position = arr[0]
