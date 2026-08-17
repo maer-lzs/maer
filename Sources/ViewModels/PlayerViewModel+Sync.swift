@@ -51,6 +51,11 @@ extension PlayerViewModel {
 
     private func performSync(force: Bool) async {
         guard let item else { return }
+        // 5f4fdee: a start that no source answered may not push — not even
+        // forced. At 00:00 in a fresh session this would overwrite a server
+        // that is hours ahead, and the suspicious-drop guard has no reference
+        // value to catch it.
+        guard SyncRules.mayPushProgress(startSourceResolved: startSourceResolved) else { return }
         guard force || abs(currentTime - lastSyncedTime) >= 5 else { return }
 
         // Core rule: a backward jump the user did NOT initiate is never written
@@ -335,6 +340,10 @@ extension PlayerViewModel {
         guard let item else { return }
         do {
             let fresh = try await provider.fetchItemDetail(itemId: item.id)
+            // The server has spoken — whatever it said. That RESOLVES the
+            // start: even "it knows nothing" is an answer, and a genuinely new
+            // book must be able to report progress.
+            startSourceResolved = true
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
             let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
             // 2a993f6 (Glied 4): whatever the server says now also goes into

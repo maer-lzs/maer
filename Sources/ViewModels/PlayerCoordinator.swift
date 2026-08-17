@@ -163,7 +163,24 @@ final class PlayerCoordinator: ObservableObject {
         // follows.
         if DownloadManager.shared.isDownloaded(itemId: item.id),
            let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
-            await start(detail: cached, item: item, provider: itemProvider,
+            // 5f4fdee: if the cached detail carries NO progress, the local
+            // route would show a confident "00:00" until someone presses play
+            // — and that invitation is the dangerous one. So ask the server
+            // FIRST in that case, with the same 1.5 s patience the play path
+            // uses. Only the silent case pays the wait; a cached detail with a
+            // position opens as immediately as before.
+            var detail = cached
+            if cached.userMediaProgress == nil,
+               itemProvider.capabilities.contains(.progressSync),
+               let fresh = await Self.boundedDetail(provider: itemProvider, itemId: item.id) {
+                detail = fresh
+                DownloadManager.shared.updateCachedProgress(
+                    itemId: item.id, progress: fresh.userMediaProgress ?? MediaProgress(
+                        currentTime: 0, duration: nil, progress: nil,
+                        isFinished: nil, lastUpdate: nil))
+            }
+            guard generation == openGeneration else { return }
+            await start(detail: detail, item: item, provider: itemProvider,
                         offlineFallback: true, autoplay: autoplay, restart: restart,
                         carriedSleep: carriedSleep, generation: generation)
             // The server side follows AFTERWARDS and corrects the position
@@ -192,6 +209,23 @@ final class PlayerCoordinator: ObservableObject {
                 loadError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 activeItem = nil
             }
+        }
+    }
+
+    /// The server answer with a deadline — same 1.5 s as `playWithServerCheck`,
+    /// same reason: an unreachable server must not hold the player hostage.
+    /// nil means "did not answer in time", never "there is no progress".
+    private static func boundedDetail(provider: any AudioProvider,
+                                      itemId: String) async -> LibraryItemDetail? {
+        await withTaskGroup(of: LibraryItemDetail?.self) { group in
+            group.addTask { try? await provider.fetchItemDetail(itemId: itemId) }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
     }
 

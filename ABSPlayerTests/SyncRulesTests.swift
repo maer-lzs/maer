@@ -169,6 +169,24 @@ struct FlushedWitnessTests {
     }
 }
 
+/// 5f4fdee — das Stomp-Fenster. Der gefaehrliche Pfad braucht einen Testfall:
+/// frische Sitzung, Position nahe 0, Server deutlich voraus.
+@Suite("Ein Start ohne Antwort darf nichts zum Server schreiben")
+struct StompWindowTests {
+
+    /// Der gemeldete Realfall: Vollplayer bei 00:00, Server bei 8:29:33.
+    /// Ein Push von hier ueberschriebe acht Stunden.
+    @Test func unresolvedStartMayNotPush() {
+        #expect(!SyncRules.mayPushProgress(startSourceResolved: false))
+    }
+
+    /// „Der Server weiss nichts" IST eine Antwort — ein wirklich neues Buch
+    /// muss seinen Fortschritt melden koennen.
+    @Test func answeredStartPushesAsBefore() {
+        #expect(SyncRules.mayPushProgress(startSourceResolved: true))
+    }
+}
+
 struct TrackMathTests {
 
     private func track(index: Int, start: Double? = nil, duration: Double?) -> ABSAudioTrack {

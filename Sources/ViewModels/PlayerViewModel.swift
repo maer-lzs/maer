@@ -226,6 +226,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
         item.map { AppStorageKeys.localPosition($0.id) }
     }
 
+    /// 5f4fdee: has ANY source answered where this book starts? A fresh
+    /// session that found nothing (no witness, no backup, no server answer)
+    /// must not push — at 00:00 it would overwrite a server that is hours
+    /// ahead, and the suspicious-drop guard has no reference to stop it.
+    var startSourceResolved = false
+
     /// Last write time of the local position backup (throttle).
     private var lastLocalSaveAt: TimeInterval = 0
 
@@ -507,6 +513,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = 0
             restoredFromLocal = false
         }
+        // Resolved when anything datable spoke: a server entry in the detail,
+        // the crash backup, or the flushed witness. Only the silent case —
+        // downloaded book, frozen detail, no witness, server not (yet) heard —
+        // stays unresolved, and that is exactly the dangerous one.
+        startSourceResolved = restoredFromLocal || restoredFromFlushed
+            || item.userMediaProgress != nil
         let startIndex = trackIndex(for: startTime)
         let offsetWithinTrack = max(0, startTime - trackAbsoluteStart(startIndex))
 

@@ -104,6 +104,26 @@ nonisolated enum SyncRules {
         return flushedAtMs > serverUpdateMs && flushedTime > serverTime + tolerance
     }
 
+    /// 5f4fdee — the stomp window. In a FRESH session `lastSyncedTime` is 0,
+    /// so the suspicious-drop guard has no reference: if the start found no
+    /// source at all (no witness, no local backup, no server answer yet) and
+    /// somebody presses play at 00:00, the next periodic sync pushes that
+    /// near-zero value and OVERWRITES a server that was hours ahead. That is
+    /// the measured Winterfell afternoon pattern, now understood as mechanics.
+    ///
+    /// So a push needs a start that was ANSWERED — by any source. Until then
+    /// the device only listens. A resolved start pushes as before; this rule
+    /// never delays a normal session, because a normal session resolves at
+    /// load time.
+    /// No tolerance escape on purpose: my first draft let an unresolved start
+    /// push once it had played past 5 s — which is exactly the stomp it is
+    /// supposed to prevent, only five seconds later. A brand-new book is not
+    /// blocked by this, because "the server answered, and it knows nothing"
+    /// RESOLVES the start just as much as an adopted position does.
+    static func mayPushProgress(startSourceResolved: Bool) -> Bool {
+        startSourceResolved
+    }
+
     /// A non-user-initiated backward jump considered suspicious?
     static func isSuspiciousDrop(
         currentTime: Double,
