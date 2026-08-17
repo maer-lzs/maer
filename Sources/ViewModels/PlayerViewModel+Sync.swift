@@ -101,43 +101,39 @@ extension PlayerViewModel {
                 lastKnownServerUpdate = max(lastKnownServerUpdate, ms)
             }
             SyncQueue.shared.remove(itemId: item.id)
-            if let key = localPositionKey {
-                // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
-                // sync basis — including ABS podcasts, so iCloud reconciles them
-                // across devices. Only for books (server = store of record) is
-                // the local crash backup removed after a successful sync.
-                let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
-                if provider.capabilities.contains(.progressSync) && !isPodcast {
-                    // c59e96e: the crash backup has done its job and goes —
-                    // but WHAT we pushed and WHEN stays. A deleted witness is
-                    // not a fact; that is the same lesson as the `[0, now]`
-                    // tombstone further down, one level further. Without this
-                    // a downloaded book has no local source at all (the cached
-                    // detail keeps the download-time state forever) and starts
-                    // at 0 whenever the server is missing, late or empty.
-                    ListeningStore.noteFlushed(
-                        item.id, position: currentTime,
-                        atMs: Date().timeIntervalSince1970 * 1000)
-                    ListeningStore.clearBackup(item.id)
-                } else {
-                    // The duration travels along as the third value: at the
-                    // natural end `currentTime == duration`, and without that
-                    // reference a later-grown ad duration would show the
-                    // finished episode as started again. `advancing`, not
-                    // `entry` — with an unknown duration this must not drop a
-                    // reference point that is already there.
-                    let previous = UserDefaults.standard.array(forKey: key) as? [Double]
-                    UserDefaults.standard.set(
-                        ProgressMark.advancing(previous, position: currentTime, duration: duration,
-                                               nowMs: Date().timeIntervalSince1970 * 1000),
-                        forKey: key)
-                    // gpodder: push the podcast position too (periodically + on
-                    // pause/stop/seek). No-op without config; abspod: is mapped
-                    // via the feed-guid bridge.
-                    if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
-                        GPodderSync.shared.notePlayback(itemId: item.id,
-                                                        position: currentTime, duration: duration)
-                    }
+            // Podcasts (rss:/abspod:) keep `localPosition` as the iCloud
+            // sync basis — including ABS podcasts, so iCloud reconciles them
+            // across devices. Only for books (server = store of record) is
+            // the local crash backup removed after a successful sync.
+            let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
+            if provider.capabilities.contains(.progressSync) && !isPodcast {
+                // c59e96e: the crash backup has done its job and goes —
+                // but WHAT we pushed and WHEN stays. A deleted witness is
+                // not a fact; that is the same lesson as the `[0, now]`
+                // tombstone further down, one level further. Without this
+                // a downloaded book has no local source at all (the cached
+                // detail keeps the download-time state forever) and starts
+                // at 0 whenever the server is missing, late or empty.
+                ListeningStore.noteFlushed(
+                    item.id, position: currentTime,
+                    atMs: Date().timeIntervalSince1970 * 1000)
+                ListeningStore.clearBackup(item.id)
+            } else {
+                // The duration travels along as the third value: at the
+                // natural end `currentTime == duration`, and without that
+                // reference a later-grown ad duration would show the
+                // finished episode as started again. `advancing`, not
+                // `entry` — with an unknown duration this must not drop a
+                // reference point that is already there.
+                ListeningStore.record(item.id, position: currentTime,
+                                      duration: duration,
+                                      atMs: Date().timeIntervalSince1970 * 1000)
+                // gpodder: push the podcast position too (periodically + on
+                // pause/stop/seek). No-op without config; abspod: is mapped
+                // via the feed-guid bridge.
+                if item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+                    GPodderSync.shared.notePlayback(itemId: item.id,
+                                                    position: currentTime, duration: duration)
                 }
             }
             // Report only transitions (no 30s spam): offline/queued/failed → saved.
@@ -298,25 +294,22 @@ extension PlayerViewModel {
         isFinished = target
         // Providers without server sync (RSS/local): the played state lives in
         // `localPosition` — set or remove it directly here.
-        if !provider.capabilities.contains(.progressSync), let key = localPositionKey {
+        if !provider.capabilities.contains(.progressSync) {
             let nowMs = Date().timeIntervalSince1970 * 1000
             if target {
                 // With an unknown duration `entry(position: 0, duration: 0)`
                 // wrote `[0, now]` — which READS as unplayed. Same sentinel as
                 // `PodcastProgressStore.setPlayed`: it needs no duration.
-                let previous = UserDefaults.standard.array(forKey: key) as? [Double]
                 let position = duration > 0 ? duration : ProgressMark.playedSentinel
-                UserDefaults.standard.set(
-                    ProgressMark.advancing(previous, position: position,
-                                           duration: duration, nowMs: nowMs),
-                    forKey: key)
+                ListeningStore.record(item.id, position: position,
+                                      duration: duration, atMs: nowMs)
             } else {
                 // A deleted key is not a fact: it loses against the older
                 // iCloud value on the next reconcile (newest-wins) and the
                 // episode flips back to played. The `[0, now]` tombstone is a
                 // decided pattern — `setPlayed` has always used it, this path
                 // deviated from it.
-                UserDefaults.standard.set([0.0, nowMs], forKey: key)
+                ListeningStore.store(item.id, entry: [0.0, nowMs])
             }
         }
         if target {

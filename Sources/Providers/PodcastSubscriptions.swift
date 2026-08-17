@@ -456,7 +456,11 @@ final class PodcastSubscriptions: ObservableObject {
     /// re-keying the guids the associated `localPosition` progress moves along
     /// (old→new) so the just-imported Apple progress is preserved.
     private func migrated(_ decoded: [PodcastShow]) -> [PodcastShow] {
-        let (result, changed) = Self.migrate(decoded, moveProgress: Self.migrateLocalPosition)
+        // The SAME re-keying rule as everywhere else — including the
+        // comparison the old private copy lacked.
+        let (result, changed) = Self.migrate(decoded) { old, new in
+            ListeningStore.move(from: old, to: new)
+        }
         if changed {
             // Write back (serialized, off-main) so the cleanup is persistent.
             persist(result)
@@ -646,16 +650,6 @@ final class PodcastSubscriptions: ObservableObject {
         }
     }
 
-    /// Move `localPosition.<oldGuid>` → `<newGuid>` (only if the target is empty).
-    private nonisolated static func migrateLocalPosition(from old: String, to new: String) {
-        let d = UserDefaults.standard
-        let oldKey = AppStorageKeys.localPosition(old)
-        let newKey = AppStorageKeys.localPosition(new)
-        guard d.object(forKey: newKey) == nil, let value = d.array(forKey: oldKey) else { return }
-        d.set(value, forKey: newKey)
-        d.removeObject(forKey: oldKey)
-    }
-
     // MARK: - Subscriptions
 
     /// Subscribe to a feed (loads + parses immediately). Already-present feeds
@@ -692,9 +686,8 @@ final class PodcastSubscriptions: ObservableObject {
             let defaults = UserDefaults.standard
             for (freeGuid, premiumGuid) in matches {
                 guard let stored = ListeningStore.backup(freeGuid, in: defaults),
-                      defaults.object(forKey: AppStorageKeys.localPosition(premiumGuid)) == nil
-                else { continue }
-                defaults.set(stored, forKey: AppStorageKeys.localPosition(premiumGuid))
+                      !ListeningStore.hasStand(premiumGuid, in: defaults) else { continue }
+                ListeningStore.store(premiumGuid, entry: stored, in: defaults)
                 redirected += 1
             }
             lastFreeTwinSkip = (show.title, redirected)
@@ -741,8 +734,12 @@ final class PodcastSubscriptions: ObservableObject {
         var adopted = 0
         let defaults = UserDefaults.standard
         for (freeGuid, premiumGuid) in matches {
-            if defaults.object(forKey: AppStorageKeys.localPosition(freeGuid)) != nil {
-                Self.migrateLocalPosition(from: freeGuid, to: premiumGuid)
+            if ListeningStore.hasStand(freeGuid, in: defaults) {
+                // ONE re-keying, one rule. This used to be a second
+                // implementation beside the stock's: it SKIPPED any occupied
+                // target, so an OLDER stand there was never healed — the same
+                // defect as the unconditional overwrite, turned the other way.
+                ListeningStore.move(from: freeGuid, to: premiumGuid, in: defaults)
                 moved += 1
             }
             if DownloadManager.shared.adoptDownload(from: freeGuid, to: premiumGuid) {
@@ -993,15 +990,14 @@ final class PodcastSubscriptions: ObservableObject {
                 if episode.duration <= 0, match.duration > 0 {
                     updated[s].episodes[e].duration = match.duration
                 }
-                let key = AppStorageKeys.localPosition(episode.guid)
                 guard let entry = PodcastImport.adoptedEntry(
-                    local: UserDefaults.standard.array(forKey: key) as? [Double],
+                    local: ListeningStore.backup(episode.guid),
                     playhead: match.playhead,
                     duration: updated[s].episodes[e].duration,
                     isPlayed: match.isPlayed,
                     timestampMs: match.timestampMs,
                     nowMs: nowMs) else { keptLocal += 1; continue }
-                UserDefaults.standard.set(entry, forKey: key)
+                ListeningStore.store(episode.guid, entry: entry)
                 applied += 1
             }
         }
@@ -1109,7 +1105,7 @@ final class PodcastSubscriptions: ObservableObject {
             },
             stored: { ListeningStore.backup($0, in: defaults) })
         for (guid, entry) in writes {
-            defaults.set(entry, forKey: AppStorageKeys.localPosition(guid))
+            ListeningStore.store(guid, entry: entry, in: defaults)
         }
         if !writes.isEmpty {
             Logger.rss.notice("PODCAST healed \(writes.count) stored entries with the duration they were written against")

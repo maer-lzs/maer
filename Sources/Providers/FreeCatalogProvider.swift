@@ -262,22 +262,19 @@ final class FreeCatalogProvider: AudioProvider {
             done.insert(albumId)
             UserDefaults.standard.set(Array(done), forKey: migratedKey)
         }
-        let key = AppStorageKeys.localPosition(albumId)
-        guard let stored = UserDefaults.standard.array(forKey: key) as? [Double],
+        guard let stored = ListeningStore.backup(albumId),
               stored.count >= 2, stored[0] > 0 else { return }
         guard let detail = try? await shared.fetchAlbumDetail(albumId: albumId),
               let tracks = detail.media.tracks else { return }
         // The decision itself is pure and tested — including against an
         // IMPORTED stock, which is what a new user starts with.
-        let songKeyFor = { (index: Int) in
-            AppStorageKeys.localPosition(CatalogSongID.make(album: albumId, index: index))
-        }
+        let songIdFor = { (index: Int) in CatalogSongID.make(album: albumId, index: index) }
         guard let carried = CatalogPositionMigration.songEntry(
             albumPosition: stored, tracks: tracks,
             songAlreadyHasEntry: FreeCatalog.trackIndex(at: stored[0], tracks: tracks)
-                .map { UserDefaults.standard.object(forKey: songKeyFor($0)) != nil } ?? false)
+                .map { ListeningStore.hasStand(songIdFor($0)) } ?? false)
         else { return }
-        UserDefaults.standard.set(carried.entry, forKey: songKeyFor(carried.index))
+        ListeningStore.store(songIdFor(carried.index), entry: carried.entry)
         Logger.library.notice("CATALOG carried album position to song index \(carried.index) of \(albumId, privacy: .public)")
     }
 

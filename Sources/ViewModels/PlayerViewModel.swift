@@ -220,12 +220,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Last value successfully written to the server.
     var lastSyncedTime: Double = 0
-    /// UserDefaults key of this book's per-second position backup. Closes the
-    /// 30s loss window on crash/force-quit: [time, ms-epoch].
-    var localPositionKey: String? {
-        item.map { AppStorageKeys.localPosition($0.id) }
-    }
-
     /// 5f4fdee: has ANY source answered where this book starts? A fresh
     /// session that found nothing (no witness, no backup, no server answer)
     /// must not push — at 00:00 it would overwrite a server that is hours

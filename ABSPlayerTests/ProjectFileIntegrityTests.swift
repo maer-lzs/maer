@@ -928,21 +928,123 @@ extension ProjectFileIntegrityTests {
     /// zero whenever the server was missing, late or empty. Replacing is
     /// allowed, removing is not — except for the ONE named user intent inside
     /// the stock itself.
+    /// Removals are counted by the SAME resolver as every other access — the
+    /// literal version missed `removeObject(forKey: oldKey)` for exactly the
+    /// reason the read half missed its twelve.
     static func rawProgressRemovals(in text: String) -> Int {
+        Self.rawProgressAccesses(in: text, operations: "removeObject")
+    }
+
+    /// The other half of ownership: nobody TOUCHES the raw keys — reading,
+    /// writing, asking whether they exist, or removing them.
+    ///
+    /// **This fence had a hole and it was the same class it guards against.**
+    /// The first version searched the LITERAL
+    /// `array(forKey:AppStorageKeys.localPosition(`, so every access through a
+    /// key variable (`let key = AppStorageKeys.localPosition(id)` … then
+    /// `forKey: key`) walked straight past it — and most sites are written
+    /// that way. It also did not know `object(forKey:)`, the existence check.
+    /// Twelve accesses stood in the tree while it reported green. So it now
+    /// RESOLVES the key variables of each file first, like a measurement
+    /// would, instead of trusting one spelling.
+    static func rawProgressAccesses(in text: String,
+                                    operations: String = "array|object|set|removeObject") -> Int {
+        // 1. Which local names hold a progress key in THIS file?
+        var keyVars: Set<String> = []
+        let varPattern = #"\b(?:let|var)\s+(\w+)\s*=\s*AppStorageKeys\.(?:localPosition|flushedPosition)\("#
+        if let re = try? NSRegularExpression(pattern: varPattern) {
+            let ns = text as NSString
+            for m in re.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                keyVars.insert(ns.substring(with: m.range(at: 1)))
+            }
+        }
+        // 2. Every store operation, direct or through one of those names.
+        let ops = "(?:" + operations + ")"
+        var patterns = [ops + #"\([^()]*forKey:\s*AppStorageKeys\.(?:localPosition|flushedPosition)\("#]
+        if !keyVars.isEmpty {
+            let names = keyVars.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+            patterns.append(ops + #"\([^()]*forKey:\s*("# + names + #")\b"#)
+        }
+        var count = 0
+        for pattern in patterns {
+            guard let re = try? NSRegularExpression(pattern: pattern) else { continue }
+            count += re.numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
+        }
+        return count
+    }
+
+    /// The third indirection, found only because removing the twelve exposed
+    /// it: a computed property that HANDS OUT a key
+    /// (`var localPositionKey: String? { AppStorageKeys.localPosition(id) }`).
+    /// It lived in one file and was used in another, so no per-file resolver
+    /// could ever see it. The answer is not a cleverer resolver but a closed
+    /// door: outside the stock, nobody builds a progress key at all.
+    static func progressKeyBuilders(in text: String) -> Int {
         let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
-        return ["removeObject(forKey:AppStorageKeys.localPosition(",
-                "removeObject(forKey:AppStorageKeys.flushedPosition("]
+        return ["AppStorageKeys.localPosition(", "AppStorageKeys.flushedPosition("]
             .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
     }
 
-    /// The other half of ownership: nobody READS the raw keys either. As long
-    /// as call sites index the `[Double]` shape themselves, the "`.last` is the
-    /// duration, not the timestamp" class can come back — it did, seven times.
-    static func rawProgressReads(in text: String) -> Int {
-        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
-        return ["array(forKey:AppStorageKeys.localPosition(",
-                "array(forKey:AppStorageKeys.flushedPosition("]
-            .reduce(0) { $0 + collapsed.components(separatedBy: $1).count - 1 }
+    @Test("ausserhalb des Bestands baut niemand einen Fortschritts-Schluessel")
+    func onlyTheStockBuildsProgressKeys() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles()
+        where !["ListeningStore.swift", "AppStorageKeys.swift"].contains(file.lastPathComponent) {
+            if Self.progressKeyBuilders(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these files build a progress key outside the stock: \\(offenders)")
+    }
+
+    /// Proof run: the shipped key export, and a plain build.
+    @Test("der Schluessel-Zaun faengt die ausgelieferte Weitergabe")
+    func keyFenceCatchesTheShippedExport() {
+        #expect(Self.progressKeyBuilders(in: """
+                    var localPositionKey: String? {
+                        item.map { AppStorageKeys.localPosition($0.id) }
+                    }
+        """) == 1)
+        #expect(Self.progressKeyBuilders(
+            in: "let key = AppStorageKeys.flushedPosition(item.id)") == 1)
+        #expect(Self.progressKeyBuilders(in: "ListeningStore.mark(item.id)") == 0)
+    }
+
+    @Test("keine Flaeche fasst die Fortschritts-Schluessel selbst an")
+    func everySurfaceAsksTheStock() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles()
+        where !["ListeningStore.swift", "AppStorageKeys.swift"].contains(file.lastPathComponent) {
+            if Self.rawProgressAccesses(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces touch the progress keys themselves: \\(offenders)")
+    }
+
+    /// Proof run on all THREE shipped forms — the one the old fence caught,
+    /// and the two it was blind to.
+    @Test("der Zugriffs-Zaun faengt alle drei ausgelieferten Formen")
+    func accessFenceCatchesAllThreeShapes() {
+        // 1. direct — the only shape the first version knew.
+        #expect(Self.rawProgressAccesses(in: """
+                    let saved = UserDefaults.standard.array(
+                        forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
+        """) == 1)
+        // 2. through a key variable — twelve sites, all invisible before.
+        #expect(Self.rawProgressAccesses(in: """
+                    let oldKey = AppStorageKeys.localPosition(old)
+                    guard let value = d.array(forKey: oldKey) else { return }
+                    d.removeObject(forKey: oldKey)
+        """) == 2)
+        // 3. the existence check, which it did not know at all.
+        #expect(Self.rawProgressAccesses(
+            in: "defaults.object(forKey: AppStorageKeys.localPosition(guid)) == nil") == 1)
+        // Going through the stock is no violation — it is the point.
+        #expect(Self.rawProgressAccesses(in: "ListeningStore.backup(item.id, in: defaults)") == 0)
+        #expect(Self.rawProgressAccesses(in: "ListeningStore.hasStand(guid, in: defaults)") == 0)
     }
 
     /// The invariant's first half: playback writes locally for EVERY class.
@@ -965,31 +1067,6 @@ extension ProjectFileIntegrityTests {
             #expect(!collapsed.contains(smell + "),ListeningStore.record"),
                     "die Klassenfrage wird an der Aufrufstelle zweitbeantwortet")
         }
-    }
-
-    @Test("keine Flaeche liest die Fortschritts-Schluessel selbst")
-    func everySurfaceAsksTheStock() throws {
-        var offenders: [String] = []
-        for file in Self.sourceFiles() where file.lastPathComponent != "ListeningStore.swift" {
-            if Self.rawProgressReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
-                offenders.append(file.lastPathComponent)
-            }
-        }
-        #expect(offenders.isEmpty,
-                "these surfaces read the progress keys themselves: \(offenders)")
-    }
-
-    /// Proof run on the two shipped shapes — the global store and a scoped
-    /// `defaults` (the gpodder/iCloud paths hand their own suite around).
-    @Test("der Lese-Zaun faengt die ausgelieferten Formen")
-    func readFenceCatchesTheShippedShapes() {
-        #expect(Self.rawProgressReads(in: """
-                    let saved = UserDefaults.standard.array(
-                        forKey: AppStorageKeys.localPosition(item.id)) as? [Double]
-        """) == 1)
-        #expect(Self.rawProgressReads(
-            in: "defaults.array(forKey: AppStorageKeys.flushedPosition(e.id)) as? [Double]") == 1)
-        #expect(Self.rawProgressReads(in: "ListeningStore.backup(item.id, in: defaults)") == 0)
     }
 
     @Test("kein Sync-Pfad entfernt einen Hoerstand ersatzlos")

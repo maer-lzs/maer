@@ -123,6 +123,22 @@ nonisolated enum ListeningStore {
         defaults.set([position, atMs], forKey: AppStorageKeys.flushedPosition(itemId))
     }
 
+    /// Store an entry a RULE produced — the healing paths (gpodder supplement,
+    /// Apple import adoption, duration repair) decide with `ProgressMark` and
+    /// hand the finished entry over. Named rather than raw, so the fence can
+    /// tell "a rule wrote this" from "a call site indexed the shape itself".
+    static func store(_ itemId: String, entry: [Double],
+                      in defaults: UserDefaults = .standard) {
+        guard ListeningClasses.keepsPosition(itemId), entry.count >= 2 else { return }
+        defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
+    }
+
+    /// Does this id hold a local state at all? The existence question, asked
+    /// without reading a shape.
+    static func hasStand(_ itemId: String, in defaults: UserDefaults = .standard) -> Bool {
+        backup(itemId, in: defaults) != nil
+    }
+
     static func clearBackup(_ itemId: String, in defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: AppStorageKeys.localPosition(itemId))
     }

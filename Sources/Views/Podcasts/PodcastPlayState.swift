@@ -48,7 +48,7 @@ final class PodcastProgressStore: ObservableObject {
     /// old iCloud value on the next reconcile (newest-timestamp merge) and the
     /// episode would flip back to played. The fresh zero wins and propagates.
     func setPlayed(_ item: LibraryItem, _ played: Bool) {
-        let key = AppStorageKeys.localPosition(item.id)
+        let nowMs = Date().timeIntervalSince1970 * 1000
         if played {
             // With a known duration write the real end; without one the sentinel
             // — previously the else branch wrote the UNPLAYED tombstone for
@@ -62,18 +62,16 @@ final class PodcastProgressStore: ObservableObject {
             let duration = PodcastSubscriptions.shared.episodeDuration(guid: item.id)
                 ?? item.media?.duration ?? 0
             let position = duration > 0 ? duration : Self.playedSentinel
-            UserDefaults.standard.set(
-                ProgressMark.entry(position: position, duration: duration,
-                                   nowMs: Date().timeIntervalSince1970 * 1000),
-                forKey: key)
+            ListeningStore.store(item.id,
+                                 entry: ProgressMark.entry(position: position,
+                                                           duration: duration, nowMs: nowMs))
         } else {
             // The unplayed tombstone goes through the one entry builder too —
             // the fence's proof run flushed this literal out as the second
             // writer its line-window predecessor had missed.
-            UserDefaults.standard.set(
-                ProgressMark.entry(position: 0, duration: 0,
-                                   nowMs: Date().timeIntervalSince1970 * 1000),
-                forKey: key)
+            ListeningStore.store(item.id,
+                                 entry: ProgressMark.entry(position: 0, duration: 0,
+                                                           nowMs: nowMs))
         }
         changeToken += 1
         objectWillChange.send()

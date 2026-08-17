@@ -448,10 +448,12 @@ final class GPodderSync {
                 // how a background sync replaced good three-value marks with
                 // two-value ones — in the worst case with a device's own echo,
                 // because the push stamps the moment of pushing.
-                defaults.set(
-                    ProgressMark.advancing(localArr, position: Double(pos),
-                                           duration: serverTotal, nowMs: tsMs),
-                    forKey: AppStorageKeys.localPosition(match.id))
+                ListeningStore.store(match.id,
+                                     entry: ProgressMark.advancing(localArr,
+                                                                   position: Double(pos),
+                                                                   duration: serverTotal,
+                                                                   nowMs: tsMs),
+                                     in: defaults)
                 pulled += 1
                 // Personen-Ebene: a gpodder-applied transition feeds the log.
                 PodcastListenLog.shared.noteReconciled(guids: [match.id])
@@ -463,7 +465,7 @@ final class GPodderSync {
                 // sides stem from the SAME event and the server is never newer.
                 // Only the duration is added; position and timestamp stay
                 // untouched, and no entry is ever created from nothing.
-                defaults.set(healed, forKey: AppStorageKeys.localPosition(match.id))
+                ListeningStore.store(match.id, entry: healed, in: defaults)
                 supplemented += 1
             }
         }

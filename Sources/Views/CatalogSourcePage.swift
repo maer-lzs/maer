@@ -505,11 +505,11 @@ struct ArchiveSeriesPage: View {
     private var lastHeardSongIndex: Int? {
         var best: (index: Int, stamp: Double)?
         for index in tracks.indices {
-            let key = AppStorageKeys.localPosition(CatalogSongID.make(album: itemId, index: index))
-            guard let stored = UserDefaults.standard.array(forKey: key) as? [Double],
-                  stored.count >= 2, stored[0] > 0,
-                  let stamp = ProgressMark.timestamp(stored) else { continue }
-            if best == nil || stamp > best!.stamp { best = (index, stamp) }
+            let songId = CatalogSongID.make(album: itemId, index: index)
+            guard let mark = ListeningStore.mark(songId), mark.position > 0 else { continue }
+            if best == nil || mark.updatedAtMs > best!.stamp {
+                best = (index, mark.updatedAtMs)
+            }
         }
         return best?.index
     }
