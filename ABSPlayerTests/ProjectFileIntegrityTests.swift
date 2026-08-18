@@ -1156,4 +1156,40 @@ extension ProjectFileIntegrityTests {
         """) == 0)
         #expect(Self.localeLessFixedFormats(in: "let f = ISO8601DateFormatter()") == 0)
     }
+
+    // MARK: - Einstellungs-Schluessel stehen an EINER Stelle
+
+    /// A raw string inside `@AppStorage`. The keys live in `AppStorageKeys`;
+    /// a literal beside them is the drift a rename breaks silently — measured
+    /// on `podcastAutoSaveOnPlay`, which existed as a constant AND as a
+    /// literal in the same feature.
+    static func rawStorageKeyLiterals(in text: String) -> Int {
+        let collapsed = text.components(separatedBy: .whitespacesAndNewlines).joined()
+        let pattern = #"@AppStorage\(""#
+        let re = try? NSRegularExpression(pattern: pattern)
+        return re?.numberOfMatches(in: collapsed,
+                                   range: NSRange(collapsed.startIndex..., in: collapsed)) ?? 0
+    }
+
+    @Test("kein Einstellungs-Schluessel steht als roher String im Baum")
+    func storageKeysComeFromTheOnePlace() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if Self.rawStorageKeyLiterals(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces spell a settings key themselves: \\(offenders)")
+    }
+
+    /// Proof run on the shipped form — the literal that stood next to its own
+    /// constant, and the correct spelling beside it.
+    @Test("der Schluessel-Zaun faengt die ausgelieferte Form")
+    func storageKeyFenceCatchesTheShippedShape() {
+        #expect(Self.rawStorageKeyLiterals(
+            in: #"@AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true"#) == 1)
+        #expect(Self.rawStorageKeyLiterals(
+            in: "@AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var x = true") == 0)
+    }
 }

@@ -60,3 +60,47 @@ struct MediaTypeSourcesTests {
     }
 }
 #endif
+
+#if canImport(Testing)
+import Testing
+import Foundation
+@testable import ABSPlayer
+
+/// The switch that forgot itself: "subscribe on server" decided whether a new
+/// subscription is created ON the Audiobookshelf server, and it was `@State`.
+/// Switching it off lasted until the page closed — the next visit had server
+/// subscriptions again, silently.
+struct PodcastSubscribeToServerTests {
+
+    private func suite() -> UserDefaults {
+        UserDefaults(suiteName: "subscribe-to-server-\(UUID().uuidString)")!
+    }
+
+    @Test("ausgeschaltet bleibt ausgeschaltet")
+    func offStaysOff() {
+        let d = suite()
+        // Nothing stored yet: the behaviour every session had so far.
+        #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) == nil)
+        #expect(AppStorageKeys.boolValue(AppStorageKeys.podcastSubscribeToServer) == true,
+                "der Startwert muss true bleiben — alles andere waere eine stille Aenderung")
+
+        d.set(false, forKey: AppStorageKeys.podcastSubscribeToServer)
+        // "Seite verlassen und wieder oeffnen" ist genau das: neu lesen.
+        #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) as? Bool == false)
+        d.set(true, forKey: AppStorageKeys.podcastSubscribeToServer)
+        #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) as? Bool == true)
+    }
+
+    @Test("es gibt nichts zu erben — der Wert wurde nie gespeichert")
+    func noMigrationNeeded() {
+        // Geprueft statt angenommen (the reviewer's Auflage 3): der Schluessel ist neu,
+        // ein Altbestand kann gar nicht existieren, und der Default deckt den
+        // ungesetzten Fall mit dem bisherigen Verhalten ab.
+        let d = suite()
+        #expect(d.object(forKey: AppStorageKeys.podcastSubscribeToServer) == nil)
+        #expect(AppStorageKeys.podcastSubscribeToServerValue == true
+                || UserDefaults.standard.object(
+                    forKey: AppStorageKeys.podcastSubscribeToServer) != nil)
+    }
+}
+#endif

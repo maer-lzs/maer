@@ -473,6 +473,16 @@ nonisolated enum AppStorageKeys {
     nonisolated static var warnCellularDownloadValue: Bool { boolValue(warnCellularDownload) }
     nonisolated static let podcastAutoSaveOnPlay = "podcastAutoSaveOnPlay"
     nonisolated static var podcastAutoSaveOnPlayValue: Bool { boolValue(podcastAutoSaveOnPlay) }
+    /// Create new subscriptions ON the Audiobookshelf server instead of only
+    /// locally. It was `@State` and therefore forgot itself the moment the
+    /// page closed — whoever switched it off had server subscriptions again
+    /// on the next visit. Default stays `true`: that is the behaviour every
+    /// session had so far, and a different one would be a silent change for
+    /// existing users.
+    nonisolated static let podcastSubscribeToServer = "podcastSubscribeToServer"
+    nonisolated static var podcastSubscribeToServerValue: Bool {
+        boolValue(podcastSubscribeToServer)          // default true, wie bisher
+    }
 
     // MARK: - Katalog-Aktivierung (Architektur-Befund 09.08.)
 

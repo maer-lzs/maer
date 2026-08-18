@@ -138,6 +138,11 @@ struct SettingsView: View {
                     recommendationsSection
                     // 92e25d6: premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()
+                    // f1c48ce Teil 1, Scheibe 2: was ein KONTO fuer Podcasts
+                    // tut, steht bei den Podcasts — benannt nach dem Konto.
+                    // Auf der Konto-Seite bleiben Adresse, Zugang und die
+                    // MODI (welche Typen es ueberhaupt bedient).
+                    PodcastAccountBehaviour()
                     MediaTypeSourcesSection(area: .podcasts,
                                             absDestination: absPage)
                 case .music:

@@ -18,10 +18,13 @@ struct PodcastSourceView: View {
 
     /// Create new subscriptions on the ABS server (synced) instead of locally —
     /// only relevant if the server has a podcast library.
-    @State private var subscribeToServer = true
+    ///
+    /// It was `@State` and therefore forgot itself the moment the page closed:
+    /// whoever switched it off had server subscriptions again on the next
+    /// visit, silently. The stored value counts from now on; the default stays
+    /// `true`, which is what every session did so far.
+    @AppStorage(AppStorageKeys.podcastSubscribeToServer) private var subscribeToServer = true
     @State private var subscribeError: String?
-    /// Automatically save a feed-only episode on the server after ~30 s of play.
-    @AppStorage("podcastAutoSaveOnPlay") private var autoSaveOnPlay = true
     /// Use ABS as a podcast source (default OFF — ABS is primarily an audiobook server).
     @AppStorage(AppStorageKeys.absPodcastsEnabled) private var absPodcastsEnabled = false
 
@@ -58,18 +61,6 @@ struct PodcastSourceView: View {
                 }
             } footer: {
                 Text("Off = your Audiobookshelf server is used only for audiobooks. Turn on to also manage podcasts on it (subscribe, download, sync).")
-            }
-            if absPodcastsEnabled && absPodcast.hasPodcasts {
-                Section {
-                    Toggle(isOn: $subscribeToServer) {
-                        Label("Subscribe on server", systemImage: "cloud")
-                    }
-                    Toggle(isOn: $autoSaveOnPlay) {
-                        Label("Auto-save to server on play", systemImage: "arrow.down.circle")
-                    }
-                } footer: {
-                    Text("New subscriptions are created on your Audiobookshelf server and sync across devices. Off = local only, this device. Auto-save stores a streamed feed episode on the server after ~30 s so its progress syncs there too.")
-                }
             }
             searchSection
             if !results.isEmpty || isSearching {

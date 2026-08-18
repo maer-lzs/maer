@@ -23,7 +23,6 @@ struct GPodderSettingsView: View {
     @State private var statusIsError = false
     // S20: last sync outcome, persisted across restarts (sticky guard warning).
     @State private var storedReport = GPodderSync.shared.storedReport
-    @AppStorage(AppStorageKeys.gpodderSyncsPremiumFeeds) private var syncsPremium = false
 
     var body: some View {
         Form {
@@ -52,19 +51,8 @@ struct GPodderSettingsView: View {
                         }
                     }
                 LabeledContent("Device", value: AppStorageKeys.gpodderDeviceIdValue)
-                // P2 (1): the premium opt-in belongs to THIS account — it is
-                // a statement about this server, not a global setting.
-                Toggle("Private server — sync premium feeds too", isOn: $syncsPremium)
-                    .accessibilityIdentifier("gpodder-premium-toggle")
-                    // 9583ae7: flipping it (either way) KICKS a sync — without
-                    // that the person waits on an invisible timer and thinks
-                    // the feature is broken. Existing reconcile path, its own
-                    // in-flight protection.
-                    .onChange(of: syncsPremium) {
-                        Task { await GPodderSync.shared.reconcile() }
-                    }
             } footer: {
-                Text("Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Premium feeds whose link contains your personal token stay on this device unless you allow them above — only enable that for a server you run yourself. Feeds with a user name and password never travel this way; they follow your iCloud keychain.")
+                Text("Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Feeds with a user name and password never travel this way; they follow your iCloud keychain. Whether premium feeds sync is decided under Podcasts, where this account acts.")
             }
 
             Section {

@@ -19,7 +19,7 @@ final class PodcastServerSave {
     static let shared = PodcastServerSave()
     private init() {}
 
-    /// Like the toggle in the settings (`@AppStorage("podcastAutoSaveOnPlay")`),
+    /// Like the toggle in the settings (`AppStorageKeys.podcastAutoSaveOnPlay`),
     /// here directly from UserDefaults — default on.
     private var autoSave: Bool {
         AppStorageKeys.podcastAutoSaveOnPlayValue

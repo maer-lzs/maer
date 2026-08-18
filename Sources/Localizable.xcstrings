@@ -5660,6 +5660,16 @@
         }
       }
     },
+    "Premium feeds carry access data in their address. Off keeps them on this device only — mirrors stay out either way." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Feeds tragen Zugangsdaten in ihrer Adresse. Aus heißt: sie bleiben nur auf diesem Gerät — Spiegel bleiben ohnehin außen vor."
+          }
+        }
+      }
+    },
     "Previous chapter" : {
       "localizations" : {
         "de" : {
@@ -7200,6 +7210,16 @@
         }
       }
     },
+    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Feeds with a user name and password never travel this way; they follow your iCloud keychain. Whether premium feeds sync is decided under Podcasts, where this account acts." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abos (und der Hörverlauf) gleichen sich mit diesem Server ab, neben iCloud und Audiobookshelf. Feeds mit Benutzername und Passwort reisen nie auf diesem Weg; sie folgen deinem iCloud-Schlüsselbund. Ob Premium-Feeds mitwandern, entscheidest du unter Podcasts — dort, wo dieses Konto wirkt."
+          }
+        }
+      }
+    },
     "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf. Premium feeds whose link contains your personal token stay on this device unless you allow them above — only enable that for a server you run yourself. Feeds with a user name and password never travel this way; they follow your iCloud keychain." : {
       "localizations" : {
         "de" : {
@@ -7338,6 +7358,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Podcasts über gpodder synchronisieren"
+          }
+        }
+      }
+    },
+    "Sync premium feeds" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Premium-Feeds synchronisieren"
           }
         }
       }
