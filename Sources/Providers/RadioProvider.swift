@@ -35,14 +35,22 @@ final class RadioProvider: AudioProvider {
         (RadioStore.favorites() + RadioStore.manualStations()).map(Self.libraryItem(for:))
     }
 
+    /// The last-heard ring and the play-frequency count (Teil 3, "Most Played").
+    ///
+    /// This is deliberately NOT in `fetchItemDetail`: resolving an item is not
+    /// listening to it. The same resolution serves the bounded server check, the
+    /// sync refresh and the restore after an app start — a station kept as the
+    /// last item scored a play on every launch, with nothing playing.
+    func notePlaybackStarted(itemId: String) {
+        guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else { return }
+        RadioStore.recordRecent(station)
+        RadioStore.recordPlay(station)
+    }
+
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         guard let station = RadioStore.station(forId: itemId) ?? sessionStations[itemId] else {
             throw URLError(.resourceUnavailable)
         }
-        // Every play path lands here — record the last-heard ring and the
-        // play-frequency count (Teil 3, "Most Played") centrally.
-        RadioStore.recordRecent(station)
-        RadioStore.recordPlay(station)
         // Teil 1: honor the user's per-station variant choice (else the best).
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))

@@ -257,6 +257,12 @@ final class PlayerCoordinator: ObservableObject {
         if autoplay {
             await newViewModel.playWithServerCheck()
             guard generation == openGeneration else { newViewModel.stop(); return }
+            // THE point at which something is deliberately being listened to —
+            // after the generation guard, so a start that was superseded does
+            // not leave a mark. A source that keeps play statistics books here;
+            // resolving a detail must never count, because the same resolution
+            // also serves restore, refresh and the bounded server check.
+            provider.notePlaybackStarted(itemId: item.id)
         }
     }
 

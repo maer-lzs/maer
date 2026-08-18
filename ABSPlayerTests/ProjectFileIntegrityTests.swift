@@ -1193,6 +1193,85 @@ extension ProjectFileIntegrityTests {
             in: "@AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var x = true") == 0)
     }
 
+    // MARK: - Aufloesen ist kein Hoeren
+
+    /// The body of every `fetchItemDetail`, brace-exact. A character window
+    /// would read past the closing brace into the next function — the same
+    /// mistake this file already made once with a 300-character window.
+    static func detailFetchBodies(in text: String) -> [String] {
+        var bodies: [String] = []
+        var search = text.startIndex
+        while let head = text.range(of: "func fetchItemDetail(", range: search..<text.endIndex) {
+            guard let open = text.range(of: "{", range: head.upperBound..<text.endIndex) else { break }
+            var depth = 0
+            var index = open.lowerBound
+            var end: String.Index?
+            while index < text.endIndex {
+                let character = text[index]
+                if character == "{" { depth += 1 }
+                if character == "}" {
+                    depth -= 1
+                    if depth == 0 { end = index; break }
+                }
+                index = text.index(after: index)
+            }
+            guard let end else { break }
+            bodies.append(String(text[open.upperBound..<end]))
+            search = end
+        }
+        return bodies
+    }
+
+    /// Resolving an item is not listening to it. The same resolution serves the
+    /// bounded server check, the sync refresh and the restore after an app
+    /// start — a statistic booked there counts launches, not plays.
+    static func bookingsInsideDetailFetch(in text: String) -> Int {
+        detailFetchBodies(in: text).reduce(0) { total, body in
+            total + ["recordPlay", "recordRecent", "notePlaybackStarted"]
+                .reduce(0) { $0 + body.components(separatedBy: $1).count - 1 }
+        }
+    }
+
+    @Test("keine Zaehlung in einer Aufloesungs-Funktion")
+    func resolvingNeverCounts() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if Self.bookingsInsideDetailFetch(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these sources book a play while merely resolving an item: \(offenders)")
+    }
+
+    /// Proof run on the shipped form — the two calls that really stood in
+    /// `RadioProvider.fetchItemDetail`, and the booking beside it that is fine.
+    @Test("der Zaehl-Zaun faengt die ausgelieferte Form und endet an der Klammer")
+    func bookingFenceCatchesTheShippedShape() {
+        let shipped = """
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            guard let station = RadioStore.station(forId: itemId) else { throw URLError(.badURL) }
+            RadioStore.recordRecent(station)
+            RadioStore.recordPlay(station)
+            return LibraryItemDetail(id: station.id)
+        }
+
+        func notePlaybackStarted(itemId: String) {
+            RadioStore.recordPlay(station)
+        }
+        """
+        #expect(Self.bookingsInsideDetailFetch(in: shipped) == 2,
+                "beide Buchungen im Rumpf — und die daneben zaehlt NICHT mit")
+        #expect(Self.detailFetchBodies(in: shipped).count == 1)
+        let fixed = """
+        func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
+            guard let station = RadioStore.station(forId: itemId) else { throw URLError(.badURL) }
+            return LibraryItemDetail(id: station.id)
+        }
+        """
+        #expect(Self.bookingsInsideDetailFetch(in: fixed) == 0)
+    }
+
     // MARK: - Der Inhaltstyp ist kein Antwortgeber mehr
 
     /// Every shape in which the old single content type could still be ASKED.

@@ -89,6 +89,11 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// derive these rows from their (small) full list.
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail
+    /// Playback of this item has actually BEGUN — not "someone asked for its
+    /// details". A source that keeps play statistics books them here; the core
+    /// stays ignorant of what any of them count. Called once per deliberate
+    /// start, never on a restore, a refresh or a bounded server check.
+    func notePlaybackStarted(itemId: String)
 
     // MARK: Medien
     func coverURL(forItemId itemId: String) -> URL?
@@ -125,6 +130,11 @@ extension AudioProvider {
 
     /// Default: most sources deliver audiobooks, and exactly that.
     var mediaTypes: Set<MediaType> { [.audiobooks] }
+
+    /// Default: nothing to book. Sources whose position lives on a server keep
+    /// their own history there; only a source with a LOCAL play statistic
+    /// (radio, which has no position to remember) needs this.
+    func notePlaybackStarted(itemId: String) {}
 
     /// Default: one library, so the type does not narrow anything. Only a
     /// source that really has several libraries overrides this.
