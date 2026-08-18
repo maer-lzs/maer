@@ -14,7 +14,11 @@ struct SubsonicSourceView: View {
     @State private var username = AppStorageKeys.subsonicUsernameValue
     @State private var password = AppStorageKeys.subsonicPasswordValue
     @State private var enabled = AppStorageKeys.subsonicEnabledValue
-    @State private var isAudiobooks = AppStorageKeys.subsonicIsAudiobooksValue
+    @State private var servesMusic = AppStorageKeys.subsonicModes.servesMusic
+    @State private var servesAudiobooks = AppStorageKeys.subsonicModes.servesAudiobooks
+    private var modes: SourceModes {
+        SourceModes(servesMusic: servesMusic, servesAudiobooks: servesAudiobooks)
+    }
     @State private var isTesting = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
@@ -36,13 +40,32 @@ struct SubsonicSourceView: View {
             }
 
             Section {
-                Picker(selection: $isAudiobooks) {
-                    Text("Music").tag(false)
-                    Text("Audiobooks").tag(true)
-                } label: {
-                    Label("This source contains", systemImage: "books.vertical")
+                // the owner's Regel: was mehrere Dinge kann, darf sie
+                // GLEICHZEITIG — ein Server, ein Setup. Deshalb je ein
+                // Schalter pro Faehigkeit statt einer Entweder-oder-Wahl.
+                Toggle(isOn: $servesMusic) {
+                    Label("Music", systemImage: "music.note")
                 }
-                .onChange(of: isAudiobooks) { _, _ in save() }
+                .accessibilityIdentifier("subsonic-serves-music")
+                .onChange(of: servesMusic) { _, _ in save() }
+                Toggle(isOn: $servesAudiobooks) {
+                    Label("Audiobooks", systemImage: "books.vertical")
+                }
+                .accessibilityIdentifier("subsonic-serves-audiobooks")
+                .onChange(of: servesAudiobooks) { _, _ in save() }
+                if modes.needsLibraryAssignment {
+                    // G8: sichtbar unvollstaendig statt eines leeren Tabs. Die
+                    // Zuordnung, welche Bibliothek welchen Typ speist, kommt
+                    // als eigener Schritt — bis dahin sagt die Flaeche, was
+                    // fehlt, statt es zu verschweigen.
+                    Label("Both modes are on. Which library feeds which tab is not assigned yet — until then this server is used for audiobooks.",
+                          systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("subsonic-modes-incomplete")
+                }
+            } header: {
+                Text("This source contains")
             } footer: {
                 Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here.")
             }
@@ -142,7 +165,7 @@ struct SubsonicSourceView: View {
             AppStorageKeys.setSubsonicPassword(password)
         }
         AppStorageKeys.subsonicEnabledValue = enabled
-        AppStorageKeys.subsonicIsAudiobooksValue = isAudiobooks
+        AppStorageKeys.subsonicModes = modes
         // Rebuild the client so the next request uses the new credentials —
         // via the session so BOTH music clients and the tab bar reconfigure.
         AppSession.shared.reconfigureSources()

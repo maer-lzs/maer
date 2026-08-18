@@ -264,6 +264,28 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue ? "audiobooks" : "music", forKey: subsonicContentType) }
     }
 
+    /// The same source as a PAIR of capabilities. Deliberately derived from
+    /// the very same stored value instead of a second key: that IS the
+    /// migration — a stock nobody touched reads as "this one mode on, the
+    /// other off", with nothing to write and nothing to convert.
+    nonisolated static var subsonicModes: SourceModes {
+        get {
+            SourceModes.fromLegacyContentType(
+                UserDefaults.standard.string(forKey: subsonicContentType))
+        }
+        set {
+            UserDefaults.standard.set(newValue.legacyContentType, forKey: subsonicContentType)
+            UserDefaults.standard.set(newValue.servesMusic, forKey: subsonicServesMusicKey)
+            UserDefaults.standard.set(newValue.servesAudiobooks, forKey: subsonicServesAudiobooksKey)
+        }
+    }
+    /// Written alongside so a later stage can read the pair directly; the
+    /// legacy value stays the single truth until the library assignment lands
+    /// — two sources of truth for one decision is the class this project
+    /// keeps closing, so the pair is not read back yet.
+    nonisolated static let subsonicServesMusicKey = "subsonicServesMusic"
+    nonisolated static let subsonicServesAudiobooksKey = "subsonicServesAudiobooks"
+
     /// Drive mode: the ONE remembered car audio-route UID (user-chosen from
     /// the connected outputs; empty = no auto-activation) + its display name.
     static let driveModeCarRouteUID = "driveModeCarRouteUID"

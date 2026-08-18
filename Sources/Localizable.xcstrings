@@ -1361,6 +1361,16 @@
         }
       }
     },
+    "Both modes are on. Which library feeds which tab is not assigned yet — until then this server is used for audiobooks." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide Modi sind an. Welche Bibliothek welchen Tab speist, ist noch nicht zugeordnet — bis dahin wird dieser Server für Hörbücher genutzt."
+          }
+        }
+      }
+    },
     "Browsing the radio catalog needs a connection." : {
       "localizations" : {
         "de" : {
