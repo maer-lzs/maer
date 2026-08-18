@@ -2858,17 +2858,6 @@
         }
       }
     },
-    "Free public-domain recordings from the Internet Archive — separate from your own library." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Freie gemeinfreie Aufnahmen aus dem Internet Archive — getrennt von deiner eigenen Bibliothek."
-          }
-        }
-      }
-    },
     "Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library." : {
       "localizations" : {
         "de" : {
@@ -5981,17 +5970,6 @@
         }
       }
     },
-    "Recently Played (Music)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zuletzt gehört (Musik)"
-          }
-        }
-      }
-    },
     "Recently Updated" : {
       "localizations" : {
         "de" : {
@@ -6426,17 +6404,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Durchsuche den Katalog mit der Lupe und markiere deine Sender mit einem Stern — oder trage eine Stream-Adresse unter Einstellungen → Bereiche → Radio ein."
-          }
-        }
-      }
-    },
-    "Search the catalog with the magnifier and star your stations — or add a stream URL under Settings → Sources → Radio." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suche mit der Lupe im Katalog und markiere Sender als Favoriten — oder trage unter Einstellungen → Quellen → Radio eine Stream-URL ein."
           }
         }
       }
@@ -7255,17 +7222,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abos"
-          }
-        }
-      }
-    },
-    "Subscriptions (and listening history) sync with this server, alongside iCloud and Audiobookshelf." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abos (und Hör-History) synchronisieren mit diesem Server, gleichwertig neben iCloud und Audiobookshelf."
           }
         }
       }
@@ -8334,17 +8290,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Welche Bibliothek speist welchen Tab"
-          }
-        }
-      }
-    },
-    "Which media types appear as tabs. A type off hides its tab and stops all its sources' calls — the per-source switches above are kept." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Welche Medientypen als Tabs erscheinen. Ein ausgeschalteter Typ verbirgt seinen Tab und stoppt alle Anfragen seiner Quellen — die Schalter je Quelle oben bleiben erhalten."
           }
         }
       }
