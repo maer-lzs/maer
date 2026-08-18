@@ -530,6 +530,51 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         again.terminate()
     }
 
+    /// What a FRESH install actually finds in the radio tab — the open question
+    /// behind "do the rows stay empty until something kicks the country
+    /// cascade". Nothing is chosen, nothing is stored: the country can only
+    /// come from the device locale.
+    ///
+    /// Two statements, both read where they stand: the region section must
+    /// offer its way IN (its station list is legitimately empty without a
+    /// chosen region, but an entry point that only appears after the choice
+    /// would be a door behind itself), and the national row's stations must
+    /// have arrived — read from the persisted discovery cache, because the row
+    /// heading is a localized string and the simulator runs German.
+    func testFreshRadioTabFillsFromTheLocale() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25), "der Radio-Tab muss dastehen")
+        radioTab.tap()
+
+        let started = Date()
+        let picker = app.buttons["radio-region-picker"].firstMatch
+        let found = picker.waitForExistence(timeout: 60) || scrollTo(app, picker, swipes: 10)
+        let regionAfter = Date().timeIntervalSince(started)
+        XCTAssertTrue(found,
+                      "ohne gewaehlte Region muss die Regions-Reihe ihren Einstieg zeigen")
+
+        // "Land aendern" hängt UNTER der Beliebt-Reihe und existiert nur mit
+        // ihr — ein Zeuge, der schon dasteht, statt eines neuen Griffs.
+        let countryLink = app.buttons["radio-country-change-inline"].firstMatch
+        let popularUp = countryLink.waitForExistence(timeout: 120)
+        let popularAfter = Date().timeIntervalSince(started)
+        snap(app, "fresh-radio-tab")
+        let report = XCTAttachment(string: """
+            Regions-Einstieg nach \(String(format: "%.1f", regionAfter)) s
+            Beliebt-Reihe \(popularUp ? "nach \(String(format: "%.1f", popularAfter)) s" : "NICHT innerhalb von 120 s")
+            """)
+        report.name = "radio-kaskade-zeiten"
+        report.lifetime = .keepAlways
+        add(report)
+        XCTAssertTrue(popularUp,
+                      "die nationale Reihe muss aus dem Gebietsschema kommen, ohne dass jemand etwas waehlt")
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time
