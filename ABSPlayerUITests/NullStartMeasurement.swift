@@ -530,6 +530,42 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         again.terminate()
     }
 
+    /// Row 4 of the matrix — the class that is NOT like the others. A live
+    /// stream has no end to be at, so its local state is deliberately NOT a
+    /// position: the progress stock stays empty and the last-listened time
+    /// lives in the radio store. Before this train the ticker was class-blind
+    /// and wrote a GROWING number for an endless stream, one entry per
+    /// station, forever.
+    ///
+    /// A CATALOGUE station on purpose: a manually added URL surfaces in no row
+    /// of the radio tab (own finding, reported separately), and the radio
+    /// statement does not depend on which station it is.
+    ///
+    /// Verdict and precondition are both read from the container by the
+    /// harness: a radio MRU entry proves it played, and no
+    /// `localPosition.radio:` key may exist.
+    func testMatrixRadioKeepsNoPosition() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25), "der Radio-Tab muss dastehen")
+        radioTab.tap()
+        // The catalogue rows come from the open directory over the network,
+        // AFTER the country cascade has resolved — that takes noticeably
+        // longer than a seeded row, and a short wait read the delay as
+        // "no station".
+        let station = app.buttons["station-play"].firstMatch
+        try XCTSkipUnless(station.waitForExistence(timeout: 90) || scrollTo(app, station, swipes: 8),
+                          "das Radio-Verzeichnis hat keine Sender geliefert (Netz?)")
+        snap(app, "matrix-radio-catalog")
+        station.tap()
+        Thread.sleep(forTimeInterval: 20)
+        snap(app, "matrix-radio-played")
+        app.terminate()
+    }
+
     // MARK: - B: open the downloaded book, whatever the stand-in does
 
     /// Opens the book that case A left downloaded and lets it run briefly. The
