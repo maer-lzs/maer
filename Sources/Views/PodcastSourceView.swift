@@ -518,11 +518,13 @@ struct PodcastSourceView: View {
                     }
                 }
                 .disabled(feedURL.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityIdentifier("podcast-add-feed")
                 if let urlError {
                     Text(urlError).font(.caption).foregroundStyle(.red)
                 }
             } label: {
                 Label("Add by URL", systemImage: "link")
+                    .accessibilityIdentifier("podcast-add-by-url")
             }
         } footer: {
             Text("For private or premium feeds that need a login, add the username and password.")

@@ -17,6 +17,10 @@ import json, os, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 MODE = os.environ.get("MOCK_MODE", "ok")
+# Switchable AT RUNTIME (GET /__mode?set=down). The airplane-mode matrix needs
+# it: `test-without-building` reinstalls the app for every case and hands it a
+# fresh container, so a leg cannot inherit state from a previous case — the
+# whole leg has to be ONE case, and the server has to go down inside it.
 DELAY = float(os.environ.get("MOCK_DELAY", "6"))
 # The progress the SERVER holds — the value a working reconcile would restore.
 # The declared duration MUST match the real audio: with a 3-second file and
@@ -26,6 +30,10 @@ SERVER_TIME = float(os.environ.get("MOCK_SERVER_TIME", "150"))
 DURATION = float(os.environ.get("MOCK_DURATION", "300"))
 ITEM_ID = "mock-book-1"
 LIB_ID = "mock-lib-1"
+# The RSS leg of the airplane-mode matrix: the same stand-in also serves a
+# feed, because an arbitrary feed URL is the app's NORMAL way in — no test
+# seam in production code, unlike the catalogue class whose host is fixed.
+FEED_EPISODE_GUID = "mock-episode-1"
 WRITES = []            # every progress write the app sends
 LOCK = threading.Lock()
 AUDIO = b""            # filled at startup
@@ -49,6 +57,28 @@ def media(with_tracks):
                         "contentUrl": f"/audio/{ITEM_ID}.m4a",
                         "metadata": {"size": len(AUDIO)}}]
     return m
+
+
+def feed_xml(base):
+    """One episode, enclosure pointing at the same tone the book uses. The
+    declared length MUST match the real audio for the same reason as the
+    book's duration: a wrong claim makes the player hit the end at once."""
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Mock Podcast</title>
+    <description>stand-in feed for the airplane-mode matrix</description>
+    <item>
+      <title>Mock Folge</title>
+      <guid isPermaLink="false">{FEED_EPISODE_GUID}</guid>
+      <pubDate>Mon, 17 Aug 2026 08:00:00 +0000</pubDate>
+      <itunes:duration>{int(DURATION)}</itunes:duration>
+      <enclosure url="{base}/audio/{FEED_EPISODE_GUID}.m4a"
+                 length="{len(AUDIO)}" type="audio/mp4"/>
+    </item>
+  </channel>
+</rss>
+"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -115,11 +145,32 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(AUDIO)
             return
+        if self.path.startswith("/__mode"):
+            global MODE
+            wanted = self.path.split("set=")[-1].split("&")[0] if "set=" in self.path else MODE
+            if wanted in ("ok", "slow", "empty", "down"):
+                MODE = wanted
+            self._json({"mode": MODE})
+            return
         if self.path.startswith("/__writes"):     # the harness reads this
             with LOCK:
                 self._json({"mode": MODE, "writes": WRITES})
             return
         if self._maybe_stall(self.path):
+            return
+        if self.path.split("?")[0].rstrip("/") == "/feed.xml":
+            # Behind the outage guard ON PURPOSE: for a podcast the FEED is the
+            # server, so an unreachable feed IS the airplane-mode case. The
+            # audio stays reachable (it is exempt above) — otherwise playback
+            # could not resume at all and the case would measure the download
+            # instead of the start position.
+            base = f"https://{self.headers.get('Host') or '127.0.0.1:8770'}"
+            body = feed_xml(base).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/rss+xml")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
         p = self.path.split("?")[0].rstrip("/")
         if p == "/api/libraries":
