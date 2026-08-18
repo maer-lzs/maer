@@ -35,9 +35,15 @@ struct SettingsView: View {
         // belongs on the network-services page; country and region are chosen
         // in the radio view itself, where you change them WHILE browsing —
         // moving them into a settings pill would take them away from the
-        // moment they are used. A pill with nothing but a link would be worse
-        // than none.
-        case general, audiobooks, podcasts, music
+        // moment they are used — a pill with NOTHING but a link would be worse
+        // than none. That reasoning held while radio had no pill content at
+        // all; since the pills name the sources of their type, a radio pill
+        // carries the same thing every other one does (the directory and the
+        // user's own streams), and the finding behind the whole order was
+        // "it bothers me EVERYWHERE". The station-scoping controls (country,
+        // region) stay at the row they act on — that is a separate, deliberate
+        // decision and unchanged.
+        case general, audiobooks, podcasts, music, radio
         var id: String { rawValue }
         var label: LocalizedStringKey {
             switch self {
@@ -45,6 +51,7 @@ struct SettingsView: View {
             case .audiobooks: return "Audiobooks"
             case .podcasts: return "Podcasts"
             case .music: return "Music"
+            case .radio: return "Radio"
             }
         }
     }
@@ -57,6 +64,7 @@ struct SettingsView: View {
         if audiobooksTab { tabs.append(.audiobooks) }
         if podcastsTab { tabs.append(.podcasts) }
         if musicTab { tabs.append(.music) }
+        if radioTab { tabs.append(.radio) }
         return tabs
     }
 
@@ -135,6 +143,9 @@ struct SettingsView: View {
                 case .music:
                     musicSection
                     MediaTypeSourcesSection(area: .music,
+                                            absDestination: absPage)
+                case .radio:
+                    MediaTypeSourcesSection(area: .radio,
                                             absDestination: absPage)
                 }
             }
