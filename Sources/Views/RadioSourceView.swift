@@ -49,7 +49,9 @@ struct RadioSourceView: View {
                 }
 
                 TextField("Name", text: $newName)
+                    .accessibilityIdentifier("radio-manual-name")
                 TextField("Stream URL", text: $newURL)
+                    .accessibilityIdentifier("radio-manual-url")
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
@@ -66,6 +68,7 @@ struct RadioSourceView: View {
                 } label: {
                     Label("Add Station", systemImage: "plus")
                 }
+                .accessibilityIdentifier("radio-manual-add")
                 .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty || newURL.isEmpty)
                 if let addError {
                     Text(addError).font(.footnote).foregroundStyle(.red)
