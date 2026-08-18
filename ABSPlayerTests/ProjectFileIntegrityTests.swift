@@ -1237,6 +1237,42 @@ extension ProjectFileIntegrityTests {
     /// One source, one type was only ever right while every source had exactly
     /// one library. The single-valued form must not come back through a new
     /// provider that copies an old one.
+    /// TWO meanings of one name lived in this tree: the provider's content type
+    /// (the enum) and Audiobookshelf's own library field (a String, "book" /
+    /// "podcast"). The enum meaning is now always spelled `mediaTypes` or
+    /// carried as `for type:`; the bare name belongs to the String layer alone.
+    /// A new enum-typed `mediaType` would put the confusion straight back.
+    static func ambiguousMediaTypeNames(in text: String) -> Int {
+        ["mediaType: MediaType", "mediaType == .", "mediaType ?? ."]
+            .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("der Name mediaType gehoert der String-Ebene, nicht dem Aufzaehlungstyp")
+    func mediaTypeNameIsNotAmbiguous() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if Self.ambiguousMediaTypeNames(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these files spell the enum meaning with the String layer's name: \(offenders)")
+    }
+
+    @Test("der Namens-Zaun faengt die ausgelieferten Formen")
+    func ambiguityFenceCatchesTheShippedShapes() {
+        #expect(Self.ambiguousMediaTypeNames(
+            in: "    var mediaType: MediaType { .radio }") == 1)
+        #expect(Self.ambiguousMediaTypeNames(
+            in: "where provider.mediaType == .audiobooks && provider.isAvailable {") == 1)
+        // Die STRING-Ebene bleibt unberuehrt — sie darf den Namen behalten.
+        #expect(Self.ambiguousMediaTypeNames(in: "    var mediaType: String? = nil") == 0)
+        #expect(Self.ambiguousMediaTypeNames(
+            in: #"return libs.filter { ($0.mediaType ?? "book") == "book" }"#) == 0)
+        #expect(Self.ambiguousMediaTypeNames(
+            in: "func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem]") == 0)
+    }
+
     @Test("kein Provider gibt seinen Typ noch als Einzelwert heraus")
     func providersAnswerWithASet() throws {
         var offenders: [String] = []

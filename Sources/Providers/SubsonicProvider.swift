@@ -198,12 +198,12 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
 
     /// The type-scoped fetch. With one mode the folder list is not consulted at
     /// all, so the call is byte-for-byte the one this source always made.
-    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem] {
-        guard AppStorageKeys.subsonicActive(for: mediaType) else { return [] }
+    func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem] {
+        guard AppStorageKeys.subsonicActive(for: type) else { return [] }
         let modes = AppStorageKeys.subsonicModes
         guard modes.count > 1 else { return try await albums(musicFolderIds: []) }
         return try await albums(musicFolderIds: SourceLibraries.libraries(
-            for: mediaType, modes: modes,
+            for: type, modes: modes,
             known: AppStorageKeys.subsonicKnownLibraries,
             assignment: AppStorageKeys.subsonicAssignment))
     }
@@ -212,11 +212,11 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// means "do not narrow" — the whole-server answer, and the ONLY answer a
     /// single-mode source ever gets, so its requests stay byte-for-byte what
     /// they always were.
-    func folderScope(for mediaType: MediaType) -> [String] {
+    func folderScope(for type: MediaType) -> [String] {
         let modes = AppStorageKeys.subsonicModes
         guard modes.count > 1 else { return [] }
         return SourceLibraries.libraries(
-            for: mediaType, modes: modes,
+            for: type, modes: modes,
             known: AppStorageKeys.subsonicKnownLibraries,
             assignment: AppStorageKeys.subsonicAssignment)
     }

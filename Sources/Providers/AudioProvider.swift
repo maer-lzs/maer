@@ -78,7 +78,7 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// is filling and nothing else — which library that maps to is the
     /// source's own business, and passing a made-up id (the provider slug) was
     /// only ever right while every source had exactly one library.
-    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem]
+    func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem]
     /// One page of the library (server paging). The default implementation
     /// (see extension) returns the whole list as a single page — only ABS
     /// paginates for real; local/RSS sources are small anyway.
@@ -128,8 +128,8 @@ extension AudioProvider {
 
     /// Default: one library, so the type does not narrow anything. Only a
     /// source that really has several libraries overrides this.
-    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem] {
-        guard mediaTypes.contains(mediaType) else { return [] }
+    func fetchLibraryItems(for type: MediaType) async throws -> [LibraryItem] {
+        guard mediaTypes.contains(type) else { return [] }
         return try await fetchLibraryItems(libraryId: providerId)
     }
     /// Whether the source currently has content (drives tab visibility).

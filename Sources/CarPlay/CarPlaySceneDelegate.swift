@@ -159,7 +159,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         let newest = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 20)) ?? []
         // The music tab asks for MUSIC — a source that also serves audiobooks
         // must not put books in the car's album list.
-        let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(mediaType: .music)) ?? []
+        let all = (try? await AppSession.shared.musicProvider.fetchLibraryItems(for: .music)) ?? []
 
         var sections: [CPListSection] = []
         if !newest.isEmpty {
