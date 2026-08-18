@@ -35,6 +35,33 @@ nonisolated struct SubsonicBody: Decodable {
     let bookmarks: SubsonicBookmarks?       // getBookmarks (playlist continue-listening)
     let genres: SubsonicGenres?             // getGenres (M3)
     let songsByGenre: SubsonicSongsByGenre? // getSongsByGenre (M3)
+    let musicFolders: SubsonicMusicFolders? // getMusicFolders
+}
+
+/// getMusicFolders — the top-level folders a server is configured with. This
+/// is the ONE level a Subsonic server separates its stock on, so it is the
+/// level on which "this half is music, that half is audiobooks" can be
+/// answered without guessing. The id arrives as a number in the JSON but
+/// travels as a string everywhere else (query param, stored assignment).
+nonisolated struct SubsonicMusicFolders: Decodable {
+    let musicFolder: [SubsonicMusicFolder]?
+}
+nonisolated struct SubsonicMusicFolder: Decodable {
+    let id: SubsonicFolderID?
+    let name: String?
+}
+
+/// Servers disagree on whether the folder id is a number or a string; both
+/// forms appear in the wild, and a decoding failure here would present as
+/// "your server has no folders".
+nonisolated struct SubsonicFolderID: Decodable {
+    let value: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let int = try? container.decode(Int.self) { value = String(int) }
+        else { value = try container.decode(String.self) }
+    }
 }
 
 // M3: getGenres — the genre NAME arrives as the element content, which the

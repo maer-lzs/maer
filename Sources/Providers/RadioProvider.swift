@@ -18,7 +18,7 @@ final class RadioProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "radio" }
-    var mediaType: MediaType { .radio }
+    var mediaTypes: Set<MediaType> { [.radio] }
     var capabilities: ProviderCapabilities { [.remoteSearch] }
     var streamAuthHeaders: [String: String] { [:] }
 

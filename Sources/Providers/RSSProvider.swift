@@ -17,7 +17,7 @@ final class RSSProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "rss" }
-    var mediaType: MediaType { .podcasts }
+    var mediaTypes: Set<MediaType> { [.podcasts] }
     /// Only show the podcast tab once at least one feed is subscribed AND the
     /// RSS source is effectively active (podcast tab ∧ RSS on) — TF bib-toggles.
     var isAvailable: Bool { AppStorageKeys.rssActive && subs.hasSubscriptions }

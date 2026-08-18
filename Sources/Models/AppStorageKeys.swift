@@ -255,23 +255,34 @@ nonisolated enum AppStorageKeys {
         else { KeychainStore.save(value, forKey: KeychainKey.jellyfinToken) }
     }
 
-    /// Booksonic: what this Subsonic source CONTAINS — "music" (default) or
-    /// "audiobooks" (a Booksonic library maps albums to books). User-set per
-    /// source, never guessed.
+    /// The stored content type of the older single-capability form. Nothing
+    /// reads it as an ANSWER any more — it is the input the pair falls back to
+    /// for a stock that predates the pair, and it keeps being written so a
+    /// downgrade to an older build still finds its one mode where it expects
+    /// it.
     static let subsonicContentType = "subsonicContentType"
-    static var subsonicIsAudiobooksValue: Bool {
-        get { UserDefaults.standard.string(forKey: subsonicContentType) == "audiobooks" }
-        set { UserDefaults.standard.set(newValue ? "audiobooks" : "music", forKey: subsonicContentType) }
-    }
 
-    /// The same source as a PAIR of capabilities. Deliberately derived from
-    /// the very same stored value instead of a second key: that IS the
-    /// migration — a stock nobody touched reads as "this one mode on, the
-    /// other off", with nothing to write and nothing to convert.
+    /// What this Subsonic source is used FOR, as a pair of capabilities — THE
+    /// answer, read by the provider, the activation gate and the settings
+    /// surface.
+    ///
+    /// The read-back checks PRESENCE, not the boolean: `bool(forKey:)` on a key
+    /// nobody ever wrote answers false, and two falses would read as "serves
+    /// nothing" — an activation statement the user never made, and the silent
+    /// opposite of their stored choice. Only a pair that was actually written
+    /// counts; everything else still reads its content type. Nothing is written
+    /// on a read, so a stock nobody touched stays untouched.
     nonisolated static var subsonicModes: SourceModes {
         get {
-            SourceModes.fromLegacyContentType(
-                UserDefaults.standard.string(forKey: subsonicContentType))
+            let defaults = UserDefaults.standard
+            if defaults.object(forKey: subsonicServesMusicKey) != nil
+                || defaults.object(forKey: subsonicServesAudiobooksKey) != nil {
+                return SourceModes(
+                    servesMusic: defaults.bool(forKey: subsonicServesMusicKey),
+                    servesAudiobooks: defaults.bool(forKey: subsonicServesAudiobooksKey))
+            }
+            return SourceModes.fromLegacyContentType(
+                defaults.string(forKey: subsonicContentType))
         }
         set {
             UserDefaults.standard.set(newValue.legacyContentType, forKey: subsonicContentType)
@@ -279,12 +290,38 @@ nonisolated enum AppStorageKeys {
             UserDefaults.standard.set(newValue.servesAudiobooks, forKey: subsonicServesAudiobooksKey)
         }
     }
-    /// Written alongside so a later stage can read the pair directly; the
-    /// legacy value stays the single truth until the library assignment lands
-    /// — two sources of truth for one decision is the class this project
-    /// keeps closing, so the pair is not read back yet.
     nonisolated static let subsonicServesMusicKey = "subsonicServesMusic"
     nonisolated static let subsonicServesAudiobooksKey = "subsonicServesAudiobooks"
+
+    /// The server's music folders as last seen, and which type each feeds.
+    /// Both are cached so the activation gate can answer synchronously — a
+    /// tab must not appear and disappear around a network round trip.
+    nonisolated static let subsonicLibraries = "subsonicLibraries"
+    nonisolated static let subsonicLibraryAssignment = "subsonicLibraryAssignment"
+
+    nonisolated static var subsonicKnownLibraries: [SourceLibrary] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: subsonicLibraries),
+                  let list = try? JSONDecoder().decode([SourceLibrary].self, from: data)
+            else { return [] }
+            return list
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            UserDefaults.standard.set(data, forKey: subsonicLibraries)
+        }
+    }
+
+    nonisolated static var subsonicAssignment: SourceLibraryAssignment {
+        get {
+            let raw = UserDefaults.standard.dictionary(forKey: subsonicLibraryAssignment) as? [String: String] ?? [:]
+            return SourceLibraryAssignment(byLibrary: raw.compactMapValues(MediaType.init(rawValue:)))
+        }
+        set {
+            UserDefaults.standard.set(newValue.byLibrary.mapValues(\.rawValue),
+                                      forKey: subsonicLibraryAssignment)
+        }
+    }
 
     /// Drive mode: the ONE remembered car audio-route UID (user-chosen from
     /// the connected outputs; empty = no auto-activation) + its display name.
@@ -590,16 +627,39 @@ nonisolated enum AppStorageKeys {
     static var rssActive: Bool {
         SourceActivation.effective(tabEnabled: podcastsTabEnabledValue, sourceEnabled: rssEnabledValue)
     }
+    /// Does the Subsonic source feed THIS type? The pair says what the user
+    /// asked for, the library rule says what can actually be delivered, and the
+    /// tab gate says whether the type is on at all — G8 lives in the middle
+    /// term: a second mode without its own library is never a tab, it is a
+    /// visible gap on the source page.
+    static func subsonicActive(for type: MediaType) -> Bool {
+        let modes = subsonicModes
+        guard SourceLibraries.serves(type, modes: modes,
+                                     known: subsonicKnownLibraries,
+                                     assignment: subsonicAssignment) else { return false }
+        return SourceActivation.effective(
+            tabEnabled: tabEnabledValue(for: type),
+            sourceEnabled: subsonicEnabledValue)
+    }
+
+    /// Whether the source is live at all — the gate the CLIENT hangs on. A
+    /// source that serves NO type serves nothing; that is an activation
+    /// statement, not a content type, which is why it is answered here and not
+    /// as a third value in the pair.
     static var subsonicActive: Bool {
-        // Booksonic: the source gates on the tab it actually serves.
-        // A source that serves NO type serves nothing — the same statement as
-        // the other two gates, in a third place, not a new concept. Without
-        // it, switching both capabilities off fell back to the stored content
-        // type and the server kept feeding Music: the silent opposite of the
-        // input.
-        SourceActivation.effective(
-            tabEnabled: subsonicIsAudiobooksValue ? audiobooksTabEnabledValue : musicTabEnabledValue,
-            sourceEnabled: subsonicEnabledValue && !subsonicModes.isEmpty)
+        MediaType.allCases.contains { subsonicActive(for: $0) }
+    }
+
+    /// The tab switch of a type. Radio and podcasts are listed for
+    /// completeness; no server source claims them through this gate.
+    static func tabEnabledValue(for type: MediaType) -> Bool {
+        switch type {
+        case .audiobooks: return audiobooksTabEnabledValue
+        case .music:      return musicTabEnabledValue
+        case .podcasts:   return podcastsTabEnabledValue
+        case .radio:      return radioTabEnabledValue
+        case .home:       return true
+        }
     }
     static var jellyfinActive: Bool {
         SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: jellyfinEnabledValue)

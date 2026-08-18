@@ -16,8 +16,20 @@ struct SubsonicSourceView: View {
     @State private var enabled = AppStorageKeys.subsonicEnabledValue
     @State private var servesMusic = AppStorageKeys.subsonicModes.servesMusic
     @State private var servesAudiobooks = AppStorageKeys.subsonicModes.servesAudiobooks
+    @State private var libraries = AppStorageKeys.subsonicKnownLibraries
+    @State private var assignment = AppStorageKeys.subsonicAssignment
     private var modes: SourceModes {
         SourceModes(servesMusic: servesMusic, servesAudiobooks: servesAudiobooks)
+    }
+    /// Enough to build a client with — without it the reload button would
+    /// promise a round trip that cannot happen.
+    private var canReachServer: Bool {
+        !serverURL.trimmingCharacters(in: .whitespaces).isEmpty
+            && !username.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    private var libraryReload: (() async -> Void)? {
+        guard canReachServer else { return nil }
+        return { await loadLibraries() }
     }
     @State private var isTesting = false
     @State private var statusMessage: String?
@@ -40,19 +52,25 @@ struct SubsonicSourceView: View {
             }
 
             Section {
-                // the owner's Regel: was mehrere Dinge kann, darf sie
-                // GLEICHZEITIG — ein Server, ein Setup. Deshalb je ein
-                // Schalter pro Faehigkeit statt einer Entweder-oder-Wahl.
+                // What can do several things may do them AT ONCE — one server,
+                // one setup. Hence one switch per capability instead of an
+                // either-or choice.
                 Toggle(isOn: $servesMusic) {
                     Label("Music", systemImage: "music.note")
                 }
                 .accessibilityIdentifier("subsonic-serves-music")
-                .onChange(of: servesMusic) { _, _ in save() }
+                .onChange(of: servesMusic) { _, _ in
+                    save()
+                    loadLibrariesIfAssignmentBecameNecessary()
+                }
                 Toggle(isOn: $servesAudiobooks) {
                     Label("Audiobooks", systemImage: "books.vertical")
                 }
                 .accessibilityIdentifier("subsonic-serves-audiobooks")
-                .onChange(of: servesAudiobooks) { _, _ in save() }
+                .onChange(of: servesAudiobooks) { _, _ in
+                    save()
+                    loadLibrariesIfAssignmentBecameNecessary()
+                }
                 if modes.isEmpty {
                     // Says it, instead of looking like a defect: nothing
                     // selected means this server feeds nothing — the
@@ -63,22 +81,19 @@ struct SubsonicSourceView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("subsonic-modes-empty")
                 }
-                if modes.needsLibraryAssignment {
-                    // G8: sichtbar unvollstaendig statt eines leeren Tabs. Die
-                    // Zuordnung, welche Bibliothek welchen Typ speist, kommt
-                    // als eigener Schritt — bis dahin sagt die Flaeche, was
-                    // fehlt, statt es zu verschweigen.
-                    Label("Both modes are on. Which library feeds which tab is not assigned yet — until then this server is used for audiobooks.",
-                          systemImage: "exclamationmark.triangle")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("subsonic-modes-incomplete")
-                }
             } header: {
                 Text("This source contains")
             } footer: {
                 Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here.")
             }
+
+            // G8 lives here: with two modes on, what each one is fed from has
+            // to be said before either becomes a tab.
+            SourceLibraryAssignmentSection(
+                modes: modes,
+                libraries: libraries,
+                assignment: $assignment,
+                reload: libraryReload)
 
             Section {
                 // affb7e6: the tab is the USER's master (settings →
@@ -176,9 +191,28 @@ struct SubsonicSourceView: View {
         }
         AppStorageKeys.subsonicEnabledValue = enabled
         AppStorageKeys.subsonicModes = modes
+        AppStorageKeys.subsonicAssignment = assignment
         // Rebuild the client so the next request uses the new credentials —
         // via the session so BOTH music clients and the tab bar reconfigure.
         AppSession.shared.reconfigureSources()
+    }
+
+    /// Fetch the server's libraries. Saving first is not tidiness: the client
+    /// is built from the STORED credentials, so a freshly typed address would
+    /// otherwise be asked with the old one.
+    private func loadLibraries() async {
+        save()
+        libraries = (try? await SubsonicProvider.shared.refreshLibraries()) ?? libraries
+        // Pruning may have dropped assignments for libraries that are gone.
+        assignment = AppStorageKeys.subsonicAssignment
+    }
+
+    /// A second mode without a library list would show nothing but a question.
+    /// Asking the server the moment the question arises is the difference
+    /// between a screen that works and one that waits to be poked.
+    private func loadLibrariesIfAssignmentBecameNecessary() {
+        guard modes.needsLibraryAssignment, libraries.isEmpty, canReachServer else { return }
+        Task { await loadLibraries() }
     }
 
     private func setStatus(_ message: String, isError: Bool) {

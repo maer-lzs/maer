@@ -48,10 +48,17 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     private var starredAlbumIds: Set<String>?
 
     var providerId: String { "sub" }
-    /// Booksonic: user-set per source — a Booksonic library serves the
-    /// AUDIOBOOKS tab through the generic AudioProvider rail (albums are
+    /// What this server is used for, as the user set it — one account can be
+    /// both a music library and a Booksonic audiobook shelf at once. The
+    /// audiobook side runs through the generic AudioProvider rail (albums are
     /// books, tracks are chapters); the music UI is untouched.
-    var mediaType: MediaType { AppStorageKeys.subsonicIsAudiobooksValue ? .audiobooks : .music }
+    ///
+    /// A type only appears here once it can actually be delivered (G8): with
+    /// two modes that means an assigned music folder, so a half-finished setup
+    /// shows a gap on the source page instead of an empty tab.
+    var mediaTypes: Set<MediaType> {
+        Set(MediaType.allCases.filter { AppStorageKeys.subsonicActive(for: $0) })
+    }
     /// Password login + own search; content is streamed from a server and can be
     /// downloaded for offline. No server-side progress sync (music needs none;
     /// "played" is handled via scrobble at the track level).
@@ -167,11 +174,51 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         [ABSLibrary(id: "sub", name: String(localized: "Music"), mediaType: "music")]
     }
 
+    /// The server's own top-level folders, and the ONE place that refreshes the
+    /// cached list the activation gate reads. Assignments for folders that
+    /// vanished are dropped in the same breath — otherwise a mode keeps looking
+    /// complete because of a folder that no longer exists.
+    @discardableResult
+    func refreshLibraries() async throws -> [SourceLibrary] {
+        guard let client else { return AppStorageKeys.subsonicKnownLibraries }
+        let folders = try await client.musicFolders()
+        AppStorageKeys.subsonicKnownLibraries = folders
+        AppStorageKeys.subsonicAssignment = AppStorageKeys.subsonicAssignment.pruned(toKnown: folders)
+        Logger.music.notice("subsonic music folders: \(folders.count)")
+        AppSession.shared.notifySourcesChanged()
+        return folders
+    }
+
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
+        try await albums(musicFolderIds: [libraryId == providerId ? nil : libraryId].compactMap { $0 })
+    }
+
+    /// The type-scoped fetch. With one mode the folder list is not consulted at
+    /// all, so the call is byte-for-byte the one this source always made.
+    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem] {
+        guard AppStorageKeys.subsonicActive(for: mediaType) else { return [] }
+        let modes = AppStorageKeys.subsonicModes
+        guard modes.count > 1 else { return try await albums(musicFolderIds: []) }
+        return try await albums(musicFolderIds: SourceLibraries.libraries(
+            for: mediaType, modes: modes,
+            known: AppStorageKeys.subsonicKnownLibraries,
+            assignment: AppStorageKeys.subsonicAssignment))
+    }
+
+    /// Alphabetical is the stable "browse all" order; the Music tab requests
+    /// newest/frequent separately for its shelves. An empty folder list means
+    /// "no narrowing", which is the whole-server answer.
+    private func albums(musicFolderIds: [String]) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        // Alphabetical is the stable "browse all" order; the Music tab (later)
-        // requests newest/frequent separately for its shelves.
-        let albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
+        var albums: [SubsonicAlbum] = []
+        if musicFolderIds.isEmpty {
+            albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
+        } else {
+            for folderId in musicFolderIds {
+                albums += try await client.albumList2(type: "alphabeticalByName", size: 500,
+                                                     musicFolderId: folderId)
+            }
+        }
         // Y49: the LIVE library refresh reaches the server too — record the
         // check so a clean load is visible in the history (only the manual
         // "Sync Now" button used to leave a trace, via runLibrarySync).

@@ -171,11 +171,25 @@ struct SubsonicClient {
         _ = try await get("ping")
     }
 
+    /// The server's top-level music folders. Everything else about the library
+    /// assignment hangs off this answer, so an empty list means exactly "this
+    /// server reports no folders" — never "we did not ask".
+    func musicFolders() async throws -> [SourceLibrary] {
+        let body = try await get("getMusicFolders")
+        return (body.musicFolders?.musicFolder ?? []).compactMap { folder in
+            guard let id = folder.id?.value else { return nil }
+            return SourceLibrary(id: id, name: folder.name ?? id)
+        }
+    }
+
     /// A page of albums. `type`: newest | recent | frequent | alphabeticalByName …
-    func albumList2(type: String, size: Int = 100, offset: Int = 0) async throws -> [SubsonicAlbum] {
-        let body = try await get("getAlbumList2", [
-            "type": type, "size": String(size), "offset": String(offset),
-        ])
+    /// `musicFolderId` (API 1.11.0) narrows the answer to one folder — that is
+    /// how a server that holds both music and audiobooks keeps them apart.
+    func albumList2(type: String, size: Int = 100, offset: Int = 0,
+                    musicFolderId: String? = nil) async throws -> [SubsonicAlbum] {
+        var params = ["type": type, "size": String(size), "offset": String(offset)]
+        if let musicFolderId { params["musicFolderId"] = musicFolderId }
+        let body = try await get("getAlbumList2", params)
         return body.albumList2?.album ?? []
     }
 
@@ -231,14 +245,18 @@ struct SubsonicClient {
         return body.songsByGenre?.song ?? []
     }
 
+    /// `musicFolderId` since API 1.12.0 — a search from the Music tab must not
+    /// answer with audiobooks and the other way round.
     func search3(query: String, albumCount: Int = 40, songCount: Int = 40,
-                 artistCount: Int = 20) async throws -> SubsonicSearchResult3 {
-        let body = try await get("search3", [
+                 artistCount: Int = 20, musicFolderId: String? = nil) async throws -> SubsonicSearchResult3 {
+        var params = [
             "query": query,
             "albumCount": String(albumCount),
             "songCount": String(songCount),
             "artistCount": String(artistCount),
-        ])
+        ]
+        if let musicFolderId { params["musicFolderId"] = musicFolderId }
+        let body = try await get("search3", params)
         return body.searchResult3 ?? SubsonicSearchResult3(artist: nil, album: nil, song: nil)
     }
 

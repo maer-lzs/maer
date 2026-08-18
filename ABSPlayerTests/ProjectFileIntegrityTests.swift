@@ -1192,4 +1192,59 @@ extension ProjectFileIntegrityTests {
         #expect(Self.rawStorageKeyLiterals(
             in: "@AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var x = true") == 0)
     }
+
+    // MARK: - Der Inhaltstyp ist kein Antwortgeber mehr
+
+    /// Every shape in which the old single content type could still be ASKED.
+    /// The pair replaced it as the answer; a surface that reads the stored
+    /// string again would be a second source of truth for one decision, which
+    /// is the class this project keeps closing.
+    static func legacyContentTypeReads(in text: String) -> Int {
+        ["subsonicIsAudiobooksValue",
+         "subsonicContentType",
+         "string(forKey: \"subsonicContentType\")"]
+            .reduce(0) { $0 + text.components(separatedBy: $1).count - 1 }
+    }
+
+    @Test("den alten Inhaltstyp befragt nur noch die Ablage selbst")
+    func legacyContentTypeIsNotAnAnswer() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            if file.lastPathComponent == "AppStorageKeys.swift" { continue }
+            if Self.legacyContentTypeReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
+                offenders.append(file.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty,
+                "these surfaces still ask the old content type: \(offenders)")
+    }
+
+    /// A fence that only ever reports 0 proves nothing — this one is measured
+    /// against the shapes that REALLY stood in the tree before the pair became
+    /// the answer, one per read site.
+    @Test("der Inhaltstyp-Zaun faengt die drei ausgelieferten Lesestellen")
+    func legacyContentTypeFenceCatchesTheShippedShapes() {
+        #expect(Self.legacyContentTypeReads(
+            in: "let subsonicServesMusic = AppStorageKeys.subsonicActive && !AppStorageKeys.subsonicIsAudiobooksValue") == 1)
+        #expect(Self.legacyContentTypeReads(
+            in: "var mediaType: MediaType { AppStorageKeys.subsonicIsAudiobooksValue ? .audiobooks : .music }") == 1)
+        #expect(Self.legacyContentTypeReads(
+            in: "tabEnabled: subsonicIsAudiobooksValue ? audiobooksTabEnabledValue : musicTabEnabledValue,") == 1)
+        #expect(Self.legacyContentTypeReads(
+            in: "let modes = AppStorageKeys.subsonicModes") == 0)
+    }
+
+    /// One source, one type was only ever right while every source had exactly
+    /// one library. The single-valued form must not come back through a new
+    /// provider that copies an old one.
+    @Test("kein Provider gibt seinen Typ noch als Einzelwert heraus")
+    func providersAnswerWithASet() throws {
+        var offenders: [String] = []
+        for file in Self.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            if text.contains("var mediaType: MediaType {") { offenders.append(file.lastPathComponent) }
+        }
+        #expect(offenders.isEmpty,
+                "these providers still answer with ONE type: \(offenders)")
+    }
 }

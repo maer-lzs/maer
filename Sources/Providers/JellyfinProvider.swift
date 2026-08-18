@@ -41,7 +41,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     var providerId: String { "jf" }
-    var mediaType: MediaType { .music }
+    var mediaTypes: Set<MediaType> { [.music] }
     var capabilities: ProviderCapabilities { [.passwordLogin, .remoteSearch, .downloadable] }
     var streamAuthHeaders: [String: String] { [:] }
 

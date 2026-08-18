@@ -19,6 +19,24 @@ nonisolated struct SourceModes: Equatable, Sendable {
     var isEmpty: Bool { !servesMusic && !servesAudiobooks }
     var count: Int { (servesMusic ? 1 : 0) + (servesAudiobooks ? 1 : 0) }
 
+    /// The pair as media types — the form every gate downstream wants.
+    var types: [MediaType] {
+        var result: [MediaType] = []
+        if servesMusic { result.append(.music) }
+        if servesAudiobooks { result.append(.audiobooks) }
+        return result
+    }
+
+    /// A type this pair cannot express is not served. There is no third
+    /// capability, and a source claiming one would only be able to guess.
+    func serves(_ type: MediaType) -> Bool {
+        switch type {
+        case .music:      return servesMusic
+        case .audiobooks: return servesAudiobooks
+        default:          return false
+        }
+    }
+
     /// Reading the OLD single value as the new pair. This is the whole
     /// migration: no write, no flag, no one-time pass — the stored content
     /// type simply reads as "this one on, the other off". A stock that was
@@ -28,27 +46,28 @@ nonisolated struct SourceModes: Equatable, Sendable {
         return SourceModes(servesMusic: !isAudiobooks, servesAudiobooks: isAudiobooks)
     }
 
-    /// The legacy value a pair still maps to, for everything that has not been
-    /// taught the pair yet. With exactly one mode this is lossless; with both
-    /// on, the audiobook side is the one that needs the special mapping
-    /// (albums as books), so it wins the single slot until the library
-    /// assignment exists.
+    /// The pair projected back onto the older single content type. Nothing
+    /// reads this to decide anything — the pair itself is the answer. It is
+    /// written so that a stock this build touched stays readable for a build
+    /// that predates the pair, and so this type stays its own inverse
+    /// (`fromLegacyContentType(x.legacyContentType) == x` for one mode).
     ///
-    /// **It cannot express the empty state**, and that is deliberate rather
-    /// than overlooked: "serves nothing" is not a content type, it is an
-    /// activation statement, and it is answered where the other two
-    /// activation questions are answered (`subsonicActive`). Reading this
-    /// value for an empty pair would say "music" — the silent opposite of the
-    /// input, which is exactly the class G8 guards in the other direction.
+    /// It is lossy by nature, and deliberately so in both directions it can be:
+    /// with both modes on, the audiobook side wins the single slot because it
+    /// is the one that needs the special mapping (albums as books); and the
+    /// empty pair projects to "music" because "serves nothing" is not a content
+    /// type at all. That second case is an activation statement, answered where
+    /// the other activation questions are answered (`subsonicActive`) — never
+    /// by reading this value back.
     var legacyContentType: String {
         servesAudiobooks ? "audiobooks" : "music"
     }
 
     /// Several modes need to know WHICH library feeds which type — a server
-    /// separates on exactly that level. Until that assignment exists, a second
-    /// mode is visibly incomplete rather than a tab that stays empty (G8).
+    /// separates on exactly that level.
     ///
     /// With ONE mode there is nothing to assign: it behaves exactly as before,
-    /// which is the promise this rule has to keep more than any other.
+    /// no library list is consulted and no assignment surface appears, which is
+    /// the promise this rule has to keep more than any other.
     var needsLibraryAssignment: Bool { count > 1 }
 }

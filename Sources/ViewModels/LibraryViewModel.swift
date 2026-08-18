@@ -1089,8 +1089,8 @@ final class LibraryViewModel: ObservableObject {
         let session = AppSession.shared
         var entries: [LibraryEntry] = []
         for provider in session.allProviders
-        where provider !== session.provider && provider.mediaType == .audiobooks && provider.isAvailable {
-            let items = (try? await provider.fetchLibraryItems(libraryId: provider.providerId)) ?? []
+        where provider !== session.provider && provider.mediaTypes.contains(.audiobooks) && provider.isAvailable {
+            let items = (try? await provider.fetchLibraryItems(mediaType: .audiobooks)) ?? []
             let progress = (try? await provider.fetchAllProgress()) ?? [:]
             entries += items.map { LibraryEntry(item: $0, progress: progress[$0.id]) }
         }

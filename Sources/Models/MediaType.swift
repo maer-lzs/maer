@@ -8,7 +8,10 @@ import Foundation
 /// Content type of a source/item — decides which bottom tab it lives in.
 /// Tabs group by type, not source: several sources of the same type
 /// (e.g. Audiobookshelf + local files) share one tab.
-enum MediaType: String, CaseIterable, Identifiable {
+/// `nonisolated`: the type is a plain tag — it has to be usable inside the pure
+/// rules that decide which source feeds which tab, and those run off the main
+/// actor (the project default would isolate it).
+nonisolated enum MediaType: String, CaseIterable, Identifiable, Sendable {
     case home          // aggregation tab (not a source); always first + default
     case audiobooks
     case podcasts

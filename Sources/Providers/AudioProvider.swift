@@ -57,8 +57,11 @@ struct LibrarySeed {
 protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     /// Short, stable slug ("abs", "local", …) — also the id namespace.
     var providerId: String { get }
-    /// Content type (tab) of this source — default: audiobooks.
-    var mediaType: MediaType { get }
+    /// Content types (tabs) this source feeds — default: audiobooks alone.
+    /// A SET, because one account can be used for several things at once: a
+    /// server that holds music and audiobooks is one source with two
+    /// capabilities, not two sources. Empty = feeds nothing right now.
+    var mediaTypes: Set<MediaType> { get }
     var capabilities: ProviderCapabilities { get }
     /// Whether the source currently has content (drives tab visibility and the
     /// search fan-out). MUST be a protocol REQUIREMENT: the callers hold
@@ -71,6 +74,11 @@ protocol AudioProvider: AnyObject, Sendable, ProgressSyncAPI {
     // MARK: Library
     func fetchLibraries() async throws -> [ABSLibrary]
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem]
+    /// Everything this source holds FOR a type. The caller knows which tab it
+    /// is filling and nothing else — which library that maps to is the
+    /// source's own business, and passing a made-up id (the provider slug) was
+    /// only ever right while every source had exactly one library.
+    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem]
     /// One page of the library (server paging). The default implementation
     /// (see extension) returns the whole list as a single page — only ABS
     /// paginates for real; local/RSS sources are small anyway.
@@ -115,8 +123,15 @@ extension AudioProvider {
     /// ABS overrides this with the `personalized` view.
     func fetchLibrarySeed(libraryId: String) async throws -> LibrarySeed { LibrarySeed() }
 
-    /// Default: most sources deliver audiobooks.
-    var mediaType: MediaType { .audiobooks }
+    /// Default: most sources deliver audiobooks, and exactly that.
+    var mediaTypes: Set<MediaType> { [.audiobooks] }
+
+    /// Default: one library, so the type does not narrow anything. Only a
+    /// source that really has several libraries overrides this.
+    func fetchLibraryItems(mediaType: MediaType) async throws -> [LibraryItem] {
+        guard mediaTypes.contains(mediaType) else { return [] }
+        return try await fetchLibraryItems(libraryId: providerId)
+    }
     /// Whether the source currently has content (drives tab visibility).
     /// Default: always available; podcasts e.g. only with a subscription.
     var isAvailable: Bool { true }

@@ -112,6 +112,16 @@
         }
       }
     },
+    "%@ has no library yet — that tab stays off until you pick one." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat noch keine Bibliothek — dieser Tab bleibt aus, bis du eine wählst."
+          }
+        }
+      }
+    },
     "%@ listened" : {
       "localizations" : {
         "de" : {
@@ -560,6 +570,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+15 Min."
+          }
+        }
+      }
+    },
+    "A library feeds one tab. Anything left unused stays out of the app entirely." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Bibliothek speist einen Tab. Was auf „Nicht genutzt“ steht, bleibt ganz aus der App heraus."
           }
         }
       }
@@ -1357,16 +1377,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Booksonic-Bibliotheken liefern Hörbücher: Alben erscheinen als Bücher im Hörbücher-Tab, Tracks werden Kapitel. Nie geraten — du stellst es hier ein."
-          }
-        }
-      }
-    },
-    "Both modes are on. Which library feeds which tab is not assigned yet — until then this server is used for audiobooks." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beide Modi sind an. Welche Bibliothek welchen Tab speist, ist noch nicht zugeordnet — bis dahin wird dieser Server für Hörbücher genutzt."
           }
         }
       }
@@ -4665,6 +4675,26 @@
         }
       }
     },
+    "Not loaded yet — fetch this server's libraries to assign them." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht geladen — hole die Bibliotheken dieses Servers, um sie zuzuordnen."
+          }
+        }
+      }
+    },
+    "Not used" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht genutzt"
+          }
+        }
+      }
+    },
     "Not on Wi-Fi" : {
       "localizations" : {
         "de" : {
@@ -6028,6 +6058,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kanalliste aktualisieren"
+          }
+        }
+      }
+    },
+    "Reload libraries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliotheken neu laden"
           }
         }
       }
@@ -7746,6 +7786,16 @@
         }
       }
     },
+    "This server reports only %lld library. Mär cannot tell music from audiobooks inside one library — turn one mode off, or separate them on the server." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Server meldet nur %lld Bibliothek. Mär kann Musik und Hörbücher innerhalb einer Bibliothek nicht auseinanderhalten — schalte einen Modus ab oder trenne sie auf dem Server."
+          }
+        }
+      }
+    },
     "This source contains" : {
       "localizations" : {
         "de" : {
@@ -8274,6 +8324,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Wo"
+          }
+        }
+      }
+    },
+    "Which library feeds which tab" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welche Bibliothek speist welchen Tab"
           }
         }
       }
