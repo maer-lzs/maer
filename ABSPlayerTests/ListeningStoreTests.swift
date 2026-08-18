@@ -109,6 +109,46 @@ struct ListeningStoreTests {
         }
     }
 
+    // MARK: - Der Katalog-Lesepfad, ohne jede Quelle
+
+    /// the reviewer's Auflage zur Matrix-Zeile 3: die Geraete-Zeile faehrt mit einem
+    /// Sideload (`local:`), weil archive.org ein fester fremder Host ist und
+    /// ein Test-Sitz in Produktionscode genau den Pfad aendern wuerde, den die
+    /// Messung beweisen soll. Der KATALOG-Lesepfad wird dafuer hier belegt —
+    /// ohne Netz, ohne Provider, ohne Attrappe.
+    ///
+    /// Die Aussage: ein Katalog-Stand wird allein aus dem lokalen Bestand
+    /// gewonnen. Keine Quelle wird gefragt, weil es fuer diese Klasse gar
+    /// keine gibt.
+    @Test("ein Katalog-Stand wird ohne jede Quelle gewonnen")
+    func catalogStandIsWonLocally() {
+        let d = suite()
+        let work = "lv:176"                                   // LibriVox-Werk
+        let track = CatalogSongID.make(album: "lva:some-release", index: 4)
+
+        for id in [work, track] {
+            ListeningStore.record(id, position: 412, duration: 3600,
+                                  atMs: 1_700_000_000_000, in: d)
+            let mark = ListeningStore.mark(id, in: d)
+            #expect(mark?.position == 412, "\(id) haelt seinen Stand nicht lokal")
+            #expect(mark?.source == .backup)
+        }
+
+        // Und die Weiterhoeren-Bildung findet ihn ebenfalls ohne Quelle: die
+        // Positiv-Liste zaehlt Katalog-Kennungen zu den lokal gefuehrten,
+        // `serverKnows` ist leer, weil es fuer diese Klasse keinen Server gibt.
+        let defaults: [String: Any] = [
+            AppStorageKeys.localPosition(work): [412.0, 1_700_000_000_000.0, 3600.0],
+            AppStorageKeys.localPosition(track): [412.0, 1_700_000_000_000.0, 3600.0],
+        ]
+        let started = ContinueSources.started(in: defaults, serverKnows: [])
+        #expect(Set(started.map(\.id)) == [work, track],
+                "die Weiterhoeren-Bildung findet den Katalog-Stand nicht ohne Quelle")
+        #expect(started.allSatisfy { $0.position == 412 })
+        #expect(ContinueSources.isLocallyTracked(work))
+        #expect(ContinueSources.isLocallyTracked(track))
+    }
+
     // MARK: - Umzug und Vergessen
 
     @Test("ein Umzug malt nicht ueber einen neueren Stand")
