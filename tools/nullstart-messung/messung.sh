@@ -109,6 +109,36 @@ print(', '.join(str(x['body'].get('currentTime')) for x in d) if d else 'nichts'
   echo "| \`$modus\` | Zeuge $zeuge | $rc | $(position)s | $w |" >> "$OUT"
 done
 
+# --- Flugmodus-Matrix ----------------------------------------------------------
+# the reviewer-Entscheid: DREI Klassen statt acht. Sie decken die strukturell
+# verschiedenen Lesewege (ABS-Server / iCloud / gar kein Sync); die uebrigen
+# fuenf unterscheiden sich nur im Namensraum, und dafuer sind die
+# Vertreter-Unit-Tests das angemessene Mittel.
+rss_position() {
+  local c p; c="$(container)"
+  p="$c/Library/Preferences/de.lzs.ABSPlayer.plist"
+  plutil -p "$p" 2>/dev/null | grep -A 2 "localPosition.rss:" \
+    | grep -oE "=> [0-9]+\.[0-9]+" | head -1 | sed "s/=> //" | cut -d. -f1
+}
+{
+  echo ""
+  echo "## Flugmodus-Matrix"
+  echo ""
+  echo "| Klasse | Sync-Herr | offline geoeffnet | Stand danach | Urteil |"
+  echo "|---|---|---|---|---|"
+} >> "$OUT"
+
+xcrun simctl shutdown "$D" 2>/dev/null; xcrun simctl erase "$D"
+xcrun simctl boot "$D"; xcrun simctl bootstatus "$D" -b > /dev/null 2>&1
+xcrun simctl keychain "$D" add-root-cert "$M/ca.pem"
+mock_start ok 0
+rc=$(run_case testMatrixRSSPodcastResumesOffline)
+POS="$(rss_position)"
+# Der Fall spielt VOR dem Neustart ~16 s und DANACH ~11 s. Ein Null-Start
+# stuende also bei ~11, ein korrekter Wiedereinstieg deutlich darueber.
+if [ -n "$POS" ] && [ "$POS" -gt 20 ]; then URTEIL="setzte fort"; else URTEIL="🔴 Null-Start"; fi
+echo "| RSS-Podcast | iCloud | ja (Feed 503, Ton lokal) | ${POS:-—}s | $URTEIL (rc=$rc) |" >> "$OUT"
+
 echo "" >> "$OUT"
 echo "Erzeugt von \`messung.sh\`; Bildschirmfotos je Fall in den xcresult-Buendeln." >> "$OUT"
 cat "$OUT"

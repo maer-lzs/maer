@@ -37,6 +37,10 @@ FEED_EPISODE_GUID = "mock-episode-1"
 WRITES = []            # every progress write the app sends
 LOCK = threading.Lock()
 AUDIO = b""            # filled at startup
+# Counted so a measurement case can ASSURE ITS PRECONDITION: a case that
+# reports green without playback having run measures nothing, and that is
+# exactly how the first draft of the RSS leg failed.
+AUDIO_HITS = 0
 
 
 def progress_entry():
@@ -138,6 +142,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path.startswith("/audio/"):
+            global AUDIO_HITS
+            with LOCK:
+                AUDIO_HITS += 1
             self.send_response(200)
             self.send_header("Content-Type", "audio/mp4")
             self.send_header("Content-Length", str(len(AUDIO)))
@@ -154,7 +161,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/__writes"):     # the harness reads this
             with LOCK:
-                self._json({"mode": MODE, "writes": WRITES})
+                self._json({"mode": MODE, "writes": WRITES,
+                            "audio_hits": AUDIO_HITS})
             return
         if self._maybe_stall(self.path):
             return

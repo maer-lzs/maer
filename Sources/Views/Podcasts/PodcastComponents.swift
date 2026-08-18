@@ -480,6 +480,9 @@ struct EpisodeRowPlayButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isPlayingThis ? Text("Pause") : Text("Play"))
+        // Locale-independent handle: the label above is translated, and a
+        // measurement that searches an English word measures the locale.
+        .accessibilityIdentifier("episode-row-play")
     }
 
     private func tapped() async {
@@ -546,6 +549,7 @@ struct PodcastDownloadButton: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Download"))
+            .accessibilityIdentifier("episode-row-download")
         }
     }
 }

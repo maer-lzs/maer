@@ -262,6 +262,182 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         snap(again, "measurement-start-position")
     }
 
+    // MARK: - Flugmodus-Matrix
+
+    /// How many audio requests the stand-in has served — the precondition
+    /// instrument: playback either happened or it did not.
+    private func standInAudioHits() -> Int {
+        guard let url = URL(string: "\(serverURL)/__writes") else { return 0 }
+        var hits = 0
+        let done = expectation(description: "audio hits")
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            if let data,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let value = json["audio_hits"] as? Int { hits = value }
+            done.fulfill()
+        }.resume()
+        wait(for: [done], timeout: 15)
+        return hits
+    }
+
+    /// Tells the stand-in to go dark. Everything has to happen INSIDE one
+    /// case: `test-without-building` reinstalls the app per case and hands it
+    /// a fresh container, so a leg cannot inherit the state a previous case
+    /// produced. The switch is the stand-in's own endpoint.
+    private func standIn(mode: String) {
+        guard let url = URL(string: "\(serverURL)/__mode?set=\(mode)") else { return }
+        let done = expectation(description: "stand-in mode \(mode)")
+        URLSession.shared.dataTask(with: url) { _, _, _ in done.fulfill() }.resume()
+        wait(for: [done], timeout: 15)
+    }
+
+    /// Row 2 of the airplane-mode matrix: the RSS podcast class. Structurally
+    /// different from the book leg — its stand travels over iCloud, not over
+    /// the ABS server, and for a podcast the FEED is the server, so an
+    /// unreachable feed IS the offline case.
+    ///
+    /// The question is only this: after a restart with the feed unreachable,
+    /// does the episode continue where it stood, or at zero?
+    func testMatrixRSSPodcastResumesOffline() throws {
+        try skipWithoutStandIn()
+        standIn(mode: "ok")
+        // Deliberately the REAL path, not the seed: `_seedForUITest` REPLACES
+        // the subscription store on every launch, so a feed added under
+        // `-uitest` would be gone after the restart — and the restart is the
+        // whole measurement. Serverless is also how a podcast-only user
+        // actually starts.
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+
+        // Subscribe through the NORMAL way in — an arbitrary feed URL. No test
+        // seam in production code (which is why this leg exists and the
+        // catalogue leg does not: archive.org's host is fixed).
+        // Via the settings source map — the ONE route that exists regardless of
+        // state. The tab's own "Add Podcasts" entry appears only in the EMPTY
+        // state, and with recommendations loading there is no empty state; the
+        // first attempt walked straight past it.
+        let settings = app.buttons["open-settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 25),
+                      "die Einstellungen muessen erreichbar sein")
+        settings.tap()
+        let area = app.buttons["source-map-podcasts"].firstMatch
+        XCTAssertTrue(scrollTo(app, area, swipes: 8),
+                      "die Quellen-Karte muss den Podcast-Bereich tragen")
+        area.tap()
+        let sourcePage = app.buttons["settings-podcast-source"].firstMatch
+        XCTAssertTrue(scrollTo(app, sourcePage, swipes: 8),
+                      "der Bereich muss zu den Podcast-Quellen fuehren")
+        sourcePage.tap()
+        // The field lives in a COLLAPSED disclosure group — it does not exist
+        // in the tree until the group is opened.
+        // By IDENTIFIER, not by label: the simulator runs in German, and a
+        // journey that searches an English word measures the locale.
+        let disclosure = app.descendants(matching: .any)["podcast-add-by-url"].firstMatch
+        XCTAssertTrue(scrollTo(app, disclosure, swipes: 10),
+                      "die Quellenseite muss den Aufklapp-Eintrag tragen")
+        disclosure.tap()
+        let field = app.textFields["feed-url"].firstMatch
+        XCTAssertTrue(scrollTo(app, field, swipes: 6), "die Quellenseite muss das Feed-Feld tragen")
+        fill(field, with: "\(serverURL)/feed.xml")
+        let addFeed = app.buttons["podcast-add-feed"].firstMatch
+        XCTAssertTrue(addFeed.waitForExistence(timeout: 10))
+        addFeed.tap()
+
+        // The subscription lands in the podcast TAB, not in the settings sheet
+        // it was added from — leave the sheet and go there.
+        Thread.sleep(forTimeInterval: 4)
+        snap(app, "matrix-rss-added")
+        // Out of the settings sheet: back out of the pushed pages first, then
+        // close. A swipe alone does nothing on a scrolled list, and the source
+        // view's subscription row is not a link — measured both.
+        for _ in 0..<3 {
+            let done = app.buttons["settings-done"].firstMatch
+            if done.exists, done.isHittable { done.tap(); break }
+            // The TOPMOST navigation bar is the pushed page; its first button
+            // is the back chevron. Unconditional — a guard on `isHittable`
+            // broke out of the loop before the first tap.
+            let bars = app.navigationBars
+            guard bars.count > 0 else { break }
+            let back = bars.element(boundBy: bars.count - 1).buttons.element(boundBy: 0)
+            if back.exists { back.tap() }
+            Thread.sleep(forTimeInterval: 1.5)
+        }
+        let done = app.buttons["settings-done"].firstMatch
+        if done.exists, done.isHittable { done.tap() }
+        let podcasts = app.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcasts.waitForExistence(timeout: 20),
+                      "die Tableiste muss nach dem Blatt wieder dastehen")
+        podcasts.tap()
+        let show = app.staticTexts["Mock Podcast"].firstMatch
+        XCTAssertTrue(scrollTo(app, show, swipes: 12),
+                      "die abonnierte Sendung des Ersatz-Feeds muss im Tab stehen")
+        show.tap()
+        let episode = app.staticTexts["Mock Folge"].firstMatch
+        XCTAssertTrue(scrollTo(app, episode, swipes: 10),
+                      "die Folge des Ersatz-Feeds muss ankommen")
+        snap(app, "matrix-rss-subscribed")
+        // DOWNLOAD first, then play. Measured: the stand-in serves the file
+        // without range support, so a STREAM stalls — the app requested the
+        // audio (the counter saw it) but never played, and the ticker never
+        // ran. A downloaded episode is also the truer offline case, and it is
+        // exactly what the book leg does.
+        let download = app.buttons["episode-row-download"].firstMatch
+        if download.waitForExistence(timeout: 10) {
+            download.tap()
+            let anyway = app.buttons["Download Anyway"].firstMatch
+            if anyway.waitForExistence(timeout: 5) { anyway.tap() }
+            Thread.sleep(forTimeInterval: 12)
+        }
+        let rowPlay = app.buttons["episode-row-play"].firstMatch
+        XCTAssertTrue(rowPlay.waitForExistence(timeout: 10),
+                      "die Folgenzeile muss ihren Abspiel-Knopf tragen")
+        rowPlay.tap()
+        Thread.sleep(forTimeInterval: 6)
+        // The case ASSURES its precondition: without a single audio request the
+        // ticker never ran and everything below would be a green nothing.
+        XCTAssertGreaterThan(standInAudioHits(), 0,
+                             "keine Ton-Anfrage — die Wiedergabe lief nicht, der Fall misst nichts")
+
+        // MEASURED, after a green case that measured nothing: the row body
+        // OPENS the episode page — playback sits on the row's own play button
+        // at its trailing edge. The first draft tapped the row, saw no audio
+        // request reach the stand-in, and still reported green.
+        // Nothing about playback is asserted in the UI at all: every anchor
+        // the mini bar offers is a LOCALIZED label, and a case that searches
+        // an English word measures the locale. The harness reads the container
+        // afterwards, which is also the instrument the book leg used.
+        Thread.sleep(forTimeInterval: 16)
+        snap(app, "matrix-rss-before-restart")
+
+        // Now the world goes away, and only then the restart.
+        standIn(mode: "down")
+        app.terminate()
+        let again = launch()
+
+        // Back the same way a user would: tab → show → the row's play button.
+        let podcastsAgain = again.buttons["tab-podcasts"].firstMatch
+        XCTAssertTrue(podcastsAgain.waitForExistence(timeout: 25))
+        podcastsAgain.tap()
+        let showAgain = again.staticTexts["Mock Podcast"].firstMatch
+        XCTAssertTrue(scrollTo(again, showAgain, swipes: 12),
+                      "die abonnierte Sendung muss OHNE Feed noch dastehen")
+        showAgain.tap()
+        let row = again.staticTexts["Mock Folge"].firstMatch
+        XCTAssertTrue(scrollTo(again, row, swipes: 12),
+                      "die abonnierte Folge muss OHNE Feed noch dastehen")
+        let rowPlayAgain = again.buttons["episode-row-play"].firstMatch
+        XCTAssertTrue(scrollTo(again, rowPlayAgain, swipes: 8),
+                      "die Folgenzeile muss ihren Abspiel-Knopf auch offline tragen")
+        rowPlayAgain.tap()
+        // Long enough for the 5-second writer to record where we ACTUALLY are.
+        // THAT number is the verdict: a null start reads as ~10, a correct
+        // resume as ~26.
+        Thread.sleep(forTimeInterval: 11)
+        snap(again, "matrix-rss-after-restart")
+        again.terminate()
+    }
+
     // MARK: - B: open the downloaded book, whatever the stand-in does
 
     /// Opens the book that case A left downloaded and lets it run briefly. The
