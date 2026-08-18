@@ -53,6 +53,16 @@ struct SubsonicSourceView: View {
                 }
                 .accessibilityIdentifier("subsonic-serves-audiobooks")
                 .onChange(of: servesAudiobooks) { _, _ in save() }
+                if modes.isEmpty {
+                    // Says it, instead of looking like a defect: nothing
+                    // selected means this server feeds nothing — the
+                    // credentials stay, the source simply rests.
+                    Label("Nothing selected — this server currently feeds no tab. Its login stays saved.",
+                          systemImage: "moon.zzz")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("subsonic-modes-empty")
+                }
                 if modes.needsLibraryAssignment {
                     // G8: sichtbar unvollstaendig statt eines leeren Tabs. Die
                     // Zuordnung, welche Bibliothek welchen Typ speist, kommt

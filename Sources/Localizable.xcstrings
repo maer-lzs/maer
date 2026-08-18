@@ -4759,6 +4759,16 @@
         }
       }
     },
+    "Nothing selected — this server currently feeds no tab. Its login stays saved." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts ausgewählt — dieser Server speist gerade keinen Tab. Sein Zugang bleibt gespeichert."
+          }
+        }
+      }
+    },
     "Nothing to add." : {
       "localizations" : {
         "de" : {

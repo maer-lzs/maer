@@ -592,9 +592,14 @@ nonisolated enum AppStorageKeys {
     }
     static var subsonicActive: Bool {
         // Booksonic: the source gates on the tab it actually serves.
+        // A source that serves NO type serves nothing — the same statement as
+        // the other two gates, in a third place, not a new concept. Without
+        // it, switching both capabilities off fell back to the stored content
+        // type and the server kept feeding Music: the silent opposite of the
+        // input.
         SourceActivation.effective(
             tabEnabled: subsonicIsAudiobooksValue ? audiobooksTabEnabledValue : musicTabEnabledValue,
-            sourceEnabled: subsonicEnabledValue)
+            sourceEnabled: subsonicEnabledValue && !subsonicModes.isEmpty)
     }
     static var jellyfinActive: Bool {
         SourceActivation.effective(tabEnabled: musicTabEnabledValue, sourceEnabled: jellyfinEnabledValue)

@@ -33,6 +33,13 @@ nonisolated struct SourceModes: Equatable, Sendable {
     /// on, the audiobook side is the one that needs the special mapping
     /// (albums as books), so it wins the single slot until the library
     /// assignment exists.
+    ///
+    /// **It cannot express the empty state**, and that is deliberate rather
+    /// than overlooked: "serves nothing" is not a content type, it is an
+    /// activation statement, and it is answered where the other two
+    /// activation questions are answered (`subsonicActive`). Reading this
+    /// value for an empty pair would say "music" — the silent opposite of the
+    /// input, which is exactly the class G8 guards in the other direction.
     var legacyContentType: String {
         servesAudiobooks ? "audiobooks" : "music"
     }
