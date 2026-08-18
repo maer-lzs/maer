@@ -538,9 +538,21 @@ final class LibraryViewModel: ObservableObject {
     }
 
     func loadLibrary() async {
-        // F10: no signed-in book source (serverless start) — nothing to load,
-        // and no fake offline/error state on the aggregation surfaces.
-        guard provider.isAvailable else { return }
+        // The LOCAL sources come first, and they come UNCONDITIONALLY. They
+        // used to sit behind the server guard below, so a start without an
+        // Audiobookshelf login collected nothing at all — imported files and a
+        // Subsonic set to audiobooks were present, available, and never asked.
+        // In the same session after an import everything looked right; only
+        // the next launch showed the empty library, which is why it survived
+        // this long.
+        await reloadLocalCache()
+        // F10: no signed-in book source (serverless start) — no server load,
+        // and no fake offline/error state on the aggregation surfaces. What is
+        // local still has to reach the list, so the rebuild runs.
+        guard provider.isAvailable else {
+            await rebuild(items: [], progress: [:])
+            return
+        }
         if loadInFlight {
             reloadQueued = true
             return
@@ -580,9 +592,6 @@ final class LibraryViewModel: ObservableObject {
                 Logger.library.notice("REFRESH long run: \(Int(elapsed))s with stock=\(self.entries.count)")
             }
         }
-        // Local source always first (in-memory, never an error) — so local
-        // titles are there even when the server is offline.
-        await reloadLocalCache()
         do {
             // K2 — skip the first serial round-trip: with a stored library id,
             // start progress/seed/first page immediately and only VALIDATE the

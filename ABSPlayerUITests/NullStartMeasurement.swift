@@ -438,21 +438,21 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         again.terminate()
     }
 
-    /// Row 3 of the matrix — the class with NO sync at all. A sideloaded file
-    /// has no server behind it, so "offline" is not a state it can be put
-    /// into: it is the only state it has. The question is therefore purely
-    /// whether the local stand carries a restart.
+    /// The acceptance of the serverless-library finding: a sideloaded file
+    /// must reach the library WITHOUT any Audiobookshelf login, and listening
+    /// to it must leave a local stand.
     ///
-    /// The harness plants the file (index JSON + audio in the container) —
-    /// importing one through the document picker is not reachable from a
-    /// journey, and the import is not what this row measures.
+    /// It used to reach nothing: the collector for every secondary audiobook
+    /// source sat behind the server guard, so a start without a login gathered
+    /// none of them. In the same session after an import everything looked
+    /// right — only the next launch showed the empty library.
     ///
-    /// The catalogue read path — the reviewer's reason for choosing catalogue over
-    /// sideload — is proved separately and without a network by
-    /// `ListeningStoreTests.catalogStandIsWonLocally`, because archive.org is
-    /// a fixed foreign host and a test seam would change the very path the
-    /// measurement should prove.
-    func testMatrixSideloadResumesAfterRestart() throws {
+    /// The harness plants the item (index JSON + audio in the container);
+    /// importing through the document picker is not reachable from a journey
+    /// and is not what this case measures. The PRECONDITION is probed, never
+    /// declared — an environment flag does not reach the test runner through
+    /// xcodebuild, measured twice now.
+    func testSideloadReachesLibraryWithoutServer() throws {
         let app = launch()
         let serverless = app.buttons["start-serverless"].firstMatch
         if serverless.waitForExistence(timeout: 20) { serverless.tap() }
@@ -460,41 +460,24 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         let books = app.buttons["tab-audiobooks"].firstMatch
         XCTAssertTrue(books.waitForExistence(timeout: 25), "der Buecher-Tab muss dastehen")
         books.tap()
-        // The PRECONDITION is probed, not declared: an environment flag does
-        // not reach the test runner through xcodebuild (measured — the first
-        // version skipped although the harness had planted the item), and a
-        // flag would lie the moment the planting failed. Whether the item is
-        // there is a question the app itself answers.
         let title = app.staticTexts["Mock Sideload"].firstMatch
         try XCTSkipUnless(scrollTo(app, title, swipes: 12),
                           "the harness has not planted a sideloaded item")
+        snap(app, "sideload-in-library")
         title.tap()
+
         let play = app.buttons["book-play"].firstMatch
         let toggle = app.buttons["book-play-toggle"].firstMatch
         if play.waitForExistence(timeout: 10) { play.tap() }
         else if toggle.waitForExistence(timeout: 10) { toggle.tap() }
         XCTAssertTrue(toggle.waitForExistence(timeout: 25),
                       "ohne laufende Wiedergabe misst der Fall nichts")
+        // Past the 5-second writer, twice over. The harness reads the stand
+        // from the container — that number is the proof that the local class
+        // keeps its own truth.
         Thread.sleep(forTimeInterval: 14)
-        snap(app, "matrix-sideload-before-restart")
-
+        snap(app, "sideload-played")
         app.terminate()
-        let again = launch()
-        let booksAgain = again.buttons["tab-audiobooks"].firstMatch
-        XCTAssertTrue(booksAgain.waitForExistence(timeout: 25))
-        booksAgain.tap()
-        let titleAgain = again.staticTexts["Mock Sideload"].firstMatch
-        XCTAssertTrue(scrollTo(again, titleAgain, swipes: 12))
-        titleAgain.tap()
-        let playAgain = again.buttons["book-play"].firstMatch
-        let toggleAgain = again.buttons["book-play-toggle"].firstMatch
-        if playAgain.waitForExistence(timeout: 10) { playAgain.tap() }
-        else if toggleAgain.waitForExistence(timeout: 10) { toggleAgain.tap() }
-        XCTAssertTrue(toggleAgain.waitForExistence(timeout: 25),
-                      "nach dem Neustart laeuft nichts — dann misst der Fall nichts")
-        Thread.sleep(forTimeInterval: 9)
-        snap(again, "matrix-sideload-after-restart")
-        again.terminate()
     }
 
     // MARK: - B: open the downloaded book, whatever the stand-in does
