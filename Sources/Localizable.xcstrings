@@ -6909,6 +6909,16 @@
         }
       }
     },
+    "Sources" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quellen"
+          }
+        }
+      }
+    },
     "Spain" : {
       "localizations" : {
         "de" : {
@@ -7600,6 +7610,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Abo-Schutz hat eine unplausible Massenlöschung blockiert. Diese Warnung bleibt bis zum nächsten sauberen Sync."
+          }
+        }
+      }
+    },
+    "These are the sources that feed this type. An account exists once — the same entry appears under every type it serves." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das sind die Quellen, die diesen Typ speisen. Ein Konto gibt es einmal — derselbe Eintrag erscheint unter jedem Typ, den es bedient."
           }
         }
       }

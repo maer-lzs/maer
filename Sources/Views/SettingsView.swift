@@ -115,14 +115,27 @@ struct SettingsView: View {
                     statsSection
                     networkServicesSection
                     aboutSection
+                // f1c48ce Teil 1: die Pille ist der VOLLSTAENDIGE Einstieg
+                // ihres Typs — ihr Verhalten UND die Quellen, die ihn speisen.
+                // Der Befund dahinter: 90 % der Podcast-Einstellungen lagen
+                // unter „Quellen", also musste man den Ort verlassen, der von
+                // Podcasts handelt, um zu erfahren, wie Podcasts sich verhalten.
+                // Die Quellen erscheinen als VERWEISE auf die eine Konto-Seite,
+                // nie als Kopien.
                 case .audiobooks:
                     audiobooksSection
+                    MediaTypeSourcesSection(area: .audiobooks,
+                                            absDestination: absPage)
                 case .podcasts:
                     recommendationsSection
                     // 92e25d6: premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()
+                    MediaTypeSourcesSection(area: .podcasts,
+                                            absDestination: absPage)
                 case .music:
                     musicSection
+                    MediaTypeSourcesSection(area: .music,
+                                            absDestination: absPage)
                 }
             }
             .bottomBarClearance()
@@ -304,12 +317,17 @@ struct SettingsView: View {
     @ViewBuilder
     private var sourcesSection: some View {
         SourceMapCard(facts: .current) { area in
-            AnyView(SourceAreaPage(area: area, absDestination: {
-                AnyView(ABSSourceView(coordinator: coordinator,
-                                      libraryViewModel: libraryViewModel,
-                                      onLogout: onLogout))
-            }))
+            AnyView(SourceAreaPage(area: area, absDestination: absPage))
         }
+    }
+
+    /// The ONE Audiobookshelf page — the register and every media-type pill
+    /// hand out this same closure, so „the same account" is literally the same
+    /// destination and not a look-alike.
+    private func absPage() -> AnyView {
+        AnyView(ABSSourceView(coordinator: coordinator,
+                              libraryViewModel: libraryViewModel,
+                              onLogout: onLogout))
     }
 
     /// Variante b, rule category "library": the tab level of the two-level
