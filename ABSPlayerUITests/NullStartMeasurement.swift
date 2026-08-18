@@ -477,7 +477,57 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         // keeps its own truth.
         Thread.sleep(forTimeInterval: 14)
         snap(app, "sideload-played")
+
+        // Second half: the restart. The local class has no server at all, so
+        // "offline" is not a state it can be put into — the only question is
+        // whether the stand carries a restart.
         app.terminate()
+        let again = launch()
+        let booksAgain = again.buttons["tab-audiobooks"].firstMatch
+        XCTAssertTrue(booksAgain.waitForExistence(timeout: 25))
+        booksAgain.tap()
+        let titleAgain = again.staticTexts["Mock Sideload"].firstMatch
+        XCTAssertTrue(scrollTo(again, titleAgain, swipes: 12),
+                      "das eingelegte Buch muss nach dem Neustart noch dastehen")
+        // MEASURED: after the restart the title stands as a CONTINUE CARD, and
+        // a continue card PLAYS on tap (the house tap convention) — no book
+        // page opens, so there is no play handle to press. My first version
+        // waited for one and read the app's correct behaviour as a defect.
+        //
+        // The card itself already carries the answer in its label ("4 min
+        // left", 3 %): the local stand survived. The number below is the
+        // harder proof.
+        // The card CARRIES the verdict, and that is the better witness: its
+        // value is the progress the app resolved for this item after the
+        // restart. A lost stand reads as 0 % — or as no continue card at all.
+        //
+        // Deliberately NOT "play again and see whether the number grows": the
+        // previous version did that, the second playback silently did not
+        // start, the stand stayed where it was, and the case reported green.
+        // Third time in one night that a measurement nearly passed without
+        // measuring; a witness that needs no second action cannot fail that way.
+        // The title appears on several elements (mini bar, player, card) and
+        // only the CARD carries a progress value — so the value is what picks
+        // it, not the label alone.
+        let candidates = again.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Mock Sideload"))
+        XCTAssertTrue(candidates.firstMatch.waitForExistence(timeout: 20),
+                      "das eingelegte Buch muss nach dem Neustart sichtbar sein")
+        let card = candidates.allElementsBoundByIndex.first {
+            ((($0.value as? String) ?? "").contains("%"))
+        }
+        XCTAssertNotNil(card, "keine Fortsetzen-Karte mit Fortschritt gefunden")
+        let progress = ((card?.value as? String) ?? "")
+        let stamp = XCTAttachment(string: "KARTE NACH NEUSTART: \(card?.label ?? "—") — \(progress)")
+        stamp.name = "sideload-resume"
+        stamp.lifetime = .keepAlways
+        add(stamp)
+        let digits = progress.filter(\.isNumber)
+        XCTAssertFalse(digits.isEmpty, "die Karte nennt keinen Fortschritt: \(progress)")
+        XCTAssertNotEqual(Int(digits), 0,
+                          "der lokale Stand ging beim Neustart verloren (\(progress))")
+        snap(again, "sideload-after-restart")
+        again.terminate()
     }
 
     // MARK: - B: open the downloaded book, whatever the stand-in does
