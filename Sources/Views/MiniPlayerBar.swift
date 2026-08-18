@@ -92,6 +92,11 @@ struct MiniPlayerBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel(Text(viewModel.nowPlayingTitle))
             .accessibilityHint(Text("Opens the player"))
+            // A STABLE handle for "something is playing". The label is the
+            // running title and thus both localized and content-dependent —
+            // unusable as the thing a caller looks for when it does not know
+            // in advance what will play.
+            .accessibilityIdentifier("mini-player")
 
             MiniPlayerTransport(viewModel: viewModel,
                                 showsSkip: showExtendedControls && !isCompactPortrait,

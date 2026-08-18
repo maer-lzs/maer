@@ -541,9 +541,18 @@ nonisolated final class NullStartMeasurement: XCTestCase {
     /// of the radio tab (own finding, reported separately), and the radio
     /// statement does not depend on which station it is.
     ///
+    /// The route runs over a GENRE page, and that is the measured part: in a
+    /// fresh state the radio tab has no favorites, no recents and no most-played,
+    /// so its only station surfaces are the browse CARDS — and a card navigates
+    /// (house convention), it does not play. The explicit play control lives on
+    /// the station ROW, which the genre page renders; its gate is the network
+    /// alone, with no country cascade in front of it.
+    ///
     /// Verdict and precondition are both read from the container by the
     /// harness: a radio MRU entry proves it played, and no
-    /// `localPosition.radio:` key may exist.
+    /// `localPosition.radio:` key may exist. The in-app precondition is the
+    /// mini player — it stands by itself once playback started, so it needs no
+    /// second action that could silently fail.
     func testMatrixRadioKeepsNoPosition() throws {
         let app = launch()
         let serverless = app.buttons["start-serverless"].firstMatch
@@ -552,15 +561,23 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         let radioTab = app.buttons["tab-radio"].firstMatch
         XCTAssertTrue(radioTab.waitForExistence(timeout: 25), "der Radio-Tab muss dastehen")
         radioTab.tap()
-        // The catalogue rows come from the open directory over the network,
-        // AFTER the country cascade has resolved — that takes noticeably
-        // longer than a seeded row, and a short wait read the delay as
-        // "no station".
+        // "Pop" carries the widest station stock of the ten genres — the case
+        // is about the radio CLASS, not about a particular genre.
+        let genre = app.buttons["radio-genre-pop"].firstMatch
+        XCTAssertTrue(genre.waitForExistence(timeout: 30) || scrollTo(app, genre, swipes: 10),
+                      "die Genre-Kacheln haengen nur am Netz, nicht am Katalog")
+        genre.tap()
+        // The station list comes from the open directory over the network.
         let station = app.buttons["station-play"].firstMatch
-        try XCTSkipUnless(station.waitForExistence(timeout: 90) || scrollTo(app, station, swipes: 8),
+        try XCTSkipUnless(station.waitForExistence(timeout: 90),
                           "das Radio-Verzeichnis hat keine Sender geliefert (Netz?)")
-        snap(app, "matrix-radio-catalog")
+        snap(app, "matrix-radio-genre")
         station.tap()
+        // A live stream that never started would leave the container empty and
+        // the case would report a green "no position" without measuring one.
+        let playing = app.buttons["mini-player"].firstMatch
+        try XCTSkipUnless(playing.waitForExistence(timeout: 40),
+                          "der Sender hat nicht zu spielen begonnen (Stream nicht erreichbar?)")
         Thread.sleep(forTimeInterval: 20)
         snap(app, "matrix-radio-played")
         app.terminate()
