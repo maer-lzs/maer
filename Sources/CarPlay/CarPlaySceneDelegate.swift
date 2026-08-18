@@ -151,7 +151,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// "Recently Added" + "Albums"; tapping an album plays it. Nil when no
     /// music source is configured/enabled.
     private func musicTab() async -> CPListTemplate? {
-        guard AppSession.shared.musicProvider.isAvailable else { return nil }
+        // "Reachable" is not "feeds music": a source whose second mode has no
+        // library yet is live (so its setup can be finished) but serves no tab.
+        guard AppSession.shared.musicProvider.isAvailable,
+              AppSession.shared.musicProvider.mediaTypes.contains(.music) else { return nil }
         let cap = Int(CPListTemplate.maximumItemCount)
         let newest = (try? await AppSession.shared.musicProvider.albumShelf(shelf: .newest, size: 20)) ?? []
         // The music tab asks for MUSIC — a source that also serves audiobooks

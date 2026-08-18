@@ -106,6 +106,42 @@ struct SourceLibrariesTests {
                                                 assignment: pruned) == [.audiobooks])
     }
 
+    // MARK: - Der Uebergang, nicht der Endzustand
+
+    /// Der teuerste Fehler dieses Zuges, gefunden bevor er ausgeliefert war:
+    /// die Verbindung und die Belieferung eines Tabs sind ZWEI Fragen. Haengt
+    /// die Verbindung an der zweiten, dann sperrt das Einschalten des zweiten
+    /// Modus die Quelle aus ihrer eigenen Einrichtung aus — nichts zugeordnet
+    /// heisst „bedient nichts" heisst „kein Client" heisst „Bibliotheksliste
+    /// nie abrufbar". Ein Endzustands-Test sieht das nie; der Uebergang ist
+    /// der Fall.
+    @Test("zweiter Modus an: die Verbindung bleibt, die Tabs bleiben aus")
+    func switchingOnTheSecondModeKeepsTheConnection() {
+        let tabs: Set<MediaType> = [.music, .audiobooks]
+        // Vorher: nur Musik, alles laeuft.
+        #expect(SourceLibraries.isLive(modes: musicOnly, enabled: true, enabledTabs: tabs))
+        // Der Moment des Umschaltens: beide an, nichts zugeordnet, keine Liste.
+        #expect(SourceLibraries.isLive(modes: both, enabled: true, enabledTabs: tabs),
+                "sonst faellt der Client weg und die Zuordnung kann nie beginnen")
+        #expect(!SourceLibraries.serves(.music, modes: both, known: [],
+                                        assignment: SourceLibraryAssignment()),
+                "G8 bleibt trotzdem hart: kein Tab ohne Zuordnung")
+        #expect(!SourceLibraries.serves(.audiobooks, modes: both, known: [],
+                                        assignment: SourceLibraryAssignment()))
+    }
+
+    @Test("die Verbindung faellt nur, wenn wirklich nichts gewollt ist")
+    func connectionFallsOnlyWhenNothingIsWanted() {
+        let tabs: Set<MediaType> = [.music, .audiobooks]
+        let none = SourceModes(servesMusic: false, servesAudiobooks: false)
+        #expect(!SourceLibraries.isLive(modes: none, enabled: true, enabledTabs: tabs))
+        #expect(!SourceLibraries.isLive(modes: both, enabled: false, enabledTabs: tabs))
+        // Und wenn der Nutzer den Tab des einzigen Modus abgeschaltet hat.
+        #expect(!SourceLibraries.isLive(modes: musicOnly, enabled: true, enabledTabs: [.audiobooks]))
+        #expect(SourceLibraries.isLive(modes: both, enabled: true, enabledTabs: [.audiobooks]),
+                "ein abgeschalteter Tab von zweien laesst die Quelle leben")
+    }
+
     // MARK: - Auflage 1: die Migration ist keine
 
     @Test("das Paar liest den Altbestand, ohne etwas zu schreiben")

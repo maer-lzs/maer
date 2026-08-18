@@ -133,7 +133,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             Logger.music.error("music sync pressed but no client (URL/user missing)")
             return String(localized: "Enter server, username and password.")
         }
-        return await runLibrarySync { try await client.albumList2(type: "alphabeticalByName", size: 500) }
+        let scope = folderScope(for: .music)
+        return await runLibrarySync {
+            try await client.albumList2(type: "alphabeticalByName", size: 500, musicFolderIds: scope)
+        }
     }
 
     /// Testable core (fetch injected): success remembers the albums, records
@@ -205,6 +208,19 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
             assignment: AppStorageKeys.subsonicAssignment))
     }
 
+    /// The folders that feed a type, in the form the client wants them. Empty
+    /// means "do not narrow" — the whole-server answer, and the ONLY answer a
+    /// single-mode source ever gets, so its requests stay byte-for-byte what
+    /// they always were.
+    func folderScope(for mediaType: MediaType) -> [String] {
+        let modes = AppStorageKeys.subsonicModes
+        guard modes.count > 1 else { return [] }
+        return SourceLibraries.libraries(
+            for: mediaType, modes: modes,
+            known: AppStorageKeys.subsonicKnownLibraries,
+            assignment: AppStorageKeys.subsonicAssignment)
+    }
+
     /// Alphabetical is the stable "browse all" order; the Music tab requests
     /// newest/frequent separately for its shelves. An empty folder list means
     /// "no narrowing", which is the whole-server answer.
@@ -214,10 +230,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
         if musicFolderIds.isEmpty {
             albums = try await client.albumList2(type: "alphabeticalByName", size: 500)
         } else {
-            for folderId in musicFolderIds {
-                albums += try await client.albumList2(type: "alphabeticalByName", size: 500,
-                                                     musicFolderId: folderId)
-            }
+            albums = try await client.albumList2(type: "alphabeticalByName", size: 500,
+                                                 musicFolderIds: musicFolderIds)
         }
         // Y49: the LIVE library refresh reaches the server too — record the
         // check so a clean load is visible in the history (only the manual
@@ -372,7 +386,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func albumShelf(shelf: MusicShelf, size: Int = 20) async throws -> [LibraryItem] {
         guard let client else { return [] }
         return remember(await Self.mapAlbums(
-            try await client.albumList2(type: Self.albumListType(for: shelf), size: size)))
+            try await client.albumList2(type: Self.albumListType(for: shelf), size: size,
+                                        musicFolderIds: folderScope(for: .music))))
     }
 
     /// One page of the album catalog for a semantic sort (S5: staged loading).
@@ -385,7 +400,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func albumPage(type: String = "alphabeticalByName", offset: Int, size: Int = 100) async throws -> [LibraryItem] {
         guard let client else { return [] }
         return remember(await Self.mapAlbums(
-            try await client.albumList2(type: type, size: size, offset: offset)))
+            try await client.albumList2(type: type, size: size, offset: offset,
+                                        musicFolderIds: folderScope(for: .music))))
     }
 
     // MARK: Genres (M3)
@@ -401,12 +417,14 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func genreAlbums(genre: String, offset: Int, size: Int) async throws -> [LibraryItem] {
         guard let client else { return [] }
         return remember(await Self.mapAlbums(
-            try await client.albumsByGenre(genre: genre, size: size, offset: offset)))
+            try await client.albumsByGenre(genre: genre, size: size, offset: offset,
+                                           musicFolderIds: folderScope(for: .music))))
     }
 
     func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong] {
         guard let client else { return [] }
-        let songs = try await client.songsByGenre(genre: genre, count: size, offset: offset)
+        let songs = try await client.songsByGenre(genre: genre, count: size, offset: offset,
+                                                  musicFolderIds: folderScope(for: .music))
         return songs.map { MusicTopSong(item: Self.songItem(from: $0), albumName: $0.album) }
     }
 
@@ -594,7 +612,10 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// server as playable items (cached like `songItems`). The final order is set
     /// by the shared `MediaShuffle` at the call site — this only supplies the pool.
     func shuffleLibrarySongItems(limit: Int = 100) async -> [LibraryItem] {
-        guard let client, let songs = try? await client.randomSongs(size: limit) else { return [] }
+        guard let client,
+              let songs = try? await client.randomSongs(size: limit,
+                                                        musicFolderIds: folderScope(for: .music))
+        else { return [] }
         let items = songs.map(Self.songItem(from:))
         for item in items { itemsById[item.id] = item }
         return items
@@ -612,7 +633,8 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     func isStarred(itemId: String) async -> Bool {
         guard let albumId = Self.id(itemId, kind: "album") else { return false }
         if starredAlbumIds == nil, let client {
-            starredAlbumIds = Set((try? await client.starredAlbums())?.map(\.id) ?? [])
+            starredAlbumIds = Set((try? await client.starredAlbums(
+                musicFolderIds: folderScope(for: .music)))?.map(\.id) ?? [])
         }
         return starredAlbumIds?.contains(albumId) ?? false
     }
@@ -631,7 +653,9 @@ final class SubsonicProvider: AudioProvider, MusicProvider {
     /// mapped to their album where present).
     func searchAlbums(query: String) async throws -> [LibraryItem] {
         guard let client else { return [] }
-        return await Self.mapAlbums(try await client.search3(query: query).album ?? [])
+        return await Self.mapAlbums(
+            try await client.search3(query: query,
+                                     musicFolderIds: folderScope(for: .music)).album ?? [])
     }
 
     // MARK: - Media
@@ -926,7 +950,8 @@ extension SubsonicProvider: SearchableProvider {
         }
         #endif
         guard let client, NetworkMonitor.shared.isConnected else { return offlineSearch(query) }
-        let hits = try await client.search3(query: query)
+        let hits = try await client.search3(query: query,
+                                           musicFolderIds: folderScope(for: .music))
         var out: [SearchResult] = []
         for artist in hits.artist ?? [] {
             guard let name = artist.name else { continue }

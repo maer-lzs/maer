@@ -182,15 +182,26 @@ struct SubsonicClient {
         }
     }
 
+    /// The endpoints below narrow to ONE folder at a time (`musicFolderId`,
+    /// API 1.11.0/1.12.0). A type can be fed by several folders, so the union is
+    /// assembled here — never by quietly using the first and dropping the rest.
+    /// An empty list means "do not narrow", which is the whole-server answer.
+    private func merging<T>(_ musicFolderIds: [String],
+                            _ call: (String?) async throws -> [T]) async throws -> [T] {
+        guard !musicFolderIds.isEmpty else { return try await call(nil) }
+        var out: [T] = []
+        for folderId in musicFolderIds { out += try await call(folderId) }
+        return out
+    }
+
     /// A page of albums. `type`: newest | recent | frequent | alphabeticalByName …
-    /// `musicFolderId` (API 1.11.0) narrows the answer to one folder — that is
-    /// how a server that holds both music and audiobooks keeps them apart.
     func albumList2(type: String, size: Int = 100, offset: Int = 0,
-                    musicFolderId: String? = nil) async throws -> [SubsonicAlbum] {
-        var params = ["type": type, "size": String(size), "offset": String(offset)]
-        if let musicFolderId { params["musicFolderId"] = musicFolderId }
-        let body = try await get("getAlbumList2", params)
-        return body.albumList2?.album ?? []
+                    musicFolderIds: [String] = []) async throws -> [SubsonicAlbum] {
+        try await merging(musicFolderIds) { folderId in
+            var params = ["type": type, "size": String(size), "offset": String(offset)]
+            if let folderId { params["musicFolderId"] = folderId }
+            return try await get("getAlbumList2", params).albumList2?.album ?? []
+        }
     }
 
     /// One album with its track list.
@@ -229,35 +240,51 @@ struct SubsonicClient {
     }
 
     /// M3: albums of ONE genre (getAlbumList2 type=byGenre).
-    func albumsByGenre(genre: String, size: Int = 100, offset: Int = 0) async throws -> [SubsonicAlbum] {
-        let body = try await get("getAlbumList2", [
-            "type": "byGenre", "genre": genre,
-            "size": String(size), "offset": String(offset),
-        ])
-        return body.albumList2?.album ?? []
+    func albumsByGenre(genre: String, size: Int = 100, offset: Int = 0,
+                       musicFolderIds: [String] = []) async throws -> [SubsonicAlbum] {
+        try await merging(musicFolderIds) { folderId in
+            var params = ["type": "byGenre", "genre": genre,
+                          "size": String(size), "offset": String(offset)]
+            if let folderId { params["musicFolderId"] = folderId }
+            return try await get("getAlbumList2", params).albumList2?.album ?? []
+        }
     }
 
     /// M3: songs of ONE genre, paged (getSongsByGenre).
-    func songsByGenre(genre: String, count: Int, offset: Int) async throws -> [SubsonicSong] {
-        let body = try await get("getSongsByGenre", [
-            "genre": genre, "count": String(count), "offset": String(offset),
-        ])
-        return body.songsByGenre?.song ?? []
+    func songsByGenre(genre: String, count: Int, offset: Int,
+                      musicFolderIds: [String] = []) async throws -> [SubsonicSong] {
+        try await merging(musicFolderIds) { folderId in
+            var params = ["genre": genre, "count": String(count), "offset": String(offset)]
+            if let folderId { params["musicFolderId"] = folderId }
+            return try await get("getSongsByGenre", params).songsByGenre?.song ?? []
+        }
     }
 
     /// `musicFolderId` since API 1.12.0 — a search from the Music tab must not
-    /// answer with audiobooks and the other way round.
+    /// answer with audiobooks and the other way round. The composite result is
+    /// merged field by field, so the union rule stays the same as everywhere.
     func search3(query: String, albumCount: Int = 40, songCount: Int = 40,
-                 artistCount: Int = 20, musicFolderId: String? = nil) async throws -> SubsonicSearchResult3 {
-        var params = [
-            "query": query,
-            "albumCount": String(albumCount),
-            "songCount": String(songCount),
-            "artistCount": String(artistCount),
-        ]
-        if let musicFolderId { params["musicFolderId"] = musicFolderId }
-        let body = try await get("search3", params)
-        return body.searchResult3 ?? SubsonicSearchResult3(artist: nil, album: nil, song: nil)
+                 artistCount: Int = 20, musicFolderIds: [String] = []) async throws -> SubsonicSearchResult3 {
+        var artists: [SubsonicArtist] = []
+        var albums: [SubsonicAlbum] = []
+        var songs: [SubsonicSong] = []
+        let pages: [SubsonicSearchResult3] = try await merging(musicFolderIds) { folderId in
+            var params = [
+                "query": query,
+                "albumCount": String(albumCount),
+                "songCount": String(songCount),
+                "artistCount": String(artistCount),
+            ]
+            if let folderId { params["musicFolderId"] = folderId }
+            let body = try await self.get("search3", params)
+            return [body.searchResult3 ?? SubsonicSearchResult3(artist: nil, album: nil, song: nil)]
+        }
+        for page in pages {
+            artists += page.artist ?? []
+            albums += page.album ?? []
+            songs += page.song ?? []
+        }
+        return SubsonicSearchResult3(artist: artists, album: albums, song: songs)
     }
 
     func playlists() async throws -> [SubsonicPlaylist] {
@@ -324,8 +351,12 @@ struct SubsonicClient {
     }
 
     /// Starred albums (favorites).
-    func starredAlbums() async throws -> [SubsonicAlbum] {
-        try await get("getStarred2").starred2?.album ?? []
+    func starredAlbums(musicFolderIds: [String] = []) async throws -> [SubsonicAlbum] {
+        try await merging(musicFolderIds) { folderId in
+            var params: [String: String] = [:]
+            if let folderId { params["musicFolderId"] = folderId }
+            return try await get("getStarred2", params).starred2?.album ?? []
+        }
     }
 
     // MARK: - OpenSubsonic metadata (M1) — all best-effort: servers without
@@ -362,8 +393,12 @@ struct SubsonicClient {
 
     /// A random set of songs across the library — the pool for whole-library
     /// shuffle. `size` is capped server-side (Subsonic max is 500).
-    func randomSongs(size: Int = 100) async throws -> [SubsonicSong] {
-        try await get("getRandomSongs", ["size": String(size)]).randomSongs?.song ?? []
+    func randomSongs(size: Int = 100, musicFolderIds: [String] = []) async throws -> [SubsonicSong] {
+        try await merging(musicFolderIds) { folderId in
+            var params = ["size": String(size)]
+            if let folderId { params["musicFolderId"] = folderId }
+            return try await get("getRandomSongs", params).randomSongs?.song ?? []
+        }
     }
 
     // MARK: - Bookmarks (play-position sync — playlist continue-listening)

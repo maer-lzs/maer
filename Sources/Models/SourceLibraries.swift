@@ -63,6 +63,22 @@ nonisolated enum SourceLibraries {
         return known.filter { assignment[$0.id] == type }.map(\.id)
     }
 
+    /// May this source hold a connection at all?
+    ///
+    /// Deliberately NOT the same question as "does it feed a tab", and keeping
+    /// them apart is the whole point: the moment a second mode is switched on,
+    /// no type can be delivered yet — nothing is assigned. If that answer also
+    /// governed the connection, switching the mode on would drop the client,
+    /// and the library list needed to fix it could never be fetched. The source
+    /// would be locked out of its own setup by the act of starting it.
+    ///
+    /// So: a source lives while the user wants it, has asked for at least one
+    /// thing, and at least one of those things has its tab on.
+    static func isLive(modes: SourceModes, enabled: Bool, enabledTabs: Set<MediaType>) -> Bool {
+        guard enabled, !modes.isEmpty else { return false }
+        return modes.types.contains(where: enabledTabs.contains)
+    }
+
     /// Whether the source effectively serves `type` at all.
     ///
     /// With one mode this is the mode itself — deliberately NOT "and it has a

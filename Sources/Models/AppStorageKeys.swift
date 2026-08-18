@@ -642,12 +642,15 @@ nonisolated enum AppStorageKeys {
             sourceEnabled: subsonicEnabledValue)
     }
 
-    /// Whether the source is live at all — the gate the CLIENT hangs on. A
-    /// source that serves NO type serves nothing; that is an activation
-    /// statement, not a content type, which is why it is answered here and not
-    /// as a third value in the pair.
+    /// Whether the source is live at all — the gate the CLIENT hangs on, and
+    /// NOT the sum of the per-type answers. A source that serves NO type serves
+    /// nothing; that is an activation statement, not a content type, which is
+    /// why it is answered here and not as a third value in the pair.
     static var subsonicActive: Bool {
-        MediaType.allCases.contains { subsonicActive(for: $0) }
+        SourceLibraries.isLive(
+            modes: subsonicModes,
+            enabled: subsonicEnabledValue,
+            enabledTabs: Set(MediaType.allCases.filter(tabEnabledValue(for:))))
     }
 
     /// The tab switch of a type. Radio and podcasts are listed for
