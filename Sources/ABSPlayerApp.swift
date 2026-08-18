@@ -153,7 +153,16 @@ struct ABSPlayerApp: App {
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { PodcastRefreshService.schedule() }
+                    if phase == .background {
+                        PodcastRefreshService.schedule()
+                        // The ONE end that loses time: the store writes at most
+                        // every 30 s, and a swiped-away or system-killed app
+                        // never reaches pause or stop. Going to background is
+                        // the last moment reliably delivered before that.
+                        // Playback itself continues here — this only persists
+                        // what is already counted.
+                        ListeningStatsStore.shared.flush()
+                    }
                     // Y34: migrate legacy keychain items while the device is
                     // certainly unlocked (one-time, self-retrying).
                     if phase == .active { KeychainStore.migrateAccessibilityOnce() }

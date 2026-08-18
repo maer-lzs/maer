@@ -10,6 +10,29 @@ import Combine
 /// time zone). Deliberately simple — JSON in Documents.
 nonisolated struct ListeningStatsData: Codable {
     var secondsPerDay: [String: Int] = [:]
+    /// The same seconds, seen per ITEM. A DIMENSION of the day pot, never a
+    /// second count: both are fed by the one tick, so the item sums can only
+    /// ever be a subset of the day sums (a tick without a known id lands in the
+    /// day pot alone). Anything else would be two truths for one question.
+    var secondsPerItem: [String: Int] = [:]
+
+    init(secondsPerDay: [String: Int] = [:], secondsPerItem: [String: Int] = [:]) {
+        self.secondsPerDay = secondsPerDay
+        self.secondsPerItem = secondsPerItem
+    }
+
+    /// Hand-written, and the reason is a trap rather than a preference: the
+    /// SYNTHESISED decoder requires every key, and a property default does not
+    /// make one optional. Adding a field to a stored type is therefore a silent
+    /// migration — the file already on disk would stop decoding, the store
+    /// would fall back to empty, and every existing history would be gone
+    /// without an error anywhere. A missing field means "this pot did not exist
+    /// yet", which is empty, not undecodable.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        secondsPerDay = try container.decodeIfPresent([String: Int].self, forKey: .secondsPerDay) ?? [:]
+        secondsPerItem = try container.decodeIfPresent([String: Int].self, forKey: .secondsPerItem) ?? [:]
+    }
 }
 
 /// Records listening time (1-second ticks from the player time observer) and
@@ -50,15 +73,37 @@ final class ListeningStatsStore: ObservableObject {
         dayFormatter.string(from: date)
     }
 
-    /// From the player tick (1×/s while playing): add listening time to today;
-    /// persist to disk at most every 30 s.
-    func addSeconds(_ seconds: Int) {
+    /// From the player tick (1×/s while playing): add listening time to today
+    /// and, when the caller knows which item is running, to that item as well.
+    /// Persist to disk at most every 30 s.
+    ///
+    /// ONE call for both pots — a second entry point would be a second way to
+    /// count, and two counters for one second is exactly how they drift apart.
+    func addSeconds(_ seconds: Int, itemId: String? = nil) {
         data.secondsPerDay[Self.dayKey(for: Date()), default: 0] += seconds
+        if let itemId, !itemId.isEmpty {
+            data.secondsPerItem[itemId, default: 0] += seconds
+        }
         let now = Date().timeIntervalSince1970
         if now - lastSaveAt >= 30 {
             lastSaveAt = now
             save()
         }
+    }
+
+    /// Seconds listened to one item, across all days.
+    func seconds(forItemId itemId: String) -> Int {
+        data.secondsPerItem[itemId] ?? 0
+    }
+
+    /// Items by listening time, longest first — the honest "most listened",
+    /// as opposed to "most often started".
+    func topItems(limit: Int, matching isIncluded: (String) -> Bool = { _ in true }) -> [(id: String, seconds: Int)] {
+        data.secondsPerItem
+            .filter { isIncluded($0.key) }
+            .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
+            .prefix(limit)
+            .map { (id: $0.key, seconds: $0.value) }
     }
 
     /// On pause/stop: persist the remaining seconds immediately.

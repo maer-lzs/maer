@@ -979,8 +979,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 if let idx = self.itemTrackIndex[ObjectIdentifier(currentItem)] {
                     self.currentTrackIndex = idx
                 }
-                // Local listening stats: 1 s per tick while playing.
-                if self.isPlaying { ListeningStatsStore.shared.addSeconds(1) }
+                // Local listening stats: 1 s per tick while playing. The item
+                // rides along so the same second can be seen per station/show
+                // as well — one count, two views.
+                if self.isPlaying {
+                    ListeningStatsStore.shared.addSeconds(1, itemId: self.item?.id)
+                }
                 // Absolute book time = start of the current track + position
                 // within this track.
                 let newTime = self.trackAbsoluteStart(self.currentTrackIndex) + seconds
