@@ -183,3 +183,54 @@ struct ListeningStatsSyncTests {
     }
 }
 #endif
+
+/// The shared derivation "how much did I listen to this show". One place, two
+/// callers (recommendation seed and statistics) — two derivations of the same
+/// number would disagree on screen, which is worse than either being wrong.
+struct ListeningByClassTests {
+
+    private func showId(_ episodeId: String) -> String? {
+        AppStorageKeys.podcastShowId(forEpisodeId: episodeId)
+    }
+
+    @Test("Folgen summieren sich zu ihrer Sendung")
+    func episodesSumIntoTheirShow() {
+        let defaults: [String: Any] = [
+            "localPosition.rss:feedA:ep1": [600.0, 1.7e12],
+            "localPosition.rss:feedA:ep2": [300.0, 1.7e12],
+            "localPosition.rss:feedB:ep1": [100.0, 1.7e12],
+            "localPosition.abspod:show1:ep1": [900.0, 1.7e12],
+        ]
+        let out = ListeningByClass.shows(in: defaults, showId: showId)
+        #expect(out["rss:feedA"] == 900)
+        #expect(out["rss:feedB"] == 100)
+        #expect(out["abspod:show1"] == 900)
+    }
+
+    @Test("was keine Sendung ist, zaehlt nicht mit")
+    func nonPodcastEntriesAreIgnored() {
+        let defaults: [String: Any] = [
+            "localPosition.radio:rb:a": [600.0, 1.7e12],   // Live-Strom
+            "localPosition.lva:work": [600.0, 1.7e12],     // Katalog
+            "localPosition.abs-book": [600.0, 1.7e12],     // Server-Buch
+            "somethingElse": [600.0, 1.7e12],
+        ]
+        #expect(ListeningByClass.shows(in: defaults, showId: showId).isEmpty)
+    }
+
+    @Test("eine negative oder kaputte Position erfindet keine Zeit")
+    func brokenEntriesContributeNothing() {
+        let defaults: [String: Any] = [
+            "localPosition.rss:feedA:ep1": [-50.0, 1.7e12],
+            "localPosition.rss:feedA:ep2": [10.0],            // zu kurz
+            "localPosition.rss:feedA:ep3": "kein Array",
+        ]
+        #expect(ListeningByClass.shows(in: defaults, showId: showId)["rss:feedA"] == 0)
+    }
+
+    @Test("Top-N sortiert nach Zeit, Gleichstand stabil")
+    func topIsStable() {
+        let out = ListeningByClass.top(["b": 100, "a": 100, "c": 500, "d": 0], limit: 3)
+        #expect(out.map(\.id) == ["c", "a", "b"], "0 faellt raus, Gleichstand alphabetisch")
+    }
+}

@@ -28,6 +28,9 @@ struct StatsView: View {
                     .padding(.vertical, 4)
             }
 
+            mostListenedShows
+            mostListenedStations
+
             Section {
                 LabeledContent("Days in a Row") {
                     Label("\(stats.currentStreak())", systemImage: "flame.fill")
@@ -43,6 +46,66 @@ struct StatsView: View {
         .navigationTitle("Statistics")
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
+    }
+
+    /// Podcast shows by listening time. **Derived, not measured** — and the
+    /// footer says so: the numbers come from the stored episode positions, so
+    /// listening twice counts once and a deleted episode is missing. The
+    /// alternative would be a new per-episode measurement that costs most of
+    /// the shared iCloud budget and would still know nothing about the past.
+    @ViewBuilder
+    private var mostListenedShows: some View {
+        let top = ListeningByClass.top(
+            ListeningByClass.shows(in: UserDefaults.standard.dictionaryRepresentation(),
+                                   showId: AppStorageKeys.podcastShowId(forEpisodeId:)),
+            limit: Self.topLimit)
+        if !top.isEmpty {
+            Section {
+                ForEach(top, id: \.id) { entry in
+                    LabeledContent {
+                        Text(formatted(Int(entry.seconds)))
+                    } label: {
+                        Text(verbatim: showTitle(entry.id))
+                    }
+                }
+            } header: {
+                Text("Most Listened Shows")
+            } footer: {
+                Text("Estimated from your saved positions: listening again does not count twice, and episodes that left the feed are missing.")
+            }
+        }
+    }
+
+    /// Radio stations by MEASURED listening time. A live stream has no position
+    /// to derive from, which is exactly why it is the one class that gets its
+    /// own seconds — so this section can say a plainer sentence than the one
+    /// above.
+    @ViewBuilder
+    private var mostListenedStations: some View {
+        let top = stats.topItems(limit: Self.topLimit, matching: ListeningClasses.isLive)
+        if !top.isEmpty {
+            Section {
+                ForEach(top, id: \.id) { entry in
+                    LabeledContent {
+                        Text(formatted(entry.seconds))
+                    } label: {
+                        Text(verbatim: RadioStore.station(forId: entry.id)?.name ?? entry.id)
+                    }
+                }
+            } header: {
+                Text("Most Listened Stations")
+            } footer: {
+                Text("Measured while playing, on all your devices.")
+            }
+        }
+    }
+
+    private static let topLimit = 5
+
+    /// The show's name where it is known — a raw id would be a number nobody
+    /// asked for, so an unresolvable entry keeps its id rather than pretending.
+    private func showTitle(_ showId: String) -> String {
+        PodcastSubscriptions.shared.shows.first { $0.id == showId }?.title ?? showId
     }
 
     /// Plain capsule bars; weekday/day label only under every other bar so
