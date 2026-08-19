@@ -393,6 +393,21 @@ struct SettingsView: View {
                     PremiumClassificationCloudSync.shared.start()
                 }
             }
+            // The failure that was invisible: when the shared budget is
+            // exhausted, iCloud simply stops accepting writes — no error
+            // reaches any call site, and two devices drift apart for weeks.
+            // Shown where the switch is, because that is where someone looks
+            // when they wonder why the two do not match.
+            if let quota = AppStorageKeys.cloudQuotaViolation() {
+                Label {
+                    Text("iCloud refused a write on \(quota.formatted(date: .abbreviated, time: .shortened)) — the shared space is full, so progress, playlists and statistics stopped syncing.")
+                        .font(.footnote)
+                } icon: {
+                    Image(systemName: "exclamationmark.icloud")
+                }
+                .foregroundStyle(.orange)
+                .accessibilityIdentifier("icloud-quota-warning")
+            }
         } header: {
             Text("Sync")
         } footer: {
