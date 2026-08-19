@@ -464,10 +464,15 @@ nonisolated enum RadioStore {
         save(stored, mostPlayedKey, defaults: defaults)
     }
 
-    /// Stations ranked by play frequency (desc), capped — the "Most Played" row.
-    static func mostPlayed(limit: Int = 8, defaults: UserDefaults = .standard) -> [RadioStation] {
+    /// Stations ranked by listening TIME (desc), capped — the "Most Played" row.
+    /// The seconds come in as a parameter because they live in the statistics
+    /// store, which is main-actor bound while this type is not; passing them
+    /// keeps the store pure and the rule testable.
+    static func mostPlayed(limit: Int = 8, seconds: [String: Int] = [:],
+                           defaults: UserDefaults = .standard) -> [RadioStation] {
         RadioRanking.mostPlayed(stations: load(mostPlayedKey, defaults: defaults),
-                                counts: playCounts(defaults: defaults), limit: limit)
+                                counts: playCounts(defaults: defaults),
+                                seconds: seconds, limit: limit)
     }
 
     // MARK: - Teil 1: per-station codec/bitrate variant selection
@@ -507,13 +512,38 @@ nonisolated enum RadioHomePresentation {
 /// descending; ties keep the later-stored (more-recently-played) station first;
 /// capped. Foundation-only (MaerCore rule) — no store, no UI.
 nonisolated enum RadioRanking {
-    static func mostPlayed(stations: [RadioStation], counts: [String: Int], limit: Int) -> [RadioStation] {
+    /// "Most listened", ranked by TIME.
+    ///
+    /// Starts were the wrong measure and it took the honest counting to make
+    /// that visible: a station tapped and left after ten seconds weighed as
+    /// much as two hours. For a live stream the time listened is the only
+    /// truthful answer to "a lot".
+    ///
+    /// **ONE ranking, not two lists.** Seconds are the measure; the start count
+    /// is a FALLBACK for stations that have no measured time yet, and it stops
+    /// applying to a station the moment seconds exist for it. Two parallel
+    /// rankings merged afterwards would be the second version this project
+    /// keeps abolishing — and the boundary between them would be arbitrary.
+    ///
+    /// Without the fallback the row would stand empty right after the update
+    /// (nobody has measured seconds yet) — the transition would look like a
+    /// defect, and a person cannot tell "new measure" from "lost my history".
+    static func mostPlayed(stations: [RadioStation], counts: [String: Int],
+                           seconds: [String: Int] = [:], limit: Int) -> [RadioStation] {
         guard limit > 0 else { return [] }
+        // A station is on the list if EITHER measure knows it.
+        func weight(_ id: String) -> (measured: Bool, value: Int) {
+            if let s = seconds[id], s > 0 { return (true, s) }
+            return (false, counts[id] ?? 0)
+        }
         return stations.enumerated()
-            .filter { (counts[$0.element.id] ?? 0) > 0 }
+            .filter { weight($0.element.id).value > 0 }
             .sorted { a, b in
-                let ca = counts[a.element.id] ?? 0, cb = counts[b.element.id] ?? 0
-                if ca != cb { return ca > cb }
+                let wa = weight(a.element.id), wb = weight(b.element.id)
+                // Measured time outranks an estimate — a station with real
+                // seconds is never pushed below one that only has taps.
+                if wa.measured != wb.measured { return wa.measured }
+                if wa.value != wb.value { return wa.value > wb.value }
                 return a.offset > b.offset   // tie → more recently stored wins
             }
             .prefix(limit)

@@ -312,7 +312,7 @@ struct RadioView: View {
         let recs = RadioStore.recents().filter { station in
             !favs.contains { $0.id == station.id }
         }
-        let most = RadioStore.mostPlayed()
+        let most = RadioStore.mostPlayed(seconds: ListeningStatsStore.shared.radioSeconds())
         // Layout-shift: same calm gate as loadDiscovery — the per-section
         // empty→filled rule applies to the library rows too (user-driven calls
         // run while calm, so they still apply instantly).

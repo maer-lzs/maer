@@ -161,6 +161,12 @@ final class ListeningStatsStore: ObservableObject {
             .map { (id: $0.key, seconds: $0.value) }
     }
 
+    /// Seconds per radio station, across all devices — the measure the
+    /// "Most Played" row ranks by.
+    func radioSeconds() -> [String: Int] {
+        data.secondsPerItem.filter { ListeningClasses.isLive($0.key) }
+    }
+
     /// On pause/stop: persist the remaining seconds immediately, and let the
     /// other devices see them — a published pot that lags by a whole session
     /// would make the totals wrong on the iPad in exactly the way this design

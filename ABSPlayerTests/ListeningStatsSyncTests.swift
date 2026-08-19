@@ -134,5 +134,52 @@ struct ListeningStatsSyncTests {
         let items = ["b": 100, "a": 100, "c": 50]
         #expect(ListeningStatsSync.cappedItems(items, limit: 2) == ["a": 100, "b": 100])
     }
+
+    // MARK: - „Haeufig gehoert" rankt nach ZEIT
+
+    private func station(_ id: String) -> RadioStation {
+        RadioStation(id: "radio:rb:\(id)", name: id.uppercased(), streamURL: "https://s/\(id)")
+    }
+
+    @Test("Zeit schlaegt Startzahl: zwei Stunden gewinnen gegen viele Antipper")
+    func timeBeatsStarts() {
+        let stations = [station("a"), station("b")]
+        // a wurde zwanzigmal angetippt und nie gehoert, b einmal zwei Stunden.
+        let ranked = RadioRanking.mostPlayed(
+            stations: stations,
+            counts: ["radio:rb:a": 20, "radio:rb:b": 1],
+            seconds: ["radio:rb:a": 30, "radio:rb:b": 7200],
+            limit: 8)
+        #expect(ranked.map(\.id) == ["radio:rb:b", "radio:rb:a"],
+                "genau der Fall, wegen dem das Mass gewechselt wurde")
+    }
+
+    @Test("Uebergangsphase: ohne gemessene Zeit traegt der Startzaehler")
+    func fallbackCarriesTheTransition() {
+        let stations = [station("a"), station("b")]
+        // Direkt nach dem Update kennt niemand Sekunden — die Reihe darf
+        // deswegen nicht leer sein.
+        let ranked = RadioRanking.mostPlayed(
+            stations: stations, counts: ["radio:rb:a": 3, "radio:rb:b": 9],
+            seconds: [:], limit: 8)
+        #expect(ranked.map(\.id) == ["radio:rb:b", "radio:rb:a"])
+    }
+
+    @Test("gemessene Zeit schlaegt den Rueckfall, egal wie gross dessen Zahl ist")
+    func measuredOutranksTheFallback() {
+        let stations = [station("a"), station("b")]
+        // a hat 99 Starts und keine Zeit, b eine einzige gemessene Minute.
+        let ranked = RadioRanking.mostPlayed(
+            stations: stations, counts: ["radio:rb:a": 99, "radio:rb:b": 0],
+            seconds: ["radio:rb:b": 60], limit: 8)
+        #expect(ranked.map(\.id) == ["radio:rb:b", "radio:rb:a"],
+                "der Rueckfall verschwindet fuer einen Sender, sobald Zeit da ist")
+    }
+
+    @Test("ein Sender ohne beides steht in keiner Reihe")
+    func unknownStationsStayOut() {
+        #expect(RadioRanking.mostPlayed(stations: [station("a")], counts: [:],
+                                        seconds: [:], limit: 8).isEmpty)
+    }
 }
 #endif
