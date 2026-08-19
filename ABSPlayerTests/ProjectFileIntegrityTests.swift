@@ -1193,6 +1193,78 @@ extension ProjectFileIntegrityTests {
             in: "@AppStorage(AppStorageKeys.podcastAutoSaveOnPlay) private var x = true") == 0)
     }
 
+    // MARK: - Ein Feld an einem gespeicherten Typ ist eine stille Migration
+
+    /// A decode whose BYTES come from a local store — file, UserDefaults, the
+    /// key-value store, the app group. That is the cut between "persisted" and
+    /// "transient", and it is anchored on the DATA SOURCE rather than on a list
+    /// of type names: a list in the repo goes stale, a data source does not.
+    ///
+    /// Network responses are deliberately out. A decode failure there is a
+    /// visible network error with a retry; nothing stored is lost.
+    static func persistedDecodes(in text: String) -> [(line: Int, type: String)] {
+        let lines = text.components(separatedBy: "\n")
+        let localSources = ["Data(contentsOf", ".data(forKey", "UserDefaults",
+                            "NSUbiquitousKeyValueStore", "containerURL"]
+        var out: [(Int, String)] = []
+        for (index, line) in lines.enumerated() {
+            guard let range = line.range(of: "decode(") else { continue }
+            let tail = line[range.upperBound...]
+            let name = tail.drop { "[ ".contains($0) }.prefix { $0.isLetter || $0.isNumber || $0 == "_" }
+            guard !name.isEmpty else { continue }
+            let window = lines[max(0, index - 6)...min(lines.count - 1, index + 1)].joined(separator: "\n")
+            if localSources.contains(where: window.contains) {
+                out.append((index + 1, String(name)))
+            }
+        }
+        return out
+    }
+
+    /// A decode that falls back to an EMPTY value and whose holder writes that
+    /// value back is how a read error becomes permanent loss — the file is
+    /// overwritten with the emptiness. This is the shape worth naming; the
+    /// fence only counts it, the report ranks it.
+    @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet")
+    func persistedTypesAreKnown() throws {
+        var found: [String] = []
+        for file in Self.sourceFiles() {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            for hit in Self.persistedDecodes(in: text) {
+                found.append("\(file.lastPathComponent):\(hit.line) \(hit.type)")
+            }
+        }
+        // A RATCHET at the measured count, not a guessed limit: 31 is what the
+        // tree holds today. The point is that the number cannot grow in
+        // silence — a new persisted decode is a decision, because adding a
+        // field to such a type is a migration that can cost a history without
+        // producing a single error.
+        #expect(found.count <= 31,
+                "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found)")
+    }
+
+    @Test("der Persistenz-Zaun trennt Ablage von Netzantwort")
+    func persistedFenceSeparatesStoreFromNetwork() {
+        let store = """
+        guard let data = try? Data(contentsOf: fileURL),
+              let decoded = try? JSONDecoder().decode([Entry].self, from: data) else { return }
+        """
+        #expect(Self.persistedDecodes(in: store).map(\.type) == ["Entry"])
+
+        let defaults = """
+        guard let data = UserDefaults.standard.data(forKey: opsKey),
+              let ops = try? JSONDecoder().decode([Operation].self, from: data) else { return [] }
+        """
+        #expect(Self.persistedDecodes(in: defaults).map(\.type) == ["Operation"])
+
+        // Eine Netzantwort ist KEINE Ablage — sonst faengt der Zaun 30 DTOs
+        // und wird nach zwei Wochen abgeschaltet.
+        let network = """
+        let (data, _) = try await URLSession.shared.data(from: url)
+        let response = try JSONDecoder().decode(SearchResponse.self, from: data)
+        """
+        #expect(Self.persistedDecodes(in: network).isEmpty)
+    }
+
     // MARK: - Aufloesen ist kein Hoeren
 
     /// The body of every `fetchItemDetail`, brace-exact. A character window
