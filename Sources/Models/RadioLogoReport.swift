@@ -26,16 +26,22 @@ nonisolated enum RadioLogoReport {
         let hasFaviconURL: Bool
         let chainResolved: Bool
         let chainAttempted: Bool
+        /// Seconds since the result was stored — nil when nothing is stored.
+        /// The age separates "the display just resolved it" from "this has been
+        /// sitting here since the station was last played".
+        let ageSeconds: Double?
     }
 
     static func rows(stations: [(id: String, name: String, faviconURL: String?)],
-                     chainResults: [String: (hasLogo: Bool, attempted: Bool)]) -> [Row] {
+                     chainResults: [String: (hasLogo: Bool, attempted: Bool, resolvedAt: Double)],
+                     now: Double) -> [Row] {
         stations.map { station in
             let result = chainResults[station.id]
             return Row(id: station.id, name: station.name,
                        hasFaviconURL: !(station.faviconURL ?? "").isEmpty,
                        chainResolved: result?.hasLogo ?? false,
-                       chainAttempted: result?.attempted ?? false)
+                       chainAttempted: result?.attempted ?? false,
+                       ageSeconds: result.map { now - $0.resolvedAt })
         }
     }
 
@@ -43,6 +49,7 @@ nonisolated enum RadioLogoReport {
     /// three causes it is.
     static func text(_ rows: [Row]) -> String {
         let resolved = rows.filter(\.chainResolved).count
+        let fresh = rows.filter { ($0.ageSeconds ?? .infinity) < 600 }.count
         let attempted = rows.filter(\.chainAttempted).count
         let withFavicon = rows.filter(\.hasFaviconURL).count
         var out = """
@@ -51,13 +58,19 @@ nonisolated enum RadioLogoReport {
         mit Favicon-Adresse:  \(withFavicon)
         Kette versucht:       \(attempted)
         Kette mit Logo:       \(resolved)
-        NIE FERTIG GEWORDEN:  \(rows.count - attempted)
+        davon in den letzten 10 Minuten: \(fresh)
+        OHNE ERGEBNIS:        \(rows.count - attempted)
 
         """
         for row in rows.sorted(by: { $0.name < $1.name }) {
+            let age = row.ageSeconds.map { seconds -> String in
+                seconds < 600 ? "gerade eben"
+                    : (seconds < 86_400 ? "vor \(Int(seconds / 3600)) h"
+                       : "vor \(Int(seconds / 86_400)) Tagen")
+            } ?? "—"
             let chain = row.chainResolved ? "Logo"
-                : (row.chainAttempted ? "kein Treffer" : "NICHT FERTIG")
-            out += "\(row.name) · Favicon \(row.hasFaviconURL ? "ja" : "nein") · Kette \(chain)\n"
+                : (row.chainAttempted ? "kein Treffer" : "OHNE ERGEBNIS")
+            out += "\(row.name) · Favicon \(row.hasFaviconURL ? "ja" : "nein") · Kette \(chain) · \(age)\n"
         }
         return out
     }

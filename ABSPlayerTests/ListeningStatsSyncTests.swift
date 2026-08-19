@@ -245,8 +245,9 @@ struct RadioLogoReportTests {
             stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
                        (id: "b", name: "B", faviconURL: nil),
                        (id: "c", name: "C", faviconURL: nil)],
-            chainResults: ["a": (hasLogo: true, attempted: true),
-                           "b": (hasLogo: false, attempted: true)])
+            chainResults: ["a": (hasLogo: true, attempted: true, resolvedAt: 1000),
+                           "b": (hasLogo: false, attempted: true, resolvedAt: 1000)],
+            now: 1200)
         #expect(rows.first { $0.id == "a" }?.chainResolved == true)
         #expect(rows.first { $0.id == "b" }?.chainAttempted == true)
         #expect(rows.first { $0.id == "b" }?.chainResolved == false)
@@ -259,16 +260,17 @@ struct RadioLogoReportTests {
         let rows = RadioLogoReport.rows(
             stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
                        (id: "b", name: "B", faviconURL: nil)],
-            chainResults: ["a": (hasLogo: true, attempted: true)])
+            chainResults: ["a": (hasLogo: true, attempted: true, resolvedAt: 1000)],
+            now: 1200)
         let text = RadioLogoReport.text(rows)
-        #expect(text.contains("NIE FERTIG GEWORDEN:  1"))
+        #expect(text.contains("OHNE ERGEBNIS:        1"))
         #expect(text.contains("Kette mit Logo:       1"))
         #expect(text.contains("mit Favicon-Adresse:  1"))
     }
 
     @Test("ein leerer Bestand meldet Nullen statt zu verschwinden")
     func emptyStateReportsZeros() {
-        let text = RadioLogoReport.text(RadioLogoReport.rows(stations: [], chainResults: [:]))
+        let text = RadioLogoReport.text(RadioLogoReport.rows(stations: [], chainResults: [:], now: 0))
         #expect(text.contains("Sender in den Reihen: 0"))
     }
 }

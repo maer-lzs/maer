@@ -25,6 +25,10 @@ actor RadioLogoService {
     private static let persistKey = "radioLogoChainResults"
     private static let negativeTTL: TimeInterval = 14 * 24 * 3600
     private var persistedLoaded = false
+    /// Stations whose chain FAILED in this session. Not persisted — a failed
+    /// run says nothing about the station (95c5c16) — but the diagnosis needs
+    /// it, because a failure and an unfinished run both leave the store empty.
+    private(set) var failedThisSession: Set<String> = []
 
     /// 95c5c16: storage generation. The negatives written before the
     /// error/no-hit distinction existed are WRONG — a single disturbed
@@ -93,16 +97,21 @@ actor RadioLogoService {
     /// The file name inside a persisted Commons FilePath URL — nil for touch
     /// icons and anything else (those entries stay as they are).
     /// What the chain has STORED per station — for the diagnosis surface, which
-    /// must read the state without re-running anything. `hasLogo` false with
-    /// `attempted` true is a station the chain looked at and found nothing;
-    /// an id missing entirely means the resolution never FINISHED.
+    /// must read the state without re-running anything.
+    ///
+    /// `resolvedAt` is part of the answer, not decoration: a result stored
+    /// weeks ago says only that the station was resolved SOMETIME, which is a
+    /// different claim from "the display resolved it just now". Without the age
+    /// the report cannot tell a fresh success from an old one, and a diagnosis
+    /// that cannot separate those answers the wrong question.
     nonisolated static func storedOutcomes(defaults: UserDefaults = .standard)
-        -> [String: (hasLogo: Bool, attempted: Bool)] {
+        -> [String: (hasLogo: Bool, attempted: Bool, resolvedAt: Double)] {
         guard let data = defaults.data(forKey: persistKey),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data)
         else { return [:] }
         return stored.mapValues { (hasLogo: $0.url != nil || $0.commonsFile != nil,
-                                   attempted: true) }
+                                   attempted: true,
+                                   resolvedAt: $0.resolvedAt) }
     }
 
     nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
@@ -274,7 +283,11 @@ actor RadioLogoService {
             return nil
         case .failed(let stage):
             // Nothing is stored — not even in the session cache, so the next
-            // appearance is free to try again.
+            // appearance is free to try again. But the DIAGNOSIS has to be able
+            // to tell this apart from "never got its turn": both look like
+            // "nothing stored", and they are different causes. Kept for the
+            // session only, exactly like the retry it allows.
+            failedThisSession.insert(stationID)
             Logger.library.notice("RADIO logo chain: fetch-failed stage=\(stage, privacy: .public) for \(name, privacy: .public)")
             return nil
         }

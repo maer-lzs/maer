@@ -284,7 +284,8 @@ struct RadioView: View {
                     }
                     UIPasteboard.general.string = RadioLogoReport.text(
                         RadioLogoReport.rows(stations: shown,
-                                             chainResults: RadioLogoService.storedOutcomes()))
+                                             chainResults: RadioLogoService.storedOutcomes(),
+                                             now: Date().timeIntervalSince1970))
                     copiedLogoReport = true
                 } label: {
                     Label {
