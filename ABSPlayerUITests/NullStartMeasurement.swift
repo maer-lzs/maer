@@ -762,18 +762,20 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         add(report)
         snap(app, "radio-row-spread")
 
-        // Measured, and it contradicts the assumption behind the fix: the
-        // player HAS a running title (the mini bar carries it — for a live item
-        // that string can only come from ICY), while all line nodes of the row
-        // stay empty. So the tile does not recognize its own station as the
-        // running one, and no tile ever grows. Whatever moves on the device
-        // moves on a CARD, not here. Reported as its own finding rather than
-        // being fixed blind.
-        try XCTSkipUnless(titleArrived, """
-            kein laufender Titel AUF EINER KACHEL — die Mini-Leiste trägt einen, \
-            die Kachel-Zeilen bleiben leer. Siehe Anhang: das ist ein Befund über \
-            die Kachel, nicht über diese Messung.
+        // The fence that found the actual defect, and it must stay a FAILURE,
+        // not a skip: if the mini bar carries a running title while every line
+        // of the row stays empty, the mirror on the coordinator is broken again
+        // and the tiles never hear the title arrive. A station that simply
+        // sends no ICY is a different matter — that one skips.
+        let miniCarriesATitle = mini.exists && !mini.label.isEmpty
+            && !tiles.firstMatch.label.contains(mini.label)
+        XCTAssertFalse(miniCarriesATitle && !titleArrived, """
+            die Mini-Leiste trägt einen laufenden Titel ("\(mini.label)"), die Kachel-Zeilen \
+            sind leer — die Kachel hört den Titel nicht eintreffen (Spiegel auf dem \
+            Koordinator kaputt?)
             """)
+        try XCTSkipUnless(titleArrived,
+                          "dieser Sender hat keinen laufenden Titel gesendet — nichts zu messen")
         guard let before, let after else {
             throw XCTSkip("Kachelreihe oder Bezugsfläche nicht sichtbar")
         }

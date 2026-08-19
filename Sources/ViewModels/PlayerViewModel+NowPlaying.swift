@@ -40,8 +40,15 @@ extension PlayerViewModel {
 
     /// The current ICY song as one line ("Artist — Title", or just the title) —
     /// nil when the stream has sent nothing.
-    var icyDisplayLine: String? {
-        guard let icy = icyNowPlaying else { return nil }
+    var icyDisplayLine: String? { Self.displayLine(fromStreamTitle: icyStreamTitle) }
+
+    /// The SAME derivation, from the raw stream title. It exists because a
+    /// `@Published` sink fires BEFORE the property is set: a mirror that read
+    /// back `icyDisplayLine` from inside the sink would publish the previous
+    /// song, forever one title behind. The mirror gets the incoming value and
+    /// runs it through this one place instead of re-deriving its own.
+    nonisolated static func displayLine(fromStreamTitle raw: String?) -> String? {
+        guard let icy = raw.flatMap({ ICYMetadata.parse(streamTitle: $0) }) else { return nil }
         if let artist = icy.artist, !artist.isEmpty { return "\(artist) — \(icy.title)" }
         return icy.title
     }

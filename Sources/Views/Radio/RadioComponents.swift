@@ -417,8 +417,13 @@ private struct RadioCardNowPlayingLeaf: View {
     /// line box is a rendering detail, and the reservation must not depend on
     /// one. `reservesSpace` states the metric outright.
     private var text: String {
+        // The coordinator's MIRROR, not `viewModel.icyDisplayLine`: this leaf
+        // observes the coordinator, and a nested ObservableObject publishes to
+        // its own observers only — reading through it meant the line arrived
+        // without anything redrawing, so it appeared at the next unrelated
+        // redraw instead. That is the "the layout shifts when I press" report.
         guard coordinator.activeItem?.id == stationID,
-              let line = coordinator.viewModel?.icyDisplayLine else { return "" }
+              let line = coordinator.nowPlayingLine else { return "" }
         return line
     }
 

@@ -19,15 +19,33 @@ final class PlayerCoordinator: ObservableObject {
             // episode rows) can show a live play/pause button without each
             // observing the nested view model.
             isPlayingCancellable = viewModel?.$isPlaying.sink { [weak self] in self?.isPlaying = $0 }
-            if viewModel == nil { isPlaying = false }
+            // Same reason as above, one level further: a tile reading
+            // `viewModel.icyDisplayLine` while observing only THIS object never
+            // hears the title arrive — a nested ObservableObject publishes to
+            // its own observers, not to ours. Measured: the mini bar carried
+            // the running title while every tile line stayed empty, and the
+            // line only appeared once something else redrew the row. That is
+            // exactly "we get new info at the moment we click".
+            icyCancellable = viewModel?.$icyStreamTitle.sink { [weak self] raw in
+                // The INCOMING value through the shared derivation: a sink runs
+                // before the property is set, so reading `icyDisplayLine` back
+                // here would publish the previous song.
+                self?.nowPlayingLine = PlayerViewModel.displayLine(fromStreamTitle: raw)
+            }
+            if viewModel == nil { isPlaying = false; nowPlayingLine = nil }
         }
     }
+
+    /// The running ICY line of the active item, mirrored for list surfaces
+    /// (radio tiles/cards) that must not each observe the nested view model.
+    @Published private(set) var nowPlayingLine: String?
     @Published private(set) var activeItem: LibraryItem?
     @Published private(set) var isLoading = false
     @Published private(set) var isPlaying = false
     @Published var loadError: String?
 
     private var isPlayingCancellable: AnyCancellable?
+    private var icyCancellable: AnyCancellable?
 
     let provider: any AudioProvider
 
