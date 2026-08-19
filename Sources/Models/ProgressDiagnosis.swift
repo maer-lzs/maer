@@ -115,6 +115,11 @@ nonisolated enum ProgressDiagnosis {
         /// deleted backup and the frozen download-time state.
         var flushedPosition: Double? = nil
         var flushedAtMs: Double? = nil
+        /// The server's own finished MARKER, next to the numbers. It is carried
+        /// separately because the two can disagree — and when a book stands at
+        /// exactly its duration while this says no, that disagreement is the
+        /// whole finding.
+        var serverIsFinished: Bool? = nil
         /// efc68ca (2): the last backward jumps, newest last —
         /// `[atMs, start, serverTime, serverAtMs, localTime, localAtMs]`.
         var jumpRing: [[Double]] = []
@@ -147,6 +152,19 @@ nonisolated enum ProgressDiagnosis {
         line("gecachter Detail-Stand", sources.cachedPosition, sources.cachedUpdatedAtMs)
         line("zuletzt selbst gesendet", sources.flushedPosition, sources.flushedAtMs)
         lines.append("Dauer: \(sources.duration > 0 ? formatTime(sources.duration) : "unbekannt")")
+        // The question this instrument was asked most often and answered least:
+        // IS it finished? It showed positions, times and a duration, and the
+        // finished state had to be inferred from a missing remaining-time line
+        // on the card. Both answers are named, because they can disagree —
+        // and when they do, that IS the finding.
+        if let server = sources.serverPosition, sources.duration > 0 {
+            let byNumbers = SyncRules.isFinished(currentTime: server, duration: sources.duration)
+            lines.append("fertig laut Zahlen: \(byNumbers ? "JA" : "nein") "
+                         + "(Server-Stand gegen Dauer)")
+        }
+        if let flag = sources.serverIsFinished {
+            lines.append("fertig laut Server-Kennzeichen: \(flag ? "JA" : "nein")")
+        }
         lines.append("")
         // The verdict the app WOULD reach right now — an instrument that
         // judges differently from the thing it measures is measuring itself.
@@ -166,6 +184,16 @@ nonisolated enum ProgressDiagnosis {
                     lines.append("⚠️ Das wirft \(Int(local - server)) s zurück — genau der gemeldete Rücksprung.")
                 }
             }
+        } else if let flushed = sources.flushedPosition, let flushedAt = sources.flushedAtMs,
+                  SyncRules.shouldPreferFlushedWitness(
+                      flushedTime: flushed, flushedAtMs: flushedAt,
+                      serverTime: sources.serverPosition ?? 0,
+                      serverUpdateMs: sources.serverUpdatedAtMs ?? 0) {
+            // The start path asks this rule too (c461a3b) — the verdict line
+            // used to ask only the crash backup and therefore judged
+            // DIFFERENTLY from the thing it measures. That is the same class
+            // the inline comparison above was already replaced for.
+            lines.append("Start würde bei UNSEREM letzten Push beginnen (Zeuge schlägt den Server).")
         } else {
             lines.append("Nicht beide Seiten bekannt — der Start nimmt, was da ist.")
         }

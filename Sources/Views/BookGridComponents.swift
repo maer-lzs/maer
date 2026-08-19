@@ -12,7 +12,7 @@ import SwiftUI
 /// Status line below the cover ("Finished" / "x h left" / "x % listened").
 @MainActor
 func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
-    if p.isFinished { return String(localized: "Completed") }
+    if p.countsAsFinished { return String(localized: "Completed") }
     if p.isStarted {
         if let t = p.remainingText(bookDuration: duration) { return t }
         return String(localized: "\(p.fraction.formatted(.percent.precision(.fractionLength(0)))) listened")
@@ -27,7 +27,7 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
 /// runtime→remaining switch only changes TEXT, never height. Pure.
 nonisolated func bookTimeLine(progress: BookProgress?, duration: Double?) -> String {
     if let progress {
-        if progress.isFinished { return String(localized: "Completed") }
+        if progress.countsAsFinished { return String(localized: "Completed") }
         if progress.isStarted, let t = progress.remainingText(bookDuration: duration) { return t }
     }
     guard let duration, duration > 0 else { return " " }
@@ -124,7 +124,7 @@ struct BookContextMenuItems: View {
         Button {
             Task { await quickToggleFinished() }
         } label: {
-            let isFinished = entry.progress?.isFinished ?? false
+            let isFinished = entry.progress?.countsAsFinished ?? false
             Label(
                 isFinished ? String(localized: "Mark as Unfinished") : String(localized: "Mark as Finished"),
                 systemImage: isFinished ? "checkmark.circle.fill" : "checkmark.circle"

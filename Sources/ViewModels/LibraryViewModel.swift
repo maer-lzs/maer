@@ -308,8 +308,8 @@ final class LibraryViewModel: ObservableObject {
     ) -> Bool {
         switch filter {
         case .alle: return true
-        case .unfertig: return !(entry.progress?.isFinished ?? false)
-        case .fertig: return entry.progress?.isFinished ?? false
+        case .unfertig: return !(entry.progress?.countsAsFinished ?? false)
+        case .fertig: return entry.progress?.countsAsFinished ?? false
         case .heruntergeladen:
             return entry.id.hasPrefix("local:") || downloadedIds.contains(entry.id)
         }
@@ -491,7 +491,7 @@ final class LibraryViewModel: ObservableObject {
                     .localizedStandardCompare($1.item.media?.metadata?.seriesName ?? "") == .orderedAscending
             }
         guard let idx = books.firstIndex(where: { $0.id == itemId }) else { return nil }
-        return books.dropFirst(idx + 1).first { !($0.progress?.isFinished ?? false) }
+        return books.dropFirst(idx + 1).first { !($0.progress?.countsAsFinished ?? false) }
     }
 
     /// All downloaded books, alphabetically — its own section for a quick
@@ -755,7 +755,7 @@ final class LibraryViewModel: ObservableObject {
                                  lastUpdate: Date().timeIntervalSince1970 * 1000, currentTime: 0)
         func clear(_ list: inout [LibraryEntry]) {
             if let i = list.firstIndex(where: { $0.id == itemId }),
-               list[i].progress?.isFinished == true {
+               list[i].progress?.countsAsFinished == true {
                 list[i] = LibraryEntry(item: list[i].item, progress: fresh)
             }
         }

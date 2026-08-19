@@ -66,7 +66,27 @@ nonisolated struct BookProgress: Equatable, Codable {
     var currentTime: Double? = nil
 
     var percentInt: Int { Int((fraction * 100).rounded()) }
-    var isStarted: Bool { fraction > 0.001 && !isFinished }
+
+    /// THE finished question, answered once and here.
+    ///
+    /// The flag alone is not enough, measured on a real book: position and
+    /// duration were both 18:40:56 on the server for hours, and the flag was
+    /// still false — so the title stood at the top of Continue although it had
+    /// been listened through. A flag can fail to arrive; numbers that say the
+    /// same thing twice cannot. Whoever asks "is this done" asks this, so the
+    /// row, the filter and the badge can never disagree.
+    ///
+    /// Same lesson as `playedSentinel` one level up: the finished question must
+    /// not hang on a marker when the values beside it are unambiguous.
+    /// The numeric witness is deliberately `>= 0.9999`, not a comfortable
+    /// margin like 0.99: it must mean "the numbers say COMPLETE", with room for
+    /// float noise and nothing else. A percentage threshold would declare books
+    /// finished that are not — a 20-hour book at 99 % has twelve minutes left.
+    var countsAsFinished: Bool {
+        isFinished || fraction >= 0.9999
+    }
+
+    var isStarted: Bool { fraction > 0.001 && !countsAsFinished }
 
     /// Remaining-time text ("3 h 12 min left") from the book duration — nil when
     /// no duration is known (then show percent as fallback).

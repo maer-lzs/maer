@@ -63,15 +63,15 @@ struct BookCoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
         // Finished books are visually "ticked off" in addition to the
         // checkmark — desaturated and slightly dimmed.
-        .saturation(progress?.isFinished == true ? 0 : 1)
-        .opacity(progress?.isFinished == true ? 0.55 : (unavailable ? 0.5 : 1))
+        .saturation(progress?.countsAsFinished == true ? 0 : 1)
+        .opacity(progress?.countsAsFinished == true ? 0.55 : (unavailable ? 0.5 : 1))
         // Y44: TOP-RIGHT holds either the finished check or — for an
         // unfinished, offline, not-downloaded title — the wifi.slash disc
         // (same family look as the shared modifier). They're mutually
         // exclusive (a finished title needs no "can't play offline" hint),
         // so the corner never doubles up.
         .overlay(alignment: .topTrailing) {
-            if progress?.isFinished == true {
+            if progress?.countsAsFinished == true {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: size * 0.14))
                     .foregroundStyle(.white, AppTheme.accent)

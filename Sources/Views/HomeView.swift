@@ -752,14 +752,14 @@ RowHeading(title: "Rediscover",
             .map { (id: $0.id, lastPlayed: Self.seconds($0.ts)) }
         // (b) unheard additions (books; albums have no reliable local addedAt).
         let unheard = libraryViewModel.entries
-            .filter { !($0.progress?.isStarted ?? false) && !($0.progress?.isFinished ?? false) }
+            .filter { !($0.progress?.isStarted ?? false) && !($0.progress?.countsAsFinished ?? false) }
             .compactMap { entry -> (id: String, addedAt: Double)? in
                 guard let added = entry.item.addedAt else { return nil }
                 return (entry.id, Self.seconds(added))
             }
         // (c) the next UNSTARTED volume after a finished predecessor.
         let seriesNext = libraryViewModel.entries
-            .filter { $0.progress?.isFinished ?? false }
+            .filter { $0.progress?.countsAsFinished ?? false }
             .compactMap { finished -> (id: String, volume: Int)? in
                 guard let next = libraryViewModel.nextInSeries(after: finished.id),
                       !(next.progress?.isStarted ?? false) else { return nil }

@@ -38,7 +38,7 @@ struct StatsView: View {
                 }
                 if let libraryViewModel {
                     LabeledContent("Finished Books") {
-                        Text("\(libraryViewModel.entries.filter { $0.progress?.isFinished == true }.count)")
+                        Text("\(libraryViewModel.entries.filter { $0.progress?.countsAsFinished == true }.count)")
                     }
                 }
             }

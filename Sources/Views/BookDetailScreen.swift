@@ -339,6 +339,7 @@ struct BookDetailScreen: View {
             cachedUpdatedAtMs: cached?.userMediaProgress?.lastUpdate,
             flushedPosition: (flushed?.count ?? 0) >= 2 ? flushed?[0] : nil,
             flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
+            serverIsFinished: entry.progress?.isFinished,
             jumpRing: defaults.array(forKey: AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
@@ -658,7 +659,7 @@ struct BookDetailScreen: View {
     }
 
     private var isFinished: Bool {
-        isFinishedOverride ?? (currentProgress?.isFinished ?? false)
+        isFinishedOverride ?? (currentProgress?.countsAsFinished ?? false)
     }
 
     private var markAsFinishedButton: some View {
