@@ -120,6 +120,10 @@ nonisolated enum ProgressDiagnosis {
         /// exactly its duration while this says no, that disagreement is the
         /// whole finding.
         var serverIsFinished: Bool? = nil
+        /// The 0…1 value the app stores and the finished rule reads. Carried
+        /// because position-vs-duration and this value can disagree: the
+        /// server sends both, and only this one reaches the row.
+        var progressFraction: Double? = nil
         /// efc68ca (2): the last backward jumps, newest last —
         /// `[atMs, start, serverTime, serverAtMs, localTime, localAtMs]`.
         var jumpRing: [[Double]] = []
@@ -164,6 +168,17 @@ nonisolated enum ProgressDiagnosis {
         }
         if let flag = sources.serverIsFinished {
             lines.append("fertig laut Server-Kennzeichen: \(flag ? "JA" : "nein")")
+        }
+        // The value the app's OWN rule reads, and its verdict. The two lines
+        // above describe the server; this one describes what the row actually
+        // decides on — and if the row still shows the book, the answer has to
+        // be visible here rather than inferred.
+        if let fraction = sources.progressFraction {
+            lines.append(String(format: "Fortschrittswert der App: %.6f", fraction))
+            lines.append("zaehlt als fertig: "
+                         + ((sources.serverIsFinished == true || fraction >= 0.9999) ? "JA" : "NEIN"))
+        } else {
+            lines.append("Fortschrittswert der App: keiner — dann kann die Reihe ihn nicht als fertig lesen.")
         }
         lines.append("")
         // The verdict the app WOULD reach right now — an instrument that

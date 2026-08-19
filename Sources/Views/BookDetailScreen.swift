@@ -340,6 +340,7 @@ struct BookDetailScreen: View {
             flushedPosition: (flushed?.count ?? 0) >= 2 ? flushed?[0] : nil,
             flushedAtMs: (flushed?.count ?? 0) >= 2 ? flushed?[1] : nil,
             serverIsFinished: entry.progress?.isFinished,
+            progressFraction: entry.progress?.fraction,
             jumpRing: defaults.array(forKey: AppStorageKeys.jumpRing(entry.id)) as? [[Double]] ?? [],
             duration: detail?.media.duration ?? entry.item.media?.duration ?? 0,
             isDownloaded: DownloadManager.shared.isDownloaded(itemId: entry.id),
