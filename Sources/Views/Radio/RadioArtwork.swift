@@ -120,9 +120,13 @@ struct RadioArtwork: View {
     /// decoded but is below it — badge material, never a tile face.
     static func faviconProbe(for url: URL?, stationID: String,
                              targetSide: CGFloat? = nil) async -> (face: UIImage?, small: UIImage?) {
-        if let url, let image = await ImageCache.shared.thumbnail(for: url) {
-            let width = Int(image.size.width * image.scale)
-            let height = Int(image.size.height * image.scale)
+        if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
+            let image = loaded.image
+            // The gate judges the picture that ARRIVED, not the thumbnail we
+            // derived from it — a wide wordmark loses its short side twice
+            // otherwise, once by the render and once by the downscale.
+            let width = Int(loaded.sourcePixels.width)
+            let height = Int(loaded.sourcePixels.height)
             if RadioFaviconGate.acceptable(pixelWidth: width, pixelHeight: height,
                                            targetSide: targetSide) {
                 return (image, nil)
@@ -130,7 +134,7 @@ struct RadioArtwork: View {
             Logger.library.notice("RADIO favicon rejected (\(width)×\(height)): \(stationID, privacy: .public)")
             return (nil, image)
         } else if url != nil {
-            Logger.library.notice("RADIO favicon rejected (unloadable): \(stationID, privacy: .public)")
+            Logger.library.notice("RADIO favicon could not be fetched: \(stationID, privacy: .public)")
         }
         return (nil, nil)
     }
@@ -159,8 +163,9 @@ struct RadioArtwork: View {
         guard let logoURL = await RadioLogoService.shared.logoURL(
                   stationID: stationID, name: RadioMapping.displayName(stationName),
                   homepage: stationHomepage),
-              let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
-        let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
+              let loaded = await ImageCache.shared.loadedImage(for: logoURL) else { return nil }
+        let logo = loaded.image
+        let w = Int(loaded.sourcePixels.width), h = Int(loaded.sourcePixels.height)
         // 8360dac: a chain result is a DECLARED logo (Commons P154 render or
         // the site's own apple-touch-icon), not a scraped favicon — it is
         // measured against the touch-icon floor. Four of the audit set's

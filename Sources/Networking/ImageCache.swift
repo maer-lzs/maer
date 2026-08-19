@@ -175,6 +175,36 @@ final class ImageCache {
         return thumb
     }
 
+    /// Cache first, NETWORK second — and it reports the SOURCE size alongside
+    /// the display image.
+    ///
+    /// Both read methods above deliberately never fetch: they are the read side
+    /// of a cache that other surfaces fill. Radio artwork had no such filling
+    /// surface — it resolved a logo URL and then asked a cache that could only
+    /// ever answer for pictures something ELSE had downloaded. That is why a
+    /// station logo appeared only after the station had been played once: the
+    /// player's cover view is what fetched it.
+    ///
+    /// The source size travels with the image because the quality gate has to
+    /// judge the picture that ARRIVED. Judging the 400-px thumbnail instead
+    /// rejects exactly the wide wordmarks the 800-px render exists for — a
+    /// 800×92 logo becomes 400×46 and falls under the 48-px floor.
+    func loadedImage(for url: URL, maxPixelSize: CGFloat? = nil)
+        async -> (image: UIImage, sourcePixels: CGSize)? {
+        let target = maxPixelSize ?? thumbPixelSize
+        if let cached = await thumbnail(for: url, maxPixelSize: target),
+           let full = await image(for: url) {
+            return (cached, CGSize(width: full.size.width * full.scale,
+                                   height: full.size.height * full.scale))
+        }
+        guard let (data, _) = try? await URLSession.coverImage.data(from: url),
+              let full = UIImage(data: data) else { return nil }
+        set(full, data: data, for: url)
+        let display = Self.decodedThumbnail(data, maxPixelSize: target) ?? full
+        return (display, CGSize(width: full.size.width * full.scale,
+                                height: full.size.height * full.scale))
+    }
+
     /// Pure decode-to-size without the re-encode `downsampled` does — thumbs
     /// never touch the disk.
     private nonisolated static func decodedThumbnail(_ data: Data, maxPixelSize: CGFloat) -> UIImage? {
