@@ -388,6 +388,7 @@ struct SettingsView: View {
             .onChange(of: podcastICloudSync) { _, on in
                 if on {
                     PodcastCloudSync.shared.start()
+                    ListeningStatsStore.shared.start()
                     MaerPlaylistCloudSync.shared.start()
                     PremiumClassificationCloudSync.shared.start()
                 }

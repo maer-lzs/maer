@@ -691,6 +691,19 @@ nonisolated enum AppStorageKeys {
     static var podcastICloudSyncEnabled: Bool {
         UserDefaults.standard.object(forKey: podcastICloudSync) as? Bool ?? true
     }
+    /// When iCloud last refused a write because the shared 1 MB is exhausted.
+    /// Kept because the failure is otherwise INVISIBLE: the store simply stops
+    /// accepting writes, no call site sees an error, and two devices drift
+    /// apart for weeks. The diagnosis surface reads this.
+    nonisolated static let cloudQuotaViolationAt = "cloudQuotaViolationAt"
+    nonisolated static func noteCloudQuotaViolation(in defaults: UserDefaults = .standard) {
+        defaults.set(Date().timeIntervalSince1970, forKey: cloudQuotaViolationAt)
+    }
+    nonisolated static func cloudQuotaViolation(in defaults: UserDefaults = .standard) -> Date? {
+        let stamp = defaults.double(forKey: cloudQuotaViolationAt)
+        return stamp > 0 ? Date(timeIntervalSince1970: stamp) : nil
+    }
+
     static let lastPlayedItemId = "lastPlayedItemId"
     static let pendingDownloadDestinations = "pendingDownloadDestinations"
     /// df0b3bb 3: per-item markers for "don't show under Continue any more"

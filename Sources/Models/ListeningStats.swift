@@ -5,10 +5,11 @@
 
 import Foundation
 import Combine
+import OSLog
 
 /// Raw local listening stats: seconds per calendar day ("yyyy-MM-dd", local
 /// time zone). Deliberately simple — JSON in Documents.
-nonisolated struct ListeningStatsData: Codable {
+nonisolated struct ListeningStatsData: Codable, Equatable {
     var secondsPerDay: [String: Int] = [:]
     /// The same seconds, seen per ITEM. A DIMENSION of the day pot, never a
     /// second count: both are fed by the one tick, so the item sums can only
@@ -42,19 +43,72 @@ nonisolated struct ListeningStatsData: Codable {
 final class ListeningStatsStore: ObservableObject {
     static let shared = ListeningStatsStore()
 
-    @Published private(set) var data: ListeningStatsData
+    /// THIS device's numbers — the file on disk. Every question about totals
+    /// goes through `data` below, which adds the other devices.
+    @Published private(set) var ownData: ListeningStatsData
+
+    /// What the surfaces read: this device plus every other device's published
+    /// pot. Summed on READ, never on write.
+    private(set) var data: ListeningStatsData
+
+    /// Other devices' pots as last seen. Refreshed when iCloud reports a
+    /// change; kept as a value so a read never touches the store.
+    private var foreign: [String: ListeningStatsData] = [:]
+
+    /// How many items the pot keeps. 500 radio stations cost ~6 % of the shared
+    /// iCloud budget; the cap is what keeps that a ceiling instead of a hope.
+    static let itemPotCap = 500
 
     private var lastSaveAt: TimeInterval = 0
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("listening_stats.json")
 
     private init() {
-        if let raw = try? Data(contentsOf: fileURL),
+        let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("listening_stats.json")
+        let loaded: ListeningStatsData
+        if let raw = try? Data(contentsOf: url),
            let decoded = try? JSONDecoder().decode(ListeningStatsData.self, from: raw) {
-            data = decoded
+            loaded = decoded
         } else {
-            data = ListeningStatsData()
+            loaded = ListeningStatsData()
         }
+        ownData = loaded
+        data = loaded
+    }
+
+    /// The MIGRATION the order asks for — and it is deliberately a no-op by
+    /// construction: the existing local file IS this device's pot, so nothing
+    /// has to move and nothing can be lost on the way. The one-time step is
+    /// only that the file gets PUBLISHED, which `start()` does.
+    ///
+    /// The other direction is the one that needs care: a device whose file is
+    /// gone (a reset, a failed write) but whose pot still stands in iCloud
+    /// adopts its own numbers back instead of starting at zero. Presence is
+    /// checked, nothing is written blind, and a second run changes nothing
+    /// because the file then exists.
+    func start() {
+        ListeningStatsCloudSync.shared.start()
+        let ownPot = ListeningStatsCloudSync.shared.foreignPots()[SyncHistoryStore.deviceId]
+        if ownData.secondsPerDay.isEmpty, let ownPot, !ownPot.secondsPerDay.isEmpty {
+            Logger.library.notice("listening stats: local file empty, adopting this device's own iCloud pot (\(ownPot.secondsPerDay.count) days)")
+            ownData = ownPot
+            save()
+        }
+        cloudChanged()
+    }
+
+    /// Re-read the other devices and recompose the totals.
+    func cloudChanged() {
+        foreign = ListeningStatsCloudSync.shared.foreignPots()
+        recompose()
+    }
+
+    private func recompose() {
+        data = ListeningStatsSync.merged(local: ownData,
+                                         ownDeviceId: SyncHistoryStore.deviceId,
+                                         foreign: foreign)
+        objectWillChange.send()
     }
 
     /// The day key is STORED data, so it must not depend on the device.
@@ -80,10 +134,11 @@ final class ListeningStatsStore: ObservableObject {
     /// ONE call for both pots — a second entry point would be a second way to
     /// count, and two counters for one second is exactly how they drift apart.
     func addSeconds(_ seconds: Int, itemId: String? = nil) {
-        data.secondsPerDay[Self.dayKey(for: Date()), default: 0] += seconds
+        ownData.secondsPerDay[Self.dayKey(for: Date()), default: 0] += seconds
         if let itemId, !itemId.isEmpty {
-            data.secondsPerItem[itemId, default: 0] += seconds
+            ownData.secondsPerItem[itemId, default: 0] += seconds
         }
+        recompose()
         let now = Date().timeIntervalSince1970
         if now - lastSaveAt >= 30 {
             lastSaveAt = now
@@ -106,13 +161,23 @@ final class ListeningStatsStore: ObservableObject {
             .map { (id: $0.key, seconds: $0.value) }
     }
 
-    /// On pause/stop: persist the remaining seconds immediately.
+    /// On pause/stop: persist the remaining seconds immediately, and let the
+    /// other devices see them — a published pot that lags by a whole session
+    /// would make the totals wrong on the iPad in exactly the way this design
+    /// is supposed to prevent.
     func flush() {
         save()
+        ListeningStatsCloudSync.shared.publish()
     }
 
     private func save() {
-        let snapshot = data
+        // Compaction runs where the file is written, not on a timer: distant
+        // days collapse into months, and the item pot keeps its top entries.
+        // Both are named rules, not silent caps — the totals stay exact.
+        ownData = ListeningStatsSync.compacted(ownData, todayKey: Self.dayKey(for: Date()))
+        ownData.secondsPerItem = ListeningStatsSync.cappedItems(ownData.secondsPerItem,
+                                                                limit: Self.itemPotCap)
+        let snapshot = ownData
         let url = fileURL
         Task.detached(priority: .utility) {
             guard let encoded = try? JSONEncoder().encode(snapshot) else { return }

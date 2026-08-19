@@ -513,6 +513,7 @@ struct LibraryView: View {
             await AppSession.shared.absPodcastProvider.refreshAvailability()
             // Reconcile podcast progress via iCloud (across devices).
             PodcastCloudSync.shared.start()
+            ListeningStatsStore.shared.start()
             // Same switch, same store, same moment — the playlists travel with
             // the podcast progress or not at all.
             MaerPlaylistCloudSync.shared.start()
