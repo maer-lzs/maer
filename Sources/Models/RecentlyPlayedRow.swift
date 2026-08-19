@@ -23,6 +23,10 @@ nonisolated enum RecentlyPlayedRow {
     enum Entry: Equatable, Hashable {
         case album(id: String)
         case station(id: String)
+        /// A catalogue title started as an album track (netlabel album,
+        /// shellac side, Jamendo track). Its own case rather than `.album`,
+        /// because the two resolve through different providers.
+        case catalogTrack(id: String)
     }
 
     /// Merge by time. Entries WITHOUT a known time keep their source order
@@ -36,9 +40,12 @@ nonisolated enum RecentlyPlayedRow {
     ///   - continued: album ids that Continue already shows — dropped here.
     ///   - stations: station ids in MRU order.
     ///   - stationTimes: id → last played, where known.
+    ///   - catalog: catalogue ids started as album tracks, newest first.
+    ///   - catalogTimes: id → last played, from the entry that carries the form.
     static func merged(albums: [String], albumTimes: [String: Double],
                        continued: Set<String>,
                        stations: [String], stationTimes: [String: Double],
+                       catalog: [String] = [], catalogTimes: [String: Double] = [:],
                        limit: Int) -> [Entry] {
         struct Ranked {
             let entry: Entry
@@ -51,6 +58,13 @@ nonisolated enum RecentlyPlayedRow {
         }
         for (index, id) in stations.enumerated() {
             ranked.append(Ranked(entry: .station(id: id), time: stationTimes[id], order: index))
+        }
+        // The `continued` filter applies here too — it is the same promise: a
+        // title Continue shows is not offered a second time. In practice the
+        // switch already keeps these two apart, so this is the belt beside the
+        // braces, not the mechanism.
+        for (index, id) in catalog.enumerated() where !continued.contains(id) {
+            ranked.append(Ranked(entry: .catalogTrack(id: id), time: catalogTimes[id], order: index))
         }
         let dated = ranked.filter { $0.time != nil }
             .sorted { ($0.time ?? 0) > ($1.time ?? 0) }

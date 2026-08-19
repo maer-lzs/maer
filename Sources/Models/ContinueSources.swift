@@ -31,6 +31,21 @@ nonisolated enum ContinueSources {
         id.hasPrefix("local:") || FreeCatalog.allPrefixes.contains(where: id.hasPrefix)
     }
 
+    /// THE switch, and it has two sides that must never both be true.
+    ///
+    /// An entry started as an ALBUM track is music: it has no place to return
+    /// to in the product sense, so it belongs in "Listen Again" and must leave
+    /// Continue — otherwise the same title stands in both rows, and the row
+    /// that drops duplicates (Listen Again) would drop it, leaving the feature
+    /// with no effect at all.
+    ///
+    /// **An entry WITHOUT a form is not guessed.** It behaves exactly as it did
+    /// before: Continue keeps it, "Listen Again" never shows it. That is what
+    /// makes this change invisible for everything already on the device.
+    static func belongsInContinue(_ stored: [Double]) -> Bool {
+        ProgressMark.markedForm(stored) != .album
+    }
+
     /// 305a292: "started" must be asked of the SAME won source the start uses,
     /// not of the raw cached progress. Measured: a downloaded book whose cached
     /// detail froze at zero counted as unbegun and fell out of the Continue row
@@ -62,6 +77,7 @@ nonisolated enum ContinueSources {
             let id = String(key.dropFirst("localPosition.".count))
             guard isLocallyTracked(id), !serverKnows.contains(id),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
+            guard belongsInContinue(stored) else { continue }
             let position = stored[0]
             // A few seconds are a tap, not a started book.
             guard position >= minimumSeconds else { continue }
@@ -74,6 +90,30 @@ nonisolated enum ContinueSources {
             }
             out.append(Extra(id: id, position: position,
                              updatedAtMs: stored[1], duration: duration))
+        }
+        return out.sorted { $0.updatedAtMs > $1.updatedAtMs }
+    }
+
+    /// The other side of the same switch: titles started as album tracks, newest
+    /// first — the catalogue input of the "Listen Again" row.
+    ///
+    /// Deliberately WITHOUT a minimum-seconds threshold, unlike `started`
+    /// above. The sibling class decides it: a radio station tapped and left
+    /// after five seconds stands in "recently played" too, because that row
+    /// answers "what did I play", not "what did I get into". Inventing a
+    /// different number for the same row would be the asymmetry, not the
+    /// symmetry.
+    static func positionless(in defaults: [String: Any],
+                             serverKnows: Set<String>) -> [Extra] {
+        var out: [Extra] = []
+        for (key, value) in defaults {
+            guard key.hasPrefix("localPosition.") else { continue }
+            let id = String(key.dropFirst("localPosition.".count))
+            guard isLocallyTracked(id), !serverKnows.contains(id),
+                  let stored = value as? [Double], stored.count >= 2,
+                  ProgressMark.markedForm(stored) == .album else { continue }
+            out.append(Extra(id: id, position: stored[0], updatedAtMs: stored[1],
+                             duration: ProgressMark.markedDuration(stored) ?? 0))
         }
         return out.sorted { $0.updatedAtMs > $1.updatedAtMs }
     }

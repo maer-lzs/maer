@@ -37,8 +37,37 @@ nonisolated enum ProgressMark {
     /// **Do not call this when an entry already exists** — that is what
     /// `advancing` is for. This form builds a NEW one and drops whatever it
     /// does not know.
-    static func entry(position: Double, duration: Double, nowMs: Double) -> [Double] {
-        duration > 0 ? [position, nowMs, duration] : [position, nowMs]
+    static func entry(position: Double, duration: Double, nowMs: Double,
+                      form: StartedForm? = nil) -> [Double] {
+        // Slot 3 needs slot 2 occupied, so an entry that knows a form but no
+        // duration carries a 0 there — which `markedDuration` already reads as
+        // "none", the same way a two-value entry does.
+        if let form { return [position, nowMs, max(duration, 0), form.rawValue] }
+        return duration > 0 ? [position, nowMs, duration] : [position, nowMs]
+    }
+
+    /// What an item was STARTED as, when the source could say. Slot 3 of the
+    /// entry, and deliberately a property of the PLAY EVENT rather than of the
+    /// catalog: it describes the moment, so it cannot go stale the way a cached
+    /// catalog fact would.
+    ///
+    /// The reason it lives in the entry at all is that the entry already
+    /// travels between devices — a parallel table would need its own channel
+    /// and would be a second version of the same fact.
+    enum StartedForm: Double, Equatable, Sendable {
+        /// A track of an album — music. No position to return to in the
+        /// product sense, so it belongs in "Listen Again", not in Continue.
+        case album = 1
+        /// One work in parts. Holds a position and belongs in Continue.
+        case work = 2
+    }
+
+    /// The form an entry was written with — nil when it predates this or the
+    /// source could not say. **Never guessed**: an entry without a form stays
+    /// out of the rows that need one.
+    static func markedForm(_ stored: [Double]) -> StartedForm? {
+        guard stored.count >= 4 else { return nil }
+        return StartedForm(rawValue: stored[3])
     }
 
     /// **Carry forward instead of rebuilding.**
@@ -57,9 +86,14 @@ nonisolated enum ProgressMark {
     static func advancing(_ existing: [Double]?,
                           position: Double,
                           duration: Double,
-                          nowMs: Double) -> [Double] {
+                          nowMs: Double,
+                          form: StartedForm? = nil) -> [Double] {
         let known = duration > 0 ? duration : (existing.flatMap { markedDuration($0) } ?? 0)
-        return entry(position: position, duration: known, nowMs: nowMs)
+        // The form is carried exactly like the duration, and for the same
+        // reason: this runs on every position write (once a second while
+        // playing), so anything it does not carry is gone within a second.
+        let carried = form ?? existing.flatMap { markedForm($0) }
+        return entry(position: position, duration: known, nowMs: nowMs, form: carried)
     }
 
     /// **Supplementing:** add ONLY the missing reference point to an entry
@@ -74,6 +108,9 @@ nonisolated enum ProgressMark {
     /// merge guards against with its mass-deletion check.
     static func supplementing(_ existing: [Double], duration: Double) -> [Double]? {
         guard duration > 0, existing.count >= 2, markedDuration(existing) == nil else { return nil }
+        if let form = markedForm(existing) {
+            return [existing[0], existing[1], duration, form.rawValue]
+        }
         return [existing[0], existing[1], duration]
     }
 

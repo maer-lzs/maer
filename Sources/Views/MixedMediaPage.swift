@@ -106,6 +106,10 @@ struct MixedMediaPage: View {
     private var listenAgainStations: [RadioStation] {
         RadioProvider.shared.isAvailable ? RadioStore.recents() : []
     }
+    private var listenAgainCatalog: [ContinueSources.Extra] {
+        ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
+                                     serverKnows: [])
+    }
 
     private var listenAgainEntries: [RecentlyPlayedRow.Entry] {
         RecentlyPlayedRow.merged(
@@ -115,6 +119,9 @@ struct MixedMediaPage: View {
             continued: Set(continueIds),
             stations: listenAgainStations.map(\.id),
             stationTimes: RadioStore.recentTimes(),
+            catalog: listenAgainCatalog.map(\.id),
+            catalogTimes: Dictionary(listenAgainCatalog.map { ($0.id, $0.updatedAtMs / 1000) },
+                                     uniquingKeysWith: { a, _ in a }),
             limit: Self.listenAgainLimit)
     }
 
@@ -157,6 +164,9 @@ struct MixedMediaPage: View {
                                           playerCoordinator: playerCoordinator)
                                     .frame(width: cardWidth, alignment: .top)
                             }
+                        case .catalogTrack(let id):
+                            CatalogTrackCell(itemId: id, width: cardWidth,
+                                             playerCoordinator: playerCoordinator)
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
                                 RadioStationCard(station: station,

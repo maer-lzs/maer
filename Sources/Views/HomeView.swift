@@ -287,10 +287,18 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// the covers and their captions one baseline.
     private static let recentlyPlayedTileWidth: CGFloat = 150
 
+    /// Catalogue titles started as album tracks — the third class of this row.
+    /// Read from the ONE stock, where the play event left the form.
+    private var catalogTracks: [ContinueSources.Extra] {
+        ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
+                                     serverKnows: [])
+    }
+
     /// What the SOURCES carry (the row shows a preview of it).
     private var listenAgainTotal: Int {
         let stations = RadioProvider.shared.isAvailable ? RadioStore.recents().count : 0
-        return recentMusicItems.filter { !continueIds.contains($0.id) }.count + stations
+        return recentMusicItems.filter { !continueIds.contains($0.id) }.count
+            + stations + catalogTracks.count
     }
 
     @ViewBuilder
@@ -302,6 +310,9 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
             continued: Set(continueIds),
             stations: radioOn ? radioRecents.map(\.id) : [],
             stationTimes: radioOn ? RadioStore.recentTimes() : [:],
+            catalog: catalogTracks.map(\.id),
+            catalogTimes: Dictionary(catalogTracks.map { ($0.id, $0.updatedAtMs / 1000) },
+                                     uniquingKeysWith: { a, _ in a }),
             limit: RowPreview.limit)
         if !entries.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
@@ -322,6 +333,10 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)
                                 }
+                            case .catalogTrack(let id):
+                                CatalogTrackCell(itemId: id,
+                                                 width: Self.recentlyPlayedTileWidth,
+                                                 playerCoordinator: playerCoordinator)
                             case .station(let id):
                                 if let station = radioRecents.first(where: { $0.id == id }) {
                                     // P16a: the ROW's metric, not the class's —

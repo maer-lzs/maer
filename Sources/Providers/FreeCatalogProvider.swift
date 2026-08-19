@@ -23,6 +23,22 @@ final class FreeCatalogProvider: AudioProvider {
     /// Deliberately false — Discover-only surface, never a tab/search source.
     var isAvailable: Bool { false }
 
+    /// The ONE moment the form is knowable: the item was just fetched to be
+    /// played, so its collections are warm. Written onto the entry, which
+    /// already travels between devices — later nobody can answer this any more,
+    /// because the collections live only in memory.
+    ///
+    /// An item whose collections say nothing gets NO form. It then behaves
+    /// exactly as before (Continue keeps it, "Listen Again" never shows it) —
+    /// guessing here would put a reading into the music row, and that is the
+    /// one mistake this switch exists to prevent.
+    func notePlaybackStarted(itemId: String) {
+        guard let form = archiveForm(itemId: itemId) else { return }
+        ListeningStore.noteStartedForm(
+            itemId, form: form == .album ? .album : .work,
+            atMs: Date().timeIntervalSince1970 * 1000)
+    }
+
     /// Session caches the rows fill (id → source object).
     private var librivoxBooks: [String: LibriVoxBook] = [:]
     private var jamendoTracks: [String: JamendoTrack] = [:]

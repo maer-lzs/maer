@@ -133,6 +133,33 @@ nonisolated enum ListeningStore {
         defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
     }
 
+    /// Record WHAT an item was started as. Called once at playback start, from
+    /// the source that knows — never derived later, because the fact that
+    /// answers it (the item's collections) is only warm while the item is
+    /// loaded.
+    ///
+    /// Writes onto the existing entry when there is one, and creates a minimal
+    /// one otherwise: the row that reads this needs an entry to hang a time on,
+    /// and the position tick would create it a second later anyway. Position 0
+    /// reads as "unplayed" everywhere, so nothing is invented.
+    static func noteStartedForm(_ itemId: String, form: ProgressMark.StartedForm,
+                                atMs: Double, in defaults: UserDefaults = .standard) {
+        guard ListeningClasses.keepsPosition(itemId) else { return }
+        let key = AppStorageKeys.localPosition(itemId)
+        let existing = defaults.array(forKey: key) as? [Double]
+        defaults.set(ProgressMark.entry(position: existing?.first ?? 0,
+                                        duration: existing.flatMap(ProgressMark.markedDuration) ?? 0,
+                                        nowMs: existing.flatMap(ProgressMark.timestamp) ?? atMs,
+                                        form: form),
+                     forKey: key)
+    }
+
+    /// What an entry says it was started as — nil when it predates this.
+    static func startedForm(_ itemId: String,
+                            in defaults: UserDefaults = .standard) -> ProgressMark.StartedForm? {
+        backup(itemId, in: defaults).flatMap(ProgressMark.markedForm)
+    }
+
     /// Does this id hold a local state at all? The existence question, asked
     /// without reading a shape.
     static func hasStand(_ itemId: String, in defaults: UserDefaults = .standard) -> Bool {
