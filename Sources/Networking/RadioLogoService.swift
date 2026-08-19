@@ -402,10 +402,24 @@ actor RadioLogoService {
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
             return .hit(icon, commonsFile: nil)
         }
-        // The convention URL is a guess, not a finding — but a reachable one:
-        // it only follows a page we actually loaded (or an honest empty).
+        // The convention URL is a GUESS (`https://<host>/apple-touch-icon.png`),
+        // and a guess must not be booked as a finding: a station whose site has
+        // no such file got a stored "logo" that answers 404 forever, and a
+        // positive never expires — so the tile showed letters and never asked
+        // again. It is checked before it counts.
         if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
-            return .hit(convention, commonsFile: nil)
+            switch await fetch(convention) {
+            case .data:
+                return .hit(convention, commonsFile: nil)
+            case .empty:
+                // The host answered, and there is nothing there. A clean
+                // no-hit — bookable, and it stops the guess being retried.
+                return .noHit
+            case .failed:
+                // No answer says nothing about the station (95c5c16): not a
+                // no-hit either, so nothing is written down.
+                return .failed("convention-icon")
+            }
         }
         return .noHit
     }
