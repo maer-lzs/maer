@@ -182,8 +182,6 @@ struct ListeningStatsSyncTests {
                                         seconds: [:], limit: 8).isEmpty)
     }
 }
-#endif
-
 /// The shared derivation "how much did I listen to this show". One place, two
 /// callers (recommendation seed and statistics) — two derivations of the same
 /// number would disagree on screen, which is worse than either being wrong.
@@ -234,3 +232,44 @@ struct ListeningByClassTests {
         #expect(out.map(\.id) == ["c", "a", "b"], "0 faellt raus, Gleichstand alphabetisch")
     }
 }
+
+/// Die Logo-Diagnose. Ihr Wert haengt an EINER Unterscheidung: „die Kette hat
+/// nichts gefunden" und „die Kette ist nie fertig geworden" sehen auf dem
+/// Bildschirm gleich aus (Buchstaben), sind aber verschiedene Ursachen mit
+/// verschiedenen Fixes.
+struct RadioLogoReportTests {
+
+    @Test("nie fertig geworden ist etwas anderes als kein Treffer")
+    func unfinishedIsNotTheSameAsNoHit() {
+        let rows = RadioLogoReport.rows(
+            stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
+                       (id: "b", name: "B", faviconURL: nil),
+                       (id: "c", name: "C", faviconURL: nil)],
+            chainResults: ["a": (hasLogo: true, attempted: true),
+                           "b": (hasLogo: false, attempted: true)])
+        #expect(rows.first { $0.id == "a" }?.chainResolved == true)
+        #expect(rows.first { $0.id == "b" }?.chainAttempted == true)
+        #expect(rows.first { $0.id == "b" }?.chainResolved == false)
+        // c fehlt in den Ergebnissen — genau der Fall, der den Verdacht traegt.
+        #expect(rows.first { $0.id == "c" }?.chainAttempted == false)
+    }
+
+    @Test("die Kopfzeile nennt die Zahl, auf die es ankommt")
+    func summaryNamesTheDecidingNumber() {
+        let rows = RadioLogoReport.rows(
+            stations: [(id: "a", name: "A", faviconURL: "https://a/f.png"),
+                       (id: "b", name: "B", faviconURL: nil)],
+            chainResults: ["a": (hasLogo: true, attempted: true)])
+        let text = RadioLogoReport.text(rows)
+        #expect(text.contains("NIE FERTIG GEWORDEN:  1"))
+        #expect(text.contains("Kette mit Logo:       1"))
+        #expect(text.contains("mit Favicon-Adresse:  1"))
+    }
+
+    @Test("ein leerer Bestand meldet Nullen statt zu verschwinden")
+    func emptyStateReportsZeros() {
+        let text = RadioLogoReport.text(RadioLogoReport.rows(stations: [], chainResults: [:]))
+        #expect(text.contains("Sender in den Reihen: 0"))
+    }
+}
+#endif

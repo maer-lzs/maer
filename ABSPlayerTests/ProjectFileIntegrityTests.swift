@@ -1226,20 +1226,19 @@ extension ProjectFileIntegrityTests {
     /// fence only counts it, the report ranks it.
     @Test("gespeicherte Typen sind erhoben, damit ein neues Feld keine Historie kostet")
     func persistedTypesAreKnown() throws {
-        var found: [String] = []
+        var found: Set<String> = []
         for file in Self.sourceFiles() {
             let text = try String(contentsOf: file, encoding: .utf8)
-            for hit in Self.persistedDecodes(in: text) {
-                found.append("\(file.lastPathComponent):\(hit.line) \(hit.type)")
-            }
+            for hit in Self.persistedDecodes(in: text) { found.insert(hit.type) }
         }
-        // A RATCHET at the measured count, not a guessed limit: 31 is what the
-        // tree holds today. The point is that the number cannot grow in
-        // silence — a new persisted decode is a decision, because adding a
-        // field to such a type is a migration that can cost a history without
+        // A RATCHET at the measured count of distinct TYPES — not of call
+        // sites, which is what it counted first. The fence caught the
+        // difference itself: adding a second READ of an already-persisted type
+        // is harmless, while a new TYPE is the decision worth noticing, because
+        // adding a field to it is a migration that can cost a history without
         // producing a single error.
-        #expect(found.count <= 31,
-                "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found)")
+        #expect(found.count <= 20,
+                "ein neuer gespeicherter Typ — er braucht einen handgeschriebenen Dekodierer und einen Testfall auf seine Altform: \(found.sorted())")
     }
 
     @Test("der Persistenz-Zaun trennt Ablage von Netzantwort")

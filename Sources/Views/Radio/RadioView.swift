@@ -23,6 +23,7 @@ struct RadioView: View {
     @State private var mostPlayed: [RadioStation] = []
     // Catalog browse — cached per session, re-fetched only on refresh.
     @State private var popular: [RadioStation] = []
+    @State private var copiedLogoReport = false
     @State private var regional: [RadioStation] = []
     @State private var discoveryLoaded = false
     /// Fourth instance of the throw-is-not-the-end class, mild form: the
@@ -164,6 +165,7 @@ struct RadioView: View {
                 if showsGenres {
                     genreSection
                 }
+                logoDiagnosisSection
                 if !hasAnyContent {
                     if discoveryFailed {
                         // A failed load is not "no stations" — the old advice
@@ -265,6 +267,42 @@ struct RadioView: View {
     /// appears only when its preview actually differs from Zuletzt.
     private var mostPlayedDiffersFromRecents: Bool {
         Set(RowPreview.cut(mostPlayed).map(\.id)) != Set(RowPreview.cut(recents).map(\.id))
+    }
+
+    /// The cover report is only reproducible on a device, and reading the
+    /// device log needs a Mac, a cable and root. This makes the same answer
+    /// copyable from the phone itself — it reads the STORED state and never
+    /// re-runs the chain, because a diagnosis that changes what it measures is
+    /// worthless. Diagnostic UI stays verbatim (project convention).
+    @ViewBuilder
+    private var logoDiagnosisSection: some View {
+        if !popular.isEmpty || !regional.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    let shown = (popular + regional).map {
+                        (id: $0.id, name: $0.name, faviconURL: $0.faviconURL)
+                    }
+                    UIPasteboard.general.string = RadioLogoReport.text(
+                        RadioLogoReport.rows(stations: shown,
+                                             chainResults: RadioLogoService.storedOutcomes()))
+                    copiedLogoReport = true
+                } label: {
+                    Label {
+                        Text(verbatim: "Logo-Diagnose kopieren")
+                    } icon: {
+                        Image(systemName: "doc.on.clipboard")
+                    }
+                    .font(.footnote)
+                }
+                .accessibilityIdentifier("radio-logo-diagnosis-copy")
+                if copiedLogoReport {
+                    Text(verbatim: "In die Zwischenablage gelegt.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal)
+            .foregroundStyle(.secondary)
+        }
     }
 
     private var genreSection: some View {

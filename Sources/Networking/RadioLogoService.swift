@@ -92,6 +92,19 @@ actor RadioLogoService {
 
     /// The file name inside a persisted Commons FilePath URL — nil for touch
     /// icons and anything else (those entries stay as they are).
+    /// What the chain has STORED per station — for the diagnosis surface, which
+    /// must read the state without re-running anything. `hasLogo` false with
+    /// `attempted` true is a station the chain looked at and found nothing;
+    /// an id missing entirely means the resolution never FINISHED.
+    nonisolated static func storedOutcomes(defaults: UserDefaults = .standard)
+        -> [String: (hasLogo: Bool, attempted: Bool)] {
+        guard let data = defaults.data(forKey: persistKey),
+              let stored = try? JSONDecoder().decode([String: Stored].self, from: data)
+        else { return [:] }
+        return stored.mapValues { (hasLogo: $0.url != nil || $0.commonsFile != nil,
+                                   attempted: true) }
+    }
+
     nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
         guard let raw, raw.contains("commons.wikimedia.org"),
               let components = URLComponents(string: raw),
