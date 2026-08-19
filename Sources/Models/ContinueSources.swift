@@ -56,7 +56,15 @@ nonisolated enum ContinueSources {
     /// having started even when every server-fed value says otherwise.
     static func isStarted(serverSaysStarted: Bool,
                           flushed: [Double]?,
+                          finished: Bool = false,
                           minimumSeconds: Double = 30) -> Bool {
+        // The witness proves HAVING STARTED — it says nothing about the end,
+        // and it must not outvote the finished answer. Measured on a book that
+        // stood at exactly its duration with the server flag set: the row kept
+        // it anyway, because this device had once pushed a position and the
+        // push was read as "started". A witness for the beginning cannot
+        // decide a question about the end.
+        if finished { return false }
         if serverSaysStarted { return true }
         guard let flushed, flushed.count >= 2 else { return false }
         return flushed[0] >= minimumSeconds

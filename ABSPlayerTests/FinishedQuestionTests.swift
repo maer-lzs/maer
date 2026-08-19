@@ -46,16 +46,35 @@ struct FinishedQuestionTests {
 
     @Test("die Weiterhoeren-Regel fragt dieselbe Antwort")
     func continueRowAsksTheSameAnswer() {
-        // `ContinueSources.isStarted` bekommt `serverSaysStarted` aus
-        // `BookProgress.isStarted` — die Kette muss also durchschlagen.
-        #expect(!ContinueSources.isStarted(
-            serverSaysStarted: progress(1.0, flag: false).isStarted,
-            flushed: nil))
-        // Ein geflushter Zeuge macht daraus KEIN begonnen zurueck, wenn die
-        // Zahlen fertig sagen — der Zeuge belegt nur den Start, nicht das Ende.
-        #expect(ContinueSources.isStarted(
-            serverSaysStarted: progress(0.5, flag: false).isStarted,
-            flushed: [120, 1.7e12]))
+        let done = progress(1.0, flag: false)
+        #expect(!ContinueSources.isStarted(serverSaysStarted: done.isStarted,
+                                           flushed: nil,
+                                           finished: done.countsAsFinished))
+        let half = progress(0.5, flag: false)
+        #expect(ContinueSources.isStarted(serverSaysStarted: half.isStarted,
+                                          flushed: [120, 1.7e12],
+                                          finished: half.countsAsFinished))
+    }
+
+    /// Der zweite Befund am selben Buch, und der eigentliche Grund, warum es
+    /// nach dem ersten Fix NOCH dastand: dieses Geraet hatte den Endstand
+    /// einmal gesendet, und dieser Zeuge wurde als „begonnen" gelesen.
+    @Test("der Zeuge belegt den ANFANG und darf das Ende nicht ueberstimmen")
+    func theWitnessCannotOutvoteTheEnd() {
+        // Genau the owner's Lage: Server sagt fertig, und der eigene Push steht
+        // mit der vollen Dauer daneben.
+        #expect(!ContinueSources.isStarted(serverSaysStarted: false,
+                                           flushed: [67256, 1.7e12],
+                                           finished: true),
+                "ein Push ueber die ganze Dauer ist kein Grund, es weiter anzubieten")
+        // Ohne Fertig-Aussage traegt der Zeuge weiterhin — dafuer ist er da.
+        #expect(ContinueSources.isStarted(serverSaysStarted: false,
+                                          flushed: [67256, 1.7e12],
+                                          finished: false))
+        // Und die Schwelle bleibt: ein Antippen ist kein begonnenes Buch.
+        #expect(!ContinueSources.isStarted(serverSaysStarted: false,
+                                           flushed: [5, 1.7e12],
+                                           finished: false))
     }
 }
 #endif

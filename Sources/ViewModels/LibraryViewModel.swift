@@ -951,7 +951,8 @@ final class LibraryViewModel: ObservableObject {
         func started(_ e: LibraryEntry) -> Bool {
             ContinueSources.isStarted(
                 serverSaysStarted: e.progress?.isStarted ?? false,
-                flushed: ListeningStore.flushed(e.id, in: defaults))
+                flushed: ListeningStore.flushed(e.id, in: defaults),
+                finished: e.progress?.countsAsFinished ?? false)
         }
         for e in combined where started(e) { continueById[e.id] = e }
         for item in input.seedContinue where byId[item.id] == nil {
