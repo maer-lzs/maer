@@ -114,6 +114,15 @@ actor RadioLogoService {
                                    resolvedAt: $0.resolvedAt) }
     }
 
+    /// The URL a stored entry answers with today — for the diagnosis, which has
+    /// to report what the tile ACTUALLY tries to load, not what was resolved.
+    nonisolated static func storedURLs(defaults: UserDefaults = .standard) -> [String: URL] {
+        guard let data = defaults.data(forKey: persistKey),
+              let stored = try? JSONDecoder().decode([String: Stored].self, from: data)
+        else { return [:] }
+        return stored.compactMapValues { effectiveURL($0) }
+    }
+
     nonisolated static func commonsFileName(fromStoredURL raw: String?) -> String? {
         guard let raw, raw.contains("commons.wikimedia.org"),
               let components = URLComponents(string: raw),

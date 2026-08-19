@@ -74,4 +74,35 @@ nonisolated enum RadioLogoReport {
         }
         return out
     }
+
+    /// What the TILE actually gets: the URL it loads, whether the image
+    /// arrives, its pixel size, and the gate's verdict. Three separate answers,
+    /// because they fail for three different reasons — and until now the report
+    /// could not tell them apart, so every conclusion about the display was an
+    /// inference.
+    struct Loaded: Equatable {
+        let name: String
+        let url: String
+        let pixels: String
+        let verdict: String
+    }
+
+    static func loadedText(_ entries: [Loaded]) -> String {
+        guard !entries.isEmpty else { return "\nANZEIGE: keine gespeicherte Adresse zum Pruefen.\n" }
+        let rejected = entries.filter { $0.verdict == "verworfen" }.count
+        let failed = entries.filter { $0.verdict == "laedt nicht" }.count
+        var out = """
+
+        ANZEIGE (was die Kachel wirklich laedt)
+        geprueft:     \(entries.count)
+        laedt nicht:  \(failed)
+        verworfen:    \(rejected)
+        angezeigt:    \(entries.count - failed - rejected)
+
+        """
+        for entry in entries {
+            out += "\(entry.name) · \(entry.pixels) · \(entry.verdict)\n   \(entry.url)\n"
+        }
+        return out
+    }
 }

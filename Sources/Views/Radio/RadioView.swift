@@ -286,11 +286,39 @@ struct RadioView: View {
                     // is how a diagnosis reports a confident zero.
                     let shown = RadioProvider.shared.sessionStations.values
                         .map { (id: $0.id, name: $0.name, faviconURL: $0.faviconURL) }
-                    UIPasteboard.general.string = RadioLogoReport.text(
+                    let base = RadioLogoReport.text(
                         RadioLogoReport.rows(stations: shown,
                                              chainResults: RadioLogoService.storedOutcomes(),
                                              now: Date().timeIntervalSince1970))
+                    UIPasteboard.general.string = base
                     copiedLogoReport = true
+                    // The display half needs to LOAD, so it lands a moment
+                    // later — the summary above is already in the clipboard,
+                    // and this replaces it once the pictures answered.
+                    Task {
+                        let urls = RadioLogoService.storedURLs()
+                        let names = Dictionary(shown.map { ($0.id, $0.name) },
+                                               uniquingKeysWith: { a, _ in a })
+                        var loaded: [RadioLogoReport.Loaded] = []
+                        for (id, url) in urls.sorted(by: { $0.key < $1.key })
+                        where names[id] != nil {
+                            if loaded.count >= 12 { break }
+                            let image = await ImageCache.shared.thumbnail(for: url)
+                            let width = Int((image?.size.width ?? 0) * (image?.scale ?? 1))
+                            let height = Int((image?.size.height ?? 0) * (image?.scale ?? 1))
+                            let verdict: String
+                            if image == nil { verdict = "laedt nicht" }
+                            else if !RadioFaviconGate.acceptableTouchIcon(pixelWidth: width,
+                                                                          pixelHeight: height) {
+                                verdict = "verworfen"
+                            } else { verdict = "angezeigt" }
+                            loaded.append(RadioLogoReport.Loaded(
+                                name: names[id] ?? id, url: url.absoluteString,
+                                pixels: image == nil ? "—" : "\(width)x\(height)",
+                                verdict: verdict))
+                        }
+                        UIPasteboard.general.string = base + RadioLogoReport.loadedText(loaded)
+                    }
                 } label: {
                     Label {
                         Text(verbatim: "Logo-Diagnose kopieren")
