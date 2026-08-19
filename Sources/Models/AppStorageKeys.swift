@@ -407,6 +407,10 @@ nonisolated enum AppStorageKeys {
     static let radioNationalCountryName = "radioNationalCountryName"
     static let radioChosenCountryCode = "radioChosenCountryCode"
     static let radioChosenCountryName = "radioChosenCountryName"
+    /// eb10440: the GENRE pages' countries — a list, shared by all genres.
+    /// Absent = never chosen (the cascade decides), empty = worldwide as a
+    /// deliberate choice. The two states must stay distinguishable.
+    static let radioGenreCountryCodes = "radioGenreCountryCodes"
 
     /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
     /// server images always win, off just means color circles).

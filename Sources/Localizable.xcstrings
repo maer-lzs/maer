@@ -4,6 +4,16 @@
     "" : {
       "shouldTranslate" : false
     },
+    "Change Countries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Länder ändern"
+          }
+        }
+      }
+    },
     "Most Listened Shows" : {
       "localizations" : {
         "de" : {
@@ -1859,6 +1869,16 @@
         }
       }
     },
+    "Countries" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Länder"
+          }
+        }
+      }
+    },
     "Country" : {
       "localizations" : {
         "de" : {
@@ -2556,6 +2576,16 @@
         }
       }
     },
+    "Few stations for this genre in the selected countries." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wenige Sender für dieses Genre in den gewählten Ländern."
+          }
+        }
+      }
+    },
     "Fiction" : {
       "localizations" : {
         "de" : {
@@ -2854,6 +2884,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Genres"
+          }
+        }
+      }
+    },
+    "Genres show the stations of the selected countries. Several are allowed." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Genres zeigen die Sender der gewählten Länder. Mehrere sind erlaubt."
           }
         }
       }
@@ -6704,6 +6744,16 @@
         }
       }
     },
+    "Show worldwide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weltweit zeigen"
+          }
+        }
+      }
+    },
     "Shows" : {
       "localizations" : {
         "de" : {
@@ -8342,6 +8392,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Funktioniert mit oPodSync, Nextcloud GPodder und gpodder.net. Beispiel: https://sync.example.com"
+          }
+        }
+      }
+    },
+    "Worldwide" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weltweit"
           }
         }
       }

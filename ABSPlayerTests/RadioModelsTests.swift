@@ -16,7 +16,7 @@ struct RadioModelsTests {
                      bitrate: Int? = nil, codec: String? = nil) -> RadioBrowserStation {
         RadioBrowserStation(stationuuid: uuid, name: name, url: url, urlResolved: resolved,
                             favicon: nil, homepage: nil, countrycode: country, tags: "jazz,news",
-                            bitrate: bitrate, codec: codec, votes: nil)
+                            bitrate: bitrate, codec: codec, votes: nil, languagecodes: nil)
     }
 
     @Test("mapping de-dupes by stationuuid, prefers url_resolved, drops unusable")
@@ -272,14 +272,25 @@ struct RadioModelsTests {
         #expect(params(region)["reverse"] == "true")
         #expect(params(region)["limit"] == "40")
 
-        let tag = RadioBrowserClient.Query.byTag(tag: "news", limit: 40)
-        #expect(tag.path == "/json/stations/bytagexact/news")
+        // eb10440: the genre query rides the SEARCH endpoint — measured
+        // byte-identical to the old `bytagexact` path, so one endpoint serves
+        // both the worldwide and the country-narrowed case.
+        let tag = RadioBrowserClient.Query.byTag(tag: "news", countryCode: nil, limit: 40)
+        #expect(tag.path == "/json/stations/search")
+        #expect(params(tag)["tag"] == "news")
+        // `tagExact` is a BOOLEAN. Passing the tag as its value silently drops
+        // the tag and answers with the whole country (measured).
+        #expect(params(tag)["tagExact"] == "true")
         #expect(params(tag)["order"] == "votes")
+        #expect(params(tag)["countrycode"] == nil)
 
-        // Tag with a space is path-escaped, not left raw.
-        let spaced = RadioBrowserClient.Query.byTag(tag: "hip hop", limit: 40)
+        // Tag with a space rides the query, not the path — no escaping needed.
+        let spaced = RadioBrowserClient.Query.byTag(tag: "hip hop", countryCode: nil, limit: 40)
         #expect(!spaced.path.contains(" "))
-        #expect(spaced.path.hasPrefix("/json/stations/bytagexact/"))
+        #expect(params(spaced)["tag"] == "hip hop")
+
+        let narrowed = RadioBrowserClient.Query.byTag(tag: "news", countryCode: "ch", limit: 40)
+        #expect(params(narrowed)["countrycode"] == "CH")
 
         let search = RadioBrowserClient.Query.search(name: "dlf", limit: 50)
         #expect(search.path == "/json/stations/search")

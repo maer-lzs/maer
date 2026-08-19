@@ -542,23 +542,63 @@ struct RadioRegionPickerSheet: View {
 /// The country layer: all Radio Browser countries (station counts, same
 /// curation rules — no hardcoded lists), searchable; choosing persists the
 /// explicit country and resets the old country's region choice.
+///
+/// eb10440: the SAME list serves the genre pages' multi-select — one country
+/// surface, one curation, one loading state. `selection` nil keeps the
+/// single-choice behaviour (national/region rows, unchanged); a non-nil set
+/// switches to toggling with a worldwide row on top.
 struct RadioCountryPickerList: View {
     let onChoose: (_ code: String, _ name: String) -> Void
+    /// Currently selected codes — nil means single choice. An EMPTY set is a
+    /// real state: worldwide, deliberately chosen.
+    var selection: Set<String>? = nil
+    var onToggle: ((_ code: String) -> Void)? = nil
+    var onWorldwide: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
     @State private var countries: [(code: String, name: String, count: Int)] = []
     @State private var loadFailed = false
 
+    private var isMultiple: Bool { selection != nil }
+
     var body: some View {
         List {
+            if isMultiple {
+                Section {
+                    Button {
+                        onWorldwide?()
+                    } label: {
+                        LabeledContent {
+                            if selection?.isEmpty == true {
+                                Image(systemName: "checkmark").foregroundStyle(AppTheme.accent)
+                            }
+                        } label: {
+                            Text("Worldwide")
+                        }
+                    }
+                    .tint(.primary)
+                    .accessibilityIdentifier("radio-country-worldwide")
+                } footer: {
+                    Text("Genres show the stations of the selected countries. Several are allowed.")
+                }
+            }
             ForEach(filtered, id: \.code) { country in
                 Button {
+                    if isMultiple {
+                        onToggle?(country.code)
+                        return
+                    }
                     onChoose(country.code, country.name)
                     dismiss()
                 } label: {
                     LabeledContent {
-                        Text(verbatim: "\(country.count)")
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text(verbatim: "\(country.count)")
+                                .foregroundStyle(.secondary)
+                            if selection?.contains(country.code) == true {
+                                Image(systemName: "checkmark").foregroundStyle(AppTheme.accent)
+                            }
+                        }
                     } label: {
                         // Localized display; the English name is what the
                         // states endpoint needs and is what gets persisted.
@@ -566,6 +606,7 @@ struct RadioCountryPickerList: View {
                     }
                 }
                 .tint(.primary)
+                .accessibilityIdentifier("radio-country-\(country.code)")
             }
             if countries.isEmpty {
                 // Rule 3: a failed load is VISIBLE, never a silent empty list.
@@ -578,8 +619,16 @@ struct RadioCountryPickerList: View {
             }
         }
         .searchable(text: $query)
-        .navigationTitle(Text("Change Country"))
+        .navigationTitle(isMultiple ? Text("Countries") : Text("Change Country"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isMultiple {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                        .accessibilityIdentifier("radio-country-done")
+                }
+            }
+        }
         .task {
             guard countries.isEmpty else { return }
             let raw = (try? await RadioBrowserClient.countries()) ?? []

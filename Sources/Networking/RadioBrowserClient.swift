@@ -27,7 +27,13 @@ nonisolated enum RadioBrowserClient {
         case search(name: String, limit: Int)
         case popular(limit: Int)
         case byRegion(countryCode: String, limit: Int)
-        case byTag(tag: String, limit: Int)
+        /// eb10440: a genre, optionally narrowed to ONE country. Measured:
+        /// `search?tag=<v>&tagExact=true` returns byte-identical results to
+        /// the old `bytagexact/<v>` path, so one endpoint serves both the
+        /// worldwide and the narrowed case. `tagExact` is a BOOLEAN — passing
+        /// the tag as its value silently drops the tag and answers with the
+        /// whole country.
+        case byTag(tag: String, countryCode: String?, limit: Int)
         /// The available states (Kantone/Bundesländer) of a country.
         case states(countryName: String)
         /// All countries with station counts (explicit country choice).
@@ -48,8 +54,8 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/topvote"
             case .byRegion(let cc, _):
                 return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
-            case .byTag(let tag, _):
-                return "/json/stations/bytagexact/\(Self.pathEscaped(tag))"
+            case .byTag:
+                return "/json/stations/search"
             case .states(let country):
                 return "/json/states/\(Self.pathEscaped(country))/"
             case .countries:
@@ -81,13 +87,26 @@ nonisolated enum RadioBrowserClient {
                 ]
             case .states, .countries:
                 return [.init(name: "hidebroken", value: "true")]
-            case .byRegion(_, let limit), .byTag(_, let limit), .byState(_, let limit):
+            case .byRegion(_, let limit), .byState(_, let limit):
                 return [
                     .init(name: "order", value: "votes"),
                     .init(name: "reverse", value: "true"),
                     .init(name: "limit", value: String(limit)),
                     .init(name: "hidebroken", value: "true"),
                 ]
+            case .byTag(let tag, let countryCode, let limit):
+                var items: [URLQueryItem] = [
+                    .init(name: "tag", value: tag),
+                    .init(name: "tagExact", value: "true"),
+                    .init(name: "order", value: "votes"),
+                    .init(name: "reverse", value: "true"),
+                    .init(name: "limit", value: String(limit)),
+                    .init(name: "hidebroken", value: "true"),
+                ]
+                if let countryCode, !countryCode.isEmpty {
+                    items.append(.init(name: "countrycode", value: countryCode.uppercased()))
+                }
+                return items
             case .byRegionClicktrend(_, let limit), .byStateClicktrend(_, let limit):
                 return [
                     .init(name: "order", value: "clicktrend"),
@@ -168,9 +187,48 @@ nonisolated enum RadioBrowserClient {
         try await request(.countries) { try decodeCountries($0) }
     }
 
-    /// Stations for an exact tag, by votes (genre drilldown).
-    static func byTag(tag: String, limit: Int = catalogLimit) async throws -> [RadioStation] {
-        try await stations(.byTag(tag: tag, limit: limit))
+    /// Stations for an exact tag, by votes (genre drilldown), optionally
+    /// narrowed to one country.
+    static func byTag(tag: String, countryCode: String? = nil,
+                      limit: Int = catalogLimit) async throws -> [RadioStation] {
+        try await stations(.byTag(tag: tag, countryCode: countryCode, limit: limit))
+    }
+
+    /// eb10440: the union over SEVERAL countries. Radio Browser has no
+    /// server-side multi-country filter (measured: `CH,DE` answers 0, a
+    /// repeated parameter keeps only the first), so the countries are asked
+    /// in parallel and joined here. An empty list means worldwide — ONE
+    /// query without a country narrowing.
+    ///
+    /// A country whose query fails contributes nothing rather than failing
+    /// the page; a total failure throws, so the view can tell "nothing found"
+    /// from "could not load".
+    static func byTag(tag: String, countryCodes: [String],
+                      limit: Int = catalogLimit) async throws -> [RadioStation] {
+        guard !countryCodes.isEmpty else {
+            return try await byTag(tag: tag, countryCode: nil, limit: limit)
+        }
+        let answers: [[RadioStation]?] = try await withThrowingTaskGroup(
+            of: (Int, [RadioStation]?).self
+        ) { group in
+            for (index, code) in countryCodes.enumerated() {
+                group.addTask {
+                    (index, try? await byTag(tag: tag, countryCode: code, limit: limit))
+                }
+            }
+            // Keep the caller's country order — the union's sort must not
+            // depend on which mirror answered first.
+            var collected = [[RadioStation]?](repeating: nil, count: countryCodes.count)
+            for try await (index, stations) in group { collected[index] = stations }
+            return collected
+        }
+        guard answers.contains(where: { $0 != nil }) else {
+            // NOT "no stations": every single country failed. The view must be
+            // able to tell an empty genre from an unreachable catalog.
+            throw URLError(.cannotConnectToHost)
+        }
+        return answers.compactMap { $0 }.flatMap { $0 }
+            .sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }
     }
 
     // MARK: - Shared mirror loop (ONE source for policy + drift-free)

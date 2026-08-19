@@ -31,6 +31,11 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     /// Optional so already-persisted stations decode unchanged (no key → nil);
     /// nested variants are always flattened to nil (no recursion).
     var variants: [RadioStation]? = nil
+    /// eb10440: lowercased ISO language codes, for the genre pages' sorting
+    /// bonus. OPTIONAL for the same reason as `variants` — a synthesized
+    /// decoder does NOT fall back to a property's default value on a missing
+    /// key, it throws, and every already-stored favorite lacks this key.
+    var languageCodes: [String]? = nil
 
     var isManual: Bool { id.hasPrefix("radio:manual:") }
 
@@ -69,9 +74,14 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let bitrate: Int?
     let codec: String?
     let votes: Int?
+    /// eb10440: ISO codes, comma-separated, mixed case in the wire data
+    /// (`de` and `DE` both occur — measured). Sorting bonus only, never a
+    /// filter: 27 % of Swiss and 30 % of Austrian stations leave it empty.
+    let languagecodes: String?
 
     enum CodingKeys: String, CodingKey {
         case stationuuid, name, url, favicon, homepage, countrycode, tags, bitrate, codec, votes
+        case languagecodes
         case urlResolved = "url_resolved"
     }
 }
@@ -99,9 +109,20 @@ nonisolated enum RadioMapping {
                 tags: (s.tags ?? "").split(separator: ",").map(String.init).filter { !$0.isEmpty },
                 bitrate: (s.bitrate ?? 0) > 0 ? s.bitrate : nil,
                 codec: s.codec?.isEmpty == false ? s.codec : nil,
-                votes: s.votes))
+                votes: s.votes,
+                languageCodes: Self.languageCodes(from: s.languagecodes)))
         }
         return collapseVariants(result)
+    }
+
+    /// Comma-separated wire form → lowercased codes. Absent or empty stays
+    /// nil: "no statement" and "the empty statement" are the same thing here,
+    /// and the ranking must not punish either.
+    static func languageCodes(from raw: String?) -> [String]? {
+        let codes = (raw ?? "").split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
+            .filter { !$0.isEmpty }
+        return codes.isEmpty ? nil : codes
     }
 
     /// Y57: fold codec/bitrate VARIANTS of the same station (same normalized
