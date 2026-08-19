@@ -604,6 +604,85 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         again.terminate()
     }
 
+    /// The layout contract of a tile row: EVERY tile the same height, whatever
+    /// is playing. A tile that grows when its station starts pushes everything
+    /// below it down — which is what a person sees as "pressing play shifts the
+    /// layout".
+    ///
+    /// Measured against the running station, because that is the only tile that
+    /// used to differ. Both the play and the measurement live in ONE case: the
+    /// harness reinstalls per case, so a second one would start without a
+    /// playing station and measure nothing.
+    func testTileHeightsDoNotDependOnPlayback() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25))
+        radioTab.tap()
+
+        // A genre page carries station ROWS, whose play control is explicit.
+        let genre = app.buttons["radio-genre-pop"].firstMatch
+        XCTAssertTrue(genre.waitForExistence(timeout: 30) || scrollTo(app, genre, swipes: 10))
+        genre.tap()
+        let play = app.buttons["station-play"].firstMatch
+        try XCTSkipUnless(play.waitForExistence(timeout: 90),
+                          "das Verzeichnis hat keine Sender geliefert (Netz?)")
+        // Remember WHICH station is played — the assertion below is about that
+        // tile, and a list of numbers cannot say which one it is.
+        let playedName = String(play.firstMatch.frame.height > 0
+                                ? (app.staticTexts.allElementsBoundByIndex.first {
+                                    $0.exists && $0.frame.minY >= play.frame.minY - 40
+                                        && $0.frame.minY <= play.frame.maxY + 40
+                                    && !$0.label.isEmpty }?.label ?? "")
+                                : "")
+        play.tap()
+        try XCTSkipUnless(app.buttons["mini-player"].firstMatch.waitForExistence(timeout: 40),
+                          "der Sender hat nicht zu spielen begonnen")
+
+        // Back to the tab: "Most Played" now carries a tile for the running
+        // station, next to dormant ones.
+        app.navigationBars.buttons.firstMatch.tap()
+        let tiles = app.buttons.matching(identifier: "radio-tile")
+        XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 30), "die Kachelreihen muessen stehen")
+        // Let the running title arrive — it is what used to add the line.
+        Thread.sleep(forTimeInterval: 12)
+
+        var heights: [CGFloat] = []
+        var lines: [String] = []
+        for index in 0..<min(tiles.count, 12) {
+            let tile = tiles.element(boundBy: index)
+            guard tile.exists, tile.frame.height > 0 else { continue }
+            let height = tile.frame.height.rounded()
+            heights.append(height)
+            // WHICH tile differs is the whole question — a bare list of numbers
+            // says that something is off, not what.
+            lines.append("\(height) · y=\(tile.frame.origin.y.rounded()) · \(tile.label.prefix(40))")
+        }
+        let report = XCTAttachment(string: "Kachel-Hoehen:\n" + lines.joined(separator: "\n")
+                                   + "\n\nroh: \(heights)")
+        report.name = "radio-tile-heights"
+        report.lifetime = .keepAlways
+        add(report)
+        snap(app, "radio-tile-heights")
+
+        try XCTSkipUnless(heights.count >= 2, "zu wenige Kacheln sichtbar zum Vergleichen")
+        // The contract this case guards is NOT "all tiles are identical" — a
+        // tile may legitimately differ for reasons of its own picture. It is:
+        // the tile of the RUNNING station is the same height as the majority.
+        // That is what the layout jump was about, and only that.
+        let majority = heights.reduce(into: [CGFloat: Int]()) { $0[$1, default: 0] += 1 }
+            .max { $0.value < $1.value }?.key
+        let running = tiles.allElementsBoundByIndex.first {
+            $0.exists && $0.label.contains(playedName)
+        }
+        if let running, let majority {
+            XCTAssertEqual(running.frame.height.rounded(), majority,
+                           "die Kachel der laufenden Station weicht ab: \(heights)")
+        }
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time

@@ -184,6 +184,10 @@ struct RadioStationCard: View {
             }
         }
         .buttonStyle(.plain)
+        // A shared handle for the tiles: the layout contract of a row — every
+        // tile the same height, whatever is playing — can only be measured if
+        // the harness can find them.
+        .accessibilityIdentifier("radio-tile")
         .contextMenu {
             RadioPlayMenuButton(station: station, playerCoordinator: playerCoordinator)
             RadioFavoriteButton(station: station, onToggled: onFavoriteToggled)
@@ -371,10 +375,14 @@ struct RadioFeaturedCard: View {
 /// tile ever opens a stream for it: the catalog has no now-playing, and
 /// twelve connections per row would be rude to the stations.
 private struct RadioCardNowPlayingLeaf: View {
-    /// The two hosts differ in idle honesty and ink: the featured card's
-    /// CAPTION line reserves its height when no title is known (white ink on
-    /// the card colour), the tile shows nothing it doesn't know (secondary
-    /// ink, no reserve).
+    /// Both hosts RESERVE the line's height, and only the ink differs.
+    ///
+    /// The tile used to reserve nothing: it grew by one line the moment its
+    /// station started playing and shrank again whenever the running title was
+    /// unknown. A row of tiles then changed height under the finger, and
+    /// everything below it jumped — which is what a person sees as "the layout
+    /// shifts when I press play". The line belongs to the tile's METRIC, not to
+    /// its content: a tile may never take its height from the playback state.
     enum Host { case featuredCard, tile }
 
     let stationID: String
@@ -385,44 +393,41 @@ private struct RadioCardNowPlayingLeaf: View {
     @ObservedObject var coordinator: PlayerCoordinator
 
     var body: some View {
-        if coordinator.activeItem?.id == stationID, let vm = coordinator.viewModel {
-            IcyLine(viewModel: vm, host: host)
-        } else {
-            idleMark
-        }
+        // ONE text node, whatever the state — the content changes, the layout
+        // does not. Two branches "made equally tall" are equal by coincidence:
+        // measured, a reserved space and a line of real glyphs differ by 2 pt,
+        // and that is enough to push a whole row down when a station starts.
+        Line(text: text, host: host)
     }
 
-    @ViewBuilder private var idleMark: some View {
-        if host == .featuredCard {
-            Text(verbatim: " ").font(.caption)   // reserved caption height
-        }
+    /// The running title when this station is the one playing and the title is
+    /// known — otherwise a space, which occupies the line without claiming
+    /// anything.
+    private var text: String {
+        guard coordinator.activeItem?.id == stationID,
+              let line = coordinator.viewModel?.icyDisplayLine else { return " " }
+        return line
     }
 
-    private struct IcyLine: View {
-        @ObservedObject var viewModel: PlayerViewModel
+    private struct Line: View {
+        let text: String
         let host: Host
 
         var body: some View {
-            if let line = viewModel.icyDisplayLine {
-                switch host {
-                case .featuredCard:
-                    Text(verbatim: line)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                case .tile:
-                    Text(verbatim: line)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        // P16a: inherit the TILE's width instead of pinning
-                        // the default one — the row decides the metric now.
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else if host == .featuredCard {
-                // A stream without ICY leaves the caption honestly empty —
-                // the card then carries just name + LIVE (48e514e).
-                Text(verbatim: " ").font(.caption)
+            switch host {
+            case .featuredCard:
+                Text(verbatim: text)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+            case .tile:
+                Text(verbatim: text)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    // P16a: inherit the TILE's width instead of pinning the
+                    // default one — the row decides the metric now.
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
