@@ -575,6 +575,35 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
+    /// The cover report: letters instead of logos until a station has been
+    /// played once. Measured on the path that produces it — the SECOND start,
+    /// where the rows paint from the persisted cache in frame 1.
+    ///
+    /// Both launches have to live in ONE case: the harness reinstalls the app
+    /// per case, so a second case would start from an empty container and
+    /// never reach the cached path at all.
+    func testCoverRaceOnTheCachedPath() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25))
+        radioTab.tap()
+        // Wait until the rows really stand — only then is a cache persisted.
+        XCTAssertTrue(app.buttons["radio-country-change-inline"].firstMatch
+            .waitForExistence(timeout: 90), "ohne geladene Reihen gibt es keinen Zwischenspeicher")
+        app.terminate()
+
+        // Second start: the rows come from the cache, in frame one.
+        let again = launch()
+        let tabAgain = again.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(tabAgain.waitForExistence(timeout: 25))
+        tabAgain.tap()
+        _ = again.buttons["radio-country-change-inline"].firstMatch.waitForExistence(timeout: 60)
+        snap(again, "cover-race-cached-path")
+        again.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time

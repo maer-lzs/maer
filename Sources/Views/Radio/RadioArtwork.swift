@@ -18,8 +18,13 @@ import OSLog
 struct RadioArtwork: View {
     let stationID: String
     let faviconURL: URL?
-    /// Station name — feeds the placeholder initials.
+    /// Station name — feeds the placeholder initials AND the logo chain.
     var name: String = ""
+    /// The station's homepage, when the caller has the station object in hand.
+    /// Supplying it makes the tile independent of whether the station has been
+    /// REGISTERED with the provider — the display should not inherit a
+    /// precondition that something else has to create first.
+    var homepage: String? = nil
     /// Hero = the big player cover; otherwise a row/tile thumbnail.
     var isHero = false
     /// 48e514e (3): card context — the tile frame (inset + material) stays
@@ -78,7 +83,8 @@ struct RadioArtwork: View {
                 // the placeholder instead of being thrown away.
                 badgeFavicon = small
             }
-            let preferred = await RadioArtwork.chainImage(stationID: stationID)
+            let preferred = await RadioArtwork.chainImage(stationID: stationID,
+                                                           name: name, homepage: homepage)
             if let preferred {
                 gatedFavicon = .some(preferred)
                 badgeFavicon = nil   // the full image replaces the badge
@@ -131,11 +137,28 @@ struct RadioArtwork: View {
 
     /// Stage 2 — the preferred source (P154 first, first-party touch icon
     /// behind it), gated; cadenced, so it may take its time.
-    static func chainImage(stationID: String) async -> UIImage? {
-        guard let station = RadioProvider.shared.station(forId: stationID),
-              let logoURL = await RadioLogoService.shared.logoURL(
-                  stationID: stationID, name: RadioMapping.displayName(station.name),
-                  homepage: station.homepage),
+    /// `name`/`homepage` come from the caller where it holds the station; the
+    /// provider lookup stays only as the fallback for the two surfaces that
+    /// genuinely have no station object (player, drive mode) — and there the
+    /// station is registered by definition, because it is playing.
+    static func chainImage(stationID: String, name: String = "",
+                           homepage: String? = nil) async -> UIImage? {
+        var stationName = name
+        var stationHomepage = homepage
+        if stationName.isEmpty {
+            guard let station = RadioProvider.shared.station(forId: stationID) else {
+                // Kept as diagnosis: a line here means a tile gave up before it
+                // started, and it never retries — its task is keyed on the
+                // station id, which does not change.
+                Logger.library.notice("RADIO chain skipped — no name and station unknown to the provider: \(stationID, privacy: .public)")
+                return nil
+            }
+            stationName = station.name
+            stationHomepage = station.homepage
+        }
+        guard let logoURL = await RadioLogoService.shared.logoURL(
+                  stationID: stationID, name: RadioMapping.displayName(stationName),
+                  homepage: stationHomepage),
               let logo = await ImageCache.shared.thumbnail(for: logoURL) else { return nil }
         let w = Int(logo.size.width * logo.scale), h = Int(logo.size.height * logo.scale)
         // 8360dac: a chain result is a DECLARED logo (Commons P154 render or

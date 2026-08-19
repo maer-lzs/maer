@@ -29,7 +29,7 @@ struct RadioStationDetailView: View {
             VStack(spacing: 20) {
                 RadioArtwork(stationID: station.id,
                              faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                             name: station.name,
+                             name: station.name, homepage: station.homepage,
                              isHero: true)
                     .frame(maxWidth: .infinity)
                     .frame(height: 220)

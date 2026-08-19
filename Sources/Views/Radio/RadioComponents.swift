@@ -44,7 +44,7 @@ struct RadioStationRow: View {
                     coverOverride: RadioArtwork(
                         stationID: station.id,
                         faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                        name: station.name)
+                        name: station.name, homepage: station.homepage)
                 )
                 .contentShape(Rectangle())
             }
@@ -128,7 +128,7 @@ struct RadioStationCard: View {
             VStack(alignment: .leading, spacing: 6) {
                 RadioArtwork(stationID: station.id,
                              faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                             name: station.name)
+                             name: station.name, homepage: station.homepage)
                     .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(alignment: .bottomTrailing) {
@@ -305,7 +305,7 @@ struct RadioFeaturedCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 RadioArtwork(stationID: station.id,
                              faviconURL: station.faviconURL.flatMap { URL(string: $0) },
-                             name: station.name,
+                             name: station.name, homepage: station.homepage,
                              cardBackground: cardColor)
                     .frame(width: CardMetrics.featuredCardWidth,
                            height: CardMetrics.featuredCardWidth)
