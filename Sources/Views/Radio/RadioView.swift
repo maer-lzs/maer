@@ -279,9 +279,13 @@ struct RadioView: View {
         if !popular.isEmpty || !regional.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Button {
-                    let shown = (popular + regional).map {
-                        (id: $0.id, name: $0.name, faviconURL: $0.faviconURL)
-                    }
+                    // Every station this session has SEEN, not just the two
+                    // rows on this screen: the genre pages are exactly where
+                    // stations appear that were never played, and those are
+                    // the ones the question is about. Measuring the wrong set
+                    // is how a diagnosis reports a confident zero.
+                    let shown = RadioProvider.shared.sessionStations.values
+                        .map { (id: $0.id, name: $0.name, faviconURL: $0.faviconURL) }
                     UIPasteboard.general.string = RadioLogoReport.text(
                         RadioLogoReport.rows(stations: shown,
                                              chainResults: RadioLogoService.storedOutcomes(),
@@ -470,6 +474,14 @@ struct RadioView: View {
         Task { await loadDiscovery(force: true) }
     }
 
+    /// The row has its stations before the tiles exist — so the logos are
+    /// resolved from HERE, not from whichever tile happens to stay visible
+    /// long enough.
+    private func warmLogos(_ stations: [RadioStation]) {
+        let list = stations.map { (id: $0.id, name: $0.name, homepage: $0.homepage) }
+        Task { await RadioLogoService.shared.warm(list) }
+    }
+
     private func loadDiscovery(force: Bool = false) async {
         // 26b2c13: cold start ~10 s to ANY content — the last composed rows
         // land in frame 1 (before any network), the fresh composition then
@@ -480,6 +492,7 @@ struct RadioView: View {
             popular = cached.popular
             regional = cached.regional
             RadioProvider.shared.remember(cached.popular + cached.regional)
+            warmLogos(cached.popular + cached.regional)
         }
         guard networkMonitor.isConnected else { return }
         if !force, discoveryLoaded { return }
@@ -521,6 +534,7 @@ struct RadioView: View {
             return
         }
         RadioProvider.shared.remember(topResult + regionResult)   // resolvable for play
+        warmLogos(topResult + regionResult)
         // The state list of the effective country (once per session) — a
         // country without states leaves the region section silently hidden.
         // Decoupled from chosenState (fixlet 4575a76): a returner with a

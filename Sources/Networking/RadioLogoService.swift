@@ -249,11 +249,46 @@ actor RadioLogoService {
     /// its own task; the caller may go, the result stays.
     private var inFlight: [String: Task<URL?, Never>] = [:]
 
+    /// Resolve the logos of a whole ROW, in the background, as soon as its data
+    /// is in hand — instead of waiting for each tile to become visible.
+    ///
+    /// This is the fix for "letters until I play a station once": the chain was
+    /// only ever started by a VISIBLE tile, so a station one never looked at
+    /// long enough never got a stored result, and the next visit started from
+    /// zero again. The row has the stations before the tiles exist; kicking the
+    /// resolution off there means the result is persisted regardless of scroll
+    /// position, and the second visit is instant.
+    ///
+    /// Deliberately fire-and-forget: nothing awaits it, the polite spacing
+    /// still applies, and a station already resolved returns from the cache
+    /// without a request.
+    func warm(_ stations: [(id: String, name: String, homepage: String?)]) {
+        for station in stations {
+            guard cache[station.id] == nil, inFlight[station.id] == nil,
+                  !givenUpThisSession.contains(station.id) else { continue }
+            Task { _ = await logoURL(stationID: station.id, name: station.name,
+                                     homepage: station.homepage) }
+        }
+    }
+
+    /// Stations whose chain failed REPEATEDLY in this session. A failed run is
+    /// never booked (95c5c16) — which is right for a network hiccup and wrong
+    /// for a homepage that is simply gone: without a stop those stations retry
+    /// on every render, and because the queue is serialised they eat the turns
+    /// of stations that WOULD resolve. Session-scoped, so the next start tries
+    /// again — a permanent verdict still may not be written down.
+    private var failureCount: [String: Int] = [:]
+    private var givenUpThisSession: Set<String> = []
+    private static let failuresBeforeGivingUp = 2
+
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
         if let cached = cache[stationID] { return cached }
         if let running = inFlight[stationID] { return await running.value }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
+        // Stations that failed twice this session are skipped — they would
+        // only take turns away from the ones that can still resolve.
+        guard !givenUpThisSession.contains(stationID) else { return nil }
         // 95c5c16 (3): offline ⇒ do not run the chain at all. No result, no
         // booking — otherwise a flight-mode session burns every station in.
         guard await NetworkMonitor.shared.isConnected else { return nil }
@@ -288,6 +323,10 @@ actor RadioLogoService {
             // "nothing stored", and they are different causes. Kept for the
             // session only, exactly like the retry it allows.
             failedThisSession.insert(stationID)
+            failureCount[stationID, default: 0] += 1
+            if failureCount[stationID, default: 0] >= Self.failuresBeforeGivingUp {
+                givenUpThisSession.insert(stationID)
+            }
             Logger.library.notice("RADIO logo chain: fetch-failed stage=\(stage, privacy: .public) for \(name, privacy: .public)")
             return nil
         }

@@ -66,6 +66,11 @@ struct RadioGenreView: View {
         #endif
         let result = (try? await RadioBrowserClient.byTag(tag: tag)) ?? []
         RadioProvider.shared.remember(result)   // keep them resolvable for play
+        // Same rule as the browse rows: the logos are resolved from HERE, with
+        // the data in hand — a genre page is exactly where stations appear that
+        // nobody ever played, and those never got a stored result before.
+        let list = result.map { (id: $0.id, name: $0.name, homepage: $0.homepage) }
+        Task { await RadioLogoService.shared.warm(list) }
         stations = result
         loadedTag = tag
     }
