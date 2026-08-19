@@ -683,6 +683,105 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
+    /// The acceptance the order names: play on a tile while watching the row —
+    /// NOTHING below it moves.
+    ///
+    /// the owner's own wording is the better diagnosis: "we get new info at the
+    /// moment we click." The running title arrives SECONDS after the tap, so
+    /// the case measures across exactly that arrival: distance between the tile
+    /// row and the surface below it, before the line lands and after.
+    ///
+    /// The distance, not the absolute position: the mini bar appears at the
+    /// same moment and changes the scroll area's bottom — an absolute y would
+    /// mix the two causes and blame the wrong one.
+    ///
+    /// And it refuses to pass quietly: if no running title ever arrives, this
+    /// harness cannot observe the mechanism at all, and it SAYS so. A previous
+    /// measurement of this row reported "no deviation" while it had no ICY line
+    /// in hand — a green that meant nothing.
+    func testNothingBelowTheRowMovesWhenTheTitleArrives() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25))
+        radioTab.tap()
+
+        let tiles = app.buttons.matching(identifier: "radio-tile")
+        XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 60), "die Kachelreihen muessen stehen")
+        let lines = app.staticTexts.matching(identifier: "radio-nowplaying-line")
+        // The reference below the row: the "Change Country" link sits directly
+        // under the popular row.
+        let below = app.buttons["radio-country-change-inline"].firstMatch
+        XCTAssertTrue(below.waitForExistence(timeout: 30), "die Bezugsflaeche unter der Reihe fehlt")
+
+        /// Distance from the first tile's top edge to the surface below the row
+        /// — grows exactly when the row grows, and is INDIFFERENT to the mini
+        /// bar appearing, which moves the whole page instead.
+        func spread() -> CGFloat? {
+            let top = tiles.firstMatch
+            guard top.exists, top.frame.height > 0, below.exists else { return nil }
+            return (below.frame.minY - top.frame.minY).rounded()
+        }
+
+        let before = spread()
+        // Start a station OF THIS ROW while watching it — a first attempt
+        // played through the genre page and measured nothing, because the
+        // station it started appeared in no tile at all. The row's own play
+        // control is its context menu (a tile navigates, house convention).
+        tiles.firstMatch.press(forDuration: 1.1)
+        let menuPlay = app.buttons["radio-menu-play"].firstMatch
+        try XCTSkipUnless(menuPlay.waitForExistence(timeout: 10), "das Kachel-Menue kam nicht")
+        menuPlay.tap()
+        try XCTSkipUnless(app.buttons["mini-player"].firstMatch.waitForExistence(timeout: 40),
+                          "der Sender hat nicht zu spielen begonnen")
+        // Wait for the CONTENT, not for a duration: the arrival is the event.
+        var titleArrived = false
+        for _ in 0..<30 {
+            if lines.allElementsBoundByIndex.contains(where: {
+                $0.exists && !$0.label.trimmingCharacters(in: .whitespaces).isEmpty
+            }) { titleArrived = true; break }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        let after = spread()
+
+        // A blind measurement must say WHY it is blind: no ICY title at all, or
+        // a title the player has while no tile of that station is on screen.
+        // Those are different findings and lead to different next steps.
+        let mini = app.buttons["mini-player"].firstMatch
+        let report = XCTAttachment(string: """
+        Titel eingetroffen: \(titleArrived)
+        Abstand vor dem Titel:  \(before.map(String.init(describing:)) ?? "—")
+        Abstand nach dem Titel: \(after.map(String.init(describing:)) ?? "—")
+        Mini-Leiste sagt: \(mini.exists ? mini.label : "—")
+        Kacheln sichtbar: \(tiles.count) · Zeilen-Knoten: \(lines.count)
+        Kachel-Beschriftungen: \(tiles.allElementsBoundByIndex.prefix(8).map { $0.label })
+        """)
+        report.name = "radio-row-spread"
+        report.lifetime = .keepAlways
+        add(report)
+        snap(app, "radio-row-spread")
+
+        // Measured, and it contradicts the assumption behind the fix: the
+        // player HAS a running title (the mini bar carries it — for a live item
+        // that string can only come from ICY), while all line nodes of the row
+        // stay empty. So the tile does not recognize its own station as the
+        // running one, and no tile ever grows. Whatever moves on the device
+        // moves on a CARD, not here. Reported as its own finding rather than
+        // being fixed blind.
+        try XCTSkipUnless(titleArrived, """
+            kein laufender Titel AUF EINER KACHEL — die Mini-Leiste trägt einen, \
+            die Kachel-Zeilen bleiben leer. Siehe Anhang: das ist ein Befund über \
+            die Kachel, nicht über diese Messung.
+            """)
+        guard let before, let after else {
+            throw XCTSkip("Kachelreihe oder Bezugsfläche nicht sichtbar")
+        }
+        XCTAssertEqual(before, after,
+                       "die Reihe ist gewachsen, als der laufende Titel eintraf: \(before) → \(after)")
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time

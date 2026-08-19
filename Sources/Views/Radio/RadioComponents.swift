@@ -91,6 +91,10 @@ struct RadioPlayMenuButton: View {
         Button {
             RadioPlay.play(station, playerCoordinator: playerCoordinator)
         } label: { Label("Play", systemImage: "play.fill") }
+            // The row's own play control for the measurement: the layout
+            // contract can only be measured where the tile that starts IS in
+            // the row being watched.
+            .accessibilityIdentifier("radio-menu-play")
     }
 }
 
@@ -397,15 +401,24 @@ private struct RadioCardNowPlayingLeaf: View {
         // does not. Two branches "made equally tall" are equal by coincidence:
         // measured, a reserved space and a line of real glyphs differ by 2 pt,
         // and that is enough to push a whole row down when a station starts.
+        //
+        // the owner named the mechanism more precisely than the symptom: "we
+        // GET NEW INFO at the moment we click." The content arrives seconds
+        // after the tap, so the geometry must already be final before it does.
         Line(text: text, host: host)
+            // The measurement needs to know whether the line it is about ever
+            // ARRIVED — a case that cannot observe the mechanism must say so
+            // instead of passing quietly.
+            .accessibilityIdentifier("radio-nowplaying-line")
     }
 
     /// The running title when this station is the one playing and the title is
-    /// known — otherwise a space, which occupies the line without claiming
-    /// anything.
+    /// known — otherwise EMPTY. Not a space: whether a lone space keeps its
+    /// line box is a rendering detail, and the reservation must not depend on
+    /// one. `reservesSpace` states the metric outright.
     private var text: String {
         guard coordinator.activeItem?.id == stationID,
-              let line = coordinator.viewModel?.icyDisplayLine else { return " " }
+              let line = coordinator.viewModel?.icyDisplayLine else { return "" }
         return line
     }
 
@@ -419,12 +432,12 @@ private struct RadioCardNowPlayingLeaf: View {
                 Text(verbatim: text)
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
+                    .lineLimit(1, reservesSpace: true)
             case .tile:
                 Text(verbatim: text)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(1, reservesSpace: true)
                     // P16a: inherit the TILE's width instead of pinning the
                     // default one — the row decides the metric now.
                     .frame(maxWidth: .infinity, alignment: .leading)
