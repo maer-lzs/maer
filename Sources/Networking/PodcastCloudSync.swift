@@ -140,14 +140,21 @@ final class PodcastCloudSync {
             // survives from EITHER side. A device on an older build writes
             // two-value marks with a fresh timestamp — without this it would
             // wipe the reference point on every reconcile, silently.
+            // The FORM travels exactly like the duration: the winner brings its
+            // own if it has one, otherwise the other side's survives. Without
+            // passing it the merge would rebuild the entry from the LOSING
+            // side and the form would never leave this device — measured, not
+            // assumed (StartedFormAcrossDevicesTests).
             if cts > lts, let c = cloud[id] {
                 toLocal[id] = ProgressMark.advancing(local[id], position: c[0],
                                                      duration: ProgressMark.markedDuration(c) ?? 0,
-                                                     nowMs: c[1])
+                                                     nowMs: c[1],
+                                                     form: ProgressMark.markedForm(c))
             } else if lts > cts, let l = local[id] {
                 toCloud[id] = ProgressMark.advancing(cloud[id], position: l[0],
                                                      duration: ProgressMark.markedDuration(l) ?? 0,
-                                                     nowMs: l[1])
+                                                     nowMs: l[1],
+                                                     form: ProgressMark.markedForm(l))
             }
         }
         return (toLocal, toCloud)
@@ -171,12 +178,14 @@ final class PodcastCloudSync {
             if local == nil { return .pushTombstone }
             return .adoptCloud(ProgressMark.advancing(local, position: c[0],
                                                       duration: ProgressMark.markedDuration(c) ?? 0,
-                                                      nowMs: c[1]))
+                                                      nowMs: c[1],
+                                                      form: ProgressMark.markedForm(c)))
         }
         if lts > cts, let l = local {
             return .pushLocal(ProgressMark.advancing(cloud, position: l[0],
                                                      duration: ProgressMark.markedDuration(l) ?? 0,
-                                                     nowMs: l[1]))
+                                                     nowMs: l[1],
+                                                     form: ProgressMark.markedForm(l)))
         }
         return .none
     }

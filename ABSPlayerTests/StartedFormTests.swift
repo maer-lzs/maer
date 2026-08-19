@@ -146,4 +146,47 @@ struct StartedFormTests {
                 "die Klassen-Regel gilt weiter: ein Live-Strom schreibt keinen Stand")
     }
 }
+
+/// the reviewer's Messfrage: was passiert mit der Form, wenn ein Geraet noch auf altem
+/// Stand ist und Dreiwert-Eintraege schreibt? Fuer the owner ist genau das der
+/// Alltag — iPhone aktualisiert, iPad noch nicht.
+struct StartedFormAcrossDevicesTests {
+
+    private let old: Double = 1_760_000_000_000
+    private let new: Double = 1_760_000_100_000
+
+    @Test("das Altgeraet gewinnt: die Form des neuen Eintrags ueberlebt lokal")
+    func oldDeviceWinsButFormSurvivesLocally() {
+        // Lokal: neuer Bau, mit Form. Wolke: Altgeraet, drei Werte, juenger.
+        let local = ["rss:a:1": ProgressMark.entry(position: 10, duration: 300,
+                                                  nowMs: old, form: .album)]
+        let cloud: [String: [Double]] = ["rss:a:1": [200, new, 300]]
+        let out = PodcastCloudSync.merge(local: local, cloud: cloud)
+        let written = out.toLocal["rss:a:1"]
+        #expect(written?[0] == 200, "die Position des Gewinners kommt an")
+        #expect(ProgressMark.markedForm(written ?? []) == .album,
+                "die Form ueberlebt aus dem vorhandenen Eintrag — wie die Dauer")
+    }
+
+    @Test("das neue Geraet gewinnt: die Form muss MITREISEN, sonst kommt sie nie an")
+    func newDeviceWinsAndTheFormMustTravel() {
+        // Lokal: neuer Bau, mit Form, juenger. Wolke: Altgeraet, drei Werte.
+        let local = ["rss:a:1": ProgressMark.entry(position: 200, duration: 300,
+                                                  nowMs: new, form: .album)]
+        let cloud: [String: [Double]] = ["rss:a:1": [10, old, 300]]
+        let out = PodcastCloudSync.merge(local: local, cloud: cloud)
+        let pushed = out.toCloud["rss:a:1"]
+        #expect(pushed?[0] == 200)
+        #expect(ProgressMark.markedForm(pushed ?? []) == .album,
+                "ohne das erreicht die Form NIE ein zweites Geraet")
+    }
+
+    @Test("gar kein Eintrag in der Wolke: die Form reist trotzdem mit")
+    func formTravelsWhenTheCloudKnowsNothing() {
+        let local = ["lva:track": ProgressMark.entry(position: 90, duration: 0,
+                                                    nowMs: new, form: .album)]
+        let out = PodcastCloudSync.merge(local: local, cloud: [:])
+        #expect(ProgressMark.markedForm(out.toCloud["lva:track"] ?? []) == .album)
+    }
+}
 #endif
