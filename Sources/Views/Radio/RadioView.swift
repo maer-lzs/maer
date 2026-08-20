@@ -297,7 +297,27 @@ struct RadioView: View {
                         RadioLogoReport.rows(stations: shown,
                                              chainResults: RadioLogoService.storedOutcomes(),
                                              now: Date().timeIntervalSince1970))
-                    UIPasteboard.general.string = base
+                    // 52af077 (GT R1): the missing listening time needs a
+                    // MEASUREMENT, not a guess — the report answers the reviewer's two
+                    // questions per card: does the store hold >= 3600 s for
+                    // this id, and what does the card's line rule decide?
+                    let seconds = ListeningStatsStore.shared.radioSeconds()
+                    var hoursBlock = "\n\nMEINE SENDER (Hoerzeit-Verdrahtung):\n"
+                    for station in myStations.prefix(8) {
+                        let s = seconds[station.id] ?? 0
+                        let line = RadioMyStations.cardLine(isRunning: false,
+                                                            runningLine: nil, seconds: s)
+                        let verdict: String
+                        switch line {
+                        case .listened(let hours): verdict = "zeigt \(hours) Std."
+                        case .none: verdict = "zeigt nichts (unter der Stunde)"
+                        case .running: verdict = "-"
+                        }
+                        hoursBlock += "  \(station.name.prefix(28)): id=\(station.id.suffix(12)) sek=\(s) → \(verdict)\n"
+                    }
+                    hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
+                        + "Summe \(seconds.values.reduce(0, +)) s\n"
+                    UIPasteboard.general.string = base + hoursBlock
                     copiedLogoReport = true
                     // The display half needs to LOAD, so it lands a moment
                     // later — the summary above is already in the clipboard,
@@ -324,7 +344,7 @@ struct RadioView: View {
                                 pixels: image == nil ? "—" : "\(width)x\(height)",
                                 verdict: verdict))
                         }
-                        UIPasteboard.general.string = base + RadioLogoReport.loadedText(loaded)
+                        UIPasteboard.general.string = base + hoursBlock + RadioLogoReport.loadedText(loaded)
                     }
                 } label: {
                     Label {

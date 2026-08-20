@@ -628,6 +628,34 @@ unveraendert die live-verifizierten; (4) **eine Logik fuer alle Flaechen** —
 Podcasts-Tab UND Start ziehen durch `CatalogMix.hoerspieleTiles`, beide zeigen
 DENSELBEN Session-Mix (ein Seed, kein je-Flaeche-Zufall).
 
+### GT-R1-Funde: Tabelle vor Speicher, LIVE nur wenn wahr (52af077/9c7cad0)
+
+**Der Karten-Schriftzug (DLF) war KEIN eigener Karten-Pfad** — Karte und Kachel
+fragen dieselbe Kette. Der Fehler sass in `logoURL`: der PERSISTIERTE
+Positivtreffer wurde VOR der Kette gefragt, und ein Positiv laeuft nie ab — die
+Kette (deren Stufe 0 die kuratierte Tabelle ist) lief fuer einmal aufgeloeste
+Sender nie wieder. **Jeder Tabellen-Update erreichte nur Sender ohne
+gespeichertes Ergebnis.** the owner's Handprobe (Bild-Cache geleert → Schriftzug
+kommt frisch zurueck) passt exakt: die URL-Ebene entschied, nicht die
+Bild-Ebene. Fix: **die kuratierte Tabelle wird VOR dem Speicher gefragt** — sie
+ist lokal, ein Dictionary-Lookup, kein Netz. Damit erreicht jeder kuenftige
+Tabellen-Update sofort ALLE Flaechen, ohne Migration und ohne
+Generation-Invalidierung. Log `RADIO logo source=curated-table` beim ersten
+Griff je Sitzung.
+
+**Statisches LIVE entfernt:** die Meine-Sender-Karte trug die `LiveBadge` HART
+— beide Karten sagten „LIVE", waehrend ein HOERBUCH lief. Auf dieser Flaeche
+liest sich das als „laeuft gerade" und ist eine Falschaussage. Die Badge lebt
+jetzt IM running-Zustand der Karten-Zeile (cb2d1ed-Tabelle woertlich:
+„Sender spielt → Live-Marke + laufende Sendung") — eine Zeile, feste Hoehe,
+Badge genau dann, wenn sie wahr ist.
+
+**Hoerzeit „fehlt": gemessen statt geraten** — die Logo-Diagnose traegt jetzt
+einen Meine-Sender-Block (je Karte: id, Sekunden aus dem Store, Urteil der
+Zeilen-Regel; dazu Topf-Summe). the owner kopiert einmal, dann ist entschieden,
+ob der Store < 3600 s hat (Ehrlichkeitsregel arbeitet korrekt) oder die
+Verdrahtung reisst.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

@@ -322,7 +322,12 @@ struct RadioFeaturedCard: View {
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack(spacing: 6) {
-                        LiveBadge()
+                        // 52af077 (GT R1): NO static LIVE. On a "My Stations"
+                        // card the badge reads as "this is playing right now" —
+                        // and both cards carried it while an audiobook ran. The
+                        // badge lives in the card LINE's running state instead
+                        // (the cb2d1ed table: "playing → LIVE + running show"),
+                        // so it appears exactly when it is true.
                         if isFavorite {
                             Image(systemName: "star.fill")
                                 .font(.caption2)
@@ -399,7 +404,7 @@ private struct RadioCardNowPlayingLeaf: View {
         // the owner named the mechanism more precisely than the symptom: "we
         // GET NEW INFO at the moment we click." The content arrives seconds
         // after the tap, so the geometry must already be final before it does.
-        Line(text: text, host: host)
+        Line(text: text, host: host, isRunning: isRunning)
             // The measurement needs to know whether the line it is about ever
             // ARRIVED — a case that cannot observe the mechanism must say so
             // instead of passing quietly.
@@ -427,6 +432,15 @@ private struct RadioCardNowPlayingLeaf: View {
         }
     }
 
+    /// Whether THIS station is the one playing — the badge's one condition.
+    private var isRunning: Bool {
+        if case .running = RadioMyStations.cardLine(
+            isRunning: coordinator.activeItem?.id == stationID,
+            runningLine: coordinator.nowPlayingLine,
+            seconds: listenedSeconds) { return true }
+        return false
+    }
+
     /// "3 Std." — the measured time, rounded down to full hours (the floor
     /// already guarantees at least one).
     private static func listenedLabel(hours: Int) -> String {
@@ -440,11 +454,19 @@ private struct RadioCardNowPlayingLeaf: View {
         let text: String
         let host: Host
 
+        let isRunning: Bool
+
         var body: some View {
-            Text(verbatim: text)
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.85))
-                .lineLimit(1, reservesSpace: true)
+            // ONE line, fixed height, whatever the state — the badge rides
+            // INSIDE the line (52af077: a static LIVE outside it was a false
+            // statement while an audiobook played).
+            HStack(spacing: 6) {
+                if isRunning { LiveBadge() }
+                Text(verbatim: text)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1, reservesSpace: true)
+            }
         }
     }
 }

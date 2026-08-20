@@ -292,6 +292,29 @@ actor RadioLogoService {
 
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
+        // 9c7cad0: the curated table comes BEFORE every stored result.
+        //
+        // Measured on the owner's device: the DLF card kept the wordmark on a
+        // build whose table carries the 1:1 mark — and clearing the IMAGE
+        // cache brought the wordmark back, freshly fetched. The reason was
+        // this method's order: a persisted positive never expires, so the
+        // chain (whose stage 0 asks the table) never ran again for a station
+        // that resolved once. Every table update reached only stations
+        // without a stored result.
+        //
+        // The table is local data — one dictionary lookup, no network, no
+        // budget. Asking it FIRST costs nothing and makes every future table
+        // update reach every surface immediately, with no migration and no
+        // stored generation to invalidate.
+        if let file = RadioLogoData.commonsFile(forName: name),
+           let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: file,
+                                                            width: Self.commonsWidth) {
+            if cache[stationID] != .some(thumb) {
+                Logger.library.notice("RADIO logo source=curated-table for \(name, privacy: .public)")
+            }
+            cache[stationID] = thumb
+            return thumb
+        }
         if let cached = cache[stationID] { return cached }
         if let running = inFlight[stationID] { return await running.value }
         guard AppStorageKeys.radioLogoChainEnabledValue else { return nil }
