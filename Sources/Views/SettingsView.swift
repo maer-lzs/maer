@@ -185,15 +185,21 @@ struct SettingsView: View {
     // MARK: - Pill-Tabs
 
     private var pillTabs: some View {
-        // 653485f (the owner): ONE line, always — "In zwei Reihen ist nicht gut."
-        // Scrolling, hyphenation, truncation and stacking are all ruled out;
-        // the one means left is shrinking EVENLY. Same form as the tab bar,
-        // which proves it works: it carries the same five titles PLUS the
-        // search capsule in one line, and these chips have more width than
-        // that. The row is ONE candidate per size — all chips always share it.
-        ViewThatFits(in: .horizontal) {
+        // 653485f: ONE line, always — same ViewThatFits form as the tab bar.
+        //
+        // cd2b3be: and the same bomb with another fuse, defused the same way.
+        // ViewThatFits measures candidates on SwiftUI's AsyncRenderer; a
+        // closure capturing `self` (MainActor by project default) traps there.
+        // Plain copies here, data-only candidates below.
+        let tabs = visibleTabs
+        let active = tab
+        let select: (Tab) -> Void = { chosen in
+            withAnimation(.snappy(duration: 0.2)) { tab = chosen }
+        }
+        return ViewThatFits(in: .horizontal) {
             ForEach(Self.chipFontSizes, id: \.self) { size in
-                chipRow(fontSize: size)
+                ChipRowCandidate(tabs: tabs, active: active,
+                                 fontSize: size, select: select)
             }
         }
         .frame(maxWidth: .infinity)
@@ -209,33 +215,42 @@ struct SettingsView: View {
     /// number, not before, and not with a silent second line as the escape.
     private static let chipFontSizes: [CGFloat] = [15, 14, 13, 12, 11]
 
-    private func chipRow(fontSize: CGFloat) -> some View {
-        HStack(spacing: 8) {
-            ForEach(visibleTabs) { t in
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { tab = t }
-                } label: {
-                    Text(t.label)
-                        .font(.system(size: fontSize, weight: .medium))
-                        // Whole or not at all — this is what lets ViewThatFits
-                        // see that a candidate does not fit (without it,
-                        // SwiftUI truncates silently; the 85a7c00 lesson).
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        // 98c621f: the ONE capsule metric, shared with the tab
-                        // bar. 2b5896d: active and inactive share EVERY measure
-                        // — colour carries the state, never the size.
-                        .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
-                        .padding(.horizontal, 16)
-                        .foregroundStyle(tab == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
-                        .background(
-                            tab == t ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.quaternary),
-                            in: Capsule()
-                        )
+    /// One candidate row of PLAIN data (cd2b3be) — construction during
+    /// measurement touches nothing isolated.
+    private struct ChipRowCandidate: View {
+        let tabs: [Tab]
+        let active: Tab
+        let fontSize: CGFloat
+        let select: (Tab) -> Void
+
+        var body: some View {
+            HStack(spacing: 8) {
+                ForEach(tabs) { t in
+                    Button {
+                        select(t)
+                    } label: {
+                        Text(t.label)
+                            .font(.system(size: fontSize, weight: .medium))
+                            // Whole or not at all — this is what lets
+                            // ViewThatFits see that a candidate does not fit
+                            // (without it, SwiftUI truncates silently).
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            // 98c621f: the ONE capsule metric, shared with the
+                            // tab bar. 2b5896d: active and inactive share EVERY
+                            // measure — colour carries the state, never size.
+                            .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
+                            .padding(.horizontal, 16)
+                            .foregroundStyle(active == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+                            .background(
+                                active == t ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.quaternary),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    // Locale-independent handle for the UI-test harness.
+                    .accessibilityIdentifier("settings-tab-\(t.rawValue)")
                 }
-                .buttonStyle(.plain)
-                // Locale-independent handle for the UI-test harness.
-                .accessibilityIdentifier("settings-tab-\(t.rawValue)")
             }
         }
     }

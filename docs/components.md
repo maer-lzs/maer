@@ -674,6 +674,36 @@ keinen Grund. Luminanz je Sender im NSCache (32×32-Probe einmal, nicht je
 Redraw). Vorher/Nachher-Bild derselben Reihe liegt im Kanal — **the owner
 entscheidet am Bild**, ob der Deckel sitzt oder weiter runter soll.
 
+### 🔴 Crash cd2b3be: MainActor-Capture in ViewThatFits-Mess-Closures (Regression aus der Leisten-Nacht)
+
+the owner's .ips-Stacks (zweimal in 12 s, identische Signatur): SwiftUIs
+**AsyncRenderer** (Hintergrund-Thread) wertet waehrend der ViewThatFits-Messung
+(`SizeFittingLayoutComputer`) die ForEach-Closure in `MediaTabBar.row` aus —
+die Closure capturte `self` (View-Typ ist per Projekt-Default MainActor), die
+Isolationspruefung schlaegt an, `dispatch_assert_queue_fail`, Trap. **Der
+Karten-Tipp war nur der Ausloeser des Render-Passes, nie die Ursache** —
+deshalb intermittierend (wann SwiftUI off-main misst, ist Timing) und deshalb
+am Simulator nie getroffen. **WELCHER Zugriff (the reviewer's Frage):** das self-Capture
+der Content-Closures selbst — `types`/`selected`/`dynamicTypeSize`/`pillNS`
+und der Aufruf `row(labelSize:)` als MainActor-Methode; jeder einzelne genuegt,
+der Check feuert am Closure-Eintritt. Dieselbe Klasse wie Y32/
+`AppTheme.accentUIColor`, eine Ebene hoeher — die Lehre stand woertlich im
+Repo-Kommentar.
+
+**Fix (the reviewer's Richtung woertlich):** Werte VORHER auf dem Main-Thread als
+schlichte Kopien fangen; die Kandidaten sind eigene Structs aus REINEN DATEN
+(`TabRowCandidate`, `ChipRowCandidate`) — waehrend der Messung wird nur noch
+konstruiert, nie auf Isoliertes gegriffen; die bodies laufen regulaer auf main.
+**Beide Zuender entschaerft:** Tab-Leiste UND Einstellungs-Reiter (dieselbe
+Bombe, 01681ad). Verhalten unveraendert (beide Leisten-Journeys gruen:
+Titel-Groessen, Leistenhoehe 5/5). Der Absturz selbst ist am Simulator nicht
+reproduzierbar (Timing des Async-Passes) — der Beweis ist strukturell (kein
+isoliertes Capture mehr im Mess-Pfad) plus the owner's Zuender-Rezept am Geraet.
+
+**REGEL fuer jede kuenftige ViewThatFits-/Layout-Mess-Closure:** sie darf
+NICHTS von self fangen — nur lokale Kopien. Ein View-Typ unter
+Default-MainActor macht jedes self-Capture zur Bombe mit Timing-Zuender.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

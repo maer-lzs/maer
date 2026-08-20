@@ -62,21 +62,29 @@ struct MediaTabBar: View {
 
     var body: some View {
         // 85a7c00: NO arithmetic about the available width — SwiftUI measures.
+        // `ViewThatFits` offers the row at descending sizes and takes the
+        // first that fits WHOLE (one size for all labels, no truncation, no
+        // number that can drift from the truth).
         //
-        // The computed scale was wrong twice in one night: first it left the
-        // longest title alone (per-label shrinking), then it CUT IT OFF
-        // ("Hörbüch…") because my estimate of a cell's width did not match the
-        // real one — the bar shares its row with the search capsule, which my
-        // formula knew nothing about. Every fix built on that estimate inherits
-        // its error, and the second one was worse than the defect it replaced.
-        //
-        // `ViewThatFits` asks the LAYOUT instead: offer the row at descending
-        // sizes and take the first that fits WHOLE. One size for all labels
-        // (the row is one candidate, not five), no truncation, and no number
-        // that can drift away from the truth.
+        // cd2b3be (the owner's crash, twice in 12 s): everything inside these
+        // closures is evaluated during the MEASUREMENT — and SwiftUI measures
+        // on its AsyncRenderer, a background thread. A closure that captures
+        // `self` (this View type is MainActor by project default) trips the
+        // isolation check there and TRAPS (`dispatch_assert_queue_fail`).
+        // The card tap was only the trigger of the render pass, never the
+        // cause. Same class as Y32/`AppTheme.accentUIColor`, one layer up —
+        // so the candidates are built from PLAIN COPIES taken here, and the
+        // closures touch data only, never self.
+        let types = self.types
+        let selected = self.selected
+        let hideLabels = dynamicTypeSize.isAccessibilitySize
+        let namespace = pillNS
+        let onSelect = self.onSelect
         ViewThatFits(in: .horizontal) {
             ForEach(Self.labelSizes, id: \.self) { size in
-                row(labelSize: size)
+                TabRowCandidate(types: types, selected: selected,
+                                labelSize: size, hideLabels: hideLabels,
+                                namespace: namespace, onSelect: onSelect)
             }
         }
         .animation(.snappy(duration: 0.3), value: selected)
@@ -87,9 +95,26 @@ struct MediaTabBar: View {
             shape: Capsule(), tier: .glass,
             morphID: glassMorphID, morphNamespace: glassMorphNamespace))
     }
+}
 
-    /// The row at ONE label size — the unit `ViewThatFits` chooses between.
-    private func row(labelSize: CGFloat) -> some View {
+/// One row candidate for `ViewThatFits` — a value of PLAIN data, so building
+/// it inside the measurement closures touches nothing MainActor-isolated
+/// (cd2b3be). Its `body` runs on the main actor as usual; only the
+/// CONSTRUCTION happens during measurement.
+private struct TabRowCandidate: View {
+    let types: [MediaType]
+    let selected: MediaType
+    let labelSize: CGFloat
+    let hideLabels: Bool
+    let namespace: Namespace.ID
+    let onSelect: (MediaType) -> Void
+
+    /// e053f53 mirror — kept in sync with `MediaTabBar.pillGap` via the
+    /// shared constant there.
+    private static let pillGap: CGFloat = 5
+    private static let cellSpacing: CGFloat = 4
+
+    var body: some View {
         HStack(spacing: Self.cellSpacing) {
             ForEach(types) { type in
                 Button {
@@ -98,7 +123,7 @@ struct MediaTabBar: View {
                     VStack(spacing: 2) {
                         Image(systemName: type.systemImage)
                             .font(.system(size: 17, weight: .semibold))
-                        if !dynamicTypeSize.isAccessibilitySize {
+                        if !hideLabels {
                             Text(type.label)
                                 .font(.system(size: labelSize))
                                 // Whole or not at all: a cut-off word is a
@@ -129,7 +154,7 @@ struct MediaTabBar: View {
                         if selected == type {
                             Capsule()
                                 .fill(type.tint.opacity(0.16))
-                                .matchedGeometryEffect(id: "activeTabPill", in: pillNS)
+                                .matchedGeometryEffect(id: "activeTabPill", in: namespace)
                                 .padding(.vertical, Self.pillGap)
                         }
                     }
