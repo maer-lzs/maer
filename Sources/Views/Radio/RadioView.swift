@@ -135,11 +135,13 @@ struct RadioView: View {
                                          destination: .myStations,
                                          total: myStationsTotal)
                 }
-                if let recent = recents.first {
-                    // Standard-Kachel und bewusst KLEIN — sie trägt auch keine
-                    // Sendungszeile: bei einem Sender, der nicht mehr läuft,
-                    // wäre sie ohnehin veraltet.
-                    cardRow(title: String(localized: "Recently Played"), stations: [recent])
+                if !recents.isEmpty {
+                    // the owner's correction to cb2d1ed ("Zuletzt gespielt ist
+                    // eine Kachelreihe"): the whole recent list, as the plain
+                    // tile row — not the single last station. Deliberately
+                    // small, and it carries NO show line: for a station that
+                    // is no longer running it would be stale anyway.
+                    cardRow(title: String(localized: "Recently Played"), stations: recents)
                 }
                 if showsPopular {
                     VStack(alignment: .leading, spacing: 4) {
