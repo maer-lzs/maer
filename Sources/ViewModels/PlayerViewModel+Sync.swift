@@ -118,7 +118,18 @@ extension PlayerViewModel {
                     item.id, position: currentTime,
                     atMs: Date().timeIntervalSince1970 * 1000)
                 ListeningStore.clearBackup(item.id)
-            } else {
+            } else if SyncRules.mayWritePodcastLocalState(playedSinceLoad: eventSinceLoad,
+                                                           deliberateRestart: false,
+                                                           deliberateSeek: false) {
+                // 8b71fd7: this branch is gated on an EVENT since load. The
+                // restore flush used to run through here and re-stamped the
+                // RESTORED position with a fresh timestamp, locally and to
+                // gpodder — the reviver that beat the owner's finished mark
+                // twice. Restoring is loading, not listening: a merely-loaded
+                // episode writes nothing. (restart and deliberate seeks set
+                // the flag before they arrive here, so both still write —
+                // their flush is the user acting.)
+                //
                 // The duration travels along as the third value: at the
                 // natural end `currentTime == duration`, and without that
                 // reference a later-grown ad duration would show the

@@ -397,12 +397,21 @@ final class GPodderSync {
         guard let config,
               let found = PodcastSubscriptions.shared.episode(guid: rssItemId) else { return }
         let total = duration > 0 ? duration : found.episode.duration
+        // 8b71fd7: the action carries the EVENT's timestamp (the stored
+        // entry's), not the push moment. The batch push further down has
+        // always done it this way; this single push was the exception — and a
+        // push-time stamp is how old knowledge travels dressed as new: any
+        // re-push of an old position would outvote a younger finished mark on
+        // every other device. During real playback the entry was written
+        // moments ago, so nothing changes there.
+        let entryTs = ListeningStore.backup(rssItemId).flatMap { $0.count >= 2 ? $0[1] : nil }
+            ?? Date().timeIntervalSince1970 * 1000
         let action: [String: Any] = [
             "podcast": found.show.feedURL,
             "episode": found.episode.audioURL,
             "device": config.deviceId,
             "action": "play",
-            "timestamp": Self.isoTimestamp(Date().timeIntervalSince1970 * 1000),
+            "timestamp": Self.isoTimestamp(entryTs),
             "started": 0,
             "position": Int(position),
             "total": Int(total)

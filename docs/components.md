@@ -571,6 +571,42 @@ Unsinns-Logos, vorher wie nachher. Sie schaden nicht (kein Sender heisst so), ab
 sie verfaelschen den Nenner der Quote. Gemeldet statt blind gefiltert: welche
 Tabelle sie liefert, muss man wissen, bevor man kuerzt.
 
+### Der Wiederbeleber (8b71fd7): die Restaurierung ist ein Zeuge des Ladens, nicht des Hoerens
+
+the owner's Rest-is-History-Folge kam ZWEIMAL nach fertig zurueck (Fertighoeren +
+Hand-Markierung). Mechanismus, am Code belegt: `restoredFromLocal` flushte den
+RESTAURIERTEN Stand sofort (`syncProgress(force: true)` beim Laden) — Position
+21:09 wurde mit FRISCHEM Zeitstempel geschrieben, lokal (`ListeningStore.record`
+mit `Date()`) UND zu gpodder (`pushSingle` stempelte die PUSH-Zeit, waehrend der
+Batch-Push schon immer die Ereignis-Zeit stempelt). Jeder App-Start eines
+Geraets, das die Folge noch geladen hielt, verjuengte so den alten Stand — und
+eine frisch gestempelte alte Position ueberstimmt die juengere Fertig-Markierung
+bei jedem Abgleich (Adoption: `tsMs > localTs`). Kein Einmal-Verlust, ein
+Wiederholungstaeter — und „vor 24 Sekunden" auf der Kachel war exakt dieser
+Restore-Flush nach dem Tipp.
+
+**Fix, zwei Schichten:** (1) `SyncRules.mayWritePodcastLocalState` — der
+Podcast-Schreibzweig in `performSync` laeuft nur nach einem EREIGNIS seit dem
+Laden (`eventSinceLoad`: play() · bewusster Restart · bewusster Seek). Eine bloss
+geladene Folge schreibt NICHTS. Buecher unberuehrt (deren Crash-Backup-Flush
+haengt am Server-Write, nicht an record). (2) `pushSingle` stempelt die
+EREIGNIS-Zeit des gespeicherten Eintrags, konsistent mit dem Batch — ein
+Push-Zeit-Stempel ist der Weg, auf dem altes Wissen als neues reist (dieselbe
+Falle, die `ProgressMark.advancing` fuer die DAUER schon dokumentiert; fuer die
+POSITION war sie nie geschlossen). Bestand heilt sich selbst: nach EINEM neuen
+Fertig-Markieren ist die lokale Markierung juenger als das letzte Server-Echo.
+
+**Winterfell-Klasse, dritte Instanz:** geflushter Push-Zeuge (Buecher) · Player
+als Zeuge (These, widerlegt) · Restore-Flush (Podcasts). Immer dieselbe Form:
+eine Quelle beantwortet eine Frage, die ihr nicht gehoert.
+
+**Offen dazu:** der CRASH beim Tipp auf die Kachel ist hiermit NICHT erklaert —
+er braucht den Geraete-Report (Einstellungen → Datenschutz → Analyse →
+ABSPlayer-*.ips) oder eine Feed-Repro; nichts davon ist am Simulator geraten
+worden. Und die gpodder-Aktionsliste des Servers (the reviewer's Messauflage „beide
+Seiten") konnte von hier nicht gelesen werden — der Mechanismus ist stattdessen
+am Code belegt und durch die Zwei-Wege-Rueckkehr bei the owner gedeckt.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

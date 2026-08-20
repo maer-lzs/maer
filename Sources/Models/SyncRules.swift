@@ -12,6 +12,30 @@ import Foundation
 /// default MainActor isolation.
 nonisolated enum SyncRules {
 
+    /// 8b71fd7: may the player write a podcast's LOCAL state (localPosition +
+    /// gpodder push)?
+    ///
+    /// The reviver, measured on the owner's "Rest is History" episode: restoring
+    /// a loaded episode flushed the RESTORED state immediately — position
+    /// 21:09 written with a FRESH timestamp, locally and to gpodder, on every
+    /// app start of whichever device still held the episode. The finished
+    /// mark (both roads: listening to the end AND marking by hand) was made
+    /// on another pass, so the freshly-stamped old position outvoted it on
+    /// every sync — twice, which is what turned "a mark got lost" into "a
+    /// reviver keeps striking".
+    ///
+    /// The rule is the Winterfell rule, one layer up: **the restore is a
+    /// witness of LOADING, not of LISTENING.** A state may only be written
+    /// when something actually happened — playback, a deliberate restart, or
+    /// a deliberate seek. Merely holding an episode in the player is not an
+    /// event, and writing it re-stamps old knowledge as new.
+    static func mayWritePodcastLocalState(playedSinceLoad: Bool,
+                                          deliberateRestart: Bool,
+                                          deliberateSeek: Bool) -> Bool {
+        playedSinceLoad || deliberateRestart || deliberateSeek
+    }
+
+
     /// GT 09.08.: „finished" is DERIVED from the position, at exactly one
     /// place. That is what makes „mark as heard" safe on a running item:
     /// `finalizeAsFinished()` moves the position to the end, so the stop's

@@ -113,6 +113,11 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Absolute position in the WHOLE book, in seconds — regardless of whether
     /// the book consists of a single M4B file or several tracks.
     @Published var currentTime: Double = 0
+    /// 8b71fd7: whether anything HAPPENED since this item was loaded —
+    /// playback, a deliberate restart, or a deliberate seek. The restore
+    /// flush reads it: a merely-loaded episode must not re-stamp its old
+    /// position as new (the reviver).
+    var eventSinceLoad = false
     @Published var duration: Double = 0
     @Published var chapters: [ABSChapter] = []
     @Published var currentChapter: ABSChapter?
@@ -397,6 +402,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   intended backward jump. Makes "replay a finished episode" reliable for
     ///   every source, not just feeds without server progress.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
+        // 8b71fd7: a fresh load starts with NO event — restoring is loading,
+        // not listening. A deliberate restart is the user acting, so it counts.
+        eventSinceLoad = restart
         self.item = item
         let sortedTracks = (item.media.tracks ?? []).enumerated().sorted { l, r in
             // Stable: fall back to the original position when the server
@@ -752,6 +760,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Playback
 
     func play() {
+        // 8b71fd7: playback is an EVENT — from here on the sync path may
+        // write this item's local state.
+        eventSinceLoad = true
         activateAudioSession()
         applySmartRewindIfNeeded()
         // In case a sleep fade was interrupted mid-way: full volume.
@@ -846,6 +857,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             // A DELIBERATE jump picks a new position — Smart Rewind must not
             // pull away from it when playback resumes after a long pause.
             pausedAt = nil
+            eventSinceLoad = true
             suppressConflictForNextSync = true
             await syncProgress(force: true)
         }
