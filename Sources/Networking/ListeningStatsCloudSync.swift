@@ -46,15 +46,11 @@ final class ListeningStatsCloudSync {
     }
 
     private func handle(reason: Int?) {
-        // The silent failure this project cannot afford: when the shared 1 MB
-        // is exhausted, iCloud stops accepting writes and reports it ONLY
-        // through this reason code — no error at any call site. Without this
-        // line, "sync quietly stopped" looks exactly like "nothing changed",
-        // and two devices drift apart for weeks before anyone notices.
-        if reason == NSUbiquitousKeyValueStoreQuotaViolationChange {
-            Logger.library.error("iCloud key-value quota exceeded — progress, playlists and stats stop syncing until space is freed")
-            AppStorageKeys.noteCloudQuotaViolation()
-        }
+        // beff8bd: the reason goes through the ONE watch — the check used to
+        // live here, which made its coverage narrower than its purpose (this
+        // service bails out when the iCloud switch is off, while the three
+        // other cloud paths never looked at the reason at all).
+        CloudQuotaWatch.note(reason: reason)
         ListeningStatsStore.shared.cloudChanged()
     }
 

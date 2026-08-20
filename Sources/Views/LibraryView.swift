@@ -511,6 +511,12 @@ struct LibraryView: View {
             // Check whether the ABS server has podcast libraries → the podcast tab
             // appears even without local RSS subscriptions (1 request, no full load).
             await AppSession.shared.absPodcastProvider.refreshAvailability()
+            // beff8bd: the quota watch stands BEFORE the services and does not
+            // depend on any of them — it is the one place that asks why the
+            // key-value store changed, and the case worth catching (the
+            // channel fills because podcastProgress fills it) must not hang on
+            // a service that may be switched off.
+            CloudQuotaWatch.shared.start()
             // Reconcile podcast progress via iCloud (across devices).
             PodcastCloudSync.shared.start()
             ListeningStatsStore.shared.start()

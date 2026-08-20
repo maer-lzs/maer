@@ -34,6 +34,14 @@ import urllib.request
 UA = "Maer-radio-logo-data/1.0 (https://git.lschroeder.eu/the-owner/maer)"
 MIN_SIDE = 48          # RadioFaviconGate.touchIconMinSide
 COMMONS_WIDTH = 800    # RadioLogoService.commonsWidth
+# 87c77c4: die KACHEL ist quadratisch, also will sie eine quadratische
+# Bildmarke; ein Schriftzug ist die Rueckfallebene. Die Regel ist das
+# SEITENVERHAELTNIS, nicht der Sendername — DLF war nur der Melder.
+#   <= MARK_MAX      Bildmarke (rund/quadratisch, fuellt die Kachel)
+#   >  WORDMARK_MIN  Schriftzug (ein Etikett, kein Logo)
+#   dazwischen       Grauzone: brauchbar, aber eine Marke schlaegt sie
+MARK_MAX = 1.6
+WORDMARK_MIN = 3.0
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -50,13 +58,64 @@ def get(url, raw=False, timeout=25):
         return None, "failed"
 
 
-def image_side(data):
+def image_size(data):
     try:
         from PIL import Image
         with Image.open(io.BytesIO(data)) as image:
-            return min(image.size)
+            return image.size
     except Exception:
         return None
+
+
+def image_side(data):
+    size = image_size(data)
+    return min(size) if size else None
+
+
+def aspect(size):
+    """Laengere Seite geteilt durch kuerzere — 1.0 ist quadratisch."""
+    width, height = size
+    if width <= 0 or height <= 0:
+        return None
+    return max(width, height) / min(width, height)
+
+
+def carries_name(name, title):
+    """Traegt der Dateiname den Sendernamen? Die WACHE gegen Fremdbilder.
+
+    Gemessen: ohne sie holt die Verhaeltnis-Regel fuer "Bayern 2" das Logo des
+    FC Bayern, fuer "Bremen NEXT" ein NASA-Foto und fuer "Bremen Eins" das von
+    Marktkauf — die Dateisuche liefert nach RELEVANZ, und der quadratischste
+    Treffer ist oft der unaehnlichste. In 176 geprueften Schriftzuegen hat die
+    Wache 55 Fremdbilder abgewehrt. Ein falsches Logo ist schlimmer als eine
+    Farbkachel."""
+    folded_name, folded_title = fold(name), fold(title)
+    return len(folded_name) >= 4 and folded_name in folded_title
+
+
+def rank(size, name=None, title=None):
+    """Kleiner ist besser: Klasse → wenigster ZUSATZ → Naehe zu 1:1.
+
+    Eine Grauzonen-Datei bleibt brauchbar — sie verliert nur gegen eine echte
+    Marke. So behaelt ein Sender OHNE quadratische Variante seinen Schriftzug,
+    statt gar nichts zu bekommen.
+
+    Der Zusatz entscheidet innerhalb einer FAMILIE: fuer "Deutschlandfunk"
+    liegen "Deutschlandfunk Logo klein.png", "… Kultur Logo klein.png" und
+    "… Nova Logo klein.png" alle bei 1:1 — nur die WENIGSTEN Zusatzzeichen
+    treffen den gemeinten Sender. Ohne dieses Kriterium bekaeme der
+    Deutschlandfunk das Logo von DLF Kultur, gemessen."""
+    ratio = aspect(size)
+    extra = 0
+    if name and title:
+        extra = max(0, len(fold(title)) - len(fold(name)))
+    if ratio is None:
+        return (9, extra, 0)
+    if ratio <= MARK_MAX:
+        return (0, extra, ratio)
+    if ratio <= WORDMARK_MIN:
+        return (1, extra, ratio)
+    return (2, extra, ratio)
 
 
 def fold(raw):
@@ -115,6 +174,22 @@ def commons_file(name):
     payload, verdict = get(url)
     if verdict == "failed":
         return None, "failed"
+    # 87c77c4: NICHT der erste Treffer, sondern der quadratischste. Fuer
+    # Deutschlandfunk liegen "Logo 2017.svg" (676x100, 6.8:1) und
+    # "Logo klein.png" (1920x1920, 1:1) nebeneinander — die Auswahl griff
+    # bisher zur breitesten Variante, weil sie zuerst kam.
+    # ZWEI Stufen, und die Trennung ist der ganze Punkt:
+    #
+    #   * Die Verhaeltnis-Bevorzugung gilt NUR fuer Dateien, die den
+    #     Sendernamen TRAGEN. Ohne diese Wache holt sie Fremdbilder — gemessen:
+    #     das Logo des FC Bayern fuer "Bayern 2", ein NASA-Foto fuer
+    #     "Bremen NEXT", Marktkauf fuer "Bremen Eins".
+    #   * Alles andere bleibt wie bisher: der erste Treffer in RELEVANZ-Ordnung.
+    #     Eine harte Wache haette 48,6 % des Bestands verworfen (der Name
+    #     "105'5 Spreeradio" steht nicht in "Spreeradio-logo.svg", und die Datei
+    #     ist trotzdem richtig) — die Deckung darf nicht sinken, damit ein paar
+    #     Karten quadratischer werden.
+    best_named, first_relevant = None, None
     for hit in (payload or {}).get("query", {}).get("search", []):
         title = hit["title"].replace("File:", "")
         thumb = "https://commons.wikimedia.org/w/thumb.php?" + urllib.parse.urlencode(
@@ -122,11 +197,32 @@ def commons_file(name):
         data, verdict = get(thumb, raw=True)
         if verdict == "failed":
             return None, "failed"
-        side = image_side(data) if data else None
-        if side and side >= MIN_SIDE:
-            return title, "ok"
+        size = image_size(data) if data else None
+        if size and min(size) >= MIN_SIDE:
+            if first_relevant is None:
+                first_relevant = title
+            if carries_name(name, title):
+                score = rank(size, name=name, title=title)
+                if best_named is None or score < best_named[0]:
+                    best_named = (score, title)
         time.sleep(0.2)
-    return None, "ok"
+    # Eine echte Bildmarke mit dem richtigen Namen schlaegt die Relevanz;
+    # sonst bleibt es beim bisherigen Verhalten.
+    if best_named and best_named[0][0] == 0:
+        return best_named[1], "ok"
+    return first_relevant, "ok"
+
+
+def is_wordmark(title):
+    """Ist die Datei ein Schriftzug? Eine Messung, keine Namensregel."""
+    thumb = "https://commons.wikimedia.org/w/thumb.php?" + urllib.parse.urlencode(
+        {"f": title, "width": COMMONS_WIDTH})
+    data, verdict = get(thumb, raw=True)
+    if verdict == "failed" or not data:
+        return False          # unbekannt ist kein Befund — nichts ersetzen
+    size = image_size(data)
+    ratio = aspect(size) if size else None
+    return ratio is not None and ratio > WORDMARK_MIN
 
 
 def swift_file(entries, names, failures):
@@ -186,6 +282,15 @@ def main():
         file_name, verdict = wikidata_file(name)
         if verdict == "failed":
             failures += 1
+        # 87c77c4 Punkt 2: liefert Wikidata einen SCHRIFTZUG, die Dateisuche
+        # aber eine quadratische Marke, gewinnt die Marke — die Flaeche ist
+        # quadratisch, nicht die Datenquelle.
+        if file_name and is_wordmark(file_name):
+            mark, mark_verdict = commons_file(name)
+            if mark_verdict == "failed":
+                failures += 1
+            elif mark and not is_wordmark(mark):
+                file_name = mark
         if not file_name:
             file_name, verdict = commons_file(name)
             if verdict == "failed":

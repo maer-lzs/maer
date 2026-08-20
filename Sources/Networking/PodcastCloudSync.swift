@@ -70,8 +70,14 @@ final class PodcastCloudSync {
         reconcile()
     }
 
-    @objc private nonisolated func cloudChanged() {
-        Task { @MainActor in reconcile() }
+    /// beff8bd: the reason goes through the ONE watch — every observer of this
+    /// notification asks WHY, none re-implements the comparison.
+    @objc private nonisolated func cloudChanged(_ note: Notification) {
+        let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
+        Task { @MainActor in
+            CloudQuotaWatch.note(reason: reason)
+            reconcile()
+        }
     }
 
     /// Merge local podcast positions and the iCloud blob (newest-wins) and bring
