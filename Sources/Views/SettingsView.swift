@@ -185,14 +185,28 @@ struct SettingsView: View {
     // MARK: - Pill-Tabs
 
     private var pillTabs: some View {
-        HStack(spacing: 8) {
+        // b08c719 / 2c0a907: the chips FLOW — one line while they fit (iPad,
+        // landscape, small type), the last one drops to a second line when they
+        // do not. All five stay visible, nothing scrolls, and no word breaks
+        // inside a chip.
+        //
+        // The line count may follow the WIDTH, never the selection: this bar
+        // sits at the very top, and a height that changed on tab switch would
+        // push the whole page down. Active and inactive chips therefore differ
+        // in colour only, never in metric.
+        FlowLayout(spacing: 8, lineSpacing: 8) {
             ForEach(visibleTabs) { t in
                 Button {
                     withAnimation(.snappy(duration: 0.2)) { tab = t }
                 } label: {
                     Text(t.label)
                         .font(.subheadline.weight(.medium))
-                        .padding(.vertical, 7)
+                        // 7fb1cc1: no chip is squeezed and no word is broken —
+                        // one line, and the row wraps instead.
+                        .lineLimit(1)
+                        // 98c621f: the ONE capsule metric, shared with the tab
+                        // bar. Vertical grew, horizontal deliberately did not.
+                        .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                         .padding(.horizontal, 16)
                         .foregroundStyle(tab == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                         .background(

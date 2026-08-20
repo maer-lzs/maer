@@ -44,6 +44,30 @@ struct MediaTabBar: View {
     /// taller pill, bar metrics and morph untouched).
     private static let pillGap: CGFloat = 5
 
+    /// The label size before scaling — `.caption2` at the default size, kept as
+    /// a number so ONE scale can be applied to it.
+    static let baseLabelSize: CGFloat = 11
+    /// Spacing between the cells (the HStack's).
+    private static let cellSpacing: CGFloat = 4
+
+    /// Measured bar width — the uniform scale needs to know what there is.
+    @State private var barWidth: CGFloat = 0
+
+    /// 7fb1cc1: ONE scale for the whole bar, derived from the LONGEST title, so
+    /// every label carries the same size. Floored (`TabBarMetrics.minimumScale`)
+    /// — below that the bar would read smaller than the rest of the interface,
+    /// which is the defect one layer down.
+    private var labelScale: CGFloat {
+        guard barWidth > 0, !types.isEmpty else { return 1 }
+        let font = UIFont.systemFont(ofSize: Self.baseLabelSize)
+        let widths = types.map { TabBarMetrics.labelWidth($0.label, font: font) }
+        let gaps = Self.cellSpacing * CGFloat(types.count - 1) + Self.pillGap * 2
+        let perCell = (barWidth - gaps) / CGFloat(types.count)
+        return TabBarMetrics.uniformScale(
+            labelWidths: widths,
+            available: perCell - TabBarMetrics.Capsule.horizontalPadding * 2)
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(types) { type in
@@ -54,10 +78,16 @@ struct MediaTabBar: View {
                         Image(systemName: type.systemImage)
                             .font(.system(size: 17, weight: .semibold))
                         if !dynamicTypeSize.isAccessibilitySize {
+                            // 7fb1cc1 (the owner): no title is squeezed on its
+                            // own. `minimumScaleFactor` per label made the size
+                            // a property of the WORD — "Radio" big, "Hörbücher"
+                            // small, and the user looks for the reason. One
+                            // size for the whole bar makes it a property of the
+                            // BAR, and that nobody notices, because there is
+                            // nothing to compare it against.
                             Text(type.label)
-                                .font(.caption2)
+                                .font(.system(size: Self.baseLabelSize * labelScale))
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.8)
                         }
                     }
                     // Selected → the type's own tint; unselected → neutral. The
@@ -65,9 +95,12 @@ struct MediaTabBar: View {
                     .foregroundStyle(selected == type ? type.tint : Color.primary)
                     // e053f53: noticeable horizontal air between the label
                     // cluster and the pill edge (vertical stays — bar height).
-                    .padding(.horizontal, 8)
+                    // 98c621f: the ONE capsule metric — horizontal stays,
+                    // vertical is what grew (extra width would take exactly the
+                    // room "Hörbücher" is missing).
+                    .padding(.horizontal, TabBarMetrics.Capsule.horizontalPadding)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                     .background {
                         // N1/N1d: the sliding pill behind the active tab — a
                         // wash of the type tint (neutral at Home), no glass
@@ -91,6 +124,7 @@ struct MediaTabBar: View {
                 .accessibilityIdentifier("tab-\(type.rawValue)")
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
         .animation(.snappy(duration: 0.3), value: selected)
         // N1d: the end padding IS the pill gap — the pill's horizontal distance
         // to the bar's rounded ends equals its vertical inset everywhere.

@@ -150,6 +150,23 @@ struct ABSPlayerApp: App {
                 // App-wide accent color: the dark-gray brand accent (A1)
                 // instead of system blue.
                 .tint(AppTheme.accent)
+                // e9a9b05: switches are the ONE control the brand accent may
+                // not colour. Measured: the grey is not set anywhere — it IS
+                // the accent (anthracite, A1), inherited by every one of the
+                // app's toggles, none of which tints itself. On a switch that
+                // costs the state its readability: "on" and "off" differ by a
+                // brightness nuance and the knob position, and a state
+                // indicator you have to search for is not one.
+                //
+                // A capsule shows a CHOICE among visible alternatives — there
+                // the accent works, because the alternatives calibrate it. A
+                // switch shows a two-valued state with nothing to compare it
+                // to. Different jobs, different means; that is why this stops
+                // at toggles and the tab capsules keep the accent.
+                //
+                // ONE place, not 53: the style rides the environment, so no
+                // call site carries a `.tint` of its own.
+                .toggleStyle(AppSwitchStyle())
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
                 .onChange(of: scenePhase) { _, phase in
@@ -180,6 +197,21 @@ struct ABSPlayerApp: App {
     }
 }
 
+/// e9a9b05: the app's switch style — the SYSTEM switch colour, deliberately
+/// not the brand accent.
+///
+/// Recomposition, not reimplementation: the body hands the configuration back
+/// to the built-in `.switch` style and only sets the tint, so a switch stays a
+/// system switch in every respect that matters (size, animation, VoiceOver,
+/// haptics) and differs in exactly one.
+nonisolated struct AppSwitchStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Toggle(configuration)
+            .toggleStyle(.switch)
+            .tint(AppTheme.switchOn)
+    }
+}
+
 /// Central place for app-wide colors. To change the accent color, adjust it
 /// here.
 enum AppTheme {
@@ -197,6 +229,12 @@ enum AppTheme {
     private static let currentShade: GrayShade = ((0.24, 0.26, 0.29), (0.78, 0.80, 0.83))
 
     static var accent: Color { Color(accentUIColor) }
+
+    /// e9a9b05: the ON colour of every switch. The system green, not the brand
+    /// accent — a switch has to be readable at a glance, and the anthracite
+    /// accent made "on" look like "off" (the owner, with the screenshot: four
+    /// switches, two states, one brightness nuance apart).
+    static var switchOn: Color { Color(UIColor.systemGreen) }
 
     /// The accent as a DYNAMIC UIColor — also for UIKit-backed views (AirPlay
     /// route button): `UIColor(Color)` flattens to one trait at init, this

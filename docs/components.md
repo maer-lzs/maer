@@ -435,6 +435,61 @@ und die ist von hier aus nicht erreichbar. **Kein Haekchen in der Matrix**,
 bevor der Hoerstand am echten Server hin UND zurueck getragen hat — die Tests
 belegen die Abbildung gegen die gemessenen Wire-Antworten, nicht den Server.
 
+### Leisten-Metrik: eine Groesse je Leiste, Kapseln wachsen senkrecht (`59b320e`/`7fb1cc1`/`98c621f`/`2c0a907`)
+
+**Gemessen, und es widerlegt die naheliegende Erklaerung:** die Stauchung war
+UNSERE. `MediaTabBar` trug `.minimumScaleFactor(0.8)` am Label, und SwiftUI
+wendet das JE TEXT an — nur der laengste Titel schrumpft. the owner's eigener
+Messwert (vier Tabs normal, fuenf gestaucht) spricht NICHT fuer die
+System-Tableiste: `minimumScaleFactor` ist kein konstantes Verkleinern, sondern
+eines, das einsetzt, wenn der Text nicht mehr passt. Vier Tabs geben jeder Zelle
+mehr Breite, der fuenfte nimmt sie weg. **Gegenlauf belegt es:** mit dem alten
+Faktor tragen `tab-audiobooks` und `tab-podcasts` 10,7 pt Labelhoehe, die drei
+anderen 13,3 — **zwei** gestauchte Titel, the owner sah einen.
+
+Gebaut ist seine Regel (`7fb1cc1`): **kein Titel wird einzeln gestaucht.** Eine
+Groesse je Leiste, abgeleitet aus dem LAENGSTEN Titel (`TabBarMetrics.uniformScale`),
+mit Untergrenze `minimumScale = 0.8` — darunter waere die Leiste kleiner als der
+uebrige Text, und aus einem Layoutproblem wuerde ein Lesbarkeitsproblem. Eine
+Stauchung je Label macht die Groesse zur Eigenschaft des WORTES; eine gemeinsame
+macht sie zur Eigenschaft der LEISTE, und die faellt niemandem auf.
+
+**Kapsel-Metrik geteilt** (`TabBarMetrics.Capsule`, Tab-Leiste UND
+Einstellungs-Reiter): senkrechtes Innenmaß 8 → **11 pt**, waagerechtes bleibt bei
+8. Mehr Breite waere genau der Platz, der „Hoerbuecher" fehlt — die beiden
+Auftraege haetten sich sonst gegenseitig aufgehoben.
+
+**Einstellungs-Reiter fliessen um** (`FlowLayout`): einzeilig solange sie passen
+(iPad, Querformat, kleine Schrift), sonst rutscht der letzte in die naechste
+Zeile. Alle fuenf bleiben sichtbar, nichts scrollt, jeder Chip ist einzeilig —
+damit ist „Allge-mein" KONSTRUKTIV unmoeglich, nicht nur zufaellig behoben.
+**Die Zeilenzahl darf der BREITE folgen, nie der Auswahl:** die Leiste sitzt ganz
+oben, eine Hoehe, die beim Umschalten springt, schoebe die ganze Seite. Aktiv und
+inaktiv unterscheiden sich in der FARBE, nie im Maß. Gemessen: Leistenhoehe 88,0
+pt ueber alle fuenf Reiter konstant.
+
+**Beweisfuehrung (`decb049`):** jeder Lauf braucht ALLE FUENF Bereiche — mit vier
+tritt die Bedingung gar nicht ein, und ein gruener Lauf bestaetigte eine
+Reparatur, die nie stattfand (das Cover-Saga-Muster). Der Fall zaehlt die Reiter
+und meldet SKIP statt gruen.
+
+### Schalterfarbe: das Grau war die Akzentfarbe selbst (`e9a9b05`)
+
+**Herkunft, wie beauftragt beantwortet: NICHT gesetzt, sondern GEERBT** — und
+zwar von `AppTheme.accent`, dem Marken-Anthrazit (A1), das die Wurzel per
+`.tint()` app-weit setzt. Keiner der **53** Schalter-Aufrufe faerbt selbst, also
+ist der Fix eine Aenderung an der Wurzel: `AppSwitchStyle` als
+`.toggleStyle(...)` an derselben Stelle, EINE Zeile fuer alle. Der Stil
+REKOMPONIERT (gibt die Konfiguration an `.switch` zurueck und setzt nur den Ton),
+damit ein Schalter in allem, was zaehlt, ein System-Schalter bleibt.
+
+**Was sonst noch vom Akzent gefaerbt wird** (der Befund, der ueber den Auftrag
+hinausreicht): jede Auswahl, jeder Link, jeder Fortschrittsbalken, jede
+System-Steuerung, die den Tint erbt. Der Wechsel bleibt bewusst auf Schalter
+begrenzt — eine Kapsel zeigt eine AUSWAHL unter sichtbaren Alternativen (dort
+kalibrieren die Alternativen den Ton), ein Schalter einen zweiwertigen Zustand
+ohne Vergleichsobjekt.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

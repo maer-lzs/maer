@@ -784,6 +784,96 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
+    /// decb049 / 7fb1cc1: no title is squeezed on its own — and the proof run
+    /// needs ALL FIVE areas, or it measures nothing.
+    ///
+    /// the owner measured the condition himself: with four tabs "Hörbücher" is
+    /// normal, with five it is squeezed. A run with four tabs would therefore
+    /// report green WITHOUT EVER REACHING the case — literally the cover-saga
+    /// pattern (a tool that does not contain the broken step can only measure
+    /// success). So the case counts the tabs and SKIPS rather than passing.
+    func testAllTabTitlesShareOneSize() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        XCTAssertTrue(app.buttons["tab-radio"].firstMatch.waitForExistence(timeout: 25))
+
+        // Every tab of the bar, whatever the areas are set to.
+        let ids = ["tab-home", "tab-audiobooks", "tab-podcasts", "tab-music", "tab-radio"]
+        let present = ids.compactMap { id -> (String, XCUIElement)? in
+            let element = app.buttons[id].firstMatch
+            return element.exists ? (id, element) : nil
+        }
+        var heights: [String: CGFloat] = [:]
+        for (id, tab) in present {
+            // The LABEL, not the button: the button is padded to a common size,
+            // the label carries the font — and a squeezed font is a shorter
+            // text box. That is the only handle a UI test has on "smaller".
+            let label = tab.staticTexts.firstMatch
+            guard label.exists, label.frame.height > 0 else { continue }
+            heights[id] = (label.frame.height * 10).rounded() / 10
+        }
+        let report = XCTAttachment(string: """
+        Tabs sichtbar: \(present.map(\.0))
+        Label-Höhen:   \(heights)
+        """)
+        report.name = "tab-label-heights"
+        report.lifetime = .keepAlways
+        add(report)
+        snap(app, "tab-label-heights")
+
+        try XCTSkipUnless(present.count >= 5, """
+            nur \(present.count) Bereiche aktiv — mit weniger als fünf tritt die             Bedingung gar nicht ein, und ein grüner Lauf hier bestätigte eine             Reparatur, die nie gemessen wurde
+            """)
+        try XCTSkipUnless(heights.count == present.count, "nicht jeder Reiter trug ein Label")
+        let distinct = Set(heights.values)
+        XCTAssertEqual(distinct.count, 1,
+                       "die Reiter-Titel tragen verschiedene Größen: \(heights)")
+        app.terminate()
+    }
+
+    /// 2c0a907 as its own case: the settings tab bar may change its line count
+    /// with the WIDTH, never with the active tab — it sits at the very top, and
+    /// a height that jumps on switching pushes the whole page.
+    func testSettingsTabBarHeightIsStableAcrossTabs() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        guard app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 25) else {
+            throw XCTSkip("Einstellungen nicht erreichbar")
+        }
+        app.buttons["open-settings"].firstMatch.tap()
+
+        let ids = ["general", "audiobooks", "podcasts", "music", "radio"]
+        let chips = ids.compactMap { id -> XCUIElement? in
+            let element = app.buttons["settings-tab-\(id)"].firstMatch
+            return element.waitForExistence(timeout: 10) ? element : nil
+        }
+        try XCTSkipUnless(chips.count >= 2, "zu wenige Reiter sichtbar")
+
+        /// Distance from the topmost chip's top edge to the LOWEST chip's
+        /// bottom — the bar's height, however many lines it takes.
+        func barHeight() -> CGFloat {
+            let tops = chips.filter { $0.exists }.map { $0.frame.minY }
+            let bottoms = chips.filter { $0.exists }.map { $0.frame.maxY }
+            guard let top = tops.min(), let bottom = bottoms.max() else { return 0 }
+            return ((bottom - top) * 10).rounded() / 10
+        }
+
+        var seen: [CGFloat] = []
+        for chip in chips where chip.exists {
+            chip.tap()
+            seen.append(barHeight())
+        }
+        let report = XCTAttachment(string: "Leistenhöhe je aktivem Reiter: \(seen)")
+        report.name = "settings-tabbar-heights"
+        report.lifetime = .keepAlways
+        add(report)
+        XCTAssertEqual(Set(seen).count, 1,
+                       "die Reiter-Leiste ändert ihre Höhe je nach aktivem Reiter: \(seen)")
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time
