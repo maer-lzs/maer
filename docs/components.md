@@ -403,6 +403,38 @@ wurde dafuer vom Struct zur KLASSE — sie muss sich zwischen `load()` und
 nicht tragen; sie lebt hinter der Isolation von `SyncQueue`. Beweislauf je Typ
 auf ECHT abgeschnittenen Dateien, nicht auf nachgebauten Strukturen.
 
+### Jellyfin-Hoerbuecher (`facf3e3`) — der Umfang ist GEMESSEN, nicht angenommen
+
+the operator's Messung gegen Jellyfin 10.11.11 mit Bookshelf 13.0.0.0 zeichnet den ganzen
+Umriss, und die beiden Grenzen sind die des SERVERS:
+
+* **Ein Hoerbuch ist dort genau EINE Datei.** Ein Ordner mit Kapiteldateien
+  erzeugt **gar keinen Eintrag** — weder ein `AudioBook` mit Teilen noch sieben
+  Einzeltitel, nicht einmal einen `Folder` (Neu-Durchsuchung abgewartet,
+  Umbenennung gegengeprueft). Das ist **gemessene Abwesenheit**, kein
+  ungepruefter Fall — deshalb steht hier KEIN Kapitel-Zusammenbau „fuer spaeter":
+  es gibt nichts zusammenzubauen.
+* **`Chapters` ist 0**, und Jellyfin erzeugt fuer `AudioBook` keine.
+* **Der Hoerstand laeuft ueber `UserData`, nicht ueber Sitzungen.** Der
+  Sitzungsweg (`/Sessions/Playing…` mit `PositionTicks`) las sich als 0 zurueck,
+  der `POST /UserItems/{id}/UserData`-Weg identisch. Gebaut ist der gemessene,
+  obwohl der Sitzungsweg der naheliegendere waere.
+
+Gebaut: `JellyfinClient.views()` (Bibliotheken mit `CollectionType`),
+`audioBooks(parentId:)` (`IncludeItemTypes=AudioBook&Recursive=true`),
+`setPlaybackPosition(itemId:seconds:isFinished:)`; im Anbieter
+`booksView(in:)` · `libraryItem(fromBook:)` · `position(fromUserData:)` ·
+Kennungsraum `jf:book:<id>` und `jf:books:<viewId>` fuer die Bibliothek.
+Die Buecher-Bibliothek erscheint NUR, wenn der Server eine hat — eine
+`books`-Bibliothek ist eine Einrichtung im Plugin, keine Selbstverstaendlichkeit.
+`updateProgress` verzweigt: ein BUCH schreibt eine Position, MUSIK nicht (ein
+Lied wird nicht fortgesetzt, es wird neu gespielt).
+
+**Abnahme steht aus.** Sie verlangt die Demo-Instanz (Zugang im Secrets-Store),
+und die ist von hier aus nicht erreichbar. **Kein Haekchen in der Matrix**,
+bevor der Hoerstand am echten Server hin UND zurueck getragen hat — die Tests
+belegen die Abbildung gegen die gemessenen Wire-Antworten, nicht den Server.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

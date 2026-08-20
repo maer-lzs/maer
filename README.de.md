@@ -205,7 +205,7 @@ Mär spricht mit Servern über deren Standard-APIs und funktioniert daher mit me
 - **gpodder-/mygpo**-Sync — verifiziert gegen **oPodSync**; andere gpodder-kompatible Backends sollten funktionieren.
 - **RSS / Podcasting 2.0**-Feeds, das **PodcastIndex**-Verzeichnis und der offene **Radio-Browser**-Katalog für Sender.
 
-Jellyfin-Unterstützung ist eine mögliche Zukunftsrichtung, kein aktuelles Feature.
+**Jellyfin** ist eingebaut, aber noch nicht abgenommen: Musik als zweites Backend hinter derselben Oberfläche (Beta), und seit `facf3e3` auch **Hörbücher** — eine Bibliothek mit `CollectionType: books` erscheint als Hörbuch-Bibliothek, der Hörstand reist über `UserData` zum Server und zurück. **Zwei gemessene Grenzen, und es sind die des Servers:** ein Hörbuch ist dort genau **eine Datei** (ein Ordner mit Kapiteldateien erzeugt gar keinen Eintrag), und **Kapitel gibt es nicht**. Solange die Abnahme gegen einen echten Server aussteht, steht hier kein Häkchen.
 
 ## Die Sync-Kernregel
 

@@ -178,6 +178,54 @@ final class JellyfinClient {
         throw JellyfinError.auth
     }
 
+    // MARK: - facf3e3: audiobooks (scope MEASURED, not assumed)
+    //
+    // the operator measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0, and the
+    // measurements draw the scope of everything below:
+    //
+    //   * A book on Jellyfin is exactly ONE FILE. A folder of chapter files
+    //     produces NO entry at all — not an AudioBook with parts, not seven
+    //     single titles, not even a `Folder`. That is measured absence, not an
+    //     untested case, so there is no chapter assembly here to "support it
+    //     later": there is nothing to assemble.
+    //   * `Chapters` is 0 and Jellyfin generates none for `AudioBook`.
+    //   * The listening position travels over `UserData`, NOT over the session
+    //     route: `/Sessions/Playing…` with PositionTicks read back as 0, the
+    //     UserData write read back identical.
+
+    /// The user's libraries, with their kind — the audiobook path needs to know
+    /// which one is `books`.
+    func views() async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Views", [:], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
+    /// The audiobooks of one library. `AudioBook` is the type Jellyfin assigns
+    /// to a single audio file in a `books` library (measured on all three test
+    /// shapes that produced an entry at all).
+    func audioBooks(parentId: String, startIndex: Int = 0, limit: Int = 500) async throws -> [JFItem] {
+        let (_, uid) = try await ensureAuth()
+        let result = try await get("Users/\(uid)/Items", [
+            "ParentId": parentId, "IncludeItemTypes": "AudioBook", "Recursive": "true",
+            "SortBy": "SortName", "SortOrder": "Ascending",
+            "StartIndex": String(startIndex), "Limit": String(limit),
+            "Fields": "DateCreated,Genres,Overview,Path",
+        ], as: JFItemsResult.self)
+        return result.items ?? []
+    }
+
+    /// Write the listening position. The measured road — and the only one:
+    /// the session route did not persist anything.
+    func setPlaybackPosition(itemId: String, seconds: Double, isFinished: Bool) async throws {
+        let (_, uid) = try await ensureAuth()
+        _ = try await post("UserItems/\(itemId)/UserData", ["userId": uid],
+                           jsonBody: [
+                               "PlaybackPositionTicks": String(Int64(max(0, seconds) * 10_000_000)),
+                               "Played": isFinished ? "true" : "false",
+                           ])
+    }
+
     // MARK: - Music endpoints (scope: albums/artists/songs/playlists/covers/search)
 
     func albums(sortBy: String, sortOrder: String = "Ascending",

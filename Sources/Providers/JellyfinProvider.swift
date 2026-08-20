@@ -116,12 +116,25 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     // MARK: - Library (AudioProvider)
 
+    /// facf3e3: the music library is always there (this source IS the music
+    /// source); an audiobook library appears only when the server actually has
+    /// one — a books library is a plugin-side setup, not a given.
     func fetchLibraries() async throws -> [ABSLibrary] {
-        [ABSLibrary(id: "jf", name: String(localized: "Music"), mediaType: "music")]
+        var libraries = [ABSLibrary(id: "jf", name: String(localized: "Music"), mediaType: "music")]
+        if let client, let books = Self.booksView(in: (try? await client.views()) ?? []) {
+            libraries.append(ABSLibrary(id: Self.libraryId(booksViewId: books.id),
+                                        name: books.name ?? String(localized: "Audiobooks"),
+                                        mediaType: "book"))
+        }
+        return libraries
     }
 
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] {
         guard let client else { return [] }
+        if let viewId = Self.booksViewId(fromLibraryId: libraryId) {
+            let books = try await client.audioBooks(parentId: viewId)
+            return remember(books.map(Self.libraryItem(fromBook:)))
+        }
         let albums = try await client.albums(sortBy: "SortName")
         historyStore.noteChecked(.music)
         return remember(albums.map(Self.libraryItem(fromAlbum:)))
@@ -143,6 +156,34 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             songs = try await client.playlistSongs(playlistId: playlistId)
             let pl = try? await client.item(id: playlistId)
             title = pl?.name; artist = nil; genre = nil
+        } else if let bookId = Self.id(itemId, kind: "book") {
+            // facf3e3: ONE file, no chapters — and the server's own reading
+            // position travels back with it, over the measured road.
+            guard let book = try await client.item(id: bookId) else {
+                throw JellyfinClient.JellyfinError.decoding
+            }
+            let media = LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: book.name, authorName: book.albumArtist ?? book.artists?.first,
+                    narratorName: nil, seriesName: nil,
+                    genres: book.genres?.isEmpty == false ? book.genres : nil,
+                    publishedYear: book.productionYear.map { LenientString(String($0)) },
+                    description: book.overview),
+                duration: Self.seconds(fromTicks: book.runTimeTicks), chapters: nil,
+                tracks: [ABSAudioTrack(index: 0, startOffset: 0,
+                                       duration: Self.seconds(fromTicks: book.runTimeTicks),
+                                       contentUrl: bookId, metadata: nil)])
+            itemsById[itemId] = LibraryItem(id: itemId, media: media, addedAt: nil)
+            let position = Self.position(fromUserData: book.userData)
+            return LibraryItemDetail(
+                id: itemId, media: media,
+                userMediaProgress: position.map { seconds in
+                    let duration = Self.seconds(fromTicks: book.runTimeTicks)
+                    return MediaProgress(
+                        currentTime: seconds, duration: duration,
+                        progress: duration.map { $0 > 0 ? seconds / $0 : 0 },
+                        isFinished: book.userData?.played ?? false, lastUpdate: nil)
+                })
         } else if let songId = Self.id(itemId, kind: "song"), let song = try await client.item(id: songId) {
             songs = [song]; title = song.name; artist = song.artists?.first; genre = nil
         } else {
@@ -456,7 +497,18 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
-        guard let client, let songs = songsByItemId[itemId], !songs.isEmpty else { return }
+        guard let client else { return }
+        // facf3e3: a BOOK keeps a real position, and it travels the measured
+        // road. The session route (`/Sessions/Playing…`) was measured NOT to
+        // persist anything — it read back as 0 — so it is not used here even
+        // though it is the more obvious one.
+        if let bookId = Self.id(itemId, kind: "book") {
+            try await client.setPlaybackPosition(itemId: bookId, seconds: currentTime,
+                                                 isFinished: isFinished)
+            return
+        }
+        // Music keeps no position — a song is not resumed, it is played again.
+        guard let songs = songsByItemId[itemId], !songs.isEmpty else { return }
         guard let song = songs.last(where: { $0.start <= currentTime + 0.5 }) else { return }
         if song.id != lastScrobbledSong[itemId] {
             lastScrobbledSong[itemId] = song.id
@@ -488,6 +540,45 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             normalized = String(raw[..<dot]) + "." + fraction.prefix(3) + String(suffix)
         }
         return PlaylistPresentation.changedDate(normalized).map { $0.timeIntervalSince1970 * 1000 }
+    }
+
+    /// facf3e3: a Jellyfin audiobook as a library item.
+    ///
+    /// ONE track, no chapters, and that is not a gap: measured, a book on
+    /// Jellyfin is exactly one file, `Chapters` is 0, and Jellyfin generates
+    /// none for `AudioBook`. Building a chapter assembly here would be building
+    /// for a case the server does not produce.
+    nonisolated static func libraryItem(fromBook book: JFItem) -> LibraryItem {
+        LibraryItem(
+            id: itemId(bookId: book.id),
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: book.name, authorName: book.albumArtist ?? book.artists?.first,
+                    narratorName: nil, seriesName: nil,
+                    genres: book.genres?.isEmpty == false ? book.genres : nil,
+                    publishedYear: book.productionYear.map { LenientString(String($0)) },
+                    description: book.overview
+                ),
+                duration: seconds(fromTicks: book.runTimeTicks),
+                chapters: nil, tracks: nil
+            ),
+            addedAt: epochMs(fromJFDate: book.dateCreated)
+        )
+    }
+
+    nonisolated static func itemId(bookId: String) -> String { "jf:book:\(bookId)" }
+
+    /// The measured reading position of a book, in seconds — nil when the
+    /// server knows none.
+    nonisolated static func position(fromUserData userData: JFUserData?) -> Double? {
+        guard let ticks = userData?.playbackPositionTicks, ticks > 0 else { return nil }
+        return ticks / 10_000_000
+    }
+
+    /// Which of the user's libraries is the audiobook one. Measured key:
+    /// `CollectionType: "books"`.
+    nonisolated static func booksView(in views: [JFItem]) -> JFItem? {
+        views.first { $0.collectionType?.lowercased() == "books" }
     }
 
     nonisolated static func libraryItem(fromAlbum album: JFItem) -> LibraryItem {
@@ -551,6 +642,13 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     }
 
     // MARK: - Id namespace
+
+    /// facf3e3: the books library carries its Jellyfin view id, so the browse
+    /// call knows which parent to ask.
+    nonisolated static func libraryId(booksViewId: String) -> String { "jf:books:\(booksViewId)" }
+    nonisolated static func booksViewId(fromLibraryId libraryId: String) -> String? {
+        id(libraryId, kind: "books")
+    }
 
     nonisolated static func itemId(albumId: String) -> String { "jf:album:\(albumId)" }
     nonisolated static func itemId(playlistId: String) -> String { "jf:playlist:\(playlistId)" }

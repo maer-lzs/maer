@@ -14,7 +14,7 @@ struct JellyfinMappingTests {
                         ticks: Double? = nil, year: Int? = nil, albumArtist: String? = nil,
                         artists: [String]? = nil, childCount: Int? = nil,
                         dateCreated: String? = nil) -> JFItem {
-        JFItem(id: id, name: name, type: type, runTimeTicks: ticks, indexNumber: nil,
+        JFItem(id: id, name: name, type: type, collectionType: nil, runTimeTicks: ticks, indexNumber: nil,
                productionYear: year, genres: nil, album: nil, albumId: nil,
                albumArtist: albumArtist, artists: artists, overview: nil,
                dateCreated: dateCreated, childCount: childCount, userData: nil, playlistItemId: nil)
