@@ -88,6 +88,44 @@ import Foundation
         #expect(book.userData?.playbackPositionTicks == nil)
     }
 
+    /// 8541008 point 1, as a MEASURED value rather than an intention: the
+    /// server cannot tell "never touched" from "explicitly set to 0" — both
+    /// answers are byte-identical. So 0 must not count as progress, or every
+    /// never-heard book lands in "Continue listening", and silently.
+    ///
+    /// Same class as the flushed witness at Winterfell: a source answering a
+    /// question it cannot answer.
+    @Test func positionZeroIsNoProgressBecauseTheServerCannotTellTheCasesApart() throws {
+        let untouched = """
+        {"Id":"b9","Name":"Nie gehoert","Type":"AudioBook","RunTimeTicks":1800000000,
+         "UserData":{"PlaybackPositionTicks":0,"PlayCount":0,"IsFavorite":false,"Played":false}}
+        """
+        let afterReset = untouched   // byte-identical — that IS the finding
+        for wire in [untouched, afterReset] {
+            let book = try JSONDecoder().decode(JFItem.self, from: Data(wire.utf8))
+            #expect(JellyfinProvider.position(fromUserData: book.userData) == nil)
+        }
+    }
+
+    /// 8541008: the write must carry REAL JSON types. A quoted "true" is a
+    /// string, and a server that ignores a mistyped field does it silently —
+    /// the first thing to rule out before concluding that Jellyfin cannot mark
+    /// a book finished at all.
+    @Test func theUserDataWriteSendsANumberAndABool() throws {
+        let data = try JellyfinClient.userDataBody(seconds: 90, isFinished: true)
+        let text = String(decoding: data, as: UTF8.self)
+        #expect(text.contains("\"PlaybackPositionTicks\":900000000"))
+        #expect(text.contains("\"Played\":true"))
+        // …and NOT as strings, which is what the old dictionary body produced.
+        #expect(!text.contains("\"900000000\""))
+        #expect(!text.contains("\"true\""))
+    }
+
+    @Test func aNegativePositionNeverTravels() throws {
+        let data = try JellyfinClient.userDataBody(seconds: -5, isFinished: false)
+        #expect(String(decoding: data, as: UTF8.self).contains("\"PlaybackPositionTicks\":0"))
+    }
+
     @Test func theBooksLibraryIdCarriesTheViewId() {
         let libraryId = JellyfinProvider.libraryId(booksViewId: "v-books")
         #expect(JellyfinProvider.booksViewId(fromLibraryId: libraryId) == "v-books")

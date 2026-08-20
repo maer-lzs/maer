@@ -430,7 +430,15 @@ Die Buecher-Bibliothek erscheint NUR, wenn der Server eine hat — eine
 `updateProgress` verzweigt: ein BUCH schreibt eine Position, MUSIK nicht (ein
 Lied wird nicht fortgesetzt, es wird neu gespielt).
 
-**Abnahme steht aus.** Sie verlangt die Demo-Instanz (Zugang im Secrets-Store),
+**Abnahme GETRAGEN** (the operator, `4470b34`): Verbinden · Browsen (2 Eintraege, RunTimeTicks 1818959999 = 182 s) · Abspielen (`/Audio/{id}/stream?static=true`, HTTP 200, 3.985.158 Bytes, MPEG-Rahmen) · Hoerstand 900000000 geschrieben und identisch zurueckgelesen.
+
+**🔴 GEMESSENE GRENZE, die bleibt (8541008): Position 0 ist KEIN Hoerstand.** Der Server kann „nie beruehrt" und „ausdruecklich auf 0 gesetzt" nicht unterscheiden — beide Antworten sind BYTE-GLEICH (`PlaybackPositionTicks: 0, PlayCount: 0, Played: false`), und `PlayedPercentage` verschwindet beim Zuruecksetzen wieder. Es gibt also keine Konstruktion, die die beiden Faelle trennt. Wuerde 0 als Fortschritt zaehlen, stuende jedes NIE gehoerte Jellyfin-Buch in „Weiterhoeren" — still, ohne Fehler, nur eine unbrauchbare Reihe. **Dieselbe Klasse wie der geflushte Zeuge bei Winterfell: eine Quelle beantwortet eine Frage, die sie nicht beantworten kann.** `position(fromUserData:)` liefert deshalb `nil` bei `ticks <= 0`, mit eigenem Zaun.
+
+**Antwortform variiert je Zustand** (gemessen): nie beruehrt ⇒ `PlayedPercentage` UND `LastPlayedDate` FEHLEN; Position ueber `UserData` gesetzt ⇒ Prozent da, Datum fehlt, `PlayCount` bleibt 0; tatsaechlich abgespielt ⇒ beides da. Die Auflage „muss ohne die neuen Felder dekodieren" ist damit der HAEUFIGSTE Fall, nicht der Randfall.
+
+**Eigener Befund am Schreibweg:** der Rumpf ging als `[String: String]` hinaus, also `{"PlaybackPositionTicks":"900000000","Played":"true"}` — Zeichenketten statt Zahl und Wahrheitswert. Ein Server, der ein falsch typisiertes Feld ignoriert, tut das WORTLOS. Jetzt typisiert (`UserDataWrite`), mit Zaun auf die kodierten Bytes. **Offen und nur am echten Server pruefbar: ob `isFinished: true` tatsaechlich `Played: true` erzeugt** — the operator sah in allen Antworten `false`, hat den Fertig-Fall aber nicht gefahren.
+
+**Kein Haekchen**, solange der Fertig-Fall offen ist. Frueher stand hier: Abnahme verlangt die Demo-Instanz (Zugang im Secrets-Store),
 und die ist von hier aus nicht erreichbar. **Kein Haekchen in der Matrix**,
 bevor der Hoerstand am echten Server hin UND zurueck getragen hat — die Tests
 belegen die Abbildung gegen die gemessenen Wire-Antworten, nicht den Server.

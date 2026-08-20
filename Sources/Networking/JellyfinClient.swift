@@ -149,8 +149,28 @@ final class JellyfinClient {
         throw JellyfinError.auth
     }
 
+    /// 8541008: a body with REAL JSON types.
+    ///
+    /// The dictionary variant below can only send strings, and the UserData
+    /// endpoint wants a NUMBER for the ticks and a BOOL for `Played` — sending
+    /// `"true"` is not the same thing, and a server that ignores a mistyped
+    /// field does it silently. the operator measured `Played: false` in every answer;
+    /// this is the first thing to rule out before anyone concludes the server
+    /// cannot mark a book finished.
+    private func post(_ path: String, _ query: [String: String] = [:],
+                      jsonData: Data, method: String = "POST") async throws -> Data {
+        try await postRaw(path, query, body: jsonData, method: method)
+    }
+
     private func post(_ path: String, _ query: [String: String] = [:],
                       jsonBody: [String: String]? = nil, method: String = "POST") async throws -> Data {
+        try await postRaw(path, query,
+                          body: jsonBody.flatMap { try? JSONEncoder().encode($0) },
+                          method: method)
+    }
+
+    private func postRaw(_ path: String, _ query: [String: String] = [:],
+                         body: Data? = nil, method: String = "POST") async throws -> Data {
         var (token, _) = try await ensureAuth()
         for attempt in 0..<2 {
             var comps = URLComponents(url: try base().appendingPathComponent(path),
@@ -160,9 +180,9 @@ final class JellyfinClient {
             var request = URLRequest(url: url)
             request.httpMethod = method
             request.setValue(token, forHTTPHeaderField: "X-Emby-Token")
-            if let jsonBody {
+            if let body {
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.httpBody = try JSONEncoder().encode(jsonBody)
+                request.httpBody = body
             }
             let (data, http) = try await fetch(request)
             if http?.statusCode == 401, attempt == 0 {
@@ -217,13 +237,25 @@ final class JellyfinClient {
 
     /// Write the listening position. The measured road — and the only one:
     /// the session route did not persist anything.
+    /// The body of a UserData write — typed, so the ticks travel as a NUMBER
+    /// and `Played` as a BOOL. A quoted "true" is a string, and a server that
+    /// ignores a mistyped field does it without a word.
+    nonisolated struct UserDataWrite: Encodable {
+        let PlaybackPositionTicks: Int64
+        let Played: Bool
+    }
+
+    nonisolated static func userDataBody(seconds: Double, isFinished: Bool) throws -> Data {
+        try JSONEncoder().encode(UserDataWrite(
+            PlaybackPositionTicks: Int64(max(0, seconds) * 10_000_000),
+            Played: isFinished))
+    }
+
     func setPlaybackPosition(itemId: String, seconds: Double, isFinished: Bool) async throws {
         let (_, uid) = try await ensureAuth()
         _ = try await post("UserItems/\(itemId)/UserData", ["userId": uid],
-                           jsonBody: [
-                               "PlaybackPositionTicks": String(Int64(max(0, seconds) * 10_000_000)),
-                               "Played": isFinished ? "true" : "false",
-                           ])
+                           jsonData: try Self.userDataBody(seconds: seconds,
+                                                           isFinished: isFinished))
     }
 
     // MARK: - Music endpoints (scope: albums/artists/songs/playlists/covers/search)
