@@ -74,13 +74,29 @@ extension CatalogMix {
     /// radio-play feeds (static, instant) + the catalog title rows from the
     /// calm-gated store, fairly interleaved, capped by RowPreview.
     @MainActor
+    /// 1092867: what the LAST session showed, recorded once per session for
+    /// the malus. Only a FULL row is recorded — the first calls of a session
+    /// run on still-empty catalog lanes, and recording that half-row would
+    /// hand next session's malus a half-truth.
+    // Project default is MainActor — no explicit attribute needed here.
+    private static var recordedThisSession = false
+
     static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()
         let feedGroups = [CatalogSource.oerr, .independents]
             .map { OERRLiveStore.feeds(for: $0, languages: languages) }
-        return row(feedGroups: feedGroups,
-                   itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
-                                rows.archiveBooks, rows.gutenberg],
-                   limit: RowPreview.limit)
+        let previous = Set(UserDefaults.standard.stringArray(
+            forKey: AppStorageKeys.catalogMixLastShown) ?? [])
+        let tiles = row(feedGroups: feedGroups,
+                        itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
+                                     rows.archiveBooks, rows.gutenberg],
+                        limit: RowPreview.limit,
+                        seed: sessionSeed, previous: previous)
+        if !recordedThisSession, tiles.count >= RowPreview.limit {
+            recordedThisSession = true
+            UserDefaults.standard.set(tiles.map(\.id),
+                                      forKey: AppStorageKeys.catalogMixLastShown)
+        }
+        return tiles
     }
 }

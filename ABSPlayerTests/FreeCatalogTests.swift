@@ -941,23 +941,45 @@ struct CatalogGenreAxisTests {
         func item(_ id: String) -> LibraryItem {
             LibraryItem(id: id, media: nil, addedAt: nil)
         }
-        // Interleaved, not two blocks: lanes alternate fairly.
-        let tiles = CatalogMix.row(feedGroups: [[feed(1), feed(2)]],
-                                   itemGroups: [[item("a"), item("b")]], limit: 10)
-        #expect(tiles.map(\.id) == ["feed:https://f/1", "item:a",
-                                    "feed:https://f/2", "item:b"])
+        // 1092867: the row is seeded now. With single-element lanes the
+        // shuffle has nothing to move, so the fair interleave stays exactly
+        // observable; multi-element lane ORDER is covered by the mix tests.
+        let tiles = CatalogMix.row(feedGroups: [[feed(1)]],
+                                   itemGroups: [[item("a")]], limit: 10,
+                                   seed: 7, previous: [])
+        #expect(tiles.map(\.id) == ["feed:https://f/1", "item:a"])
         // Cap applies across the mix.
         let capped = CatalogMix.row(feedGroups: [[feed(1), feed(2), feed(3)]],
                                     itemGroups: [[item("a"), item("b"), item("c")]],
-                                    limit: 3)
+                                    limit: 3, seed: 7, previous: [])
         #expect(capped.count == 3)
         // An empty lane never starves the merge (filtered before the merge).
         let sparse = CatalogMix.row(feedGroups: [[]],
                                     itemGroups: [[item("a")], [], [item("b")]],
-                                    limit: 10)
-        #expect(sparse.map(\.id) == ["item:a", "item:b"])
+                                    limit: 10, seed: 7, previous: [])
+        #expect(Set(sparse.map(\.id)) == ["item:a", "item:b"])
         // All empty: empty row (the section hides on the surface).
-        #expect(CatalogMix.row(feedGroups: [], itemGroups: [[]], limit: 5).isEmpty)
+        #expect(CatalogMix.row(feedGroups: [], itemGroups: [[]], limit: 5,
+                               seed: 7, previous: []).isEmpty)
+
+        // The 1092867 rules, each as its own claim:
+        let lane = (1...8).map { CatalogMix.Tile.feed(feed($0)) }
+        // Same seed ⇒ same row: nothing re-sorts within a session.
+        #expect(CatalogMix.shuffle(lane, seed: 42, previous: []).map(\.id)
+                == CatalogMix.shuffle(lane, seed: 42, previous: []).map(\.id))
+        // A different seed moves things (eight elements — a collision of all
+        // positions is astronomically unlikely, and the claim is "not static").
+        #expect(CatalogMix.shuffle(lane, seed: 1, previous: []).map(\.id)
+                != CatalogMix.shuffle(lane, seed: 2, previous: []).map(\.id))
+        // The malus: last round's tiles sort BEHIND everything fresh, so the
+        // shuffle cannot deal the same trio again.
+        let previous: Set<String> = ["feed:https://f/1", "feed:https://f/2", "feed:https://f/3"]
+        let mixed = CatalogMix.shuffle(lane, seed: 9, previous: previous)
+        let freshCount = lane.count - previous.count
+        #expect(Set(mixed.prefix(freshCount).map(\.id)).isDisjoint(with: previous),
+                "die letzte Runde muss hinter allem Frischen stehen")
+        // Nothing is LOST to the malus — it re-orders, it never drops.
+        #expect(Set(mixed.map(\.id)) == Set(lane.map(\.id)))
     }
 
     @Test("Auftrag O: Track-Titel aus dem Dateinamen, Position -> Folgen-Index")

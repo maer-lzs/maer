@@ -411,6 +411,9 @@ nonisolated enum AppStorageKeys {
     /// Absent = never chosen (the cascade decides), empty = worldwide as a
     /// deliberate choice. The two states must stay distinguishable.
     static let radioGenreCountryCodes = "radioGenreCountryCodes"
+    /// 1092867: the free-catalog mix of the LAST session — the next start
+    /// gives these a malus so the shuffle cannot deal the same trio again.
+    static let catalogMixLastShown = "catalogMixLastShown"
 
     /// Artist portraits from open sources (MB→Wikidata→Commons; opt-out —
     /// server images always win, off just means color circles).

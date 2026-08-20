@@ -607,6 +607,27 @@ worden. Und die gpodder-Aktionsliste des Servers (the reviewer's Messauflage „
 Seiten") konnte von hier nicht gelesen werden — der Mechanismus ist stattdessen
 am Code belegt und durch die Zwei-Wege-Rueckkehr bei the owner gedeckt.
 
+### Freie-Kataloge-Mix: Session-Zufall mit Gedaechtnis-Malus (1092867)
+
+the owner sah tagelang dasselbe Trio. GEMESSEN vorab (the reviewer's Einzeiler-Auflage):
+der Topf ist NICHT das Problem — 38 kuratierte Feeds (10 OERR + 28 unabhaengig)
+plus vier Katalog-Lanes fuer 12 Plaetze. Das Problem war die STATIK: geordnete
+Lanes in einen fairen Interleave heisst, das erste Element jeder Lane ist immer
+dasselbe.
+
+Die Misch-Regel, wie beauftragt: (1) **je App-Start neu, nie in-Session** —
+`CatalogMix.sessionSeed` wird einmal pro Prozess gezogen, jede Berechnung ist
+damit session-stabil (eine Reihe, die sich unter den Fingern umsortiert, ist ein
+Layout-Sprung in Zeitlupe); (2) **Malus fuer die letzte Runde** — die zuletzt
+gezeigten IDs (`catalogMixLastShown`, geschrieben nur bei einer VOLLEN Reihe,
+sonst bekaeme der Malus der naechsten Sitzung eine Halbwahrheit aus noch leeren
+Lanes) sortieren im naechsten Start HINTER alles Frische; schlichter
+Ausschluss-nach-hinten, keine Wissenschaft, und es geht nichts verloren —
+umsortiert, nie verworfen (Test); (3) **nur Lieferbares** — die Lanes sind
+unveraendert die live-verifizierten; (4) **eine Logik fuer alle Flaechen** —
+Podcasts-Tab UND Start ziehen durch `CatalogMix.hoerspieleTiles`, beide zeigen
+DENSELBEN Session-Mix (ein Seed, kein je-Flaeche-Zufall).
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |
