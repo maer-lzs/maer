@@ -44,32 +44,53 @@ struct MediaTabBar: View {
     /// taller pill, bar metrics and morph untouched).
     private static let pillGap: CGFloat = 5
 
-    /// The label size before scaling — `.caption2` at the default size, kept as
-    /// a number so ONE scale can be applied to it.
-    static let baseLabelSize: CGFloat = 11
-    /// Spacing between the cells (the HStack's).
+    /// Spacing between the cells.
     private static let cellSpacing: CGFloat = 4
 
-    /// Measured bar width — the uniform scale needs to know what there is.
-    @State private var barWidth: CGFloat = 0
-
-    /// 7fb1cc1: ONE scale for the whole bar, derived from the LONGEST title, so
-    /// every label carries the same size. Floored (`TabBarMetrics.minimumScale`)
-    /// — below that the bar would read smaller than the rest of the interface,
-    /// which is the defect one layer down.
-    private var labelScale: CGFloat {
-        guard barWidth > 0, !types.isEmpty else { return 1 }
-        let font = UIFont.systemFont(ofSize: Self.baseLabelSize)
-        let widths = types.map { TabBarMetrics.labelWidth($0.label, font: font) }
-        let gaps = Self.cellSpacing * CGFloat(types.count - 1) + Self.pillGap * 2
-        let perCell = (barWidth - gaps) / CGFloat(types.count)
-        return TabBarMetrics.uniformScale(
-            labelWidths: widths,
-            available: perCell - TabBarMetrics.Capsule.horizontalPadding * 2)
-    }
+    /// The label size at rest, and the sizes the bar may fall back to.
+    ///
+    /// 7fb1cc1: ONE size for the whole row. A per-label shrink makes the size a
+    /// property of the WORD — "Radio" big, "Hörbücher" small, and the user
+    /// looks for the reason; a shared size makes it a property of the BAR, and
+    /// that nobody notices. The row is offered as a WHOLE at each size, so all
+    /// labels always share it.
+    ///
+    /// The last entry is the floor: below it the bar would read smaller than the
+    /// rest of the interface, which is the defect one layer down.
+    static let baseLabelSize: CGFloat = 11
+    static let labelSizes: [CGFloat] = [11, 10.5, 10, 9.5, 9, 8.5, 8]
 
     var body: some View {
-        HStack(spacing: 4) {
+        // 85a7c00: NO arithmetic about the available width — SwiftUI measures.
+        //
+        // The computed scale was wrong twice in one night: first it left the
+        // longest title alone (per-label shrinking), then it CUT IT OFF
+        // ("Hörbüch…") because my estimate of a cell's width did not match the
+        // real one — the bar shares its row with the search capsule, which my
+        // formula knew nothing about. Every fix built on that estimate inherits
+        // its error, and the second one was worse than the defect it replaced.
+        //
+        // `ViewThatFits` asks the LAYOUT instead: offer the row at descending
+        // sizes and take the first that fits WHOLE. One size for all labels
+        // (the row is one candidate, not five), no truncation, and no number
+        // that can drift away from the truth.
+        ViewThatFits(in: .horizontal) {
+            ForEach(Self.labelSizes, id: \.self) { size in
+                row(labelSize: size)
+            }
+        }
+        .animation(.snappy(duration: 0.3), value: selected)
+        // N1d: the end padding IS the pill gap — the pill's horizontal distance
+        // to the bar's rounded ends equals its vertical inset everywhere.
+        .padding(.horizontal, Self.pillGap)
+        .modifier(AdaptiveGlassBackground(
+            shape: Capsule(), tier: .glass,
+            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
+    }
+
+    /// The row at ONE label size — the unit `ViewThatFits` chooses between.
+    private func row(labelSize: CGFloat) -> some View {
+        HStack(spacing: Self.cellSpacing) {
             ForEach(types) { type in
                 Button {
                     onSelect(type)
@@ -78,26 +99,22 @@ struct MediaTabBar: View {
                         Image(systemName: type.systemImage)
                             .font(.system(size: 17, weight: .semibold))
                         if !dynamicTypeSize.isAccessibilitySize {
-                            // 7fb1cc1 (the owner): no title is squeezed on its
-                            // own. `minimumScaleFactor` per label made the size
-                            // a property of the WORD — "Radio" big, "Hörbücher"
-                            // small, and the user looks for the reason. One
-                            // size for the whole bar makes it a property of the
-                            // BAR, and that nobody notices, because there is
-                            // nothing to compare it against.
                             Text(type.label)
-                                .font(.system(size: Self.baseLabelSize * labelScale))
+                                .font(.system(size: labelSize))
+                                // Whole or not at all: a cut-off word is a
+                                // defect, a small word only a metric. Refusing
+                                // to compress is what lets `ViewThatFits` see
+                                // that this candidate does not fit.
                                 .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
                     // Selected → the type's own tint; unselected → neutral. The
                     // colour appears only on the active selector, never always.
                     .foregroundStyle(selected == type ? type.tint : Color.primary)
-                    // e053f53: noticeable horizontal air between the label
-                    // cluster and the pill edge (vertical stays — bar height).
-                    // 98c621f: the ONE capsule metric — horizontal stays,
-                    // vertical is what grew (extra width would take exactly the
-                    // room "Hörbücher" is missing).
+                    // 98c621f: the ONE capsule metric — horizontal stays (that
+                    // width is exactly the room the longest title needs),
+                    // vertical is what grew.
                     .padding(.horizontal, TabBarMetrics.Capsule.horizontalPadding)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
@@ -124,13 +141,5 @@ struct MediaTabBar: View {
                 .accessibilityIdentifier("tab-\(type.rawValue)")
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { barWidth = $0 }
-        .animation(.snappy(duration: 0.3), value: selected)
-        // N1d: the end padding IS the pill gap — the pill's horizontal distance
-        // to the bar's rounded ends equals its vertical inset everywhere.
-        .padding(.horizontal, Self.pillGap)
-        .modifier(AdaptiveGlassBackground(
-            shape: Capsule(), tier: .glass,
-            morphID: glassMorphID, morphNamespace: glassMorphNamespace))
     }
 }

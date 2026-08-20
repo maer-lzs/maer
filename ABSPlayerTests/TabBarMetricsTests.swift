@@ -13,53 +13,26 @@ import UIKit
 /// derived from the LONGEST title.
 @Suite struct TabBarMetricsTests {
 
-    /// The rule in one line: the scale comes from the widest label, so every
-    /// label carries the same one. A per-label factor is what made the size a
-    /// property of the WORD.
-    @Test func theScaleFollowsTheLongestTitle() {
-        // 60 pt available, longest label 75 pt wide → 0.8.
-        #expect(TabBarMetrics.uniformScale(labelWidths: [30, 75, 40], available: 60) == 0.8)
-        // The same row with more room needs no shrinking at all.
-        #expect(TabBarMetrics.uniformScale(labelWidths: [30, 75, 40], available: 100) == 1)
+    /// 7fb1cc1 / 85a7c00: the bar offers its row at DESCENDING sizes and takes
+    /// the first that fits whole. The candidate list is the whole rule, so
+    /// these are the invariants that matter — a computed scale is gone, and
+    /// with it the estimate that produced "Hörbüch…".
+    @Test func theCandidateSizesDescendFromTheBase() {
+        let sizes = MediaTabBar.labelSizes
+        #expect(sizes.first == MediaTabBar.baseLabelSize)
+        #expect(sizes == sizes.sorted(by: >), "die Kandidaten müssen absteigen")
+        #expect(Set(sizes).count == sizes.count, "kein Maß doppelt")
     }
 
-    /// A short row does not GROW — the scale is a reduction or nothing.
-    @Test func aRowThatFitsStaysAtFullSize() {
-        #expect(TabBarMetrics.uniformScale(labelWidths: [20, 25], available: 200) == 1)
-    }
-
-    /// the reviewer's caveat, and it is his order to name the floor: below a readable
-    /// size we stop shrinking. Otherwise a layout problem becomes a legibility
-    /// problem, and the bar ends up smaller than the text around it.
-    @Test func theFloorHolds() {
-        #expect(TabBarMetrics.uniformScale(labelWidths: [500], available: 10)
-                == TabBarMetrics.minimumScale)
-        #expect(TabBarMetrics.minimumScale == 0.8)
-    }
-
-    @Test func nonsenseInputsDoNotShrinkAnything() {
-        #expect(TabBarMetrics.uniformScale(labelWidths: [], available: 100) == 1)
-        #expect(TabBarMetrics.uniformScale(labelWidths: [50], available: 0) == 1)
-        #expect(TabBarMetrics.uniformScale(labelWidths: [0], available: 100) == 1)
-    }
-
-    /// the owner's measurement, reproduced as a case: with FOUR tabs "Hörbücher"
-    /// fits, with FIVE it does not. That is not evidence for the system bar —
-    /// it is exactly how a fitting-driven scale behaves, and it is ours.
-    @Test func fourTabsFitWhereFiveDoNot() {
-        let font = UIFont.systemFont(ofSize: MediaTabBar.baseLabelSize)
-        let labels = ["Home", "Hörbücher", "Podcasts", "Musik", "Radio"]
-        let widths = labels.map { TabBarMetrics.labelWidth($0, font: font) }
-        // An iPhone-width bar, minus the gaps, divided by the tab count.
-        func perCell(_ count: Int, barWidth: CGFloat = 380) -> CGFloat {
-            (barWidth - 4 * CGFloat(count - 1) - 10) / CGFloat(count)
-                - TabBarMetrics.Capsule.horizontalPadding * 2
-        }
-        let five = TabBarMetrics.uniformScale(labelWidths: widths, available: perCell(5))
-        let four = TabBarMetrics.uniformScale(labelWidths: Array(widths.dropFirst()),
-                                              available: perCell(4))
-        #expect(five < 1, "mit fünf Tabs muss verkleinert werden — sonst misst der Fall nichts")
-        #expect(four == 1, "mit vier Tabs passt es, genau wie the owner gemessen hat")
+    /// A floor exists, and it is far enough below the base to reach the case
+    /// that failed: measured, the longest title needs about 0,74 of its natural
+    /// size on an iPhone with five tabs. A list stopping at 0,8 could not get
+    /// there and truncated instead.
+    @Test func theSmallestCandidateReachesTheMeasuredNeed() {
+        let smallest = MediaTabBar.labelSizes.last!
+        #expect(smallest / MediaTabBar.baseLabelSize <= 0.74)
+        // …but not so small that the bar reads smaller than the interface.
+        #expect(smallest >= 8)
     }
 
     /// 98c621f: the capsule grew VERTICALLY, and the horizontal measure may

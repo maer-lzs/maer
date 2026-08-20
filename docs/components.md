@@ -447,12 +447,32 @@ mehr Breite, der fuenfte nimmt sie weg. **Gegenlauf belegt es:** mit dem alten
 Faktor tragen `tab-audiobooks` und `tab-podcasts` 10,7 pt Labelhoehe, die drei
 anderen 13,3 — **zwei** gestauchte Titel, the owner sah einen.
 
-Gebaut ist seine Regel (`7fb1cc1`): **kein Titel wird einzeln gestaucht.** Eine
-Groesse je Leiste, abgeleitet aus dem LAENGSTEN Titel (`TabBarMetrics.uniformScale`),
-mit Untergrenze `minimumScale = 0.8` — darunter waere die Leiste kleiner als der
-uebrige Text, und aus einem Layoutproblem wuerde ein Lesbarkeitsproblem. Eine
-Stauchung je Label macht die Groesse zur Eigenschaft des WORTES; eine gemeinsame
-macht sie zur Eigenschaft der LEISTE, und die faellt niemandem auf.
+Gebaut ist seine Regel (`7fb1cc1`): **kein Titel wird einzeln gestaucht** — eine
+Groesse je Leiste. Eine Stauchung je Label macht die Groesse zur Eigenschaft des
+WORTES; eine gemeinsame macht sie zur Eigenschaft der LEISTE, und die faellt
+niemandem auf.
+
+**🔴 Der erste Bau davon war schlechter als der Defekt (85a7c00), und der Grund
+gehoert festgehalten:** ich habe die Groesse aus einer SCHAETZUNG der verfuegbaren
+Breite gerechnet — und die Leiste teilt sich ihre Reihe mit der Suchkapsel, wovon
+die Formel nichts wusste. Ergebnis: „Hörbüch…", abgeschnitten statt klein. Zwei
+Folgefehler derselben Wurzel: (1) das Absenken der Untergrenze aenderte NICHTS,
+weil die Grenze gar nicht die bindende Bedingung war; (2) mein Zaun dagegen war
+BLIND — die Bedienhilfen-Beschriftung traegt den vollen Titel, waehrend die
+Anzeige kuerzt, also meldete er gruen. Erst der Blick auf den gerenderten
+Bildschirm zeigte es.
+
+**Jetzt rechnet nichts mehr:** `ViewThatFits` bietet die REIHE bei absteigenden
+Schriftgroessen an (11 … 8 pt) und nimmt die erste, die GANZ passt. Die Reihe ist
+EIN Kandidat, nicht fuenf — damit teilen sich alle Titel die Groesse von selbst.
+`fixedSize` am Label ist der Hebel, der ViewThatFits ueberhaupt erkennen laesst,
+dass ein Kandidat nicht passt (ohne ihn wuerde SwiftUI still kuerzen). **Ein Maß,
+das Geometrie schaetzen muss, ist ein Maß, das auf der naechsten Bildschirmgroesse
+falsch ist** — deshalb ist die Rechnung ersatzlos entfallen, nicht korrigiert.
+
+**Grundsatz (the owner, 85a7c00):** ein Titel wird NIE abgeschnitten. Lieber
+kleiner, lieber zweizeilig — ein gekuerztes Wort ist ein Defekt, ein kleines Wort
+nur eine Metrik.
 
 **Kapsel-Metrik geteilt** (`TabBarMetrics.Capsule`, Tab-Leiste UND
 Einstellungs-Reiter): senkrechtes Innenmaß 8 → **11 pt**, waagerechtes bleibt bei

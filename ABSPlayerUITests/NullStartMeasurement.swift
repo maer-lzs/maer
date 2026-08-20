@@ -813,9 +813,15 @@ nonisolated final class NullStartMeasurement: XCTestCase {
             guard label.exists, label.frame.height > 0 else { continue }
             heights[id] = (label.frame.height * 10).rounded() / 10
         }
+        // The bar's own numbers — see the DEBUG identifier in MediaTabBar.
+        let metric = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'tabbar-metric-'"))
+            .firstMatch
+        let metricText = metric.exists ? metric.identifier : "—"
         let report = XCTAttachment(string: """
         Tabs sichtbar: \(present.map(\.0))
         Label-Höhen:   \(heights)
+        Leiste sagt:   \(metricText)   (Breite pt · Faktor ×1000)
         """)
         report.name = "tab-label-heights"
         report.lifetime = .keepAlways
@@ -829,6 +835,16 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         let distinct = Set(heights.values)
         XCTAssertEqual(distinct.count, 1,
                        "die Reiter-Titel tragen verschiedene Größen: \(heights)")
+        // 85a7c00: and the fence that matters more than any number — a title is
+        // NEVER cut off. Smaller is a metric, cut off is a defect. The first fix
+        // traded the one for the other, and only the rendered screen showed it.
+        let cut = present.compactMap { id, tab -> String? in
+            let text = tab.staticTexts.firstMatch
+            guard text.exists else { return nil }
+            let shown = text.label
+            return (shown.contains("…") || shown.contains("...")) ? "\(id): \(shown)" : nil
+        }
+        XCTAssertTrue(cut.isEmpty, "abgeschnittene Reiter-Titel: \(cut)")
         app.terminate()
     }
 
@@ -871,6 +887,32 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         add(report)
         XCTAssertEqual(Set(seen).count, 1,
                        "die Reiter-Leiste ändert ihre Höhe je nach aktivem Reiter: \(seen)")
+        app.terminate()
+    }
+
+    /// e9a9b05 / 1c37964: read the switch colours from the RENDERED screen.
+    ///
+    /// the reviewer measured 3,64:1 from the owner's screenshot where I had computed
+    /// 8,61:1 — and he was right: my error was the OFF track (I assumed
+    /// systemGray5, the screen shows something much lighter), not the ON
+    /// colour, which matched his pixels to within 2/255. A declared colour is
+    /// not a rendered one, and only the rendered one is what a person sees.
+    ///
+    /// So this case does not compute anything. It photographs the surface and
+    /// lets the pixels answer.
+    func testSwitchColoursAsRendered() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        guard app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 25) else {
+            throw XCTSkip("Einstellungen nicht erreichbar")
+        }
+        app.buttons["open-settings"].firstMatch.tap()
+        // The library switches: four in a row, and one of them is what the owner
+        // photographed.
+        let target = app.switches.firstMatch
+        try XCTSkipUnless(target.waitForExistence(timeout: 15), "keine Schalter sichtbar")
+        snap(app, "switches-rendered")
         app.terminate()
     }
 
