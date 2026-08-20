@@ -135,14 +135,6 @@ struct RadioView: View {
                                          destination: .myStations,
                                          total: myStationsTotal)
                 }
-                if !recents.isEmpty {
-                    // the owner's correction to cb2d1ed ("Zuletzt gespielt ist
-                    // eine Kachelreihe"): the whole recent list, as the plain
-                    // tile row — not the single last station. Deliberately
-                    // small, and it carries NO show line: for a station that
-                    // is no longer running it would be stale anyway.
-                    cardRow(title: String(localized: "Recently Played"), stations: recents)
-                }
                 if showsPopular {
                     VStack(alignment: .leading, spacing: 4) {
                         VStack(alignment: .leading, spacing: 8) {
@@ -175,6 +167,15 @@ struct RadioView: View {
                     }
                 }
                 regionSection
+                if !recents.isEmpty {
+                    // dbd0984 (the owner): "Zuletzt gespielt" sits BELOW the
+                    // regional row — place 4, under the two discovery rows.
+                    // The whole recent list as the plain tile row, small, no
+                    // show line (stale for a station that stopped). The
+                    // exclusion rule holds regardless of distance: "My
+                    // Stations" leaves out the station this row shows.
+                    cardRow(title: String(localized: "Recently Played"), stations: recents)
+                }
                 if showsGenres {
                     genreSection
                 }
