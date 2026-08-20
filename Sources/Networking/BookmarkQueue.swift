@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Offline support for bookmarks: create/delete that does not reach the server
 /// is persisted here and retried later (like `SyncQueue`). Additionally, the
@@ -51,14 +52,24 @@ final class BookmarkQueue {
         save(ops)
     }
 
+    /// 6a411cf: unread is not empty — these are bookmarks the user made and
+    /// the server has not seen yet.
+    private var readFailed = false
+
     func pendingOps() -> [Operation] {
-        guard let data = UserDefaults.standard.data(forKey: opsKey),
-              let ops = try? JSONDecoder().decode([Operation].self, from: data) else { return [] }
-        return ops
+        let outcome = CorruptStore.load([Operation].self, defaultsKey: opsKey,
+                                        label: "bookmark queue")
+        readFailed = outcome.blocksEmptySave
+        return outcome.value ?? []
     }
 
     private func save(_ ops: [Operation]) {
+        guard CorruptStore.maySave(isEmpty: ops.isEmpty, afterCorruptRead: readFailed) else {
+            Logger.library.error("bookmark queue NOT saved: the stored queue was unreadable and this state is empty")
+            return
+        }
         UserDefaults.standard.set(try? JSONEncoder().encode(ops), forKey: opsKey)
+        readFailed = false
     }
 
     private var flushInFlight = false

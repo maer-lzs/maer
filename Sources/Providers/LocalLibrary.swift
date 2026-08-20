@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 import Combine
 import AVFoundation
 import UIKit
@@ -249,14 +250,30 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Persistenz
 
+    /// 6a411cf: an unreadable index must not become an empty one. The old
+    /// `try? … else { return }` started empty, and the next `save()` wrote that
+    /// emptiness over the whole sideload library — a reading error turned into
+    /// permanent loss, with no error anywhere and nothing to see but an empty
+    /// shelf.
+    private var readFailed = false
+
     private func load() {
-        guard let data = try? Data(contentsOf: indexURL),
-              let decoded = try? JSONDecoder().decode([Entry].self, from: data) else { return }
-        entries = decoded
+        let outcome = CorruptStore.load([Entry].self, from: indexURL,
+                                        label: "local library index")
+        readFailed = outcome.blocksEmptySave
+        if let decoded = outcome.value { entries = decoded }
     }
 
     private func save() {
+        // The rule that makes preserving the file worth anything: forensics
+        // alone does not help the person whose library vanished.
+        guard CorruptStore.maySave(isEmpty: entries.isEmpty, afterCorruptRead: readFailed) else {
+            Logger.library.error("local library index NOT saved: the stored index was unreadable and this state is empty")
+            return
+        }
         guard let data = try? JSONEncoder().encode(entries) else { return }
         try? data.write(to: indexURL, options: .atomic)
+        // A real state was written — the block has served its purpose.
+        readFailed = false
     }
 }

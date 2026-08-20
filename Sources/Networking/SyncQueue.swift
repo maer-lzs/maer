@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// Persistence abstraction of the queue — replaceable with in-memory in tests.
 protocol SyncQueueStorage {
@@ -24,23 +25,37 @@ extension APIClient: ProgressSyncAPI {}
 /// File storage (atomic) — default outside tests. Deliberately top-level: as a
 /// type nested in SyncQueue it would inherit its MainActor isolation and could
 /// not be constructed as a default argument.
-struct SyncQueueFileStorage: SyncQueueStorage {
+///
+/// 6a411cf: a CLASS, not a struct — it has to remember across the two calls
+/// that the stored queue could not be read, and a value type cannot carry that
+/// from `load()` to `save()`. It lives behind SyncQueue's isolation, so the
+/// mutable state stays single-threaded.
+final class SyncQueueFileStorage: SyncQueueStorage {
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("pending_sync.json")
 
+    /// 6a411cf: unread is not empty. What waits here are listening positions
+    /// that never reached the server — the one thing this app must not lose
+    /// quietly.
+    private var readFailed = false
+
     func load() -> [String: SyncQueue.PendingUpdate] {
-        guard let data = try? Data(contentsOf: fileURL),
-              let dict = try? JSONDecoder().decode([String: SyncQueue.PendingUpdate].self, from: data) else {
-            return [:]
-        }
-        return dict
+        let outcome = CorruptStore.load([String: SyncQueue.PendingUpdate].self,
+                                        from: fileURL, label: "pending sync queue")
+        readFailed = outcome.blocksEmptySave
+        return outcome.value ?? [:]
     }
 
     func save(_ pending: [String: SyncQueue.PendingUpdate]) {
+        guard CorruptStore.maySave(isEmpty: pending.isEmpty, afterCorruptRead: readFailed) else {
+            Logger.library.error("pending sync queue NOT saved: the stored queue was unreadable and this state is empty")
+            return
+        }
         guard let data = try? JSONEncoder().encode(pending) else { return }
         // Atomic: an app kill mid-write must not corrupt the queue (load would
         // otherwise silently return [:] → everything lost).
         try? data.write(to: fileURL, options: .atomic)
+        readFailed = false
     }
 }
 

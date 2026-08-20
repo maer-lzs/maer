@@ -376,6 +376,33 @@ plain `NavigationLink { destination }` would stay on the stack.
 | `MediaType.tint` | MediaTabBar (selected tab) | Per-type colour: audiobooks orange · podcasts purple · music red · home `.primary` (neutral) · radio teal |
 | `MediaTabBar` | LibraryView (bottom bar) | `types, selected, onSelect`; a matchedGeometry capsule pill CONCENTRIC to the bar capsule (one `pillGap` = end padding = vertical inset; capsule-in-capsule at a uniform gap ⇒ pill radius = bar radius − gap at every bar height — at rest, gliding and through the collapse morph; no own radius constant; e053f53: `pillGap` 6→5 [Pille höher im SELBEN Bar-Rahmen] + 8pt horizontales Content-Padding — Bar-Höhe/Morph unangetastet) glides behind the selected tab (type-tint wash, neutral at Home); selected label in its `MediaType.tint`, others neutral; `tab-<rawValue>` a11y id. Y37: `types` derives from `isAvailable` per render AND reacts live — `AppSession.sourcesVersion` (observable) bumps on every source change (Subsonic `reloadConfig`, ABS-podcast `hasPodcasts` flip; RSS was already live via `PodcastSubscriptions`); the active tab falls back to Home when its source disappears |
 
+### `.corrupt`-Muster als EINE Flaeche (`CorruptStore`, 6a411cf)
+
+Die Gefahr ist nicht der Dekodier-Fehlschlag, sondern **was danach passiert**:
+`try?` macht aus einer unlesbaren Datei einen leeren Stand, und der naechste
+`save()` schreibt diese Leere ueber die noch rettbaren Daten. Aus einem
+Lesefehler wird dauerhafter Verlust — ohne Fehlermeldung, sichtbar nur als leere
+Liste.
+
+`CorruptStore.load` antwortet deshalb DREI Zustaende statt zwei: `.fresh` (keine
+Datei, Neuinstallation) · `.loaded` · **`.corrupt`** (Datei war da und war nicht
+lesbar). Das Original wandert nach `.corrupt` (bei `UserDefaults`-Ablagen unter
+einen Geschwister-Schluessel — dort gibt es keine Datei zum Beiseitelegen, und
+die Bytes wegzuwerfen beendete die Rettung). **`CorruptStore.maySave` ist die
+Regel, die das Aufbewahren erst wertvoll macht:** ein LEERER Stand darf eine
+unlesbare Ablage nicht ersetzen; ein echter, nicht-leerer Stand darf es sehr
+wohl — das ist der Nutzer, der neu aufbaut, und ihn dauerhaft zu blockieren
+waere ein eigener Defekt. Die Aufbewahrung allein dient der Forensik, die
+Schreibsperre dient dem Menschen.
+
+Angewandt auf die drei gemessenen Faelle: `LocalLibrary.Entry` (die ganze
+Sideload-Bibliothek), `SyncQueue.PendingUpdate` (nicht gepushte Hoerstaende),
+`BookmarkQueue.Operation` (nicht gepushte Lesezeichen). `SyncQueueFileStorage`
+wurde dafuer vom Struct zur KLASSE — sie muss sich zwischen `load()` und
+`save()` merken, dass nicht gelesen werden konnte, und ein Werttyp kann das
+nicht tragen; sie lebt hinter der Isolation von `SyncQueue`. Beweislauf je Typ
+auf ECHT abgeschnittenen Dateien, nicht auf nachgebauten Strukturen.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |
