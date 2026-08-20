@@ -80,6 +80,114 @@ def aspect(size):
     return max(width, height) / min(width, height)
 
 
+# Woerter, die eine Datei ueber den Sendernamen hinaus tragen DARF, ohne dass
+# sie einen anderen Gegenstand meint. Alles andere ist ein fremdes Wort — und
+# ein fremdes Wort heisst meist ein fremder Gegenstand.
+GENERIC_EXTRA = {
+    "logo", "logos", "klein", "gross", "big", "small", "neu", "new",
+    "radio", "svg", "png", "jpg", "jpeg", "gif", "de", "the", "of",
+    "final", "rgb", "official", "icon", "wortmarke", "bildmarke",
+}
+
+# NICHT generisch, obwohl es danach aussieht: "alt"/"old" benennen ausdruecklich
+# eine VERALTETE Fassung. Gemessen im ersten Lauf: "SWR3 Logo.svg" wurde zu
+# "SWR3 Logo alt.svg" — dieselbe Marke, nur die abgeloeste.
+OUTDATED_MARKERS = {"alt", "old", "ehemalig", "former", "historic", "historisch"}
+
+
+def tokens(raw):
+    import re as _re
+    return [w for w in _re.split(r"[^a-z0-9]+", fold_words(raw)) if w]
+
+
+def fold_words(raw):
+    """Wie `fold`, aber mit erhaltenen Wortgrenzen."""
+    import re as _re, unicodedata
+    text = unicodedata.normalize("NFKD", raw or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    return _re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def only_generic_extra(name, title):
+    """Traegt die Datei NUR generische Zusatzwoerter zum Sendernamen?
+
+    Gemessen an einem vollen Lauf ueber 786 Kern-Namen: die reine
+    Namens-Wache (Sendername steht im Dateinamen) laesst 76 Aenderungen durch,
+    davon **35 Rueckschritte** — „Radio Pilatus logo" wurde zur
+    „Pilatus PC-7 silhouette", „BBC Radio 5 Live" zum Logo von „5 Live Sports
+    Extra", „Mecklenburg-Vorpommern" zum SPD-Logo. Der Grund ist immer
+    derselbe: der Name steht drin, gemeint ist etwas anderes.
+
+    Diese Regel verlangt zusaetzlich, dass die Datei NICHTS anderes benennt.
+    Sie kostet ein paar echte Verbesserungen (das Wikidata-Logo bleibt dann
+    stehen) und verhindert alle gemessenen Rueckschritte. Ein falsches Logo ist
+    schlimmer als eine Farbkachel — und ein Rueckschritt ist schlimmer als ein
+    ausgebliebener Fortschritt.
+    """
+    import re as _re
+    name_words = set(tokens(name))
+    stem = _re.sub(r"\.[a-z0-9]+$", "", title)
+    extra = [w for w in tokens(stem) if w not in name_words]
+    return all(w in GENERIC_EXTRA or w.isdigit() for w in extra)
+
+
+def year_in(title):
+    """Die groesste vierstellige Jahreszahl im Dateinamen, oder None."""
+    import re as _re
+    years = [int(y) for y in _re.findall(r"\b(19\d{2}|20\d{2})\b", title or "")]
+    return max(years) if years else None
+
+
+def keep_previous(name, previous, candidate):
+    """Darf die BISHERIGE Zuordnung durch die neue ersetzt werden?
+
+    Der Generator laeuft gegen einen bestehenden Bestand, und ein Lauf, der ihn
+    verschlechtert, ist schlimmer als einer, der nichts findet. Gemessen an zwei
+    vollen Laeufen ueber 786 Namen bleiben drei Klassen uebrig, die die
+    Namens-Wache passieren und trotzdem Rueckschritte sind:
+
+      * die ausdruecklich ALTE Fassung derselben Marke ("SWR3 Logo alt"),
+      * eine AELTERE Jahresfassung ("… Logo 2024" → "… Logo 2012"),
+      * der Verlust des Namens ("Rai Radio 1 - Logo 2017" → "Logo of RAI Radio").
+
+    Alle drei sind am Dateinamen allein entscheidbar — kein Netz noetig, und
+    deshalb steht die Regel hier und nicht in einem Nachbearbeitungsschritt.
+    """
+    if not previous or previous == candidate:
+        return False
+    stem = candidate.rsplit(".", 1)[0]
+    if any(w in OUTDATED_MARKERS for w in tokens(stem)):
+        return True
+    old_year, new_year = year_in(previous), year_in(candidate)
+    if old_year and new_year and new_year < old_year:
+        return True
+    # Der Name darf nicht verlorengehen: was ihn traegt, schlaegt was ihn nicht
+    # traegt — auch wenn das neue Bild quadratischer waere.
+    if carries_name(name, previous) and not carries_name(name, candidate):
+        return True
+    # Ein unterscheidendes Zeichen, das die bisherige Datei BEWAHRT, darf nicht
+    # wegfallen. Gemessen: "NRK P1+" bekam das Logo von "NRK P1" — die Faltung
+    # wirft das "+" weg, und damit sehen zwei VERSCHIEDENE Sender gleich aus.
+    # Die bisherige Datei hiess "NRK P1+ logo.svg" und wusste es besser.
+    for mark in set(name) - set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 "):
+        if mark in previous and mark not in candidate:
+            return True
+    return False
+
+
+def existing_mapping():
+    """Der bisherige Bestand als Vergleichsgrundlage."""
+    import re as _re
+    path = os.path.join(ROOT, "Sources", "Models", "RadioLogoData.swift")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+    except OSError:
+        return {}
+    return dict(_re.findall(r'^\s*"((?:[^"\\]|\\.)*)"\s*:\s*"((?:[^"\\]|\\.)*)",?\s*$',
+                            text, _re.M))
+
+
 def carries_name(name, title):
     """Traegt der Dateiname den Sendernamen? Die WACHE gegen Fremdbilder.
 
@@ -201,7 +309,7 @@ def commons_file(name):
         if size and min(size) >= MIN_SIDE:
             if first_relevant is None:
                 first_relevant = title
-            if carries_name(name, title):
+            if carries_name(name, title) and only_generic_extra(name, title):
                 score = rank(size, name=name, title=title)
                 if best_named is None or score < best_named[0]:
                     best_named = (score, title)
@@ -276,6 +384,7 @@ nonisolated enum RadioLogoData {{
 def main():
     dry = "--trocken" in sys.argv
     names = core_names()
+    previous = existing_mapping()
     print(f"target set: {len(names)} core names", file=sys.stderr)
     entries, failures = {}, 0
     for index, name in enumerate(names, 1):
@@ -289,12 +398,21 @@ def main():
             mark, mark_verdict = commons_file(name)
             if mark_verdict == "failed":
                 failures += 1
-            elif mark and not is_wordmark(mark):
+            elif mark and not is_wordmark(mark) and only_generic_extra(name, mark):
+                # Punkt 2 des Auftrags, aber ENGER: eine Wikidata-P154-Datei
+                # stammt aus einem zugeordneten OBJEKT, ein Suchtreffer nur aus
+                # einer Zeichenkette. Objekt-Beleg schlaegt Zeichenketten-Beleg,
+                # also darf die Marke nur uebernehmen, wenn sie zweifelsfrei
+                # denselben Sender benennt.
                 file_name = mark
         if not file_name:
             file_name, verdict = commons_file(name)
             if verdict == "failed":
                 failures += 1
+        if file_name and keep_previous(name, previous.get(name), file_name):
+            # Ein Lauf, der den Bestand verschlechtert, ist schlimmer als einer,
+            # der nichts findet.
+            file_name = previous[name]
         if file_name:
             entries[name] = file_name
         if index % 25 == 0:

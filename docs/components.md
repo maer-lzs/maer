@@ -490,6 +490,51 @@ begrenzt — eine Kapsel zeigt eine AUSWAHL unter sichtbaren Alternativen (dort
 kalibrieren die Alternativen den Ton), ein Schalter einen zweiwertigen Zustand
 ohne Vergleichsobjekt.
 
+### Bildmarke statt Schriftzug — und drei Rueckschritts-Klassen, die erst der volle Lauf zeigte (`87c77c4`)
+
+**Die Regel ist das SEITENVERHAELTNIS, nicht der Sendername** (the owner meldete
+DLF, gebaut ist die allgemeine Aussage): eine quadratische Kachel will eine
+quadratische Bildmarke, ein Schriftzug ist die Rueckfallebene. Klassen:
+`<= 1.6` Bildmarke · `> 3.0` Schriftzug · dazwischen Grauzone, brauchbar aber
+schlaegt keine Marke. Bestand vorher gemessen (626 Eintraege): **35 % Bildmarke,
+36,6 % Grauzone, 28,1 % Schriftzug**.
+
+**Vier Waechter, und jeder kam aus einer MESSUNG, nicht aus einer Ueberlegung:**
+
+1. **Namens-Wache** (`carries_name`): der Dateiname muss den Sendernamen tragen.
+   Ohne sie holt die Verhaeltnis-Regel Fremdbilder — gemessen: das Logo des FC
+   Bayern fuer „Bayern 2", ein NASA-Foto fuer „Bremen NEXT", Marktkauf fuer
+   „Bremen Eins". In 176 geprueften Schriftzuegen 55 Fremdbilder abgewehrt.
+2. **Nur generische Zusatzwoerter** (`only_generic_extra`): der VOLLE Lauf ueber
+   786 Namen zeigte, dass die Namens-Wache allein nicht reicht — 76 Aenderungen,
+   davon **35 Rueckschritte**: „Radio Pilatus logo" → „Pilatus PC-7 silhouette",
+   „BBC Radio 5 Live" → das Logo von „5 Live Sports Extra",
+   „Mecklenburg-Vorpommern" → das SPD-Logo. Immer dasselbe: der Name steht drin,
+   gemeint ist etwas anderes. Die Datei darf ueber den Namen hinaus nur
+   generische Woerter tragen (logo/klein/neu/Jahreszahlen).
+3. **Rueckschritts-Sperre** (`keep_previous`): der Generator laeuft gegen einen
+   BESTAND, und ein Lauf, der ihn verschlechtert, ist schlimmer als einer, der
+   nichts findet. Drei Klassen, alle am Dateinamen allein entscheidbar: die
+   ausdruecklich ALTE Fassung („SWR3 Logo alt.svg" — `alt`/`old` sind deshalb
+   NICHT generisch, obwohl sie danach aussehen), eine AELTERE Jahresfassung
+   (2024 → 2012), und der Verlust des Namens („Rai Radio 1 - Logo 2017" →
+   „Logo of RAI Radio").
+4. **Unterscheidende Zeichen**: ein Sonderzeichen, das die bisherige Datei
+   bewahrt, darf nicht wegfallen — die Faltung wirft „+" weg, und „NRK P1+"
+   bekam das Logo von „NRK P1", also von einem ANDEREN Sender.
+
+**Endstand: 624/786 = 79,4 % tragen ein Logo, 37 Zuordnungen geaendert** — u. a.
+Deutschlandfunk (6,8:1 → 1:1), MDR Thueringen, MDR Kultur, bigFM, SRF 3, hr INFO,
+rbb24 Inforadio, rs2. **Der Laufzeit-Weg braucht die Regel nicht:** dort gibt es
+keine Mehrfach-Auswahl (Wikidata liefert EINE Datei, ein apple-touch-icon ist per
+Konvention quadratisch) — es gibt also nichts zu bevorzugen.
+
+**Offener Nebenbefund, nicht gefixt:** `core_names()` zieht auch Nicht-Sender aus
+den Kern-Tabellen (`PL`, `AU`, `Berlin`, `Total …`, `Sachsen`) — die tragen
+Unsinns-Logos, vorher wie nachher. Sie schaden nicht (kein Sender heisst so), aber
+sie verfaelschen den Nenner der Quote. Gemeldet statt blind gefiltert: welche
+Tabelle sie liefert, muss man wissen, bevor man kuerzt.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |
