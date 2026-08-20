@@ -17,6 +17,10 @@ enum RadioRoute: Hashable {
     /// The full page behind a counted browse row (Regel 2: one parameterised
     /// page, the row passes its whole stock).
     case stationList(title: String, stations: [RadioStation])
+    /// cb2d1ed: the page behind "My Stations" — the two sources divided apart
+    /// again. The row merges them because it answers ONE question ("mine");
+    /// the page has room to say which is which.
+    case myStations
 }
 
 /// Teil 1: push a RadioRoute from a non-link surface (a context-menu button) —
@@ -44,6 +48,8 @@ extension View {
             case .stationList(let title, let stations):
                 RadioStationListPage(title: title, stations: stations,
                                      playerCoordinator: playerCoordinator)
+            case .myStations:
+                RadioMyStationsPage(playerCoordinator: playerCoordinator)
             }
         }
     }

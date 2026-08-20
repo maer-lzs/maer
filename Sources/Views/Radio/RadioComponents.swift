@@ -100,17 +100,18 @@ struct RadioPlayMenuButton: View {
 
 /// F4-discovery: a station as a compact card for the horizontal browse rows
 /// (Popular / From your region) — the shared `RadioArtwork` (Y58) over the name.
+///
+/// f83c442 / 99ee104: a TILE navigates on tap, always — play is the explicit
+/// corner glyph. The boundary runs along the BUILD FORM, not the surface: a
+/// card shows ONE state you continue, a tile is an entry in a choice you first
+/// want to look at. The per-caller tap mode is gone rather than defaulted:
+/// three call sites had quietly set the other behaviour, and the same tile
+/// shape then meant two different things one screen apart. A switch nobody can
+/// set is the only fence that cannot drift.
 struct RadioStationCard: View {
-    /// What the CARD's tap does. The big Häufig/Zuletzt cards keep playing
-    /// (they are the radio library's continue cards — owner correction
-    /// b525ab9) and carry a detail pill instead; every browse surface
-    /// navigates, with play as the explicit corner glyph.
-    enum TapMode { case navigates, playsOnTap }
-
     let station: RadioStation
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
-    var mode: TapMode = .navigates
     /// P16a: the ROW defines the metric, not the class. In a MIXED row
     /// (Start's "Recently Played": albums next to stations) the album size is
     /// the reference for Start's density — the tile takes it as a parameter
@@ -124,10 +125,7 @@ struct RadioStationCard: View {
 
     var body: some View {
         Button {
-            switch mode {
-            case .navigates: pushRadioRoute(.station(station))
-            case .playsOnTap: RadioPlay.play(station, playerCoordinator: playerCoordinator)
-            }
+            pushRadioRoute(.station(station))
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 RadioArtwork(stationID: station.id,
@@ -136,40 +134,20 @@ struct RadioStationCard: View {
                     .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay(alignment: .bottomTrailing) {
-                        if mode == .navigates {
-                            // Play stays reachable in ONE tap — the corner
-                            // glyph, like the podcast tiles' corner action.
-                            Button {
-                                RadioPlay.play(station, playerCoordinator: playerCoordinator)
-                            } label: {
-                                Image(systemName: "play.fill")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .padding(7)
-                                    .background(Circle().fill(.black.opacity(0.45)))
-                            }
-                            .buttonStyle(.plain)
-                            .padding(6)
-                            .accessibilityLabel(Text("Play"))
+                        // Play stays reachable in ONE tap — the corner glyph,
+                        // like the podcast tiles' corner action.
+                        Button {
+                            RadioPlay.play(station, playerCoordinator: playerCoordinator)
+                        } label: {
+                            Image(systemName: "play.fill")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(7)
+                                .background(Circle().fill(.black.opacity(0.45)))
                         }
-                    }
-                    .overlay(alignment: .bottomLeading) {
-                        if mode == .playsOnTap {
-                            // The continue-card pill: the way to the page,
-                            // without giving up tap-to-play.
-                            Button {
-                                pushRadioRoute(.station(station))
-                            } label: {
-                                Image(systemName: "info.circle")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .padding(7)
-                                    .background(Capsule().fill(.black.opacity(0.45)))
-                            }
-                            .buttonStyle(.plain)
-                            .padding(6)
-                            .accessibilityLabel(Text("Station Details"))
-                        }
+                        .buttonStyle(.plain)
+                        .padding(6)
+                        .accessibilityLabel(Text("Play"))
                     }
                 Text(RadioMapping.displayName(station.name))
                     .font(.caption.weight(.medium))
@@ -265,7 +243,6 @@ struct RadioCardRow: View {
     let stations: [RadioStation]
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
-    var mode: RadioStationCard.TapMode = .navigates
     var onFavoriteToggled: () -> Void = {}
 
     var body: some View {
@@ -277,7 +254,7 @@ struct RadioCardRow: View {
                     // the cold start felt sluggish (every station a cell).
                     ForEach(RowPreview.cut(stations)) { station in
                         RadioStationCard(station: station, playerCoordinator: playerCoordinator,
-                                         mode: mode, onFavoriteToggled: onFavoriteToggled)
+                                         onFavoriteToggled: onFavoriteToggled)
                     }
                 }
                 .padding(.horizontal)
@@ -294,6 +271,11 @@ struct RadioCardRow: View {
 struct RadioFeaturedCard: View {
     let station: RadioStation
     let playerCoordinator: PlayerCoordinator
+    /// cb2d1ed: a starred station carries the glyph — without it the order of
+    /// "My Stations" (preference before measured time) is unexplainable.
+    var isFavorite: Bool = false
+    /// Measured listening time, for the card line's second state.
+    var listenedSeconds: Int = 0
     @Environment(\.pushRadioRoute) private var pushRadioRoute
     /// f7b7941: the card colour comes from the COVER, like BookFeaturedCard —
     /// the hash tint stays the placeholder colour until an accent is loaded
@@ -330,14 +312,21 @@ struct RadioFeaturedCard: View {
                     // a card without a known show carries just name + LIVE.
                     RadioCardNowPlayingLeaf(stationID: station.id,
                                             host: .featuredCard,
-                                            coordinator: playerCoordinator)
+                                            coordinator: playerCoordinator,
+                                            listenedSeconds: listenedSeconds)
                     Text(RadioMapping.displayName(station.name))
                         .font(.headline)
                         .foregroundStyle(.white)
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                    HStack {
+                    HStack(spacing: 6) {
                         LiveBadge()
+                        if isFavorite {
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.9))
+                                .accessibilityLabel(Text("Favorite"))
+                        }
                         Spacer()
                     }
                 }
@@ -395,6 +384,9 @@ private struct RadioCardNowPlayingLeaf: View {
     /// rule) — THIS leaf carries the only subscription, so the active flip
     /// and the title ticks re-render leaves, never cards.
     @ObservedObject var coordinator: PlayerCoordinator
+    /// cb2d1ed: measured listening time of THIS station. Makes the line's
+    /// second state possible — the same line, never a second one.
+    var listenedSeconds: Int = 0
 
     var body: some View {
         // ONE text node, whatever the state — the content changes, the layout
@@ -412,19 +404,34 @@ private struct RadioCardNowPlayingLeaf: View {
             .accessibilityIdentifier("radio-nowplaying-line")
     }
 
-    /// The running title when this station is the one playing and the title is
-    /// known — otherwise EMPTY. Not a space: whether a lone space keeps its
-    /// line box is a rendering detail, and the reservation must not depend on
-    /// one. `reservesSpace` states the metric outright.
+    /// The line's content, in the three states of `RadioMyStations.cardLine` —
+    /// EMPTY in the third. Not a space: whether a lone space keeps its line box
+    /// is a rendering detail, and the reservation must not depend on one.
+    /// `reservesSpace` states the metric outright.
     private var text: String {
         // The coordinator's MIRROR, not `viewModel.icyDisplayLine`: this leaf
         // observes the coordinator, and a nested ObservableObject publishes to
         // its own observers only — reading through it meant the line arrived
         // without anything redrawing, so it appeared at the next unrelated
         // redraw instead. That is the "the layout shifts when I press" report.
-        guard coordinator.activeItem?.id == stationID,
-              let line = coordinator.nowPlayingLine else { return "" }
-        return line
+        let line = RadioMyStations.cardLine(
+            isRunning: coordinator.activeItem?.id == stationID,
+            runningLine: coordinator.nowPlayingLine,
+            seconds: listenedSeconds)
+        switch line {
+        case .running(let show): return show
+        case .listened(let hours): return Self.listenedLabel(hours: hours)
+        case .none: return ""
+        }
+    }
+
+    /// "3 Std." — the measured time, rounded down to full hours (the floor
+    /// already guarantees at least one).
+    private static func listenedLabel(hours: Int) -> String {
+        let components = DateComponentsFormatter()
+        components.unitsStyle = .abbreviated
+        components.allowedUnits = [.hour]
+        return components.string(from: DateComponents(hour: hours)) ?? "\(hours) h"
     }
 
     private struct Line: View {
@@ -452,18 +459,41 @@ private struct RadioCardNowPlayingLeaf: View {
 }
 
 /// The card row for the Zuletzt class — RadioView and Home share it.
+///
+/// cb2d1ed: the same row now also carries "My Stations", with the star glyph
+/// and the listening time. NOT a second card class: the form already carried
+/// the pill and the line machinery this row needs, and the owner's rule is that
+/// the FORM carries the behaviour — a card is an offer to continue, a tile is
+/// an entry in a choice.
 struct RadioFeaturedCardRow: View {
     let title: String
     let stations: [RadioStation]
     let playerCoordinator: PlayerCoordinator
+    /// Ids that carry the star. Empty for the plain Zuletzt row.
+    var favoriteIDs: Set<String> = []
+    /// Measured seconds per station id — the card line's second state.
+    var seconds: [String: Int] = [:]
+    /// The counted heading with its full page, when the row has one.
+    var destination: RadioRoute? = nil
+    /// The stock behind the preview, for the counting heading.
+    var total: Int? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.title3).bold().padding(.horizontal)
+            if let destination {
+                RowHeading<RadioRoute>(title: "", verbatimTitle: title,
+                                       total: total ?? stations.count,
+                                       destination: destination)
+            } else {
+                Text(title).font(.title3).bold().padding(.horizontal)
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 14) {
                     ForEach(RowPreview.cut(stations)) { station in
-                        RadioFeaturedCard(station: station, playerCoordinator: playerCoordinator)
+                        RadioFeaturedCard(station: station,
+                                          playerCoordinator: playerCoordinator,
+                                          isFavorite: favoriteIDs.contains(station.id),
+                                          listenedSeconds: seconds[station.id] ?? 0)
                     }
                 }
                 .padding(.horizontal)

@@ -21,6 +21,11 @@ struct RadioView: View {
     @State private var recents: [RadioStation] = []
     // Teil 3: stations ranked by play frequency (net-independent — from the store).
     @State private var mostPlayed: [RadioStation] = []
+    /// cb2d1ed: the merged first row, and its full stock for the counting head.
+    @State private var myStations: [RadioStation] = []
+    @State private var myStationsTotal = 0
+    /// Measured seconds per station — the card line's second state.
+    @State private var radioSeconds: [String: Int] = [:]
     // Catalog browse — cached per session, re-fetched only on refresh.
     @State private var popular: [RadioStation] = []
     @State private var copiedLogoReport = false
@@ -105,30 +110,36 @@ struct RadioView: View {
     private var showsRegion: Bool { RadioCatalog.showsRegion(isConnected: networkMonitor.isConnected, regionCode: regionEffectiveCode, regional: regional) }
     private var showsGenres: Bool { RadioCatalog.showsGenres(isConnected: networkMonitor.isConnected) }
     private var hasAnyContent: Bool {
-        !mostPlayed.isEmpty || !favorites.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
+        !myStations.isEmpty || !recents.isEmpty || showsPopular || showsRegion || showsGenres
     }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                // owner decision b525ab9: Zuletzt gespielt ist die ERSTE
-                // Reihe (das Radio-Pendant der Fortsetzen-Karten), Häufig nur
-                // bei echtem Unterschied — zwei Reihen mit denselben acht
-                // Sendern sagen nichts zweimal. Favoriten wandern KÜNFTIG
-                // davor, sobald sie Karten sind; bis dahin bleibt die Liste.
-                if !recents.isEmpty {
-                    // a1077a9: the Zuletzt class is a CARD (Featured family),
-                    // Häufig below stays a tile — the owner's own precision.
-                    RadioFeaturedCardRow(title: String(localized: "Recently Played"),
-                                         stations: recents,
-                                         playerCoordinator: playerCoordinator)
+                // cb2d1ed: "My Stations" (favorites + most played) is the
+                // first row and a CARD; "Recently Played" sits below it as a
+                // small tile.
+                //
+                // The reason they stay apart is the owner's: recently played is a
+                // STATE, my stations is a PREFERENCE — two truths do not
+                // belong in one row. And because the last-heard station is
+                // usually also the most-heard one, the upper row leaves it
+                // out: it is not gone, it stands one row lower. Behind the
+                // chevron it reappears — there is no neighbouring row there.
+                if !myStations.isEmpty {
+                    RadioFeaturedCardRow(title: String(localized: "My Stations"),
+                                         stations: myStations,
+                                         playerCoordinator: playerCoordinator,
+                                         favoriteIDs: Set(favorites.map(\.id)),
+                                         seconds: radioSeconds,
+                                         destination: .myStations,
+                                         total: myStationsTotal)
                 }
-                if !mostPlayed.isEmpty, mostPlayedDiffersFromRecents {
-                    cardRow(title: String(localized: "Most Played"), stations: mostPlayed,
-                            mode: .playsOnTap)
-                }
-                if !favorites.isEmpty {
-                    listSection(title: String(localized: "Favorites"), stations: favorites)
+                if let recent = recents.first {
+                    // Standard-Kachel und bewusst KLEIN — sie trägt auch keine
+                    // Sendungszeile: bei einem Sender, der nicht mehr läuft,
+                    // wäre sie ohnehin veraltet.
+                    cardRow(title: String(localized: "Recently Played"), stations: [recent])
                 }
                 if showsPopular {
                     VStack(alignment: .leading, spacing: 4) {
@@ -242,10 +253,9 @@ struct RadioView: View {
     }
 
     /// Regel 2: the row itself is the shared `RadioCardRow` (also on Home).
-    private func cardRow(title: String, stations: [RadioStation],
-                         mode: RadioStationCard.TapMode = .navigates) -> some View {
+    private func cardRow(title: String, stations: [RadioStation]) -> some View {
         RadioCardRow(title: title, stations: stations,
-                     playerCoordinator: playerCoordinator, mode: mode,
+                     playerCoordinator: playerCoordinator,
                      onFavoriteToggled: reload)
     }
 
@@ -261,12 +271,6 @@ struct RadioView: View {
             }
             .padding(.horizontal)
         }
-    }
-
-    /// Two rows showing the same eight stations say nothing twice — Häufig
-    /// appears only when its preview actually differs from Zuletzt.
-    private var mostPlayedDiffersFromRecents: Bool {
-        Set(RowPreview.cut(mostPlayed).map(\.id)) != Set(RowPreview.cut(recents).map(\.id))
     }
 
     /// The cover report is only reproducible on a device, and reading the
@@ -380,10 +384,17 @@ struct RadioView: View {
 
     private func reload() {
         let favs = RadioStore.favorites()
-        let recs = RadioStore.recents().filter { station in
-            !favs.contains { $0.id == station.id }
-        }
-        let most = RadioStore.mostPlayed(seconds: ListeningStatsStore.shared.radioSeconds())
+        // cb2d1ed: NO longer filtered against the favorites — row 2 shows the
+        // station that actually ran last, whether it is starred or not. The
+        // de-duplication now happens the other way round: the row ABOVE leaves
+        // this one out.
+        let recs = RadioStore.recents()
+        let secs = ListeningStatsStore.shared.radioSeconds()
+        let most = RadioStore.mostPlayed(seconds: secs)
+        let excluded = RadioMyStations.excludedID(recents: recs)
+        let mine = RadioMyStations.composed(favorites: favs, mostPlayed: most,
+                                            seconds: secs, excluding: excluded,
+                                            limit: .max)
         // Layout-shift: same calm gate as loadDiscovery — the per-section
         // empty→filled rule applies to the library rows too (user-driven calls
         // run while calm, so they still apply instantly).
@@ -391,6 +402,9 @@ struct RadioView: View {
             favorites = favs
             recents = recs
             mostPlayed = most
+            radioSeconds = secs
+            myStations = mine
+            myStationsTotal = mine.count
         }
     }
 

@@ -169,9 +169,10 @@ struct MixedMediaPage: View {
                                              playerCoordinator: playerCoordinator)
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
+                                // f83c442/99ee104: Kachel navigiert (siehe HomeView).
                                 RadioStationCard(station: station,
                                                  playerCoordinator: playerCoordinator,
-                                                 mode: .playsOnTap, width: cardWidth)
+                                                 width: cardWidth)
                                     .frame(width: cardWidth, alignment: .top)
                             }
                         }

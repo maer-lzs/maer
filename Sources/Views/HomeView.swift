@@ -342,9 +342,11 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     // P16a: the ROW's metric, not the class's —
                                     // the album size is Start's density, and a
                                     // mixed row with two sizes reads as torn.
+                                    // f83c442/99ee104: eine KACHEL navigiert,
+                                    // eine KARTE spielt — die Grenze verläuft
+                                    // an der Bauform, nicht an der Fläche.
                                     RadioStationCard(station: station,
                                                      playerCoordinator: playerCoordinator,
-                                                     mode: .playsOnTap,
                                                      width: Self.recentlyPlayedTileWidth)
                                         .frame(width: Self.recentlyPlayedTileWidth,
                                                alignment: .top)

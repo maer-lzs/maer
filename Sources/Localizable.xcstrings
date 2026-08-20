@@ -54,6 +54,16 @@
         }
       }
     },
+    "My Stations" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meine Sender"
+          }
+        }
+      }
+    },
     "iCloud refused a write on %@ — the shared space is full, so progress, playlists and statistics stopped syncing." : {
       "localizations" : {
         "de" : {
@@ -2542,6 +2552,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Märchen"
+          }
+        }
+      }
+    },
+    "Favorite" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Favorit"
           }
         }
       }
@@ -7002,6 +7022,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sport"
+          }
+        }
+      }
+    },
+    "Star a station, or listen to one — it will show up here." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markiere einen Sender oder hör einen — dann steht er hier."
           }
         }
       }
