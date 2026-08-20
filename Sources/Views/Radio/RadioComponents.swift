@@ -638,6 +638,10 @@ struct RadioCountryPickerList: View {
                         }
                     }
                     .tint(.primary)
+                    // e77e0b1 side finding: with an EMPTY LabeledContent value
+                    // the button flattened to a bare StaticText in the a11y
+                    // tree and lost its identifier — combine keeps it a button.
+                    .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("radio-country-worldwide")
                 } footer: {
                     Text("Genres show the stations of the selected countries. Several are allowed.")

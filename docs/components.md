@@ -704,6 +704,32 @@ isoliertes Capture mehr im Mess-Pfad) plus the owner's Zuender-Rezept am Geraet.
 NICHTS von self fangen — nur lokale Kopien. Ein View-Typ unter
 Default-MainActor macht jedes self-Capture zur Bombe mit Timing-Zuender.
 
+### GT R6/R7b: beobachtete Auswahl-Quelle, Cancel ist kein Fehler, Weltweit hat zwei Toepfe
+
+**R6a (zurueckgenommen, Haertung bleibt):** die Genre-Seiten hielten die
+app-weite Laenderauswahl als private `@State`-Kopie (einmal beim Init gelesen)
+— zwei Wahrheiten. Jetzt `RadioGenreCountrySelection` als EINE beobachtete
+Quelle (@Published + Defaults), jede montierte Seite aktualisiert im Moment der
+Aenderung. Flaechen-Journey: Laenderwechsel aendert die SICHTBARE Liste ohne
+Neustart (der Schluessel-Test allein prueft die falsche Schicht — dritte
+Instanz, the reviewer's Zaehlung).
+
+**R6b (ebda0fa): ein GECANCELTER Ladelauf ist kein Fehlschlag** — fuenfte
+Instanz der Wurf-ist-kein-Ende-Klasse. Der Auswahl-Wechsel startet `.task(id:)`
+neu und cancelt den Lauf in flight; der catch buchte das als `loadFailed` und
+zeigte „prüfe deine Verbindung" bei intaktem Netz. CancellationError und
+URLError.cancelled kehren jetzt still zurueck; der neugestartete Task laedt die
+echte Antwort. Journey: Refresh direkt nach dem Wechsel zeigt keinen
+Netz-Fehler.
+
+**R7b (8a38ca5): Weltweit ist ZWEI Toepfe.** Die globale Top-40 kappt VOR dem
+Sprachbonus — DLF steht weltweit auf ~Platz 49 des news-Tags (gemessen) und
+erreichte den Topf nie; der Bonus hatte nichts zu heben. Jetzt: globaler Topf +
+Geraetesprachen-Topf (`languagecodes=<code>` — gemessen: `language=de` antwortet
+2 Sender, `languagecodes=de` die echte Liste mit WDR 5/DLF vorn), Vereinigung
+wie bei den Laendern, dieselbe Kuration/Dedupe dahinter. Faellt der Sprach-Topf
+aus, degradiert es zu reinem Weltweit statt die Seite scheitern zu lassen.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

@@ -25,11 +25,10 @@ struct RadioGenreView: View {
     @State private var loadedKey: String?
     @State private var loadFailed = false
     @State private var showCountryPicker = false
-    /// Absent = never chosen (follow the cascade); empty = worldwide.
-    /// Mirrors the national row's manual defaults I/O — an optional
-    /// `@AppStorage` misbehaves, and eager writes would freeze the cascade.
-    @State private var chosenCodes: [String]? =
-        UserDefaults.standard.array(forKey: AppStorageKeys.radioGenreCountryCodes) as? [String]
+    /// e77e0b1: the OBSERVED shared selection — never a private copy. A
+    /// `@State` snapshot read at init was two truths, and the visible list
+    /// missed changes until restart on the device.
+    @ObservedObject private var selection = RadioGenreCountrySelection.shared
 
     private var cascadeCode: String? {
         RadioCountryCascade.effectiveCode(
@@ -39,7 +38,7 @@ struct RadioGenreView: View {
     }
 
     private var effectiveCodes: [String] {
-        RadioGenreCountries.effectiveCodes(stored: chosenCodes, cascade: cascadeCode)
+        RadioGenreCountries.effectiveCodes(stored: selection.stored, cascade: cascadeCode)
     }
 
     private var isWorldwide: Bool { effectiveCodes.isEmpty }
@@ -153,8 +152,7 @@ struct RadioGenreView: View {
     /// genre. Writing happens only on a real choice, so an untouched install
     /// keeps following the cascade.
     private func store(_ codes: [String]) {
-        chosenCodes = codes
-        UserDefaults.standard.set(codes, forKey: AppStorageKeys.radioGenreCountryCodes)
+        selection.store(codes)
     }
 
     private func load(force: Bool = false) async {
@@ -177,6 +175,16 @@ struct RadioGenreView: View {
         do {
             union = try await RadioBrowserClient.byTag(tag: tag, countryCodes: effectiveCodes)
             loadFailed = false
+        } catch is CancellationError {
+            // ebda0fa (GT R6b): a CANCELLED run is not a failure — fifth
+            // instance of the throw-is-not-the-end class. Switching the
+            // selection restarts `.task(id:)`, which cancels the run in
+            // flight; booking that as `loadFailed` showed "check your
+            // connection" on an intact network. The restarted task loads the
+            // real answer a moment later.
+            return
+        } catch let error as URLError where error.code == .cancelled {
+            return
         } catch {
             loadFailed = true
             return

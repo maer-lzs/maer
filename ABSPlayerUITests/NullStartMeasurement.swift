@@ -930,6 +930,72 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
+    /// e77e0b1 (GT R6): a changed country selection must update the VISIBLE
+    /// list — not only the load key. The key-level test was green while the
+    /// device showed the old list until restart: third instance of a fence
+    /// checking a different layer than the one that breaks. So this case
+    /// watches the surface: station names before and after the switch.
+    func testGenreCountryChangeUpdatesTheVisibleList() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        let radioTab = app.buttons["tab-radio"].firstMatch
+        XCTAssertTrue(radioTab.waitForExistence(timeout: 25))
+        radioTab.tap()
+        let genre = app.buttons["radio-genre-pop"].firstMatch
+        XCTAssertTrue(genre.waitForExistence(timeout: 30) || scrollTo(app, genre, swipes: 10))
+        genre.tap()
+        let play = app.buttons["station-play"].firstMatch
+        try XCTSkipUnless(play.waitForExistence(timeout: 90),
+                          "das Verzeichnis hat keine Sender geliefert (Netz?)")
+
+        func topNames() -> [String] {
+            app.staticTexts.allElementsBoundByIndex.prefix(14)
+                .filter { $0.exists && !$0.label.isEmpty }.map { $0.label }
+        }
+        let before = topNames()
+
+        // Switch to worldwide via the page's own picker.
+        let change = app.buttons["radio-genre-countries-change"].firstMatch
+        XCTAssertTrue(change.waitForExistence(timeout: 10), "der Länder-Link fehlt")
+        change.tap()
+        // The worldwide row flattens to a StaticText in the a11y tree (its
+        // button identifier does not survive — own finding, hardened in the
+        // view); the LABEL is the stable handle either way.
+        let worldwide = app.staticTexts["Weltweit"].firstMatch
+        XCTAssertTrue(worldwide.waitForExistence(timeout: 15), "die Weltweit-Zeile fehlt")
+        worldwide.tap()
+        let done = app.buttons["radio-country-done"].firstMatch
+        if done.waitForExistence(timeout: 5) { done.tap() }
+
+        // The visible list must change WITHOUT a restart. Worldwide-by-votes
+        // is dominated by non-DACH stations, so the top names differ hard.
+        var after: [String] = []
+        for _ in 0..<30 {
+            after = topNames()
+            if after != before, !after.isEmpty { break }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        let report = XCTAttachment(string: """
+        vorher:  \(before.joined(separator: " · "))
+        nachher: \(after.joined(separator: " · "))
+        """)
+        report.name = "genre-country-switch"
+        report.lifetime = .keepAlways
+        add(report)
+        snap(app, "genre-country-switch")
+        XCTAssertNotEqual(before, after,
+                          "die sichtbare Liste hat sich nach dem Länderwechsel nicht geändert")
+        // ebda0fa (R6b): a refresh right after the switch must not book the
+        // cancelled in-flight run as a network failure.
+        app.swipeDown()
+        Thread.sleep(forTimeInterval: 4)
+        XCTAssertFalse(app.staticTexts["This could not be loaded. Check your connection."]
+                        .firstMatch.exists,
+                       "Refresh auf Weltweit meldet Netz-Fehler bei intaktem Netz")
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time

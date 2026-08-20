@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import Combine
 
 /// eb10440: which countries feed the GENRE pages, and how their union is
 /// shaped into a list. A genre is TASTE (several countries make sense), the
@@ -117,5 +118,31 @@ nonisolated enum RadioGenreCuration {
     /// the whole catalog — there is no wider fallback to offer there.
     static func offersWorldwide(count: Int, isWorldwide: Bool) -> Bool {
         !isWorldwide && count < sparseThreshold
+    }
+}
+
+/// e77e0b1 (GT R6): the ONE observed source of the genre-country selection.
+///
+/// The selection is app-wide (one UserDefaults key, all genre pages), but each
+/// page used to hold a private `@State` COPY read once at init — two truths,
+/// and on the device a change did not reach the visible list until restart.
+/// The sim never hit the owner's exact constellation, so this is deliberately not
+/// a point fix for one path: a shared observed object is the only construction
+/// that updates EVERY mounted page at the moment of the change, whatever the
+/// navigation cache did.
+@MainActor
+final class RadioGenreCountrySelection: ObservableObject {
+    static let shared = RadioGenreCountrySelection()
+
+    /// Absent = never chosen (cascade decides); empty = worldwide, chosen.
+    @Published private(set) var stored: [String]?
+
+    init(defaults: UserDefaults = .standard) {
+        stored = defaults.array(forKey: AppStorageKeys.radioGenreCountryCodes) as? [String]
+    }
+
+    func store(_ codes: [String]) {
+        stored = codes
+        UserDefaults.standard.set(codes, forKey: AppStorageKeys.radioGenreCountryCodes)
     }
 }

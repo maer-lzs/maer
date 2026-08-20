@@ -34,6 +34,13 @@ nonisolated enum RadioBrowserClient {
         /// the tag as its value silently drops the tag and answers with the
         /// whole country.
         case byTag(tag: String, countryCode: String?, limit: Int)
+        /// 8a38ca5 (GT R7b): the worldwide LANGUAGE pot. Worldwide caps at the
+        /// global top N BEFORE the language bonus — DLF sits at ~rank 49 of
+        /// the worldwide news tag (measured) and never reached the pot, so the
+        /// bonus had nothing to lift. `languagecodes=<code>` filters directly
+        /// on the ISO code (measured: `language=de` answers 2, this answers
+        /// the real list, WDR 5/DLF on top).
+        case byTagLanguage(tag: String, languageCode: String, limit: Int)
         /// The available states (Kantone/Bundesländer) of a country.
         case states(countryName: String)
         /// All countries with station counts (explicit country choice).
@@ -54,7 +61,7 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/topvote"
             case .byRegion(let cc, _):
                 return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
-            case .byTag:
+            case .byTag, .byTagLanguage:
                 return "/json/stations/search"
             case .states(let country):
                 return "/json/states/\(Self.pathEscaped(country))/"
@@ -107,6 +114,16 @@ nonisolated enum RadioBrowserClient {
                     items.append(.init(name: "countrycode", value: countryCode.uppercased()))
                 }
                 return items
+            case .byTagLanguage(let tag, let languageCode, let limit):
+                return [
+                    .init(name: "tag", value: tag),
+                    .init(name: "tagExact", value: "true"),
+                    .init(name: "languagecodes", value: languageCode.lowercased()),
+                    .init(name: "order", value: "votes"),
+                    .init(name: "reverse", value: "true"),
+                    .init(name: "limit", value: String(limit)),
+                    .init(name: "hidebroken", value: "true"),
+                ]
             case .byRegionClicktrend(_, let limit), .byStateClicktrend(_, let limit):
                 return [
                     .init(name: "order", value: "clicktrend"),
@@ -206,7 +223,21 @@ nonisolated enum RadioBrowserClient {
     static func byTag(tag: String, countryCodes: [String],
                       limit: Int = catalogLimit) async throws -> [RadioStation] {
         guard !countryCodes.isEmpty else {
-            return try await byTag(tag: tag, countryCode: nil, limit: limit)
+            // 8a38ca5: worldwide is TWO pots — the global top by votes AND the
+            // device language's top. One pot alone caps before the bonus: the
+            // world's top 40 is RU/UA/IR-dominated and DLF (worldwide ~49)
+            // never entered it. Same union mechanic as the countries; the
+            // language pot failing degrades to plain worldwide rather than
+            // failing the page.
+            let worldwide = try await byTag(tag: tag, countryCode: nil, limit: limit)
+            var union = worldwide
+            if let language = Locale.current.language.languageCode?.identifier,
+               !language.isEmpty,
+               let languagePot = try? await stations(.byTagLanguage(
+                   tag: tag, languageCode: language, limit: limit)) {
+                union += languagePot
+            }
+            return union
         }
         let answers: [[RadioStation]?] = try await withThrowingTaskGroup(
             of: (Int, [RadioStation]?).self

@@ -292,6 +292,15 @@ struct RadioModelsTests {
         let narrowed = RadioBrowserClient.Query.byTag(tag: "news", countryCode: "ch", limit: 40)
         #expect(params(narrowed)["countrycode"] == "CH")
 
+        // 8a38ca5: the worldwide LANGUAGE pot filters on the ISO code —
+        // measured: `language=de` answers 2 stations, `languagecodes=de` the
+        // real list (WDR 5 and DLF on top).
+        let language = RadioBrowserClient.Query.byTagLanguage(tag: "news",
+                                                              languageCode: "DE", limit: 40)
+        #expect(language.path == "/json/stations/search")
+        #expect(params(language)["languagecodes"] == "de")
+        #expect(params(language)["tagExact"] == "true")
+
         let search = RadioBrowserClient.Query.search(name: "dlf", limit: 50)
         #expect(search.path == "/json/stations/search")
         #expect(params(search)["name"] == "dlf")
