@@ -1,0 +1,71 @@
+// Mär — an audio player for self-hosted open ecosystems
+// Copyright (C) 2026 Laurenz Schröder
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Additional terms apply — see LICENSE-ADDITIONAL-TERMS
+
+import UIKit
+
+/// 773d87b: the ground behind a logo on a radio TILE — "etwas weniger farbig",
+/// deliberately not fully neutral.
+///
+/// A logo is a mark with its own colours; a saturated ground competes with it
+/// and in the worst case collides (the red SWR3 wordmark on a lilac tile was
+/// the visible case; the blue DLF wordmark on DLF-blue the reported one). The
+/// ground's job is CONTRAST, not company. the owner's call keeps the hue as the
+/// station identity but caps its saturation — and his "glaube ich" means the
+/// final word is his, made at a before/after picture, so the cap is ONE named
+/// constant he can turn.
+///
+/// Cards deliberately keep the old cover-colour mix (773d87b halves the scope
+/// of 14f7dac): only tiles calm down.
+nonisolated enum RadioTileGround {
+    /// The saturation cap — the one number to turn. The old tint carried 0.52;
+    /// "auf etwa ein Viertel dämpfen" is the ordered start value.
+    static let saturationCap: Double = 0.13
+
+    /// The luminance threshold between "dark logo" and "light logo" — named
+    /// because it is the second number the owner may want to move. Mid-scale.
+    static let luminanceThreshold: Double = 0.5
+
+    /// Brightness runs COUNTER to the logo, in few steps per mode — a
+    /// continuous per-logo grey would make every tile subtly different, which
+    /// is busier than the problem it solves.
+    ///
+    /// | mode  | dark logo | light logo |
+    /// |-------|-----------|------------|
+    /// | light | 0.93      | 0.35       |
+    /// | dark  | 0.80      | 0.22       |
+    static func brightness(logoLuminance: Double, darkMode: Bool) -> Double {
+        let logoIsDark = logoLuminance < luminanceThreshold
+        if darkMode { return logoIsDark ? 0.80 : 0.22 }
+        return logoIsDark ? 0.93 : 0.35
+    }
+
+    /// Alpha-weighted mean luminance of a logo's pixels — measured, not
+    /// guessed. Transparent pixels do not vote: a wordmark on a transparent
+    /// PNG is mostly nothing, and counting the nothing as black would call
+    /// every such logo "dark".
+    static func luminance(of image: UIImage) -> Double {
+        let side = 32
+        guard let cg = image.cgImage else { return 0.5 }
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        guard let context = CGContext(
+            data: &pixels, width: side, height: side, bitsPerComponent: 8,
+            bytesPerRow: side * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return 0.5 }
+        context.draw(cg, in: CGRect(x: 0, y: 0, width: side, height: side))
+        var weighted = 0.0, alphaSum = 0.0
+        for index in stride(from: 0, to: pixels.count, by: 4) {
+            let alpha = Double(pixels[index + 3]) / 255
+            guard alpha > 0.05 else { continue }
+            // Premultiplied: un-premultiply before weighing the colour.
+            let red = Double(pixels[index]) / 255 / alpha
+            let green = Double(pixels[index + 1]) / 255 / alpha
+            let blue = Double(pixels[index + 2]) / 255 / alpha
+            weighted += (0.2126 * red + 0.7152 * green + 0.0722 * blue) * alpha
+            alphaSum += alpha
+        }
+        guard alphaSum > 0 else { return 0.5 }
+        return weighted / alphaSum
+    }
+}

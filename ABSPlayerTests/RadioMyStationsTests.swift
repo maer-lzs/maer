@@ -5,6 +5,7 @@
 
 import Testing
 import Foundation
+import UIKit
 @testable import ABSPlayer
 
 /// cb2d1ed: the "My Stations" row — composition, the exclusion fence, and the
@@ -87,5 +88,52 @@ import Foundation
     @Test func aRunningStationWithoutATitleStaysEmptyRatherThanShowingHours() {
         #expect(RadioMyStations.cardLine(isRunning: true, runningLine: nil, seconds: 99_999) == .none)
         #expect(RadioMyStations.cardLine(isRunning: true, runningLine: "", seconds: 99_999) == .none)
+    }
+}
+
+/// 773d87b: the tile ground — capped hue, brightness counter to the logo.
+@Suite struct RadioTileGroundTests {
+
+    /// The two named numbers, pinned so the report can cite them and the owner
+    /// can turn them.
+    @Test func theNamedConstants() {
+        #expect(RadioTileGround.saturationCap == 0.13)
+        #expect(RadioTileGround.luminanceThreshold == 0.5)
+    }
+
+    /// Counter-brightness, few steps, both modes — a dark logo gets a light
+    /// ground and vice versa, in EACH mode.
+    @Test func brightnessRunsCounterToTheLogo() {
+        // Light mode: dark logo → light ground, light logo → dark ground.
+        #expect(RadioTileGround.brightness(logoLuminance: 0.1, darkMode: false)
+                > RadioTileGround.brightness(logoLuminance: 0.9, darkMode: false))
+        // Dark mode: same direction, darker palette.
+        #expect(RadioTileGround.brightness(logoLuminance: 0.1, darkMode: true)
+                > RadioTileGround.brightness(logoLuminance: 0.9, darkMode: true))
+        // Few steps: the same side of the threshold gives the SAME value.
+        #expect(RadioTileGround.brightness(logoLuminance: 0.1, darkMode: false)
+                == RadioTileGround.brightness(logoLuminance: 0.3, darkMode: false))
+    }
+
+    /// Alpha-weighted: transparent pixels do not vote. A dark glyph on a
+    /// transparent PNG must read as DARK, not as half-transparent grey.
+    @Test func transparencyDoesNotVote() {
+        let side = 8
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let image = UIGraphicsImageRenderer(size: CGSize(width: side, height: side),
+                                            format: format).image { ctx in
+            // Mostly transparent, one dark square.
+            UIColor.black.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
+        }
+        #expect(RadioTileGround.luminance(of: image) < 0.2)
+
+        let light = UIGraphicsImageRenderer(size: CGSize(width: side, height: side),
+                                            format: format).image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
+        }
+        #expect(RadioTileGround.luminance(of: light) > 0.8)
     }
 }

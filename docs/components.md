@@ -656,6 +656,24 @@ Zeilen-Regel; dazu Topf-Summe). the owner kopiert einmal, dann ist entschieden,
 ob der Store < 3600 s hat (Ehrlichkeitsregel arbeitet korrekt) oder die
 Verdrahtung reisst.
 
+### Kachel-Grund: Saettigungsdeckel + gegenlaeufige Helligkeit (773d87b — gilt statt 14f7dac)
+
+the owner: „Kacheln sollten etwas weniger farbig sein" — KARTEN behalten die alte
+Cover-Farb-Mischung (sein ausdruecklicher Vorbehalt), nur Kacheln beruhigen
+sich. `RadioTileGround`, zwei benannte Zahlen, an denen er drehen kann:
+**`saturationCap = 0.13`** (vorher trug der Ton 0.52 — „auf etwa ein Viertel"
+wie beauftragt) und **`luminanceThreshold = 0.5`**. Die Helligkeit laeuft
+GEGENLAEUFIG zur alpha-gewichteten Logo-Luminanz (transparente Pixel stimmen
+nicht mit — ein dunkler Schriftzug auf transparentem PNG ist DUNKEL, nicht
+halbgrau; Test mit echt gerenderten Bildern), in WENIGEN Stufen je Modus
+(hell: 0.93/0.35 · dunkel: 0.80/0.22) — eine stufenlose Grau-Rechnung je Logo
+ergaebe lauter leicht verschiedene Kacheln, unruhiger als das Problem.
+Der Farbton bleibt die Sender-Identitaet (gleicher Hash wie der Platzhalter).
+Deckende Logos (BR1: das Blau IST das Logo) sind unberuehrt — dort gibt es
+keinen Grund. Luminanz je Sender im NSCache (32×32-Probe einmal, nicht je
+Redraw). Vorher/Nachher-Bild derselben Reihe liegt im Kanal — **the owner
+entscheidet am Bild**, ob der Deckel sitzt oder weiter runter soll.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

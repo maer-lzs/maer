@@ -96,6 +96,34 @@ struct RadioArtwork: View {
 
     private var tint: Color { RadioArtwork.color(for: stationID) }
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// 773d87b: the tile's ground — capped hue, brightness counter to the
+    /// logo's measured luminance. Luminance per station is cached (a 32×32
+    /// sample per redraw would be waste, and the answer never changes for a
+    /// given image).
+    private func tileGround(for image: UIImage) -> Color {
+        let luminance = Self.cachedLuminance(stationID: stationID, image: image)
+        return Color(hue: RadioArtwork.hueValue(for: stationID),
+                     saturation: RadioTileGround.saturationCap,
+                     brightness: RadioTileGround.brightness(
+                         logoLuminance: luminance,
+                         darkMode: colorScheme == .dark))
+    }
+
+    // MainActor (project default): the tile ground is only computed on the
+    // render path, so the cache needs no cross-actor story.
+    private static let luminanceCache = NSCache<NSString, NSNumber>()
+
+    private static func cachedLuminance(stationID: String, image: UIImage) -> Double {
+        if let cached = luminanceCache.object(forKey: stationID as NSString) {
+            return cached.doubleValue
+        }
+        let value = RadioTileGround.luminance(of: image)
+        luminanceCache.setObject(NSNumber(value: value), forKey: stationID as NSString)
+        return value
+    }
+
     /// Load order per the owner's decision: **Wikidata P154 is the PRIMARY
     /// source on every surface**, the station favicon (and the chain's touch
     /// icon) are the fallback. Measured on the case that decided it: the
@@ -224,15 +252,21 @@ struct RadioArtwork: View {
                         .clipped()
                 } else {
                     // Nachtrag (1): every logo sits on a TILE surface — a
-                    // transparent PNG never floats on black; the deterministic
-                    // tint doubles as the station identity behind it.
-                    tint.opacity(0.35)
+                    // transparent PNG never floats on black; the hue stays the
+                    // station identity behind it.
+                    //
+                    // 773d87b (the owner: "Kacheln sollten etwas weniger farbig
+                    // sein"): the saturation is CAPPED and the brightness runs
+                    // counter to the measured logo luminance — a saturated
+                    // ground competes with the mark (red SWR3 on lilac), and
+                    // the ground's job is contrast, not company. Cards keep
+                    // the old cover mix on purpose; only tiles calm down.
+                    tileGround(for: image)
                         .overlay(
                             Image(uiImage: image)
                                 .resizable().aspectRatio(contentMode: .fit)
                                 .padding(6)
                         )
-                        .background(.thinMaterial)
                 }
             } else {
                 placeholderFill
@@ -331,6 +365,9 @@ struct RadioArtwork: View {
     nonisolated static func color(for id: String) -> Color {
         Color(hue: hue(for: id), saturation: 0.52, brightness: 0.58)
     }
+
+    /// The station's identity hue — shared by placeholder and tile ground.
+    nonisolated static func hueValue(for id: String) -> Double { hue(for: id) }
 
     nonisolated private static func hue(for id: String) -> Double {
         var seed: UInt64 = 1_469_598_103_934_665_603
