@@ -487,14 +487,22 @@ Einstellungs-Reiter): senkrechtes Innenmaß 8 → **11 pt**, waagerechtes bleibt
 8. Mehr Breite waere genau der Platz, der „Hoerbuecher" fehlt — die beiden
 Auftraege haetten sich sonst gegenseitig aufgehoben.
 
-**Einstellungs-Reiter fliessen um** (`FlowLayout`): einzeilig solange sie passen
-(iPad, Querformat, kleine Schrift), sonst rutscht der letzte in die naechste
-Zeile. Alle fuenf bleiben sichtbar, nichts scrollt, jeder Chip ist einzeilig —
-damit ist „Allge-mein" KONSTRUKTIV unmoeglich, nicht nur zufaellig behoben.
-**Die Zeilenzahl darf der BREITE folgen, nie der Auswahl:** die Leiste sitzt ganz
-oben, eine Hoehe, die beim Umschalten springt, schoebe die ganze Seite. Aktiv und
-inaktiv unterscheiden sich in der FARBE, nie im Maß. Gemessen: Leistenhoehe 88,0
-pt ueber alle fuenf Reiter konstant.
+**Einstellungs-Reiter: EINE Zeile, immer** (653485f, the owner: „In zwei Reihen
+ist nicht gut" — nach der Waisen-Pille 4+1 aus 2b5896d). Scrollen,
+Silbentrennung, Abschneiden und Stapeln sind ALLE ausgeschlossen; das einzige
+Mittel ist GLEICHMAESSIG kleiner. Dieselbe ViewThatFits-Form wie die Tab-Leiste
+(Reihe als EIN Kandidat, Staffel 15…11 pt) — und der Beweis, dass es aufgeht,
+haengt unten in derselben App: die Tab-Leiste traegt dieselben fuenf Titel PLUS
+Suchkapsel einzeilig. `FlowLayout` ist wieder GELOESCHT samt Tests (die Antwort
+auf eine Vorgabe, die nicht mehr gilt — keine Leiche). Reicht bei extremem
+Dynamic Type selbst die kleinste Stufe nicht, meldet die Journey es sichtbar;
+DANN geht die Frage mit der Zahl zu the owner, nicht vorher und nicht mit einer
+stillen zweiten Zeile als Notausgang. **Aktiv-Pille GEMESSEN statt angeglichen**
+(2b5896d verlangte messen): alle fuenf Pillen exakt 35,3 pt hoch, in JEDEM
+Aktiv-Zustand identisch (Breiten 85,3/89,3/81,7/64,0/62,3 konstant) — die
+Aktiv-Pille weicht NICHT ab; der Eindruck im Screenshot kam vom KONTRAST (weiss
+auf heller Kapsel), nicht von der Groesse. Journey zaeunt beides: gleiche Hoehe
+aller Pillen je Zustand UND alle Oberkanten auf einer y-Linie (einzeilig).
 
 **Beweisfuehrung (`decb049`):** jeder Lauf braucht ALLE FUENF Bereiche — mit vier
 tritt die Bedingung gar nicht ein, und ein gruener Lauf bestaetigte eine
