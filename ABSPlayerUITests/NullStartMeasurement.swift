@@ -875,11 +875,27 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         }
 
         var seen: [CGFloat] = []
+        var chipSizes: [String] = []
         for chip in chips where chip.exists {
             chip.tap()
             seen.append(barHeight())
+            // 2b5896d: the ACTIVE chip may not differ in size from its
+            // neighbours — colour carries the state, never the metric. The
+            // active one is the one just tapped.
+            let sizes = chips.filter { $0.exists }
+                .map { "\(($0.frame.width * 10).rounded() / 10)×\(($0.frame.height * 10).rounded() / 10)" }
+            chipSizes.append("aktiv \(chip.identifier): \(sizes.joined(separator: " "))")
+            let heights = Set(chips.filter { $0.exists }.map { ($0.frame.height * 10).rounded() / 10 })
+            XCTAssertEqual(heights.count, 1,
+                           "die aktive Pille weicht in der Höhe ab: \(sizes)")
         }
-        let report = XCTAttachment(string: "Leistenhöhe je aktivem Reiter: \(seen)")
+        // One line, always (653485f): every chip's top edge on the same y.
+        let tops = Set(chips.filter { $0.exists }.map { ($0.frame.minY * 10).rounded() / 10 })
+        XCTAssertEqual(tops.count, 1, "die Reiter stehen nicht in EINER Zeile")
+        let report = XCTAttachment(string: """
+        Leistenhöhe je aktivem Reiter: \(seen)
+        Pillen-Maße: \(chipSizes.joined(separator: "\n             "))
+        """)
         report.name = "settings-tabbar-heights"
         report.lifetime = .keepAlways
         add(report)

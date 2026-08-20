@@ -185,27 +185,46 @@ struct SettingsView: View {
     // MARK: - Pill-Tabs
 
     private var pillTabs: some View {
-        // b08c719 / 2c0a907: the chips FLOW — one line while they fit (iPad,
-        // landscape, small type), the last one drops to a second line when they
-        // do not. All five stay visible, nothing scrolls, and no word breaks
-        // inside a chip.
-        //
-        // The line count may follow the WIDTH, never the selection: this bar
-        // sits at the very top, and a height that changed on tab switch would
-        // push the whole page down. Active and inactive chips therefore differ
-        // in colour only, never in metric.
-        FlowLayout(spacing: 8, lineSpacing: 8) {
+        // 653485f (the owner): ONE line, always — "In zwei Reihen ist nicht gut."
+        // Scrolling, hyphenation, truncation and stacking are all ruled out;
+        // the one means left is shrinking EVENLY. Same form as the tab bar,
+        // which proves it works: it carries the same five titles PLUS the
+        // search capsule in one line, and these chips have more width than
+        // that. The row is ONE candidate per size — all chips always share it.
+        ViewThatFits(in: .horizontal) {
+            ForEach(Self.chipFontSizes, id: \.self) { size in
+                chipRow(fontSize: size)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+    }
+
+    /// The descending ladder — full `.subheadline` (15) first, the floor one
+    /// step above the tab bar's smallest (the chips carry more padding). If
+    /// even the smallest does not fit, the row overflows visibly and the
+    /// journey reports it — THEN the question goes back to the owner with the
+    /// number, not before, and not with a silent second line as the escape.
+    private static let chipFontSizes: [CGFloat] = [15, 14, 13, 12, 11]
+
+    private func chipRow(fontSize: CGFloat) -> some View {
+        HStack(spacing: 8) {
             ForEach(visibleTabs) { t in
                 Button {
                     withAnimation(.snappy(duration: 0.2)) { tab = t }
                 } label: {
                     Text(t.label)
-                        .font(.subheadline.weight(.medium))
-                        // 7fb1cc1: no chip is squeezed and no word is broken —
-                        // one line, and the row wraps instead.
+                        .font(.system(size: fontSize, weight: .medium))
+                        // Whole or not at all — this is what lets ViewThatFits
+                        // see that a candidate does not fit (without it,
+                        // SwiftUI truncates silently; the 85a7c00 lesson).
                         .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         // 98c621f: the ONE capsule metric, shared with the tab
-                        // bar. Vertical grew, horizontal deliberately did not.
+                        // bar. 2b5896d: active and inactive share EVERY measure
+                        // — colour carries the state, never the size.
                         .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
                         .padding(.horizontal, 16)
                         .foregroundStyle(tab == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
@@ -219,10 +238,6 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings-tab-\(t.rawValue)")
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
     }
 
     // MARK: - Allgemein
