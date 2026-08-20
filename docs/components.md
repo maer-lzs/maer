@@ -511,7 +511,7 @@ ist der Fix eine Aenderung an der Wurzel: `AppSwitchStyle` als
 REKOMPONIERT (gibt die Konfiguration an `.switch` zurueck und setzt nur den Ton),
 damit ein Schalter in allem, was zaehlt, ein System-Schalter bleibt.
 
-**Was sonst noch vom Akzent gefaerbt wird** (der Befund, der ueber den Auftrag
+**NACHTRAG (gemessen am gerenderten Bild): beide Wurzel-Wege kamen NICHT an.** Der toggleStyle an der Wurzel UND der UISwitch.appearance()-Proxy liessen die Schalter im Blatt anthrazit -- die Einstellungen liegen in einem SHEET, und ein Blatt ist ein eigener Praesentations-Wirt (dieselbe Klasse wie Blatt-ueber-Blatt). Nur ein tint am Toggle selbst wirkt (Rot-Probe, Pixel gelesen). **Die eine Stelle ist deshalb ein geteilter BAUSTEIN statt eines geteilten Zustands:** `AppSwitch` kapselt Toggle + tint(AppTheme.switchOn), alle 53 Stellen benutzen ihn (Helfer eingeschlossen), und der Quelltext-Zaun `AppSwitchFenceTests` haelt es dicht -- kein nackter Toggle ausserhalb des Bausteins (Wortgrenze: Helfer-NAMEN wie sourceToggle zaehlen nicht), gegengelaufen und er nennt Datei:Zeile. Belegt am Bild: AN-Spur (48, 209, 88) = Systemgruen; das verbliebene Anthrazit im Screenshot ist der Fertig-Knopf, der die Akzentfarbe zu Recht traegt. **Was sonst noch vom Akzent gefaerbt wird** (der Befund, der ueber den Auftrag
 hinausreicht): jede Auswahl, jeder Link, jeder Fortschrittsbalken, jede
 System-Steuerung, die den Tint erbt. Der Wechsel bleibt bewusst auf Schalter
 begrenzt — eine Kapsel zeigt eine AUSWAHL unter sichtbaren Alternativen (dort
