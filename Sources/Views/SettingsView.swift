@@ -237,7 +237,7 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
     private var freeCatalogsSection: some View {
         Section {
-            Toggle(isOn: $freeCatalogsMaster) {
+            AppSwitch(isOn: $freeCatalogsMaster) {
                 Label("Show free catalogs", systemImage: "books.vertical")
             }
             .accessibilityIdentifier("settings-free-catalogs-master")
@@ -299,7 +299,7 @@ struct SettingsView: View {
                 Label("Cover Cache", systemImage: "photo.on.rectangle")
             }
             // Toggles
-            Toggle(isOn: $warnCellular) {
+            AppSwitch(isOn: $warnCellular) {
                 Label("Warn When Not on Wi-Fi", systemImage: "wifi")
             }
             .onChange(of: warnCellular) { _, newValue in
@@ -382,7 +382,7 @@ struct SettingsView: View {
 
     /// TF bib-toggles: the tab-master row (bold) — flipping it reconfigures.
     private func tabMasterToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) { Text(title).fontWeight(.semibold) }
+        AppSwitch(isOn: isOn) { Text(title).fontWeight(.semibold) }
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
     }
 
@@ -396,7 +396,7 @@ struct SettingsView: View {
             } label: {
                 Label("Sync History", systemImage: "clock.arrow.circlepath")
             }
-            Toggle(isOn: $podcastICloudSync) {
+            AppSwitch(isOn: $podcastICloudSync) {
                 Label("Sync via iCloud", systemImage: "icloud")
             }
             .onChange(of: podcastICloudSync) { _, on in
@@ -485,7 +485,7 @@ struct SettingsView: View {
                 UserDefaults.standard.set(Float(newValue), forKey: AppStorageKeys.defaultPlaybackRate)
             }
 
-            Toggle(isOn: $smartRewind) {
+            AppSwitch(isOn: $smartRewind) {
                 Label("Smart Rewind", systemImage: "backward.circle")
             }
             .onChange(of: smartRewind) { _, newValue in
@@ -502,7 +502,7 @@ struct SettingsView: View {
 
     private var audiobooksSection: some View {
         Section {
-            Toggle(isOn: $autoPlayNext) {
+            AppSwitch(isOn: $autoPlayNext) {
                 Label("Auto-Play Next in Series", systemImage: "play.circle")
             }
             .onChange(of: autoPlayNext) { _, newValue in
@@ -528,10 +528,10 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
     private var musicSection: some View {
         Section {
-            Toggle("Look up lyrics online", isOn: $lyricsOnline)
+            AppSwitch("Look up lyrics online", isOn: $lyricsOnline)
                 .accessibilityIdentifier("music-lyrics-toggle")
-            Toggle("Load artist images from the web", isOn: $artistImagesOnline)
-            Toggle("High-res covers (Cover Art Archive)", isOn: $highResCovers)
+            AppSwitch("Load artist images from the web", isOn: $artistImagesOnline)
+            AppSwitch("High-res covers (Cover Art Archive)", isOn: $highResCovers)
         } header: {
             Text("Metadata")
         } footer: {
@@ -557,7 +557,7 @@ struct SettingsView: View {
 
     private var recommendationsSection: some View {
         Section {
-            Toggle(isOn: $homeRecommendations) {
+            AppSwitch(isOn: $homeRecommendations) {
                 Label("Recommendations", systemImage: "sparkles")
             }
             // f79c40c: the MULTI-select suggestion language — explicit choice
@@ -598,7 +598,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Car audio", systemImage: "car.fill")
                 }
-                Toggle(isOn: $driveModeAutoStart) {
+                AppSwitch(isOn: $driveModeAutoStart) {
                     Text("Start automatically when \(carRouteName) connects")
                 }
                 // Rulebook: destructive-class action, red, LAST row.
@@ -663,7 +663,7 @@ struct SettingsView: View {
     /// settings join it.
     private var notificationsSection: some View {
         Section {
-            Toggle(isOn: $newEpisodeNotifications) {
+            AppSwitch(isOn: $newEpisodeNotifications) {
                 Label("Notify About New Episodes", systemImage: "bell")
             }
             .onChange(of: newEpisodeNotifications) { _, on in

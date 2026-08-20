@@ -56,7 +56,7 @@ struct PodcastSourceView: View {
     var body: some View {
         List {
             Section {
-                Toggle(isOn: $absPodcastsEnabled) {
+                AppSwitch(isOn: $absPodcastsEnabled) {
                     Label("Use Audiobookshelf for podcasts", systemImage: "books.vertical")
                 }
             } footer: {
@@ -359,7 +359,7 @@ struct PodcastSourceView: View {
             // LOESCHEN, und danach mussten Adresse und Token neu eingetragen
             // werden. Jetzt wie bei allen Nachbarn: ausschalten laesst die
             // Zugangsdaten stehen.
-            Toggle(isOn: $pinchflatEnabled) {
+            AppSwitch(isOn: $pinchflatEnabled) {
                 Label("Use Pinchflat", systemImage: "play.rectangle.on.rectangle")
             }
             .accessibilityIdentifier("pinchflat-toggle")

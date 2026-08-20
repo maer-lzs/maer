@@ -30,7 +30,7 @@ struct NetworkServicesView: View {
             // the tab pill behind the sheet once, 8b4327c). One convention,
             // no half-set.
             Section {
-                Toggle(isOn: $artistImagesOnline) {
+                AppSwitch(isOn: $artistImagesOnline) {
                     // bdfe8dc/22cf822: name the boundary AND its second half.
                     // Switching this off stops OUR web chain; portraits the
                     // server delivers keep showing — and the server may fetch
@@ -41,12 +41,12 @@ struct NetworkServicesView: View {
                                  purpose: "Artist portraits and identities for your music library. Portraits from your own server stay visible — your server may fetch them from external services itself; you control that there.")
                 }
                 .accessibilityIdentifier("network-artist-images-toggle")
-                Toggle(isOn: $highResCovers) {
+                AppSwitch(isOn: $highResCovers) {
                     serviceLabel(NetworkServiceNames.hiResCovers,
                                  purpose: "High-resolution album covers for albums with a MusicBrainz ID.")
                 }
                 .accessibilityIdentifier("network-hires-covers-toggle")
-                Toggle(isOn: $lyricsOnline) {
+                AppSwitch(isOn: $lyricsOnline) {
                     serviceLabel(NetworkServiceNames.lyrics,
                                  // 22cf822 parity: same half-truth applies —
                                  // the server can carry lyrics from its own
@@ -57,12 +57,12 @@ struct NetworkServicesView: View {
                 // feb46bb: the APPLE switch is its own, with the honest
                 // transparency line — what Apple sees and what it never
                 // does. The Discover FEATURE toggle stays in the settings.
-                Toggle(isOn: $appleCatalog) {
+                AppSwitch(isOn: $appleCatalog) {
                     serviceLabel(NetworkServiceNames.appleCatalog,
                                  purpose: "Apple sees search terms, genre numbers and your storefront country (plus standard request data like your IP address) — never an account, never your subscriptions, never a listening profile; all queries are derived on this device. Off: recommendations and search run via PodcastIndex where configured, Apple's genre charts fall away.")
                 }
                 .accessibilityIdentifier("network-itunes-toggle")
-                Toggle(isOn: $radioEnabled) {
+                AppSwitch(isOn: $radioEnabled) {
                     serviceLabel(NetworkServiceNames.radioBrowser,
                                  purpose: "The community station catalog behind the Radio tab.")
                 }
@@ -70,7 +70,7 @@ struct NetworkServicesView: View {
                 // e4bd910: the agreed logo fallback chain — ONE switch for
                 // both stages (Wikidata P154 first, then the homepage
                 // touch icon); off = placeholder right after the favicon.
-                Toggle(isOn: $radioLogoChain) {
+                AppSwitch(isOn: $radioLogoChain) {
                     serviceLabel(NetworkServiceNames.radioLogoChain,
                                  purpose: "Logos for stations without a usable favicon.")
                 }
@@ -84,19 +84,19 @@ struct NetworkServicesView: View {
                 // here; the key names (`librivoxRowsEnabled` reads like a
                 // row, `freeClassicalEnabled` like a service) hid that rule
                 // rather than breaking it.
-                Toggle(isOn: $librivoxRows) {
+                AppSwitch(isOn: $librivoxRows) {
                     serviceLabel(NetworkServiceNames.librivox,
                                  purpose: "Public-domain audiobooks for the free Discover rows.")
                 }
                 .accessibilityIdentifier("network-librivox-toggle")
-                Toggle(isOn: $archivePopular) {
+                AppSwitch(isOn: $archivePopular) {
                     // The shelf is named FROM THE DATA — this sentence was the
                     // third of three places spelling its own name for it.
                     serviceLabel(NetworkServiceNames.internetArchive,
                                  purpose: "Popularity ranking and streams for the free audiobooks and the \(ArchiveMusicCatalog.classical.title) shelf.")
                 }
                 .accessibilityIdentifier("network-archive-toggle")
-                Toggle(isOn: $jamendoRow) {
+                AppSwitch(isOn: $jamendoRow) {
                     serviceLabel(NetworkServiceNames.jamendo,
                                  purpose: "Creative-Commons music charts. Requires a client key; free API for non-commercial use.")
                 }

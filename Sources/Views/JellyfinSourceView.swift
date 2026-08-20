@@ -36,7 +36,7 @@ struct JellyfinSourceView: View {
             }
 
             Section {
-                Toggle("Use as music source", isOn: $enabled)
+                AppSwitch("Use as music source", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("jellyfin-source-toggle")
                     .onChange(of: enabled) { _, _ in save() }

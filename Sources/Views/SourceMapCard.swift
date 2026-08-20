@@ -148,7 +148,7 @@ struct SourceAreaPage: View {
 
     /// Every switch routes through the same reconfigure path as before.
     private func sourceToggle(_ title: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
-        Toggle(title, isOn: isOn)
+        AppSwitch(title, isOn: isOn)
             .onChange(of: isOn.wrappedValue) { AppSession.shared.reconfigureSources() }
     }
 
@@ -191,7 +191,7 @@ struct SourceAreaPage: View {
         Section {
             // gpodder ↔ ABS podcasts stay mutually exclusive (one podcast
             // server at a time; RSS below stays free either way).
-            Toggle(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
+            AppSwitch(isOn: $absPodcastsOn) { Text("Audiobookshelf podcasts") }
                 .onChange(of: absPodcastsOn) {
                     if AppStorageKeys.setABSPodcastsEnabled(absPodcastsOn) {
                         podcastServerNote = String(localized: "gpodder sync was turned off — only one podcast server at a time.")
@@ -225,15 +225,15 @@ struct SourceAreaPage: View {
     @ViewBuilder
     private var freeCatalogsSection: some View {
         Section {
-            Toggle("Show free audiobooks", isOn: $freeAudiobooks)
+            AppSwitch("Show free audiobooks", isOn: $freeAudiobooks)
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
                 // Master off greys the area toggles — visibly subordinate,
                 // no silent double state.
                 .disabled(!freeCatalogsMaster)
-            Toggle("Show Netlabels", isOn: $netlabelsRow)
+            AppSwitch("Show Netlabels", isOn: $netlabelsRow)
                 .accessibilityIdentifier("music-netlabels-toggle")
                 .disabled(!freeCatalogsMaster)
-            Toggle("Show Old Records", isOn: $shellacRows)
+            AppSwitch("Show Old Records", isOn: $shellacRows)
                 .accessibilityIdentifier("music-shellac-toggle")
                 .disabled(!freeCatalogsMaster)
         } header: {

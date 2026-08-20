@@ -97,7 +97,7 @@ struct PodcastShowSettingsSheet: View {
                         Text("Latest only").tag("latest")
                         Text("Off").tag("off")
                     }
-                    Toggle("Notify About New Episodes", isOn: $notify)
+                    AppSwitch("Notify About New Episodes", isOn: $notify)
                 } header: {
                     Text("New Episodes")
                 } footer: {

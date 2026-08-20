@@ -41,7 +41,7 @@ struct GPodderSettingsView: View {
             }
 
             Section {
-                Toggle("Sync podcasts via gpodder", isOn: $enabled)
+                AppSwitch("Sync podcasts via gpodder", isOn: $enabled)
                     // gpodder ↔ ABS-podcasts are mutually exclusive (one podcast
                     // server at a time; RSS untouched). Enabling gpodder turns ABS
                     // off, with a note so it's not surprising.

@@ -18,7 +18,7 @@ struct RadioSourceView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Show Radio tab", isOn: $enabled)
+                AppSwitch("Show Radio tab", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("radio-tab-toggle")
                     // Y37 pattern: the toggle acts immediately, the tab bar

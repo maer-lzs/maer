@@ -100,7 +100,7 @@ struct GPodderConflictResolutionView: View {
     }
 
     private func feedToggle(_ feed: String, raw: String?) -> some View {
-        Toggle(isOn: Binding(
+        AppSwitch(isOn: Binding(
             get: { keep[feed] ?? true },
             set: { keep[feed] = $0 }
         )) {

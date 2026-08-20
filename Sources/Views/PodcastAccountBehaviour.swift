@@ -32,11 +32,11 @@ struct PodcastAccountBehaviour: View {
         // empty section would be a promise without a referent.
         if absPodcastsEnabled && absPodcast.hasPodcasts {
             Section {
-                Toggle(isOn: $subscribeToServer) {
+                AppSwitch(isOn: $subscribeToServer) {
                     Label("Subscribe on server", systemImage: "cloud")
                 }
                 .accessibilityIdentifier("podcast-abs-subscribe-on-server")
-                Toggle(isOn: $autoSaveOnPlay) {
+                AppSwitch(isOn: $autoSaveOnPlay) {
                     Label("Auto-save to server on play", systemImage: "arrow.down.circle")
                 }
                 .accessibilityIdentifier("podcast-abs-autosave")
@@ -48,7 +48,7 @@ struct PodcastAccountBehaviour: View {
         }
         if gpodderEnabled {
             Section {
-                Toggle(isOn: $syncsPremium) {
+                AppSwitch(isOn: $syncsPremium) {
                     Label("Sync premium feeds", systemImage: "key")
                 }
                 .accessibilityIdentifier("podcast-gpodder-premium")

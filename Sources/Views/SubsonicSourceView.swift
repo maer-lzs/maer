@@ -55,7 +55,7 @@ struct SubsonicSourceView: View {
                 // What can do several things may do them AT ONCE — one server,
                 // one setup. Hence one switch per capability instead of an
                 // either-or choice.
-                Toggle(isOn: $servesMusic) {
+                AppSwitch(isOn: $servesMusic) {
                     Label("Music", systemImage: "music.note")
                 }
                 .accessibilityIdentifier("subsonic-serves-music")
@@ -63,7 +63,7 @@ struct SubsonicSourceView: View {
                     save()
                     loadLibrariesIfAssignmentBecameNecessary()
                 }
-                Toggle(isOn: $servesAudiobooks) {
+                AppSwitch(isOn: $servesAudiobooks) {
                     Label("Audiobooks", systemImage: "books.vertical")
                 }
                 .accessibilityIdentifier("subsonic-serves-audiobooks")
@@ -99,7 +99,7 @@ struct SubsonicSourceView: View {
                 // affb7e6: the tab is the USER's master (settings →
                 // Libraries); this switch governs the SOURCE — its old label
                 // ("Show Music tab") promised tab behaviour it no longer has.
-                Toggle("Music server (Subsonic)", isOn: $enabled)
+                AppSwitch("Music server (Subsonic)", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("music-tab-toggle")
                     // Y37: the toggle acts IMMEDIATELY (like the ABS podcast

@@ -142,15 +142,6 @@ struct ABSPlayerApp: App {
         // 5d46c8a (4): clear orphaned import temp (partial downloads/upload
         // bodies of a killed import) — no invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
-        // e9a9b05: the switch colour, set on the control itself.
-        //
-        // ONE place, not 53 — and the one that actually arrives: an appearance
-        // proxy reaches every host, including the settings SHEET, where the
-        // environment-based `.toggleStyle` demonstrably did not (measured from
-        // a screenshot of the running app, which still showed anthracite).
-        // Sheets are their own presentation host — the same lesson as
-        // "sheet over sheet".
-        UISwitch.appearance().onTintColor = UIColor(AppTheme.switchOn)
     }
 
     var body: some Scene {
@@ -174,12 +165,12 @@ struct ABSPlayerApp: App {
                 // at toggles and the tab capsules keep the accent.
                 //
                 //
-                // The style rides the ENVIRONMENT, and that was measured NOT to
-                // be enough: the settings live in a sheet, and the screenshot
-                // of the running app still showed the anthracite switch. The
-                // colour is therefore set on the UIKit control every SwiftUI
-                // switch is built from — one line in `init`, and it reaches
-                // every host, sheet included.
+                // Deliberately NOT solved here: both root-level routes (a
+                // `.toggleStyle` on this view, the UISwitch appearance proxy)
+                // were built and MEASURED not to arrive — the settings sheet is
+                // its own presentation host. The switch colour lives in the
+                // shared `AppSwitch` building block instead, with a source
+                // fence that no bare `Toggle` slips back in.
                 .preferredColorScheme(preferredScheme)
                 // On moving to the background, schedule the next podcast refresh.
                 .onChange(of: scenePhase) { _, phase in
