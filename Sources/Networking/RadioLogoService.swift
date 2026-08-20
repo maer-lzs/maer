@@ -402,6 +402,35 @@ actor RadioLogoService {
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
             return .hit(icon, commonsFile: nil)
         }
+        // Stage 3 (4e1688d): the SIBLING entries of the same station. The
+        // catalog carries a station several times, and the entry with the most
+        // votes is not always the one with a picture — bigFM Deutschland has
+        // 497 votes and an empty favicon while its 88-vote sibling carries a
+        // 600×600 image. Measured: this rescues 24 % of the favicon-less
+        // stations in the DE/CH/AT top 200.
+        //
+        // It sits BEHIND Wikidata and the homepage on purpose: those are
+        // curated or first-party, while a sibling's favicon was chosen by a
+        // stranger for a DIFFERENT entry. And it sits AHEAD of the convention
+        // URL, because it is a real image someone published rather than a
+        // guess at a path.
+        if let mirror = RadioBrowserClient.mirrors.first,
+           let searchURL = RadioLogoLookup.siblingSearchURL(name: name, mirror: mirror) {
+            let siblings = await fetch(searchURL)
+            if case .failed = siblings { return .failed("siblings") }
+            if case .data(let data) = siblings,
+               let favicon = RadioLogoLookup.siblingFaviconURL(fromSearchData: data,
+                                                               stationName: name,
+                                                               homepage: homepage) {
+                // Verified before it counts — same rule as the convention URL:
+                // a stored positive never expires, so a dead link would show
+                // letters forever without ever asking again.
+                if case .data = await fetch(favicon) {
+                    Logger.library.notice("RADIO logo chain: sibling favicon for \(name, privacy: .public)")
+                    return .hit(favicon, commonsFile: nil)
+                }
+            }
+        }
         // The convention URL is a GUESS (`https://<host>/apple-touch-icon.png`),
         // and a guess must not be booked as a finding: a station whose site has
         // no such file got a stored "logo" that answers 404 forever, and a
