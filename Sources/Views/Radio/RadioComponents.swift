@@ -157,12 +157,14 @@ struct RadioStationCard: View {
                     // card heights otherwise).
                     .lineLimit(2, reservesSpace: true)
                     .frame(width: width, alignment: .topLeading)
-                // 9d22148: the ACTIVE station's tile carries its running show
-                // (one extra line, only on that tile); dormant tiles show
-                // nothing stale and never touch a stream for it.
-                RadioCardNowPlayingLeaf(stationID: station.id,
-                                        host: .tile,
-                                        coordinator: playerCoordinator)
+                // cb2d1ed/e9649ee: TILES carry no show line — only the "My
+                // Stations" cards, the station page and the player do. The
+                // line used to sit here reserved-but-empty on every tile of
+                // every row, and that empty text line per row was measured as
+                // part of the row-spacing finding (85a7c00: 63 pt where the
+                // section spacing says 24). Removing it is the decided fix;
+                // adjusting spacing constants against it would have corrected
+                // a number against a state that no longer exists.
             }
         }
         .buttonStyle(.plain)
@@ -368,15 +370,15 @@ struct RadioFeaturedCard: View {
 /// tile ever opens a stream for it: the catalog has no now-playing, and
 /// twelve connections per row would be rude to the stations.
 private struct RadioCardNowPlayingLeaf: View {
-    /// Both hosts RESERVE the line's height, and only the ink differs.
+    /// cb2d1ed/e9649ee: ONE host left — the featured card. Tiles carry no
+    /// show line at all any more (the reserved-but-empty line per tile was
+    /// measured as part of the row-spacing excess), so the tile host fell out
+    /// WITH its callers rather than lingering as the switch nobody sets.
     ///
-    /// The tile used to reserve nothing: it grew by one line the moment its
-    /// station started playing and shrank again whenever the running title was
-    /// unknown. A row of tiles then changed height under the finger, and
-    /// everything below it jumped — which is what a person sees as "the layout
-    /// shifts when I press play". The line belongs to the tile's METRIC, not to
-    /// its content: a tile may never take its height from the playback state.
-    enum Host { case featuredCard, tile }
+    /// The card still RESERVES the line's height whatever its content: a card
+    /// may never take its height from the playback state — that inequality is
+    /// what a person sees as "the layout shifts when I press play".
+    enum Host { case featuredCard }
 
     let stationID: String
     let host: Host
@@ -439,21 +441,10 @@ private struct RadioCardNowPlayingLeaf: View {
         let host: Host
 
         var body: some View {
-            switch host {
-            case .featuredCard:
-                Text(verbatim: text)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1, reservesSpace: true)
-            case .tile:
-                Text(verbatim: text)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1, reservesSpace: true)
-                    // P16a: inherit the TILE's width instead of pinning the
-                    // default one — the row decides the metric now.
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Text(verbatim: text)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.85))
+                .lineLimit(1, reservesSpace: true)
         }
     }
 }

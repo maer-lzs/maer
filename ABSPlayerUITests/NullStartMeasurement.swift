@@ -735,12 +735,16 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         menuPlay.tap()
         try XCTSkipUnless(app.buttons["mini-player"].firstMatch.waitForExistence(timeout: 40),
                           "der Sender hat nicht zu spielen begonnen")
-        // Wait for the CONTENT, not for a duration: the arrival is the event.
+        // cb2d1ed/e9649ee: tiles carry NO show line any more — the arrival this
+        // case once watched (a line landing on the tile) does not exist by
+        // decision. The observable event left is the MINI BAR's title flipping
+        // from the station name to the running ICY line; the contract measured
+        // across it stays the same: nothing in the row may move.
+        let miniBar = app.buttons["mini-player"].firstMatch
         var titleArrived = false
-        for _ in 0..<30 {
-            if lines.allElementsBoundByIndex.contains(where: {
-                $0.exists && !$0.label.trimmingCharacters(in: .whitespaces).isEmpty
-            }) { titleArrived = true; break }
+        for _ in 0..<45 {
+            if miniBar.exists, !miniBar.label.isEmpty,
+               !tiles.firstMatch.label.contains(miniBar.label) { titleArrived = true; break }
             Thread.sleep(forTimeInterval: 1)
         }
         let after = spread()
@@ -762,18 +766,12 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         add(report)
         snap(app, "radio-row-spread")
 
-        // The fence that found the actual defect, and it must stay a FAILURE,
-        // not a skip: if the mini bar carries a running title while every line
-        // of the row stays empty, the mirror on the coordinator is broken again
-        // and the tiles never hear the title arrive. A station that simply
-        // sends no ICY is a different matter — that one skips.
-        let miniCarriesATitle = mini.exists && !mini.label.isEmpty
-            && !tiles.firstMatch.label.contains(mini.label)
-        XCTAssertFalse(miniCarriesATitle && !titleArrived, """
-            die Mini-Leiste trägt einen laufenden Titel ("\(mini.label)"), die Kachel-Zeilen \
-            sind leer — die Kachel hört den Titel nicht eintreffen (Spiegel auf dem \
-            Koordinator kaputt?)
-            """)
+        // cb2d1ed/e9649ee: tiles deliberately carry NO line nodes any more —
+        // their absence is the decided state, not the broken mirror this fence
+        // once caught. What remains: no tile may grow ANYTHING when the title
+        // arrives, and no line node may quietly return.
+        XCTAssertEqual(lines.count, 0,
+                       "Kacheln tragen wieder Zeilen-Knoten — cb2d1ed hat entschieden, dass sie keine haben")
         try XCTSkipUnless(titleArrived,
                           "dieser Sender hat keinen laufenden Titel gesendet — nichts zu messen")
         guard let before, let after else {
