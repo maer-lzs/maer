@@ -704,6 +704,26 @@ isoliertes Capture mehr im Mess-Pfad) plus the owner's Zuender-Rezept am Geraet.
 NICHTS von self fangen — nur lokale Kopien. Ein View-Typ unter
 Default-MainActor macht jedes self-Capture zur Bombe mit Timing-Zuender.
 
+**Crash 3 (4b2f7a8) — die Bombe zog in den Kandidaten-body um; der Satz „die
+bodies laufen regulaer auf main" oben war FALSCH:** der Geraete-Stack zeigt
+`closure #1 in TabRowCandidate.body.getter` unter `ForEachState.item` auf dem
+AsyncRenderer — ViewThatFits wertet den body des Kandidaten WAEHREND der
+Messung off-main aus, und unter dem MainActor-Default war er isoliert wie
+vorher die aeussere Closure. **Wurzel-Fix statt Stellen-Flick:**
+`TabRowCandidate`/`ChipRowCandidate` sind `nonisolated` deklariert (datenrein
+per Konstruktion — die Voraussetzung stand schon); alles, was ihr body
+beruehrt, ist nonisolated (`MediaType`, `TabBarMetrics`, gespeicherte Kopien;
+`AppTheme.accent` ist computed-isoliert und kommt als Color-KOPIE herein,
+`SettingsView.Tab` ist nonisolated). Zaun:
+`viewThatFitsCandidatesAreNonisolated` (Quell-Scan, AppSwitch-Klasse — die
+Typen sind privat, die Quellzeile ist die pruefbare Flaeche). Gemessen: der
+Sim faehrt den AsyncRenderer NICHT (Thread fehlt im sample, auch unter
+plausiblen Schaltern) — die Abnahme bleibt das Geraet. **Offene Geschwister
+derselben Klasse:** `PlayerView.swift` regularSecondaryControls +
+tertiaryControls (Inline-Kandidaten, capturen self mit viewModel-gebundenen
+Controls) — datenreine Extraktion ist dort ein eigener Umbau, als Paket
+vorgeschlagen, nicht still angefasst.
+
 ### GT R6/R7b: beobachtete Auswahl-Quelle, Cancel ist kein Fehler, Weltweit hat zwei Toepfe
 
 **R6a (zurueckgenommen, Haertung bleibt):** die Genre-Seiten hielten die

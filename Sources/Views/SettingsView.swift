@@ -23,7 +23,10 @@ struct SettingsView: View {
     let onLogout: () -> Void
     @Environment(\.dismiss) private var dismiss
 
-    private enum Tab: String, CaseIterable, Identifiable {
+    // nonisolated: `ChipRowCandidate.body` reads `label` during ViewThatFits
+    // measurement on the AsyncRenderer (crash 3, 4b2f7a8) — the enum is pure
+    // data, so it leaves the MainActor default explicitly.
+    nonisolated private enum Tab: String, CaseIterable, Identifiable {
         // Variante b: General + one pill per media type that (a) is enabled
         // and (b) HAS own settings. Today that is Audiobooks (series
         // auto-play), Podcasts (recommendations) and Music (metadata).
@@ -193,13 +196,16 @@ struct SettingsView: View {
         // Plain copies here, data-only candidates below.
         let tabs = visibleTabs
         let active = tab
+        // Resolved HERE, on main — the measurement closure below runs on the
+        // AsyncRenderer and may only capture plain copies (cd2b3be/4b2f7a8).
+        let accent = AppTheme.accent
         let select: (Tab) -> Void = { chosen in
             withAnimation(.snappy(duration: 0.2)) { tab = chosen }
         }
         return ViewThatFits(in: .horizontal) {
             ForEach(Self.chipFontSizes, id: \.self) { size in
                 ChipRowCandidate(tabs: tabs, active: active,
-                                 fontSize: size, select: select)
+                                 fontSize: size, accent: accent, select: select)
             }
         }
         .frame(maxWidth: .infinity)
@@ -217,10 +223,17 @@ struct SettingsView: View {
 
     /// One candidate row of PLAIN data (cd2b3be) — construction during
     /// measurement touches nothing isolated.
-    private struct ChipRowCandidate: View {
+    ///
+    /// `nonisolated` like `TabRowCandidate` (crash 3, 4b2f7a8): ViewThatFits
+    /// evaluates the candidate's `body` on the AsyncRenderer, so under the
+    /// MainActor default it was a runtime trap waiting for the same timing.
+    /// The accent arrives as a stored copy — `AppTheme.accent` is a computed
+    /// isolated property and may not be read from this body.
+    nonisolated private struct ChipRowCandidate: View {
         let tabs: [Tab]
         let active: Tab
         let fontSize: CGFloat
+        let accent: Color
         let select: (Tab) -> Void
 
         var body: some View {
@@ -243,7 +256,7 @@ struct SettingsView: View {
                             .padding(.horizontal, 16)
                             .foregroundStyle(active == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                             .background(
-                                active == t ? AnyShapeStyle(AppTheme.accent) : AnyShapeStyle(.quaternary),
+                                active == t ? AnyShapeStyle(accent) : AnyShapeStyle(.quaternary),
                                 in: Capsule()
                             )
                     }

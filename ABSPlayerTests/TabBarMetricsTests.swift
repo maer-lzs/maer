@@ -44,6 +44,28 @@ import UIKit
         // The value, so the report can name it instead of describing it.
         #expect(TabBarMetrics.Capsule.verticalPadding == 11)
     }
+
+    /// Crash 3 (4b2f7a8): ViewThatFits evaluates a candidate's `body` on the
+    /// AsyncRenderer — under the project's MainActor default an isolated body
+    /// is a runtime trap the compiler never sees. The candidates MUST opt out
+    /// explicitly; this fence keeps the word `nonisolated` on both
+    /// declarations (source scan, same class as the AppSwitch fence — the
+    /// types are private, so the source line is the checkable surface).
+    @Test func viewThatFitsCandidatesAreNonisolated() throws {
+        let sources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Views")
+        for (file, type) in [("MediaTabBar.swift", "TabRowCandidate"),
+                             ("SettingsView.swift", "ChipRowCandidate")] {
+            let text = try String(contentsOf: sources.appendingPathComponent(file),
+                                  encoding: .utf8)
+            let declaration = text.split(separator: "\n").first {
+                $0.contains("struct \(type)")
+            }
+            #expect(declaration?.contains("nonisolated") == true,
+                    "\(type) in \(file) muss nonisolated deklariert sein — ViewThatFits misst seinen body off-main (4b2f7a8)")
+        }
+    }
 }
 
 #endif

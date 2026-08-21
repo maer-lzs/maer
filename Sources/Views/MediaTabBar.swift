@@ -99,9 +99,17 @@ struct MediaTabBar: View {
 
 /// One row candidate for `ViewThatFits` — a value of PLAIN data, so building
 /// it inside the measurement closures touches nothing MainActor-isolated
-/// (cd2b3be). Its `body` runs on the main actor as usual; only the
-/// CONSTRUCTION happens during measurement.
-private struct TabRowCandidate: View {
+/// (cd2b3be).
+///
+/// `nonisolated`, and that is the FIX, not a nicety (crash 3, 4b2f7a8): the
+/// device stack proved ViewThatFits evaluates the candidate's `body` — and
+/// the ForEach closures inside it — on the AsyncRenderer, off the main
+/// actor. Under the project's MainActor default the body was isolated, so
+/// the runtime isolation check trapped (`_dispatch_assert_queue_fail`) one
+/// level below the cd2b3be fix. Everything this body touches is nonisolated
+/// data (`MediaType`, `TabBarMetrics`, stored copies); the stored `onSelect`
+/// closure is only INVOKED on tap, which happens on main.
+nonisolated private struct TabRowCandidate: View {
     let types: [MediaType]
     let selected: MediaType
     let labelSize: CGFloat
