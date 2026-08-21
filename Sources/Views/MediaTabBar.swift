@@ -62,9 +62,9 @@ struct MediaTabBar: View {
 
     var body: some View {
         // 85a7c00: NO arithmetic about the available width — SwiftUI measures.
-        // `ViewThatFits` offers the row at descending sizes and takes the
-        // first that fits WHOLE (one size for all labels, no truncation, no
-        // number that can drift from the truth).
+        // The ladder offers the row at descending sizes and takes the first
+        // that fits WHOLE (one size for all labels, no truncation, no number
+        // that can drift from the truth).
         //
         // cd2b3be (the owner's crash, twice in 12 s): everything inside these
         // closures is evaluated during the MEASUREMENT — and SwiftUI measures
@@ -80,12 +80,17 @@ struct MediaTabBar: View {
         let hideLabels = dynamicTypeSize.isAccessibilitySize
         let namespace = pillNS
         let onSelect = self.onSelect
-        ViewThatFits(in: .horizontal) {
-            ForEach(Self.labelSizes, id: \.self) { size in
-                TabRowCandidate(types: types, selected: selected,
-                                labelSize: size, hideLabels: hideLabels,
-                                namespace: namespace, onSelect: onSelect)
-            }
+        // e111072 (crash 4): MeasuredLadder, never ViewThatFits — four device
+        // crashes proved the sizing engine's off-main reach cannot be
+        // enumerated (even nonisolated data-pure candidates trapped). The
+        // ladder probes the REAL rows invisibly on main and builds only the
+        // chosen one; the behaviour contract (one size per bar, whole titles,
+        // descending rungs) is unchanged and the journeys still fence it.
+        MeasuredLadder(rungs: Self.labelSizes) { size, probing in
+            TabRowCandidate(types: types, selected: selected,
+                            labelSize: size, hideLabels: hideLabels,
+                            namespace: namespace, probing: probing,
+                            onSelect: onSelect)
         }
         .animation(.snappy(duration: 0.3), value: selected)
         // N1d: the end padding IS the pill gap — the pill's horizontal distance
@@ -97,24 +102,23 @@ struct MediaTabBar: View {
     }
 }
 
-/// One row candidate for `ViewThatFits` — a value of PLAIN data, so building
-/// it inside the measurement closures touches nothing MainActor-isolated
-/// (cd2b3be).
-///
-/// `nonisolated`, and that is the FIX, not a nicety (crash 3, 4b2f7a8): the
-/// device stack proved ViewThatFits evaluates the candidate's `body` — and
-/// the ForEach closures inside it — on the AsyncRenderer, off the main
-/// actor. Under the project's MainActor default the body was isolated, so
-/// the runtime isolation check trapped (`_dispatch_assert_queue_fail`) one
-/// level below the cd2b3be fix. Everything this body touches is nonisolated
-/// data (`MediaType`, `TabBarMetrics`, stored copies); the stored `onSelect`
-/// closure is only INVOKED on tap, which happens on main.
+/// One row of the bar at one ladder size. History (crash 1–4): as a
+/// ViewThatFits candidate this was made data-pure (cd2b3be), then
+/// `nonisolated` (4b2f7a8) — and STILL trapped on the AsyncRenderer
+/// (e111072: the sizing engine wraps evaluation in ObservationCenter and
+/// reached a live isolated reference no fix could name). Since e111072 it is
+/// only ever evaluated on the MAIN render path — as `MeasuredLadder`'s
+/// hidden probe or as the chosen row. `nonisolated` stays as belt and
+/// braces, not as the load-bearing fix.
 nonisolated private struct TabRowCandidate: View {
     let types: [MediaType]
     let selected: MediaType
     let labelSize: CGFloat
     let hideLabels: Bool
     let namespace: Namespace.ID
+    /// Probe rows must not mount the matched-geometry pill — seven hidden
+    /// copies of one geometry id would fight over it.
+    var probing: Bool = false
     let onSelect: (MediaType) -> Void
 
     /// e053f53 mirror — kept in sync with `MediaTabBar.pillGap` via the
@@ -136,8 +140,8 @@ nonisolated private struct TabRowCandidate: View {
                                 .font(.system(size: labelSize))
                                 // Whole or not at all: a cut-off word is a
                                 // defect, a small word only a metric. Refusing
-                                // to compress is what lets `ViewThatFits` see
-                                // that this candidate does not fit.
+                                // to compress is what lets the ladder's probe
+                                // see that this rung does not fit.
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
@@ -159,7 +163,7 @@ nonisolated private struct TabRowCandidate: View {
                         // ONE pill gap → concentric to the bar capsule (see
                         // `pillGap`); no horizontal inset within the cell, the
                         // bar's end padding provides the same gap at the ends.
-                        if selected == type {
+                        if !probing, selected == type {
                             Capsule()
                                 .fill(type.tint.opacity(0.16))
                                 .matchedGeometryEffect(id: "activeTabPill", in: namespace)

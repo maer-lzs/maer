@@ -45,48 +45,27 @@ import UIKit
         #expect(TabBarMetrics.Capsule.verticalPadding == 11)
     }
 
-    /// Crash 3 (4b2f7a8): ViewThatFits evaluates a candidate's `body` on the
-    /// AsyncRenderer — under the project's MainActor default an isolated body
-    /// is a runtime trap the compiler never sees. The candidates MUST opt out
-    /// explicitly; this fence keeps the word `nonisolated` on both
-    /// declarations (source scan, same class as the AppSwitch fence — the
-    /// types are private, so the source line is the checkable surface).
-    @Test func viewThatFitsCandidatesAreNonisolated() throws {
-        let sources = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Sources/Views")
-        for (file, type) in [("MediaTabBar.swift", "TabRowCandidate"),
-                             ("SettingsView.swift", "ChipRowCandidate")] {
-            let text = try String(contentsOf: sources.appendingPathComponent(file),
-                                  encoding: .utf8)
-            let declaration = text.split(separator: "\n").first {
-                $0.contains("struct \(type)")
-            }
-            #expect(declaration?.contains("nonisolated") == true,
-                    "\(type) in \(file) muss nonisolated deklariert sein — ViewThatFits misst seinen body off-main (4b2f7a8)")
-        }
-    }
-
-    /// e0a0788: the CLASS fence. ViewThatFits measures candidate bodies on
-    /// the AsyncRenderer — any candidate touching isolated state is the
-    /// tab-bar bomb again (three device crashes). Only the two bars carry it,
-    /// with nonisolated data-pure candidates (fenced above); everything else
-    /// uses `MeasuredFits`, which decides on the main render path. A new
-    /// ViewThatFits anywhere else fails here by name.
-    @Test func viewThatFitsStaysInTheFencedBars() throws {
+    /// e111072 (crash 4, the FOURTH device crash of this class): the sizing
+    /// engine's off-main reach cannot be enumerated — data-pure candidates
+    /// trapped, `nonisolated` candidates trapped (ObservationCenter reached a
+    /// live isolated reference no fix could name). The class is only dead
+    /// while the engine is unused, so the fence is a BAN with no allowlist:
+    /// `ViewThatFits(` does not appear in Sources at all. `MeasuredFits` /
+    /// `MeasuredLadder` are the replacements — they decide on the main
+    /// render path and need no off-main guarantee.
+    @Test func viewThatFitsIsBannedRepoWide() throws {
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources")
-        let allowed: Set<String> = ["MediaTabBar.swift", "SettingsView.swift"]
         let enumerator = FileManager.default.enumerator(at: sources,
                                                         includingPropertiesForKeys: nil)!
         for case let url as URL in enumerator where url.pathExtension == "swift" {
-            guard !allowed.contains(url.lastPathComponent) else { continue }
             let text = try String(contentsOf: url, encoding: .utf8)
             #expect(!text.contains("ViewThatFits("),
-                    "\(url.lastPathComponent): ViewThatFits misst isolierte bodies off-main (4b2f7a8) — MeasuredFits nehmen, oder nonisolated-Kandidaten bauen und diese Liste erweitern")
+                    "\(url.lastPathComponent): ViewThatFits ist nach vier Geraete-Crashes verboten (e111072) — MeasuredFits/MeasuredLadder nehmen")
         }
     }
+
 }
 
 #endif

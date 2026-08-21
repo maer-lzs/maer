@@ -298,7 +298,7 @@ components rather than forking them.
 | Component | Used by (file · context) | Parameters / variants |
 |---|---|---|
 | `CoverGrid` | MusicView (albums) · MusicBrowseViews (artist albums) · BookGridComponents (browse grid) | `columns, @ViewBuilder content`; `LazyVGrid` leading, spacing 20 |
-| `MeasuredFits` | PlayerView `regularSecondaryControls` (HStack vs 2×2-Grid) · `tertiaryControls` (labeled vs iconOnly) | ViewThatFits-Ersatz fuer Kandidaten mit isoliertem Zustand (4b2f7a8-Klasse): die Voll-Variante wird als unsichtbare background-Probe auf MAIN gemessen (`onGeometryChange`, echte gerenderte Breite — keine Rechnung), nur der gewaehlte Zweig wird gebaut; Kompakt zuerst bis gemessen. Zaun: kein ViewThatFits ausserhalb der zwei Leisten |
+| `MeasuredFits` | PlayerView `regularSecondaryControls` (HStack vs 2×2-Grid) · `tertiaryControls` (labeled vs iconOnly) | ViewThatFits-Ersatz fuer Kandidaten mit isoliertem Zustand (4b2f7a8-Klasse): die Voll-Variante wird als unsichtbare background-Probe auf MAIN gemessen (`onGeometryChange`, echte gerenderte Breite — keine Rechnung), nur der gewaehlte Zweig wird gebaut; Kompakt zuerst bis gemessen. Zaun: ViewThatFits repo-weit verboten. Schwester `MeasuredLadder` (N Stufen, probing-Flag gegen doppelte matchedGeometry): MediaTabBar-Titelleiter, Settings-Chip-Leiter |
 | `PodcastSubscribeBadge` | `RecommendationTile` corner slot · PodcastShowPreviewView (statics) | `feedURL`; check when subscribed / spinner / "+" subscribes (ABS server when active, else local + gpodder push) and drops the feed from the recommendations pool. Big sibling `PodcastSubscribeButton` (same statics, capsule with label) is the preview page's prominent subscribe control |
 | `RecommendationTile` | HomeView (Discover row) · PodcastsView (Recommended row) | `result, subtitle?, width=140`; `MediaTile` + subscribe corner control; tap → `PodcastRoute.showPreview` (temporary preview: catalog seed + live RSS fetch, nothing persisted until subscribed) |
 | `DownloadInstallRing` | BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover (grid tiles) |
@@ -728,10 +728,26 @@ gilt), nur der gewaehlte Zweig wird gebaut; niemand misst isolierte bodies.
 Bis beide Breiten bekannt sind zeigt der Kompakt-Zweig (passt immer), das
 Upgrade landet in den ersten Layout-Paessen. Journey-Zeuge:
 `testPlayerRowFullGerman` (deutscher Worst-Case ⇒ EINE beschriftete Reihe).
-**Klassen-Zaun `viewThatFitsStaysInTheFencedBars`:** ViewThatFits existiert
-nur noch in den zwei Leisten-Dateien (nonisolated-Kandidaten, oben gezaeunt);
-jede neue Stelle faellt namentlich durch — MeasuredFits nehmen oder
-nonisolated bauen und die Liste erweitern.
+**Crash 4 (e111072) — nonisolated hat NICHT gereicht:** gleiche Stelle,
+Build MIT dem Fix; `ObservationCenter._withObservation` im Stack — die
+Messmaschine erreicht eine lebendige isolierte Referenz, die kein Fix
+benennen konnte. Drei gezielte Fixes, vier Crashes = falsche Ebene.
+**ENTSCHEID (the reviewer) + Pruefauftrag (the owner, ee4070a), Ergebnis:**
+ViewThatFits ist REPO-WEIT VERBOTEN (Zaun `viewThatFitsIsBannedRepoWide`,
+keine Ausnahmen-Liste). Beide Leisten laufen jetzt ueber `MeasuredLadder`
+(N-stufige Schwester von MeasuredFits): jede Leiter-Stufe wird als
+unsichtbare background-Probe der ECHTEN Reihe auf dem MAIN-Renderpfad
+gemessen (`fixedSize` + `onGeometryChange`), die groesste passende Stufe
+wird gebaut, bis gemessen zeigt die kleinste (nie ein gekappter Titel).
+Proben tragen `probing: true` und mounten die matchedGeometry-Pille NICHT
+(sieben versteckte Kopien einer Geometrie-id). Gepruefte Alternativen im
+Pruefbericht: Schriftmetrik-Eigenrechnung (Glyphen-Treue gemessen
+Δ≤0,32 pt — `FontMetricProbe` haelt die Zahl als Zaun — aber die
+SUMMEN-Formel ist die Hoerbuech-Drift-Klasse), minimumScaleFactor
+(kollabiert in die Messfrage), Layout-Protocol-Container (im Sim
+unpruefbar — der AsyncRenderer existiert dort nicht; die Gewinnerin darf
+KEINE Off-Main-Garantie brauchen). Journeys unveraendert gruen:
+Titel-Groessen, Reiter-Hoehen 5/5, Player-Reihe deutsch.
 
 ### GT R6/R7b: beobachtete Auswahl-Quelle, Cancel ist kein Fehler, Weltweit hat zwei Toepfe
 

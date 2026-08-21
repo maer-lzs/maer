@@ -202,11 +202,12 @@ struct SettingsView: View {
         let select: (Tab) -> Void = { chosen in
             withAnimation(.snappy(duration: 0.2)) { tab = chosen }
         }
-        return ViewThatFits(in: .horizontal) {
-            ForEach(Self.chipFontSizes, id: \.self) { size in
-                ChipRowCandidate(tabs: tabs, active: active,
-                                 fontSize: size, accent: accent, select: select)
-            }
+        // e111072 (crash 4): MeasuredLadder, never ViewThatFits — same bomb,
+        // same cure as the tab bar. Probes render on main; only the chosen
+        // rung is built.
+        return MeasuredLadder(rungs: Self.chipFontSizes) { size, _ in
+            ChipRowCandidate(tabs: tabs, active: active,
+                             fontSize: size, accent: accent, select: select)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal)
