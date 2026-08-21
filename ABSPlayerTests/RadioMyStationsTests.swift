@@ -153,26 +153,50 @@ import SwiftUI
     }
 }
 
-/// 804fe18: the card ground keeps the HUE, the brightness runs counter.
+/// f01d6d3: the card ground is the logo's BOTTOM EDGE colour — the gradient
+/// attaches there; seamless join has priority over the old counter rule.
 @Suite struct RadioCardToneTests {
 
-    @Test func darkLogoGetsTheLightVariant() {
-        let dark = RadioTileGround.cardBrightness(logoLuminance: 0.1)
-        let light = RadioTileGround.cardBrightness(logoLuminance: 0.9)
-        #expect(dark.brightness > light.brightness)
-        // Few steps: same side of the threshold, same values.
-        #expect(RadioTileGround.cardBrightness(logoLuminance: 0.2).brightness == dark.brightness)
+    private func image(draw: (UIGraphicsImageRendererContext) -> Void) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: 32, height: 32),
+                                       format: format).image(actions: draw)
     }
 
-    /// The HUE survives the re-tone — the counter rule moves brightness and
-    /// saturation only. (WDR 5 stays WDR-blue, just light enough to carry a
-    /// dark logo.)
-    @Test func theHueSurvives() {
-        let base = Color(hue: 0.6, saturation: 0.8, brightness: 0.2)
-        let toned = RadioTileGround.cardTone(of: base, logoLuminance: 0.1)
-        var hue: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        UIColor(toned).getHue(&hue, saturation: &s, brightness: &b, alpha: &a)
-        #expect(abs(Double(hue) - 0.6) < 0.02)
-        #expect(Double(b) > 0.8)   // light variant for the dark logo
+    /// bigFM class: dark logo body ending in a black lower edge — the ground
+    /// must BE that edge, not a whole-image mix.
+    @Test func groundIsTheBottomEdge() throws {
+        let img = image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 16))
+            UIColor.black.setFill()
+            ctx.fill(CGRect(x: 0, y: 16, width: 32, height: 16))
+        }
+        let edge = try #require(RadioTileGround.bottomEdgeColor(of: img))
+        #expect(edge.luminance < 0.1)   // the black band, not the 0.5 mean
+    }
+
+    /// Transparent strip below the mark: the sampler walks UP to the next
+    /// zone that carries ink instead of answering "nothing".
+    @Test func transparentStripFallsThrough() throws {
+        let img = image { ctx in
+            UIColor.white.setFill()
+            ctx.fill(CGRect(x: 0, y: 8, width: 32, height: 16))  // ink mid-image
+        }
+        let edge = try #require(RadioTileGround.bottomEdgeColor(of: img))
+        #expect(edge.luminance > 0.8)
+    }
+
+    /// A fully transparent image answers nil — the card keeps its fallback.
+    @Test func emptyImageAnswersNil() {
+        let img = image { _ in }
+        #expect(RadioTileGround.bottomEdgeColor(of: img) == nil)
+    }
+
+    /// Title ink follows the GROUND: white on dark, dark on light.
+    @Test func titleInkFollowsTheGround() {
+        #expect(RadioTileGround.titleIsLight(groundLuminance: 0.1))
+        #expect(!RadioTileGround.titleIsLight(groundLuminance: 0.9))
     }
 }

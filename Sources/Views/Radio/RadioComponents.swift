@@ -302,18 +302,26 @@ struct RadioFeaturedCard: View {
     @StateObject private var colorLoader = CoverColorLoader()
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
-    /// 804fe18 (the owner): the card keeps its cover HUE, but the brightness
-    /// runs counter to the measured logo luminance — his WDR 5 card was a
-    /// dark-blue logo on near-black, barely visible. Same counter rule as the
-    /// tiles, on the colour scale; the luminance is measured once per station
-    /// by the artwork path and mirrored here.
-    @State private var logoLuminance: Double?
+    /// f01d6d3 (the owner, replaces the 804fe18 counter rule): the ground is
+    /// the LOGO'S BOTTOM EDGE colour — the gradient attaches there, and a
+    /// whole-image mean can never join it (measured: bigFM's edge is white,
+    /// its mean lavender; WDR 2's edge is WDR-red, its mean a dark plum —
+    /// both seams were visible on device). Seamless attachment has priority;
+    /// ALL ink on the card follows the ground's luminance, not just the
+    /// title — white ink on bigFM's white ground would erase star and line.
+    @State private var edge: (color: Color, luminance: Double)?
 
     private var cardColor: Color {
-        let base = colorLoader.hasAccent ? colorLoader.accent : tint
-        guard let logoLuminance else { return base }
-        return RadioTileGround.cardTone(of: base, logoLuminance: logoLuminance)
+        edge?.color ?? (colorLoader.hasAccent ? colorLoader.accent : tint)
     }
+
+    /// White ink on dark grounds, dark ink on light — measured at the ground.
+    private var inkIsLight: Bool {
+        guard let edge else { return true }
+        return RadioTileGround.titleIsLight(groundLuminance: edge.luminance)
+    }
+    private var titleColor: Color { inkIsLight ? .white : .black.opacity(0.85) }
+    private var captionColor: Color { inkIsLight ? .white.opacity(0.9) : .black.opacity(0.6) }
     // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
     // exactly like Book-/PodcastFeaturedCard's.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -343,10 +351,11 @@ struct RadioFeaturedCard: View {
                     RadioCardNowPlayingLeaf(stationID: station.id,
                                             host: .featuredCard,
                                             coordinator: playerCoordinator,
-                                            listenedSeconds: listenedSeconds)
+                                            listenedSeconds: listenedSeconds,
+                                            ink: captionColor)
                     Text(RadioMapping.displayName(station.name))
                         .font(.headline)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(titleColor)
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack(spacing: 6) {
@@ -362,7 +371,7 @@ struct RadioFeaturedCard: View {
                         // must never move the geometry.
                         Image(systemName: "star.fill")
                             .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(captionColor)
                             .opacity(isFavorite ? 1 : 0)
                             .accessibilityLabel(Text("Favorite"))
                             .accessibilityHidden(!isFavorite)
@@ -388,10 +397,9 @@ struct RadioFeaturedCard: View {
                 homepage: station.homepage)
                 ?? station.faviconURL.flatMap { URL(string: $0) }
             await colorLoader.load(from: url)
-            // 804fe18: measure the logo once (cached per station) so the
-            // ground can pick its counter-brightness.
+            // f01d6d3: the ground colour comes from the logo's bottom edge.
             if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
-                logoLuminance = RadioTileGround.luminance(of: loaded.image)
+                edge = RadioTileGround.bottomEdgeColor(of: loaded.image)
             }
         }
         // 48e514e (1): the family's pill at the family's place — bottom-left
@@ -433,6 +441,8 @@ private struct RadioCardNowPlayingLeaf: View {
     /// cb2d1ed: measured listening time of THIS station. Makes the line's
     /// second state possible — the same line, never a second one.
     var listenedSeconds: Int = 0
+    /// f01d6d3: the card's ink follows its ground; the leaf inherits it.
+    var ink: Color = .white.opacity(0.9)
 
     var body: some View {
         // ONE text node, whatever the state — the content changes, the layout
@@ -443,7 +453,7 @@ private struct RadioCardNowPlayingLeaf: View {
         // the owner named the mechanism more precisely than the symptom: "we
         // GET NEW INFO at the moment we click." The content arrives seconds
         // after the tap, so the geometry must already be final before it does.
-        Line(text: text, host: host, isRunning: isRunning)
+        Line(text: text, host: host, isRunning: isRunning, ink: ink)
             // The measurement needs to know whether the line it is about ever
             // ARRIVED — a case that cannot observe the mechanism must say so
             // instead of passing quietly.
@@ -494,6 +504,7 @@ private struct RadioCardNowPlayingLeaf: View {
         let host: Host
 
         let isRunning: Bool
+        let ink: Color
 
         var body: some View {
             // ONE line, fixed height, whatever the state — the badge rides
@@ -503,7 +514,7 @@ private struct RadioCardNowPlayingLeaf: View {
                 if isRunning { LiveBadge() }
                 Text(verbatim: text)
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(ink)
                     .lineLimit(1, reservesSpace: true)
             }
         }

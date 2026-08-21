@@ -75,30 +75,60 @@ nonisolated enum RadioTileGround {
         return weighted / alphaSum
     }
 
-    /// 804fe18 (the owner): the CARD keeps its cover HUE, but the brightness of
-    /// the mix runs counter to the logo — his WDR 5 card was a dark-blue logo
-    /// on a very dark ground, barely visible. Same counter rule as the tiles,
-    /// on the colour scale instead of the grey scale. Few steps, no continuous
-    /// math; covering brand designs (BR1 class) never reach this (they have no
-    /// ground of ours).
+    /// f01d6d3 (the owner, replaces the 804fe18 counter rule for CARDS): the
+    /// card ground is measured at the LOGO'S BOTTOM EDGE, not as a whole-image
+    /// mean — the gradient attaches at the logo's lower edge, and a mean can
+    /// never join it (bigFM: black edge onto beige mean; WDR: white onto
+    /// blue). **Seamless attachment has priority over counter-brightness** —
+    /// his call, and it solves the original dark-on-dark case with it, since
+    /// the edge IS the contact surface. Title legibility follows the GROUND's
+    /// luminance instead (white text on dark grounds, dark text on light).
     ///
-    /// | logo   | card ground                          |
-    /// |--------|--------------------------------------|
-    /// | dark   | LIGHT variant of the extracted hue   |
-    /// | light  | DARK variant of the extracted hue    |
-    static func cardBrightness(logoLuminance: Double) -> (saturation: Double, brightness: Double) {
-        let logoIsDark = logoLuminance < luminanceThreshold
-        // Light variant: pastel (lower saturation so the light tone stays
-        // calm); dark variant: the deep tone the cards carried anyway.
-        return logoIsDark ? (saturation: 0.30, brightness: 0.88)
-                          : (saturation: 0.55, brightness: 0.42)
+    /// The strip: the lowest ~12 % of pixel rows, alpha-weighted; if the strip
+    /// is fully transparent, walk up row-band by row-band to the next
+    /// non-transparent zone, else neutral.
+    static let edgeStripShare = 0.12
+
+    static func bottomEdgeColor(of image: UIImage) -> (color: Color, luminance: Double)? {
+        let side = 32
+        guard let cg = image.cgImage else { return nil }
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        guard let context = CGContext(
+            data: &pixels, width: side, height: side, bitsPerComponent: 8,
+            bytesPerRow: side * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.draw(cg, in: CGRect(x: 0, y: 0, width: side, height: side))
+        let band = max(1, Int(Double(side) * edgeStripShare))
+        // CGContext draws bottom-up? No — with this setup row 0 is the TOP.
+        // The bottom strip is the LAST rows; walk upwards band by band until
+        // one carries ink.
+        var start = side - band
+        while start >= 0 {
+            var red = 0.0, green = 0.0, blue = 0.0, alphaSum = 0.0
+            for y in start..<min(start + band, side) {
+                for x in 0..<side {
+                    let i = (y * side + x) * 4
+                    let alpha = Double(pixels[i + 3]) / 255
+                    guard alpha > 0.05 else { continue }
+                    red += Double(pixels[i]) / 255       // premultiplied
+                    green += Double(pixels[i + 1]) / 255
+                    blue += Double(pixels[i + 2]) / 255
+                    alphaSum += alpha
+                }
+            }
+            if alphaSum > 1 {
+                let r = red / alphaSum, g = green / alphaSum, b = blue / alphaSum
+                let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                return (Color(red: r, green: g, blue: b), luminance)
+            }
+            start -= band
+        }
+        return nil
     }
 
-    /// Re-tone a colour to the counter-brightness while KEEPING its hue.
-    static func cardTone(of color: Color, logoLuminance: Double) -> Color {
-        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
-        UIColor(color).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-        let step = cardBrightness(logoLuminance: logoLuminance)
-        return Color(hue: Double(hue), saturation: step.saturation, brightness: step.brightness)
+    /// Title ink for a given ground — measured, not guessed, both modes share
+    /// the rule (the ground is absolute, not scheme-relative).
+    static func titleIsLight(groundLuminance: Double) -> Bool {
+        groundLuminance < luminanceThreshold
     }
 }
