@@ -16,6 +16,7 @@ struct RadioLogoCacheTests {
     private struct Stored: Codable {
         var url: String?
         var resolvedAt: Double
+        var commonsFile: String? = nil
     }
 
     private func write(_ entries: [String: Stored], to defaults: UserDefaults) {
@@ -48,6 +49,28 @@ struct RadioLogoCacheTests {
         #expect(RadioLogoService.migratePersisted(defaults: defaults,
                                                   storedVersion: RadioLogoService.currentStorageVersion) == 0)
         #expect(read(defaults).count == 1)
+    }
+
+    /// b9de792 (v4): a stored "no" is only valid for the chain that produced
+    /// it. The sibling stage joined on 21.08. — negatives booked by the
+    /// shorter chain kept answering for 14 days ("bigFM Deutsch Rap" showed
+    /// initials although the family favicon exists). v3→v4 drops negatives
+    /// once; positives (URL or commons file) stay — a hit is a hit under any
+    /// chain.
+    @Test func negativesFromTheShorterChainAreDroppedOnce() {
+        let suite = "radio-logo-v4-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date().timeIntervalSince1970
+        write(["radio:rb:hit": Stored(url: "https://logo.example/a.png", resolvedAt: now),
+               "radio:rb:commons": Stored(url: nil, resolvedAt: now, commonsFile: "A.svg"),
+               "radio:rb:preSiblingNo": Stored(url: nil, resolvedAt: now)], to: defaults)
+        let dropped = RadioLogoService.migratePersisted(defaults: defaults, storedVersion: 3)
+        #expect(dropped == 1)
+        let kept = read(defaults)
+        #expect(kept["radio:rb:hit"] != nil)
+        #expect(kept["radio:rb:commons"] != nil)
+        #expect(kept["radio:rb:preSiblingNo"] == nil)
     }
 
     @Test("bc11ed5: the politeness spacing leaves room for a screen full of tiles")

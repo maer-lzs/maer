@@ -41,7 +41,15 @@ actor RadioLogoService {
     /// positives are kept on migration, so devices held width=400 URLs whose
     /// render the gate rejects (400×46 for wide wordmarks): every surface
     /// fell back to the mush favicon for 14 days. v3 HEALS the positives.
-    private static let storageVersion = 3
+    ///
+    /// v4 (b9de792): the SIBLING stage joined the chain on 21.08. — and a
+    /// stored no-hit from the day BEFORE kept answering for 14 days, so
+    /// "bigFM Deutsch Rap" showed initials although the family favicon the
+    /// new stage rescues had been measured all along. A stored "no" is only
+    /// valid for the chain that produced it; when the chain GAINS a stage,
+    /// the old negatives must re-try. v4 drops negatives once (positives
+    /// stay — a hit is a hit under any chain).
+    private static let storageVersion = 4
     /// Testable mirror of the constant above.
     nonisolated static var currentStorageVersion: Int { storageVersion }
 
@@ -71,8 +79,10 @@ actor RadioLogoService {
         }
         var changed = 0
         // v1 → v2: the poisoned negatives go (error/no-hit was missing).
-        if storedVersion < 2 {
-            let kept = stored.filter { $0.value.url != nil }
+        // v3 → v4: negatives predate the SIBLING stage — same drop, new
+        // reason (a no from a shorter chain must not outlive the chain).
+        if storedVersion < 2 || storedVersion == 3 {
+            let kept = stored.filter { $0.value.url != nil || $0.value.commonsFile != nil }
             changed += stored.count - kept.count
             stored = kept
         }

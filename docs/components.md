@@ -849,6 +849,30 @@ jetzt volle ids je Karte UND die Topf-Draufsicht (Top-10 secondsPerItem mit
 vollem Schluessel, Sekunden und aufgeloestem Namen). the owner's naechste Kopie
 beantwortet the reviewer's Frage, welches Feld die sechs teilen.
 
+### Vollseite als Kachelreihen · Karten-Gegenton · bigFM-Negativ (1d68650/804fe18/b9de792)
+
+**Vollseite (1d68650):** beide Abschnitte rendern jetzt Standard-KACHELREIHEN
+(RadioStationCard) statt Karten — zwei Abschnitte bildschirmfuellender Karten
+sind keine Uebersicht; die Karten bleiben der Tab-Reihe vorbehalten. Stern an
+der Favoriten-Kachel (topLeading-Overlay, gleiche Komponente). Der
+Store==Seite-Zaun prueft die MENGE und laeuft unveraendert.
+
+**Karten-Gegenton (804fe18):** die Karte behaelt ihren Cover-FARBTON, aber die
+Helligkeit laeuft gegenlaeufig zur gemessenen Logo-Luminanz (WDR 5: dunkles
+Logo auf fast Schwarz war der Anlass). `RadioTileGround.cardTone` — dunkles
+Logo → helle Pastell-Variante (S 0,30/B 0,88), helles → dunkle Variante
+(S 0,55/B 0,42); wenige Stufen, Hue-Erhalt getestet, deckende Marken (BR1)
+unberuehrt. Abnahme am Geraet: WDR-5-Karte + helles Gegenbeispiel.
+
+**bigFM-Initialen (b9de792), Ursache per Aktenlage:** der Rollback-Vor-Wert
+war NICHT leer („BigFM Logo.png" — die Tabelle deckt den Namen „bigFM");
+„bigFM Deutsch Rap" haengt an der GESCHWISTER-Stufe, und die wurde von einem
+**14-Tage-Negativ vom 20.08.** blockiert — gebucht von der Kette OHNE die
+Stufe (sie kam erst am 21.08.). **Ein gespeichertes Nein gilt nur fuer die
+Kette, die es erzeugte:** v4-Migration verwirft Negative der kuerzeren Kette
+einmal (Positive bleiben — ein Treffer ist unter jeder Kette ein Treffer).
+Gleiche Klasse wie der Gate-Vermerk in `Stored.gate`, eine Stufe hoeher.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

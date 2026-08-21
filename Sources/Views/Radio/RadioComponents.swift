@@ -112,6 +112,10 @@ struct RadioStationCard: View {
     let station: RadioStation
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
+    /// 1d68650: a starred station carries the glyph on the TILE too — the
+    /// full page renders favorites as tiles, and without the star the
+    /// section order would be unexplainable there just as on the cards.
+    var isFavorite: Bool = false
     /// P16a: the ROW defines the metric, not the class. In a MIXED row
     /// (Start's "Recently Played": albums next to stations) the album size is
     /// the reference for Start's density — the tile takes it as a parameter
@@ -133,6 +137,17 @@ struct RadioStationCard: View {
                              name: station.name, homepage: station.homepage)
                     .frame(width: width, height: width)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(alignment: .topLeading) {
+                        if isFavorite {
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.white)
+                                .padding(5)
+                                .background(Circle().fill(.black.opacity(0.45)))
+                                .padding(6)
+                                .accessibilityLabel(Text("Favorite"))
+                        }
+                    }
                     .overlay(alignment: .bottomTrailing) {
                         // Play stays reachable in ONE tap — the corner glyph,
                         // like the podcast tiles' corner action.
@@ -287,7 +302,18 @@ struct RadioFeaturedCard: View {
     @StateObject private var colorLoader = CoverColorLoader()
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
-    private var cardColor: Color { colorLoader.hasAccent ? colorLoader.accent : tint }
+    /// 804fe18 (the owner): the card keeps its cover HUE, but the brightness
+    /// runs counter to the measured logo luminance — his WDR 5 card was a
+    /// dark-blue logo on near-black, barely visible. Same counter rule as the
+    /// tiles, on the colour scale; the luminance is measured once per station
+    /// by the artwork path and mirrored here.
+    @State private var logoLuminance: Double?
+
+    private var cardColor: Color {
+        let base = colorLoader.hasAccent ? colorLoader.accent : tint
+        guard let logoLuminance else { return base }
+        return RadioTileGround.cardTone(of: base, logoLuminance: logoLuminance)
+    }
     // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
     // exactly like Book-/PodcastFeaturedCard's.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -362,6 +388,11 @@ struct RadioFeaturedCard: View {
                 homepage: station.homepage)
                 ?? station.faviconURL.flatMap { URL(string: $0) }
             await colorLoader.load(from: url)
+            // 804fe18: measure the logo once (cached per station) so the
+            // ground can pick its counter-brightness.
+            if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
+                logoLuminance = RadioTileGround.luminance(of: loaded.image)
+            }
         }
         // 48e514e (1): the family's pill at the family's place — bottom-left
         // in the text zone, the SHARED CardDetailPill (a1077a9 had asked for

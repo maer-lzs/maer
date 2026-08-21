@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import UIKit
+import SwiftUI
 
 /// 773d87b: the ground behind a logo on a radio TILE — "etwas weniger farbig",
 /// deliberately not fully neutral.
@@ -72,5 +73,32 @@ nonisolated enum RadioTileGround {
         }
         guard alphaSum > 0 else { return 0.5 }
         return weighted / alphaSum
+    }
+
+    /// 804fe18 (the owner): the CARD keeps its cover HUE, but the brightness of
+    /// the mix runs counter to the logo — his WDR 5 card was a dark-blue logo
+    /// on a very dark ground, barely visible. Same counter rule as the tiles,
+    /// on the colour scale instead of the grey scale. Few steps, no continuous
+    /// math; covering brand designs (BR1 class) never reach this (they have no
+    /// ground of ours).
+    ///
+    /// | logo   | card ground                          |
+    /// |--------|--------------------------------------|
+    /// | dark   | LIGHT variant of the extracted hue   |
+    /// | light  | DARK variant of the extracted hue    |
+    static func cardBrightness(logoLuminance: Double) -> (saturation: Double, brightness: Double) {
+        let logoIsDark = logoLuminance < luminanceThreshold
+        // Light variant: pastel (lower saturation so the light tone stays
+        // calm); dark variant: the deep tone the cards carried anyway.
+        return logoIsDark ? (saturation: 0.30, brightness: 0.88)
+                          : (saturation: 0.55, brightness: 0.42)
+    }
+
+    /// Re-tone a colour to the counter-brightness while KEEPING its hue.
+    static func cardTone(of color: Color, logoLuminance: Double) -> Color {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        UIColor(color).getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
+        let step = cardBrightness(logoLuminance: logoLuminance)
+        return Color(hue: Double(hue), saturation: step.saturation, brightness: step.brightness)
     }
 }

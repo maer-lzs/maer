@@ -6,6 +6,7 @@
 import Testing
 import Foundation
 import UIKit
+import SwiftUI
 @testable import ABSPlayer
 
 /// cb2d1ed: the "My Stations" row — composition, the exclusion fence, and the
@@ -149,5 +150,29 @@ import UIKit
             ctx.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
         }
         #expect(RadioTileGround.luminance(of: light) > 0.8)
+    }
+}
+
+/// 804fe18: the card ground keeps the HUE, the brightness runs counter.
+@Suite struct RadioCardToneTests {
+
+    @Test func darkLogoGetsTheLightVariant() {
+        let dark = RadioTileGround.cardBrightness(logoLuminance: 0.1)
+        let light = RadioTileGround.cardBrightness(logoLuminance: 0.9)
+        #expect(dark.brightness > light.brightness)
+        // Few steps: same side of the threshold, same values.
+        #expect(RadioTileGround.cardBrightness(logoLuminance: 0.2).brightness == dark.brightness)
+    }
+
+    /// The HUE survives the re-tone — the counter rule moves brightness and
+    /// saturation only. (WDR 5 stays WDR-blue, just light enough to carry a
+    /// dark logo.)
+    @Test func theHueSurvives() {
+        let base = Color(hue: 0.6, saturation: 0.8, brightness: 0.2)
+        let toned = RadioTileGround.cardTone(of: base, logoLuminance: 0.1)
+        var hue: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(toned).getHue(&hue, saturation: &s, brightness: &b, alpha: &a)
+        #expect(abs(Double(hue) - 0.6) < 0.02)
+        #expect(Double(b) > 0.8)   // light variant for the dark logo
     }
 }
