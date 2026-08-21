@@ -401,6 +401,16 @@ final class PlayerCoordinator: ObservableObject {
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
+        // d7f12e1 A (the owner): the mini player offers NOTHING that is
+        // finished by its own knowledge — the Weiterhören rule, applied to
+        // the standby. Judged by the NUMBERS (the one derived finished rule),
+        // never only a flag; an empty standby is honest. The event gate is
+        // untouched — this path still writes no position.
+        if Self.standbyCountsAsFinished(ListeningStore.mark(lastId)) {
+            UserDefaults.standard.removeObject(forKey: lastItemKey)
+            Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
+            return
+        }
         // Podcast episodes resolve through the subscriptions' episode index,
         // which now loads asynchronously at startup — wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.
@@ -434,6 +444,13 @@ final class PlayerCoordinator: ObservableObject {
                 await open(item: newest, autoplay: false)
             }
         }
+    }
+
+    /// The standby question, pure: finished by local knowledge? Duration
+    /// unknown = not finished (a standby is only cleared on evidence).
+    nonisolated static func standbyCountsAsFinished(_ mark: ListeningStore.Mark?) -> Bool {
+        guard let mark, let duration = mark.duration else { return false }
+        return SyncRules.isFinished(currentTime: mark.position, duration: duration)
     }
 
     /// "rss:<feedKey>:<originalGuid>" → the show id "feed:<feedKey>" used by

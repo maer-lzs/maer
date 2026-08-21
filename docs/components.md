@@ -1050,6 +1050,18 @@ Aufruf; jetzt sitzt auch die an einer Stelle. Ehrlich: meine damalige
 GT-Nachpruefung lief als Sim-ERSTLADUNGS-Journey — exakt der Pfad, der
 funktionierte; der Geraete-Refresh-Weg war ungemessen.
 
+### Mini-Player-Standby raeumt Fertiges (d7f12e1 A)
+
+INVARIANTE: der Mini-Player bietet nichts an, was laut EIGENEM Wissen
+fertig ist — die Weiterhoeren-Regel, aufs Standby angewandt.
+`restoreLastSession` fragt VOR dem Aufloesen
+`PlayerCoordinator.standbyCountsAsFinished(ListeningStore.mark(id))` (pur,
+gezaeunt): fertig NACH ZAHLEN (`SyncRules.isFinished`, die eine abgeleitete
+Regel) ⇒ lastItemKey geloescht, leer ist ehrlich, `STANDBY cleared`-Log.
+Ohne Dauer/Eintrag wird NIE entladen — nur auf Beleg. Ereignis-Tor
+unberuehrt (Laden schreibt weiter nichts). Teil C (Zeiger reist) kommt mit
+der Sync-Familie.
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):

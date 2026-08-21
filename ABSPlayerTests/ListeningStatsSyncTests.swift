@@ -304,3 +304,23 @@ struct RadioLogoReportTests {
     }
 }
 #endif
+
+/// d7f12e1 A: the mini player offers nothing that is finished by its own
+/// knowledge — judged by the NUMBERS, and only on evidence.
+@Suite struct StandbyFinishedTests {
+
+    @Test("fertig nach Zahlen wird entladen; offen bleibt")
+    func finishedByNumbersClears() {
+        let done = ListeningStore.mark(from: [3599, 1_000, 3600], source: .backup)
+        #expect(PlayerCoordinator.standbyCountsAsFinished(done))
+        let open = ListeningStore.mark(from: [1200, 1_000, 3600], source: .backup)
+        #expect(!PlayerCoordinator.standbyCountsAsFinished(open))
+    }
+
+    @Test("ohne Dauer oder ohne Eintrag wird NIE entladen — nur auf Beleg")
+    func noEvidenceKeepsTheStandby() {
+        #expect(!PlayerCoordinator.standbyCountsAsFinished(nil))
+        let durationless = ListeningStore.mark(from: [1200, 1_000], source: .flushed)
+        #expect(!PlayerCoordinator.standbyCountsAsFinished(durationless))
+    }
+}
