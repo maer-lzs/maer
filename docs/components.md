@@ -1,5 +1,37 @@
 # Components
 
+## Regelkarte (6b634b1 — VOR jedem Paket lesen; erster Schritt, keine Zeremonie)
+
+**Die zwei Regeln der Karte:** sie wächst nie (eine neue Lehre verdrängt eine
+alte — ODER wird ein mechanischer Zaun und braucht keinen Platz; Zaun schlägt
+Karte, immer) · sie wohnt HIER, weil jedes Paket diese Datei ohnehin anfasst.
+
+1. **Erst messen, dann bauen.** Empirische Annahmen über fremde Systeme
+   (Server, APIs, SwiftUI) zuerst prüfen; ein Wort/Text-Treffer ist kein
+   Verwandtschaftsbeweis.
+2. **Beweis endet am gerenderten Pixel.** Und Rot-Probe: erst zeigen, dass
+   das Instrument den Unterschied überhaupt sähe.
+3. **„Erledigt" erst nach Wirkungs-Messung**, nie nach Bau. Fix ohne Wirkung
+   = falsche Ebene; nach zwei Fehlversuchen Konstruktion wechseln, nicht
+   drittes Mal flicken.
+4. **Lehren gelten der KLASSE, nicht dem Fundort.** Nach jedem Befund die
+   Geschwister-Flächen absuchen (4× zurückgekommen).
+5. **Gegenlauf nimmt die GANZE Änderung zurück** — ein halber Gegenlauf
+   beweist nichts.
+6. **Nach jedem Schreibschritt das ERGEBNIS prüfen** (grep -c); Inventar mit
+   Edit-Werkzeug, nie Python-Heredoc.
+7. **Nichts Lebendiges in Mess-/Layout-Pfade.** ViewThatFits ist verboten
+   (Zaun); MeasuredFits/MeasuredLadder entscheiden auf main.
+8. **Seine Meldung nennt den Mechanismus** — den Wortlaut des Nutzers als
+   Diagnose lesen, nicht als Symptom.
+9. **Bestand ist der Normalfall.** Migrations-/Heilungspfade gegen
+   importierte Daten prüfen; ein fehlender Codable-Schlüssel WIRFT.
+10. **WAS bindend, WIE Vorschlag** (34315ff): Entscheide/Invarianten/Grenzen
+    stehen fest; Konstruktionswege adversarial prüfen, Abweichung bauen
+    erlaubt — melden Pflicht („eine Abweichung, begründet").
+
+---
+
 Living inventory of the shared UI and logic surfaces. One row per reusable
 component: what it is, every surface that uses it, and its parameters/variants.
 Present-tense, current state only — history lives in git.
