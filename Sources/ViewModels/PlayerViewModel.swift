@@ -763,6 +763,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // 8b71fd7: playback is an EVENT — from here on the sync path may
         // write this item's local state.
         eventSinceLoad = true
+        // Takeover contract: playing claims. The other device notices the
+        // foreign claim and stands down by itself (no remote control).
+        if let item { PlaybackClaimSync.shared.claim(itemId: item.id) }
         activateAudioSession()
         applySmartRewindIfNeeded()
         // In case a sleep fade was interrupted mid-way: full volume.
@@ -800,6 +803,18 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// playing — instead of starting from the old local state and overwriting the
     /// fresh progress.
     func playWithServerCheck() async {
+        // Podcast/KVS half of the device switch: the freshest state of a
+        // podcast episode lives in the iCloud blob, not behind
+        // `reconcileWithServer`. One targeted pull, then adopt a newer mark
+        // before playback starts — that is the takeover's "fetch the
+        // freshest state" step for the classes without a progress server.
+        if let item, item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:") {
+            PodcastCloudSync.shared.reconcile(changedId: item.id)
+            if let mark = ListeningStore.mark(item.id),
+               abs(mark.position - currentTime) > 2 {
+                await seek(to: mark.position, userInitiated: false)
+            }
+        }
         // Wait for the reconcile at most 1.5s — on a slow network (no immediate
         // offline error) the play button must not hang until the URLSession
         // timeout. If the reconcile takes longer, playback starts immediately; a

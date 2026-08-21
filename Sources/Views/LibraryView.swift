@@ -526,6 +526,8 @@ struct LibraryView: View {
             // The travelling user choices (sorts, browse choices, favorites,
             // per-show settings, …) — one mechanism, same switch.
             UserChoiceCloudSync.shared.start()
+            // Takeover channel: who is playing what (self-pause + hint line).
+            PlaybackClaimSync.shared.start()
             // d990695 (4): one-off backfill — the addresses already
             // configured move into the register, so the memory is not empty
             // on the first launch after the update.

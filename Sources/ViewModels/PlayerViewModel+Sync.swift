@@ -22,6 +22,14 @@ extension PlayerViewModel {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 if Task.isCancelled { break }
                 await self.syncProgress(force: false)
+                // Takeover channel: refresh the own claim while playing (a
+                // claim that stops growing means "stopped playing"), and poll
+                // for a foreign one — the fallback when the external-change
+                // notification does not arrive.
+                if self.isPlaying, let id = self.item?.id {
+                    PlaybackClaimSync.shared.claim(itemId: id)
+                }
+                PlaybackClaimSync.shared.poll()
             }
         }
     }

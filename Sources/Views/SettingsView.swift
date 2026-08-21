@@ -501,6 +501,7 @@ struct SettingsView: View {
                     ListeningStatsStore.shared.start()
                     MaerPlaylistCloudSync.shared.start()
                     UserChoiceCloudSync.shared.start()
+                    PlaybackClaimSync.shared.start()
                 }
             }
             // The failure that was invisible: when the shared budget is

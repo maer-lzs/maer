@@ -64,6 +64,20 @@ final class PlayerCoordinator: ObservableObject {
 
     init(provider: any AudioProvider) {
         self.provider = provider
+        // Takeover (3e4db13): a foreign claim on the item THIS device is
+        // playing means another device took over on explicit play — this
+        // side stands down by itself and pushes its final state (pause()
+        // force-syncs). No remote control, no locks; the claim age in the
+        // log line is the latency witness for the device pair.
+        PlaybackClaimSync.shared.onForeignClaim = { [weak self] claim in
+            guard let self, let vm = self.viewModel, vm.isPlaying,
+                  PlaybackClaimRules.shouldPause(
+                      claim: claim, ownDeviceId: SyncHistoryStore.deviceId,
+                      playingItemId: self.activeItem?.id,
+                      nowMs: Date().timeIntervalSince1970 * 1000) else { return }
+            Logger.player.notice("CLAIM takeover: standing down after \(Int((Date().timeIntervalSince1970 * 1000 - claim.t) / 1000), privacy: .public)s (device \(claim.deviceId.prefix(8), privacy: .public))")
+            vm.pause()
+        }
     }
 
     #if DEBUG

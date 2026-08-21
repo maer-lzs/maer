@@ -129,9 +129,23 @@ struct MiniPlayerBar: View {
 /// tiny view instead of the whole glass bar.
 private struct MiniPlayerSubtitle: View {
     @ObservedObject var viewModel: PlayerViewModel
+    /// Takeover hint (3e4db13): observed HERE, in the small ticking leaf —
+    /// the glass bar itself never observes the claim.
+    @ObservedObject private var claims = PlaybackClaimSync.shared
 
     var body: some View {
-        if let chapter = viewModel.currentChapter {
+        if !viewModel.isPlaying,
+           PlaybackClaimRules.showsHint(
+               claim: claims.current, ownDeviceId: SyncHistoryStore.deviceId,
+               standbyItemId: viewModel.item?.id,
+               nowMs: Date().timeIntervalSince1970 * 1000) {
+            // Standby pointing at an item another device is playing right
+            // now — play here remains possible and TAKES OVER (never a lock).
+            Label("Playing on another device", systemImage: "ipad.and.iphone")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if let chapter = viewModel.currentChapter {
             HStack(spacing: 4) {
                 if let sleep = viewModel.sleepTimerRemaining {
                     // Active sleep timer, visible without opening the player.
