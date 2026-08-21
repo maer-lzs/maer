@@ -332,3 +332,41 @@ struct RecommendationSeedTests {
         #expect(out.suffix(5).map(\.id) == entries.suffix(5).map(\.id))
     }
 }
+
+/// 973121e: the Empfohlen fix — REAL author equality, and the fences carry
+/// the measured cases verbatim (the "Einschlafen" anchor booked 25/25
+/// foreign shows as sameAuthor through the old title branch).
+@Suite struct RecommendationAuthorMatchTests {
+
+    /// The title branch is GONE: a title carrying the anchor word proves
+    /// nothing about authorship.
+    @Test("Einschlafen-Anker bucht 0 fremde Autoren als sameAuthor")
+    func titleWordsAreNoAuthors() {
+        for foreign in ["Toby Baier", "Jan Lindner", "Wikipedia & Schønlein Media",
+                        "Understood.org, Laura Key", "SWR",
+                        "Frankfurter Allgemeine Zeitung"] {
+            #expect(!PodcastRecommendationsStore.sameAuthor(foreign, anchor: "Einschlafen"),
+                    "\(foreign) ist nicht der Autor 'Einschlafen'")
+        }
+        #expect(!PodcastRecommendationsStore.sameAuthor("ZDFde", anchor: "heute"))
+    }
+
+    /// The direction hole is gone: a candidate author that merely CONTAINS
+    /// the anchor (or vice versa) is a different house.
+    @Test("Sport bucht weder Barstool noch FOX")
+    func substringsAreNoAuthors() {
+        #expect(!PodcastRecommendationsStore.sameAuthor("Barstool Sports", anchor: "Sport"))
+        #expect(!PodcastRecommendationsStore.sameAuthor("FOX Sports", anchor: "Sport"))
+        #expect(!PodcastRecommendationsStore.sameAuthor("DIE ZEIT", anchor: "ZEIT WISSEN"))
+    }
+
+    /// Real matches stay: folded equality is case-, diacritic- and
+    /// punctuation-blind, never word-blind.
+    @Test("echte ZEIT-Shows bleiben")
+    func realAuthorsStillMatch() {
+        #expect(PodcastRecommendationsStore.sameAuthor("DIE ZEIT", anchor: "DIE ZEIT"))
+        #expect(PodcastRecommendationsStore.sameAuthor("Die  Zeit", anchor: "DIE ZEIT"))
+        #expect(PodcastRecommendationsStore.sameAuthor("ZEIT ONLINE", anchor: "zeit online"))
+        #expect(!PodcastRecommendationsStore.sameAuthor(nil, anchor: "DIE ZEIT"))
+    }
+}

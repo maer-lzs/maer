@@ -998,6 +998,20 @@ verliert nichts. Zaeune: sportschau-Fall kollabiert vollzaehlig (front +
 Varianten == Eingabemenge) · gleicher Name/fremde Domain nie · Koepfe
 deklariert statt geraten.
 
+### Empfohlen-Fix (973121e, owner decision 2)
+
+`authorMatches` = **echte Autoren-Gleichheit, gefaltet**
+(`PodcastRecommendationsStore.sameAuthor`, pur): Gross/Klein, Diakritik und
+Interpunktion fallen, Woerter nie. Beide wort-blinden Loecher zu: der
+TITEL-Zweig ist ERSATZLOS raus (gemessen: „Einschlafen" buchte 25/25 fremde
+Autoren als sameAuthor), das beidseitige `contains` ebenso („Sport" zog
+Barstool/FOX). the reviewer's optionaler Wortgrenzen-Praefix ist NICHT gebaut —
+er deckte das „DIE ZEIT"/„ZEIT ONLINE"-Paar ohnehin nicht (keiner ist
+Praefix des anderen); Verlags-Varianten erscheinen ueber Genre/Charts mit
+EIGENER Begruendung (die Provenienz-Karten sind je Quelle getrennt, eine
+Kategorie-Empfehlung erbt nie die sameAuthor-Zeile). Zaeune: Einschlafen-
+Anker 0 fremde · Sport ↛ Barstool/FOX · echte ZEIT-Shows bleiben.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

@@ -368,10 +368,35 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - Filtern & Ranking
 
+    /// 973121e (the owner, freigegeben): REAL author equality, folded — the
+    /// measured word-collision fix. Both old holes are gone: the TITLE branch
+    /// ("Einschlafen" booked 25/25 foreign shows as sameAuthor — a title is
+    /// no proof of authorship) and the two-way `contains` ("Sport" pulled
+    /// Barstool/FOX Sports). the reviewer's optional word-boundary prefix is NOT
+    /// built: it would not cover the "DIE ZEIT"/"ZEIT ONLINE" pair either
+    /// (neither prefixes the other), and equality keeps the row honest —
+    /// a publisher variant surfaces via genre/charts with its own reason.
     private func authorMatches(_ r: PodcastSearchResult, _ author: String) -> Bool {
-        let a = author.lowercased()
-        if let ra = r.author?.lowercased(), ra.contains(a) || a.contains(ra) { return true }
-        return r.title.lowercased().contains(a)
+        Self.sameAuthor(r.author, anchor: author)
+    }
+
+    /// The one comparison, pure for the fences: folded equality of the
+    /// author FIELDS, nothing else.
+    nonisolated static func sameAuthor(_ candidate: String?, anchor: String) -> Bool {
+        guard let candidate else { return false }
+        let a = foldAuthor(candidate), b = foldAuthor(anchor)
+        return !a.isEmpty && a == b
+    }
+
+    private nonisolated static func foldAuthor(_ raw: String) -> String {
+        raw.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .lowercased()
+            .map { $0.isLetter || $0.isNumber ? $0 : " " }
+            .reduce(into: "") { out, ch in
+                if ch == " ", out.hasSuffix(" ") { return }
+                out.append(ch)
+            }
+            .trimmingCharacters(in: .whitespaces)
     }
 
     /// Author hits + category proximity as the base rank, then mix by
