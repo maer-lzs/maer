@@ -996,6 +996,57 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
+    /// 5bab0ad + 2b7c857: the "My Stations" cards — ALL favorites appear, and
+    /// every card of the row has the same height whatever its state (star,
+    /// listening time, running show). The favorite card was measurably taller
+    /// because the star row added height instead of living in reserved space —
+    /// the same class this package closed on tiles and on the settings bar.
+    func testMyStationsShowsAllFavoritesAtOneHeight() throws {
+        let app = launch()
+        let serverless = app.buttons["start-serverless"].firstMatch
+        if serverless.waitForExistence(timeout: 20) { serverless.tap() }
+        XCTAssertTrue(app.buttons["tab-radio"].firstMatch.waitForExistence(timeout: 25))
+        app.buttons["tab-radio"].firstMatch.tap()
+
+        // Star TWO stations of the popular row via their context menu.
+        let tiles = app.buttons.matching(identifier: "radio-tile")
+        XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 60), "keine Kacheln")
+        var starred = 0
+        for index in 0..<3 where starred < 2 {
+            let tile = tiles.element(boundBy: index)
+            guard tile.exists else { continue }
+            tile.press(forDuration: 1.1)
+            let favorite = app.buttons["radio-favorite-toggle"].firstMatch
+            if favorite.waitForExistence(timeout: 6) { favorite.tap(); starred += 1 }
+            else { app.tap() }   // close a menu without the entry
+        }
+        try XCTSkipUnless(starred >= 2, "konnte keine zwei Favoriten setzen")
+
+        // The row appears with BOTH favorites…
+        let cards = app.buttons.matching(identifier: "radio-card")
+        var seen = 0
+        for _ in 0..<20 {
+            seen = cards.count
+            if seen >= 2 { break }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        let heights = (0..<min(seen, 8)).compactMap { index -> CGFloat? in
+            let card = cards.element(boundBy: index)
+            guard card.exists, card.frame.height > 0 else { return nil }
+            return (card.frame.height * 10).rounded() / 10
+        }
+        let report = XCTAttachment(string: "Karten: \(seen) · Höhen: \(heights)")
+        report.name = "my-stations-heights"
+        report.lifetime = .keepAlways
+        add(report)
+        snap(app, "my-stations-heights")
+        XCTAssertGreaterThanOrEqual(seen, 2,
+            "nur \(seen) Karten — mindestens die zwei Favoriten müssen erscheinen")
+        // …and at ONE height, star or not.
+        XCTAssertEqual(Set(heights).count, 1, "Kartenhöhen ungleich: \(heights)")
+        app.terminate()
+    }
+
     /// Row 4 of the matrix — the class that is NOT like the others. A live
     /// stream has no end to be at, so its local state is deliberately NOT a
     /// position: the progress stock stays empty and the last-listened time

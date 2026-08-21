@@ -209,6 +209,8 @@ struct RadioFavoriteButton: View {
                                                      : String(localized: "Add Favorite"),
                   systemImage: RadioStore.isFavorite(station.id) ? "star.slash" : "star")
         }
+        // Locale-independent handle — the height fence stars two stations.
+        .accessibilityIdentifier("radio-favorite-toggle")
     }
 }
 
@@ -322,18 +324,22 @@ struct RadioFeaturedCard: View {
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack(spacing: 6) {
-                        // 52af077 (GT R1): NO static LIVE. On a "My Stations"
-                        // card the badge reads as "this is playing right now" —
-                        // and both cards carried it while an audiobook ran. The
-                        // badge lives in the card LINE's running state instead
-                        // (the cb2d1ed table: "playing → LIVE + running show"),
-                        // so it appears exactly when it is true.
-                        if isFavorite {
-                            Image(systemName: "star.fill")
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.9))
-                                .accessibilityLabel(Text("Favorite"))
-                        }
+                        // 52af077 (GT R1): NO static LIVE — the badge lives in
+                        // the card LINE's running state, where it is true.
+                        //
+                        // 5bab0ad: the star line RESERVES its height on every
+                        // card. Rendered always and hidden by opacity — a
+                        // conditional row made the favorite card TALLER than
+                        // its neighbours, which is the same class this package
+                        // closed twice already (show line on tiles, bar height
+                        // per active tab): a state only some elements carry
+                        // must never move the geometry.
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .opacity(isFavorite ? 1 : 0)
+                            .accessibilityLabel(Text("Favorite"))
+                            .accessibilityHidden(!isFavorite)
                         Spacer()
                     }
                 }
@@ -345,6 +351,8 @@ struct RadioFeaturedCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
+        // 5bab0ad: the height fence can only measure what it can find.
+        .accessibilityIdentifier("radio-card")
         // Recompute on station AND image change: the await follows the
         // cadenced chain, so the accent lands when the two-stage artwork's
         // final image does — favicon-only stations take theirs directly.

@@ -317,6 +317,23 @@ struct RadioView: View {
                     }
                     hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
                         + "Summe \(seconds.values.reduce(0, +)) s\n"
+                    // 2b7c857: only one of several favorites showed — the
+                    // diagnosis answers WHICH favorites the store knows, which
+                    // the row shows, and why one is missing (exclusion), so
+                    // the owner's device settles source vs. cap vs. ranking.
+                    let storeFavs = RadioStore.favorites()
+                    let shownIds = Set(myStations.map(\.id))
+                    let excluded = RadioMyStations.excludedID(recents: RadioStore.recents())
+                    hoursBlock += "\nFAVORITEN (Speisung):\n"
+                    hoursBlock += "  Store kennt \(storeFavs.count): "
+                        + storeFavs.map { $0.name.prefix(20) }.joined(separator: " · ") + "\n"
+                    for favorite in storeFavs {
+                        let why: String
+                        if shownIds.contains(favorite.id) { why = "in der Reihe" }
+                        else if favorite.id == excluded { why = "ausgelassen (steht in Zuletzt gespielt)" }
+                        else { why = "FEHLT — weder Reihe noch Auslass-Regel" }
+                        hoursBlock += "  \(favorite.name.prefix(24)): \(why)\n"
+                    }
                     UIPasteboard.general.string = base + hoursBlock
                     copiedLogoReport = true
                     // The display half needs to LOAD, so it lands a moment
@@ -656,6 +673,10 @@ struct RadioView: View {
                 Logger.library.notice("RADIO popular: NO country code — showing WORLD top-votes (\(world.count) stations)")
                 return (world, false)
             } catch {
+                // A cancelled run is not a failure (shared rule) — the empty
+                // answer without the failed flag keeps the section quiet
+                // instead of booking a phantom error.
+                guard !error.isCancellation else { return ([], false) }
                 Logger.library.error("RADIO world popular FAILED: \(String(describing: error), privacy: .public)")
                 return ([], true)
             }

@@ -131,6 +131,7 @@ struct ArchiveMusicPage: View {
             page += 1
             if docs.count < pageSize { reachedEnd = true }
         } catch {
+            guard !error.isCancellation else { return }
             Logger.library.error("FREECAT \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = items.isEmpty
         }
@@ -232,6 +233,7 @@ struct ShellacShelvesPage: View {
                 Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
                 rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }
             } catch {
+                guard !error.isCancellation else { return }
                 Logger.library.error("FREECAT \(shelf.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
                 loadFailed = true
             }

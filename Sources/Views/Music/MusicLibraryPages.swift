@@ -300,6 +300,7 @@ struct MusicGenresPage: View {
             genres = MusicGenrePresentation.presented(try await AppSession.shared.musicProvider.genres())
             loadFailed = false
         } catch {
+            guard !error.isCancellation else { return }
             loadFailed = true
         }
     }
@@ -522,6 +523,7 @@ struct FreeJamendoPage: View {
                 let tracks = try await JamendoClient.popularTracks(limit: 60)
                 items = tracks.compactMap { provider.remember(track: $0) }
             } catch {
+                guard !error.isCancellation else { return }
                 Logger.library.error("JAMENDO trove FAILED: \(String(describing: error), privacy: .public)")
                 loadFailed = true
             }
@@ -671,6 +673,7 @@ struct JamendoShelfPage: View {
             // without a word.
             if tracks.count < pageSize { reachedEnd = true }
         } catch {
+            guard !error.isCancellation else { return }
             Logger.library.error("JAMENDO shelf=\(shelfKey, privacy: .public) offset=\(offset) FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = true
         }

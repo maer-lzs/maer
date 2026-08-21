@@ -730,6 +730,41 @@ Geraetesprachen-Topf (`languagecodes=<code>` — gemessen: `language=de` antwort
 wie bei den Laendern, dieselbe Kuration/Dedupe dahinter. Faellt der Sprach-Topf
 aus, degradiert es zu reinem Weltweit statt die Seite scheitern zu lassen.
 
+### GT-Restblock: Hochformat fliegt, DLF-Familie komplett, Stern reserviert, Cancel-Quersuche (c238542)
+
+**Hochformat ist der Verraeter (2b7c857 Teil 2):** alle SECHS hochformatigen
+Neuzuordnungen des Bildmarken-Laufs waren Rueckschritte — vier Kombi-Stapel aus
+Marke+Textzeile (SRF 3 512×675, Musikwelle, RTL2, Oesterreich 1: die Kachel
+rendert fill, die Marke wird gesprengt, unten Textreste — the owner's Befund
+woertlich) und **einmal ein FREMDER Sender: „BIGFM NEW LOGO 2019.png" ist das
+INDISCHE Big FM** (Hindi-Claim), durch Namens-Wache UND Generik-Regel
+gerutscht. Regel im Generator: h > w wird ganz uebersprungen (die Zielflaeche
+ist quadratisch; echte Marken sind quadratisch oder quer). Bestand: die sechs
+Eintraege auf ihre Vor-Werte zurueckgesetzt.
+
+**DLF-Familie (f837dc0):** Kultur und Nova standen in KEINER Kern-Tabelle —
+der Generator kannte sie nie. Jetzt: `EXTRA_NAMES` im Generator (Namen, die
+der Auftrag ausdruecklich nennt) + Tabellen-Eintraege. Abnahme in Mehrzahl:
+Deutschlandfunk/Kultur/Nova je „… Logo klein.png", alle drei 1920×1920 = 1:1
+(gemessen).
+
+**Stern reserviert (5bab0ad):** die Stern-Zeile der Meine-Sender-Karte lebte
+bedingt und ADDIERTE Hoehe — jetzt immer gerendert, per opacity verborgen
+(+accessibilityHidden). Journey-Zaun `testMyStationsShowsAllFavoritesAtOneHeight`:
+zwei Sender per Kontextmenue favorisieren (`radio-favorite-toggle`), BEIDE
+erscheinen in der Reihe (deckt die Speisung im Sim: 2 Karten) und ALLE Karten
+tragen EINE Hoehe (gemessen 358,3/358,3). the owner's Geraete-Fall (nur einer von
+mehreren) beantwortet die neue FAVORITEN-Zeile der Logo-Diagnose: welche
+Favoriten der Store kennt, welche die Reihe zeigt, und warum einer fehlt
+(Reihe/Auslass/FEHLT).
+
+**Cancel-Quersuche (the reviewer's „fuenf heisst sechs"):** es waren ZEHN — die geteilte
+Regel `Error.isCancellation` (CancellationError ODER URLError.cancelled) steht
+jetzt an jeder Lade-catch-Stelle VOR dem Fehler-Buchen (CatalogSourcePage ×2,
+ShellacSection, ArchiveMusicPages ×2, MusicLibraryPages ×3, MusicAlbumView,
+RadioView-Weltliste, RadioGenreView auf die geteilte Form umgestellt). Ein
+gecancelter Lauf zeigt nie wieder „pruefe deine Verbindung" auf intaktem Netz.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

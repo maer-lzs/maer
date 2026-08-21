@@ -391,6 +391,7 @@ struct MusicAlbumView: View {
         do {
             detail = try await AppSession.shared.provider(for: item.id).fetchItemDetail(itemId: item.id)
         } catch {
+            guard !error.isCancellation else { return }
             loadFailed = true
         }
     }

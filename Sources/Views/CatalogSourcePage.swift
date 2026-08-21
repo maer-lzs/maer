@@ -443,6 +443,7 @@ struct CatalogShelfPage: View {
             page += 1
             if fresh.count < pageSize { reachedEnd = true }
         } catch {
+            guard !error.isCancellation else { return }
             Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = items.isEmpty
         }
@@ -558,6 +559,7 @@ struct ArchiveSeriesPage: View {
         do {
             detail = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
         } catch {
+            guard !error.isCancellation else { return }
             failed = true
         }
     }

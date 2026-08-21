@@ -233,9 +233,18 @@ def fold(raw):
     return "".join(c for c in text.lower() if c.isalnum())
 
 
+# f837dc0: Namen, die der AUFTRAG ausdruecklich nennt, aber in keiner
+# Kern-Tabelle stehen — the owner's DLF-Familie war MEHRZAHL, die Tabellen kennen
+# nur den Hauptsender. Katalog-Anzeigenamen (displayName-Form, gemessen).
+EXTRA_NAMES = [
+    "Deutschlandfunk Kultur",
+    "Deutschlandfunk Nova",
+]
+
+
 def core_names():
     """The target set: every name in the core tables (the app's own data)."""
-    out = []
+    out = list(EXTRA_NAMES)
     for name in ("RadioListenerCores.swift", "RadioWikidataCores.swift"):
         path = os.path.join(ROOT, "Sources", "Models", name)
         with open(path, encoding="utf-8") as handle:
@@ -306,6 +315,20 @@ def commons_file(name):
         if verdict == "failed":
             return None, "failed"
         size = image_size(data) if data else None
+        # GT-Nachtrag (2b7c857/f837dc0-Klasse): HOCHFORMAT fliegt ganz raus.
+        # Gemessen an allen sechs hochformatigen Neuzuordnungen des letzten
+        # Laufs: JEDE war ein Rueckschritt — vier Stapel aus Marke+Textzeile
+        # (SRF 3, Musikwelle, RTL2, Oesterreich 1: die Kachel rendert fill,
+        # die Marke wird gesprengt, unten stehen Textreste) und einmal sogar
+        # ein FREMDER Sender (das indische Big FM, Hindi-Claim — durch
+        # Namens-Wache UND Generik-Regel gerutscht, weil Name und Zusaetze
+        # passten). Die Zielflaeche ist quadratisch: eine echte Bildmarke ist
+        # quadratisch oder quer; hochformatige "Logos" sind auf Commons fast
+        # immer Kombi-Stapel. Lieber der Schriftzug (zentriert, sauber) oder
+        # zur Laufzeit das Touch-Icon als ein gesprengtes Stapelbild.
+        if size and size[1] > size[0]:
+            time.sleep(0.2)
+            continue
         if size and min(size) >= MIN_SIDE:
             if first_relevant is None:
                 first_relevant = title

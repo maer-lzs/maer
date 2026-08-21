@@ -175,17 +175,10 @@ struct RadioGenreView: View {
         do {
             union = try await RadioBrowserClient.byTag(tag: tag, countryCodes: effectiveCodes)
             loadFailed = false
-        } catch is CancellationError {
-            // ebda0fa (GT R6b): a CANCELLED run is not a failure — fifth
-            // instance of the throw-is-not-the-end class. Switching the
-            // selection restarts `.task(id:)`, which cancels the run in
-            // flight; booking that as `loadFailed` showed "check your
-            // connection" on an intact network. The restarted task loads the
-            // real answer a moment later.
-            return
-        } catch let error as URLError where error.code == .cancelled {
-            return
         } catch {
+            // ebda0fa (GT R6b): a CANCELLED run is not a failure — the shared
+            // rule (`isCancellation`), asked before anything is booked.
+            guard !error.isCancellation else { return }
             loadFailed = true
             return
         }

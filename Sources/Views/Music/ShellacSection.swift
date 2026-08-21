@@ -117,6 +117,7 @@ struct ShellacSection: View {
                                                  provider: FreeCatalogProvider.shared)
             failed = titles.isEmpty
         } catch {
+            guard !error.isCancellation else { return }
             failed = true
             titles = []
             Logger.library.error("SHELLAC row \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
