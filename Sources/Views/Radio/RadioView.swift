@@ -333,6 +333,15 @@ struct RadioView: View {
                         // resolved names — the reviewer's question is what six stations
                         // booked onto one id, and only the pot can answer which
                         // id carries whose seconds.
+                        // 2618461: the sync witness — does anything from the
+                        // OTHER devices arrive here at all, and is the gate
+                        // (the one iCloud switch) even open?
+                        hoursBlock += "  Sync: iCloud-Schalter \(AppStorageKeys.podcastICloudSyncEnabled ? "AN" : "AUS")"
+                        let pots = ListeningStatsStore.shared.foreignPotOverview()
+                        hoursBlock += " · fremde Toepfe: \(pots.count)\n"
+                        for pot in pots {
+                            hoursBlock += "    \(pot.device.prefix(10))…: Tage \(pot.daySeconds) s · Radio \(pot.radioSeconds) s\n"
+                        }
                         hoursBlock += "  Topf-Draufsicht (Top 10):\n"
                         for (potId, potSeconds) in seconds.sorted(by: { $0.value > $1.value }).prefix(10) {
                             let resolved = RadioStore.station(forId: potId)?.name

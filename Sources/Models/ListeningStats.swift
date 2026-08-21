@@ -167,6 +167,19 @@ final class ListeningStatsStore: ObservableObject {
         data.secondsPerItem.filter { ListeningClasses.isLive($0.key) }
     }
 
+    /// 2618461: the sync WITNESS for the diagnosis — one line per foreign
+    /// device pot, so an iPad copy can answer "do the iPhone pots arrive?"
+    /// without a Mac. Reads the already-fetched pots, changes nothing.
+    func foreignPotOverview() -> [(device: String, daySeconds: Int, radioSeconds: Int)] {
+        foreign.map { entry in
+            (device: entry.key,
+             daySeconds: entry.value.secondsPerDay.values.reduce(0, +),
+             radioSeconds: entry.value.secondsPerItem
+                 .filter { ListeningClasses.isLive($0.key) }.values.reduce(0, +))
+        }
+        .sorted { $0.device < $1.device }
+    }
+
     /// On pause/stop: persist the remaining seconds immediately, and let the
     /// other devices see them — a published pot that lags by a whole session
     /// would make the totals wrong on the iPad in exactly the way this design

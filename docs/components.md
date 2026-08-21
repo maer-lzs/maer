@@ -1062,6 +1062,21 @@ Ohne Dauer/Eintrag wird NIE entladen — nur auf Beleg. Ereignis-Tor
 unberuehrt (Laden schreibt weiter nichts). Teil C (Zeiger reist) kommt mit
 der Sync-Familie.
 
+### iPad-Hoerzeit/Favoriten (2618461, Messteil)
+
+**Gemessen am Code:** die Hoerzeit REIST bereits — `radioSeconds()` liest
+die gemergte Summe (`ListeningStatsSync.merged`, eigener Topf beim
+Summieren uebersprungen, Zaeune bestehen), `publishable` laesst Radio-ids
+reisen (positionslos). Das TOR ist der EINE iCloud-Schalter
+(`podcastICloudSyncEnabled`) an BEIDEN Enden — publish und foreignPots
+kehren sonst leer zurueck. Kein Code-Befund; der Geraete-Zeuge fehlte:
+die Diagnose traegt jetzt eine **Sync-Zeile** (Schalter-Zustand, Zahl der
+fremden Toepfe, je Topf Tages- und Radio-Sekunden via
+`foreignPotOverview`) — eine iPad-Kopie beantwortet damit „kommen die
+iPhone-Toepfe an?" ohne Mac. **Favoriten: rein LOKAL bestaetigt**
+(`radioFavorites` in UserDefaults, kein Kanal) — der Bau-Teil gehoert zur
+Sync-Familie (mit d7f12e1 C und 0ed4637, EIN Muster).
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):
