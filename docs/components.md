@@ -981,6 +981,23 @@ Austria", VRTS-bestaetigt). Die „Reshet-Neins" entstehen natuerlich: die
 Kette laeuft unter den Waechtern sauber durch und bucht den ehrlichen
 No-Hit.
 
+### Sport-Familien-Kollaps (973121e, owner decision 1a)
+
+**ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):
+gleiche Domain (PFLICHT, `feedHost`) + DEKLARIERTER Namens-Kopf (Separator
+`": "` oder `" - "`, Kopf >= 4 Zeichen — nie geraten: „Sportradio"/
+„Sportradio Zwei" bleiben getrennt, ebenso die Katalog-Tippfehler-Familie
+„Fussfball-…") ⇒ EIN Eintrag. Vorn die „Konferenz", sonst der
+stimmenstaerkste; Familie sitzt an der Position ihres besten Mitglieds.
+Varianten klappen in place ueber die bestehende `ShowMoreRow`-Form auf
+(neuer optionaler `moreLabel`: „N Kanäle", l10n `%lld channels`;
+a11y `radio-family-toggle`). Ein-Mitglied-Familien zeigen keinen Hinweis.
+**Nur die Genre-Seite faltet** — Suche, Favoriten, Meine Sender, Zuletzt
+gespielt zeigen weiter Einzelkanaele; wer „Spiel 4" favorisiert hat,
+verliert nichts. Zaeune: sportschau-Fall kollabiert vollzaehlig (front +
+Varianten == Eingabemenge) · gleicher Name/fremde Domain nie · Koepfe
+deklariert statt geraten.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

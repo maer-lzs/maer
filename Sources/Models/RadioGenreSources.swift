@@ -146,3 +146,66 @@ final class RadioGenreCountrySelection: ObservableObject {
         UserDefaults.standard.set(codes, forKey: AppStorageKeys.radioGenreCountryCodes)
     }
 }
+
+/// 973121e (the owner, freigegeben): family collapse as a DISPLAY rule of the
+/// genre lists — the sport tag is 20/25 one provider's per-match channels
+/// (measured), and the flood hides that the tag is thin. Search, favorites,
+/// My Stations and Recents keep showing single channels; only the genre page
+/// folds.
+nonisolated enum RadioGenreFamilies {
+
+    /// One collapsed entry: the front station plus its folded variants.
+    struct Family: Identifiable, Equatable {
+        let front: RadioStation
+        /// The remaining members, input (vote) order preserved.
+        let variants: [RadioStation]
+        var id: String { front.id }
+        var count: Int { variants.count + 1 }
+    }
+
+    /// The conservative cut (the sibling-stage lesson, applied to lists):
+    /// SAME domain is mandatory, and the shared name head must come from an
+    /// explicit separator (":" or " - ") — two independent "Radio 1" share
+    /// neither, so they never merge. The RB catalog typo family
+    /// ("Fußfball-…") stays apart honestly: a different head is a different
+    /// family, we do not repair catalog spelling.
+    static func familyKey(_ station: RadioStation) -> String? {
+        let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
+        guard !host.isEmpty else { return nil }
+        let name = RadioMapping.displayName(station.name)
+        let separators = [": ", " - "]
+        for separator in separators {
+            if let range = name.range(of: separator) {
+                let head = name[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
+                guard head.count >= 4 else { return nil }
+                return host + "|" + head.lowercased()
+            }
+        }
+        return nil
+    }
+
+    /// Collapse a vote-ordered list. Order rule: every family sits at the
+    /// position of its first (best-voted) member; the front of a family is
+    /// its "Konferenz" member when one exists, else that first member.
+    static func collapsed(_ stations: [RadioStation]) -> [Family] {
+        var members: [String: [RadioStation]] = [:]
+        var order: [(key: String?, station: RadioStation)] = []
+        for station in stations {
+            if let key = familyKey(station) {
+                if members[key] == nil { order.append((key, station)) }
+                members[key, default: []].append(station)
+            } else {
+                order.append((nil, station))
+            }
+        }
+        return order.map { entry in
+            guard let key = entry.key, let family = members[key], family.count > 1 else {
+                return Family(front: entry.station, variants: [])
+            }
+            let front = family.first {
+                RadioMapping.displayName($0.name).lowercased().contains("konferenz")
+            } ?? family[0]
+            return Family(front: front, variants: family.filter { $0.id != front.id })
+        }
+    }
+}

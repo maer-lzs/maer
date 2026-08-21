@@ -20,6 +20,9 @@ struct ShowMoreRow: View {
     @Binding var expanded: Bool
     let hasMore: Bool
     var accessibilityId: String = "show-more-row"
+    /// 973121e: the family-collapse rows name their COUNT ("20 Kanäle")
+    /// instead of a generic "Show More" — same component, one extra label.
+    var moreLabel: String? = nil
 
     var body: some View {
         if hasMore {
@@ -37,7 +40,7 @@ struct ShowMoreRow: View {
                 withAnimation(.easeInOut(duration: 0.35)) { expanded.toggle() }
             } label: {
                 Label(expanded ? String(localized: "Show Less")
-                               : String(localized: "Show More"),
+                               : (moreLabel ?? String(localized: "Show More")),
                       systemImage: expanded ? "chevron.up" : "chevron.down")
                     .font(.subheadline.weight(.medium))
             }

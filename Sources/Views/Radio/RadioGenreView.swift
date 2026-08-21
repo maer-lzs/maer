@@ -43,6 +43,18 @@ struct RadioGenreView: View {
 
     private var isWorldwide: Bool { effectiveCodes.isEmpty }
 
+    /// 973121e: which collapsed families are open — per page visit, not
+    /// persisted (an expansion is a glance, not a setting).
+    @State private var expandedFamilies: Set<String> = []
+
+    private func expandedFamilyBinding(_ id: String) -> Binding<Bool> {
+        Binding(get: { expandedFamilies.contains(id) },
+                set: { open in
+                    if open { expandedFamilies.insert(id) }
+                    else { expandedFamilies.remove(id) }
+                })
+    }
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -67,8 +79,29 @@ struct RadioGenreView: View {
                         .padding(.top, 40)
                     worldwideOffer
                 } else {
-                    ForEach(stations) { station in
-                        RadioStationRow(station: station, playerCoordinator: playerCoordinator)
+                    // 973121e (the owner): family collapse — a DISPLAY rule of
+                    // THIS list only. Same domain + explicit name head fold
+                    // to one entry (Konferenz or best-voted in front); the
+                    // variants expand in place via the existing ShowMoreRow
+                    // form with the honest count. Search, favorites, My
+                    // Stations and Recents keep showing single channels.
+                    ForEach(RadioGenreFamilies.collapsed(stations)) { family in
+                        RadioStationRow(station: family.front, playerCoordinator: playerCoordinator)
+                        if !family.variants.isEmpty {
+                            ShowMoreRow(
+                                expanded: expandedFamilyBinding(family.id),
+                                hasMore: true,
+                                accessibilityId: "radio-family-toggle",
+                                moreLabel: String(localized: "\(family.count) channels"))
+                                .padding(.leading, 72)
+                                .padding(.vertical, 6)
+                            if expandedFamilies.contains(family.id) {
+                                ForEach(family.variants) { station in
+                                    RadioStationRow(station: station,
+                                                    playerCoordinator: playerCoordinator)
+                                }
+                            }
+                        }
                         Divider().padding(.leading, 88)
                     }
                     worldwideOffer

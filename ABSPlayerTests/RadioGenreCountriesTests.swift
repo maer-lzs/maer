@@ -183,3 +183,62 @@ import Foundation
         #expect(mapped[0].languageCodes == nil)
     }
 }
+
+/// 973121e: family collapse of the genre LISTS — the three ordered fences.
+@Suite struct RadioGenreFamiliesTests {
+
+    private func station(_ name: String, votes: Int = 100,
+                         homepage: String? = "https://livecenter.sportschau.de/x",
+                         id: String = UUID().uuidString) -> RadioStation {
+        RadioStation(id: "radio:rb:\(id)", name: name, streamURL: "https://s.test/\(id)",
+                     homepage: homepage, votes: votes)
+    }
+
+    /// The measured sportschau case: one domain, one head, the Konferenz in
+    /// front — and NOTHING lost behind the fold (Vollzähligkeit).
+    @Test func theSportschauFamilyCollapsesCompletely() {
+        let family = [station("Fußball-Bundesliga: Spiel 1", votes: 86),
+                      station("Fußball-Bundesliga: Konferenz", votes: 282),
+                      station("Fußball-Bundesliga: Spiel 4", votes: 51)]
+        let outsider = station("1A Fitness Hits", votes: 2430,
+                               homepage: "https://1a-webradio.de")
+        let collapsed = RadioGenreFamilies.collapsed([outsider] + family)
+        #expect(collapsed.count == 2)
+        #expect(collapsed[0].front.name == "1A Fitness Hits")
+        #expect(collapsed[0].variants.isEmpty)
+        // The Konferenz leads even though a Spiel came first in vote order.
+        #expect(collapsed[1].front.name == "Fußball-Bundesliga: Konferenz")
+        #expect(collapsed[1].count == 3)
+        // Completeness: front + variants carry every member exactly once.
+        let ids = Set([collapsed[1].front.id] + collapsed[1].variants.map(\.id))
+        #expect(ids == Set(family.map(\.id)))
+    }
+
+    /// Conservative cut 1: two independent "Radio 1" on DIFFERENT domains
+    /// never merge — the domain is mandatory, the name alone proves nothing.
+    @Test func sameNameDifferentDomainStaysApart() {
+        let a = station("Radio 1: Morgen", homepage: "https://radio1.ch")
+        let b = station("Radio 1: Morgen", homepage: "https://radio1.de")
+        #expect(RadioGenreFamilies.collapsed([a, b]).count == 2)
+    }
+
+    /// Conservative cut 2: no explicit separator, no family — plain names on
+    /// one domain stay single entries (the head must be DECLARED, not
+    /// guessed), and the catalog typo family ("Fußfball-…") stays apart
+    /// honestly: a different head is a different family.
+    @Test func headsAreDeclaredNeverGuessed() {
+        let plain = [station("Sportradio"), station("Sportradio Zwei")]
+        #expect(RadioGenreFamilies.collapsed(plain).count == 2)
+        let typo = [station("Fußball-Bundesliga 2: Spiel 1"),
+                    station("Fußfball-Bundesliga 2: Spiel 2")]
+        #expect(RadioGenreFamilies.collapsed(typo).count == 2)
+    }
+
+    /// Solo "families": one member never shows a fold — a hint reading
+    /// "1 channels" would be noise.
+    @Test func aSingleMemberIsNoFamily() {
+        let solo = RadioGenreFamilies.collapsed([station("Fußball-Bundesliga: Konferenz")])
+        #expect(solo.count == 1)
+        #expect(solo[0].variants.isEmpty)
+    }
+}
