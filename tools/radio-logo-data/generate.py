@@ -201,6 +201,30 @@ def carries_name(name, title):
     return len(folded_name) >= 4 and folded_name in folded_title
 
 
+def renders_at_tile_size(file_name, size):
+    """Gate corpse guard (c0addba): MediaWiki never upscales raster files —
+    a PNG whose smallest side is under the app's 48-px gate can NEVER render
+    on a tile, and a table entry the gate always rejects SHADOWS working
+    stored positives (bigFM: the 256x37 wordmark hid the healed 600x600
+    sibling favicon). SVG scales and is exempt."""
+    if file_name.lower().endswith(".svg"):
+        return True
+    if not size:
+        return False   # unknown raster size = unverifiable = out
+    return min(size) >= 48
+
+
+def final_render_size(file_name):
+    """The size the APP will actually get: the width-800 FilePath render.
+    MediaWiki serves rasters `thumbnail_unscaled` — this is the only honest
+    place to measure (the audit's status-only check was blind to it)."""
+    from urllib.parse import quote
+    url = ("https://commons.wikimedia.org/wiki/Special:FilePath/"
+           + quote(file_name) + "?width=800")
+    data, verdict = get(url, raw=True)
+    return image_size(data) if verdict == "ok" and data else None
+
+
 def rank(size, name=None, title=None):
     """Kleiner ist besser: Klasse → wenigster ZUSATZ → Naehe zu 1:1.
 
@@ -442,6 +466,13 @@ def main():
             # Ein Lauf, der den Bestand verschlechtert, ist schlimmer als einer,
             # der nichts findet.
             file_name = previous[name]
+        # c0addba: the gate-corpse guard sits on the FINAL choice (so it also
+        # judges resurrected previous values) — an entry the app's 48-px gate
+        # always rejects can never display AND shadows working stored
+        # positives via table-before-store. A colour tile beats a corpse.
+        if file_name and not renders_at_tile_size(file_name, final_render_size(file_name)):
+            print(f"  GATE-LEICHE verworfen: {name} -> {file_name}", file=sys.stderr)
+            file_name = None
         if file_name:
             entries[name] = file_name
         if index % 25 == 0:

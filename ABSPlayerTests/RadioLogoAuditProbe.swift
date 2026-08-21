@@ -6,6 +6,7 @@
 #if canImport(Testing)
 import Foundation
 import Testing
+import UIKit
 @testable import ABSPlayer
 
 /// 383a3e8: the logo audit over the APP PATH — fold → table → (store: empty
@@ -89,17 +90,22 @@ import Testing
                 votes: (best["votes"] as? Int) ?? 0)
     }
 
-    /// Does the table's Commons thumb actually LOAD at the width the app
-    /// requests? (Swiss-Classic class: a stored positive that answers errors.)
+    /// Does the table's Commons thumb actually RENDER at the width the app
+    /// requests? Status alone was blind (c0addba): MediaWiki serves rasters
+    /// `thumbnail_unscaled`, so a 256×37 wordmark answers 200 and then dies
+    /// at the app's 48-px gate — a gate corpse, not a live thumb.
     private func thumbLoads(file: String) async -> Bool {
         guard let url = ArtistPortraitLookup.commonsThumbURL(fileName: file, width: 800)
         else { return false }
         var request = URLRequest(url: url)
         request.setValue("Maer/audit", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 20
-        guard let (_, response) = try? await URLSession.shared.data(for: request),
-              let http = response as? HTTPURLResponse else { return false }
-        return http.statusCode == 200
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, http.statusCode == 200,
+              let image = UIImage(data: data) else { return false }
+        let pixelWidth = Int(image.size.width * image.scale)
+        let pixelHeight = Int(image.size.height * image.scale)
+        return min(pixelWidth, pixelHeight) >= 48
     }
 
     @Test func auditRun() async throws {

@@ -1013,6 +1013,24 @@ Austria", VRTS-bestaetigt). Die „Reshet-Neins" entstehen natuerlich: die
 Kette laeuft unter den Waechtern sauber durch und bucht den ehrlichen
 No-Hit.
 
+### 🔴 bigFM-Regression (c0addba): die Gate-Leichen-Klasse der Tabelle
+
+**Mechanismus, gemessen:** `BigFM Logo.png` ist 256×37 — MediaWiki skaliert
+Raster NIE hoch (width=800 antwortet `thumbnail_unscaled`, 256×37), das
+48-px-Gate verwirft, die Kachel zeigt Initialen. Vor der Familienkopf-Stufe
+zeigte „bigFM Deutsch Rap" den v4-geheilten Geschwister-Favicon (600×600,
+gespeichertes Positiv) — die Stufe schattete ihn mit der Gate-Leiche
+(Tabelle-vor-Speicher). **Ein Tabellen-Eintrag, den das Gate immer
+verwirft, ist schlimmer als keiner.** Klassen-Messung: 9 Raster-Dateien /
+10 Eintraege unter der 48er-Kante — darunter RTL2 (87×46) und zwei
+FREMDBILDER (MODIS-Flutfoto fuer zwei ABC-Kuesten-Sender, DZ-BANK-
+Kunstsammlung fuer „DZ"). Alle 10 entfernt; die Sender fallen ehrlich auf
+Speicher/Kette. **Wachen:** Generator `renders_at_tile_size` prueft die
+FINALE Wahl am width-800-Render (auch wiederbelebte Vor-Werte; SVG skaliert
+und ist frei); die Audit-Sonde prueft Thumbs jetzt an den MASSEN statt am
+Status (status-only war blind — „0 tote Thumbs" war transportwahr und
+gate-falsch). Zaun-Testfall „legitim bleibt": RADIO-BOB!-Familie (SVG).
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):

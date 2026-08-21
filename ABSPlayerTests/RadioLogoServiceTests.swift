@@ -204,16 +204,24 @@ struct RadioLogoDataTests {
     /// 0 false heads. The guards ARE the test surface.
     @Test("Familienkopf deckt Varianten; eigener Eintrag gewinnt; Wortgrenze hart")
     func familyHeadCoversVariants() {
-        // bigFM NRW has no own entry — the bigFM family mark answers.
-        #expect(RadioLogoData.commonsFile(forName: "bigFM NRW") == nil)
-        #expect(RadioLogoService.curatedFile(forName: "bigFM NRW")
-                == RadioLogoData.commonsFile(forName: "bigFM"))
+        // The variant has no own entry — the family mark answers. (bigFM was
+        // the original example; its table entry fell as a gate corpse
+        // [c0addba: 256×37 raster can never render], so the fence rides on
+        // the RADIO BOB! family, whose mark is an SVG and scales.)
+        #expect(RadioLogoData.commonsFile(forName: "Radio Bob! rockt Schleswig-Holstein") == nil)
+        let head = RadioLogoData.commonsFile(forName: "RADIO BOB!")
+        #expect(head != nil)
+        #expect(RadioLogoService.curatedFile(forName: "Radio Bob! rockt Schleswig-Holstein") == head)
         // An OWN entry always wins (the DLF-Kultur guard, by order):
         #expect(RadioLogoService.curatedFile(forName: "Deutschlandfunk Kultur")
                 == RadioLogoData.commonsFile(forName: "Deutschlandfunk Kultur"))
         // Word boundary: a name CONTINUING the head in the same word is no kin.
-        #expect(RadioLogoService.curatedFile(forName: "bigFMX") == nil)
+        #expect(RadioLogoService.curatedFile(forName: "RADIO BOB!X") == nil)
         // No head, no answer.
         #expect(RadioLogoService.curatedFile(forName: "Völlig Unbekannt 9000") == nil)
+        // The gate corpse itself stays OUT: bigFM has no table entry any
+        // more, so the healed sibling favicon is visible again.
+        #expect(RadioLogoData.commonsFile(forName: "bigFM") == nil)
+        #expect(RadioLogoService.curatedFile(forName: "bigFM Deutsch Rap") == nil)
     }
 }
