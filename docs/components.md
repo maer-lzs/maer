@@ -765,6 +765,41 @@ ShellacSection, ArchiveMusicPages ×2, MusicLibraryPages ×3, MusicAlbumView,
 RadioView-Weltliste, RadioGenreView auf die geteilte Form umgestellt). Ein
 gecancelter Lauf zeigt nie wieder „pruefe deine Verbindung" auf intaktem Netz.
 
+### Klassen-Quersuche (e74e4e2): drei Lehren, die am Fundort klebten
+
+the reviewer's Auftrag nach dem dritten „die Regel stand da und schuetzte niemanden"
+(Y32 an der Akzentfarbe). Bestand durchgesehen; schon generalisiert waren
+Wurf-ist-kein-Ende (jetzt `Error.isCancellation`), die Mess-Closure-Regel
+(cd2b3be) und cb8bac1 (abgeleitete Werte entstehen beim Lesen — steht 5x hier).
+Drei weitere beschreiben KLASSEN und standen nur an ihrem Fundort:
+
+**1. Die Grabstein-Klasse** (Fundort `MaerPlaylistMerge`): *Abwesenheit ist
+kein Zustand.* Ein Merge auf Eintrags-Ebene kann eine LOESCHUNG nicht von einer
+fehlenden Kopie unterscheiden — alles Entfernte kehrt vom naechsten Geraet
+zurueck. Wer synct, braucht ein Zeichen fuer „absichtlich weg", das gegen
+aeltere Kopien gewinnt. Instanzen: Playlist-Tombstones, die
+Zwei-Runden-Bestaetigung der gpodder-Abos, der markUnplayed-Tombstone im
+Listen-Log — und der Rest-is-History-Wiederbeleber war das NEGATIV dieser
+Klasse (die Fertig-Markierung hatte kein Gewicht gegen frisch gestempelte
+Kopien).
+
+**2. Die P5-Klasse** (Fundort `KnownServers`): *ein Ausfall ist kein Grund,
+etwas zu vergessen.* Zwilling der Negativ-Cache-Regel eine Ebene hoeher:
+Konfiguration, Bestaende und Zuordnungen verlassen den Speicher nur durch eine
+HAND-Entscheidung oder ein besseres Wissen — nie, weil eine Quelle gerade nicht
+antwortete. Instanzen: KnownServers (nur Hand-Loeschung), 95c5c16
+(Fehlschlag ist kein Negativtreffer), CorruptStore (unlesbar ist nicht leer),
+die Rueckschritts-Sperre des Logo-Generators (ein Lauf, der den Bestand
+verschlechtert, ist schlimmer als einer, der nichts findet).
+
+**3. Die BEFUND-G-Klasse** (Fundort `HoerspielCuration.artworkURL`): *Wissen,
+das die Quelle mitlieferte, darf an der Flaeche nicht sterben.* Das Verzeichnis
+lieferte ein Bild, die Kachel warf es weg (`artworkURL: nil`) — englische
+Kacheln blieben grau, obwohl die Quelle das Bild hatte. Dieselbe Klasse wie
+`ProgressMark.advancing` (eine Antwort ohne Dauer darf einen vorhandenen
+Referenzpunkt nicht loeschen) und der gpodder-Supplement-Pfad. Regel: was eine
+Seite exklusiv weiss, stirbt nicht, weil die andere gewinnt.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |
