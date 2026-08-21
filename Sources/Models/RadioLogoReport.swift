@@ -30,18 +30,39 @@ nonisolated enum RadioLogoReport {
         /// The age separates "the display just resolved it" from "this has been
         /// sitting here since the station was last played".
         let ageSeconds: Double?
+        /// 4fe882b: "no result" is one of THREE causes, and the report must
+        /// name which — waiting for its serialised turn, tried but the
+        /// transport failed (nothing bookable), or given up for the session.
+        var sessionVerdict: String? = nil
+    }
+
+    /// 4fe882b format rule: ids shorten to the FIRST characters after the
+    /// `radio:rb:` prefix — the tail of a v1 UUID is the shared node field of
+    /// an import batch, six different stations can end identically there.
+    static func shortID(_ id: String) -> String {
+        let stem = id.hasPrefix("radio:rb:") ? String(id.dropFirst(9)) : id
+        return stem.count <= 13 ? stem : stem.prefix(13) + "…"
     }
 
     static func rows(stations: [(id: String, name: String, faviconURL: String?)],
                      chainResults: [String: (hasLogo: Bool, attempted: Bool, resolvedAt: Double)],
-                     now: Double) -> [Row] {
+                     now: Double,
+                     waiting: Set<String> = [], sessionFailed: Set<String> = [],
+                     gaveUp: Set<String> = []) -> [Row] {
         stations.map { station in
             let result = chainResults[station.id]
+            let verdict: String?
+            if result != nil { verdict = nil }
+            else if gaveUp.contains(station.id) { verdict = "aufgegeben (2 Fehlversuche diese Sitzung)" }
+            else if sessionFailed.contains(station.id) { verdict = "versucht, nichts gebucht (Transport scheiterte)" }
+            else if waiting.contains(station.id) { verdict = "in Arbeit (Warteschlange)" }
+            else { verdict = "nie versucht" }
             return Row(id: station.id, name: station.name,
                        hasFaviconURL: !(station.faviconURL ?? "").isEmpty,
                        chainResolved: result?.hasLogo ?? false,
                        chainAttempted: result?.attempted ?? false,
-                       ageSeconds: result.map { now - $0.resolvedAt })
+                       ageSeconds: result.map { now - $0.resolvedAt },
+                       sessionVerdict: verdict)
         }
     }
 
@@ -69,7 +90,8 @@ nonisolated enum RadioLogoReport {
                        : "vor \(Int(seconds / 86_400)) Tagen")
             } ?? "—"
             let chain = row.chainResolved ? "Logo"
-                : (row.chainAttempted ? "kein Treffer" : "OHNE ERGEBNIS")
+                : (row.chainAttempted ? "kein Treffer"
+                   : "OHNE ERGEBNIS — \(row.sessionVerdict ?? "nie versucht")")
             out += "\(row.name) · Favicon \(row.hasFaviconURL ? "ja" : "nein") · Kette \(chain) · \(age)\n"
         }
         return out

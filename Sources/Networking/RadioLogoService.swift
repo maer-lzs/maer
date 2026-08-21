@@ -106,6 +106,26 @@ actor RadioLogoService {
 
     /// The file name inside a persisted Commons FilePath URL — nil for touch
     /// icons and anything else (those entries stay as they are).
+    /// 383a3e8 family stage of the TABLE: an exact entry first; else the
+    /// longest curated name that starts the folded name at a word boundary
+    /// ("bigFM NRW" carries the bigFM mark). The audit measured 12 of 122
+    /// initial-showing core stations covered by exactly this rule and 0
+    /// false heads. An OWN entry always wins (DLF-Kultur guard: order, not
+    /// luck) — and truncated catalog heads ("…") never match a prefix.
+    nonisolated static func curatedFile(forName name: String) -> String? {
+        if let file = RadioLogoData.commonsFile(forName: name) { return file }
+        let lowered = name.lowercased()
+        var best: (key: String, file: String)?
+        for (key, file) in RadioLogoData.commonsFiles where key.count >= 4 {
+            let head = key.lowercased()
+            guard lowered.count > head.count, lowered.hasPrefix(head) else { continue }
+            let next = lowered[lowered.index(lowered.startIndex, offsetBy: head.count)]
+            guard !next.isLetter, !next.isNumber else { continue }
+            if best == nil || key.count > best!.key.count { best = (key, file) }
+        }
+        return best?.file
+    }
+
     /// What the chain has STORED per station — for the diagnosis surface, which
     /// must read the state without re-running anything.
     ///
@@ -290,6 +310,29 @@ actor RadioLogoService {
         }
     }
 
+    /// The session's live answer for the diagnosis (4fe882b): a station with
+    /// nothing stored is in one of THREE states, and they are different
+    /// causes — still waiting for its turn, tried-and-transport-failed, or
+    /// given up for the session. Stored state cannot tell them apart.
+    func sessionState() -> (waiting: Set<String>, failed: Set<String>, gaveUp: Set<String>) {
+        (waiting: Set(inFlight.keys), failed: failedThisSession, gaveUp: givenUpThisSession)
+    }
+
+    /// 383a3e8: the audit's window into the chain — runs the REAL resolve
+    /// (same stages, same guards) but books NOTHING: no cache, no persist,
+    /// no session sets. A measurement may not change what it measures.
+    func auditChain(name: String, homepage: String?) async -> String {
+        let folded = RadioMapping.displayName(name)
+        switch await resolve(name: folded, homepage: homepage) {
+        case .hit(let url, let commonsFile, let stage):
+            return "TREFFER stufe=\(stage) datei=\(commonsFile ?? url.absoluteString)"
+        case .noHit:
+            return "KEIN TREFFER (alle Stufen sauber durchlaufen)"
+        case .failed(let stage):
+            return "FEHLSCHLAG stufe=\(stage)"
+        }
+    }
+
     /// Stations whose chain failed REPEATEDLY in this session. A failed run is
     /// never booked (95c5c16) — which is right for a network hiccup and wrong
     /// for a homepage that is simply gone: without a stop those stations retry
@@ -323,7 +366,7 @@ actor RadioLogoService {
         // budget. Asking it FIRST costs nothing and makes every future table
         // update reach every surface immediately, with no migration and no
         // stored generation to invalidate.
-        if let file = RadioLogoData.commonsFile(forName: name),
+        if let file = Self.curatedFile(forName: name),
            let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: file,
                                                             width: Self.commonsWidth) {
             if cache[stationID] != .some(thumb) {
@@ -355,7 +398,7 @@ actor RadioLogoService {
     private func runChain(stationID: String, name: String, homepage: String?) async -> URL? {
         let outcome = await resolve(name: name, homepage: homepage)
         switch outcome {
-        case .hit(let url, let commonsFile):
+        case .hit(let url, let commonsFile, _):
             cache[stationID] = url
             persistResult(stationID: stationID, url: url, commonsFile: commonsFile)
             return url
@@ -383,7 +426,9 @@ actor RadioLogoService {
 
     /// The chain's outcome, kept apart on purpose (95c5c16).
     private enum ChainOutcome {
-        case hit(URL, commonsFile: String?)
+        // 383a3e8: every hit NAMES its stage — the audit and the diagnosis
+        // must be able to say WHICH rung answered, not just that one did.
+        case hit(URL, commonsFile: String?, stage: String)
         case noHit
         case failed(String)
     }
@@ -399,10 +444,10 @@ actor RadioLogoService {
         // stations everyone sees; the runtime chain below stays the fallback
         // for the long tail. Only the FILE NAME is stored, the width is
         // applied at read time (cb8bac1).
-        if let file = RadioLogoData.commonsFile(forName: name),
+        if let file = Self.curatedFile(forName: name),
            let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: file,
                                                             width: Self.commonsWidth) {
-            return .hit(thumb, commonsFile: file)
+            return .hit(thumb, commonsFile: file, stage: "tabelle")
         }
         // Stage 1: Wikidata P154 — term variants (full name de/en, brand
         // stem) because the de full-name search missed real entries
@@ -428,7 +473,7 @@ actor RadioLogoService {
                    // and the quality gate would reject the very source the
                    // decision made primary; at 800 it clears 64 px with room).
                    let thumb = ArtistPortraitLookup.commonsThumbURL(fileName: fileName, width: Self.commonsWidth) {
-                    return .hit(thumb, commonsFile: fileName)
+                    return .hit(thumb, commonsFile: fileName, stage: "wikidata")
                 }
                 break   // entity found but no P154 → deeper terms won't help this language pair
             }
@@ -440,7 +485,7 @@ actor RadioLogoService {
         if case .failed = page { return .failed("homepage") }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
            let icon = RadioLogoLookup.extractTouchIcon(html: html, baseURL: pageURL) {
-            return .hit(icon, commonsFile: nil)
+            return .hit(icon, commonsFile: nil, stage: "homepage")
         }
         // Stage 3 (4e1688d): the SIBLING entries of the same station. The
         // catalog carries a station several times, and the entry with the most
@@ -467,7 +512,7 @@ actor RadioLogoService {
                 // letters forever without ever asking again.
                 if case .data = await fetch(favicon) {
                     Logger.library.notice("RADIO logo chain: sibling favicon for \(name, privacy: .public)")
-                    return .hit(favicon, commonsFile: nil)
+                    return .hit(favicon, commonsFile: nil, stage: "geschwister")
                 }
             }
         }
@@ -479,7 +524,7 @@ actor RadioLogoService {
         if let convention = RadioLogoLookup.conventionTouchIconURL(homepage: pageURL) {
             switch await fetch(convention) {
             case .data:
-                return .hit(convention, commonsFile: nil)
+                return .hit(convention, commonsFile: nil, stage: "konvention")
             case .empty:
                 // The host answered, and there is nothing there. A clean
                 // no-hit — bookable, and it stops the guess being retried.

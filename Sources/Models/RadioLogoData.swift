@@ -650,7 +650,6 @@ nonisolated enum RadioLogoData {
         "Český rozhlas Zlín": "ČRo Zlín Logo 2017.svg",
         "Český rozhlas České Budějovice": "ČRo České Budějovice Logo 2013.svg",
         "… Funkpaket": "Sachsen Funkpaket Logo 2018.jpg",
-        "… Premium": "YouTube Premium logo 2024.svg",
     ]
 
     /// Lookup by the name the core tables use.

@@ -273,5 +273,34 @@ struct RadioLogoReportTests {
         let text = RadioLogoReport.text(RadioLogoReport.rows(stations: [], chainResults: [:], now: 0))
         #expect(text.contains("Sender in den Reihen: 0"))
     }
+
+    /// 4fe882b: "OHNE ERGEBNIS" is one of THREE causes, and the report must
+    /// name which — queued, transport-failed, or given up. They look the same
+    /// on screen and need different fixes.
+    @Test("OHNE ERGEBNIS trennt Warteschlange, Fehlschlag und Aufgabe")
+    func noResultNamesItsCause() {
+        let stations: [(id: String, name: String, faviconURL: String?)] = [
+            (id: "w", name: "W", faviconURL: nil),
+            (id: "f", name: "F", faviconURL: nil),
+            (id: "g", name: "G", faviconURL: nil),
+            (id: "n", name: "N", faviconURL: nil)]
+        let text = RadioLogoReport.text(RadioLogoReport.rows(
+            stations: stations, chainResults: [:], now: 0,
+            waiting: ["w"], sessionFailed: ["f", "g"], gaveUp: ["g"]))
+        #expect(text.contains("W · Favicon nein · Kette OHNE ERGEBNIS — in Arbeit (Warteschlange)"))
+        #expect(text.contains("F · Favicon nein · Kette OHNE ERGEBNIS — versucht, nichts gebucht (Transport scheiterte)"))
+        #expect(text.contains("G · Favicon nein · Kette OHNE ERGEBNIS — aufgegeben (2 Fehlversuche diese Sitzung)"))
+        #expect(text.contains("N · Favicon nein · Kette OHNE ERGEBNIS — nie versucht"))
+    }
+
+    /// 4fe882b format rule: ids shorten to the FIRST characters after the
+    /// prefix — the v1-UUID tail is an import batch's shared node field, six
+    /// different stations can end identically there.
+    @Test("Kurz-id nimmt den Anfang nach dem Praefix, nie das Ende")
+    func shortIDTakesTheHead() {
+        #expect(RadioLogoReport.shortID("radio:rb:9606f727-0601-11e8-ae97-52543be04c81")
+                == "9606f727-0601…")
+        #expect(RadioLogoReport.shortID("kurz") == "kurz")
+    }
 }
 #endif

@@ -171,4 +171,22 @@ struct RadioLogoDataTests {
         #expect(hits.count >= 3, "die Kern-Koepfe sollten in den Daten stehen")
         #expect(RadioLogoData.commonsFile(forName: "Ein Sender ohne Eintrag") == nil)
     }
+
+    /// 383a3e8 family stage of the table: a variant name carries the family
+    /// head's mark — measured 12/122 initial-showing core stations covered,
+    /// 0 false heads. The guards ARE the test surface.
+    @Test("Familienkopf deckt Varianten; eigener Eintrag gewinnt; Wortgrenze hart")
+    func familyHeadCoversVariants() {
+        // bigFM NRW has no own entry — the bigFM family mark answers.
+        #expect(RadioLogoData.commonsFile(forName: "bigFM NRW") == nil)
+        #expect(RadioLogoService.curatedFile(forName: "bigFM NRW")
+                == RadioLogoData.commonsFile(forName: "bigFM"))
+        // An OWN entry always wins (the DLF-Kultur guard, by order):
+        #expect(RadioLogoService.curatedFile(forName: "Deutschlandfunk Kultur")
+                == RadioLogoData.commonsFile(forName: "Deutschlandfunk Kultur"))
+        // Word boundary: a name CONTINUING the head in the same word is no kin.
+        #expect(RadioLogoService.curatedFile(forName: "bigFMX") == nil)
+        // No head, no answer.
+        #expect(RadioLogoService.curatedFile(forName: "Völlig Unbekannt 9000") == nil)
+    }
 }

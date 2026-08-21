@@ -286,97 +286,106 @@ struct RadioView: View {
         if !popular.isEmpty || !regional.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Button {
-                    // Every station this session has SEEN, not just the two
-                    // rows on this screen: the genre pages are exactly where
-                    // stations appear that were never played, and those are
-                    // the ones the question is about. Measuring the wrong set
-                    // is how a diagnosis reports a confident zero.
-                    let shown = RadioProvider.shared.sessionStations.values
-                        .map { (id: $0.id, name: $0.name, faviconURL: $0.faviconURL) }
-                    let base = RadioLogoReport.text(
-                        RadioLogoReport.rows(stations: shown,
-                                             chainResults: RadioLogoService.storedOutcomes(),
-                                             now: Date().timeIntervalSince1970))
-                    // 52af077 (GT R1): the missing listening time needs a
-                    // MEASUREMENT, not a guess — the report answers the reviewer's two
-                    // questions per card: does the store hold >= 3600 s for
-                    // this id, and what does the card's line rule decide?
-                    let seconds = ListeningStatsStore.shared.radioSeconds()
-                    var hoursBlock = "\n\nMEINE SENDER (Hoerzeit-Verdrahtung):\n"
-                    for station in myStations.prefix(8) {
-                        let s = seconds[station.id] ?? 0
-                        let line = RadioMyStations.cardLine(isRunning: false,
-                                                            runningLine: nil, seconds: s)
-                        let verdict: String
-                        switch line {
-                        case .listened(let hours): verdict = "zeigt \(hours) Std."
-                        case .none: verdict = "zeigt nichts (unter der Stunde)"
-                        case .running: verdict = "-"
-                        }
-                        // 51ea272: FULL ids — six stations reported the same
-                        // 12-char suffix, and a truncated id cannot say
-                        // whether that is one shared id (a booking bug) or a
-                        // display artefact. The full string decides.
-                        hoursBlock += "  \(station.name.prefix(28)): id=\(station.id) sek=\(s) → \(verdict)\n"
-                    }
-                    hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
-                        + "Summe \(seconds.values.reduce(0, +)) s\n"
-                    // 51ea272: the POT itself, top entries with FULL keys and
-                    // resolved names — the reviewer's question is what six stations
-                    // booked onto one id, and only the pot can answer which
-                    // id carries whose seconds.
-                    hoursBlock += "  Topf-Draufsicht (Top 10):\n"
-                    for (potId, potSeconds) in seconds.sorted(by: { $0.value > $1.value }).prefix(10) {
-                        let resolved = RadioStore.station(forId: potId)?.name
-                            ?? RadioProvider.shared.sessionStations[potId]?.name
-                            ?? "⟨unaufloesbar⟩"
-                        hoursBlock += "    \(potId) = \(potSeconds) s → \(resolved.prefix(26))\n"
-                    }
-                    // 2b7c857: only one of several favorites showed — the
-                    // diagnosis answers WHICH favorites the store knows, which
-                    // the row shows, and why one is missing (exclusion), so
-                    // the owner's device settles source vs. cap vs. ranking.
-                    let storeFavs = RadioStore.favorites()
-                    let shownIds = Set(myStations.map(\.id))
-                    let excluded = RadioMyStations.excludedID(recents: RadioStore.recents())
-                    hoursBlock += "\nFAVORITEN (Speisung):\n"
-                    hoursBlock += "  Store kennt \(storeFavs.count): "
-                        + storeFavs.map { $0.name.prefix(20) }.joined(separator: " · ") + "\n"
-                    for favorite in storeFavs {
-                        let why: String
-                        if shownIds.contains(favorite.id) { why = "in der Reihe" }
-                        else if favorite.id == excluded { why = "ausgelassen (steht in Zuletzt gespielt)" }
-                        else { why = "FEHLT — weder Reihe noch Auslass-Regel" }
-                        hoursBlock += "  \(favorite.name.prefix(24)): \(why)\n"
-                    }
-                    UIPasteboard.general.string = base + hoursBlock
-                    copiedLogoReport = true
-                    // The display half needs to LOAD, so it lands a moment
-                    // later — the summary above is already in the clipboard,
-                    // and this replaces it once the pictures answered.
                     Task {
-                        let urls = RadioLogoService.storedURLs()
-                        let names = Dictionary(shown.map { ($0.id, $0.name) },
-                                               uniquingKeysWith: { a, _ in a })
-                        var loaded: [RadioLogoReport.Loaded] = []
-                        for (id, url) in urls.sorted(by: { $0.key < $1.key })
-                        where names[id] != nil {
-                            if loaded.count >= 12 { break }
-                            let image = await ImageCache.shared.thumbnail(for: url)
-                            let width = Int((image?.size.width ?? 0) * (image?.scale ?? 1))
-                            let height = Int((image?.size.height ?? 0) * (image?.scale ?? 1))
+                        // Every station this session has SEEN, not just the two
+                        // rows on this screen: the genre pages are exactly where
+                        // stations appear that were never played, and those are
+                        // the ones the question is about. Measuring the wrong set
+                        // is how a diagnosis reports a confident zero.
+                        let shown = RadioProvider.shared.sessionStations.values
+                            .map { (id: $0.id, name: $0.name, faviconURL: $0.faviconURL) }
+                        // 4fe882b: the session state separates the three causes
+                        // behind "no result" — asked from the actor, hence the
+                        // wrapping Task; everything else stays on main.
+                        let session = await RadioLogoService.shared.sessionState()
+                        let base = RadioLogoReport.text(
+                            RadioLogoReport.rows(stations: shown,
+                                                 chainResults: RadioLogoService.storedOutcomes(),
+                                                 now: Date().timeIntervalSince1970,
+                                                 waiting: session.waiting,
+                                                 sessionFailed: session.failed,
+                                                 gaveUp: session.gaveUp))
+                        // 52af077 (GT R1): the missing listening time needs a
+                        // MEASUREMENT, not a guess — the report answers the reviewer's two
+                        // questions per card: does the store hold >= 3600 s for
+                        // this id, and what does the card's line rule decide?
+                        let seconds = ListeningStatsStore.shared.radioSeconds()
+                        var hoursBlock = "\n\nMEINE SENDER (Hoerzeit-Verdrahtung):\n"
+                        for station in myStations.prefix(8) {
+                            let s = seconds[station.id] ?? 0
+                            let line = RadioMyStations.cardLine(isRunning: false,
+                                                                runningLine: nil, seconds: s)
                             let verdict: String
-                            if image == nil { verdict = "laedt nicht" }
-                            else if !RadioFaviconGate.acceptableTouchIcon(pixelWidth: width,
-                                                                          pixelHeight: height) {
-                                verdict = "verworfen"
-                            } else { verdict = "angezeigt" }
-                            loaded.append(RadioLogoReport.Loaded(
-                                name: names[id] ?? id, url: url.absoluteString,
-                                pixels: image == nil ? "—" : "\(width)x\(height)",
-                                verdict: verdict))
+                            switch line {
+                            case .listened(let hours): verdict = "zeigt \(hours) Std."
+                            case .none: verdict = "zeigt nichts (unter der Stunde)"
+                            case .running: verdict = "-"
+                            }
+                            // 4fe882b (settled the six-id question): shorten to
+                            // the FIRST characters after the radio:rb: prefix —
+                            // the UUID tail is the import batch's shared node
+                            // field, six different stations can end identically.
+                            hoursBlock += "  \(station.name.prefix(28)): id=\(RadioLogoReport.shortID(station.id)) sek=\(s) → \(verdict)\n"
                         }
-                        UIPasteboard.general.string = base + hoursBlock + RadioLogoReport.loadedText(loaded)
+                        hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
+                            + "Summe \(seconds.values.reduce(0, +)) s\n"
+                        // 51ea272: the POT itself, top entries with FULL keys and
+                        // resolved names — the reviewer's question is what six stations
+                        // booked onto one id, and only the pot can answer which
+                        // id carries whose seconds.
+                        hoursBlock += "  Topf-Draufsicht (Top 10):\n"
+                        for (potId, potSeconds) in seconds.sorted(by: { $0.value > $1.value }).prefix(10) {
+                            let resolved = RadioStore.station(forId: potId)?.name
+                                ?? RadioProvider.shared.sessionStations[potId]?.name
+                                ?? "⟨unaufloesbar⟩"
+                            hoursBlock += "    \(RadioLogoReport.shortID(potId)) = \(potSeconds) s → \(resolved.prefix(26))\n"
+                        }
+                        // 2b7c857: only one of several favorites showed — the
+                        // diagnosis answers WHICH favorites the store knows, which
+                        // the row shows, and why one is missing (exclusion), so
+                        // the owner's device settles source vs. cap vs. ranking.
+                        let storeFavs = RadioStore.favorites()
+                        let shownIds = Set(myStations.map(\.id))
+                        let excluded = RadioMyStations.excludedID(recents: RadioStore.recents())
+                        hoursBlock += "\nFAVORITEN (Speisung):\n"
+                        hoursBlock += "  Store kennt \(storeFavs.count): "
+                            + storeFavs.map { $0.name.prefix(20) }.joined(separator: " · ") + "\n"
+                        for favorite in storeFavs {
+                            let why: String
+                            if shownIds.contains(favorite.id) { why = "in der Reihe" }
+                            else if favorite.id == excluded { why = "ausgelassen (steht in Zuletzt gespielt)" }
+                            else { why = "FEHLT — weder Reihe noch Auslass-Regel" }
+                            hoursBlock += "  \(favorite.name.prefix(24)): \(why)\n"
+                        }
+                        UIPasteboard.general.string = base + hoursBlock
+                        copiedLogoReport = true
+                        // The display half needs to LOAD, so it lands a moment
+                        // later — the summary above is already in the clipboard,
+                        // and this replaces it once the pictures answered.
+                        Task {
+                            let urls = RadioLogoService.storedURLs()
+                            let names = Dictionary(shown.map { ($0.id, $0.name) },
+                                                   uniquingKeysWith: { a, _ in a })
+                            var loaded: [RadioLogoReport.Loaded] = []
+                            for (id, url) in urls.sorted(by: { $0.key < $1.key })
+                            where names[id] != nil {
+                                if loaded.count >= 12 { break }
+                                let image = await ImageCache.shared.thumbnail(for: url)
+                                let width = Int((image?.size.width ?? 0) * (image?.scale ?? 1))
+                                let height = Int((image?.size.height ?? 0) * (image?.scale ?? 1))
+                                let verdict: String
+                                if image == nil { verdict = "laedt nicht" }
+                                else if !RadioFaviconGate.acceptableTouchIcon(pixelWidth: width,
+                                                                              pixelHeight: height) {
+                                    verdict = "verworfen"
+                                } else { verdict = "angezeigt" }
+                                loaded.append(RadioLogoReport.Loaded(
+                                    name: names[id] ?? id, url: url.absoluteString,
+                                    pixels: image == nil ? "—" : "\(width)x\(height)",
+                                    verdict: verdict))
+                            }
+                            UIPasteboard.general.string = base + hoursBlock + RadioLogoReport.loadedText(loaded)
+                        }
                     }
                 } label: {
                     Label {

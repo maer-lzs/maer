@@ -411,6 +411,12 @@ def main():
     print(f"target set: {len(names)} core names", file=sys.stderr)
     entries, failures = {}, 0
     for index, name in enumerate(names, 1):
+        # 383a3e8: truncated core names ("… Premium") are artifacts of the
+        # source tables — a search on the tail matches FOREIGN brands (the
+        # audit found the YouTube Premium logo booked for one). Never look
+        # them up; a station they might mean is covered by its own name.
+        if name.startswith("…") or name.startswith("..."):
+            continue
         file_name, verdict = wikidata_file(name)
         if verdict == "failed":
             failures += 1
