@@ -436,6 +436,16 @@ struct RadioStateQueryTests {
         let html = "<head><link rel=\"stylesheet\" href=\"a.css\"><link rel=\"apple-touch-icon\" href=\"/icons/touch.png\"></head>"
         #expect(RadioLogoLookup.extractTouchIcon(html: html, baseURL: base)?.absoluteString
                 == "https://www.rockantenne.de/icons/touch.png")
+        // 2765161: with MANY declared sizes the LARGEST wins — sportschau
+        // lists 57 first, and taking the first put a mushy icon on every
+        // Bundesliga tile.
+        let sized = """
+        <link rel="apple-touch-icon" sizes="57x57" href="/i/a-57.png">
+        <link rel="apple-touch-icon" sizes="152x152" href="/i/a-152.png">
+        <link rel="apple-touch-icon" sizes="120x120" href="/i/a-120.png">
+        """
+        #expect(RadioLogoLookup.extractTouchIcon(html: sized, baseURL: base)?.absoluteString
+                == "https://www.rockantenne.de/i/a-152.png")
         #expect(RadioLogoLookup.extractTouchIcon(html: "<head></head>", baseURL: base) == nil)
         #expect(RadioLogoLookup.conventionTouchIconURL(homepage: base)?.absoluteString
                 == "https://www.rockantenne.de/apple-touch-icon.png")

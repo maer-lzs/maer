@@ -116,7 +116,13 @@ nonisolated enum RadioLogoLookup {
 
     /// apple-touch-icon extraction — one light tag scan (the itunes:image
     /// pattern), href resolved against the page URL; nil when absent.
+    /// 2765161: houses declare MANY sizes, and by convention the FIRST tag
+    /// is often the smallest — sportschau lists 57 first and 152 later, and
+    /// taking the first put a mushy 57-px icon on every Bundesliga tile.
+    /// The pick is the LARGEST declared variant; tags without a `sizes`
+    /// attribute stay usable as the fallback.
     static func extractTouchIcon(html: String, baseURL: URL) -> URL? {
+        var best: (url: URL, size: Int)?
         var searchStart = html.startIndex
         while let linkRange = html.range(of: "<link", range: searchStart..<html.endIndex) {
             guard let tagEnd = html.range(of: ">", range: linkRange.upperBound..<html.endIndex) else { break }
@@ -127,12 +133,16 @@ nonisolated enum RadioLogoLookup {
             let after = tag[hrefRange.upperBound...]
             guard let end = after.firstIndex(of: "\"") else { continue }
             let href = String(after[..<end])
-            if let url = URL(string: href, relativeTo: baseURL)?.absoluteURL,
-               url.scheme?.hasPrefix("http") == true {
-                return url
+            guard let url = URL(string: href, relativeTo: baseURL)?.absoluteURL,
+                  url.scheme?.hasPrefix("http") == true else { continue }
+            var declared = 0
+            if let sizesRange = tag.range(of: "sizes=\"", options: .caseInsensitive) {
+                let tail = tag[sizesRange.upperBound...]
+                declared = Int(tail.prefix(while: \.isNumber)) ?? 0
             }
+            if best == nil || declared > best!.size { best = (url, declared) }
         }
-        return nil
+        return best?.url
     }
 
     // MARK: - 4e1688d: the sibling entries of the SAME station

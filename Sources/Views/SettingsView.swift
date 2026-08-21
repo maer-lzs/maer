@@ -57,6 +57,20 @@ struct SettingsView: View {
             case .radio: return "Radio"
             }
         }
+
+        /// 211ec20 invariant 2: THE tab bar's glyphs, one symbol source —
+        /// a second symbol language would cost the recognition that makes
+        /// the glyph rung work at all. General has none: it stays text
+        /// (a gear would be a lie — the gear IS the settings).
+        var glyph: String? {
+            switch self {
+            case .general: return nil
+            case .audiobooks: return MediaType.audiobooks.systemImage
+            case .podcasts: return MediaType.podcasts.systemImage
+            case .music: return MediaType.music.systemImage
+            case .radio: return MediaType.radio.systemImage
+            }
+        }
     }
     @State private var tab: Tab = .general
 
@@ -205,7 +219,11 @@ struct SettingsView: View {
         // e111072 (crash 4): MeasuredLadder, never ViewThatFits — same bomb,
         // same cure as the tab bar. Probes render on main; only the chosen
         // rung is built.
-        return MeasuredLadder(rungs: Self.chipFontSizes) { size, _ in
+        // 211ec20 (the owner): below the smallest TEXT rung sits the GLYPH
+        // rung (sentinel 0) — "Allgemein" always stays text, the four media
+        // pills fall back to their tab-bar glyphs. The floor question of the
+        // ladder is thereby answered instead of open.
+        return MeasuredLadder(rungs: Self.chipFontSizes + [ChipRowCandidate.glyphRung]) { size, _ in
             ChipRowCandidate(tabs: tabs, active: active,
                              fontSize: size, accent: accent, select: select)
         }
@@ -237,16 +255,23 @@ struct SettingsView: View {
         let accent: Color
         let select: (Tab) -> Void
 
+        /// The sentinel rung below the smallest text size (211ec20).
+        static let glyphRung: CGFloat = 0
+
+        private var glyphMode: Bool { fontSize == Self.glyphRung }
+        /// Glyph pills keep a readable text size for the one text pill.
+        private var effectiveFontSize: CGFloat { glyphMode ? 11 : fontSize }
+
         var body: some View {
             HStack(spacing: 8) {
                 ForEach(tabs) { t in
                     Button {
                         select(t)
                     } label: {
-                        Text(t.label)
-                            .font(.system(size: fontSize, weight: .medium))
-                            // Whole or not at all — this is what lets
-                            // ViewThatFits see that a candidate does not fit
+                        pillLabel(t)
+                            .font(.system(size: effectiveFontSize, weight: .medium))
+                            // Whole or not at all — this is what lets the
+                            // ladder's probe see that a rung does not fit
                             // (without it, SwiftUI truncates silently).
                             .lineLimit(1)
                             .fixedSize(horizontal: true, vertical: false)
@@ -262,9 +287,36 @@ struct SettingsView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    // 211ec20 invariant 3: the glyph is DISPLAY, not
+                    // semantics — the a11y label always carries the full
+                    // title, in every rung.
+                    .accessibilityLabel(Text(t.label))
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("settings-tab-\(t.rawValue)")
                 }
+            }
+        }
+
+        /// One shared content height on the glyph rung — symbols have
+        /// differing intrinsic heights, and a pill row whose members differ
+        /// by state is exactly the class the height fences guard against.
+        private static let glyphContentHeight: CGFloat = 16
+
+        /// One pill's face: text on every text rung; on the glyph rung the
+        /// four media pills show their tab-bar glyph while "General" — which
+        /// has no honest glyph — stays text (211ec20 invariants 1+2).
+        @ViewBuilder private func pillLabel(_ t: Tab) -> some View {
+            if glyphMode {
+                Group {
+                    if let glyph = t.glyph {
+                        Image(systemName: glyph)
+                    } else {
+                        Text(t.label)
+                    }
+                }
+                .frame(height: Self.glyphContentHeight)
+            } else {
+                Text(t.label)
             }
         }
     }

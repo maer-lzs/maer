@@ -1115,6 +1115,37 @@ Auftrags nicht erfuellt); „ZEIT ONLINE" bleibt ein eigener Verlag mit
 eigener ehrlicher Zeile. Rest-Zeuge fuer SEIN Profil/PI-Pfad: die
 `RECO reasons:`-Logzeile zaehlt je Refresh author/genre/charts.
 
+### Icon-Schaerfe (2765161) · Glyphen-Stufe (211ec20) · Drei-Kacheln-Antwort (bb332ea)
+
+**Touch-Icon-Parser waehlt die GROESSTE Variante** (gemessen: sportschau
+deklariert 57 zuerst und bis 152 spaeter; der Erst-Treffer-Parser setzte
+das matschige 57er auf alle 20 Bundesliga-Kacheln — Klasse, nicht Sender).
+Groesste `sizes`-Deklaration gewinnt, ohne sizes bleibt nutzbar (Zaun).
+Commons-Alternative gemessen und VERWORFEN: beide Sportschau-Dateien sind
+Schriftzuege (7,9:1 / 6,7:1) — die 152er-Quadrat-Variante schlaegt sie.
+BESTAND (nie ablaufende 57er-Positive) ehrlich offen: die Zone kann nur
+the owner's Diagnose-Kopie zaehlen (ANZEIGE nennt Pixel je URL); die Familie
+allein stellt 20. Zweistufiges Urteil erst nach der Zaehlung.
+
+**Glyphen-Stufe (ENTSCHEID):** `MeasuredLadder`-Stufe unter der kleinsten
+Text-Stufe (Sentinel `ChipRowCandidate.glyphRung`): „Allgemein" bleibt
+IMMER Text (kein ehrliches Symbol — das Zahnrad IST die Einstellungen),
+die vier Medien-Pillen tragen DIE Tab-Leisten-Glyphen (`Tab.glyph` →
+`MediaType.systemImage`, eine Symbolquelle), a11y-Labels weiter die vollen
+Titel, EINE Inhaltshoehe (`glyphContentHeight` 16 — Symbole haben ungleiche
+Intrinsics, die Hoehen-Journey fiel prompt und ist wieder gruen 5/5).
+**Messbefund dabei:** mit FUENF Pillen passte auf iPhone-Portrait NIE eine
+Text-Stufe — ViewThatFits lief stumm mit der letzten ueber (35,3 pt = die
+11er-Stufe, Ueberlauf unbemerkt); die ehrliche Leiter waehlt dort jetzt
+die Glyphen-Stufe. Abnahme am Geraet: gefallen die Text-Pillen auf dem
+iPhone, ist der Drehknopf das Pillen-Padding (16) — the owner's Wort.
+
+**bb332ea beantwortet (Fall a/c, kein Umbau):** the owner's Direkt-Korrektur
+vom 20.08. („Zuletzt gespielt ist eine kachelreihe") UEBERSCHRIEB cb2d1eds
+„der eine Sender" — dokumentiert im 33fe176-Bericht und im Memory; die
+Auslass-Regel laesst weiterhin nur den EINEN zuletzt gespielten Sender aus
+(`RadioMyStations.excludedID`), nie ein Drittel der Favoriten.
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):
