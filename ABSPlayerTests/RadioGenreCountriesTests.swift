@@ -242,3 +242,31 @@ import Foundation
         #expect(solo[0].variants.isEmpty)
     }
 }
+
+/// c0674d4: the multi-country group's failure semantics — a cancel is not a
+/// failure in the COUNT either. Three refresh-cancels produced
+/// cannotConnectToHost ("Verbindungsfehler" on intact net), one level above
+/// the fixed single catches.
+@Suite struct RadioGroupVerdictTests {
+
+    @Test("drei Cancels sind eine Cancellation, kein Verbindungsfehler")
+    func cancelsAreNoFailures() {
+        #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 3, total: 3) == .cancelled)
+    }
+
+    @Test("alle Laender ECHT gescheitert = unerreichbar")
+    func allRealFailuresAreUnreachable() {
+        #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 0, total: 3) == .unreachable)
+    }
+
+    @Test("ein Treffer traegt die Seite — egal was die anderen taten")
+    func anyHitCarries() {
+        #expect(RadioBrowserClient.groupVerdict(hitCount: 1, cancelCount: 2, total: 3) == .union)
+        #expect(RadioBrowserClient.groupVerdict(hitCount: 1, cancelCount: 0, total: 3) == .union)
+    }
+
+    @Test("gemischt ohne Treffer: ein Cancel macht den Lauf zum Abbruch")
+    func mixedWithoutHitsIsCancelled() {
+        #expect(RadioBrowserClient.groupVerdict(hitCount: 0, cancelCount: 1, total: 3) == .cancelled)
+    }
+}

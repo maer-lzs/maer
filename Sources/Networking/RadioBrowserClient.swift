@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// F1: Radio Browser API — the open, key-free community catalog. Served by
 /// volunteer MIRRORS behind round-robin DNS; we try a fixed mirror list in
@@ -226,40 +227,76 @@ nonisolated enum RadioBrowserClient {
             // 8a38ca5: worldwide is TWO pots — the global top by votes AND the
             // device language's top. One pot alone caps before the bonus: the
             // world's top 40 is RU/UA/IR-dominated and DLF (worldwide ~49)
-            // never entered it. Same union mechanic as the countries; the
-            // language pot failing degrades to plain worldwide rather than
-            // failing the page.
+            // never entered it. Same union mechanic as the countries.
+            //
+            // bbffebb: the language pot degrading is allowed, but never again
+            // SILENT — a swallowed failure here showed as "refresh runs clean,
+            // list unchanged, DLF missing" on the device, with no witness.
             let worldwide = try await byTag(tag: tag, countryCode: nil, limit: limit)
             var union = worldwide
             if let language = Locale.current.language.languageCode?.identifier,
-               !language.isEmpty,
-               let languagePot = try? await stations(.byTagLanguage(
-                   tag: tag, languageCode: language, limit: limit)) {
-                union += languagePot
+               !language.isEmpty {
+                do {
+                    let languagePot = try await stations(.byTagLanguage(
+                        tag: tag, languageCode: language, limit: limit))
+                    union += languagePot
+                    Logger.library.notice("RADIO worldwide pots: global=\(worldwide.count) lang(\(language, privacy: .public))=\(languagePot.count)")
+                } catch {
+                    guard !error.isCancellation else { throw error }
+                    Logger.library.notice("RADIO worldwide LANG POT FAILED (\(language, privacy: .public)): \(error.localizedDescription, privacy: .public) — degrading to global pot only")
+                }
             }
             return union
         }
-        let answers: [[RadioStation]?] = try await withThrowingTaskGroup(
-            of: (Int, [RadioStation]?).self
+        // c0674d4: each country reports WHAT happened — a refresh cancelling
+        // the in-flight group produced three swallowed cancels, an all-nil
+        // collection, and a thrown cannotConnectToHost: a cancellation
+        // counted as a connection failure, one level above the fixed catches.
+        // The verdict is pure (`groupVerdict`) so the fence can drive it.
+        enum CountryAnswer { case hit([RadioStation]); case failed; case cancelled }
+        let answers: [CountryAnswer] = try await withThrowingTaskGroup(
+            of: (Int, CountryAnswer).self
         ) { group in
             for (index, code) in countryCodes.enumerated() {
                 group.addTask {
-                    (index, try? await byTag(tag: tag, countryCode: code, limit: limit))
+                    do {
+                        return (index, .hit(try await byTag(tag: tag, countryCode: code, limit: limit)))
+                    } catch {
+                        return (index, error.isCancellation ? .cancelled : .failed)
+                    }
                 }
             }
             // Keep the caller's country order — the union's sort must not
             // depend on which mirror answered first.
-            var collected = [[RadioStation]?](repeating: nil, count: countryCodes.count)
-            for try await (index, stations) in group { collected[index] = stations }
+            var collected = [CountryAnswer](repeating: .failed, count: countryCodes.count)
+            for try await (index, answer) in group { collected[index] = answer }
             return collected
         }
-        guard answers.contains(where: { $0 != nil }) else {
+        let hits = answers.compactMap { if case .hit(let stations) = $0 { stations } else { nil } }
+        let cancels = answers.filter { if case .cancelled = $0 { true } else { false } }.count
+        switch Self.groupVerdict(hitCount: hits.count, cancelCount: cancels,
+                                 total: answers.count) {
+        case .cancelled: throw CancellationError()
+        case .unreachable:
             // NOT "no stations": every single country failed. The view must be
             // able to tell an empty genre from an unreachable catalog.
             throw URLError(.cannotConnectToHost)
+        case .union: break
         }
-        return answers.compactMap { $0 }.flatMap { $0 }
+        return hits.flatMap { $0 }
             .sorted { ($0.votes ?? 0) > ($1.votes ?? 0) }
+    }
+
+    /// The group's failure semantics, pure: a cancel is not a failure — not
+    /// in the single catches (ebda0fa) and not in the COUNT (c0674d4). Only
+    /// "every country genuinely failed" is unreachable; any cancel in an
+    /// otherwise hitless group means the RUN was cancelled, and the page
+    /// keeps what it has.
+    nonisolated enum GroupVerdict: Equatable { case union, cancelled, unreachable }
+    nonisolated static func groupVerdict(hitCount: Int, cancelCount: Int, total: Int) -> GroupVerdict {
+        if hitCount > 0 { return .union }
+        if cancelCount > 0 { return .cancelled }
+        return total > 0 ? .unreachable : .union
     }
 
     // MARK: - Shared mirror loop (ONE source for policy + drift-free)

@@ -1031,6 +1031,25 @@ und ist frei); die Audit-Sonde prueft Thumbs jetzt an den MASSEN statt am
 Status (status-only war blind — „0 tote Thumbs" war transportwahr und
 gate-falsch). Zaun-Testfall „legitim bleibt": RADIO-BOB!-Familie (SVG).
 
+### 🔴 Genre-Laden: Gruppen-Cancel-Zaehlung + lautloser Sprachtopf (c0674d4/bbffebb)
+
+**Mehrlaender-Refresh warf „Verbindungsfehler" auf intaktem Netz:** die
+Laender-Gruppe fing je Land mit `try?` — ein Refresh-Cancel machte drei
+stille nils, der leere Sammelstand warf `cannotConnectToHost`. **Ein Cancel
+ist auch in der ZAEHLUNG kein Fehlschlag** (dritte Instanz der Stelle):
+je Land wird hit/failed/cancelled unterschieden, das Urteil ist pur
+(`RadioBrowserClient.groupVerdict`, gezaeunt) — ein Treffer traegt; ohne
+Treffer macht JEDER Cancel den Lauf zum Abbruch (Seite behaelt Bestand);
+nur lauter echte Fehlschlaege sind unerreichbar. **Weltweit-Sprachtopf
+degradiert nie mehr LAUTLOS** (bbffebb-Kandidat: „Refresh sauber, Liste
+unveraendert, DLF fehlt" ohne Zeugen): Topf-Groessen und Degrade-Grund
+loggen (`RADIO worldwide pots` / `LANG POT FAILED`); Cancel wirft durch.
+Die Lade-Funktion selbst war schon EINE (`load(force:)` fuer Erstladung/
+Wechsel/Refresh) — die zwei Pfade sassen in der FEHL-Semantik, nicht im
+Aufruf; jetzt sitzt auch die an einer Stelle. Ehrlich: meine damalige
+GT-Nachpruefung lief als Sim-ERSTLADUNGS-Journey — exakt der Pfad, der
+funktionierte; der Geraete-Refresh-Weg war ungemessen.
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):
