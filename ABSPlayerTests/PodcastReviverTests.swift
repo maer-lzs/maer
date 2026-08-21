@@ -55,3 +55,27 @@ import Foundation
     }
 }
 #endif
+
+/// 6546308 Befund 3: die oPodSync-Datenbank kennungt Aktionen per URL SAMT
+/// `?updated=` — 12 Folgen dort zerfallen in getrennte Historien-Straenge.
+/// GEMESSEN an unserem Code: Maer erbt das nicht — `normalizeEnclosure`
+/// schneidet Query, Schema und Slashes an BEIDEN Matching-Enden (byEnclosure-
+/// Aufbau und Aktions-Match). Dieser Zaun haelt die Invarianz fest, damit kein
+/// kuenftiger Umbau die Normalisierung an einem Ende verliert.
+@Suite struct EnclosureVariantTests {
+
+    @Test func updatedParameterVariantsCollapseToOneKey() {
+        let a = PodcastSubscriptions.normalizeEnclosure("https://cdn.example/ep1.mp3?updated=1700000000")
+        let b = PodcastSubscriptions.normalizeEnclosure("https://cdn.example/ep1.mp3?updated=1799999999")
+        let c = PodcastSubscriptions.normalizeEnclosure("http://CDN.example/ep1.mp3/")
+        #expect(a == b)
+        #expect(b == c)
+    }
+
+    /// Different EPISODES must not collapse — the normalisation removes noise,
+    /// never identity.
+    @Test func differentEpisodesStayApart() {
+        #expect(PodcastSubscriptions.normalizeEnclosure("https://cdn.example/ep1.mp3")
+                != PodcastSubscriptions.normalizeEnclosure("https://cdn.example/ep2.mp3"))
+    }
+}

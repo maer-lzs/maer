@@ -19,9 +19,14 @@ import UIKit
 /// Cards deliberately keep the old cover-colour mix (773d87b halves the scope
 /// of 14f7dac): only tiles calm down.
 nonisolated enum RadioTileGround {
-    /// The saturation cap — the one number to turn. The old tint carried 0.52;
-    /// "auf etwa ein Viertel dämpfen" is the ordered start value.
-    static let saturationCap: Double = 0.13
+    /// The saturation cap — the one number to turn, and it has been turned:
+    /// 0.52 (old tint) → 0.13 ("etwas weniger farbig", 773d87b) → **0**
+    /// (97e3a5a, the owner FINAL: tiles are a neutral white–grey–black scale;
+    /// the 0.13 softening was a relay misreading of his intent, not a step he
+    /// asked for). At 0 the hue term vanishes entirely — the ground carries
+    /// only the counter-brightness, which is the whole point: the logo is the
+    /// surface's one colour carrier. Cards keep their cover-colour mix.
+    static let saturationCap: Double = 0
 
     /// The luminance threshold between "dark logo" and "light logo" — named
     /// because it is the second number the owner may want to move. Mid-scale.

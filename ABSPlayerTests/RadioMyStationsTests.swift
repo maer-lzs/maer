@@ -97,7 +97,7 @@ import UIKit
     /// The two named numbers, pinned so the report can cite them and the owner
     /// can turn them.
     @Test func theNamedConstants() {
-        #expect(RadioTileGround.saturationCap == 0.13)
+        #expect(RadioTileGround.saturationCap == 0)   // 97e3a5a: Grauskala, FINAL
         #expect(RadioTileGround.luminanceThreshold == 0.5)
     }
 

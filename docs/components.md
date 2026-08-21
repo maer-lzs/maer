@@ -656,7 +656,7 @@ Zeilen-Regel; dazu Topf-Summe). the owner kopiert einmal, dann ist entschieden,
 ob der Store < 3600 s hat (Ehrlichkeitsregel arbeitet korrekt) oder die
 Verdrahtung reisst.
 
-### Kachel-Grund: Saettigungsdeckel + gegenlaeufige Helligkeit (773d87b — gilt statt 14f7dac)
+### Kachel-Grund: GRAUSKALA (97e3a5a FINAL — 14f7dac gilt; der 0,13-Deckel aus 773d87b war the reviewer's Fehldeutung von the owner's Absicht)
 
 the owner: „Kacheln sollten etwas weniger farbig sein" — KARTEN behalten die alte
 Cover-Farb-Mischung (sein ausdruecklicher Vorbehalt), nur Kacheln beruhigen
@@ -799,6 +799,25 @@ Kacheln blieben grau, obwohl die Quelle das Bild hatte. Dieselbe Klasse wie
 `ProgressMark.advancing` (eine Antwort ohne Dauer darf einen vorhandenen
 Referenzpunkt nicht loeschen) und der gpodder-Supplement-Pfad. Regel: was eine
 Seite exklusiv weiss, stirbt nicht, weil die andere gewinnt.
+
+### Nachtraege (21.08.)
+
+**Kacheln FINAL Grauskala:** `saturationCap` 0,13 → **0** (der Einzeiler, fuer
+den die Konstante da war). Bei 0 verschwindet der Farbton-Term vollstaendig —
+der Grund traegt nur noch die Gegen-Helligkeit; das Logo ist der einzige
+Farbtraeger. Karten bleiben farbig. Abnahme-Bild: SWR3 rot auf Weiss, BR1
+unveraendert (deckendes Logo IST die Farbe).
+
+**URL-Varianten (6546308 Befund 3), GEMESSEN — Maer erbt das Zerfallen NICHT:**
+die oPodSync-Datenbank kennungt je URL samt `?updated=` (12 Folgen dort in
+getrennten Straengen), aber `normalizeEnclosure` schneidet Query, Schema und
+Slashes an BEIDEN Matching-Enden (byEnclosure-Aufbau UND Aktions-Match des
+Pulls); der Push sendet zwar die rohe Feed-URL, der Rueck-Pull normalisiert
+wieder ⇒ Fortschritt bleibt zugeordnet. Das Zerfallen ist eine Eigenschaft der
+SERVER-Ablage (trifft andere Klienten), kein Maer-Verlustpfad.
+Invarianz-Zaun `EnclosureVariantTests`: Varianten kollabieren, verschiedene
+Folgen nie. Restrisiko benannt: ein HOST-Wechsel des CDN ist von der
+Normalisierung nicht gedeckt — dann greift der Titel-Fallback des Imports.
 
 ## Test infrastructure
 
