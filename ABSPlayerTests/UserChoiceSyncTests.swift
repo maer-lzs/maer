@@ -434,6 +434,30 @@ struct UserChoiceCloudSyncTests {
         #expect(!rates.contains("playbackRate.item-0"))
         #expect(rates.contains("playbackRate.item-\(UserChoiceCatalog.playbackRateCap)"))
     }
+
+    @Test("The cap holds on the NOTE path too — no reconcile in between")
+    func rateCapPrunesOnNote() {
+        let cloud = UserChoiceFakeCloud()
+        let a = device(cloud, now: 1000)
+        defer { cleanup(a.suite) }
+        var stamps: [String: Double] = [:]
+        for i in 0..<UserChoiceCatalog.playbackRateCap {
+            a.defaults.set(1.5, forKey: AppStorageKeys.playbackRate("item-\(i)"))
+            // Below the injected clock (starts at 1000) — the fresh note must
+            // be the NEWEST entry, or the cap would evict it instead.
+            stamps[AppStorageKeys.playbackRate("item-\(i)")] = 100 + Double(i)
+        }
+        a.defaults.set(stamps, forKey: UserChoiceCloudSync.stampsKey)
+        a.sync.reconcile()   // blob at the cap
+        // The 501st rate arrives as a plain user NOTE (foregrounded device,
+        // no reconcile) — the oldest must fall, the newest must land.
+        a.sync.noteScalar(key: AppStorageKeys.playbackRate("item-fresh"), value: 1.5)
+        let blob = cloud.storage[UserChoiceCloudSync.blobKey] as? [String: Any] ?? [:]
+        let rates = blob.keys.filter { $0.hasPrefix("playbackRate.") }
+        #expect(rates.count == UserChoiceCatalog.playbackRateCap)
+        #expect(rates.contains("playbackRate.item-fresh"))
+        #expect(!rates.contains("playbackRate.item-0"))
+    }
 }
 
 /// The birth gate: every persisted key of the key-bearing files carries a

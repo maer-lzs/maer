@@ -81,13 +81,24 @@ final class UserChoiceCloudSync {
         self.now = now
     }
 
+    #if DEBUG
+    /// The unit-test HOST must not touch the real KVS: other suites drive
+    /// production write paths (sorts, rates, favorites) through the shared
+    /// instance, and their notes would accumulate in the simulator's store
+    /// across runs — every later host start would adopt that junk back
+    /// (test-poisons-real-store class). Injected test instances carry their
+    /// own fake cloud and stay fully live.
+    private var sharedMustStaySilent: Bool {
+        self === Self.shared
+            && (UITestSeed.isActive
+                || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil)
+    }
+    #else
+    private var sharedMustStaySilent: Bool { false }
+    #endif
+
     func start() {
-        #if DEBUG
-        // The harness seeds per-case state; the sim's KVS survives app
-        // reinstalls WITHIN a suite run, so a reconcile would bleed one
-        // journey's seeded choices into the next case's fresh container.
-        if UITestSeed.isActive { return }
-        #endif
+        if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
         guard !didStart else { reconcile(); return }
         didStart = true
@@ -150,6 +161,7 @@ final class UserChoiceCloudSync {
     }
 
     private func note(cloudKey: String, value: UserChoiceValue?) {
+        if sharedMustStaySilent { return }
         var stamps = localStamps()
         let now = now()
         guard syncEnabled() else {
@@ -176,12 +188,18 @@ final class UserChoiceCloudSync {
         stamps[cloudKey] = now
         saveStamps(stamps)
         blob[cloudKey] = UserChoiceEntry(value: value, t: now).plist
+        // The cap must hold on the PUSH path too — a foregrounded device can
+        // note hundreds of rates without ever reconciling in between.
+        if cloudKey.hasPrefix("playbackRate.") {
+            pruneOverflow(&blob)
+        }
         saveBlob(blob)
     }
 
     // MARK: - Reconcile
 
     func reconcile() {
+        if sharedMustStaySilent { return }
         guard syncEnabled() else { return }
         // A reconcile asks the CLOUD, never the mirror — a foreign device may
         // have written since the last read (the mirror only spares the notes).
