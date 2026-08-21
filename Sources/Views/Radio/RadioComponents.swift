@@ -309,19 +309,44 @@ struct RadioFeaturedCard: View {
     /// both seams were visible on device). Seamless attachment has priority;
     /// ALL ink on the card follows the ground's luminance, not just the
     /// title — white ink on bigFM's white ground would erase star and line.
-    @State private var edge: (color: Color, luminance: Double)?
+    @State private var edge: RadioTileGround.Edge?
+    /// cbf0d50: share of visible logo pixels near the edge colour — full tone
+    /// only when the edge IS the mark's dominant colour.
+    @State private var dominance: Double = 1
 
+    private var edgeIsDominant: Bool { dominance >= RadioTileGround.dominanceShare }
+
+    /// The card's resting surface: the edge tone when it is dominant, else
+    /// the calmed variant of the same tone (the accent case).
     private var cardColor: Color {
-        edge?.color ?? (colorLoader.hasAccent ? colorLoader.accent : tint)
+        guard let edge else { return colorLoader.hasAccent ? colorLoader.accent : tint }
+        return edgeIsDominant ? edge.color : RadioTileGround.dampened(edge)
     }
 
-    /// White ink on dark grounds, dark ink on light — measured at the ground.
+    /// White ink on dark grounds, dark ink on light — measured at the SURFACE
+    /// the text sits on (the calmed area in the accent case).
     private var inkIsLight: Bool {
         guard let edge else { return true }
-        return RadioTileGround.titleIsLight(groundLuminance: edge.luminance)
+        let surface = edgeIsDominant ? edge.luminance : RadioTileGround.dampenedLuminance(edge)
+        return RadioTileGround.titleIsLight(groundLuminance: surface)
     }
     private var titleColor: Color { inkIsLight ? .white : .black.opacity(0.85) }
     private var captionColor: Color { inkIsLight ? .white.opacity(0.9) : .black.opacity(0.6) }
+
+    /// cbf0d50 accent case: a SHORT run from the exact edge colour into the
+    /// calmed tone — at the boundary the Naht, below it calm. Dominant edges
+    /// keep the full tone (one solid colour, no zone).
+    @ViewBuilder private var textZoneGround: some View {
+        if let edge, !edgeIsDominant {
+            LinearGradient(stops: [
+                .init(color: edge.color, location: 0),
+                .init(color: RadioTileGround.dampened(edge), location: RadioTileGround.transitionShare),
+                .init(color: RadioTileGround.dampened(edge), location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+        } else {
+            cardColor
+        }
+    }
     // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
     // exactly like Book-/PodcastFeaturedCard's.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -339,7 +364,10 @@ struct RadioFeaturedCard: View {
                            height: CardMetrics.featuredCardWidth)
                     .clipped()
                     .overlay(alignment: .bottom) {
-                        LinearGradient(colors: [.clear, cardColor],
+                        // The JOIN is always the exact edge colour (Naht-
+                        // Invariante) — the calming happens BELOW, never at
+                        // the boundary.
+                        LinearGradient(colors: [.clear, edge?.color ?? cardColor],
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth
                                    * RadioArtwork.cardGradientShare)
@@ -381,7 +409,7 @@ struct RadioFeaturedCard: View {
                 .padding(14)
                 .padding(.bottom, pillReserve)   // room for the overlay pill
                 .frame(width: CardMetrics.featuredCardWidth, alignment: .leading)
-                .background(cardColor)
+                .background(textZoneGround)
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
@@ -397,9 +425,14 @@ struct RadioFeaturedCard: View {
                 homepage: station.homepage)
                 ?? station.faviconURL.flatMap { URL(string: $0) }
             await colorLoader.load(from: url)
-            // f01d6d3: the ground colour comes from the logo's bottom edge.
+            // f01d6d3: the ground colour comes from the logo's bottom edge;
+            // cbf0d50: whether it may fill the surface depends on DOMINANCE.
             if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
-                edge = RadioTileGround.bottomEdgeColor(of: loaded.image)
+                let measured = RadioTileGround.bottomEdgeColor(of: loaded.image)
+                edge = measured
+                if let measured {
+                    dominance = RadioTileGround.dominance(of: loaded.image, edge: measured)
+                }
             }
         }
         // 48e514e (1): the family's pill at the family's place — bottom-left

@@ -1077,6 +1077,27 @@ iPhone-Toepfe an?" ohne Mac. **Favoriten: rein LOKAL bestaetigt**
 (`radioFavorites` in UserDefaults, kein Kanal) — der Bau-Teil gehoert zur
 Sync-Familie (mit d7f12e1 C und 0ed4637, EIN Muster).
 
+### Dominanz-Regel der Karten-Flaeche (cbf0d50, probeweise — Abnahme am Bild)
+
+Rand==dominante Logo-Farbe ⇒ **Vollton bleibt**; Rand nur Akzent ⇒ kurze
+**Uebergangszone** von der exakten Randfarbe in die beruhigte Ton-Variante.
+Drei benannte Konstanten in `RadioTileGround`: `dominanceShare 0,40`
+(Anteil sichtbarer Pixel nahe der Randfarbe), `dominanceTolerance 0,25`
+(euklidischer RGB-Abstand — Verlaufs-Toleranz), `transitionShare 0,35`
+(wo die Zone endet). `Edge` traegt jetzt RGB; `dampened(_:)` = gleiche
+Hue, Gegenton-Stufen (dunkler Rand → Pastell hell S0,30/B0,88, heller →
+gedeckt S0,55/B0,42); Tinte folgt der FLAECHE (gedaempfte Luminanz im
+Akzent-Fall). Naht-Invariante: der Artwork-Verlauf endet IMMER in der
+exakten Randfarbe, die Beruhigung passiert darunter. Gemessen an den vier
+Abnahme-Marken: DLF Kultur 0,73 VOLLTON ✓ · WDR 2 0,26 ZONE ✓ · bigFM-
+Geschwister-Favicon 0,80 VOLLTON (dunkler Rand — gezeigt, wie beauftragt) ·
+**1live.svg 0,02 ZONE, und das ist der Lehr-Fall:** sein Rand ist ein
+MISCH-Mittel (Magenta-Box + schwarze Lettern → „Weinrot", das niemandes
+Farbe ist) — niedrige Dominanz heisst auch „der Rand ist keine echte
+Markenfarbe", und genau solche Mischungen beruhigt die Zone; the owner's
+richtiges Vollton-Weinrot am Geraet duerfte das FAVICON sein (dominanter
+Rand → Vollton bleibt). Entscheid am Bild.
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):

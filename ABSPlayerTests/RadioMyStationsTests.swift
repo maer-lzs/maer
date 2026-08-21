@@ -199,4 +199,41 @@ import SwiftUI
         #expect(RadioTileGround.titleIsLight(groundLuminance: 0.1))
         #expect(!RadioTileGround.titleIsLight(groundLuminance: 0.9))
     }
+
+    /// cbf0d50: full tone only for a DOMINANT edge — the 1LIVE class (the
+    /// mark IS the colour) versus the WDR-2 class (the edge catches an
+    /// accent bar of a differently coloured mark).
+    @Test func dominanceSeparatesFullToneFromAccent() throws {
+        // Mark almost entirely red, red bottom edge → dominant.
+        let solid = image { ctx in
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 32))
+        }
+        let solidEdge = try #require(RadioTileGround.bottomEdgeColor(of: solid))
+        #expect(RadioTileGround.dominance(of: solid, edge: solidEdge)
+                >= RadioTileGround.dominanceShare)
+        // Mostly blue mark, thin red bottom bar → the edge is an ACCENT.
+        let accent = image { ctx in
+            UIColor.blue.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 32, height: 28))
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 28, width: 32, height: 4))
+        }
+        let accentEdge = try #require(RadioTileGround.bottomEdgeColor(of: accent))
+        #expect(accentEdge.red > 0.8, "die Kante muss den roten Balken erwischen")
+        #expect(RadioTileGround.dominance(of: accent, edge: accentEdge)
+                < RadioTileGround.dominanceShare)
+    }
+
+    /// The calmed variant keeps the HUE — it is the same tone, quieter.
+    @Test func dampenedKeepsTheHue() {
+        let edge = RadioTileGround.Edge(red: 0.89, green: 0.03, blue: 0.16, luminance: 0.22)
+        var hue: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(RadioTileGround.dampened(edge)).getHue(&hue, saturation: &s, brightness: &b, alpha: &a)
+        var edgeHue: CGFloat = 0
+        UIColor(red: 0.89, green: 0.03, blue: 0.16, alpha: 1).getHue(&edgeHue, saturation: &s, brightness: &b, alpha: &a)
+        #expect(abs(Double(hue - edgeHue)) < 0.03)
+        // Dark edge → the light pastel step; ink accordingly dark.
+        #expect(RadioTileGround.dampenedLuminance(edge) > 0.5)
+    }
 }
