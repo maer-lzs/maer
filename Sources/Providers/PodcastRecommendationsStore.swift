@@ -39,6 +39,19 @@ final class PodcastRecommendationsStore: ObservableObject {
         /// From the catalog's trending/top charts.
         case popular
     }
+    /// ff92dde (the owner): EVERY card explains its real source — the line
+    /// never lies (per-source provenance) and never stays silent. The ONE
+    /// wording for all surfaces (Home row, tab row, full page — Regel 2;
+    /// the tab surfaces passed no subtitle at all, which read as "the line
+    /// is gone" although Home still carried it).
+    nonisolated static func reasonLine(_ reason: Reason) -> String {
+        switch reason {
+        case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
+        case .genre(let genre): return String(localized: "Because you listen to \(genre)")
+        case .popular: return String(localized: "Popular with other listeners")
+        }
+    }
+
     /// Provenance per normalized feed URL, recorded while building the pool.
     private var authorProvenance: [String: String] = [:]
     /// 70dd0d8: normalized feed URL → the CATEGORY whose query produced it.
@@ -225,6 +238,17 @@ final class PodcastRecommendationsStore: ObservableObject {
             isChart: { self.reason(for: $0) == .popular },
             daySeed: CatalogRotation.dayIndex(on: Date()))
         loadedAt = Date()
+        // aa25708: the share witness — does the equality match still deliver
+        // on THIS profile? One line per refresh answers it from the device.
+        var authorCount = 0, genreCount = 0, chartCount = 0
+        for result in results {
+            switch reason(for: result) {
+            case .sameAuthor: authorCount += 1
+            case .genre: genreCount += 1
+            case .popular: chartCount += 1
+            }
+        }
+        Logger.rss.notice("RECO reasons: author=\(authorCount) genre=\(genreCount) charts=\(chartCount) of \(self.results.count)")
     }
 
     /// Move entries whose artwork demonstrably does not load behind the

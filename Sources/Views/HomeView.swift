@@ -448,11 +448,7 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     }
 
     private func reasonText(_ reason: PodcastRecommendationsStore.Reason) -> String {
-        switch reason {
-        case .sameAuthor(let author): return String(localized: "Because you listen to \(author)")
-        case .genre(let genre): return String(localized: "Because you listen to \(genre)")
-        case .popular: return String(localized: "Popular")
-        }
+        PodcastRecommendationsStore.reasonLine(reason)
     }
 
     /// L2: Start's mixed free-audiobooks row — tiles via the ONE shared

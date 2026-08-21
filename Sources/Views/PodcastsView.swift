@@ -356,7 +356,10 @@ RowHeading(title: "Recommended",
     /// Y2a: the SAME tile as Home's Discover row (RecommendationTile) — tap
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
-        RecommendationTile(result: r)
+        // ff92dde: the tab row carries the SAME reason line as Home — no
+        // surface stays silent.
+        RecommendationTile(result: r,
+                           subtitle: PodcastRecommendationsStore.reasonLine(recommendations.reason(for: r)))
             .recommendationHideMenu(r)
     }
 
@@ -697,7 +700,8 @@ struct RecommendationsPage: View {
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                 ForEach(pool) { result in
-                    RecommendationTile(result: result)
+                    RecommendationTile(result: result,
+                                       subtitle: PodcastRecommendationsStore.reasonLine(recommendations.reason(for: result)))
                         .recommendationHideMenu(result)
                 }
             }

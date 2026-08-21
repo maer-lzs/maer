@@ -1098,6 +1098,23 @@ Markenfarbe", und genau solche Mischungen beruhigt die Zone; the owner's
 richtiges Vollton-Weinrot am Geraet duerfte das FAVICON sein (dominanter
 Rand → Vollton bleibt). Entscheid am Bild.
 
+### Begruendungszeile zurueck (ff92dde) + Anteils-Messung (aa25708)
+
+**Mechanismus des „gar keine Zeile mehr":** die Podcasts-TAB-Reihe und die
+Vollseite uebergaben NIE eine subtitle — nur Homes Entdecken-Reihe trug die
+Zeile; der Fix-Build hatte damit nichts zu tun. Jetzt EINE Formulierung
+fuer alle Flaechen (`PodcastRecommendationsStore.reasonLine`, Regel 2):
+Autor „Weil du X hoerst" · Kategorie „Weil du X hoerst" (Kategorie-Name) ·
+Charts „Beliebt bei anderen Hoerern" (l10n de) — KEINE Karte ohne Zeile,
+keine luegt (Provenienz je Quelle getrennt, unveraendert).
+**aa25708 gemessen: die Gleichheit ist NICHT tot** — ZEIT-Profil ueber das
+Verzeichnis: alle vier Abo-Feeds tragen itunes:author „DIE ZEIT",
+identisch mit dem Verzeichnis-artist; Suche „DIE ZEIT" liefert 28/30
+Gleichheits-Treffer. Varianten-Matching daher NICHT gebaut (Bedingung des
+Auftrags nicht erfuellt); „ZEIT ONLINE" bleibt ein eigener Verlag mit
+eigener ehrlicher Zeile. Rest-Zeuge fuer SEIN Profil/PI-Pfad: die
+`RECO reasons:`-Logzeile zaehlt je Refresh author/genre/charts.
+
 ### Sport-Familien-Kollaps (973121e, owner decision 1a)
 
 **ANZEIGE-Regel der Genre-Listen** (`RadioGenreFamilies.collapsed`, pur):
