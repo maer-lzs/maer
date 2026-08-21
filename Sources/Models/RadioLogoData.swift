@@ -324,6 +324,8 @@ nonisolated enum RadioLogoData {
         "NDR 1 Welle Nord": "NDR 1 Welle Nord Logo.svg",
         "NDR 2": "NDR 2 Logo.svg",
         "NDR 90,3": "NDR 90,3 Logo.svg",
+        "Life Radio (OÖ)": "LifeRadio LOGO.png",
+        "Life Radio (Tirol)": "LifeRadio LOGO.png",
         "NDR Info": "NDR Info Logo.svg",
         "NDR info": "NDR Info Logo.svg",
         "NHK": "NHK logo 2020.svg",

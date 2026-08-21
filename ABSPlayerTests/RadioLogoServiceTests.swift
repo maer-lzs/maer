@@ -73,6 +73,33 @@ struct RadioLogoCacheTests {
         #expect(kept["radio:rb:preSiblingNo"] == nil)
     }
 
+    /// e0a0788 (v5): the audit caught the runtime P154 stage booking FOREIGN
+    /// marks — and a positive never expires. v5 drops exactly the MEASURED
+    /// files (LIFE magazine, Reset Media), nothing else: no sweep, no
+    /// negative touched, every honest positive stays.
+    @Test func knownForeignMarksAreDroppedOnceAndOnlyThose() {
+        let suite = "radio-logo-v5-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date().timeIntervalSince1970
+        write(["radio:rb:life": Stored(url: nil, resolvedAt: now,
+                                       commonsFile: "LIFE magazine logo.svg"),
+               "radio:rb:reshet": Stored(url: nil, resolvedAt: now,
+                                         commonsFile: "Reset Media.svg"),
+               "radio:rb:ndr": Stored(url: nil, resolvedAt: now,
+                                      commonsFile: "NDR Info Logo.svg"),
+               "radio:rb:touch": Stored(url: "https://a.example/touch.png", resolvedAt: now),
+               "radio:rb:no": Stored(url: nil, resolvedAt: now)], to: defaults)
+        let dropped = RadioLogoService.migratePersisted(defaults: defaults, storedVersion: 4)
+        #expect(dropped == 2)
+        let kept = read(defaults)
+        #expect(kept["radio:rb:life"] == nil)
+        #expect(kept["radio:rb:reshet"] == nil)
+        #expect(kept["radio:rb:ndr"] != nil, "ehrliche Positive bleiben")
+        #expect(kept["radio:rb:touch"] != nil)
+        #expect(kept["radio:rb:no"] != nil, "v4->v5 fasst keine Negative an")
+    }
+
     @Test("bc11ed5: the politeness spacing leaves room for a screen full of tiles")
     func politeSpacing() {
         // The old 1 s came from the MusicBrainz manners; this chain talks to

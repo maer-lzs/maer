@@ -424,8 +424,8 @@ struct RadioStateQueryTests {
         let search = Data("""
         {"search":[{"id":"Q999","label":"Rock am Ring"},{"id":"Q42","label":"ROCK ANTENNE"}]}
         """.utf8)
-        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search, stationName: "Rock Antenne") == "Q42")
-        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search, stationName: "Deutschlandfunk") == nil)
+        #expect(RadioLogoLookup.matchedEntity(fromSearchData: search, stationName: "Rock Antenne")?.id == "Q42")
+        #expect(RadioLogoLookup.matchedEntity(fromSearchData: search, stationName: "Deutschlandfunk") == nil)
         // P154 via the SHARED claim parser.
         let entity = Data("""
         {"entities":{"Q42":{"claims":{"P154":[{"mainsnak":{"datavalue":{"value":"Rock Antenne Logo.svg"}}}]}}}}
@@ -448,11 +448,51 @@ struct RadioStateQueryTests {
                 == ["Sunshine Live - Techno", "Sunshine Live", "Sunshine"])
         #expect(RadioLogoLookup.searchTerms(for: "Hit Radio FFH - 80er")
                 == ["Hit Radio FFH - 80er", "Hit Radio FFH"])
+        // e0a0788: a proper-subset label needs a RADIO word in label or
+        // description — the plain brand stem now travels with its measured
+        // description ("radio station in Germany").
         let search90 = Data("""
-        {"search":[{"id":"Q105475115","label":"90s90s"}]}
+        {"search":[{"id":"Q105475115","label":"90s90s","description":"radio station in Germany"}]}
         """.utf8)
-        #expect(RadioLogoLookup.matchedEntityId(fromSearchData: search90,
-                                                stationName: "90s90s Dance HQ") == "Q105475115")
+        #expect(RadioLogoLookup.matchedEntity(fromSearchData: search90,
+                                              stationName: "90s90s Dance HQ")?.id == "Q105475115")
+    }
+
+    /// e0a0788: the runtime P154 stage PERSISTS, so it carries guards — the
+    /// audit caught it booking the LIFE magazine for Life Radio and Reset
+    /// Media for the Reshet networks. All seven decided cases, verbatim from
+    /// the live search API.
+    @Test("Teilmengen-Label brauchen ein Radio-Wort; die Datei muss das Label tragen")
+    func foreignMarkGuards() {
+        func hit(_ id: String, _ label: String, _ desc: String) -> Data {
+            Data("""
+            {"search":[{"id":"\(id)","label":"\(label)","description":"\(desc)"}]}
+            """.utf8)
+        }
+        // Foreign: a magazine and a TV house sharing the head word.
+        #expect(RadioLogoLookup.matchedEntity(
+            fromSearchData: hit("Q463198", "Life", "American magazine published 1883-2000"),
+            stationName: "Life Radio (OÖ)") == nil)
+        #expect(RadioLogoLookup.matchedEntity(
+            fromSearchData: hit("Q12411482", "Reshet",
+                                "Israeli television broadcasting and production company"),
+            stationName: "Reshet Aleph") == nil)
+        // Legitimate: radio word in the LABEL (Polskie, Sveriges) or in the
+        // DESCRIPTION (90s90s, covered above).
+        #expect(RadioLogoLookup.matchedEntity(
+            fromSearchData: hit("Q1067189", "Polskie Radio",
+                                "Polish national public broadcasting organization"),
+            stationName: "Polskie Radio Białystok")?.id == "Q1067189")
+        #expect(RadioLogoLookup.matchedEntity(
+            fromSearchData: hit("Q1543058", "Sveriges Radio",
+                                "national publicly funded radio broadcaster"),
+            stationName: "Sveriges Radio P4")?.id == "Q1543058")
+        // The file witness: the P154 file must carry the matched label.
+        #expect(!RadioLogoLookup.fileCarriesLabel("Reset Media.svg", label: "Reshet"))
+        #expect(RadioLogoLookup.fileCarriesLabel("Polskie Radio logotyp 2017.svg",
+                                                 label: "Polskie Radio"))
+        #expect(RadioLogoLookup.fileCarriesLabel("Logo Radio harmony.fm.svg",
+                                                 label: "Radio Harmony"))
     }
 
     @Test("e4bd910: display dedupe — variants fold by name+domain, foreigners and siblings never")

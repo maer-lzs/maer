@@ -49,7 +49,19 @@ actor RadioLogoService {
     /// valid for the chain that produced it; when the chain GAINS a stage,
     /// the old negatives must re-try. v4 drops negatives once (positives
     /// stay — a hit is a hit under any chain).
-    private static let storageVersion = 4
+    ///
+    /// v5 (e0a0788): the audit caught the runtime P154 stage booking FOREIGN
+    /// marks (Life Radio → the LIFE magazine logo, the Reshet networks →
+    /// Reset Media) — and a positive never expires. v5 drops exactly the
+    /// MEASURED foreign files once; every other positive stays untouched.
+    private static let storageVersion = 5
+
+    /// The measured foreign marks of the audit run — the v5 drop list. Named
+    /// files, not a heuristic: only what was seen wrong goes.
+    nonisolated static let knownForeignMarks: Set<String> = [
+        "LIFE magazine logo.svg",
+        "Reset Media.svg",
+    ]
     /// Testable mirror of the constant above.
     nonisolated static var currentStorageVersion: Int { storageVersion }
 
@@ -96,6 +108,16 @@ actor RadioLogoService {
                 stored[id] = Stored(url: nil, resolvedAt: entry.resolvedAt, commonsFile: file)
                 changed += 1
             }
+        }
+        // v4 → v5: the measured foreign marks go — targeted, never a sweep.
+        if storedVersion < 5 {
+            let kept = stored.filter { entry in
+                guard let file = entry.value.commonsFile
+                    ?? commonsFileName(fromStoredURL: entry.value.url) else { return true }
+                return !knownForeignMarks.contains(file)
+            }
+            changed += stored.count - kept.count
+            stored = kept
         }
         if let encoded = try? JSONEncoder().encode(stored) {
             defaults.set(encoded, forKey: persistKey)
@@ -459,14 +481,19 @@ actor RadioLogoService {
                 let search = await fetch(searchURL)
                 if case .failed = search { return .failed("wikidata-search") }
                 guard case .data(let searchData) = search,
-                      let entity = RadioLogoLookup.matchedEntityId(fromSearchData: searchData,
-                                                                   stationName: name)
+                      let match = RadioLogoLookup.matchedEntity(fromSearchData: searchData,
+                                                                stationName: name)
                 else { continue }
+                let entity = match.id
                 guard let entityURL = ArtistPortraitLookup.wikidataEntityURL(entity) else { break }
                 let entityResult = await fetch(entityURL)
                 if case .failed = entityResult { return .failed("wikidata-entity") }
                 if case .data(let entityData) = entityResult,
                    let fileName = RadioLogoLookup.p154FileName(fromEntityData: entityData, entity: entity),
+                   // e0a0788: this stage PERSISTS, so it carries the
+                   // generator's name guard — a file answering for a
+                   // different house must fall through, not stick forever.
+                   RadioLogoLookup.fileCarriesLabel(fileName, label: match.label),
                    // width 800, not the portrait default of 400: station
                    // logos are often WIDE wordmarks (DLF Kultur measures
                    // 960×110 — at 400 the render's short side lands at ~46 px

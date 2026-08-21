@@ -53,6 +53,7 @@ nonisolated enum RadioLogoLookup {
         struct Hit: Decodable {
             let id: String?
             let label: String?
+            let description: String?
         }
         let search: [Hit]?
     }
@@ -60,16 +61,46 @@ nonisolated enum RadioLogoLookup {
     /// CONSERVATIVE entity pick — a color tile beats a wrong logo (the
     /// portrait-chain principle): the first hit whose label folds to a
     /// mutual containment with the station name; nothing matching → nil.
-    static func matchedEntityId(fromSearchData data: Data, stationName: String) -> String? {
+    ///
+    /// e0a0788 guard, measured on the seven decided cases (five foreign, two
+    /// legitimate look-alikes): a label that is a PROPER subset of the
+    /// station name proves nothing by text alone — "Life" ⊂ "Life Radio
+    /// (OÖ)" is a magazine, "Reshet" ⊂ "Reshet Aleph" a TV house, while
+    /// "Polskie Radio" ⊂ "Polskie Radio Białystok" is the broadcaster and
+    /// "90s90s" ⊂ "90s90s Dance HQ" the brand. The DISCRIMINATOR the data
+    /// actually carries (measured against the live search API): a radio word
+    /// in the label or the entity DESCRIPTION. Not "broadcast" — Reshet's
+    /// description says "television broadcasting"; Polskie carries its radio
+    /// word in the LABEL, 90s90s in the description ("radio station").
+    static func matchedEntity(fromSearchData data: Data, stationName: String)
+        -> (id: String, label: String)? {
         guard let decoded = try? JSONDecoder().decode(SearchResponse.self, from: data) else { return nil }
         let wanted = fold(stationName)
         guard !wanted.isEmpty else { return nil }
         for hit in decoded.search ?? [] {
             guard let id = hit.id, let label = hit.label else { continue }
             let have = fold(label)
-            if !have.isEmpty, have.contains(wanted) || wanted.contains(have) { return id }
+            guard !have.isEmpty else { continue }
+            if have == wanted { return (id, label) }
+            if wanted.contains(have) {
+                let evidence = have + fold(hit.description ?? "")
+                guard ["radio", "rundfunk", "horfunk"].contains(where: evidence.contains)
+                else { continue }
+                return (id, label)
+            }
+            if have.contains(wanted) { return (id, label) }
         }
         return nil
+    }
+
+    /// e0a0788, the file-level witness (the generator's Namens-Wache, ported
+    /// to the runtime stage that PERSISTS): the P154 file must carry the
+    /// matched label — "Reset Media.svg" does not carry "Reshet", and a
+    /// positive that never expires must not be booked on a file that answers
+    /// for a different house.
+    static func fileCarriesLabel(_ fileName: String, label: String) -> Bool {
+        let foldedLabel = fold(label)
+        return foldedLabel.count >= 4 && fold(fileName).contains(foldedLabel)
     }
 
     private static func fold(_ raw: String) -> String {

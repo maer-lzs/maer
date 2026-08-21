@@ -961,6 +961,26 @@ konvention). 0nlineradio gemessen: Touch-Icon-Origin tot (HTTP 522, zweifach
 bestaetigt) — Klasse „gespeichertes Positiv laedt dauerhaft nicht" als
 Vorschlag gemeldet, nicht gebaut.
 
+### Laufzeit-Wikidata-Waechter + v5 (e0a0788 Punkt 3)
+
+**Regel: jede Stufe, die persistiert, traegt dieselben Waechter wie der
+Generator.** Zwei Waechter an der Laufzeit-P154-Stufe, beide an den SIEBEN
+entschiedenen Faellen gemessen (Live-Suche): (1) `matchedEntity` — ein
+Label, das ECHTE Teilmenge des Sendernamens ist, braucht ein RADIO-Wort in
+Label oder Beschreibung (radio/rundfunk/hoerfunk; NICHT „broadcast" —
+Reshets Beschreibung sagt „television broadcasting"). Life (Magazin) und
+Reshet (TV-Haus) fallen; Polskie Radio (Radio-Wort im LABEL), Sveriges,
+90s90s („radio station" in der BESCHREIBUNG) und exakte Treffer bleiben.
+(2) `fileCarriesLabel` — die P154-Datei muss das gematchte Label tragen
+(„Reset Media.svg" traegt „Reshet" nicht). **v5-Migration:** verwirft
+EINMALIG genau die zwei gemessenen Fremd-Dateien (`knownForeignMarks`:
+LIFE magazine, Reset Media) — kein Sweep, Negative unberuehrt, ehrliche
+Positive bleiben (getestet). Tabellen-Eintraege: beide Life Radios →
+`LifeRadio LOGO.png` (1417×1099, Kategorie „Radio station logos of
+Austria", VRTS-bestaetigt). Die „Reshet-Neins" entstehen natuerlich: die
+Kette laeuft unter den Waechtern sauber durch und bucht den ehrlichen
+No-Hit.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |
