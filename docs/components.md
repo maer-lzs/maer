@@ -819,6 +819,36 @@ Invarianz-Zaun `EnclosureVariantTests`: Varianten kollabieren, verschiedene
 Folgen nie. Restrisiko benannt: ein HOST-Wechsel des CDN ist von der
 Normalisierung nicht gedeckt — dann greift der Titel-Fallback des Imports.
 
+### GT R2 + Diagnose-Befunde (776d548/51ea272)
+
+**Chevron war unterdrueckt, nicht vergessen:** die Meine-Sender-Reihe nutzte
+die `counted`-Variante des RowHeading — Chevron nur bei total > shown, und mit
+zwei Karten (total==shown) verschwand der Einstieg zur Vollseite komplett. Die
+Vollseite EXISTIERTE seit cb2d1ed; unerreichbar ist aber gleich nicht-existent.
+Jetzt `.entry`: der Chevron ist durch die EXISTENZ des Ziels verdient, nicht
+durch eine Zaehlung — diese Seite ist kein „mehr sehen", sie ist das
+Auseinanderdividieren UND der Ort, an dem der ausgelassene Favorit wieder
+auftaucht. **the owner's harte Regel (776d548): jeder markierte Favorit ist in
+hoechstens zwei Tipps erreichbar.** Zaun: die Vollseite zeigt ALLE Favoriten
+des Stores ungefiltert (Store-Menge == Seiten-Menge, Unit-Test auf exakt den
+Vollseiten-Aufruf). Stern bleibt ZEILE in reservierter Hoehe (e1dea2c nahm das
+Overlay zurueck).
+
+**Kern-Faltung vor dem Tabellen-Lookup (51ea272/3):** the owner's Katalog-Eintrag
+heisst „Deutschlandfunk | DLF | AAC 192k" — der rohe Name verfehlte die
+kuratierte Tabelle und fiel zur Kette durch (Schriftzug). `logoURL` faltet den
+Namen jetzt EINGANGS (`RadioMapping.displayName`), damit ein Tabellen-Eintrag
+jede Namens-Variante seines Senders deckt statt genau eine. Tabelle-vor-Speicher
+(e99318f) + Faltung-vor-Tabelle sind zusammen die vollstaendige Reihenfolge.
+
+**Sechser-id (51ea272/2), Werkzeug statt Blindfix:** sechs Sender meldeten
+dasselbe 12-Zeichen-Suffix — `recordPlay` dedupliziert per id, sechs gleiche
+koennen dort nicht liegen, also entscheidet erst die VOLLE id, ob es ein
+geteilter Topf (Buchungs-Bug) oder ein Anzeige-Artefakt ist. Diagnose zeigt
+jetzt volle ids je Karte UND die Topf-Draufsicht (Top-10 secondsPerItem mit
+vollem Schluessel, Sekunden und aufgeloestem Namen). the owner's naechste Kopie
+beantwortet the reviewer's Frage, welches Feld die sechs teilen.
+
 ## Test infrastructure
 
 | Component | Used by | Parameters / variants |

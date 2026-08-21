@@ -313,10 +313,25 @@ struct RadioView: View {
                         case .none: verdict = "zeigt nichts (unter der Stunde)"
                         case .running: verdict = "-"
                         }
-                        hoursBlock += "  \(station.name.prefix(28)): id=\(station.id.suffix(12)) sek=\(s) → \(verdict)\n"
+                        // 51ea272: FULL ids — six stations reported the same
+                        // 12-char suffix, and a truncated id cannot say
+                        // whether that is one shared id (a booking bug) or a
+                        // display artefact. The full string decides.
+                        hoursBlock += "  \(station.name.prefix(28)): id=\(station.id) sek=\(s) → \(verdict)\n"
                     }
                     hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
                         + "Summe \(seconds.values.reduce(0, +)) s\n"
+                    // 51ea272: the POT itself, top entries with FULL keys and
+                    // resolved names — the reviewer's question is what six stations
+                    // booked onto one id, and only the pot can answer which
+                    // id carries whose seconds.
+                    hoursBlock += "  Topf-Draufsicht (Top 10):\n"
+                    for (potId, potSeconds) in seconds.sorted(by: { $0.value > $1.value }).prefix(10) {
+                        let resolved = RadioStore.station(forId: potId)?.name
+                            ?? RadioProvider.shared.sessionStations[potId]?.name
+                            ?? "⟨unaufloesbar⟩"
+                        hoursBlock += "    \(potId) = \(potSeconds) s → \(resolved.prefix(26))\n"
+                    }
                     // 2b7c857: only one of several favorites showed — the
                     // diagnosis answers WHICH favorites the store knows, which
                     // the row shows, and why one is missing (exclusion), so

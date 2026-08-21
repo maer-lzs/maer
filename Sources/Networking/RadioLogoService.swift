@@ -292,6 +292,13 @@ actor RadioLogoService {
 
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
+        // 51ea272 (Kandidat 3 aus 9c7cad0, am Geraet gemessen): the owner's
+        // Katalog-Eintrag heisst "Deutschlandfunk | DLF | AAC 192k" — the raw
+        // name misses the table and falls through to the chain, which serves
+        // the wordmark. The FOLD comes first (the same displayName cut the
+        // rows already use), so a table entry covers every name variant of
+        // its station instead of exactly one.
+        let name = RadioMapping.displayName(name)
         // 9c7cad0: the curated table comes BEFORE every stored result.
         //
         // Measured on the owner's device: the DLF card kept the wordmark on a

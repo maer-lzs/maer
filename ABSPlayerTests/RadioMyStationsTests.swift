@@ -59,6 +59,20 @@ import UIKit
         #expect(row.count == 1)
     }
 
+    /// 776d548 (the owner, hart): KEIN Favorit verschwindet — die Vollseite
+    /// zeigt ALLE Favoriten des Stores, ungefiltert von Auslass-Regel und
+    /// Deckelung. Store-Menge == Vollseiten-Menge ist die Zusicherung; damit
+    /// ist jeder markierte Favorit in hoechstens zwei Tipps erreichbar, den
+    /// Auslass-Fall eingeschlossen.
+    @Test func theFullPageShowsEveryFavoriteUnfiltered() {
+        let favorites = (0..<7).map { station("fav\($0)") }
+        // Exactly the full page's call: no exclusion, no cap.
+        let page = RadioMyStations.composed(favorites: favorites, mostPlayed: [],
+                                            seconds: [:], excluding: nil, limit: .max)
+        #expect(Set(page.map(\.id)) == Set(favorites.map(\.id)),
+                "die Vollseite muss die Store-Menge zeigen — ungefiltert")
+    }
+
     @Test func theRowIsCapped() {
         let many = (0..<20).map { station("s\($0)") }
         #expect(RadioMyStations.composed(favorites: many, mostPlayed: [],

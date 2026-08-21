@@ -502,9 +502,16 @@ struct RadioFeaturedCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let destination {
-                RowHeading<RadioRoute>(title: "", verbatimTitle: title,
-                                       total: total ?? stations.count,
-                                       destination: destination)
+                // 776d548 (GT R2): the chevron is ALWAYS on for this row — the
+                // counted variant hides it when total == shown, and with two
+                // cards that suppressed the whole full page on the owner's device.
+                // This page is not "see more": it is where the two sources
+                // divide again and where an excluded favorite REAPPEARS. His
+                // rule is hard now: every starred favorite is reachable in at
+                // most two taps — without the entry the excluded one is not
+                // relocated, it is GONE. `.entry`: the chevron is earned by
+                // the target's existence, not by a count.
+                RowHeading<RadioRoute>.entry(verbatim: title, destination: destination)
             } else {
                 Text(title).font(.title3).bold().padding(.horizontal)
             }
