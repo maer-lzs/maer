@@ -761,6 +761,29 @@ nonisolated enum AppStorageKeys {
         UserDefaults.standard.integer(forKey: podcastEpisodeLimit(showId))
     }
 
+    // Guarded setters: write + note into the choice family only on a real
+    // change. The settings sheet's `onChange` also fires when `onAppear`
+    // fills the state — an unguarded note there would stamp a fresh event
+    // time on every sheet visit and stomp the other device.
+    @MainActor
+    static func setPodcastInboxMode(_ mode: String, showId: String) {
+        guard podcastInboxModeValue(showId) != mode else { return }
+        UserDefaults.standard.set(mode, forKey: podcastInboxMode(showId))
+        UserChoiceCloudSync.shared.noteScalar(key: podcastInboxMode(showId), value: mode)
+    }
+    @MainActor
+    static func setPodcastNotify(_ enabled: Bool, showId: String) {
+        guard podcastNotifyEnabled(showId) != enabled else { return }
+        UserDefaults.standard.set(enabled, forKey: podcastNotify(showId))
+        UserChoiceCloudSync.shared.noteScalar(key: podcastNotify(showId), value: enabled)
+    }
+    @MainActor
+    static func setPodcastEpisodeLimit(_ limit: Int, showId: String) {
+        guard podcastEpisodeLimitValue(showId) != limit else { return }
+        UserDefaults.standard.set(limit, forKey: podcastEpisodeLimit(showId))
+        UserChoiceCloudSync.shared.noteScalar(key: podcastEpisodeLimit(showId), value: limit)
+    }
+
     /// Derive the show id from a podcast episode id (`rss:<key>:<guid>` →
     /// `rss:<key>`, `abspod:<item>:<ep>` → `abspod:<item>`). Feed key/item id
     /// contain no `:`, so the first two segments are the show id.

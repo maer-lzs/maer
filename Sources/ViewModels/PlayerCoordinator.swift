@@ -271,6 +271,9 @@ final class PlayerCoordinator: ObservableObject {
         attachBookEndHandler(to: newViewModel)
         viewModel = newViewModel
         UserDefaults.standard.set(item.id, forKey: lastItemKey)
+        // Choice family: opening an item IS the user event the standby
+        // pointer travels on (a POINTER — adoption never auto-plays).
+        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: item.id)
         if let carriedSleep { newViewModel.startSleepTimer(minutes: carriedSleep / 60) }
         if autoplay {
             await newViewModel.playWithServerCheck()
@@ -469,5 +472,10 @@ final class PlayerCoordinator: ObservableObject {
         activeItem = nil
         loadError = nil
         UserDefaults.standard.removeObject(forKey: lastItemKey)
+        // Choice family: closing is a deliberate "nothing on standby" — the
+        // tombstone travels. The derived finished-clear in restoreLastSession
+        // deliberately does NOT note: it is mechanics, each device derives it
+        // from the synced numbers itself (adoption carries the same guard).
+        UserChoiceCloudSync.shared.noteScalar(key: lastItemKey, value: nil)
     }
 }

@@ -133,14 +133,51 @@ final class LibraryViewModel: ObservableObject {
     @Published var sortOption: SortOption {
         didSet {
             UserDefaults.standard.set(sortOption.rawValue, forKey: Keys.sortOption)
+            UserChoiceCloudSync.shared.noteScalar(key: Keys.sortOption, value: sortOption.rawValue)
             sortAscending = sortOption.defaultAscending
         }
     }
     @Published var filterOption: FilterOption {
-        didSet { UserDefaults.standard.set(filterOption.rawValue, forKey: Keys.filterOption) }
+        didSet {
+            UserDefaults.standard.set(filterOption.rawValue, forKey: Keys.filterOption)
+            UserChoiceCloudSync.shared.noteScalar(key: Keys.filterOption, value: filterOption.rawValue)
+        }
     }
     @Published var sortAscending: Bool {
-        didSet { UserDefaults.standard.set(sortAscending, forKey: Keys.sortAscending) }
+        didSet {
+            UserDefaults.standard.set(sortAscending, forKey: Keys.sortAscending)
+            UserChoiceCloudSync.shared.noteScalar(key: Keys.sortAscending, value: sortAscending)
+        }
+    }
+
+    @objc private nonisolated func choicesAdopted(_ note: Notification) {
+        let adopted = note.userInfo?["keys"] as? [String] ?? []
+        guard !adopted.isEmpty else { return }
+        Task { @MainActor in
+            guard adopted.contains(where: { [Keys.sortOption, Keys.sortAscending,
+                                             Keys.filterOption].contains($0) }) else { return }
+            self.adoptTravelledSortState()
+        }
+    }
+
+    /// Choice-family adoption: re-read the travelled values. Order matters —
+    /// assigning `sortOption` cascades a default onto `sortAscending`, so the
+    /// direction is applied AFTER the sort kind, never clobbered by it. The
+    /// derived lists recompute on their own (the memo key carries all three).
+    func adoptTravelledSortState() {
+        let defaults = UserDefaults.standard
+        if let raw = defaults.string(forKey: Keys.sortOption),
+           let option = SortOption(rawValue: raw), option != sortOption {
+            sortOption = option
+        }
+        if defaults.object(forKey: Keys.sortAscending) != nil,
+           defaults.bool(forKey: Keys.sortAscending) != sortAscending {
+            sortAscending = defaults.bool(forKey: Keys.sortAscending)
+        }
+        if let raw = defaults.string(forKey: Keys.filterOption),
+           let option = FilterOption(rawValue: raw), option != filterOption {
+            filterOption = option
+        }
     }
 
     private enum Keys {
@@ -199,6 +236,9 @@ final class LibraryViewModel: ObservableObject {
         } else {
             sortAscending = resolvedSortOption.defaultAscending
         }
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(choicesAdopted),
+            name: .userChoicesAdopted, object: nil)
     }
 
     // MARK: - Memoized derived lists

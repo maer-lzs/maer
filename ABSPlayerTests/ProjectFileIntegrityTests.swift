@@ -1360,7 +1360,10 @@ extension ProjectFileIntegrityTests {
     func legacyContentTypeIsNotAnAnswer() throws {
         var offenders: [String] = []
         for file in Self.sourceFiles() {
-            if file.lastPathComponent == "AppStorageKeys.swift" { continue }
+            // The stock itself, and the choice-family CATALOG that classifies
+            // every stored key by name — naming a key is not asking it.
+            if ["AppStorageKeys.swift", "UserChoiceSync.swift"]
+                .contains(file.lastPathComponent) { continue }
             if Self.legacyContentTypeReads(in: try String(contentsOf: file, encoding: .utf8)) > 0 {
                 offenders.append(file.lastPathComponent)
             }

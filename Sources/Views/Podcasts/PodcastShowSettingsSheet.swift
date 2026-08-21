@@ -167,13 +167,13 @@ struct PodcastShowSettingsSheet: View {
                 PodcastAutoDownload.setMode(showId, mode)
             }
             .onChange(of: inboxMode) { _, m in
-                UserDefaults.standard.set(m, forKey: AppStorageKeys.podcastInboxMode(showId))
+                AppStorageKeys.setPodcastInboxMode(m, showId: showId)
             }
             .onChange(of: notify) { _, on in
-                UserDefaults.standard.set(on, forKey: AppStorageKeys.podcastNotify(showId))
+                AppStorageKeys.setPodcastNotify(on, showId: showId)
             }
             .onChange(of: episodeLimit) { _, n in
-                UserDefaults.standard.set(n, forKey: AppStorageKeys.podcastEpisodeLimit(showId))
+                AppStorageKeys.setPodcastEpisodeLimit(n, showId: showId)
                 // Apply immediately so the show page gets leaner right away.
                 Task { await PodcastSubscriptions.shared.trimEpisodes(showId: showId, keepLatest: n) }
             }

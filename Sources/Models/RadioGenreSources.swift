@@ -139,11 +139,132 @@ final class RadioGenreCountrySelection: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         stored = defaults.array(forKey: AppStorageKeys.radioGenreCountryCodes) as? [String]
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(choicesAdopted),
+            name: .userChoicesAdopted, object: nil)
     }
 
     func store(_ codes: [String]) {
         stored = codes
         UserDefaults.standard.set(codes, forKey: AppStorageKeys.radioGenreCountryCodes)
+        UserChoiceCloudSync.shared.noteScalar(
+            key: AppStorageKeys.radioGenreCountryCodes, value: codes)
+    }
+
+    /// Choice-family adoption: re-read the ONE source, so every mounted genre
+    /// page updates in place (the reason this object exists).
+    @objc private nonisolated func choicesAdopted(_ note: Notification) {
+        let adopted = note.userInfo?["keys"] as? [String] ?? []
+        guard !adopted.isEmpty else { return }
+        Task { @MainActor in
+            guard adopted.contains(AppStorageKeys.radioGenreCountryCodes) else { return }
+            self.stored = UserDefaults.standard.array(
+                forKey: AppStorageKeys.radioGenreCountryCodes) as? [String]
+        }
+    }
+}
+
+/// The ONE observed source of the browse-layer country/region choices
+/// ("Popular in …" country, chosen state/canton). Same construction as the
+/// genre selection above: views held private `@State` COPIES read once at
+/// init — two truths, and an adopted foreign choice would never have reached
+/// a mounted page.
+@MainActor
+final class RadioBrowseSelection: ObservableObject {
+    static let shared = RadioBrowseSelection()
+
+    /// The user-chosen state/canton display name; nil = not chosen.
+    @Published private(set) var chosenState: String?
+    /// Explicit country choice (cascade step a).
+    @Published private(set) var chosenCountryCode: String?
+    @Published private(set) var chosenCountryName: String?
+    /// Country implied by the chosen region (cascade step b).
+    @Published private(set) var impliedCountryCode: String?
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        chosenState = defaults.string(forKey: AppStorageKeys.radioRegionState)
+        chosenCountryCode = defaults.string(forKey: AppStorageKeys.radioChosenCountryCode)
+        chosenCountryName = defaults.string(forKey: AppStorageKeys.radioChosenCountryName)
+        impliedCountryCode = defaults.string(forKey: AppStorageKeys.radioRegionCountryCode)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(choicesAdopted),
+            name: .userChoicesAdopted, object: nil)
+    }
+
+    /// Region choice: display name + ALL merged raw query names (derived
+    /// cache, travels as a consequence via `chosenState`) + implied country.
+    func chooseRegion(display: String, queryNames: [String],
+                      impliedCode: String?, impliedName: String?) {
+        chosenState = display
+        defaults.set(display, forKey: AppStorageKeys.radioRegionState)
+        UserChoiceCloudSync.shared.noteScalar(
+            key: AppStorageKeys.radioRegionState, value: display)
+        defaults.set(queryNames, forKey: AppStorageKeys.radioRegionQueryNames)
+        if let impliedCode {
+            impliedCountryCode = impliedCode
+            defaults.set(impliedCode, forKey: AppStorageKeys.radioRegionCountryCode)
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.radioRegionCountryCode, value: impliedCode)
+        }
+        if let impliedName {
+            defaults.set(impliedName, forKey: AppStorageKeys.radioRegionCountryName)
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.radioRegionCountryName, value: impliedName)
+        }
+    }
+
+    func clearRegion() {
+        chosenState = nil
+        defaults.removeObject(forKey: AppStorageKeys.radioRegionState)
+        defaults.removeObject(forKey: AppStorageKeys.radioRegionQueryNames)
+        UserChoiceCloudSync.shared.noteScalar(key: AppStorageKeys.radioRegionState, value: nil)
+    }
+
+    /// Explicit country choice (cascade step a) — clears the old country's
+    /// region, exactly as before.
+    func chooseCountry(code: String, name: String) {
+        chosenCountryCode = code
+        chosenCountryName = name
+        defaults.set(code, forKey: AppStorageKeys.radioChosenCountryCode)
+        defaults.set(name, forKey: AppStorageKeys.radioChosenCountryName)
+        UserChoiceCloudSync.shared.noteScalar(
+            key: AppStorageKeys.radioChosenCountryCode, value: code)
+        UserChoiceCloudSync.shared.noteScalar(
+            key: AppStorageKeys.radioChosenCountryName, value: name)
+        chosenState = nil
+        impliedCountryCode = nil
+        for key in [AppStorageKeys.radioRegionState, AppStorageKeys.radioRegionQueryNames,
+                    AppStorageKeys.radioRegionCountryCode, AppStorageKeys.radioRegionCountryName] {
+            defaults.removeObject(forKey: key)
+        }
+        for key in [AppStorageKeys.radioRegionState, AppStorageKeys.radioRegionCountryCode,
+                    AppStorageKeys.radioRegionCountryName] {
+            UserChoiceCloudSync.shared.noteScalar(key: key, value: nil)
+        }
+    }
+
+    #if DEBUG
+    /// Harness seed: state only, deliberately unpersisted and never noted.
+    func seedRegion(_ display: String) {
+        chosenState = display
+    }
+    #endif
+
+    @objc private nonisolated func choicesAdopted(_ note: Notification) {
+        let adopted = note.userInfo?["keys"] as? [String] ?? []
+        guard !adopted.isEmpty else { return }
+        Task { @MainActor in
+            let mine = [AppStorageKeys.radioRegionState, AppStorageKeys.radioChosenCountryCode,
+                        AppStorageKeys.radioChosenCountryName, AppStorageKeys.radioRegionCountryCode]
+            guard adopted.contains(where: { mine.contains($0) }) else { return }
+            self.chosenState = self.defaults.string(forKey: AppStorageKeys.radioRegionState)
+            self.chosenCountryCode = self.defaults.string(forKey: AppStorageKeys.radioChosenCountryCode)
+            self.chosenCountryName = self.defaults.string(forKey: AppStorageKeys.radioChosenCountryName)
+            self.impliedCountryCode = self.defaults.string(forKey: AppStorageKeys.radioRegionCountryCode)
+        }
     }
 }
 

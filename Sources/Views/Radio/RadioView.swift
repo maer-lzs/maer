@@ -37,20 +37,19 @@ struct RadioView: View {
     /// empty text advised searching a catalog that had simply not arrived.
     @State private var discoveryFailed = false
     private let localeCode = RadioCatalog.deviceRegionCode()
-    /// The ONE user-chosen state (persisted); nil = not chosen yet. Plain
-    /// state + manual defaults I/O (an optional-String @AppStorage misbehaved
-    /// in the harness bisect).
-    @State private var chosenState: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionState)
+    /// The browse-layer choices live in the ONE observed source — private
+    /// `@State` copies were two truths (the R6 class), and an adopted foreign
+    /// choice would never have reached a mounted page.
+    @ObservedObject private var browseSelection = RadioBrowseSelection.shared
+    private var chosenState: String? { browseSelection.chosenState }
+    private var chosenCountryCode: String? { browseSelection.chosenCountryCode }
+    private var chosenCountryName: String? { browseSelection.chosenCountryName }
+    private var impliedCountryCode: String? { browseSelection.impliedCountryCode }
     /// Curated picker list (b942da6): merged variants, noise filtered,
     /// sorted by station count.
     @State private var availableStates: [RadioBrowseCuration.Curated] = []
     @State private var showRegionPicker = false
     @State private var showCountryPicker = false
-    /// b1ab99d cascade: explicit country choice (a) and the country implied
-    /// by the chosen region (b); locale stays the last fallback (c).
-    @State private var chosenCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryCode)
-    @State private var chosenCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioChosenCountryName)
-    @State private var impliedCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioRegionCountryCode)
     /// P12: the NATIONAL row's own country — independent of the region.
     @State private var nationalCountryCode: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryCode)
     @State private var nationalCountryName: String? = UserDefaults.standard.string(forKey: AppStorageKeys.radioNationalCountryName)
@@ -209,6 +208,20 @@ struct RadioView: View {
         .task(id: "\(isActive)-\(playerCoordinator.activeItem?.id ?? "")") {
             reload()
             await loadDiscovery()
+        }
+        // Choice-family adoption: foreign favorites refill "My Stations",
+        // foreign browse choices re-query the affected rows in place.
+        .onReceive(NotificationCenter.default.publisher(for: .userChoicesAdopted)) { note in
+            guard let keys = note.userInfo?["keys"] as? [String] else { return }
+            if keys.contains("radioFavorites") { reload() }
+            let browseKeys = [AppStorageKeys.radioRegionState,
+                              AppStorageKeys.radioChosenCountryCode,
+                              AppStorageKeys.radioRegionCountryCode]
+            if keys.contains(where: { browseKeys.contains($0) }) {
+                regional = []
+                availableStates = []
+                Task { await loadDiscovery(force: true) }
+            }
         }
         // b1ab99d: region picker as a sheet (search field + country layer).
         .sheet(isPresented: $showCountryPicker) {
@@ -510,9 +523,7 @@ struct RadioView: View {
                         browseCardScroller(stations: regional)
                     }
                     Button {
-                        self.chosenState = nil
-                        UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionState)
-                        UserDefaults.standard.removeObject(forKey: AppStorageKeys.radioRegionQueryNames)
+                        browseSelection.clearRegion()
                         regional = []
                         // Refill the picker list immediately — without this the
                         // section went DEAD until restart (confirmed regression).
@@ -556,16 +567,9 @@ struct RadioView: View {
     }
 
     private func chooseRegion(_ entry: RadioBrowseCuration.Curated) {
-        chosenState = entry.display
-        UserDefaults.standard.set(entry.display, forKey: AppStorageKeys.radioRegionState)
-        UserDefaults.standard.set(entry.queryNames, forKey: AppStorageKeys.radioRegionQueryNames)
-        if let code = regionEffectiveCode {
-            impliedCountryCode = code
-            UserDefaults.standard.set(code, forKey: AppStorageKeys.radioRegionCountryCode)
-        }
-        if let name = effectiveCountryName {
-            UserDefaults.standard.set(name, forKey: AppStorageKeys.radioRegionCountryName)
-        }
+        browseSelection.chooseRegion(display: entry.display, queryNames: entry.queryNames,
+                                     impliedCode: regionEffectiveCode,
+                                     impliedName: effectiveCountryName)
         showRegionPicker = false
         Task { await loadDiscovery(force: true) }
     }
@@ -573,17 +577,7 @@ struct RadioView: View {
     /// Explicit country choice (cascade step a): persists, clears the old
     /// country's region choice and refills the picker list.
     private func chooseCountry(code: String, name: String) {
-        chosenCountryCode = code
-        chosenCountryName = name
-        UserDefaults.standard.set(code, forKey: AppStorageKeys.radioChosenCountryCode)
-        UserDefaults.standard.set(name, forKey: AppStorageKeys.radioChosenCountryName)
-        // The old country's region makes no sense anymore.
-        chosenState = nil
-        impliedCountryCode = nil
-        for key in [AppStorageKeys.radioRegionState, AppStorageKeys.radioRegionQueryNames,
-                    AppStorageKeys.radioRegionCountryCode, AppStorageKeys.radioRegionCountryName] {
-            UserDefaults.standard.removeObject(forKey: key)
-        }
+        browseSelection.chooseCountry(code: code, name: name)
         regional = []
         availableStates = []
         Task { await loadDiscovery(force: true) }
@@ -622,7 +616,7 @@ struct RadioView: View {
             // counts as applied, else the re-choose fires on the next run.
             if chosenState != nil { seedRegionApplied = true }
             if chosenState == nil, !seedRegionApplied {
-                chosenState = "Seed Region"
+                browseSelection.seedRegion("Seed Region")
                 seedRegionApplied = true
             }
             availableStates = [

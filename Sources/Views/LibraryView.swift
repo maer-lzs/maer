@@ -523,7 +523,9 @@ struct LibraryView: View {
             // Same switch, same store, same moment — the playlists travel with
             // the podcast progress or not at all.
             MaerPlaylistCloudSync.shared.start()
-            PremiumClassificationCloudSync.shared.start()
+            // The travelling user choices (sorts, browse choices, favorites,
+            // per-show settings, …) — one mechanism, same switch.
+            UserChoiceCloudSync.shared.start()
             // d990695 (4): one-off backfill — the addresses already
             // configured move into the register, so the memory is not empty
             // on the first launch after the update.

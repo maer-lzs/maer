@@ -95,7 +95,11 @@ struct MusicAlbumsPage: View {
             vm.sort = musicSort
             await vm.loadIfNeeded()
         }
+        // Choice family: same key as MusicView — the double note is absorbed
+        // by the equal-value guard.
         .onChange(of: musicSort) { _, newSort in
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.musicSortOption, value: newSort.rawValue)
             Task { await vm.setSort(newSort) }
         }
     }

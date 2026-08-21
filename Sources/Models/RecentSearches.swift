@@ -15,7 +15,11 @@ nonisolated enum RecentSearches {
         defaults.stringArray(forKey: storageKey) ?? []
     }
 
-    /// Most-recent-first, case-insensitive dedupe, capped.
+    /// Most-recent-first, case-insensitive dedupe, capped. MainActor: an
+    /// executed search is a user statement — it notes into the choice family.
+    /// Cap eviction deliberately does NOT note a removal (only explicit
+    /// remove/clear are tombstones; eviction is re-derived on read).
+    @MainActor
     static func record(_ term: String, defaults: UserDefaults = .standard) {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return }
@@ -23,15 +27,21 @@ nonisolated enum RecentSearches {
         terms.removeAll { $0.compare(trimmed, options: .caseInsensitive) == .orderedSame }
         terms.insert(trimmed, at: 0)
         defaults.set(Array(terms.prefix(cap)), forKey: storageKey)
+        UserChoiceCloudSync.shared.noteSearch(trimmed, removed: false)
     }
 
+    @MainActor
     static func remove(_ term: String, defaults: UserDefaults = .standard) {
         var terms = list(defaults: defaults)
         terms.removeAll { $0 == term }
         defaults.set(terms, forKey: storageKey)
+        UserChoiceCloudSync.shared.noteSearch(term, removed: true)
     }
 
+    @MainActor
     static func clear(defaults: UserDefaults = .standard) {
+        let terms = list(defaults: defaults)
         defaults.removeObject(forKey: storageKey)
+        UserChoiceCloudSync.shared.noteSearchesCleared(terms)
     }
 }

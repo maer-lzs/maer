@@ -962,6 +962,9 @@ final class PlayerViewModel: NSObject, ObservableObject {
         // Remember per book.
         if let item {
             UserDefaults.standard.set(rate, forKey: AppStorageKeys.playbackRate(item.id))
+            // Choice family: "this title at 1.25×" is a content judgement.
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.playbackRate(item.id), value: Double(rate))
         }
     }
 

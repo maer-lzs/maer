@@ -68,6 +68,12 @@ struct MusicView: View {
         // the content) — like the podcast + audiobook tabs — so the scroll
         // stays full-bleed and the content scrolls UNDER the glass bar.
         ScrollView { content.bottomBarClearance() }
+            // Choice family: the album sort is a user statement (equal-value
+            // guard absorbs the adoption echo and the sibling surface).
+            .onChange(of: musicSort) { _, new in
+                UserChoiceCloudSync.shared.noteScalar(
+                    key: AppStorageKeys.musicSortOption, value: new.rawValue)
+            }
             // S17: bind the Music tab to the shared BottomBarState like
             // the other tabs — without this its scroll never reported, so
             // the bar stayed expanded (heavy/opaque look) and never

@@ -951,6 +951,17 @@ struct PodcastSubscriptionsPage: View {
         }
         .navigationTitle(Text("Recently Updated"))
         .navigationBarTitleDisplayMode(.inline)
+        // Choice family: a changed sort/filter is a user statement. The
+        // adoption echo re-fires this too — the equal-value guard in the note
+        // keeps it from re-stamping.
+        .onChange(of: podcastSort) { _, new in
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.podcastSortOption, value: new.rawValue)
+        }
+        .onChange(of: podcastFilter) { _, new in
+            UserChoiceCloudSync.shared.noteScalar(
+                key: AppStorageKeys.podcastFilterOption, value: new.rawValue)
+        }
         .task(id: "\(podcastSort.rawValue)-\(podcastFilter.rawValue)-\(subs.shows.count)") {
             let shows = allShows
             let snapshot = PodcastSections.snapshot(shows: shows)

@@ -59,6 +59,7 @@ enum ContinueHiddenStore {
     static func hide(id: String, lastUpdate: Double, defaults: UserDefaults = .standard) {
         let next = ContinueHidden.hiding(id: id, lastUpdate: lastUpdate, in: markers(defaults: defaults))
         defaults.set(next, forKey: key)
+        UserChoiceCloudSync.shared.noteHidden(id: id, marker: next[id])
         NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
     }
 
@@ -66,6 +67,7 @@ enum ContinueHiddenStore {
         var next = markers(defaults: defaults)
         next.removeValue(forKey: id)
         defaults.set(next, forKey: key)
+        UserChoiceCloudSync.shared.noteHidden(id: id, marker: nil)
         NotificationCenter.default.post(name: .continueHiddenChanged, object: nil)
     }
 

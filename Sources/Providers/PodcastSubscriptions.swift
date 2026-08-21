@@ -362,12 +362,10 @@ final class PodcastSubscriptions: ObservableObject {
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.blockedFeedKeys)
         Logger.rss.notice("PREMIUM feed-blocked signal: \(maskedFeedURL(feedURL), privacy: .public)")
         // P2 (2): a block signal is a statement about the FEED, not about
-        // this device — it travels with the classification channel.
+        // this device — it travels with the choice family.
         let key = feedKey(feedURL)
         Task { @MainActor in
-            let sync = PremiumClassificationCloudSync.shared
-            sync.noteAddition(key, from: AppStorageKeys.blockedFeedKeys)
-            sync.reconcile()
+            UserChoiceCloudSync.shared.noteFeedBlock(key)
         }
     }
 
@@ -417,13 +415,10 @@ final class PodcastSubscriptions: ObservableObject {
         let key = feedKey(feedURL)
         if marked { keys.insert(key) } else { keys.remove(key) }
         defaults.set(Array(keys).sorted(), forKey: AppStorageKeys.premiumMarkedFeeds)
-        // P2 (2): the statement travels — an un-marking as its own signal,
-        // so the union on the other device cannot resurrect it.
+        // P2 (2): the statement travels — an un-marking as its own tombstone,
+        // so the other device cannot resurrect it.
         Task { @MainActor in
-            let sync = PremiumClassificationCloudSync.shared
-            if marked { sync.noteAddition(key, from: AppStorageKeys.premiumMarkedFeeds) }
-            else { sync.noteRemoval(key, from: AppStorageKeys.premiumMarkedFeeds) }
-            sync.reconcile()
+            UserChoiceCloudSync.shared.notePremiumMark(key, marked: marked)
         }
     }
 

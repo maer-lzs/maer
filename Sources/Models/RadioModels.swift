@@ -370,13 +370,26 @@ nonisolated enum RadioStore {
         favorites(defaults: defaults).contains { $0.id == id }
     }
 
+    /// MainActor: toggling is a user statement — it notes into the choice
+    /// family (event time, tombstone on removal). All callers are UI.
+    @MainActor
     static func toggleFavorite(_ station: RadioStation, defaults: UserDefaults = .standard) {
         var list = favorites(defaults: defaults)
+        let removed: Bool
         if let idx = list.firstIndex(where: { $0.id == station.id }) {
             list.remove(at: idx)
+            removed = true
         } else {
             list.append(station)
+            removed = false
         }
+        save(list, favoritesKey, defaults: defaults)
+        UserChoiceCloudSync.shared.noteFavorite(station, added: !removed)
+    }
+
+    /// Adoption path of the choice family — replaces the list WITHOUT noting
+    /// (a reconcile is not a user action).
+    static func replaceFavorites(_ list: [RadioStation], defaults: UserDefaults = .standard) {
         save(list, favoritesKey, defaults: defaults)
     }
 

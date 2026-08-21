@@ -500,7 +500,7 @@ struct SettingsView: View {
                     PodcastCloudSync.shared.start()
                     ListeningStatsStore.shared.start()
                     MaerPlaylistCloudSync.shared.start()
-                    PremiumClassificationCloudSync.shared.start()
+                    UserChoiceCloudSync.shared.start()
                 }
             }
             // The failure that was invisible: when the shared budget is
