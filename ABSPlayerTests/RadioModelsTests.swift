@@ -446,6 +446,14 @@ struct RadioStateQueryTests {
         """
         #expect(RadioLogoLookup.extractTouchIcon(html: sized, baseURL: base)?.absoluteString
                 == "https://www.rockantenne.de/i/a-152.png")
+        // A sizeless tag is the modern default (large) — it must beat a
+        // legacy small declaration, not lose to it.
+        let mixed = """
+        <link rel="apple-touch-icon" sizes="57x57" href="/i/a-57.png">
+        <link rel="apple-touch-icon" href="/i/a-default.png">
+        """
+        #expect(RadioLogoLookup.extractTouchIcon(html: mixed, baseURL: base)?.absoluteString
+                == "https://www.rockantenne.de/i/a-default.png")
         #expect(RadioLogoLookup.extractTouchIcon(html: "<head></head>", baseURL: base) == nil)
         #expect(RadioLogoLookup.conventionTouchIconURL(homepage: base)?.absoluteString
                 == "https://www.rockantenne.de/apple-touch-icon.png")

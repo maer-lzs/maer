@@ -135,7 +135,10 @@ nonisolated enum RadioLogoLookup {
             let href = String(after[..<end])
             guard let url = URL(string: href, relativeTo: baseURL)?.absoluteURL,
                   url.scheme?.hasPrefix("http") == true else { continue }
-            var declared = 0
+            // A tag WITHOUT a sizes attribute is Apple's modern default and
+            // by convention large (180) — scoring it 0 would let a legacy
+            // sizes="57x57" beat it, the very class this fix kills.
+            var declared = 180
             if let sizesRange = tag.range(of: "sizes=\"", options: .caseInsensitive) {
                 let tail = tag[sizesRange.upperBound...]
                 declared = Int(tail.prefix(while: \.isNumber)) ?? 0
