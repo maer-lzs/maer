@@ -298,6 +298,7 @@ components rather than forking them.
 | Component | Used by (file · context) | Parameters / variants |
 |---|---|---|
 | `CoverGrid` | MusicView (albums) · MusicBrowseViews (artist albums) · BookGridComponents (browse grid) | `columns, @ViewBuilder content`; `LazyVGrid` leading, spacing 20 |
+| `MeasuredFits` | PlayerView `regularSecondaryControls` (HStack vs 2×2-Grid) · `tertiaryControls` (labeled vs iconOnly) | ViewThatFits-Ersatz fuer Kandidaten mit isoliertem Zustand (4b2f7a8-Klasse): die Voll-Variante wird als unsichtbare background-Probe auf MAIN gemessen (`onGeometryChange`, echte gerenderte Breite — keine Rechnung), nur der gewaehlte Zweig wird gebaut; Kompakt zuerst bis gemessen. Zaun: kein ViewThatFits ausserhalb der zwei Leisten |
 | `PodcastSubscribeBadge` | `RecommendationTile` corner slot · PodcastShowPreviewView (statics) | `feedURL`; check when subscribed / spinner / "+" subscribes (ABS server when active, else local + gpodder push) and drops the feed from the recommendations pool. Big sibling `PodcastSubscribeButton` (same statics, capsule with label) is the preview page's prominent subscribe control |
 | `RecommendationTile` | HomeView (Discover row) · PodcastsView (Recommended row) | `result, subtitle?, width=140`; `MediaTile` + subscribe corner control; tap → `PodcastRoute.showPreview` (temporary preview: catalog seed + live RSS fetch, nothing persisted until subscribed) |
 | `DownloadInstallRing` | BookGridCell (BookGridComponents) | `itemId, tileWidth=180, lineWidth=3`; progress ring + cancel over the cover (grid tiles) |
@@ -718,11 +719,19 @@ beruehrt, ist nonisolated (`MediaType`, `TabBarMetrics`, gespeicherte Kopien;
 `viewThatFitsCandidatesAreNonisolated` (Quell-Scan, AppSwitch-Klasse — die
 Typen sind privat, die Quellzeile ist die pruefbare Flaeche). Gemessen: der
 Sim faehrt den AsyncRenderer NICHT (Thread fehlt im sample, auch unter
-plausiblen Schaltern) — die Abnahme bleibt das Geraet. **Offene Geschwister
-derselben Klasse:** `PlayerView.swift` regularSecondaryControls +
-tertiaryControls (Inline-Kandidaten, capturen self mit viewModel-gebundenen
-Controls) — datenreine Extraktion ist dort ein eigener Umbau, als Paket
-vorgeschlagen, nicht still angefasst.
+plausiblen Schaltern) — die Abnahme bleibt das Geraet. **Geschwister GESCHLOSSEN
+(e0a0788):** `PlayerView` regularSecondaryControls + tertiaryControls nutzen
+`MeasuredFits` — die ENTSCHEIDUNG ist aus ViewThatFits heraus: die
+Voll-Variante wird als unsichtbare background-Probe auf dem MAIN-Renderpfad
+gemessen (echte gerenderte Breite, NIE eine Rechnung — die Leisten-Lehre
+gilt), nur der gewaehlte Zweig wird gebaut; niemand misst isolierte bodies.
+Bis beide Breiten bekannt sind zeigt der Kompakt-Zweig (passt immer), das
+Upgrade landet in den ersten Layout-Paessen. Journey-Zeuge:
+`testPlayerRowFullGerman` (deutscher Worst-Case ⇒ EINE beschriftete Reihe).
+**Klassen-Zaun `viewThatFitsStaysInTheFencedBars`:** ViewThatFits existiert
+nur noch in den zwei Leisten-Dateien (nonisolated-Kandidaten, oben gezaeunt);
+jede neue Stelle faellt namentlich durch — MeasuredFits nehmen oder
+nonisolated bauen und die Liste erweitern.
 
 ### GT R6/R7b: beobachtete Auswahl-Quelle, Cancel ist kein Fehler, Weltweit hat zwei Toepfe
 

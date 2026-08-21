@@ -66,6 +66,27 @@ import UIKit
                     "\(type) in \(file) muss nonisolated deklariert sein — ViewThatFits misst seinen body off-main (4b2f7a8)")
         }
     }
+
+    /// e0a0788: the CLASS fence. ViewThatFits measures candidate bodies on
+    /// the AsyncRenderer — any candidate touching isolated state is the
+    /// tab-bar bomb again (three device crashes). Only the two bars carry it,
+    /// with nonisolated data-pure candidates (fenced above); everything else
+    /// uses `MeasuredFits`, which decides on the main render path. A new
+    /// ViewThatFits anywhere else fails here by name.
+    @Test func viewThatFitsStaysInTheFencedBars() throws {
+        let sources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources")
+        let allowed: Set<String> = ["MediaTabBar.swift", "SettingsView.swift"]
+        let enumerator = FileManager.default.enumerator(at: sources,
+                                                        includingPropertiesForKeys: nil)!
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            guard !allowed.contains(url.lastPathComponent) else { continue }
+            let text = try String(contentsOf: url, encoding: .utf8)
+            #expect(!text.contains("ViewThatFits("),
+                    "\(url.lastPathComponent): ViewThatFits misst isolierte bodies off-main (4b2f7a8) — MeasuredFits nehmen, oder nonisolated-Kandidaten bauen und diese Liste erweitern")
+        }
+    }
 }
 
 #endif

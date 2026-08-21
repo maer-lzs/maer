@@ -714,13 +714,17 @@ struct PlayerView: View {
     private var hasChapterEntry: Bool { !viewModel.chapters.isEmpty }
 
     private var regularSecondaryControls: some View {
-        ViewThatFits(in: .horizontal) {
+        // 4b2f7a8/e0a0788: MeasuredFits, not ViewThatFits — these controls
+        // carry live viewModel bindings, and ViewThatFits would evaluate
+        // their bodies on the AsyncRenderer (the tab-bar crash, same bomb).
+        MeasuredFits {
             HStack(spacing: 32) {
                 speedControl
                 if hasChapterEntry { chaptersControl }
                 skipIntervalControl
                 sleepControl
             }
+        } compact: {
             Grid(alignment: .leading, horizontalSpacing: 24, verticalSpacing: 12) {
                 GridRow {
                     speedControl
@@ -824,10 +828,13 @@ struct PlayerView: View {
     /// G8-gated entries missing (no lyrics/transcript), labels usually fit.
     private var tertiaryControls: some View {
         VStack(spacing: 18) {
-            ViewThatFits(in: .horizontal) {
+            // 4b2f7a8/e0a0788: MeasuredFits, not ViewThatFits — same bomb as
+            // the secondary row, same cure.
+            MeasuredFits {
                 HStack(spacing: 36) {
                     extrasItems
                 }
+            } compact: {
                 HStack(spacing: 28) {
                     extrasItems
                 }
