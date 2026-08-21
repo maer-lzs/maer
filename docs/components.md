@@ -438,7 +438,7 @@ Lied wird nicht fortgesetzt, es wird neu gespielt).
 
 **Eigener Befund am Schreibweg:** der Rumpf ging als `[String: String]` hinaus, also `{"PlaybackPositionTicks":"900000000","Played":"true"}` — Zeichenketten statt Zahl und Wahrheitswert. Ein Server, der ein falsch typisiertes Feld ignoriert, tut das WORTLOS. Jetzt typisiert (`UserDataWrite`), mit Zaun auf die kodierten Bytes. **Offen und nur am echten Server pruefbar: ob `isFinished: true` tatsaechlich `Played: true` erzeugt** — the operator sah in allen Antworten `false`, hat den Fertig-Fall aber nicht gefahren.
 
-**Kein Haekchen**, solange der Fertig-Fall offen ist. Frueher stand hier: Abnahme verlangt die Demo-Instanz (Zugang im Secrets-Store),
+**Fertig-Fall GEMESSEN (21.08., ueber the operator's Tuer, auf dem Tiny gefahren):** typisierter Rumpf `{\"PlaybackPositionTicks\":0,\"Played\":true}` → HTTP 200, zurueckgelesen `Played: True`. **Und die Gegenprobe schaerft den Zeichenketten-Fund:** der ALTE Rumpf (`\"Played\":\"false\"` als String) wird mit **HTTP 400 abgelehnt** — der Server ignorierte nie still, er wies zurueck, und unser `try?` verschluckte den Fehler. the operator's durchgehendes `Played: false` war also unser 400, nicht sein Unvermoegen. Testeintrag zurueckgesetzt (Played:false, Ticks:0). Haekchen-Empfehlung an the reviewer raus. Frueher stand hier: Abnahme verlangt die Demo-Instanz (Zugang im Secrets-Store),
 und die ist von hier aus nicht erreichbar. **Kein Haekchen in der Matrix**,
 bevor der Hoerstand am echten Server hin UND zurueck getragen hat — die Tests
 belegen die Abbildung gegen die gemessenen Wire-Antworten, nicht den Server.
