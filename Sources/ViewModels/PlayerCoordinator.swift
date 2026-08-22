@@ -493,13 +493,15 @@ final class PlayerCoordinator: ObservableObject {
         return nil
     }
 
-    /// R30: the standby follows the fresh truth WITHOUT an app restart — a
-    /// fresher foreign pointer swaps the paused mini player, a held pointer
-    /// that turned finished clears it. Never touches an active or user-touched
-    /// session, never auto-plays. The finished-clear stays silent mechanics
-    /// (each device derives it; the adoption guard is the cloud-side twin).
+    /// R30 under the MIRROR decision: two devices at rest show the SAME piece
+    /// within one reconcile beat — a fresher foreign pointer swaps the paused
+    /// mini player (the choice family already decided by event time; the
+    /// mirror follows), a held pointer that turned finished clears it. Only a
+    /// PLAYING session is untouchable (it claims, and its own open-note wins
+    /// the merge anyway). Never auto-plays. The finished-clear stays silent
+    /// mechanics (each device derives it; the adoption guard is the twin).
     func refreshStandbyFromTruth() async {
-        if let vm = viewModel, vm.isPlaying || vm.eventSinceLoad { return }
+        if let vm = viewModel, vm.isPlaying { return }
         let stored = UserDefaults.standard.string(forKey: lastItemKey)
         if let held = activeItem?.id {
             if stored == held {

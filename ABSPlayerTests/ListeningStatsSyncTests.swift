@@ -324,3 +324,29 @@ struct RadioLogoReportTests {
         #expect(!PlayerCoordinator.standbyCountsAsFinished(durationless))
     }
 }
+
+/// The diagnosis pot list never reports the own device as foreign — measured
+/// on both real devices ("fremde Töpfe: 2" with exactly two devices): the
+/// merge rule skipped the own mirror, the overview did not.
+@Suite struct ForeignPotOverviewTests {
+
+    @Test("the own pot never appears in the foreign list")
+    func ownPotIsSkipped() {
+        let pots = [
+            "device-phone": ListeningStatsData(secondsPerDay: ["2026-08-22": 100],
+                                               secondsPerItem: ["radio:rb:x": 60]),
+            "device-pad": ListeningStatsData(secondsPerDay: ["2026-08-22": 200]),
+        ]
+        let list = ListeningStatsSync.overview(pots: pots, ownDeviceId: "device-phone")
+        #expect(list.map(\.device) == ["device-pad"])
+        #expect(list.first?.daySeconds == 200)
+        #expect(list.first?.radioSeconds == 0)
+    }
+
+    @Test("a genuinely foreign orphan pot stays visible")
+    func orphanStaysVisible() {
+        let pots = ["device-old": ListeningStatsData(secondsPerDay: ["2026-01-01": 50])]
+        let list = ListeningStatsSync.overview(pots: pots, ownDeviceId: "device-new")
+        #expect(list.map(\.device) == ["device-old"])
+    }
+}

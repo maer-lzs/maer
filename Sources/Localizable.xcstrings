@@ -5385,7 +5385,7 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Läuft gerade auf einem anderen Gerät"
+            "value" : "Läuft auf anderem Gerät"
           }
         }
       }

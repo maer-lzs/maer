@@ -52,6 +52,21 @@ nonisolated enum ListeningStatsSync {
     /// local file, and adding both would count this device twice. That is the
     /// double-counting the whole per-device design exists to prevent, and it
     /// would be invisible: the number would just be too large.
+    /// The diagnosis line's pot list. The pots dictionary holds ALL cloud
+    /// pots INCLUDING the own mirror (the merge rule skips it) — this list
+    /// must skip it too, or every device reports itself as a foreign pot
+    /// (measured on both devices: "fremde Töpfe: 2" with two devices).
+    static func overview(pots: [String: ListeningStatsData], ownDeviceId: String)
+        -> [(device: String, daySeconds: Int, radioSeconds: Int)] {
+        pots.filter { $0.key != ownDeviceId }.map { entry in
+            (device: entry.key,
+             daySeconds: entry.value.secondsPerDay.values.reduce(0, +),
+             radioSeconds: entry.value.secondsPerItem
+                 .filter { ListeningClasses.isLive($0.key) }.values.reduce(0, +))
+        }
+        .sorted { $0.device < $1.device }
+    }
+
     static func merged(local: ListeningStatsData,
                        ownDeviceId: String,
                        foreign: [String: ListeningStatsData]) -> ListeningStatsData {

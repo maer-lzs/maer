@@ -107,14 +107,36 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         }
     }
 
-    /// Stable per-install device id (persistent random UUID — portable to
-    /// non-Apple platforms, unlike identifierForVendor).
-    static var deviceId: String {
+    /// Stable device id (persistent random UUID — portable to non-Apple
+    /// platforms, unlike identifierForVendor). Keychain-first: the cloud pots
+    /// are keyed by this id and grow forever, so a REINSTALL must keep the
+    /// identity — otherwise every reinstall orphans the old pot as a ghost
+    /// no device can ever claim again. The defaults copy stays as a fast
+    /// mirror and as the migration source for existing installs (their
+    /// current id moves INTO the keychain, nothing rotates).
+    /// Memoized: the resolution chain (defaults → keychain migration → mint)
+    /// runs ONCE per process. deviceId is read hot — every diagnosis line,
+    /// every claim poll, the mini player's per-second subtitle body — and a
+    /// keychain round trip (IPC to securityd) per read is measurable load.
+    static let deviceId: String = {
+        // ThisDeviceOnly: the id must survive a reinstall ON THIS DEVICE but
+        // must never travel to a second device through a backup restore —
+        // two devices sharing one pot id would silently corrupt the sums.
+        let accessible = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         if let existing = UserDefaults.standard.string(forKey: "syncHistoryDeviceId") {
+            if KeychainStore.load(forKey: "syncHistoryDeviceId") == nil {
+                KeychainStore.save(existing, forKey: "syncHistoryDeviceId",
+                                   accessible: accessible)
+            }
             return existing
+        }
+        if let kept = KeychainStore.load(forKey: "syncHistoryDeviceId") {
+            UserDefaults.standard.set(kept, forKey: "syncHistoryDeviceId")
+            return kept
         }
         let fresh = UUID().uuidString
         UserDefaults.standard.set(fresh, forKey: "syncHistoryDeviceId")
+        KeychainStore.save(fresh, forKey: "syncHistoryDeviceId", accessible: accessible)
         return fresh
-    }
+    }()
 }

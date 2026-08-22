@@ -48,8 +48,8 @@ struct StandbyLiveRefreshTests {
         #expect(defaults.string(forKey: AppStorageKeys.lastPlayedItemId) == nil)
     }
 
-    @Test("An active or user-touched session is never torn down")
-    func touchedSessionIsProtected() async {
+    @Test("A PLAYING session is never torn down — it claims instead")
+    func playingSessionIsProtected() async {
         let id = "rss:standby-test:\(UUID().uuidString)"
         let defaults = UserDefaults.standard
         defer {
@@ -59,7 +59,7 @@ struct StandbyLiveRefreshTests {
         let coord = PlayerCoordinator(provider: MockProvider())
         coord._seedActivePlayerForUITest(item: item(id), detail: detail(id),
                                          chapters: [], currentChapterIndex: 0, isFallback: false)
-        coord.viewModel?.eventSinceLoad = true   // the user touched this session
+        coord.viewModel?.isPlaying = true
         defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
         defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
 
@@ -67,6 +67,29 @@ struct StandbyLiveRefreshTests {
 
         #expect(coord.activeItem?.id == id)   // untouched
         #expect(coord.viewModel != nil)
+    }
+
+    @Test("MIRROR: a touched but PAUSED session follows the fresher truth (finish clears)")
+    func touchedPausedSessionFollowsTheMirror() async {
+        let id = "rss:standby-test:\(UUID().uuidString)"
+        let defaults = UserDefaults.standard
+        defer {
+            defaults.removeObject(forKey: AppStorageKeys.localPosition(id))
+            defaults.removeObject(forKey: AppStorageKeys.lastPlayedItemId)
+        }
+        let coord = PlayerCoordinator(provider: MockProvider())
+        coord._seedActivePlayerForUITest(item: item(id), detail: detail(id),
+                                         chapters: [], currentChapterIndex: 0, isFallback: false)
+        coord.viewModel?.eventSinceLoad = true   // touched — but paused
+        defaults.set(id, forKey: AppStorageKeys.lastPlayedItemId)
+        defaults.set([100.0, 1000.0, 100.0], forKey: AppStorageKeys.localPosition(id))
+
+        await coord.refreshStandbyFromTruth()
+
+        // dcd115e point 3: finished ⇒ both clear — "both empty" is also
+        // "the same piece".
+        #expect(coord.activeItem == nil)
+        #expect(coord.viewModel == nil)
     }
 
     @Test("A foreign standby tombstone clears the paused standby live")
