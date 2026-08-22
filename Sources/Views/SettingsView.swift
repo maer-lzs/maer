@@ -279,7 +279,13 @@ struct SettingsView: View {
                             // tab bar. 2b5896d: active and inactive share EVERY
                             // measure — colour carries the state, never size.
                             .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
-                            .padding(.horizontal, 16)
+                            // R27 (the owner, 16 Plus): five TEXT pills must fit
+                            // 430-pt portrait — 16 pt of air per side stacked
+                            // past that width, so the glyph rung won there
+                            // although the text would fit with a tighter pill.
+                            // 12 pt keeps the capsule shape; the ladder stays
+                            // the judge (real squeezes still get glyphs).
+                            .padding(.horizontal, 12)
                             .foregroundStyle(active == t ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
                             .background(
                                 active == t ? AnyShapeStyle(accent) : AnyShapeStyle(.quaternary),
