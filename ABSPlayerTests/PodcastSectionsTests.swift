@@ -370,3 +370,55 @@ struct RecommendationSeedTests {
         #expect(!PodcastRecommendationsStore.sameAuthor(nil, anchor: "DIE ZEIT"))
     }
 }
+
+/// 9eccba0: authors/publishers first (up to ~half, at most 2 per author,
+/// row-wide), category then charts as the guaranteed filler — the row never
+/// shrinks, the cap orders and never empties.
+@Suite struct RecommendationPriorityTests {
+    private func r(_ id: String, author: String?) -> PodcastSearchResult {
+        PodcastSearchResult(title: id, author: author, artworkURL: nil,
+                            feedURL: "https://x.example/\(id).xml")
+    }
+    private func reasons(_ map: [String: PodcastRecommendationsStore.Reason])
+        -> (PodcastSearchResult) -> PodcastRecommendationsStore.Reason {
+        { map[$0.title] ?? .popular }
+    }
+
+    @Test("Autoren zuerst bis zur Hälfte, Kategorie dann Charts dahinter")
+    func authorsLeadThenCategoryThenCharts() {
+        let list = [r("c1", author: nil), r("g1", author: "G"),
+                    r("a1", author: "ZEIT"), r("a2", author: "NDR"),
+                    r("c2", author: nil), r("g2", author: "H")]
+        let out = PodcastRecommendationsStore.composePriority(
+            list, reason: reasons(["a1": .sameAuthor("ZEIT"), "a2": .sameAuthor("NDR"),
+                                   "g1": .genre("History"), "g2": .genre("History")]),
+            limit: 6)
+        #expect(out.map(\.title) == ["a1", "a2", "g1", "g2", "c1", "c2"])
+    }
+
+    @Test("max 2 je Autor — reihenweit, auch über die Kategorie-Karten")
+    func perAuthorCapIsRowWide() {
+        let list = [r("a1", author: "ZEIT"), r("a2", author: "ZEIT"),
+                    r("a3", author: "ZEIT"), r("g1", author: "ZEIT"),
+                    r("g2", author: "Other"), r("c1", author: nil)]
+        let out = PodcastRecommendationsStore.composePriority(
+            list, reason: reasons(["a1": .sameAuthor("ZEIT"), "a2": .sameAuthor("ZEIT"),
+                                   "a3": .sameAuthor("ZEIT"),
+                                   "g1": .genre("News"), "g2": .genre("News")]),
+            limit: 5)
+        // Third ZEIT author card AND the ZEIT category card yield to others…
+        #expect(out.prefix(4).map(\.title) == ["a1", "a2", "g2", "c1"])
+        // …but the row still fills to its length (cap orders, never empties).
+        #expect(out.count == 5)
+    }
+
+    @Test("dünner Autoren-Tag: die Reihe bleibt voll, Charts füllen auf")
+    func thinAuthorDayKeepsRowLength() {
+        let list = [r("a1", author: "ZEIT"), r("c1", author: nil),
+                    r("c2", author: nil), r("c3", author: nil)]
+        let out = PodcastRecommendationsStore.composePriority(
+            list, reason: reasons(["a1": .sameAuthor("ZEIT")]), limit: 4)
+        #expect(out.count == 4)
+        #expect(out.first?.title == "a1")
+    }
+}

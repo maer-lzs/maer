@@ -233,22 +233,22 @@ final class PodcastRecommendationsStore: ObservableObject {
         // day must not be able to empty the row.
         let byHealth = PodcastFeedLiveness.demotingDoubtful(ranked) { $0.liveness }
         let probed = await Self.preferLoadableArtwork(byHealth, shown: 6)
+        // 9eccba0: the before/after witness — shares of the SHOWN cut under
+        // the old order, logged next to the new one below.
+        let beforeShares = Self.reasonShares(Array(probed.prefix(6)), reason: { self.reason(for: $0) })
+        let prioritised = Self.composePriority(probed, reason: { self.reason(for: $0) },
+                                               limit: probed.count)
         results = Self.rotatingCharts(
-            probed,
+            prioritised,
             isChart: { self.reason(for: $0) == .popular },
             daySeed: CatalogRotation.dayIndex(on: Date()))
         loadedAt = Date()
         // aa25708: the share witness — does the equality match still deliver
         // on THIS profile? One line per refresh answers it from the device.
-        var authorCount = 0, genreCount = 0, chartCount = 0
-        for result in results {
-            switch reason(for: result) {
-            case .sameAuthor: authorCount += 1
-            case .genre: genreCount += 1
-            case .popular: chartCount += 1
-            }
-        }
-        Logger.rss.notice("RECO reasons: author=\(authorCount) genre=\(genreCount) charts=\(chartCount) of \(self.results.count)")
+        let after = Self.reasonShares(results, reason: { self.reason(for: $0) })
+        let afterShown = Self.reasonShares(Array(results.prefix(6)), reason: { self.reason(for: $0) })
+        Logger.rss.notice("RECO reasons: author=\(after.author) genre=\(after.genre) charts=\(after.charts) of \(self.results.count)")
+        Logger.rss.notice("RECO priority shown6: before a=\(beforeShares.author) g=\(beforeShares.genre) c=\(beforeShares.charts) → after a=\(afterShown.author) g=\(afterShown.genre) c=\(afterShown.charts)")
     }
 
     /// Move entries whose artwork demonstrably does not load behind the
@@ -279,6 +279,78 @@ final class PodcastRecommendationsStore: ObservableObject {
     /// Slots-preserving daily rotation: the chart entries move through their
     /// OWN slots, everything with a personal reason stays exactly where the
     /// ranking put it. Pure and tested.
+    /// Share triple for the RECO log lines (pure).
+    nonisolated static func reasonShares(_ list: [PodcastSearchResult],
+                                         reason: (PodcastSearchResult) -> Reason)
+        -> (author: Int, genre: Int, charts: Int) {
+        var a = 0, g = 0, c = 0
+        for r in list {
+            switch reason(r) {
+            case .sameAuthor: a += 1
+            case .genre: g += 1
+            case .popular: c += 1
+            }
+        }
+        return (a, g, c)
+    }
+
+    /// 9eccba0 (the owner): author/publisher parallels come FIRST — up to about
+    /// half the row, at most `perAuthorCap` shows per author — then category,
+    /// charts last as the guaranteed filler (the row never shrinks on thin
+    /// author days). The cap is ROW-wide (it also counts an author's category
+    /// cards), or "more ZEIT" turns into "only ZEIT". Pure and order-stable
+    /// within each source group.
+    nonisolated static func composePriority(
+        _ list: [PodcastSearchResult],
+        reason: (PodcastSearchResult) -> Reason,
+        limit: Int,
+        authorShare: Double = 0.5,
+        perAuthorCap: Int = 2
+    ) -> [PodcastSearchResult] {
+        guard limit > 0 else { return [] }
+        func authorKey(_ r: PodcastSearchResult) -> String {
+            r.author.flatMap { $0.isEmpty ? nil : $0.lowercased() } ?? r.title.lowercased()
+        }
+        var authorPool: [PodcastSearchResult] = []
+        var genrePool: [PodcastSearchResult] = []
+        var chartPool: [PodcastSearchResult] = []
+        for r in list {
+            switch reason(r) {
+            case .sameAuthor: authorPool.append(r)
+            case .genre: genrePool.append(r)
+            case .popular: chartPool.append(r)
+            }
+        }
+        var perAuthor: [String: Int] = [:]
+        var out: [PodcastSearchResult] = []
+        let authorSeats = Int((Double(limit) * authorShare).rounded())
+        for r in authorPool where out.count < authorSeats {
+            let key = authorKey(r)
+            guard perAuthor[key, default: 0] < perAuthorCap else { continue }
+            perAuthor[key, default: 0] += 1
+            out.append(r)
+        }
+        // Fill: category first, charts last — the cap keeps counting.
+        for r in genrePool + chartPool where out.count < limit {
+            let key = authorKey(r)
+            guard perAuthor[key, default: 0] < perAuthorCap else { continue }
+            perAuthor[key, default: 0] += 1
+            out.append(r)
+        }
+        // The row length is guaranteed: if the cap starved the fill, the
+        // capped-out entries return in source order (a full row of second
+        // ZEIT shows beats a short row — the cap orders, it never empties).
+        if out.count < limit {
+            let taken = Set(out.map { PodcastSubscriptions.normalizeFeedURL($0.feedURL) })
+            for r in authorPool + genrePool + chartPool where out.count < limit {
+                if !taken.contains(PodcastSubscriptions.normalizeFeedURL(r.feedURL)) {
+                    out.append(r)
+                }
+            }
+        }
+        return out
+    }
+
     nonisolated static func rotatingCharts(
         _ list: [PodcastSearchResult],
         isChart: (PodcastSearchResult) -> Bool,
