@@ -195,7 +195,7 @@ struct RadioArtwork: View {
             // R25/R32: a stored positive whose picture no longer serves (dead
             // frontend-version paths) — the display re-opens the decision.
             // Only with network up: offline says nothing about the address.
-            if await NetworkMonitor.shared.isConnected {
+            if NetworkMonitor.shared.isConnected {
                 await RadioLogoService.shared.noteDisplayFailure(stationID: stationID)
             }
             return nil
