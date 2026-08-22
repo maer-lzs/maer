@@ -833,6 +833,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
+        // bf565d9: pausing withdraws the claim actively — the other device's
+        // hint line dies in delivery seconds, the 90-s ageing stays the
+        // fallback for the paths without a clean pause.
+        if let item { PlaybackClaimSync.shared.release(itemId: item.id) }
         updateNowPlayingInfo()
         updateWidgetSnapshot(force: true)
         ListeningStatsStore.shared.flush()
@@ -1172,6 +1176,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func stop() {
         ListeningStatsStore.shared.flush()
+        // Session end withdraws the claim like a pause does (bf565d9).
+        if isPlaying, let item { PlaybackClaimSync.shared.release(itemId: item.id) }
         Task { await syncProgress(force: true) }
         player?.pause()
         if let token = timeObserverToken {

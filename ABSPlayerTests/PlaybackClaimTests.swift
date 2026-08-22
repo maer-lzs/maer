@@ -62,6 +62,17 @@ struct PlaybackClaimRulesTests {
         #expect(!PlaybackClaimRules.showsHint(
             claim: foreign, ownDeviceId: "dev-a", standbyItemId: "item-2", nowMs: now))
     }
+
+    @Test("A released claim neither pauses nor hints — and survives the codec")
+    func releasedClaimIsInert() {
+        var c = claim("dev-b", "item-1", ageSeconds: 5)
+        c.released = true
+        #expect(!PlaybackClaimRules.shouldPause(
+            claim: c, ownDeviceId: "dev-a", playingItemId: "item-1", nowMs: now))
+        #expect(!PlaybackClaimRules.showsHint(
+            claim: c, ownDeviceId: "dev-a", standbyItemId: "item-1", nowMs: now))
+        #expect(PlaybackClaim.from(plist: c.plist) == c)
+    }
 }
 
 @MainActor
@@ -95,6 +106,29 @@ struct PlaybackClaimSyncTests {
         #expect(aHeard?.deviceId == "dev-b")
         #expect(aHeard?.itemId == "item-1")
         #expect(a.current?.deviceId == "dev-b")
+    }
+
+    @Test("Release withdraws only the OWN claim — a takeover claim is untouchable")
+    func releaseGuardsForeignClaims() {
+        let cloud = UserChoiceFakeCloud()
+        var clockA: Double = 1000
+        let a = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-a" },
+                                  now: { clockA += 1; return clockA })
+        var clockB: Double = 2000
+        let b = PlaybackClaimSync(cloud: cloud, deviceId: { "dev-b" },
+                                  now: { clockB += 1; return clockB })
+
+        // Own claim → release marks it withdrawn.
+        a.claim(itemId: "item-1")
+        a.release(itemId: "item-1")
+        var stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.claimKey])
+        #expect(stored?.released == true && stored?.deviceId == "dev-a")
+
+        // B takes over; A's pause must NOT tear B's claim down.
+        b.claim(itemId: "item-1")
+        a.release(itemId: "item-1")
+        stored = PlaybackClaim.from(plist: cloud.storage[PlaybackClaimSync.claimKey])
+        #expect(stored?.released == false && stored?.deviceId == "dev-b")
     }
 }
 #endif

@@ -15,9 +15,17 @@ nonisolated struct PlaybackClaim: Equatable {
     /// Claim/refresh event time in ms since 1970. Refreshed while playing;
     /// a claim that stops growing is a device that stopped playing.
     var t: Double
+    /// An ACTIVE withdrawal (pause wrote it): the hint line dies in
+    /// KVS-delivery seconds instead of the 90-s ageing, which stays the
+    /// fallback for crash/dead-zone/app-kill. A release is a normal write —
+    /// any later real claim simply outwrites it (no delete race in which a
+    /// pausing device could tear down the takeover claim of another).
+    var released: Bool = false
 
     var plist: [String: Any] {
-        ["device": deviceId, "item": itemId, "t": t]
+        var out: [String: Any] = ["device": deviceId, "item": itemId, "t": t]
+        if released { out["r"] = true }
+        return out
     }
 
     static func from(plist: Any?) -> PlaybackClaim? {
@@ -25,7 +33,8 @@ nonisolated struct PlaybackClaim: Equatable {
               let device = dict["device"] as? String,
               let item = dict["item"] as? String,
               let t = (dict["t"] as? NSNumber)?.doubleValue else { return nil }
-        return PlaybackClaim(deviceId: device, itemId: item, t: t)
+        return PlaybackClaim(deviceId: device, itemId: item, t: t,
+                             released: dict["r"] as? Bool ?? false)
     }
 }
 
@@ -46,7 +55,7 @@ nonisolated enum PlaybackClaimRules {
     /// AFTER its own (single key, latest writer wins).
     static func shouldPause(claim: PlaybackClaim?, ownDeviceId: String,
                             playingItemId: String?, nowMs: Double) -> Bool {
-        guard let claim, let playingItemId else { return false }
+        guard let claim, let playingItemId, !claim.released else { return false }
         return claim.deviceId != ownDeviceId
             && claim.itemId == playingItemId
             && isFresh(claim, nowMs: nowMs)
@@ -56,7 +65,7 @@ nonisolated enum PlaybackClaimRules {
     /// the pointed-at item right now.
     static func showsHint(claim: PlaybackClaim?, ownDeviceId: String,
                           standbyItemId: String?, nowMs: Double) -> Bool {
-        guard let claim, let standbyItemId else { return false }
+        guard let claim, let standbyItemId, !claim.released else { return false }
         return claim.deviceId != ownDeviceId
             && claim.itemId == standbyItemId
             && isFresh(claim, nowMs: nowMs)
