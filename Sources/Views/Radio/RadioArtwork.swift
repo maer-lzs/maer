@@ -190,8 +190,16 @@ struct RadioArtwork: View {
         }
         guard let logoURL = await RadioLogoService.shared.logoURL(
                   stationID: stationID, name: RadioMapping.displayName(stationName),
-                  homepage: stationHomepage),
-              let loaded = await ImageCache.shared.loadedImage(for: logoURL) else { return nil }
+                  homepage: stationHomepage) else { return nil }
+        guard let loaded = await ImageCache.shared.loadedImage(for: logoURL) else {
+            // R25/R32: a stored positive whose picture no longer serves (dead
+            // frontend-version paths) — the display re-opens the decision.
+            // Only with network up: offline says nothing about the address.
+            if await NetworkMonitor.shared.isConnected {
+                await RadioLogoService.shared.noteDisplayFailure(stationID: stationID)
+            }
+            return nil
+        }
         let logo = loaded.image
         let w = Int(loaded.sourcePixels.width), h = Int(loaded.sourcePixels.height)
         // 8360dac: a chain result is a DECLARED logo (Commons P154 render or
@@ -200,8 +208,15 @@ struct RadioArtwork: View {
         // misses were 57 px brand icons rejected by the favicon gate.
         guard RadioFaviconGate.acceptableTouchIcon(pixelWidth: w, pixelHeight: h) else {
             Logger.library.notice("RADIO chain logo rejected (\(w)×\(h)): \(stationID, privacy: .public)")
+            // R25: a yes from yesterday holds only for yesterday's gates —
+            // an undersized STORED choice is discarded deterministically, so
+            // the chain re-decides with today's gates and today's parser
+            // (the 57-px stock heals itself on the next look).
+            await RadioLogoService.shared.discardStored(stationID: stationID,
+                                                        reason: "below today's gate \(w)x\(h)")
             return nil
         }
+        RadioLogoService.clearDisplayStrikes(stationID: stationID)
         return logo
     }
 

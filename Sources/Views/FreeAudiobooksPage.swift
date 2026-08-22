@@ -147,17 +147,39 @@ struct FreeAudiobooksPage: View {
                 librivoxSection
                 tileSection(.archiveBooks, items: rows.archiveBooks)
                 tileSection(.gutenberg, items: rows.gutenberg)
-                if !store.sourcesLoaded && catalogRowsEmpty && rows.failures.isEmpty {
-                    // Offline: an honest line instead of an eternal spinner —
-                    // the load pass never ran, so no failure is recorded.
-                    if networkMonitor.isConnected {
+                if catalogRowsEmpty {
+                    // R29: every state below ENDS — spinner only while the
+                    // pass actually runs; an empty result and a failed run
+                    // each get an honest line with a way back in.
+                    if store.sourcesLoading {
                         ProgressView().frame(maxWidth: .infinity).padding()
-                    } else {
+                    } else if !networkMonitor.isConnected {
                         Text("The catalogs need a connection.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
                             .padding()
+                    } else if !store.sourcesFailures.isEmpty {
+                        Text("The catalogs could not be loaded. Tap to try again.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .onTapGesture { Task { await store.retrySources() } }
+                            .accessibilityIdentifier("freecat-sources-retry")
+                    } else if !store.sourcesLoaded {
+                        // Ran cleanly, found nothing (language filter can do
+                        // this) — the exact case that used to spin forever.
+                        Text("Nothing found in the catalogs right now. Tap to try again.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .onTapGesture { Task { await store.retrySources() } }
+                            .accessibilityIdentifier("freecat-sources-retry-empty")
+                    } else {
+                        // Loaded, rows still riding the calm gate — moments.
+                        ProgressView().frame(maxWidth: .infinity).padding()
                     }
                 }
                 Text("Public-broadcast content can disappear after fixed periods — downloads keep your copies.")

@@ -243,6 +243,74 @@ actor RadioLogoService {
         }
     }
 
+    // R25/R32: a stored positive never expires — so a result whose picture
+    // stopped serving (frontend version paths) or whose size today's gates
+    // would refuse (the 57-px stock) showed letters forever. The DISPLAY is
+    // the witness: it re-opens the decision, it never books a negative.
+    private static let displayFailsKey = "radioLogoDisplayFails"
+    private static let displayFailsBeforeDiscard = 2
+
+    /// Drops the stored result so the chain re-decides — deliberately NOT a
+    /// stored no-hit (Negativ-Cache-Regel: clearing re-opens the question).
+    /// The persist halves are nonisolated statics (UserDefaults is not
+    /// Sendable across the actor hop); the actor wrappers below add the
+    /// session-cache half.
+    @discardableResult
+    nonisolated static func discardStoredEntry(stationID: String,
+                                               defaults: UserDefaults = .standard) -> Bool {
+        var stored = (defaults.data(forKey: persistKey))
+            .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
+        guard stored.removeValue(forKey: stationID) != nil else { return false }
+        if let data = try? JSONEncoder().encode(stored) {
+            defaults.set(data, forKey: persistKey)
+        }
+        clearDisplayStrikes(stationID: stationID, defaults: defaults)
+        return true
+    }
+
+    /// A load failure WITH network up. Counted persistently (one failure per
+    /// session is the 0nlineradio shape) — the second discards. A single
+    /// failure is never a verdict (95c5c16), so nothing happens on the first.
+    /// Returns true when the entry was discarded.
+    nonisolated static func registerDisplayFailure(stationID: String,
+                                                   defaults: UserDefaults = .standard) -> Bool {
+        var fails = defaults.dictionary(forKey: displayFailsKey) as? [String: Int] ?? [:]
+        let count = (fails[stationID] ?? 0) + 1
+        if count >= displayFailsBeforeDiscard {
+            fails.removeValue(forKey: stationID)
+            defaults.set(fails, forKey: displayFailsKey)
+            return discardStoredEntry(stationID: stationID, defaults: defaults)
+        }
+        fails[stationID] = count
+        defaults.set(fails, forKey: displayFailsKey)
+        return false
+    }
+
+    /// A successful display load clears the strike — two failures must be
+    /// consecutive, or flaky transport would erode healthy results.
+    nonisolated static func clearDisplayStrikes(stationID: String,
+                                                defaults: UserDefaults = .standard) {
+        var fails = defaults.dictionary(forKey: displayFailsKey) as? [String: Int] ?? [:]
+        guard fails.removeValue(forKey: stationID) != nil else { return }
+        defaults.set(fails, forKey: displayFailsKey)
+    }
+
+    /// Actor half: also clears the session cache so the chain runs again.
+    func discardStored(stationID: String, reason: String) {
+        cache.removeValue(forKey: stationID)
+        givenUpThisSession.remove(stationID)
+        guard Self.discardStoredEntry(stationID: stationID) else { return }
+        Logger.library.notice("RADIO stored result discarded (\(reason, privacy: .public)): \(stationID, privacy: .public) — chain re-decides")
+    }
+
+    func noteDisplayFailure(stationID: String) {
+        if Self.registerDisplayFailure(stationID: stationID) {
+            cache.removeValue(forKey: stationID)
+            givenUpThisSession.remove(stationID)
+            Logger.library.notice("RADIO stored result discarded (did not load twice): \(stationID, privacy: .public) — chain re-decides")
+        }
+    }
+
     private func persistResult(stationID: String, url: URL?, commonsFile: String?) {
         var stored = (UserDefaults.standard.data(forKey: Self.persistKey))
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]

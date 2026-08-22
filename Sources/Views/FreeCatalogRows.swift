@@ -473,12 +473,23 @@ final class FreeCatalogStore: ObservableObject {
         await runSourcesLoad()
     }
 
+    /// R29: the page decides its END states from these two — `sourcesLoaded`
+    /// alone could not tell "still running" from "ran and found nothing",
+    /// and that gap rendered as an eternal spinner (Regel-3-Klasse: a spinner
+    /// ends in content, a visible failure, or goes away — also for an empty
+    /// result). Failures publish IMMEDIATELY (tiny value); the heavy rows
+    /// stay calm-gated as before.
+    @Published private(set) var sourcesLoading = false
+    @Published private(set) var sourcesFailures: [CatalogSource: String] = [:]
+
     /// The pass itself — one place, whoever started it.
     private func runSourcesLoad() async {
-        defer { sourcesGate.finish() }
+        sourcesLoading = true
+        defer { sourcesLoading = false; sourcesGate.finish() }
         let loaded = await CatalogSourceLoader.load()
         sourcesLoaded = !loaded.librivoxPopular.isEmpty || !loaded.gutenberg.isEmpty
             || !loaded.archiveBooks.isEmpty || !loaded.oldTimeRadio.isEmpty
+        sourcesFailures = loaded.failures
         BottomBarState.shared.runWhenCalm { [weak self] in self?.storedSourceRows = loaded }
     }
 

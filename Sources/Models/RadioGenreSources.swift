@@ -326,7 +326,38 @@ nonisolated enum RadioGenreFamilies {
             let front = family.first {
                 RadioMapping.displayName($0.name).lowercased().contains("konferenz")
             } ?? family[0]
-            return Family(front: front, variants: family.filter { $0.id != front.id })
+            // R28: inside an expanded family the games sort NUMERICALLY
+            // (vote order gave 8, 2, 5, 7 …). Members without a number keep
+            // the vote order, behind the numbered ones; ties stay stable.
+            let variants = family.filter { $0.id != front.id }
+                .enumerated()
+                .sorted { a, b in
+                    let na = memberNumber(a.element.name)
+                    let nb = memberNumber(b.element.name)
+                    switch (na, nb) {
+                    case let (x?, y?): return x != y ? x < y : a.offset < b.offset
+                    case (.some, nil): return true
+                    case (nil, .some): return false
+                    case (nil, nil): return a.offset < b.offset
+                    }
+                }
+                .map(\.element)
+            return Family(front: front, variants: variants)
         }
+    }
+
+    /// First number AFTER the family head ("… Spiel 8" → 8); nil when the
+    /// tail carries none.
+    static func memberNumber(_ name: String) -> Int? {
+        let display = RadioMapping.displayName(name)
+        for separator in [": ", " - "] {
+            if let range = display.range(of: separator) {
+                let tail = display[range.upperBound...]
+                if let match = tail.range(of: #"\d+"#, options: .regularExpression) {
+                    return Int(tail[match])
+                }
+            }
+        }
+        return nil
     }
 }

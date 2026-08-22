@@ -224,4 +224,43 @@ struct RadioLogoDataTests {
         #expect(RadioLogoData.commonsFile(forName: "bigFM") == nil)
         #expect(RadioLogoService.curatedFile(forName: "bigFM Deutsch Rap") == nil)
     }
+
+    /// R25/R32: the display re-opens the decision — an undersized stored
+    /// positive discards immediately, a dead address after TWO consecutive
+    /// load failures; one failure is never a verdict, success clears strikes.
+    @Test @MainActor func displayReDecision() async {
+        struct Entry: Codable { var url: String?; var resolvedAt: Double }
+        func write(_ entries: [String: Entry], to defaults: UserDefaults) {
+            defaults.set(try! JSONEncoder().encode(entries), forKey: "radioLogoChainResults")
+        }
+        func read(_ defaults: UserDefaults) -> [String: Entry] {
+            guard let data = defaults.data(forKey: "radioLogoChainResults") else { return [:] }
+            return (try? JSONDecoder().decode([String: Entry].self, from: data)) ?? [:]
+        }
+        let suite = "radio-logo-redecide-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let id = "radio:rb:redecide-\(UUID().uuidString)"
+        let now = Date().timeIntervalSince1970
+        write([id: Entry(url: "https://dead.example/v5.176/icon.png", resolvedAt: now)],
+              to: defaults)
+
+        // First failure: entry stays (Negativ-Cache-Regel one level up).
+        #expect(!RadioLogoService.registerDisplayFailure(stationID: id, defaults: defaults))
+        #expect(read(defaults)[id] != nil)
+        // A success in between clears the strike …
+        RadioLogoService.clearDisplayStrikes(stationID: id, defaults: defaults)
+        #expect(!RadioLogoService.registerDisplayFailure(stationID: id, defaults: defaults))
+        #expect(read(defaults)[id] != nil, "strikes must be consecutive")
+        // … two consecutive failures discard, re-opening the chain.
+        #expect(RadioLogoService.registerDisplayFailure(stationID: id, defaults: defaults))
+        #expect(read(defaults)[id] == nil)
+
+        // Undersized: deterministic, discards on the first look.
+        let small = "radio:rb:small-\(UUID().uuidString)"
+        write([small: Entry(url: "https://x.example/apple-icon-57x57.png", resolvedAt: now)],
+              to: defaults)
+        #expect(RadioLogoService.discardStoredEntry(stationID: small, defaults: defaults))
+        #expect(read(defaults)[small] == nil)
+    }
 }

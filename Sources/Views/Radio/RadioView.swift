@@ -396,7 +396,21 @@ struct RadioView: View {
                                 let width = Int((image?.size.width ?? 0) * (image?.scale ?? 1))
                                 let height = Int((image?.size.height ?? 0) * (image?.scale ?? 1))
                                 let verdict: String
-                                if image == nil { verdict = "laedt nicht" }
+                                if image == nil {
+                                    // b10aa93: the WHY per line — one probe
+                                    // request classifies (diagnosis only,
+                                    // books nothing).
+                                    var status: Int?
+                                    var urlError: Int?
+                                    do {
+                                        let (_, response) = try await URLSession.shared.data(from: url)
+                                        status = (response as? HTTPURLResponse)?.statusCode
+                                    } catch {
+                                        urlError = (error as? URLError)?.code.rawValue
+                                    }
+                                    verdict = RadioLogoReport.failureLabel(statusCode: status,
+                                                                           urlErrorCode: urlError)
+                                }
                                 else if !RadioFaviconGate.acceptableTouchIcon(pixelWidth: width,
                                                                               pixelHeight: height) {
                                     verdict = "verworfen"

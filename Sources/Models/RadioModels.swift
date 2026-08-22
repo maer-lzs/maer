@@ -145,9 +145,21 @@ nonisolated enum RadioMapping {
         for station in stations {
             let name = normalizedStationName(station.name)
             let code = normalizedCountry(station.countryCode)
+            // R26: spacing variants of ONE brand ("Iran International" vs
+            // "iraninternational") fold only with the SAME homepage domain
+            // as witness — never on the squeezed name alone (Y57: two real
+            // stations may share a squeezed name; the domain separates them).
+            let spaceless = name.replacingOccurrences(of: " ", with: "")
+            let host = PodcastSubscriptions.feedHost(station.homepage ?? "")
             var flat = station; flat.variants = nil   // never nest variants
-            if let idx = buckets.firstIndex(where: {
-                $0.name == name && countryCompatible(bucket: $0.country, station: code)
+            if let idx = buckets.firstIndex(where: { bucket in
+                guard countryCompatible(bucket: bucket.country, station: code) else { return false }
+                if bucket.name == name { return true }
+                return !host.isEmpty
+                    && bucket.name.replacingOccurrences(of: " ", with: "") == spaceless
+                    && bucket.members.contains {
+                        PodcastSubscriptions.feedHost($0.homepage ?? "") == host
+                    }
             }) {
                 if let code, buckets[idx].country == nil { buckets[idx].country = code }
                 buckets[idx].members.append(flat)
@@ -740,10 +752,20 @@ nonisolated enum RadioRotation {
             out.append(candidates.remove(at: chosen))
         }
         // Fill pot: the existing rotation over the pools, core rows excluded.
+        // b10aa93 (Swiss-Pop twice): the identity key carries the DOMAIN, and
+        // a core entry can resolve a different host than the catalog copy of
+        // the same station (homepage vs. stream host fallback) — so the fill
+        // additionally excludes plain folded NAME matches. Within one
+        // country's curated row, an equal folded name IS the same station.
         let coreKeys = Set(core.map { RadioMapping.displayIdentityKey($0) })
+        let coreNames = Set(core.map { RadioBrowseCuration.mergeKey(RadioMapping.displayName($0.name)) })
+        func isCore(_ station: RadioStation) -> Bool {
+            coreKeys.contains(RadioMapping.displayIdentityKey(station))
+                || coreNames.contains(RadioBrowseCuration.mergeKey(RadioMapping.displayName(station.name)))
+        }
         let fill = compose(
-            votes: votes.filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) },
-            clicktrend: clicktrend.filter { !coreKeys.contains(RadioMapping.displayIdentityKey($0)) },
+            votes: votes.filter { !isCore($0) },
+            clicktrend: clicktrend.filter { !isCore($0) },
             seed: seed, limit: limit - out.count,
             socket: socket, minTrendVotes: minTrendVotes)
         return out + fill

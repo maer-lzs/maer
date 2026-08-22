@@ -109,10 +109,33 @@ nonisolated enum RadioLogoReport {
         let verdict: String
     }
 
+    /// b10aa93: "laedt nicht" without a WHY forced guessing (dead version
+    /// paths vs. ATS vs. server down are different findings). Pure label from
+    /// what one probe request learned.
+    static func failureLabel(statusCode: Int?, urlErrorCode: Int?) -> String {
+        if let statusCode, !(200...299).contains(statusCode) {
+            return "laedt nicht (HTTP \(statusCode))"
+        }
+        if let urlErrorCode {
+            switch urlErrorCode {
+            case NSURLErrorAppTransportSecurityRequiresSecureConnection:
+                return "laedt nicht (ATS blockiert http)"
+            case NSURLErrorTimedOut: return "laedt nicht (Timeout)"
+            case NSURLErrorCannotFindHost, NSURLErrorDNSLookupFailed:
+                return "laedt nicht (Host unbekannt)"
+            case NSURLErrorCannotConnectToHost: return "laedt nicht (Host antwortet nicht)"
+            case NSURLErrorSecureConnectionFailed: return "laedt nicht (TLS)"
+            default: return "laedt nicht (Transport \(urlErrorCode))"
+            }
+        }
+        if let statusCode { return "laedt nicht (HTTP \(statusCode), Bild undekodierbar)" }
+        return "laedt nicht (Grund unbekannt)"
+    }
+
     static func loadedText(_ entries: [Loaded]) -> String {
         guard !entries.isEmpty else { return "\nANZEIGE: keine gespeicherte Adresse zum Pruefen.\n" }
         let rejected = entries.filter { $0.verdict == "verworfen" }.count
-        let failed = entries.filter { $0.verdict == "laedt nicht" }.count
+        let failed = entries.filter { $0.verdict.hasPrefix("laedt nicht") }.count
         var out = """
 
         ANZEIGE (was die Kachel wirklich laedt)

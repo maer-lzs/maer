@@ -75,6 +75,71 @@ struct RadioModelsTests {
         #expect(withEmpty.count == 2)
     }
 
+    @Test("R26: spacing variants fold ONLY with the same homepage domain as witness")
+    func spacingVariantsFoldWithDomainWitness() {
+        // Iran International (NEWS) vs iraninternational (IRAN): same brand,
+        // same domain — ONE row.
+        let folded = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:i1", name: "Iran International",
+                         streamURL: "https://s/1", homepage: "https://iranintl.com"),
+            RadioStation(id: "radio:rb:i2", name: "iraninternational",
+                         streamURL: "https://s/2", homepage: "https://www.iranintl.com/live"),
+        ])
+        #expect(folded.count == 1)
+        // Same squeezed name, DIFFERENT domains: two real stations, kept apart
+        // (the Y57 guard — the domain is the witness, never the name alone).
+        let apart = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:a", name: "Star FM",
+                         streamURL: "https://s/a", homepage: "https://starfm.de"),
+            RadioStation(id: "radio:rb:b", name: "StarFM",
+                         streamURL: "https://s/b", homepage: "https://starfm.ch"),
+        ])
+        #expect(apart.count == 2)
+        // No homepage on either side: never folded by squeezing.
+        let noWitness = RadioMapping.collapseVariants([
+            RadioStation(id: "radio:rb:c", name: "Radio One", streamURL: "https://s/c"),
+            RadioStation(id: "radio:rb:d", name: "RadioOne", streamURL: "https://s/d"),
+        ])
+        #expect(noWitness.count == 2)
+    }
+
+    @Test("b10aa93: the popular fill excludes core stations by NAME too (Swiss-Pop twice)")
+    func coreFillExcludesByName() {
+        // The core entry resolved a different host (stream fallback) than the
+        // catalog copy — the identity key differs, the folded name must catch it.
+        let core = [RadioStation(id: "radio:rb:core", name: "Radio Swiss Pop",
+                                 streamURL: "https://stream.srg-ssr.ch/rsp")]
+        let copy = RadioStation(id: "radio:rb:copy", name: "Radio Swiss Pop",
+                                streamURL: "https://other.cdn/rsp",
+                                homepage: "https://radioswisspop.ch")
+        let row = RadioRotation.composeWithCore(core: core, votes: [copy],
+                                                clicktrend: [], seed: 7, limit: 10)
+        #expect(row.filter { RadioMapping.displayName($0.name) == "Radio Swiss Pop" }.count == 1)
+    }
+
+    @Test("R28: expanded family sorts games numerically, unnumbered members behind")
+    func familyGamesSortNumerically() {
+        func s(_ id: String, _ name: String) -> RadioStation {
+            RadioStation(id: "radio:rb:\(id)", name: name,
+                         streamURL: "https://s/\(id)",
+                         homepage: "https://livecenter.sportschau.de")
+        }
+        let families = RadioGenreFamilies.collapsed([
+            s("k", "Fußball-Bundesliga: Konferenz"),
+            s("g8", "Fußball-Bundesliga: Spiel 8"),
+            s("g2", "Fußball-Bundesliga: Spiel 2"),
+            s("gx", "Fußball-Bundesliga: Sondersendung"),
+            s("g5", "Fußball-Bundesliga: Spiel 5"),
+        ])
+        #expect(families.count == 1)
+        let family = families[0]
+        #expect(RadioMapping.displayName(family.front.name).contains("Konferenz"))
+        #expect(family.variants.map(\.id) ==
+                ["radio:rb:g2", "radio:rb:g5", "radio:rb:g8", "radio:rb:gx"])
+        #expect(RadioGenreFamilies.memberNumber("Fußball-Bundesliga: Spiel 8") == 8)
+        #expect(RadioGenreFamilies.memberNumber("Fußball-Bundesliga: Konferenz") == nil)
+    }
+
     @Test("Y57→e4bd910: equal bitrate prefers AAC (Nachtrag FINAL); different country is not merged")
     func collapseTieBreakAndCountry() {
         let tie = RadioMapping.collapseVariants([
