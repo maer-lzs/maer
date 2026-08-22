@@ -292,14 +292,18 @@ struct RadioModelsTests {
         let narrowed = RadioBrowserClient.Query.byTag(tag: "news", countryCode: "ch", limit: 40)
         #expect(params(narrowed)["countrycode"] == "CH")
 
-        // 8a38ca5: the worldwide LANGUAGE pot filters on the ISO code —
-        // measured: `language=de` answers 2 stations, `languagecodes=de` the
-        // real list (WDR 5 and DLF on top).
-        let language = RadioBrowserClient.Query.byTagLanguage(tag: "news",
-                                                              languageCode: "DE", limit: 40)
-        #expect(language.path == "/json/stations/search")
-        #expect(params(language)["languagecodes"] == "de")
-        #expect(params(language)["tagExact"] == "true")
+        // R21-Rest: the language pot filters CLIENT-side and case-INsensitive
+        // — the catalog field is mixed-case (DLF carries "DE", WDR 5 "de"),
+        // and the server's `languagecodes=` filter is case-sensitive (an
+        // uppercase parameter is even ignored, measured live). `speaks` is
+        // that filter: the station side lowercases, the caller lowercases.
+        let dlf = RadioStation(id: "radio:rb:dlf", name: "Deutschlandfunk",
+                               streamURL: "http://x", languageCodes: ["DE"])
+        #expect(RadioGenreCuration.speaks(dlf, "de"))
+        let wdr = RadioStation(id: "radio:rb:wdr5", name: "WDR 5",
+                               streamURL: "http://x", languageCodes: ["de"])
+        #expect(RadioGenreCuration.speaks(wdr, "de"))
+        #expect(!RadioGenreCuration.speaks(dlf, "fr"))
 
         let search = RadioBrowserClient.Query.search(name: "dlf", limit: 50)
         #expect(search.path == "/json/stations/search")

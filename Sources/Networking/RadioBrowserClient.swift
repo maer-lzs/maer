@@ -35,13 +35,6 @@ nonisolated enum RadioBrowserClient {
         /// the tag as its value silently drops the tag and answers with the
         /// whole country.
         case byTag(tag: String, countryCode: String?, limit: Int)
-        /// 8a38ca5 (GT R7b): the worldwide LANGUAGE pot. Worldwide caps at the
-        /// global top N BEFORE the language bonus — DLF sits at ~rank 49 of
-        /// the worldwide news tag (measured) and never reached the pot, so the
-        /// bonus had nothing to lift. `languagecodes=<code>` filters directly
-        /// on the ISO code (measured: `language=de` answers 2, this answers
-        /// the real list, WDR 5/DLF on top).
-        case byTagLanguage(tag: String, languageCode: String, limit: Int)
         /// The available states (Kantone/Bundesländer) of a country.
         case states(countryName: String)
         /// All countries with station counts (explicit country choice).
@@ -62,7 +55,7 @@ nonisolated enum RadioBrowserClient {
                 return "/json/stations/topvote"
             case .byRegion(let cc, _):
                 return "/json/stations/bycountrycodeexact/\(Self.pathEscaped(cc))"
-            case .byTag, .byTagLanguage:
+            case .byTag:
                 return "/json/stations/search"
             case .states(let country):
                 return "/json/states/\(Self.pathEscaped(country))/"
@@ -115,16 +108,6 @@ nonisolated enum RadioBrowserClient {
                     items.append(.init(name: "countrycode", value: countryCode.uppercased()))
                 }
                 return items
-            case .byTagLanguage(let tag, let languageCode, let limit):
-                return [
-                    .init(name: "tag", value: tag),
-                    .init(name: "tagExact", value: "true"),
-                    .init(name: "languagecodes", value: languageCode.lowercased()),
-                    .init(name: "order", value: "votes"),
-                    .init(name: "reverse", value: "true"),
-                    .init(name: "limit", value: String(limit)),
-                    .init(name: "hidebroken", value: "true"),
-                ]
             case .byRegionClicktrend(_, let limit), .byStateClicktrend(_, let limit):
                 return [
                     .init(name: "order", value: "clicktrend"),
@@ -232,19 +215,23 @@ nonisolated enum RadioBrowserClient {
             // bbffebb: the language pot degrading is allowed, but never again
             // SILENT — a swallowed failure here showed as "refresh runs clean,
             // list unchanged, DLF missing" on the device, with no witness.
-            let worldwide = try await byTag(tag: tag, countryCode: nil, limit: limit)
+            // R21-Rest: the language pot is filtered CLIENT-side from one
+            // broad fetch. The server's `languagecodes=` filter matches the
+            // mixed-case catalog field case-SENSITIVELY (DLF carries "DE",
+            // WDR 5 "de" — one case alone lost half the pot) and silently
+            // ignores an uppercase parameter altogether (measured live).
+            // One request also removes the second transport, so the pot can
+            // no longer degrade separately — the pot log stays the witness.
+            let broad = try await byTag(tag: tag, countryCode: nil,
+                                        limit: max(limit * 5, 200))
+            let worldwide = Array(broad.prefix(limit))
             var union = worldwide
             if let language = Locale.current.language.languageCode?.identifier,
                !language.isEmpty {
-                do {
-                    let languagePot = try await stations(.byTagLanguage(
-                        tag: tag, languageCode: language, limit: limit))
-                    union += languagePot
-                    Logger.library.notice("RADIO worldwide pots: global=\(worldwide.count) lang(\(language, privacy: .public))=\(languagePot.count)")
-                } catch {
-                    guard !error.isCancellation else { throw error }
-                    Logger.library.notice("RADIO worldwide LANG POT FAILED (\(language, privacy: .public)): \(error.localizedDescription, privacy: .public) — degrading to global pot only")
-                }
+                let wanted = language.lowercased()
+                let languagePot = broad.filter { RadioGenreCuration.speaks($0, wanted) }
+                union += languagePot
+                Logger.library.notice("RADIO worldwide pots: global=\(worldwide.count) lang(\(language, privacy: .public))=\(languagePot.count)")
             }
             return union
         }
