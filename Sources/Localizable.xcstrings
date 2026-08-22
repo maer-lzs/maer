@@ -3278,6 +3278,26 @@
         }
       }
     },
+    "Jamendo answered without tracks right now." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamendo hat gerade ohne Titel geantwortet."
+          }
+        }
+      }
+    },
+    "Jamendo needs its access key." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamendo braucht seinen Zugangsschlüssel."
+          }
+        }
+      }
+    },
     "Japan" : {
       "localizations" : {
         "de" : {
@@ -7644,6 +7664,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Der Feed konnte nicht geladen werden."
+          }
+        }
+      }
+    },
+    "The Jamendo row could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Jamendo-Reihe konnte nicht geladen werden."
           }
         }
       }

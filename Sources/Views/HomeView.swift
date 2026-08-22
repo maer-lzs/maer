@@ -133,7 +133,8 @@ struct HomeView: View {
                         // L1 "Entdecken · Musik" (one mixed row, entry page).
                         FreeCatalogRows(playerCoordinator: playerCoordinator,
                                         freeMusic: freeCatalogStore.rows.freeMusic,
-                                        classical: freeCatalogStore.rows.classical)
+                                        classical: freeCatalogStore.rows.classical,
+                                        freeMusicProblem: freeCatalogStore.rows.freeMusicProblem)
                         // L2 "Entdecken · Hörbücher & Hörspiele": the SAME
                         // mixed row/computation as the podcast tab (Regel 2),
                         // entry chevron onto the existing area page. Start

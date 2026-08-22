@@ -28,6 +28,8 @@ struct FreeCatalogRows: View {
     /// The entry chevron opens the small music-catalog page (I2 earlier).
     let freeMusic: [LibraryItem]
     let classical: [LibraryItem]
+    /// R34: the visible reason when the enabled Jamendo half stayed empty.
+    var freeMusicProblem: String? = nil
     @State private var detailItem: LibraryItem?
 
     var body: some View {
@@ -39,6 +41,20 @@ struct FreeCatalogRows: View {
                         .accessibilityIdentifier("home-discover-music")
                     tileRow(items: HomeSections.interleave([classical, freeMusic],
                                                            limit: RowPreview.limit))
+                    if freeMusic.isEmpty, let problem = freeMusicProblem {
+                        Text(problem).font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal)
+                    }
+                }
+            } else if let problem = freeMusicProblem {
+                // R34: the enabled row appears or says visibly why not —
+                // never a silent absence (Regel 3).
+                VStack(alignment: .leading, spacing: 6) {
+                    RowHeading.entry("Discover · Music",
+                                     destination: MusicRoute.freeCatalogArea)
+                        .accessibilityIdentifier("home-discover-music")
+                    Text(problem).font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal)
                 }
             }
         }
@@ -118,6 +134,10 @@ enum FreeCatalogLoader {
         /// cb99bf6: the audiobooks-tab tile row (same fetch, wider cut).
         var tabBooks: [LibraryItem] = []
         var freeMusic: [LibraryItem] = []
+        /// R34: an ENABLED Jamendo row that stayed empty says WHY — a switch
+        /// without a row is a control without a destination (Regel 3). nil =
+        /// off or loaded; a value is the short visible reason.
+        var freeMusicProblem: String? = nil
         var classical: [LibraryItem] = []
         /// Netlabels (archive.org, CC) — its own row next to Jamendo; the
         /// source name at the heading keeps them apart (Auftrag Punkt 4).
@@ -256,6 +276,7 @@ enum FreeCatalogLoader {
         if jamendoOn {
             if JamendoClient.clientId() == nil {
                 Logger.library.notice("FREECAT jamendo EMPTY: no client key")
+                rows.freeMusicProblem = String(localized: "Jamendo needs its access key.")
             } else {
                 do {
                     // Jamendo kennt KEINE Zufalls-Sortierung (gemessen:
@@ -270,10 +291,22 @@ enum FreeCatalogLoader {
                         limit: 12, offset: (jamendoPage - 1) * 12)
                     Logger.library.notice("FREECAT jamendo loaded=\(tracks.count)")
                     rows.freeMusic = tracks.compactMap { provider.remember(track: $0) }
+                    if rows.freeMusic.isEmpty {
+                        rows.freeMusicProblem = String(localized: "Jamendo answered without tracks right now.")
+                    }
                 } catch {
+                    if error.isCancellation {
+                        // Cancelled = not loaded yet, never a problem line.
+                        return rows
+                    }
                     Logger.library.error("FREECAT jamendo FAILED: \(String(describing: error), privacy: .public)")
+                    rows.freeMusicProblem = String(localized: "The Jamendo row could not be loaded.")
                 }
             }
+        } else {
+            // R34 diagnosis line: the activation composition, visible in the
+            // log — answers "who turned it off" without a device session.
+            Logger.library.notice("FREECAT jamendo row OFF: master=\(AppStorageKeys.freeCatalogsMasterActive) service=\(AppStorageKeys.boolValue(AppStorageKeys.jamendoRowEnabled))")
         }
         return rows
     }

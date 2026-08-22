@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import Foundation
+import OSLog
 
 /// 96cb043 + 2100b09: the ONE collection of what may appear in "Keep
 /// listening" — server library, LOCAL files and CATALOG works.
@@ -86,6 +87,16 @@ nonisolated enum ContinueSources {
             guard isLocallyTracked(id), !serverKnows.contains(id),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
             guard belongsInContinue(stored) else { continue }
+            // R33: the BOOKS-tab rows ask the ONE membership test — a jam:
+            // album and a track-addressed lva: id are music, whatever their
+            // (possibly missing) started form says. Unknown stays visible.
+            guard MediaFamily.booksTabMember(id, markedForm: ProgressMark.markedForm(stored))
+            else {
+                if MediaFamily.of(id) == .unknown {
+                    Logger.library.notice("CONTINUE unknown namespace filtered: \(id, privacy: .public)")
+                }
+                continue
+            }
             let position = stored[0]
             // A few seconds are a tap, not a started book.
             guard position >= minimumSeconds else { continue }
@@ -118,8 +129,16 @@ nonisolated enum ContinueSources {
             guard key.hasPrefix("localPosition.") else { continue }
             let id = String(key.dropFirst("localPosition.".count))
             guard isLocallyTracked(id), !serverKnows.contains(id),
-                  let stored = value as? [Double], stored.count >= 2,
-                  ProgressMark.markedForm(stored) == .album else { continue }
+                  let stored = value as? [Double], stored.count >= 2 else { continue }
+            // The started FORM is the primary witness; the ID FORM is the
+            // second (R33): a jam: id or a track-addressed lva: id is music
+            // by construction — pre-form stock (started before the form
+            // existed) must reach the music row instead of vanishing when
+            // the books tab rightly refuses it.
+            let isMusicById = id.hasPrefix(FreeCatalog.jamendoPrefix)
+                || (id.hasPrefix(FreeCatalog.archivePrefix)
+                    && id.contains(CatalogSongID.separator))
+            guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
             out.append(Extra(id: id, position: stored[0], updatedAtMs: stored[1],
                              duration: ProgressMark.markedDuration(stored) ?? 0))
         }

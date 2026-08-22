@@ -134,17 +134,21 @@ struct ListeningStoreTests {
             #expect(mark?.source == .backup)
         }
 
-        // Und die Weiterhoeren-Bildung findet ihn ebenfalls ohne Quelle: die
-        // Positiv-Liste zaehlt Katalog-Kennungen zu den lokal gefuehrten,
-        // `serverKnows` ist leer, weil es fuer diese Klasse keinen Server gibt.
+        // Und die Weiterhoeren-Bildung findet beide ohne Quelle — seit R33
+        // aber je auf ihrer TAB-Seite: das Werk in der Buch-Bildung, der
+        // TRACK (Song-Kennung = Musik per Bauform) in der Musik-Bildung.
+        // Keiner verschwindet (die R33-Invariante).
         let defaults: [String: Any] = [
             AppStorageKeys.localPosition(work): [412.0, 1_700_000_000_000.0, 3600.0],
             AppStorageKeys.localPosition(track): [412.0, 1_700_000_000_000.0, 3600.0],
         ]
         let started = ContinueSources.started(in: defaults, serverKnows: [])
-        #expect(Set(started.map(\.id)) == [work, track],
-                "die Weiterhoeren-Bildung findet den Katalog-Stand nicht ohne Quelle")
+        #expect(started.map(\.id) == [work],
+                "die Buch-Weiterhoeren-Bildung findet das Werk nicht ohne Quelle")
         #expect(started.allSatisfy { $0.position == 412 })
+        let music = ContinueSources.positionless(in: defaults, serverKnows: [])
+        #expect(music.map(\.id) == [track],
+                "der Track muss die Musik-Seite erreichen statt zu verschwinden")
         #expect(ContinueSources.isLocallyTracked(work))
         #expect(ContinueSources.isLocallyTracked(track))
     }

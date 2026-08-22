@@ -105,4 +105,55 @@ struct MediaFamilyTests {
         #expect(PlayQueue.canEnqueue("lva:DWK123#3"))
     }
 }
+
+/// R33: the ONE membership test of the books-tab library rows — the third
+/// instance of the "family never asked" class, fixed at the class.
+@Suite struct BooksTabMembershipTests {
+
+    @Test("books and readings belong, every other family does not")
+    func familyMatrix() {
+        #expect(MediaFamily.booksTabMember("abs-book-uuid", markedForm: nil))
+        #expect(MediaFamily.booksTabMember("local:side-load", markedForm: nil))
+        #expect(MediaFamily.booksTabMember("lv:12345", markedForm: nil))
+        #expect(MediaFamily.booksTabMember("gut:999", markedForm: nil))
+        #expect(!MediaFamily.booksTabMember("rss:feed:ep", markedForm: nil))
+        #expect(!MediaFamily.booksTabMember("sub:song", markedForm: nil))
+        #expect(!MediaFamily.booksTabMember("radio:rb:x", markedForm: nil))
+        #expect(!MediaFamily.booksTabMember("newthing:42", markedForm: nil))
+    }
+
+    @Test("jam: is music by type — never a book, form or no form")
+    func jamendoNeverBooks() {
+        #expect(!MediaFamily.booksTabMember("jam:album-1", markedForm: nil))
+        #expect(!MediaFamily.booksTabMember("jam:album-1", markedForm: .album))
+        #expect(!MediaFamily.booksTabMember("jam:album-1", markedForm: .work))
+    }
+
+    @Test("lva: decides per item — track address is music, work follows its form")
+    func archiveDecidesPerItem() {
+        // Song-addressed id: a TRACK, music by construction (pre-form stock
+        // included — the R33 screenshot cards).
+        #expect(!MediaFamily.booksTabMember("lva:netlabel#3", markedForm: nil))
+        // Whole work started as an album: music.
+        #expect(!MediaFamily.booksTabMember("lva:album", markedForm: .album))
+        // Whole work as a work — or without a form: the book side is home.
+        #expect(MediaFamily.booksTabMember("lva:reading", markedForm: .work))
+        #expect(MediaFamily.booksTabMember("lva:reading", markedForm: nil))
+    }
+
+    @Test("the continue stock filters through the membership — jam: reaches music instead of vanishing")
+    func continueStockRespectsMembership() {
+        let defaults: [String: Any] = [
+            "localPosition.jam:album-1": [120.0, 1000.0],          // pre-form stock
+            "localPosition.lva:netlabel#3": [95.0, 2000.0],        // track address
+            "localPosition.lv:reading": [400.0, 3000.0, 3600.0],   // a reading
+        ]
+        let books = ContinueSources.started(in: defaults, serverKnows: [])
+        #expect(books.map(\.id) == ["lv:reading"])
+        // The refused music ids appear on the MUSIC side (never vanish —
+        // the R33 invariant), via the id form when the started form is missing.
+        let music = ContinueSources.positionless(in: defaults, serverKnows: [])
+        #expect(Set(music.map(\.id)) == ["jam:album-1", "lva:netlabel#3"])
+    }
+}
 #endif

@@ -49,6 +49,31 @@ nonisolated enum MediaFamily: String, CaseIterable, Sendable {
         allCases.flatMap { prefixes(for: $0) }
     }
 
+    /// R33: the ONE positive membership test of the BOOKS tab's library rows
+    /// (Continue, Recently Added, Rediscover, full pages — every surface that
+    /// shows "my audiobook library" asks HERE, never re-derives).
+    ///
+    /// The catalog family is one family, its members are not: `lv:`/`gut:`
+    /// are readings (books), `jam:` is music by type, `lva:` is mixed and
+    /// decides per item — a song-addressed id (`lva:x#i`) is a track (music),
+    /// a whole work follows its started FORM; without a form the book side is
+    /// the honest home (the catalog's origin). `.unknown` is never quietly
+    /// filed — callers log it where it surfaces.
+    static func booksTabMember(_ id: String,
+                               markedForm: ProgressMark.StartedForm?) -> Bool {
+        switch of(id) {
+        case .book: return true
+        case .podcast, .music, .radio, .unknown: return false
+        case .catalog:
+            if id.hasPrefix(FreeCatalog.jamendoPrefix) { return false }
+            if id.hasPrefix(FreeCatalog.archivePrefix) {
+                if id.contains(CatalogSongID.separator) { return false }
+                return markedForm != .album
+            }
+            return true
+        }
+    }
+
     static func of(_ id: String) -> MediaFamily {
         for family in allCases where family != .unknown {
             if prefixes(for: family).contains(where: { id.hasPrefix($0) }) { return family }
