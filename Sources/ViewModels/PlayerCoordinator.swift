@@ -46,6 +46,7 @@ final class PlayerCoordinator: ObservableObject {
 
     private var isPlayingCancellable: AnyCancellable?
     private var icyCancellable: AnyCancellable?
+    private var standbyCancellable: AnyCancellable?
 
     let provider: any AudioProvider
 
@@ -77,6 +78,26 @@ final class PlayerCoordinator: ObservableObject {
                       nowMs: Date().timeIntervalSince1970 * 1000) else { return }
             Logger.player.notice("CLAIM takeover: standing down after \(Int((Date().timeIntervalSince1970 * 1000 - claim.t) / 1000), privacy: .public)s (device \(claim.deviceId.prefix(8), privacy: .public))")
             vm.pause()
+        }
+        // R30: the standby follows the fresh truth while the app runs — a
+        // pointer adoption and every deliberate progress change re-ask the
+        // standby question (both fire rarely; the refresh guards itself).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(choicesAdoptedForStandby),
+            name: .userChoicesAdopted, object: nil)
+        standbyCancellable = PodcastProgressStore.shared.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                Task { @MainActor in await self?.refreshStandbyFromTruth() }
+            }
+    }
+
+    @objc private nonisolated func choicesAdoptedForStandby(_ note: Notification) {
+        let adopted = note.userInfo?["keys"] as? [String] ?? []
+        guard !adopted.isEmpty else { return }
+        Task { @MainActor in
+            guard adopted.contains(AppStorageKeys.lastPlayedItemId) else { return }
+            await self.refreshStandbyFromTruth()
         }
     }
 
@@ -352,6 +373,10 @@ final class PlayerCoordinator: ObservableObject {
         // It was already removed when it started, but a restored-session item
         // (never opened via `open`) would otherwise linger.
         PlayQueue.shared.markedPlayed(finishedItemId)
+        // The natural finish is a truth change the mounted Continue rows must
+        // see WITHOUT a tab switch — one deliberate bump; every surface
+        // recomputes through its existing scope/revision.
+        PodcastProgressStore.shared.reload()
 
         // 1. Cross-media queue: the next PLAYABLE entry, any type.
         if let next = nextPlayableQueueItem() {
@@ -428,8 +453,17 @@ final class PlayerCoordinator: ObservableObject {
             Logger.player.notice("STANDBY cleared: \(lastId, privacy: .public) counts as finished")
             return
         }
+        if let item = await resolveStandbyItem(lastId, entries: entries) {
+            await open(item: item, autoplay: false)
+        }
+    }
+
+    /// The standby pointer's resolution chain, shared by the start restore and
+    /// the live refresh (R30).
+    private func resolveStandbyItem(_ lastId: String,
+                                    entries: [LibraryEntry] = []) async -> LibraryItem? {
         // Podcast episodes resolve through the subscriptions' episode index,
-        // which now loads asynchronously at startup — wait for it, otherwise a
+        // which loads asynchronously at startup — wait for it, otherwise a
         // cold-start restore of a podcast episode races the disk load.
         if lastId.hasPrefix("rss:") || lastId.hasPrefix("abspod:") {
             await PodcastSubscriptions.shared.ensureLoaded()
@@ -438,8 +472,7 @@ final class PlayerCoordinator: ObservableObject {
         // NOT in the audiobook list, only in the RSS provider.
         if let item = entries.first(where: { $0.id == lastId })?.item
             ?? AppSession.shared.libraryItem(forId: lastId) {
-            await open(item: item, autoplay: false)
-            return
+            return item
         }
         // N1 fallback 1: ids without a local index entry (sub: albums/songs)
         // still resolve over their provider — restore from a light item built
@@ -447,9 +480,7 @@ final class PlayerCoordinator: ObservableObject {
         // healing the stale value for the next launch.
         if let detail = try? await AppSession.shared.provider(for: lastId)
             .fetchItemDetail(itemId: lastId) {
-            await open(item: LibraryItem(id: detail.id, media: detail.media, addedAt: nil),
-                       autoplay: false)
-            return
+            return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
         }
         // N1 fallback 2: the episode fell out of its feed (rotating news
         // feeds) — restore the SHOW context with its newest episode instead of
@@ -457,9 +488,40 @@ final class PlayerCoordinator: ObservableObject {
         if let showId = Self.showId(forEpisodeId: lastId),
            let show = PodcastSubscriptions.shared.shows.first(where: { $0.id == showId }) {
             let items = AppSession.shared.rssProvider.showItems(for: show)
-            if let newest = items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) }) {
-                await open(item: newest, autoplay: false)
+            return items.max(by: { ($0.addedAt ?? 0) < ($1.addedAt ?? 0) })
+        }
+        return nil
+    }
+
+    /// R30: the standby follows the fresh truth WITHOUT an app restart — a
+    /// fresher foreign pointer swaps the paused mini player, a held pointer
+    /// that turned finished clears it. Never touches an active or user-touched
+    /// session, never auto-plays. The finished-clear stays silent mechanics
+    /// (each device derives it; the adoption guard is the cloud-side twin).
+    func refreshStandbyFromTruth() async {
+        if let vm = viewModel, vm.isPlaying || vm.eventSinceLoad { return }
+        let stored = UserDefaults.standard.string(forKey: lastItemKey)
+        if let held = activeItem?.id {
+            if stored == held {
+                if Self.standbyCountsAsFinished(ListeningStore.mark(held)) {
+                    viewModel?.stop(); viewModel = nil; activeItem = nil
+                    UserDefaults.standard.removeObject(forKey: lastItemKey)
+                    Logger.player.notice("STANDBY cleared live: \(held, privacy: .public) counts as finished")
+                }
+                return
             }
+            if stored == nil {
+                // Foreign tombstone adopted — "nothing on standby" travels.
+                viewModel?.stop(); viewModel = nil; activeItem = nil
+                Logger.player.notice("STANDBY cleared live: foreign tombstone")
+                return
+            }
+        }
+        guard let stored, stored != activeItem?.id else { return }
+        guard !Self.standbyCountsAsFinished(ListeningStore.mark(stored)) else { return }
+        if let item = await resolveStandbyItem(stored) {
+            Logger.player.notice("STANDBY swapped live: \(stored, privacy: .public)")
+            await open(item: item, autoplay: false)
         }
     }
 

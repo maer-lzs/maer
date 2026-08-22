@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import Combine
 
 /// Home = cross-section aggregation tab (Etappe 3). It is NOT a library — the
 /// media tabs stay full libraries. Reuses ONLY existing components (Regel 2:
@@ -156,6 +157,13 @@ struct HomeView: View {
         // one reports (active-gate). Transition/feedback edge untouched.
         .reportsBottomBarScroll(active: isActive)
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
+            hiddenRevision += 1
+        }
+        // R31: a finished episode leaves the mounted Continue row WITHOUT a
+        // tab switch — the progress store bumps only on deliberate changes
+        // (finish, mark, cloud adoption), never per playback tick.
+        .onReceive(PodcastProgressStore.shared.objectWillChange
+            .receive(on: RunLoop.main)) { _ in
             hiddenRevision += 1
         }
         // 3a3b1aa: a Home row's page. Registered HERE, not on the stack root,
