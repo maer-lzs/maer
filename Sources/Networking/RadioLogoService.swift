@@ -526,20 +526,31 @@ actor RadioLogoService {
         // stranger for a DIFFERENT entry. And it sits AHEAD of the convention
         // URL, because it is a real image someone published rather than a
         // guess at a path.
-        if let mirror = RadioBrowserClient.mirrors.first,
-           let searchURL = RadioLogoLookup.siblingSearchURL(name: name, mirror: mirror) {
-            let siblings = await fetch(searchURL)
-            if case .failed = siblings { return .failed("siblings") }
-            if case .data(let data) = siblings,
-               let favicon = RadioLogoLookup.siblingFaviconURL(fromSearchData: data,
-                                                               stationName: name,
-                                                               homepage: homepage) {
-                // Verified before it counts — same rule as the convention URL:
-                // a stored positive never expires, so a dead link would show
-                // letters forever without ever asking again.
-                if case .data = await fetch(favicon) {
-                    Logger.library.notice("RADIO logo chain: sibling favicon for \(name, privacy: .public)")
-                    return .hit(favicon, commonsFile: nil, stage: "geschwister")
+        if let mirror = RadioBrowserClient.mirrors.first {
+            // R24: two search terms — the declared stem first, then the
+            // family stem for members without a separator ("bigFM Deutsch
+            // Rap" → "bigFM" finds the head whose sibling carries the real
+            // mark). Acceptance is identical for both (domain + kinship).
+            var terms = [RadioLogoLookup.brandStem(of: name)]
+            if let family = RadioLogoLookup.familyStem(of: name),
+               !terms.contains(family) { terms.append(family) }
+            for term in terms {
+                guard let searchURL = RadioLogoLookup.siblingSearchURL(name: term,
+                                                                       mirror: mirror)
+                else { continue }
+                let siblings = await fetch(searchURL)
+                if case .failed = siblings { return .failed("siblings") }
+                if case .data(let data) = siblings,
+                   let favicon = RadioLogoLookup.siblingFaviconURL(fromSearchData: data,
+                                                                   stationName: name,
+                                                                   homepage: homepage) {
+                    // Verified before it counts — same rule as the convention
+                    // URL: a stored positive never expires, so a dead link
+                    // would show letters forever without ever asking again.
+                    if case .data = await fetch(favicon) {
+                        Logger.library.notice("RADIO logo chain: sibling favicon for \(name, privacy: .public)")
+                        return .hit(favicon, commonsFile: nil, stage: "geschwister")
+                    }
                 }
             }
         }

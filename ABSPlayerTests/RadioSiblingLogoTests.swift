@@ -97,6 +97,19 @@ import Foundation
                 || url?.query?.contains("name=Hit+Radio+FFH") == true)
     }
 
+    /// R24: members without a declared separator get a SECOND, family-stem
+    /// search — the brand-like first token. Generic first words never widen
+    /// the search; acceptance stays domain+kinship guarded either way.
+    @Test func familyStemWidensOnlyForBrandLikeHeads() {
+        #expect(RadioLogoLookup.familyStem(of: "bigFM Deutsch Rap") == "bigFM")
+        #expect(RadioLogoLookup.familyStem(of: "Radio Basilisk") == nil)      // generic head
+        #expect(RadioLogoLookup.familyStem(of: "bigFM") == nil)               // is its own head
+        #expect(RadioLogoLookup.familyStem(of: "Die Neue 107.7") == nil)      // generic article
+        #expect(RadioLogoLookup.familyStem(of: "1LIVE DIGGI") == "1LIVE")     // brand-like head
+        #expect(RadioLogoLookup.familyStem(of: "NRJ Bern") == nil)            // < 4 chars
+        #expect(RadioLogoLookup.familyStem(of: "Sunshine Live - Techno") == "Sunshine")
+    }
+
     /// Measured against the REAL page: bigFM's icon sits on a foreign CDN
     /// (`file.atsw.de`), not on the station's own domain. the reviewer suspected the
     /// absolute foreign address as the reason the homepage stage broke off —

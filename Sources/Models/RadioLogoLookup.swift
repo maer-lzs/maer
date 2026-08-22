@@ -189,6 +189,23 @@ nonisolated enum RadioLogoLookup {
         return trimmed.count >= 3 ? trimmed : name
     }
 
+    /// R24 second try: family members without a declared separator ("bigFM
+    /// Deutsch Rap") can never find their head through `brandStem` — the
+    /// full-name search only returns same-name duplicates, and the curated
+    /// table used to hide exactly this gap. The brand-like FIRST token widens
+    /// the search; acceptance stays fully guarded (same homepage domain +
+    /// name kinship), so a broad search cannot add a wrong logo. Generic
+    /// first words never widen ("Radio X" would search half the catalog).
+    static func familyStem(of name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmed.split(separator: " ").first.map(String.init),
+              first.count >= 4,
+              first.lowercased() != trimmed.lowercased() else { return nil }
+        let generic: Set<String> = ["radio", "the", "das", "der", "die", "eine"]
+        guard !generic.contains(first.lowercased()) else { return nil }
+        return first
+    }
+
     /// Two catalog entries mean the same station when one name is the HEAD of
     /// the other (folded, ≥3 characters). Deliberately not a similarity score:
     /// a threshold nobody can name is how a wrong logo gets in.
