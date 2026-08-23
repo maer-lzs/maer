@@ -137,11 +137,25 @@ enum FreeCatalogLoader {
         /// R34: an ENABLED Jamendo row that stayed empty says WHY — a switch
         /// without a row is a control without a destination (Regel 3). nil =
         /// off or loaded; a value is the short visible reason.
-        var freeMusicProblem: String? = nil
         var classical: [LibraryItem] = []
         /// Netlabels (archive.org, CC) — its own row next to Jamendo; the
         /// source name at the heading keeps them apart (Auftrag Punkt 4).
         var netlabels: [LibraryItem] = []
+        /// R44: a FAILED row is an ANSWER too. Without this only Jamendo
+        /// could ever be answered, so a failing LibriVox left the pass
+        /// permanently incomplete — and the R39 reopen turned that into three
+        /// full network passes in a row (the wheel the owner saw spinning).
+        /// Cancellations never land here: a cancelled step is "not loaded
+        /// yet" and must stay retryable.
+        enum Row: Hashable { case books, classical, netlabels, freeMusic }
+        var problems: [Row: String] = [:]
+
+        /// The Jamendo half's reason — kept as its own name because the
+        /// surfaces read it (Regel 2: one wording, one source).
+        var freeMusicProblem: String? {
+            get { problems[.freeMusic] }
+            set { problems[.freeMusic] = newValue }
+        }
     }
 
     /// Moderate share (Fortsetzen-Deckel-Denke): at most this many LibriVox
@@ -216,10 +230,17 @@ enum FreeCatalogLoader {
         }
         let areaOn = AppStorageKeys.freeAudiobooksAreaActive
         let archiveOn = AppStorageKeys.archiveBooksActive
-        return answered(AppStorageKeys.librivoxActive && areaOn, rows.discoverBooks, nil)
-            && answered(AppStorageKeys.freeClassicalActive && archiveOn, rows.classical, nil)
-            && answered(AppStorageKeys.netlabelsActive && archiveOn, rows.netlabels, nil)
-            && answered(AppStorageKeys.jamendoActive, rows.freeMusic, rows.freeMusicProblem)
+        // R44: a booked FAILURE counts as an answer — otherwise a failing
+        // source keeps the pass incomplete forever and the retries turn into
+        // a spinning wheel.
+        return answered(AppStorageKeys.librivoxActive && areaOn,
+                        rows.discoverBooks, rows.problems[.books])
+            && answered(AppStorageKeys.freeClassicalActive && archiveOn,
+                        rows.classical, rows.problems[.classical])
+            && answered(AppStorageKeys.netlabelsActive && archiveOn,
+                        rows.netlabels, rows.problems[.netlabels])
+            && answered(AppStorageKeys.jamendoActive,
+                        rows.freeMusic, rows.problems[.freeMusic])
     }
 
     static func load() async -> Rows {
@@ -258,7 +279,9 @@ enum FreeCatalogLoader {
                                                       provider: provider)
                 rows.tabBooks = docs.compactMap { provider.remember(popular: $0) }
             } catch {
+                guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT discover-books FAILED: \(String(describing: error), privacy: .public)")
+                rows.problems[.books] = FreeCatalog.failureReason(error) ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         let classicalOn = (AppStorageKeys.freeClassicalActive) && archiveOn
@@ -274,7 +297,9 @@ enum FreeCatalogLoader {
                 Logger.library.notice("FREECAT classical-teaser loaded=\(docs.count)")
                 rows.classical = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
+                guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT classical-teaser FAILED: \(String(describing: error), privacy: .public)")
+                rows.problems[.classical] = FreeCatalog.failureReason(error) ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         let netlabelsOn = (AppStorageKeys.netlabelsActive) && archiveOn
@@ -287,7 +312,9 @@ enum FreeCatalogLoader {
                 Logger.library.notice("FREECAT netlabels loaded=\(docs.count)")
                 rows.netlabels = await Self.picks(docs, cap: RowPreview.limit, provider: provider)
             } catch {
+                guard !error.isCancellation else { return rows }
                 Logger.library.error("FREECAT netlabels FAILED: \(String(describing: error), privacy: .public)")
+                rows.problems[.netlabels] = FreeCatalog.failureReason(error) ?? String(localized: "The catalogs could not be loaded. Tap to try again.")
             }
         }
         if jamendoOn {

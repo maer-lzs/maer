@@ -94,5 +94,25 @@ struct CatalogStoreReadFenceTests {
         let refused = !exhausted.startIfNeeded(connected: true)
         #expect(refused, "after the limit only an EXPLICIT path may reopen")
     }
+
+    /// R44 (the owner am Gerät: „das Dauerrad ist wohl LibriVox"): a FAILED row
+    /// is an ANSWER. Before this only Jamendo could be answered, so a failing
+    /// LibriVox left the pass permanently incomplete — and the R39 reopen
+    /// turned that into three full network passes, i.e. a wheel that keeps
+    /// spinning. Cancellations still leave the pass incomplete (retryable).
+    @MainActor
+    @Test("ein gebuchter Fehlschlag zaehlt als Antwort — der Lauf ist komplett")
+    func aBookedFailureCompletesThePass() {
+        var rows = FreeCatalogLoader.Rows()
+        rows.problems[.books] = "URLError -1001"
+        rows.problems[.classical] = "URLError -1001"
+        rows.problems[.netlabels] = "URLError -1001"
+        rows.problems[.freeMusic] = "URLError -1001"
+        #expect(FreeCatalogLoader.passIsComplete(rows),
+                "vier gebuchte Fehlschlaege sind vier Antworten")
+        // Nothing booked and nothing loaded = the cancelled shape: incomplete,
+        // so the gate may reopen (bounded) instead of freezing the session.
+        #expect(!FreeCatalogLoader.passIsComplete(FreeCatalogLoader.Rows()))
+    }
 }
 #endif
