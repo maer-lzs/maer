@@ -123,6 +123,7 @@ struct SourceAreaPage: View {
     @AppStorage(AppStorageKeys.freeAudiobooksEnabled) private var freeAudiobooks = true
     @AppStorage(AppStorageKeys.netlabelsRowEnabled) private var netlabelsRow = true
     @AppStorage(AppStorageKeys.shellacRowsEnabled) private var shellacRows = true
+    @AppStorage(AppStorageKeys.jamendoRowEnabled) private var jamendoRow = true
 
     @State private var podcastServerNote: String?
 
@@ -229,6 +230,15 @@ struct SourceAreaPage: View {
                 .accessibilityIdentifier("books-free-audiobooks-toggle")
                 // Master off greys the area toggles — visibly subordinate,
                 // no silent double state.
+                .disabled(!freeCatalogsMaster)
+            // R36: the areas list has to be COMPLETE — free music was the one
+            // area steering a visible surface without a switch here (only the
+            // SERVICE switch under network services, which answers a
+            // different question: privacy, not presence). `FreeCatalogArea`
+            // is the one enumeration now, and a fence holds this list against
+            // it, so the next catalog cannot be forgotten again.
+            AppSwitch("Show Free Music", isOn: $jamendoRow)
+                .accessibilityIdentifier("music-jamendo-toggle")
                 .disabled(!freeCatalogsMaster)
             AppSwitch("Show Netlabels", isOn: $netlabelsRow)
                 .accessibilityIdentifier("music-netlabels-toggle")

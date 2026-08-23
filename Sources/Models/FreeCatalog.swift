@@ -161,6 +161,36 @@ nonisolated enum FreeCatalog {
     /// his own server. A new source now only has to appear in THIS list.
     static let allPrefixes = [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
 
+    /// R36: the ONE enumeration of the catalog AREAS — every area steers a
+    /// visible surface and therefore MUST have its own switch in the areas
+    /// list (network services answer a different question: privacy per
+    /// service, not presence of an area). A new catalog adds its case here
+    /// and the fence (`SourceMapAreasTests`) fails until its switch exists,
+    /// so the list can no longer look complete while it is not.
+    enum Area: String, CaseIterable, Sendable {
+        case freeAudiobooks, freeMusic, netlabels, oldRecords
+
+        /// The stored key that switches this area.
+        var storageKey: String {
+            switch self {
+            case .freeAudiobooks: return AppStorageKeys.freeAudiobooksEnabled
+            case .freeMusic:      return AppStorageKeys.jamendoRowEnabled
+            case .netlabels:      return AppStorageKeys.netlabelsRowEnabled
+            case .oldRecords:     return AppStorageKeys.shellacRowsEnabled
+            }
+        }
+
+        /// The switch's accessibility identifier in the areas list.
+        var toggleIdentifier: String {
+            switch self {
+            case .freeAudiobooks: return "books-free-audiobooks-toggle"
+            case .freeMusic:      return "music-jamendo-toggle"
+            case .netlabels:      return "music-netlabels-toggle"
+            case .oldRecords:     return "music-shellac-toggle"
+            }
+        }
+    }
+
     /// Suggestion-language code → the English language NAME LibriVox stores.
     /// The API ignores language parameters (probed) — filtering is client-side
     /// over the `language` field; unknown codes filter nothing (honest).

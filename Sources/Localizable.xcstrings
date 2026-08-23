@@ -6772,6 +6772,16 @@
         }
       }
     },
+    "Show Free Music" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freie Musik zeigen"
+          }
+        }
+      }
+    },
     "Show More" : {
       "localizations" : {
         "de" : {

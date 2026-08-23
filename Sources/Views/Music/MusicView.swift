@@ -50,6 +50,13 @@ struct MusicView: View {
     /// but a second place that can drift, which is the exact defect the one
     /// accessor per source was built to end. They read it now.
     private var netlabelsArea: Bool { AppStorageKeys.netlabelsActive }
+    private var jamendoArea: Bool { AppStorageKeys.jamendoActive }
+    /// R35: the catalogue titles started as album TRACKS — the same stock
+    /// Home's "Listen Again" reads (`positionless`), never a second source.
+    private var catalogTracks: [ContinueSources.Extra] {
+        ContinueSources.positionless(in: UserDefaults.standard.dictionaryRepresentation(),
+                                     serverKnows: [])
+    }
     private var shellacArea: Bool { AppStorageKeys.shellacActive }
     private var freeClassicalArea: Bool { AppStorageKeys.freeClassicalActive }
 
@@ -138,14 +145,20 @@ struct MusicView: View {
             // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
-            // Serverless (13ccc6c): the free-music collection is the tab's
-            // core — the entry leads to the ONE collection page (Jamendo,
-            // records, netlabels), and the Jamendo row renders here directly.
-            if !serverConfigured && freeCatalogsMaster {
+            // R34 Runde 2 (ENTSCHEID the owner): the free catalogs are their
+            // OWN offer, not a serverless substitute — the row appears WITH a
+            // server too (server content keeps the upper spot). Same rule as
+            // the netlabels row below, which never had the server condition
+            // (Regel 2, tab parity). And the enabled row appears or says
+            // visibly why not — on THIS surface too, not only on Home.
+            if jamendoArea && freeCatalogsMaster {
                 VStack(alignment: .leading, spacing: 10) {
                     RowHeading.entry("Free Music", destination: MusicRoute.freeCatalogArea)
                     if !freeCatalogStore.rows.freeMusic.isEmpty {
                         freeTileRow(freeCatalogStore.rows.freeMusic)
+                    } else if let problem = freeCatalogStore.rows.freeMusicProblem {
+                        Text(problem).font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal)
                     }
                 }
             }
@@ -186,6 +199,27 @@ struct MusicView: View {
             // (the row source loads 20, shows 12; a 20-album library shows
             // no chevron on the page-sized cut, which is the rule working).
             if serverConfigured, !vm.recent.isEmpty { shelf("Recently Played", vm.recent, page: .shelfPage(.recent)) }
+            // R35: catalogue titles started as album tracks are MUSIC — their
+            // home is this tab, not only Home. The server shelf above cannot
+            // carry them (it is fed by the server's history), and without a
+            // music server it does not exist at all; this row is independent
+            // of a server by construction. Same cell as Home (Regel 2), same
+            // stock (`positionless`) — no second home, no second form.
+            if !catalogTracks.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    RowHeading.plain("Listen Again")
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        LazyHStack(alignment: .top, spacing: 16) {
+                            ForEach(catalogTracks.prefix(RowPreview.limit), id: \.id) { extra in
+                                CatalogTrackCell(itemId: extra.id, width: 128,
+                                                 playerCoordinator: playerCoordinator)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .scrollClipDisabled()
+                }
+            }
             if serverConfigured, !vm.newest.isEmpty { shelf("Recently Added", vm.newest, page: .shelfPage(.newest)) }
             // 40f21b3 I1: the free-music areas are REACHABLE from the music
             // tab again (tab parity) — same store rows as Home, no second

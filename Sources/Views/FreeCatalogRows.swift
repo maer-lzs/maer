@@ -205,6 +205,23 @@ enum FreeCatalogLoader {
         return (200...299).contains(http.statusCode)
     }
 
+    /// R34 Runde 2: has every ENABLED row an answer? Content or a stated
+    /// problem counts; an enabled row that is empty AND silent means the pass
+    /// was cut short (cancel) — the session must be allowed to try again.
+    /// Master off = nothing to answer, the pass is complete by definition.
+    static func passIsComplete(_ rows: Rows) -> Bool {
+        guard AppStorageKeys.freeCatalogsMasterActive else { return true }
+        func answered(_ on: Bool, _ items: [LibraryItem], _ problem: String?) -> Bool {
+            !on || !items.isEmpty || problem != nil
+        }
+        let areaOn = AppStorageKeys.freeAudiobooksAreaActive
+        let archiveOn = AppStorageKeys.archiveBooksActive
+        return answered(AppStorageKeys.librivoxActive && areaOn, rows.discoverBooks, nil)
+            && answered(AppStorageKeys.freeClassicalActive && archiveOn, rows.classical, nil)
+            && answered(AppStorageKeys.netlabelsActive && archiveOn, rows.netlabels, nil)
+            && answered(AppStorageKeys.jamendoActive, rows.freeMusic, rows.freeMusicProblem)
+    }
+
     static func load() async -> Rows {
         // 5034add: master off ⇒ nothing loads, nothing fetches — the whole
         // catalog feature is dark (UI gates hide the surfaces separately).
@@ -296,7 +313,10 @@ enum FreeCatalogLoader {
                     }
                 } catch {
                     if error.isCancellation {
-                        // Cancelled = not loaded yet, never a problem line.
+                        // Cancelled = not loaded yet, never a problem line —
+                        // and never an END state: the row stays unanswered,
+                        // so `passIsComplete` keeps the session retryable.
+                        Logger.library.notice("FREECAT jamendo CANCELLED — pass stays incomplete")
                         return rows
                     }
                     Logger.library.error("FREECAT jamendo FAILED: \(String(describing: error), privacy: .public)")
@@ -551,8 +571,13 @@ final class FreeCatalogStore: ObservableObject {
     private func runLoad() async {
         defer { gate.finish() }
         let loadedRows = await FreeCatalogLoader.load()
-        loaded = !loadedRows.discoverBooks.isEmpty
-            || !loadedRows.freeMusic.isEmpty || !loadedRows.classical.isEmpty || !loadedRows.netlabels.isEmpty
+        // R34 Runde 2: a partial success may NOT book the whole pass as done.
+        // Measured shape: one cancelled Jamendo step returned early (silently,
+        // and rightly — a cancel is no failure), the other rows filled, and
+        // `loaded` then closed the gate for the whole SESSION: no row, no
+        // line, no second attempt. `loaded` now means "every ENABLED row has
+        // an answer" (content, a stated problem, or the source is off).
+        loaded = FreeCatalogLoader.passIsComplete(loadedRows)
         BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = loadedRows }
     }
 }
