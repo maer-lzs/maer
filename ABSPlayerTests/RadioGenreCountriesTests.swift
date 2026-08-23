@@ -125,6 +125,39 @@ import Foundation
         #expect(RadioGenreCuration.ranked(list, deviceLanguage: nil).map(\.name) == ["A", "B"])
     }
 
+    /// R37: the home share is a QUOTA, not a bonus — the old all-matching-
+    /// first rule tipped the worldwide page into "only Germany" (measured:
+    /// 18 German stations in the broad pot filled every visible slot). The
+    /// quota is bounded above AND below by construction, so it cannot tip
+    /// in either direction.
+    @Test("Weltweit bleibt mehrsprachig: Heimat-Quote am Kopf, Rest global")
+    func homeQuotaKeepsTheWorldVisible() {
+        var list: [RadioStation] = []
+        for i in 0..<10 { list.append(station("DE\(i)", votes: 1000 - i, languages: ["de"])) }
+        for i in 0..<10 { list.append(station("WORLD\(i)", votes: 900 - i, languages: ["en"])) }
+        let ranked = RadioGenreCuration.ranked(list, deviceLanguage: "de")
+        let headNames = ranked.prefix(RadioGenreCuration.homeQuota).map(\.name)
+        // The head is the home quota, in vote order — R21 stays satisfied.
+        #expect(headNames == ["DE0", "DE1", "DE2", "DE3"])
+        // The visible page carries more than one language (the R37 invariant).
+        let visible = ranked.prefix(12)
+        #expect(visible.contains { $0.name.hasPrefix("WORLD") })
+        #expect(visible.filter { $0.name.hasPrefix("DE") }.count
+                <= RadioGenreCuration.homeQuota + 3)
+        // Nothing is lost — the leftover home stations stay in the list.
+        #expect(ranked.count == list.count)
+        #expect(Set(ranked.map(\.name)) == Set(list.map(\.name)))
+    }
+
+    @Test("weniger Heimat-Sender als Quote: unveraendert vorn, kein Auffuellen")
+    func fewerHomeStationsThanTheQuota() {
+        let list = [station("WORLD0", votes: 900, languages: ["en"]),
+                    station("DE0", votes: 100, languages: ["de"]),
+                    station("WORLD1", votes: 80, languages: ["en"])]
+        #expect(RadioGenreCuration.ranked(list, deviceLanguage: "de").map(\.name)
+                == ["DE0", "WORLD0", "WORLD1"])
+    }
+
     // MARK: - G8
 
     @Test func aSparseSelectionOffersWorldwide() {

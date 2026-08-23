@@ -96,12 +96,34 @@ nonisolated enum RadioGenreCuration {
     /// not three tiers — demoting a declared other language below undeclared
     /// ones would be a filter under another name, and the decision rejects a
     /// language filter.
+    /// R37: how many HEAD seats the device language may hold on a worldwide
+    /// page. A fixed quota instead of the old all-matching-first bonus — that
+    /// bonus was uncalibratable and tipped the page twice in both directions
+    /// (first no DLF at all, then nothing BUT German). A quota cannot tip:
+    /// the home share is bounded above AND below by construction.
+    static let homeQuota = 4
+
     static func ranked(_ stations: [RadioStation], deviceLanguage: String?) -> [RadioStation] {
         guard let wanted = deviceLanguage?.lowercased(), !wanted.isEmpty else { return stations }
         let matching = stations.filter { speaks($0, wanted) }
         guard !matching.isEmpty else { return stations }
         let rest = stations.filter { !speaks($0, wanted) }
-        return matching + rest
+        // The head carries at most `homeQuota` home stations (vote order
+        // within), then the global pot in its own order — the remaining home
+        // stations keep their place in it, they are not pushed out.
+        let head = matching.prefix(homeQuota)
+        let tail = Array(matching.dropFirst(homeQuota))
+        guard !tail.isEmpty else { return Array(head) + rest }
+        // Interleave the leftover home stations back into the global order by
+        // their original position, so the page stays a MIX rather than two
+        // blocks — and no station is lost.
+        var merged = rest
+        var index = min(2, merged.count)
+        for station in tail {
+            merged.insert(station, at: min(index, merged.count))
+            index = min(index + 3, merged.count)
+        }
+        return Array(head) + merged
     }
 
     static func speaks(_ station: RadioStation, _ language: String) -> Bool {
