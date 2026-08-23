@@ -125,4 +125,25 @@ import Foundation
                                                     baseURL: URL(string: "https://www.bigfm.de/")!)
         #expect(icon?.absoluteString == "https://file.atsw.de/icons/icon_512.png")
     }
+
+    /// R41: the catalog's homepage is often `http://` — and under ATS
+    /// (clear text for MEDIA only) that request never leaves the device, so
+    /// the homepage stage was dead for half the German catalog (measured:
+    /// 101 of the top 200). The funnel raises to https; no http fallback.
+    @Test("die Homepage-Stufe hebt auf https an — kein Rueckfall")
+    func homepageIsRaisedToHTTPS() {
+        #expect(RadioLogoLookup.httpsPageURL("http://www.bigfm.de/webradio/deutschrap")?
+            .absoluteString == "https://www.bigfm.de/webradio/deutschrap")
+        #expect(RadioLogoLookup.httpsPageURL("https://www.rockantenne.de/")?
+            .absoluteString == "https://www.rockantenne.de/")
+        // Scheme-less catalog entries are assumed https (same as the feeds).
+        #expect(RadioLogoLookup.httpsPageURL("80s80s.de")?.absoluteString == "https://80s80s.de")
+        // Host and path stay untouched — only the scheme changes.
+        #expect(RadioLogoLookup.httpsPageURL("http://sender.example/pfad?x=1")?
+            .absoluteString == "https://sender.example/pfad?x=1")
+        // Nothing usable stays nothing (no invented URL).
+        #expect(RadioLogoLookup.httpsPageURL(nil) == nil)
+        #expect(RadioLogoLookup.httpsPageURL("   ") == nil)
+        #expect(RadioLogoLookup.httpsPageURL("ftp://sender.example") == nil)
+    }
 }

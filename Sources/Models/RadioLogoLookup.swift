@@ -236,6 +236,29 @@ nonisolated enum RadioLogoLookup {
             .first { $0.scheme?.hasPrefix("http") == true }
     }
 
+    /// R41: the catalog's homepage often carries `http://` — and under ATS
+    /// (`NSAllowsArbitraryMediaLoads`: clear text for MEDIA only) such a
+    /// request never leaves the device. The homepage stage of the logo chain
+    /// was therefore DEAD for every such station, measured: 101 of the 200
+    /// most-voted German stations. Same class and same cure as the podcast
+    /// feeds (`PodcastFeedAddress`): raise to https in the funnel, and NO
+    /// fallback to http — the fallback is what ATS refuses anyway.
+    ///
+    /// Only the scheme changes; host and path stay untouched, so a station
+    /// whose site truly only serves http fails visibly (empty/failed) instead
+    /// of silently.
+    static func httpsPageURL(_ homepage: String?) -> URL? {
+        guard let raw = homepage?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty else { return nil }
+        let withScheme = raw.contains("://") ? raw : "https://" + raw
+        guard var comps = URLComponents(string: withScheme),
+              let scheme = comps.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              comps.host?.isEmpty == false else { return nil }
+        comps.scheme = "https"
+        return comps.url
+    }
+
     /// The convention fallback when the page names no icon tag.
     static func conventionTouchIconURL(homepage: URL) -> URL? {
         guard var comps = URLComponents(url: homepage, resolvingAgainstBaseURL: false) else { return nil }

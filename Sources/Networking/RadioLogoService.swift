@@ -574,8 +574,10 @@ actor RadioLogoService {
             }
         }
         // Stage 2: homepage apple-touch-icon (first-party).
-        guard let homepage, let pageURL = URL(string: homepage),
-              pageURL.scheme?.hasPrefix("http") == true else { return .noHit }
+        // R41: the funnel raises the catalog's homepage to https — an http
+        // request would be dropped by ATS before it leaves the device (the
+        // stage was dead for half the German catalog, measured).
+        guard let pageURL = RadioLogoLookup.httpsPageURL(homepage) else { return .noHit }
         let page = await fetch(pageURL)
         if case .failed = page { return .failed("homepage") }
         if case .data(let data) = page, let html = String(data: data, encoding: .utf8),
