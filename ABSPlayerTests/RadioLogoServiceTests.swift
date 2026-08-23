@@ -264,3 +264,49 @@ struct RadioLogoDataTests {
         #expect(read(defaults)[small] == nil)
     }
 }
+
+// MARK: - 11c32f1: the owner's Bundesliga-Entscheid
+
+struct RadioLogoBundesligaTests {
+
+    /// Der Entscheid lautet: BEIDE Bundesliga-Familien tragen das
+    /// Bundesliga-Logo. Gebaut ist das als EIN kuratierter Eintrag, den die
+    /// Praefix-Regel in `curatedFile` an beide Familien weiterreicht — die
+    /// Kacheln heissen "Fußball-Bundesliga: Spiel 1" und
+    /// "Fußball-Bundesliga 2: Spiel 1". Ein zweiter Eintrag waere eine
+    /// zweite Wahrheit fuer dieselbe Entscheidung.
+    @Test("ein Eintrag traegt beide Bundesliga-Familien")
+    func oneEntryCarriesBothFamilies() {
+        let expected = "Bundesliga logo.svg"
+        #expect(RadioLogoData.commonsFile(forName: "Fußball-Bundesliga") == expected)
+        for name in ["Fußball-Bundesliga: Spiel 1",
+                     "Fußball-Bundesliga: Konferenz",
+                     "Fußball-Bundesliga 2: Spiel 1",
+                     "Fußball-Bundesliga 2: Konferenz"] {
+            #expect(RadioLogoService.curatedFile(forName: name) == expected,
+                    "\(name) muss das Bundesliga-Logo erben")
+        }
+    }
+
+    /// Rot-Probe der Praefix-Regel: sie darf nicht zu "faengt zufaellig
+    /// gleich an" verkommen — die Fortsetzung MUSS an einer Wortgrenze
+    /// beginnen (die laut.fm-Lehre: Text-Treffer ohne Semantik).
+    @Test("ein fortgesetztes Wort erbt NICHT")
+    func aContinuedWordIsNoFamily() {
+        #expect(RadioLogoService.curatedFile(forName: "Fußball-Bundesligahasser") == nil)
+    }
+
+    /// Die Auflage aus dem Entscheid: der Eintrag muss die
+    /// Gate-Leichen-Pruefung bestehen. Am Datum pruefbar ist die eine
+    /// Bedingung, unter der sie IMMER haelt — MediaWiki skaliert Raster nie
+    /// hoch, eine SVG dagegen rendert in jeder Breite. Ein Raster hier waere
+    /// nur mit einer Netzmessung zu verantworten, und die gehoert in den
+    /// Generator (`renders_at_tile_size`), nicht in den Zaun.
+    @Test("der Eintrag kann am Tor nicht sterben")
+    func theEntryCannotBeAGateCorpse() {
+        let file = RadioLogoData.commonsFile(forName: "Fußball-Bundesliga")
+        #expect(file?.lowercased().hasSuffix(".svg") == true,
+                "Raster muesste am width-800-Render gemessen werden — SVG ist die Zusage")
+    }
+}
+
