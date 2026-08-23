@@ -145,23 +145,8 @@ struct MusicView: View {
             // two server shelves. Empty shelves are omitted silently.
             playlistRow
 
-            // R34 Runde 2 (ENTSCHEID the owner): the free catalogs are their
-            // OWN offer, not a serverless substitute — the row appears WITH a
-            // server too (server content keeps the upper spot). Same rule as
-            // the netlabels row below, which never had the server condition
-            // (Regel 2, tab parity). And the enabled row appears or says
-            // visibly why not — on THIS surface too, not only on Home.
-            if jamendoArea && freeCatalogsMaster {
-                VStack(alignment: .leading, spacing: 10) {
-                    RowHeading.entry("Free Music", destination: MusicRoute.freeCatalogArea)
-                    if !freeCatalogStore.rows.freeMusic.isEmpty {
-                        freeTileRow(freeCatalogStore.rows.freeMusic)
-                    } else if let problem = freeCatalogStore.rows.freeMusicProblem {
-                        Text(problem).font(.caption).foregroundStyle(.secondary)
-                            .padding(.horizontal)
-                    }
-                }
-            }
+            // R40: the free-music row lives ONCE, further down next to the
+            // other free areas — this spot used to carry a second one.
 
             // The server section decides for ITSELF — never for the tab.
             // And only WITH a server behind it — a section without a source
@@ -246,12 +231,25 @@ struct MusicView: View {
                 // criterion, so nothing may bypass a shelf.
                 ShellacSection(playerCoordinator: playerCoordinator)
             }
-            if freeCatalogsMaster, !freeCatalogStore.rows.freeMusic.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
-                            .jamendoShuffle(coordinator: playerCoordinator)
-                        freeTileRow(freeCatalogStore.rows.freeMusic)
+            // R40 (ENTSCHEID the owner): THE free-music row — the chevron goes
+            // straight to the Jamendo page (path and target share the name),
+            // it carries the shuffle, and it now asks the AREA switch as well.
+            // That switch is a privacy switch: off means no Jamendo request,
+            // so a row that ignored it kept fetching what the user had turned
+            // off. Reading `rows` starts the load (R39), so the row no longer
+            // depends on a visit to Home; enabled-but-empty says why.
+            if jamendoArea && freeCatalogsMaster {
+                let rows = freeCatalogStore.rows
+                VStack(alignment: .leading, spacing: 8) {
+                    RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
+                        .jamendoShuffle(coordinator: playerCoordinator)
+                    if !rows.freeMusic.isEmpty {
+                        freeTileRow(rows.freeMusic)
+                    } else if let problem = rows.freeMusicProblem {
+                        Text(problem).font(.caption).foregroundStyle(.secondary)
+                            .padding(.horizontal)
                     }
+                }
             }
         }
         .padding(.top, TabContentLayout.topInset)

@@ -716,13 +716,18 @@ struct MusicCatalogAreaPage: View {
                     VStack(alignment: .leading, spacing: 10) {
                         RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                             .jamendoShuffle(coordinator: playerCoordinator)
-                        if store.rows.freeMusic.isEmpty {
-                            Text("Nothing here yet — Jamendo needs a client key, which you can add under Network Services.")
+                        if !store.rows.freeMusic.isEmpty {
+                            tileRow(store.rows.freeMusic)
+                        } else if let problem = store.rows.freeMusicProblem {
+                            // R39 Befund 2/3: the page said "add a client key
+                            // under Network Services" while the same source
+                            // loaded fine one level deeper — the key ships
+                            // with the build. The row now carries the ONE
+                            // state line the loader actually produced.
+                            Text(problem)
                                 .font(.callout)
                                 .foregroundStyle(.secondary)
                                 .padding(.horizontal)
-                        } else {
-                            tileRow(store.rows.freeMusic)
                         }
                     }
                 }

@@ -50,4 +50,24 @@ nonisolated struct CatalogLoadGate: Equatable, Sendable {
     /// Open a new attempt — the language changed, the user asked again, or the
     /// network came back.
     mutating func reopen() { attempted = false }
+
+    /// R39: an INCOMPLETE pass (a cancelled step left a row unanswered) is not
+    /// an attempt that may close the session. Without this the gate held the
+    /// door shut although `loaded` was false: reading surfaces asked, the gate
+    /// said "already tried", and the rows stayed empty until relaunch — the
+    /// visible half of the R34 class that the `loaded` fix alone did not
+    /// cover.
+    ///
+    /// Bounded on purpose: the gate exists because an empty pass that reopens
+    /// itself feeds a render loop (the 100 %-CPU wedge). A few retries heal a
+    /// cancelled pass; after that the surface stays honestly empty until an
+    /// EXPLICIT path (pull to refresh, retry line, network return) reopens.
+    static let incompleteRetryLimit = 3
+    private(set) var incompleteRetries = 0
+
+    mutating func reopenForIncompletePass() {
+        guard incompleteRetries < Self.incompleteRetryLimit else { return }
+        incompleteRetries += 1
+        attempted = false
+    }
 }

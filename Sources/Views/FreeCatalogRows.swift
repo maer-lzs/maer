@@ -292,8 +292,13 @@ enum FreeCatalogLoader {
         }
         if jamendoOn {
             if JamendoClient.clientId() == nil {
+                // R39 Befund 3 (the owner): the key ships with the build — no
+                // user ever enters one, so an instruction to do so is wrong
+                // for every regular build. Only a self-built copy without the
+                // local key file lands here; the line says what holds
+                // (nothing new right now), never what the user should do.
                 Logger.library.notice("FREECAT jamendo EMPTY: no client key")
-                rows.freeMusicProblem = String(localized: "Jamendo needs its access key.")
+                rows.freeMusicProblem = String(localized: "Nothing new here right now.")
             } else {
                 do {
                     // Jamendo kennt KEINE Zufalls-Sortierung (gemessen:
@@ -578,6 +583,14 @@ final class FreeCatalogStore: ObservableObject {
         // line, no second attempt. `loaded` now means "every ENABLED row has
         // an answer" (content, a stated problem, or the source is off).
         loaded = FreeCatalogLoader.passIsComplete(loadedRows)
+        // R39: `loaded == false` alone did NOT reopen the door — the gate
+        // still counted the cancelled pass as "attempted", so every later
+        // reading surface (Music tab, library) was refused and stayed empty
+        // for the whole session. The incomplete pass reopens it, bounded.
+        if !loaded {
+            gate.reopenForIncompletePass()
+            Logger.library.notice("FREECAT pass incomplete — retry allowed (\(self.gate.incompleteRetries)/\(CatalogLoadGate.incompleteRetryLimit))")
+        }
         BottomBarState.shared.runWhenCalm { [weak self] in self?.storedRows = loadedRows }
     }
 }
