@@ -105,13 +105,6 @@ nonisolated enum RadioTileGround {
     /// Both numbers are named — the owner turns them at the picture.
     static let dominanceShare = 0.40
     static let dominanceTolerance = 0.25   // Euclidean RGB distance
-    /// Where the accent case's transition ends (share of the text zone).
-    /// SHORT on purpose (R23): the join point still carries the exact edge
-    /// colour (Naht-Invariante), but the calming starts IMMEDIATELY below
-    /// it — at 0.35 the artwork fade-in plus this run stacked into a wide
-    /// saturated band across the card's middle (measured on both ZONE
-    /// cards, WDR 2 and 1LIVE; the mixed edge colour is nobody's brand).
-    static let transitionShare = 0.12
 
     static func dominance(of image: UIImage, edge: Edge) -> Double {
         let side = 32

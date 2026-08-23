@@ -333,20 +333,15 @@ struct RadioFeaturedCard: View {
     private var titleColor: Color { inkIsLight ? .white : .black.opacity(0.85) }
     private var captionColor: Color { inkIsLight ? .white.opacity(0.9) : .black.opacity(0.6) }
 
-    /// cbf0d50 accent case: a SHORT run from the exact edge colour into the
-    /// calmed tone — at the boundary the Naht, below it calm. Dominant edges
-    /// keep the full tone (one solid colour, no zone).
-    @ViewBuilder private var textZoneGround: some View {
-        if let edge, !edgeIsDominant {
-            LinearGradient(stops: [
-                .init(color: edge.color, location: 0),
-                .init(color: RadioTileGround.dampened(edge), location: RadioTileGround.transitionShare),
-                .init(color: RadioTileGround.dampened(edge), location: 1),
-            ], startPoint: .top, endPoint: .bottom)
-        } else {
-            cardColor
-        }
-    }
+    /// R23 round 2 (fe87e51): the seam binds to the CARD colour — dominant
+    /// edges full, accent edges DAMPENED. The old zone ran the full edge
+    /// colour at the boundary while both neighbours were calm, so a saturated
+    /// ring between two calm zones was structurally guaranteed (measured on
+    /// the owner's screenshot: rise 1060→1220 to full WDR red, hard fall
+    /// behind); shrinking `transitionShare` only sharpened it. Now the full
+    /// edge colour exists NOWHERE on a zone card — the seam stays byte-
+    /// seamless, on the dampened level.
+    private var textZoneGround: Color { cardColor }
     // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
     // exactly like Book-/PodcastFeaturedCard's.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
@@ -364,10 +359,11 @@ struct RadioFeaturedCard: View {
                            height: CardMetrics.featuredCardWidth)
                     .clipped()
                     .overlay(alignment: .bottom) {
-                        // The JOIN is always the exact edge colour (Naht-
-                        // Invariante) — the calming happens BELOW, never at
-                        // the boundary.
-                        LinearGradient(colors: [.clear, edge?.color ?? cardColor],
+                        // The JOIN is the exact CARD colour (dominant: full
+                        // edge, accent: dampened) — the artwork already runs
+                        // out into the calm tone, so no saturation peak can
+                        // exist between the two calm zones (R23 round 2).
+                        LinearGradient(colors: [.clear, cardColor],
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth
                                    * RadioArtwork.cardGradientShare)

@@ -1079,16 +1079,24 @@ Sync-Familie (mit d7f12e1 C und 0ed4637, EIN Muster).
 
 ### Dominanz-Regel der Karten-Flaeche (cbf0d50, probeweise — Abnahme am Bild)
 
-Rand==dominante Logo-Farbe ⇒ **Vollton bleibt**; Rand nur Akzent ⇒ kurze
-**Uebergangszone** von der exakten Randfarbe in die beruhigte Ton-Variante.
-Drei benannte Konstanten in `RadioTileGround`: `dominanceShare 0,40`
+Rand==dominante Logo-Farbe ⇒ **Vollton bleibt**; Rand nur Akzent ⇒ die
+Flaeche traegt die BERUHIGTE Ton-Variante — und zwar durchgehend.
+Zwei benannte Konstanten in `RadioTileGround`: `dominanceShare 0,40`
 (Anteil sichtbarer Pixel nahe der Randfarbe), `dominanceTolerance 0,25`
-(euklidischer RGB-Abstand — Verlaufs-Toleranz), `transitionShare 0,35`
-(wo die Zone endet). `Edge` traegt jetzt RGB; `dampened(_:)` = gleiche
-Hue, Gegenton-Stufen (dunkler Rand → Pastell hell S0,30/B0,88, heller →
-gedeckt S0,55/B0,42); Tinte folgt der FLAECHE (gedaempfte Luminanz im
-Akzent-Fall). Naht-Invariante: der Artwork-Verlauf endet IMMER in der
-exakten Randfarbe, die Beruhigung passiert darunter. Gemessen an den vier
+(euklidischer RGB-Abstand — Verlaufs-Toleranz). `Edge` traegt RGB;
+`dampened(_:)` = gleiche Hue, Gegenton-Stufen (dunkler Rand → Pastell
+hell S0,30/B0,88, heller → gedeckt S0,55/B0,42); Tinte folgt der
+FLAECHE (gedaempfte Luminanz im Akzent-Fall). **Naht-Invariante (R23
+Runde 2, fe87e51):** der Artwork-Verlauf endet in der KARTENFARBE
+(Vollton: exakte Randfarbe · Zone: gedaempfte) — die volle Randfarbe
+existiert auf einer Zone-Karte NIRGENDS. Die alte Fassung („Naht =
+exakte Randfarbe, Beruhigung darunter") garantierte strukturell einen
+gesaettigten Ring zwischen zwei ruhigen Zonen (the reviewer's Pixel-Messung:
+Anstieg auf volles WDR-Rot, harter Abfall; transitionShare-Verkleinern
+schaerfte ihn nur — Fix-ohne-Wirkung = falsche Ebene). `transitionShare`
+ist ersatzlos entfernt; `EdgeJoinProbe` misst jetzt zusaetzlich die
+ANTI-RING-Invariante (keine Saettigungsspitze ueber den Band-Enden,
+Spalte −80…+40 pt — das alte ±14-Band haette den Ring uebersehen). Gemessen an den vier
 Abnahme-Marken: DLF Kultur 0,73 VOLLTON ✓ · WDR 2 0,26 ZONE ✓ · bigFM-
 Geschwister-Favicon 0,80 VOLLTON (dunkler Rand — gezeigt, wie beauftragt) ·
 **1live.svg 0,02 ZONE, und das ist der Lehr-Fall:** sein Rand ist ein

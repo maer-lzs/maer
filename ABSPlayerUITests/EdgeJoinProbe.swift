@@ -53,24 +53,46 @@ nonisolated final class EdgeJoinProbe: XCTestCase {
         var samples: [(Int, Int, Int, Int)] = []
         guard let data = cg.dataProvider?.data as Data? else { return XCTFail("keine Daten") }
         let bpr = cg.bytesPerRow, bpp = cg.bitsPerPixel / 8
-        for dy in stride(from: -14.0, through: 14.0, by: 2.0) {
+        // R23 round 2: the measured ring sat ~50 pt ABOVE the seam (the
+        // artwork run-out), so the column reaches well above it — a ±14 band
+        // would have called the ringed card seamless.
+        for dy in stride(from: -80.0, through: 40.0, by: 2.0) {
             let y = Int(boundary + dy * scale)
             guard y >= 0, y < cg.height else { continue }
             let i = y * bpr + x * bpp
             samples.append((Int(dy), Int(data[i]), Int(data[i + 1]), Int(data[i + 2])))
         }
-        // Max channel delta between neighbouring samples INSIDE the band —
-        // the number the report needs.
+        // Seam smoothness: max channel delta between neighbours in the ±14
+        // core band (the original claim, unchanged).
         var maxDelta = 0
-        for pair in zip(samples, samples.dropFirst()) {
+        let core = samples.filter { abs($0.0) <= 14 }
+        for pair in zip(core, core.dropFirst()) {
             maxDelta = max(maxDelta,
                            abs(pair.0.1 - pair.1.1),
                            abs(pair.0.2 - pair.1.2),
                            abs(pair.0.3 - pair.1.3))
         }
-        let lines = samples.map { "dy=\($0.0): RGB(\($0.1),\($0.2),\($0.3))" }
-        NSLog("EDGEPROBE column=\(x) boundary=\(Int(boundary)) maxDelta=\(maxDelta)\n"
-              + lines.joined(separator: "\n"))
+        // Anti-ring (the R23 invariant): no sample in the column may be
+        // noticeably MORE saturated than both band ends — a saturation peak
+        // between two calm zones is exactly the measured stripe. Full-tone
+        // cards pass trivially (their ends are saturated too).
+        func sat(_ s: (Int, Int, Int, Int)) -> Int {
+            max(s.1, max(s.2, s.3)) - min(s.1, min(s.2, s.3))
+        }
+        let endSat = max(sat(samples.first ?? (0, 0, 0, 0)),
+                         sat(samples.last ?? (0, 0, 0, 0)))
+        let peakSat = samples.map(sat).max() ?? 0
+        let lines = samples.map { "dy=\($0.0): RGB(\($0.1),\($0.2),\($0.3)) sat=\(sat($0))" }
+        let report = "EDGEPROBE column=\(x) boundary=\(Int(boundary)) maxDelta=\(maxDelta) endSat=\(endSat) peakSat=\(peakSat)\n"
+            + lines.joined(separator: "\n")
+        NSLog(report)
+        // The sim's ~ is a container path — derive the HOST home from this
+        // source file's path so the profile lands where the report can read it.
+        let hostHome = "/" + #filePath.split(separator: "/").prefix(2).joined(separator: "/")
+        try? report.write(toFile: hostHome + "/.maer-edge-probe.txt",
+                          atomically: true, encoding: .utf8)
+        XCTAssertLessThanOrEqual(peakSat, endSat + 32,
+            "Saettigungsspitze im Nahtband — der R23-Ring waere zurueck (peak \(peakSat) vs Enden \(endSat))")
 
         let shotAttachment = XCTAttachment(screenshot: shot)
         shotAttachment.name = "edge-join"
