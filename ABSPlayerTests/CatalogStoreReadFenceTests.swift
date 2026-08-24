@@ -114,5 +114,27 @@ struct CatalogStoreReadFenceTests {
         // so the gate may reopen (bounded) instead of freezing the session.
         #expect(!FreeCatalogLoader.passIsComplete(FreeCatalogLoader.Rows()))
     }
+    /// R46 (the owner am Geraet: „es gibt praktisch keinen Weg in die
+    /// Genre-Bibliothek"): ein Fach mit 102 Eintraegen zeigte EINE Kachel und
+    /// nie ein Chevron. Die Chevron-Regel (`total > shown`) war richtig — sie
+    /// bekam die Zahl des zufaellig geladenen Vorrats statt des Bestands.
+    /// Der Bestand steht in der Antwort; dieser Zaun haelt fest, dass er dort
+    /// auch abgeholt wird.
+    @Test("die Bestandszahl der Quelle wird gelesen, nicht geschaetzt")
+    func stockCountIsReadFromTheResponse() throws {
+        let wire = Data("""
+        {"response":{"numFound":102,"start":0,"docs":[
+          {"identifier":"a","title":"A"},{"identifier":"b","title":"B"}]}}
+        """.utf8)
+        #expect(try ArchiveOrgClient.decodeTotal(wire) == 102)
+        #expect(try ArchiveOrgClient.decodePopular(wire).count == 2)
+        // Mit dem Vorrat statt dem Bestand waere 2 > 2 falsch — kein Chevron,
+        // genau der gemeldete Zustand. Mit dem Bestand ist 102 > 2 wahr.
+        #expect(102 > 2)
+        // Eine Antwort ohne die Zahl erfindet keine: dann traegt die Reihe
+        // die Existenz-Form des Chevrons, nie eine geratene Menge.
+        let ohne = Data("{\"response\":{\"docs\":[]}}".utf8)
+        #expect(try ArchiveOrgClient.decodeTotal(ohne) == nil)
+    }
 }
 #endif

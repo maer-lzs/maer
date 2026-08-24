@@ -147,7 +147,15 @@ nonisolated enum GutenbergClient {
 
 nonisolated enum ArchiveOrgClient {
     nonisolated struct SearchResponse: Decodable {
-        struct Body: Decodable { let docs: [ArchivePopularDoc]? }
+        struct Body: Decodable {
+            let docs: [ArchivePopularDoc]?
+            /// R46: the STOCK behind a query. A shelf that shows 1 of 102 was
+            /// not lying about the tiles — it was answering a different
+            /// question ("what did I happen to load") than the one the
+            /// heading asks ("how much is there"). The server states it; we
+            /// only have to carry it.
+            let numFound: Int?
+        }
         let response: Body?
     }
     nonisolated struct MetadataResponse: Decodable {
@@ -168,6 +176,13 @@ nonisolated enum ArchiveOrgClient {
 
     nonisolated static func decodePopular(_ data: Data) throws -> [ArchivePopularDoc] {
         try JSONDecoder().decode(SearchResponse.self, from: data).response?.docs ?? []
+    }
+
+    /// R46: how many items the query has IN TOTAL — the number a shelf
+    /// heading has to name. Deliberately no second request: the stock rides
+    /// along with the page we are fetching anyway.
+    nonisolated static func decodeTotal(_ data: Data) throws -> Int? {
+        try JSONDecoder().decode(SearchResponse.self, from: data).response?.numFound
     }
 
     /// E3: ONE curated classical query — the George-Blood 78rpm digitization
@@ -310,8 +325,17 @@ nonisolated enum ArchiveOrgClient {
     /// `sort` defaults to the popularity ranking; M2 passes "random" for the
     /// shuffle gesture (measured: the value works, but archive.org caches it
     /// for a few minutes — the caller varies the PAGE as well).
+    /// R46: one page of a query PLUS the stock behind it. `popular` stays the
+    /// name every caller knows and simply drops the number — one request, one
+    /// truth, no second query path that could drift.
     static func popular(query: String, rows: Int, page: Int = 1,
                         sort: String = "downloads desc") async throws -> [ArchivePopularDoc] {
+        try await popularWithTotal(query: query, rows: rows, page: page, sort: sort).docs
+    }
+
+    static func popularWithTotal(query: String, rows: Int, page: Int = 1,
+                                 sort: String = "downloads desc") async throws
+        -> (docs: [ArchivePopularDoc], total: Int?) {
         var comp = URLComponents(string: "https://archive.org/advancedsearch.php")!
         comp.queryItems = [
             URLQueryItem(name: "q", value: query),
@@ -341,16 +365,17 @@ nonisolated enum ArchiveOrgClient {
             URLQueryItem(name: "page", value: String(page)),
             URLQueryItem(name: "output", value: "json"),
         ]
-        guard let url = comp.url else { return [] }
+        guard let url = comp.url else { return ([], nil) }
         var request = URLRequest(url: url)
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, response) = try await RequestRetryPolicy.fetch(request)
         // aed5d25: shared artifact filter for BOTH rows (books + classical) —
         // dropped docs are logged upstream via the count difference.
         do {
-            return try decodePopular(data).filter {
+            let docs = try decodePopular(data).filter {
                 !FreeCatalog.isArtifactDoc(identifier: $0.identifier, title: $0.title?.joined)
             }
+            return (docs, try? decodeTotal(data))
         } catch {
             // 27f360b A3: a decode failure must be TELLABLE from transport —
             // archive.org can answer 200 with an HTML challenge. Carry status

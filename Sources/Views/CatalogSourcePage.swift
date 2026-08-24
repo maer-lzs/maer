@@ -35,6 +35,12 @@ struct CatalogSourcePage: View {
     @State private var languageFallback = false
     @State private var detailItem: LibraryItem?
     @State private var selectedShelf: String?
+    /// R46: what a shelf ACTUALLY has, asked at the source. Before this the
+    /// page classified a randomly loaded pool itself, so "Horror" stood there
+    /// with one tile while the source held 102 — the surface answered
+    /// „was ist zufaellig da" where the heading asks „wie viel gibt es".
+    @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
+    @State private var shelvesLoaded = false
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -53,13 +59,14 @@ struct CatalogSourcePage: View {
 
     /// Which shelves the loaded stock fills — via the source's OWN spelling
     /// family (LibriVox genre names vs. Gutenberg LCSH subjects).
+    /// R46: a shelf appears because the SOURCE has it, not because the
+    /// loaded pool happened to contain one of its titles. G8 still holds —
+    /// a shelf whose stock is empty does not appear at all.
     private var shelves: [(key: String, title: String)] {
         guard hasChips else { return [] }
-        var present = Set<String>()
-        for item in items {
-            for shelf in shelvesOf(item) { present.insert(shelf) }
+        return CatalogGenreAxis.librivoxShelves.filter { shelf in
+            !(shelfStock[shelf.key]?.items.isEmpty ?? true)
         }
-        return CatalogGenreAxis.librivoxShelves.filter { present.contains($0.key) }
     }
 
     private func shelvesOf(_ item: LibraryItem) -> [String] {
@@ -68,6 +75,15 @@ struct CatalogSourcePage: View {
         source == .librivox
             ? CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item))
             : CatalogGenreAxis.shelves(forSubjects: genres(of: item))
+    }
+
+    /// R46: the grid below the shelf rows shows what is NOT already standing
+    /// above it. Same page, same item, twice — that was the duplication
+    /// the owner saw („Gunsmoke Radio Show" in der Western-Reihe und direkt
+    /// darunter im Raster).
+    private var restItems: [LibraryItem] {
+        let above = shownInShelfRows
+        return onShelf(items).filter { !above.contains($0.id) }
     }
 
     /// The visible cut: everything, or one shelf. An item WITHOUT genre data
@@ -92,12 +108,14 @@ struct CatalogSourcePage: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
+            async let shelvesTask: Void = loadShelves()
             if items.isEmpty {
                 // Seed from the overview's already-loaded preview so the page
                 // opens filled, then page onward from the network.
                 items = seedItems()
                 await load()
             }
+            await shelvesTask
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
@@ -148,13 +166,18 @@ struct CatalogSourcePage: View {
                     .padding(.horizontal)
                 }
                 .scrollClipDisabled()
-                RowHeading.plain("Popular")
             }
+            // R46 Punkt 2: EIN Name fuer jede Flaeche. „Beliebt" stand nur im
+            // LibriVox-Zweig; bei OTR, Archive-Hoerbuechern und Gutenberg folgte
+            // auf die letzte Faecher-Reihe ein NAMENLOSES Raster, das endlos
+            // nachlaedt — fuer the owner las sich das als „Western hoert nie auf".
+            // Ohne Ueberschrift gibt es keine Grenze.
+            RowHeading.plain("Popular")
             CoverGrid(columns: columns) {
-                ForEach(onShelf(items)) { item in
+                ForEach(restItems) { item in
                     tile(item)
                         .onAppear {
-                            if item.id == items.last?.id { Task { await load() } }
+                            if item.id == restItems.last?.id { Task { await load() } }
                         }
                 }
             }
@@ -173,18 +196,28 @@ struct CatalogSourcePage: View {
     /// it may appear in both — there it is the truth.
     @ViewBuilder
     private func genreRow(_ shelf: (key: String, title: String)) -> some View {
-        let filtered = items.filter {
-            CatalogGenreAxis.primaryShelf(among: shelvesOf($0)) == shelf.key
-        }
-        if !filtered.isEmpty {
+        if let stock = shelfStock[shelf.key], !stock.items.isEmpty {
+            let shown = RowPreview.cut(stock.items)
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading(title: "", verbatimTitle: shelf.title,
-                           total: filtered.count,
-                           shown: RowPreview.cut(filtered).count,
-                           destination: FreeAudiobooksRoute.shelf(source, shelf.key))
+                // R46: the chevron counts the SOURCE's stock. With the pool
+                // count it was `1 > 1` for every shelf, so the door to the
+                // full shelf was invisible everywhere — the rule was right,
+                // it was fed the wrong number.
+                if let total = stock.total {
+                    RowHeading(title: "", verbatimTitle: shelf.title,
+                               total: total, shown: shown.count, showsTotal: true,
+                               destination: FreeAudiobooksRoute.shelf(source, shelf.key))
+                } else {
+                    // Sources whose API does not state a stock (LibriVox
+                    // genre feed, gutendex topic): the chevron is earned by
+                    // the target's existence — never by an invented number.
+                    RowHeading(title: "", verbatimTitle: shelf.title, font: .title3,
+                               variant: .entry,
+                               destination: FreeAudiobooksRoute.shelf(source, shelf.key))
+                }
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(RowPreview.cut(filtered)) { item in
+                        ForEach(shown) { item in
                             tile(item)
                                 .cardRowSlot(spacing: 14)
                         }
@@ -194,6 +227,53 @@ struct CatalogSourcePage: View {
                 .scrollClipDisabled()
             }
         }
+    }
+
+    /// R46: the ids already standing in a shelf row above. The grid below
+    /// leaves them out — „zwei identische Kacheln auf einer Seite lesen sich
+    /// als Fehler, nicht als Wahrheit" is the same rule `primaryShelf`
+    /// enforces WITHIN the shelves; it does not stop at the last row.
+    private var shownInShelfRows: Set<String> {
+        guard hasChips else { return [] }
+        var out = Set<String>()
+        for shelf in shelves {
+            for item in RowPreview.cut(shelfStock[shelf.key]?.items ?? []) {
+                out.insert(item.id)
+            }
+        }
+        return out
+    }
+
+    /// The stock of every shelf, asked ONCE per visit — the same query the
+    /// shelf's full page uses (one truth, `f220ecd`). Shelves run concurrently
+    /// because they are independent; a shelf that fails simply does not
+    /// appear, exactly like a shelf without stock.
+    private func loadShelves() async {
+        guard hasChips, !shelvesLoaded else { return }
+        shelvesLoaded = true
+        let provider = FreeCatalogProvider.shared
+        let keys = CatalogGenreAxis.librivoxShelves.map(\.key)
+        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?).self) { group in
+            for key in keys {
+                let subjects = CatalogGenreAxis.subjects(forShelf: key)
+                guard !subjects.isEmpty,
+                      let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { continue }
+                group.addTask {
+                    let clause = subjects.prefix(6).map { "subject:\"\($0)\"" }
+                        .joined(separator: " OR ")
+                    let hit = try? await ArchiveOrgClient.popularWithTotal(
+                        query: "\(base) AND (\(clause))", rows: RowPreview.limit)
+                    return (key, hit?.docs ?? [], hit?.total)
+                }
+            }
+            for await (key, docs, total) in group {
+                let kept = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
+                    .compactMap { provider.remember(popular: $0) }
+                guard !kept.isEmpty else { continue }
+                shelfStock[key] = (kept, total)
+            }
+        }
+        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count)")
     }
 
     private var shelfRow: some View {
