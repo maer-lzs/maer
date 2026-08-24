@@ -139,6 +139,13 @@ nonisolated enum GutenbergClient {
         comp.queryItems = items
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
+        // R45 invariant 3: a limit a source can NEVER meet is a wrong limit.
+        // Measured: gutendex computes a cold `mime_type` query in 30–40 s and
+        // answers the warm one in 40 ms — against the shared 20 s ceiling it
+        // could only ever win on the retry that happened to hit its own warm
+        // cache (20 + 20 + 0,05 s). The ceiling now fits the source; with the
+        // per-row publish this source no longer holds anything else up.
+        request.timeoutInterval = 45
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         return try decode(data)

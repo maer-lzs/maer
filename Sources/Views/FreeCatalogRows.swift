@@ -172,51 +172,27 @@ enum FreeCatalogLoader {
     /// grids and pages keep loading unprobed (dozens of requests per visit)
     /// — there the reactive marking heals, which is why a ghost record
     /// disappears there after the first tap.
+    /// R45 (the owner zweimal: „viel zu lang"): the probe chain is OFF the
+    /// build path. It cost **43 s per pass** — up to 72 serial round trips
+    /// and 4,5 MB of metadata to answer „gibt es ein Bild?" for 12 tiles.
+    /// A check that costs more than its purpose is not a check; it is the
+    /// reason the surface stayed empty for half a minute.
+    ///
+    /// NOTHING IS SILENTLY SWITCHED OFF — said plainly, because that was the
+    /// explicit condition: known-dead items are still kept out (the ONE
+    /// place, `remember(popular:)`, filters them), and liveness is still
+    /// LEARNED — `ArchiveOrgClient.metadata` notes it on every detail open
+    /// and every playback start (P10). Only the DISCOVERY moved off the
+    /// build path, from „ask 72 times before anything appears" to „learn it
+    /// where the answer is free".
+    static func picksWithoutProbing(_ items: [LibraryItem], cap: Int) -> [LibraryItem] {
+        Array(items.prefix(cap))
+    }
+
     static func picks(_ docs: [ArchivePopularDoc], cap: Int,
                       provider: FreeCatalogProvider) async -> [LibraryItem] {
-        await livePicks(from: docs.compactMap { provider.remember(popular: $0) }, cap: cap)
-    }
-
-    /// Take the first `cap` items that are still ALIVE — probing forward
-    /// through the list, so a withdrawn record is replaced rather than
-    /// leaving a gap. `unknown` (service down) counts as usable: a network
-    /// failure must not empty the row (a throw is not an end).
-    static func livePicks(from items: [LibraryItem], cap: Int) async -> [LibraryItem] {
-        var out: [LibraryItem] = []
-        // 🟢 Q10a: a pick whose COVER does not load right now is not dead —
-        // the thumbnail service answers 504 for perfectly healthy items. Such
-        // a pick is DEFERRED, not dropped: the next candidate moves up, and
-        // it comes back at the end if the row still has room. Nothing is
-        // remembered about it (a service failure is never a finding).
-        var deferred: [LibraryItem] = []
-        for item in items {
-            guard out.count < cap else { break }
-            guard item.id.hasPrefix(FreeCatalog.archivePrefix) else {
-                out.append(item)
-                continue
-            }
-            let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
-            let liveness = await ArchiveOrgClient.liveness(identifier: identifier)
-            DeadCatalogItems.note(liveness, for: identifier)
-            guard liveness != .dead else { continue }
-            if await coverLoads(for: item) { out.append(item) } else { deferred.append(item) }
-        }
-        // If every cover is stuck the row shows placeholders — honestly, and
-        // never emptier than before (a service outage must not blank it).
-        for item in deferred where out.count < cap { out.append(item) }
-        return out
-    }
-
-    /// Cheap cover probe for a PICK: does the thumbnail answer at all? A 5xx
-    /// or a transport failure answers false and is not written down anywhere.
-    private static func coverLoads(for item: LibraryItem) async -> Bool {
-        guard let url = FreeCatalogProvider.shared.coverURL(forItemId: item.id) else { return false }
-        var request = URLRequest(url: url)
-        request.httpMethod = "HEAD"
-        request.timeoutInterval = 8
-        guard let (_, response) = try? await URLSession.maer.data(for: request),
-              let http = response as? HTTPURLResponse else { return false }
-        return (200...299).contains(http.statusCode)
+        // R45: no probing on the build path — see `picksWithoutProbing`.
+        picksWithoutProbing(docs.compactMap { provider.remember(popular: $0) }, cap: cap)
     }
 
     /// R34 Runde 2: has every ENABLED row an answer? Content or a stated
@@ -403,7 +379,13 @@ enum CatalogSourceLoader {
         }
     }
 
-    static func load() async -> SourceRows {
+    /// R45: `onRow` hands each finished row to the store IMMEDIATELY. The
+    /// returned value stays the complete result (callers that want the whole
+    /// pass keep working unchanged); the callback is what makes the first row
+    /// appear in seconds instead of after the slowest source.
+    typealias RowSink = @MainActor (@escaping @MainActor (inout SourceRows) -> Void) -> Void
+
+    static func load(onRow: RowSink? = nil) async -> SourceRows {
         guard AppStorageKeys.freeCatalogsMasterActive else {
             return SourceRows()
         }
@@ -440,18 +422,26 @@ enum CatalogSourceLoader {
             if let books = value(await newTask, .librivox, failures: &rows.failures) {
                 let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
                 rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
+                let fresh = rows.librivoxNew
+                await onRow?({ $0.librivoxNew = fresh })
             }
             if let docs = value(await popularTask, .librivox, failures: &rows.failures) {
                 rows.librivoxPopular = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
+                let fresh = rows.librivoxPopular
+                await onRow?({ $0.librivoxPopular = fresh })
             }
         } else { _ = await newTask; _ = await popularTask }
         if archiveOn {
             if let docs = value(await archiveTask, .archiveBooks, failures: &rows.failures) {
                 rows.archiveBooks = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
+                let fresh = rows.archiveBooks
+                await onRow?({ $0.archiveBooks = fresh })
             }
             if codes.contains("en") {
                 if let docs = value(await otrTask, .oldTimeRadio, failures: &rows.failures) {
                     rows.oldTimeRadio = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
+                    let fresh = rows.oldTimeRadio
+                    await onRow?({ $0.oldTimeRadio = fresh })
                 }
             } else { _ = await otrTask }
         } else { _ = await archiveTask; _ = await otrTask }
@@ -471,6 +461,8 @@ enum CatalogSourceLoader {
             }
             if let books = value(gut, .gutenberg, failures: &rows.failures) {
                 rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
+                let fresh = rows.gutenberg
+                await onRow?({ $0.gutenberg = fresh })
             }
         }
         for (source, reason) in rows.failures {
@@ -567,15 +559,35 @@ final class FreeCatalogStore: ObservableObject {
     @Published private(set) var sourcesLoading = false
     @Published private(set) var sourcesFailures: [CatalogSource: String] = [:]
 
+    /// R45 invariant 1+4: a row appears AS SOON AS IT IS DONE. Before this
+    /// all four were assigned as ONE package, so the slowest source decided
+    /// when ANY of them showed — and Gutenberg, which runs last and can lose
+    /// against its own timeout, decided it for everybody.
+    ///
+    /// The calm gate stays (Hitch lesson) — it now runs PER ROW instead of
+    /// for the whole package. That is the same protection: nothing grows
+    /// into a running gesture; it just no longer couples four independent
+    /// rows to one moment.
+    private func publish(_ apply: @escaping @MainActor (inout CatalogSourceLoader.SourceRows) -> Void) {
+        BottomBarState.shared.runWhenCalm { [weak self] in
+            guard let self else { return }
+            var rows = self.storedSourceRows
+            apply(&rows)
+            self.storedSourceRows = rows
+            self.sourcesLoaded = !rows.librivoxPopular.isEmpty || !rows.gutenberg.isEmpty
+                || !rows.archiveBooks.isEmpty || !rows.oldTimeRadio.isEmpty
+        }
+    }
+
     /// The pass itself — one place, whoever started it.
     private func runSourcesLoad() async {
         sourcesLoading = true
         defer { sourcesLoading = false; sourcesGate.finish() }
-        let loaded = await CatalogSourceLoader.load()
-        sourcesLoaded = !loaded.librivoxPopular.isEmpty || !loaded.gutenberg.isEmpty
-            || !loaded.archiveBooks.isEmpty || !loaded.oldTimeRadio.isEmpty
+        let loaded = await CatalogSourceLoader.load(onRow: { [weak self] apply in
+            self?.publish(apply)
+        })
         sourcesFailures = loaded.failures
-        BottomBarState.shared.runWhenCalm { [weak self] in self?.storedSourceRows = loaded }
+        publish { $0.failures = loaded.failures }
     }
 
     #if DEBUG

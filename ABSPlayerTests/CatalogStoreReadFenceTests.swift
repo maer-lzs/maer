@@ -136,5 +136,29 @@ struct CatalogStoreReadFenceTests {
         let ohne = Data("{\"response\":{\"docs\":[]}}".utf8)
         #expect(try ArchiveOrgClient.decodeTotal(ohne) == nil)
     }
+
+    /// R45 (the owner zweimal „viel zu lang"): the build path must not probe.
+    /// The old chain asked archive.org twice PER TILE — 72 serial round trips
+    /// and 4,5 MB of metadata for „gibt es ein Bild?", measured at 43 s per
+    /// pass. This fence holds the construction: picking is a pure cut, and
+    /// no surface may reintroduce a per-tile probe on the way to a row.
+    @Test("das Bauen einer Reihe fragt das Netz NICHT je Kachel")
+    func buildingARowDoesNotProbePerTile() throws {
+        let cut = FreeCatalogLoader.picksWithoutProbing(
+            (1...30).map { LibraryItem(id: "arch:item-\($0)", media: nil, addedAt: nil) },
+            cap: RowPreview.limit)
+        #expect(cut.count == RowPreview.limit)
+        #expect(cut.first?.id == "arch:item-1", "die Ordnung der Quelle bleibt")
+        // Rot-Probe der Konstruktion: die Probe-Namen sind aus dem Bauweg
+        // verschwunden — kehrt einer zurueck, faellt es hier auf.
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/Views/FreeCatalogRows.swift")
+        let text = try String(contentsOf: root, encoding: .utf8)
+        #expect(!text.contains("await ArchiveOrgClient.liveness("),
+                "eine Lebendpruefung je Kachel ist zurueck im Bauweg")
+        #expect(!text.contains("await coverLoads("),
+                "eine Cover-Probe je Kachel ist zurueck im Bauweg")
+    }
 }
 #endif
