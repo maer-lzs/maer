@@ -242,19 +242,27 @@ struct CatalogStoreReadFenceTests {
                 "ein Treffer im Kommentar wird als Treffer im Code gewertet")
     }
 
-    /// R45 Runde 2, gemessen am Endpunkt: `extended=1` verdoppelt die
-    /// Antwortzeit, und der Server rechnet die ganze Antwort fertig, bevor er
-    /// das erste Byte sendet (22-25 s bis zum ersten Byte). Das gemeinsame
-    /// Zeitlimit ist 20 s — die Reihe lief regelmaessig in die Wiederhol-
-    /// Leiter und endete im Fehlschlag. Der Zaun haelt beide Seiten: die
-    /// Neu-Reihe fragt OHNE den teuren Parameter, das Fach fragt MIT ihm.
-    @Test("die Neu-Reihe zahlt den teuren Parameter nicht, das Fach schon")
-    func theNewRowDoesNotPayForGenresButTheShelfDoes() throws {
+    /// R45 Runde 2, gemessen am Endpunkt: der Server rechnet die ganze Antwort
+    /// fertig, bevor er das erste Byte sendet (22-25 s bis zum ersten Byte).
+    /// Gegen das gemeinsame Zeitlimit von 20 s konnte diese Abfrage nur ueber
+    /// die Wiederhol-Leiter verlieren — 20+20+20 und dann FEHLSCHLAG. Sie
+    /// braucht also ihr eigenes Limit, wie gutendex es hat.
+    ///
+    /// `extended=1` wegzulassen wuerde die Zeit halbieren und ist trotzdem
+    /// falsch: es ist der einzige Weg zu `url_iarchive`, und daran haengt das
+    /// COVER jeder LibriVox-Kachel (gemessen: weder `fields=` noch die nackte
+    /// Form liefern es). Der Zaun haelt genau diese Abwaegung fest.
+    @Test("die langsame Quelle hat ihr eigenes Zeitlimit, und die Cover-Quelle bleibt")
+    func theSlowSourceCarriesItsOwnTimeout() throws {
         let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
                               encoding: .utf8)
         let new = try #require(functionBody(of: "static func newBooks(sinceDays: Int, limit: Int)", in: text))
-        #expect(!new.contains("\"extended\""),
-                "die Neu-Reihe fragt wieder mit dem Parameter, der ins Zeitlimit laeuft")
+        #expect(new.contains("timeoutInterval = 45"),
+                "die Reihe faellt wieder ins geteilte 20-s-Limit und damit in die Wiederhol-Leiter")
+        #expect(new.contains("\"extended\""),
+                "ohne den Parameter fehlt url_iarchive — die Kacheln verlieren ihre Cover")
+        // Und die Feldliste muss die Cover-Quelle ueberhaupt anfragen.
+        #expect(LibriVoxClient.rowFields.contains("url_iarchive"))
         let shelf = try #require(functionBody(of: "static func books(genre: String, limit: Int, offset: Int = 0)", in: text))
         #expect(shelf.contains("\"extended\""),
                 "das Fach braucht die Gattungen — ohne den Parameter liefert die Quelle keine")

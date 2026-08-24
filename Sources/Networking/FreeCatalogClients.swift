@@ -77,21 +77,26 @@ nonisolated enum LibriVoxClient {
     /// ran the retry ladder (20 + 20 + 20 ≈ 62 s) into a FAILURE — that was
     /// the "loads forever" on the catalogue page, not the row size.
     ///
-    /// "New at LibriVox" therefore drops `extended=1`: it is the parameter that
-    /// carries `genres`, and no surface reads the genres of THIS row — the
-    /// shelves query the source per genre (`books(genre:)`, which keeps both
-    /// parameters). `fields=` stays: it is free and keeps the answer small.
+    /// The answer is therefore a LIMIT, not a parameter: this call gets its own
+    /// 45 s like gutendex did. Dropping `extended=1` would halve the time, but
+    /// it is measured to be the only way to get `url_iarchive` — the cover of
+    /// every LibriVox tile hangs off it (`fields=` does not bring it back, and
+    /// neither does the bare form). A row that arrives late is a row; a row
+    /// without covers is a defect. Since the pass now publishes per finished
+    /// source, arriving late costs no other row anything.
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
         comp.queryItems = [
             URLQueryItem(name: "format", value: "json"),
+            URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "since", value: String(since)),
             URLQueryItem(name: "fields", value: rowFields),
         ]
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
+        request.timeoutInterval = 45
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
         return try decodeFeed(data)
