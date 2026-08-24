@@ -358,25 +358,13 @@ enum CatalogSourceLoader {
         var failures: [CatalogSource: String] = [:]
     }
 
-    /// Wraps one fetch as a Result so the error ARRIVES as an error —
-    /// `try?` under `async let` ate the distinction cancellation vs. failure,
-    /// which booked a torn-down .task as four broken sources at once (0b72ac4).
-    private static func fetched<T: Sendable>(_ op: @escaping @Sendable () async throws -> T) async -> Result<T, Error> {
-        do { return .success(try await op()) } catch { return .failure(error) }
-    }
-
-    /// Unwraps one source result: success returns the value, cancellation
-    /// stays silent (A1), a real failure books source + reason (A3).
-    private static func value<T>(_ result: Result<T, Error>, _ source: CatalogSource,
-                                 failures: inout [CatalogSource: String]) -> T? {
-        switch result {
-        case .success(let value): return value
-        case .failure(let error):
-            if let reason = FreeCatalog.failureReason(error) {
-                failures[source] = reason
-            }
-            return nil
-        }
+    /// Books one source failure: a real failure carries its reason (A3),
+    /// a cancellation carries none and stays silent (A1) — a torn-down `.task`
+    /// is "not loaded yet", never a broken source (0b72ac4).
+    private static func book(_ reason: String?, _ source: CatalogSource,
+                             into failures: inout [CatalogSource: String]) {
+        guard let reason else { return }
+        failures[source] = reason
     }
 
     /// R45: `onRow` hands each finished row to the store IMMEDIATELY. The
@@ -384,6 +372,26 @@ enum CatalogSourceLoader {
     /// pass keep working unchanged); the callback is what makes the first row
     /// appear in seconds instead of after the slowest source.
     typealias RowSink = @MainActor (@escaping @MainActor (inout SourceRows) -> Void) -> Void
+
+    /// R45 Runde 2: one finished FETCH, carrying its own row identity. The
+    /// children of the group do network work only — the decoded payload is
+    /// `Sendable`, the mapping to `LibraryItem` stays on the main actor where
+    /// the provider lives. `reason` is the already-classified failure text
+    /// (nil = success, or a cancellation, which stays silent).
+    private enum Fetched: Sendable {
+        case librivoxNew([LibriVoxBook]?, String?)
+        case librivoxPopular([ArchivePopularDoc]?, String?)
+        case archiveBooks([ArchivePopularDoc]?, String?)
+        case oldTimeRadio([ArchivePopularDoc]?, String?)
+        case gutenberg([GutenbergClient.Book]?, String?)
+    }
+
+    /// Runs one source fetch and classifies its outcome, so the group can
+    /// hand back a `Sendable` value instead of an error existential.
+    nonisolated private static func attempt<T: Sendable>(
+        _ op: @escaping @Sendable () async throws -> T) async -> (T?, String?) {
+        do { return (try await op(), nil) } catch { return (nil, FreeCatalog.failureReason(error)) }
+    }
 
     static func load(onRow: RowSink? = nil) async -> SourceRows {
         guard AppStorageKeys.freeCatalogsMasterActive else {
@@ -409,60 +417,93 @@ enum CatalogSourceLoader {
         let iaPage = CatalogRotation.page(total: 4_257, rowSize: 12, on: today)
         let otrPage = CatalogRotation.page(total: 2_309, rowSize: 12, on: today)
 
-        // ONE pass, sources concurrent; each error arrives AS an error.
-        async let newTask = fetched { try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40) }
-        async let popularTask = fetched { try await ArchiveOrgClient.popularLibriVoxByLanguage(
-            rowsPerLanguage: 12, languageCodes: codes, limit: 12, page: lvPage) }
-        async let archiveTask = fetched { try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-            rows: 12, languageCodes: codes, page: iaPage).docs }
-        async let otrTask = fetched { try await ArchiveOrgClient.popularOldTimeRadio(
-            rows: 12, page: otrPage) }
-
-        if librivoxOn {
-            if let books = value(await newTask, .librivox, failures: &rows.failures) {
-                let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
-                rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
-                let fresh = rows.librivoxNew
-                await onRow?({ $0.librivoxNew = fresh })
+        // R45 Runde 2: ONE pass, sources concurrent — and published in the
+        // order they FINISH. `async let` plus sequential `await` publishes in
+        // START order: the three fast rows (measured ~1 s each) waited for the
+        // slowest one, so publishing per row could not take effect at all.
+        // A source that is switched off starts no request now — the task is
+        // never created instead of being started and discarded.
+        await withTaskGroup(of: Fetched.self) { group in
+            if librivoxOn {
+                group.addTask {
+                    let (books, reason) = await attempt {
+                        try await LibriVoxClient.newBooks(sinceDays: 120, limit: 40) }
+                    return .librivoxNew(books, reason)
+                }
+                group.addTask {
+                    let (docs, reason) = await attempt {
+                        try await ArchiveOrgClient.popularLibriVoxByLanguage(
+                            rowsPerLanguage: 12, languageCodes: codes, limit: 12, page: lvPage) }
+                    return .librivoxPopular(docs, reason)
+                }
+                // Gutenberg keeps its own fallback ladder (its two pages stay
+                // sequential); it is a different host, so it rides the group
+                // instead of waiting behind archive.org.
+                group.addTask {
+                    let (books, reason) = await attempt { () -> [GutenbergClient.Book] in
+                        var books: [GutenbergClient.Book] = []
+                        for page in 1...2 {
+                            let hit = try await GutenbergClient.audiobooks(languages: codes, page: page)
+                            books += hit
+                            if hit.isEmpty { break }
+                        }
+                        if books.isEmpty, !codes.isEmpty {
+                            books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                        }
+                        return books
+                    }
+                    return .gutenberg(books, reason)
+                }
             }
-            if let docs = value(await popularTask, .librivox, failures: &rows.failures) {
-                rows.librivoxPopular = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
-                let fresh = rows.librivoxPopular
-                await onRow?({ $0.librivoxPopular = fresh })
+            if archiveOn {
+                group.addTask {
+                    let (docs, reason) = await attempt {
+                        try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+                            rows: 12, languageCodes: codes, page: iaPage).docs }
+                    return .archiveBooks(docs, reason)
+                }
+                if codes.contains("en") {
+                    group.addTask {
+                        let (docs, reason) = await attempt {
+                            try await ArchiveOrgClient.popularOldTimeRadio(rows: 12, page: otrPage) }
+                        return .oldTimeRadio(docs, reason)
+                    }
+                }
             }
-        } else { _ = await newTask; _ = await popularTask }
-        if archiveOn {
-            if let docs = value(await archiveTask, .archiveBooks, failures: &rows.failures) {
-                rows.archiveBooks = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
-                let fresh = rows.archiveBooks
-                await onRow?({ $0.archiveBooks = fresh })
-            }
-            if codes.contains("en") {
-                if let docs = value(await otrTask, .oldTimeRadio, failures: &rows.failures) {
+            for await finished in group {
+                switch finished {
+                case .librivoxNew(let books, let reason):
+                    book(reason, .librivox, into: &rows.failures)
+                    guard let books else { continue }
+                    let filtered = FreeCatalog.filterByLanguages(books, codes: codes)
+                    rows.librivoxNew = filtered.prefix(RowPreview.limit).map { provider.remember(book: $0) }
+                    let fresh = rows.librivoxNew
+                    await onRow?({ $0.librivoxNew = fresh })
+                case .librivoxPopular(let docs, let reason):
+                    book(reason, .librivox, into: &rows.failures)
+                    guard let docs else { continue }
+                    rows.librivoxPopular = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
+                    let fresh = rows.librivoxPopular
+                    await onRow?({ $0.librivoxPopular = fresh })
+                case .archiveBooks(let docs, let reason):
+                    book(reason, .archiveBooks, into: &rows.failures)
+                    guard let docs else { continue }
+                    rows.archiveBooks = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
+                    let fresh = rows.archiveBooks
+                    await onRow?({ $0.archiveBooks = fresh })
+                case .oldTimeRadio(let docs, let reason):
+                    book(reason, .oldTimeRadio, into: &rows.failures)
+                    guard let docs else { continue }
                     rows.oldTimeRadio = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit, provider: provider)
                     let fresh = rows.oldTimeRadio
                     await onRow?({ $0.oldTimeRadio = fresh })
+                case .gutenberg(let books, let reason):
+                    book(reason, .gutenberg, into: &rows.failures)
+                    guard let books else { continue }
+                    rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
+                    let fresh = rows.gutenberg
+                    await onRow?({ $0.gutenberg = fresh })
                 }
-            } else { _ = await otrTask }
-        } else { _ = await archiveTask; _ = await otrTask }
-        // Gutenberg last (sequential): own fallback ladder, polite rate limit.
-        if librivoxOn {
-            let gut = await fetched { () -> [GutenbergClient.Book] in
-                var books: [GutenbergClient.Book] = []
-                for page in 1...2 {
-                    let hit = try await GutenbergClient.audiobooks(languages: codes, page: page)
-                    books += hit
-                    if hit.isEmpty { break }
-                }
-                if books.isEmpty, !codes.isEmpty {
-                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
-                }
-                return books
-            }
-            if let books = value(gut, .gutenberg, failures: &rows.failures) {
-                rows.gutenberg = books.compactMap { provider.remember(gutenberg: $0) }
-                let fresh = rows.gutenberg
-                await onRow?({ $0.gutenberg = fresh })
             }
         }
         for (source, reason) in rows.failures {

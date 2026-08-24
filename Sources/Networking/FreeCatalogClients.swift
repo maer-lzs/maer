@@ -69,12 +69,23 @@ nonisolated enum LibriVoxClient {
     static let rowFields = "id,title,language,totaltimesecs,url_iarchive,"
         + "url_librivox,url_rss,authors,genres,description"
 
+    /// R45 Runde 2 — measured at the endpoint, interleaved over four rounds:
+    /// `extended=1` roughly DOUBLES the answer time (7–19 s without, 21–35 s
+    /// with, same `limit`), and the server computes the whole answer before it
+    /// sends the first byte (time-to-first-byte ≈ total, 22–25 s). The shared
+    /// request timeout is 20 s, so this call regularly breached it and then
+    /// ran the retry ladder (20 + 20 + 20 ≈ 62 s) into a FAILURE — that was
+    /// the "loads forever" on the catalogue page, not the row size.
+    ///
+    /// "New at LibriVox" therefore drops `extended=1`: it is the parameter that
+    /// carries `genres`, and no surface reads the genres of THIS row — the
+    /// shelves query the source per genre (`books(genre:)`, which keeps both
+    /// parameters). `fields=` stays: it is free and keeps the answer small.
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
         comp.queryItems = [
             URLQueryItem(name: "format", value: "json"),
-            URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "since", value: String(since)),
             URLQueryItem(name: "fields", value: rowFields),

@@ -186,5 +186,105 @@ struct CatalogStoreReadFenceTests {
         // Rot-Probe: die Zuordnung bleibt EXAKT, kein Teilstring.
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Western Electric"]).isEmpty)
     }
+
+    /// R45 Runde 2 (the owner: „laedt immer noch ewig"): der Durchlauf
+    /// veroeffentlicht in der Reihenfolge, in der die Quellen FERTIG werden.
+    /// `async let` plus sequenzielles `await` wartet in STARTreihenfolge — die
+    /// drei schnellen Reihen (je rund 1 s) hingen damit an der langsamsten
+    /// (LibriVox, gemessen 7-35 s), und das Veroeffentlichen je Reihe konnte
+    /// gar nicht wirken. Rot-Probe: die alte Form stand genau hier.
+    @Test("der Durchlauf wartet auf Fertigstellung, nicht auf die Startreihenfolge")
+    func theLoadWaitsForCompletionNotForStartOrder() throws {
+        let text = try String(contentsOf: sourceFile("Sources/Views/FreeCatalogRows.swift"),
+                              encoding: .utf8)
+        let body = try #require(functionBody(of: "static func load(onRow: RowSink? = nil)", in: text),
+                                "der Durchlauf heisst nicht mehr so — Zaun nachziehen")
+        #expect(!body.contains("async let"),
+                "eine Quelle wird wieder in Startreihenfolge abgewartet")
+        #expect(body.contains("withTaskGroup"),
+                "das Ergebnis-orientierte Warten ist aus dem Durchlauf verschwunden")
+        // Und die zweite Haelfte: eine abgeschaltete Quelle erzeugt keinen
+        // Auftrag mehr, statt gestartet und weggeworfen zu werden.
+        #expect(!body.contains("_ = await "),
+                "eine abgeschaltete Quelle wird wieder gestartet und verworfen")
+        // Rot-Probe am Instrument selbst: gegen die ALTE Fassung schlaegt es
+        // an. Ein Zaun, der nur „nichts gefunden" meldet, beweist nichts.
+        let alt = """
+            @MainActor
+            enum Alt {
+                static func load(onRow: RowSink? = nil) async -> SourceRows {
+                    async let newTask = fetched { try await LibriVoxClient.newBooks() }
+                    if librivoxOn {
+                        _ = await newTask
+                    }
+                    return rows
+                }
+            }
+            """
+        let alteForm = try #require(functionBody(of: "static func load(onRow: RowSink? = nil)", in: alt))
+        #expect(alteForm.contains("async let"), "die Rot-Probe sieht die alte Form nicht")
+        #expect(alteForm.contains("_ = await "), "die Rot-Probe sieht das Wegwerfen nicht")
+        #expect(!alteForm.contains("withTaskGroup"))
+        // Und die Gegenrichtung: ein KOMMENTAR, der die alte Form erklaert,
+        // darf den Zaun nicht ausloesen — genau daran ist er einmal gerissen.
+        let erklaert = """
+            @MainActor
+            enum Neu {
+                static func load(onRow: RowSink? = nil) async -> SourceRows {
+                    // `async let` plus sequenzielles `await` wartete in Startreihenfolge.
+                    await withTaskGroup(of: Fetched.self) { group in }
+                    return rows
+                }
+            }
+            """
+        let erklaerteForm = try #require(functionBody(of: "static func load(onRow: RowSink? = nil)", in: erklaert))
+        #expect(!erklaerteForm.contains("async let"),
+                "ein Treffer im Kommentar wird als Treffer im Code gewertet")
+    }
+
+    /// R45 Runde 2, gemessen am Endpunkt: `extended=1` verdoppelt die
+    /// Antwortzeit, und der Server rechnet die ganze Antwort fertig, bevor er
+    /// das erste Byte sendet (22-25 s bis zum ersten Byte). Das gemeinsame
+    /// Zeitlimit ist 20 s — die Reihe lief regelmaessig in die Wiederhol-
+    /// Leiter und endete im Fehlschlag. Der Zaun haelt beide Seiten: die
+    /// Neu-Reihe fragt OHNE den teuren Parameter, das Fach fragt MIT ihm.
+    @Test("die Neu-Reihe zahlt den teuren Parameter nicht, das Fach schon")
+    func theNewRowDoesNotPayForGenresButTheShelfDoes() throws {
+        let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
+                              encoding: .utf8)
+        let new = try #require(functionBody(of: "static func newBooks(sinceDays: Int, limit: Int)", in: text))
+        #expect(!new.contains("\"extended\""),
+                "die Neu-Reihe fragt wieder mit dem Parameter, der ins Zeitlimit laeuft")
+        let shelf = try #require(functionBody(of: "static func books(genre: String, limit: Int, offset: Int = 0)", in: text))
+        #expect(shelf.contains("\"extended\""),
+                "das Fach braucht die Gattungen — ohne den Parameter liefert die Quelle keine")
+    }
+
+    private func sourceFile(_ path: String) -> URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent(path)
+    }
+
+    /// A hit inside a COMMENT is not a hit in the code — this very fence went
+    /// red on the sentence that explains why the old form was replaced.
+    private func withoutComments(_ text: String) -> String {
+        text.split(separator: "\n", omittingEmptySubsequences: false)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+    }
+
+    /// The text of one function, from its signature to the closing brace at the
+    /// same indentation — so a fence can scope its claim to ONE function
+    /// instead of the whole file. Comment lines are dropped first.
+    private func functionBody(of signature: String, in full: String) -> String? {
+        let text = withoutComments(full)
+        guard let start = text.range(of: signature) else { return nil }
+        let indent = text[text.lineRange(for: start).lowerBound...]
+            .prefix { $0 == " " }
+        let closing = "\n" + indent + "}"
+        guard let end = text.range(of: closing, range: start.upperBound..<text.endIndex) else { return nil }
+        return String(text[start.upperBound..<end.lowerBound])
+    }
 }
 #endif
