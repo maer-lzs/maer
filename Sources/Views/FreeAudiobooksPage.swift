@@ -116,7 +116,7 @@ struct FreeAudiobooksPage: View {
                 .padding(.top, TabContentLayout.topInset)
                 .bottomBarClearance()
         }
-        .navigationTitle(Text("Free Audiobooks & Radio Plays"))
+        .navigationTitle(Text("Audiobooks and Radio Plays"))
         .task { await store.ensureSourcesLoaded() }
         .task { await OERRLiveStore.shared.ensureLoaded(forLanguages: languages) }
         .task(id: selectedChip) { await loadCharts() }
@@ -133,7 +133,7 @@ struct FreeAudiobooksPage: View {
             LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
                 // The rights bases differ per source — the capsule per title
                 // says which; this line only names the FAMILIES.
-                Text("Free radio plays and audiobooks — public broadcasters, independent audio drama and public-domain catalogs, separate from your own library.")
+                Text("From public broadcasters, independent studios and open catalogs. Separate from your own library.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)

@@ -75,8 +75,40 @@ nonisolated enum CatalogMix {
         return seededShuffle(fresh) + seededShuffle(seenLastRound)
     }
 
-    /// The session's one seed — drawn once per app start, so every surface
-    /// that renders this row (Podcasts tab AND Home) shows the SAME mix and
-    /// nothing re-sorts within a session. Fresh start = fresh mix.
+    /// R52: WHICH surface is asking. The lanes belong to the surface, not to
+    /// the mixer — a shared `hoerspieleTiles` that assembled the same thing
+    /// for all three was the construction fault: two tabs promised two offers
+    /// and delivered one.
+    enum Surface: String, CaseIterable, Sendable {
+        /// Radio plays to subscribe to: the curated FEEDS, no catalog tile.
+        case podcasts
+        /// The catalogues, Old Time Radio among them: no feed.
+        case books
+        /// Start may show both worlds — that is its job there.
+        case home
+
+        var usesFeeds: Bool { self != .books }
+        var usesCatalogs: Bool { self != .podcasts }
+    }
+
+    /// The session's one seed — drawn once per app start, so nothing re-sorts
+    /// within a session. Fresh start = fresh mix.
+    ///
+    /// R52: every surface derives ITS OWN seed from it. The stability was
+    /// always the point; that two surfaces became twins was not. Deriving
+    /// keeps the first and removes the second — Start can no longer deal the
+    /// same tiles in the same order as a tab row even where the pots overlap.
     static let sessionSeed = UInt64.random(in: UInt64.min...UInt64.max)
+
+    static func seed(for surface: Surface, session: UInt64 = sessionSeed) -> UInt64 {
+        // A fixed, source-visible constant per surface — no `hashValue`,
+        // which is salted per process and would make this untestable.
+        let salt: UInt64
+        switch surface {
+        case .podcasts: salt = 0x5BF0_3635_C2E9_1B7D
+        case .books:    salt = 0xD1B5_4A32_D192_ED03
+        case .home:     salt = 0x9E37_79B9_7F4A_7C15
+        }
+        return session ^ salt
+    }
 }

@@ -294,8 +294,16 @@ RowHeading(title: "Keep Listening", font: .title2,
     /// The master switch gates it: no door into an empty room.
     /// Paket 4: the podcast tab's entry previews the FEED sources of the
     /// merged page (they land here as subscriptions) — the audiobooks tab
-    /// previews the catalog sources. Disjoint by construction (CatalogSource
-    /// split, tested): no tile appears in both tabs.
+    /// previews the catalog sources.
+    ///
+    /// R52: that sentence stood here since 07.08. and the code below did not
+    /// keep it — the row pulled three BOOK lanes as well, and only the slow
+    /// per-tile probe (gone with R45) had kept them empty enough to look
+    /// right. It is a construction now: the surface names its lanes
+    /// (`CatalogMix.Surface.podcasts` carries feeds only), and a fence holds
+    /// the disjointness at the TILES. The older test that the previous
+    /// comment leaned on ("CatalogSource split, tested") is not wrong, it
+    /// proves a different sentence: it splits the source ENUM, not the row.
     @ViewBuilder
     private var hoerspieleSection: some View {
         // Auftrag K: the 733ac2a TILE row, unblocked by the MEASURED root
@@ -308,7 +316,7 @@ RowHeading(title: "Keep Listening", font: .title2,
         // the mounted-but-hidden case.
         if freeCatalogsMaster && isActive {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.entry("Free Audiobooks & Radio Plays",
+                RowHeading.entry("Radio Plays to Subscribe",
                                  destination: FreeAudiobooksRoute.area)
                     .accessibilityIdentifier("free-catalog-entry-podcasts")
                 CatalogMixRow(tiles: hoerspieleMixTiles,
@@ -318,10 +326,11 @@ RowHeading(title: "Keep Listening", font: .title2,
         }
     }
 
-    /// The podcast tab mixes the SAME sources as the area page it opens —
-    /// via the ONE shared computation (L2's Start row uses it too).
+    /// R52: the podcast tab shows what lands here as a SUBSCRIPTION — the
+    /// curated radio-play feeds. No catalog tile: those are whole works with
+    /// a listening position and live in the audiobooks tab.
     private var hoerspieleMixTiles: [CatalogMix.Tile] {
-        CatalogMix.hoerspieleTiles(rows: freeCatalogStore.sourceRows)
+        CatalogMix.tiles(for: .podcasts, rows: freeCatalogStore.sourceRows)
     }
 
 

@@ -354,6 +354,81 @@ struct CatalogStoreReadFenceTests {
                 "der Tages-Speicher altert nicht — das ist die Bestands-Positiv-Klasse")
     }
 
+    /// R52 (the owner: „auf Hörbücher-Bib, Start und Podcast-Bib jeweils einmal
+    /// Hörbücher und Hörspiele als Kachelreihe. Da ist was falsch"): der
+    /// Kommentar in `PodcastsView` behauptete die Disjunktheit seit dem
+    /// 07.08. — der Code darunter stellte sie nie her. Der Test, auf den er
+    /// sich berief (`Catalog sources split disjointly …`,
+    /// `FreeCatalogTests`), ist nicht falsch: er teilt die QUELLEN-
+    /// Aufzaehlung, nicht die Kacheln. Das ist der fehlende Satz.
+    @Test("Podcast-Tab zeigt keine Katalog-Kachel, Hoerbuecher-Tab keinen Feed")
+    func theTwoTabRowsAreDisjointAtTheTiles() {
+        let rows = Self.filledRows()
+        let podcasts = CatalogMix.tiles(for: .podcasts, rows: rows)
+        let books = CatalogMix.tiles(for: .books, rows: rows)
+        #expect(!podcasts.isEmpty, "die Probe misst nichts — der Podcast-Tab ist leer")
+        #expect(!books.isEmpty, "die Probe misst nichts — der Buecher-Tab ist leer")
+        for tile in podcasts {
+            if case .item(let item) = tile {
+                #expect(Bool(false), Comment(rawValue: "Katalog-Kachel im Podcast-Tab: \(item.id)"))
+            }
+        }
+        for tile in books {
+            if case .feed(let entry) = tile {
+                #expect(Bool(false), Comment(rawValue: "Feed im Buecher-Tab: \(entry.feedURL)"))
+            }
+        }
+        // Und keine Kachel steht in BEIDEN.
+        #expect(Set(podcasts.map(\.id)).isDisjoint(with: Set(books.map(\.id))))
+        // Rot-Probe: das Instrument SIEHT beide Sorten. Start mischt sie, und
+        // genau so sah die Podcast-Reihe bis heute aus — ohne diesen Nachweis
+        // wuerde „keine Katalog-Kachel gefunden" auch bei blindem Zaun gelten.
+        let home = CatalogMix.tiles(for: .home, rows: rows)
+        var sahFeed = false, sahItem = false
+        for tile in home {
+            if case .feed = tile { sahFeed = true }
+            if case .item = tile { sahItem = true }
+        }
+        #expect(sahFeed && sahItem,
+                "die Rot-Probe sieht die gemischte Form nicht — der Zaun beweist nichts")
+    }
+
+    /// R52 INVARIANTE 2: Start darf beide Welten zeigen, aber nie kachelgleich
+    /// mit einer Tab-Reihe sein. Der geteilte Sitzungs-Startwert garantierte
+    /// bisher das GEGENTEIL — seine Absicht (innerhalb einer Sitzung sortiert
+    /// sich nichts um) bleibt und wird je Flaeche abgeleitet.
+    @Test("Start ist keine Zwillingsreihe, und der Startwert bleibt je Sitzung stabil")
+    func homeIsNeverATwinOfATabRow() {
+        for a in CatalogMix.Surface.allCases {
+            for b in CatalogMix.Surface.allCases where a != b {
+                #expect(CatalogMix.seed(for: a, session: 42) != CatalogMix.seed(for: b, session: 42),
+                        "\(a.rawValue) und \(b.rawValue) teilen ihren Startwert")
+            }
+        }
+        // Stabil: derselbe Sitzungswert ergibt denselben Flaechenwert.
+        #expect(CatalogMix.seed(for: .home, session: 7) == CatalogMix.seed(for: .home, session: 7))
+        // Und am Ergebnis: Start ist nicht kachelgleich mit einer Tab-Reihe.
+        let rows = Self.filledRows()
+        let home = CatalogMix.tiles(for: .home, rows: rows).map(\.id)
+        #expect(!home.isEmpty, "die Probe misst nichts")
+        #expect(home != CatalogMix.tiles(for: .podcasts, rows: rows).map(\.id))
+        #expect(home != CatalogMix.tiles(for: .books, rows: rows).map(\.id))
+    }
+
+    /// Genug Bestand in JEDER Katalog-Bahn, damit die Proben oben wirklich
+    /// etwas messen (ein gruener Lauf ohne Messung ist der teuerste Ausgang).
+    private static func filledRows() -> CatalogSourceLoader.SourceRows {
+        func lane(_ prefix: String) -> [LibraryItem] {
+            (1...8).map { LibraryItem(id: "\(prefix)-\($0)", media: nil, addedAt: nil) }
+        }
+        var rows = CatalogSourceLoader.SourceRows()
+        rows.oldTimeRadio = lane("arch:otr")
+        rows.librivoxPopular = lane("arch:lv")
+        rows.archiveBooks = lane("arch:ia")
+        rows.gutenberg = lane("gut:book")
+        return rows
+    }
+
     private func sourceFile(_ path: String) -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

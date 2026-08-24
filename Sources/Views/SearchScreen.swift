@@ -804,7 +804,7 @@ struct SearchScreen: View {
                 // charts carry the bulk, the socket only what they miss.
                 // Paket 4: the tile is the THIRD entrance to the merged
                 // page (11be262: same surface, one title everywhere).
-                CategoryTile(title: String(localized: "Free Audiobooks & Radio Plays"),
+                CategoryTile(title: String(localized: "Audiobooks and Radio Plays"),
                              systemImage: "waveform.and.mic",
                              accessibilityId: "podcast-genre-hoerspiele") {
                     pushFreeAudiobooksRoute(.area)

@@ -653,6 +653,13 @@ struct LibraryView: View {
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
         }
+        // R52: the catalog detail sheet used to hang off the audiobooks row,
+        // which now renders through the shared `CatalogMixRow` (with its own
+        // sheet). The SEARCH result path opens the same sheet, so its host
+        // moves to the root instead of dying with the row it was attached to.
+        .sheet(item: $freeBookDetail) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
         // Vollplayer → Quellseiten (Gate 2, 8913feb): registered on the ONE
         // central router — environment wiring was fragile across player
         // presentation contexts (silent no-op when the env was missing).
@@ -1075,42 +1082,42 @@ struct LibraryView: View {
     /// page, "New at LibriVox" tiles (MediaTile format, tap plays, context
     /// menu opens the license sheet), catalog≠library marking kept. The row
     /// hides entirely while the store is empty (service/toggle off, offline).
+    /// R52 (the owner's ENTSCHEID): this row shows the CATALOGUES — LibriVox,
+    /// Project Gutenberg, Internet Archive and Old Time Radio, mixed. No feed
+    /// tile: a feed lands in the podcast tab as a subscription.
+    ///
+    /// Old Time Radio moved here on the measurement, not on taste: the most
+    /// downloaded bundles are played SERIES with a beginning, an end and a
+    /// listening position (`MediaFamily.booksTabMember` files them here
+    /// already) — the browsing door now follows the filing that existed.
+    ///
+    /// It also ends „vier Flächen, zwei Töpfe": the row used to draw
+    /// `rows.tabBooks`, which comes from the same query as the popular lane
+    /// and from the same `docs` array as Start's `discoverBooks`.
+    @ViewBuilder
     private var freeAudiobooksSection: some View {
+        let tiles = CatalogMix.tiles(for: .books, rows: freeCatalogStore.sourceRows)
+        // G8: no heading without content — the row hides entirely while the
+        // catalogues are empty (service off, offline, still loading).
+        if !tiles.isEmpty {
         VStack(alignment: .leading, spacing: 10) {
             // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's chevron
             // branch → the shared entry variant.
-            // fe13468: ONE string for the page and BOTH entries.
-            RowHeading.entry("Free Audiobooks & Radio Plays", destination: FreeAudiobooksRoute.area)
+            RowHeading.entry("Audiobooks and Radio Plays", destination: FreeAudiobooksRoute.area)
                 .accessibilityIdentifier("free-audiobooks-entry")
-            Text("Free public-domain audiobooks from LibriVox — separate from your own library.")
+            // The word "free" is gone from these headings: it is a legal
+            // claim, and the per-title capsule is where the rights situation
+            // belongs. Naming the ORIGIN says as much without claiming.
+            Text("From open catalogs — LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
-                    ForEach(freeCatalogStore.rows.tabBooks) { item in
-                        FreeCatalogBookTile(
-                            item: item,
-                            // 174f855: NACHSCHLAGEN — tap = detail.
-                            onTap: { freeBookDetail = item }
-                        )
-                        .contextMenu {
-                            Button {
-                                Task { await playerCoordinator.open(item: item) }
-                            } label: { Label("Play", systemImage: "play.fill") }
-                            Button {
-                                freeBookDetail = item
-                            } label: { Label("Details", systemImage: "info.circle") }
-                        }
-                        .cardRowSlot(spacing: 14)
-                    }
-                }
-                .padding(.horizontal)
-            }
-            .scrollClipDisabled()
+            CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)
         }
-        .sheet(item: $freeBookDetail) { item in
-            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        .task { await freeCatalogStore.ensureSourcesLoaded() }
+        } else {
+            Color.clear.frame(height: 0)
+                .task { await freeCatalogStore.ensureSourcesLoaded() }
         }
     }
 
@@ -1204,7 +1211,7 @@ struct LibraryView: View {
                         allBooksSection
                     }
                 } else {
-                    if freeAudiobooksArea && !freeCatalogStore.rows.tabBooks.isEmpty {
+                    if freeAudiobooksArea {
                         freeAudiobooksSection
                     }
                     // The library's loading/error/empty state sits WHERE the

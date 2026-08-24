@@ -81,18 +81,30 @@ extension CatalogMix {
     // Project default is MainActor — no explicit attribute needed here.
     private static var recordedThisSession = false
 
-    static func hoerspieleTiles(rows: CatalogSourceLoader.SourceRows) -> [Tile] {
+    /// R52 (the owner: „ich habe jetzt auf Hörbücher-Bib, Start und Podcast-Bib
+    /// jeweils einmal Hörbücher und Hörspiele als Kachelreihe"): the tiles a
+    /// SURFACE shows. Each surface names its own lanes and draws its own
+    /// seed — the shared assembly for all three was what made the podcast tab
+    /// and Start show the identical row under two different names.
+    static func tiles(for surface: Surface,
+                      rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()
-        let feedGroups = [CatalogSource.oerr, .independents]
-            .map { OERRLiveStore.feeds(for: $0, languages: languages) }
+        let feedGroups = surface.usesFeeds
+            ? [CatalogSource.oerr, .independents].map {
+                OERRLiveStore.feeds(for: $0, languages: languages) }
+            : []
+        let itemGroups = surface.usesCatalogs
+            ? [rows.oldTimeRadio, rows.librivoxPopular, rows.archiveBooks, rows.gutenberg]
+            : []
         let previous = Set(UserDefaults.standard.stringArray(
             forKey: AppStorageKeys.catalogMixLastShown) ?? [])
-        let tiles = row(feedGroups: feedGroups,
-                        itemGroups: [rows.oldTimeRadio, rows.librivoxPopular,
-                                     rows.archiveBooks, rows.gutenberg],
+        let tiles = row(feedGroups: feedGroups, itemGroups: itemGroups,
                         limit: RowPreview.limit,
-                        seed: sessionSeed, previous: previous)
-        if !recordedThisSession, tiles.count >= RowPreview.limit {
+                        seed: seed(for: surface), previous: previous)
+        // The malus is recorded from the mixed surface only: Start is the one
+        // that sees both worlds, so its row is the honest record of "what did
+        // the user already get shown".
+        if surface == .home, !recordedThisSession, tiles.count >= RowPreview.limit {
             recordedThisSession = true
             UserDefaults.standard.set(tiles.map(\.id),
                                       forKey: AppStorageKeys.catalogMixLastShown)

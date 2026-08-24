@@ -467,10 +467,10 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
     /// mix shows the static feed curation, so the row is never empty.
     @ViewBuilder
     private var discoverAudiobooksSection: some View {
-        let tiles = CatalogMix.hoerspieleTiles(rows: freeCatalogStore.sourceRows)
+        let tiles = CatalogMix.tiles(for: .home, rows: freeCatalogStore.sourceRows)
         if !tiles.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                RowHeading.entry("Discover · Audiobooks & Radio Plays",
+                RowHeading.entry("Discover · Radio Plays & Audiobooks",
                                  destination: FreeAudiobooksRoute.area)
                     .accessibilityIdentifier("home-discover-audiobooks")
                 CatalogMixRow(tiles: tiles, playerCoordinator: playerCoordinator)
