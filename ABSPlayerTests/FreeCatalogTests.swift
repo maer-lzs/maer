@@ -551,27 +551,31 @@ struct CatalogGenreAxisTests {
                 == CatalogGenreAxis.hoerspielChips.count)
     }
 
-    @Test("LibriVox genres fold onto shelves; EPOCHS never become one")
-    func librivoxShelves() {
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Literary Fiction"]) == ["fiction"])
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Detective Fiction"]) == ["crime"])
+    /// R53: der LibriVox-Gattungsweg ist gefallen (zwei Kennungen fuer
+    /// dieselben Titel waeren zwei Wahrheiten) — das VERHALTEN lebt auf der
+    /// EINEN Subject-Achse weiter, und die deckt beide Schreibfamilien. Der
+    /// Fall wandert deshalb mit, statt mit der Funktion zu verschwinden.
+    @Test("Gattungen falten auf Faecher; EPOCHEN werden nie eines")
+    func genresFoldOntoShelves() {
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Literary Fiction"]) == ["fiction"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective Fiction"]) == ["crime"])
         // The measured mix: genre AND epoch in one field — the epoch drops,
         // so no year ends up between the shelves.
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Published 1800-1900"]).isEmpty)
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Published 1800-1900"]).isEmpty)
         #expect(CatalogGenreAxis.shelves(
-            forLibriVoxGenres: ["Published 1800-1900", "Science Fiction"]) == ["scifi"])
+            forSubjects: ["Published 1800-1900", "Science Fiction"]) == ["scifi"])
         #expect(CatalogGenreAxis.isEpoch("Published 1800-1900"))
         #expect(!CatalogGenreAxis.isEpoch("Science Fiction"))
         // Unknown stays unknown — no guessing.
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["Völlig Unbekannt"]).isEmpty)
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: []).isEmpty)
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Völlig Unbekannt"]).isEmpty)
+        #expect(CatalogGenreAxis.shelves(forSubjects: []).isEmpty)
         // Several genres → several shelves, deduped and in BROWSE order
-        // (not in the order the feed happened to list them).
+        // (not in the order the source happened to list them).
         let many = CatalogGenreAxis.shelves(
-            forLibriVoxGenres: ["Poetry", "Detective Fiction", "Literary Fiction", "Poetry"])
+            forSubjects: ["Poetry", "Detective Fiction", "Literary Fiction", "Poetry"])
         #expect(many == ["fiction", "crime", "poetry"])
-        // Case and whitespace tolerance (feeds are inconsistent).
-        #expect(CatalogGenreAxis.shelves(forLibriVoxGenres: ["  SCIENCE FICTION "]) == ["scifi"])
+        // Case and whitespace tolerance (sources are inconsistent).
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["  SCIENCE FICTION "]) == ["scifi"])
     }
 
     @Test("e948444: licence labels stay honest — no blanket 'public domain'")

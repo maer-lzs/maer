@@ -202,16 +202,6 @@ nonisolated enum CatalogGenreAxis {
 
     // MARK: - R1 (09.08.): the shelves ask the SERVER, not a local pool
 
-    /// A shelf → the LibriVox genre names that fold onto it. Measured 09.08.:
-    /// the LibriVox API DOES filter (`genre=`, case-insensitive) and pages
-    /// (`offset=`) — Poetry alone carries ≥1.200 titles, Philosophy 281, so a
-    /// shelf that used to filter a 20-title preview pool was showing a
-    /// thousandth of its stock. A shelf maps to 2-3 genres; the client asks
-    /// for each and merges.
-    static func librivoxGenres(forShelf shelf: String) -> [String] {
-        librivoxAxis.filter { $0.value == shelf }.map(\.key).sorted()
-    }
-
     /// A shelf → the subject terms for the SUBJECT-based catalogs
     /// (archive.org `subject:`, gutendex `topic=`). Both spelling families
     /// ride along, because a shelf can be reached from either.
@@ -238,17 +228,6 @@ nonisolated enum CatalogGenreAxis {
                 let key = part.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 if let shelf = librivoxAxis[key] ?? lcshAxis[key] { hit.insert(shelf) }
             }
-        }
-        return librivoxShelves.map(\.key).filter(hit.contains)
-    }
-
-    /// A book's LibriVox genres → the shelves it belongs on (deduped, in
-    /// browse order). Epochs and unknown entries drop out silently.
-    static func shelves(forLibriVoxGenres genres: [String]) -> [String] {
-        var hit = Set<String>()
-        for genre in genres {
-            let key = genre.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if let shelf = librivoxAxis[key] { hit.insert(shelf) }
         }
         return librivoxShelves.map(\.key).filter(hit.contains)
     }

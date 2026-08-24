@@ -263,9 +263,13 @@ struct CatalogStoreReadFenceTests {
                 "ohne den Parameter fehlt url_iarchive — die Kacheln verlieren ihre Cover")
         // Und die Feldliste muss die Cover-Quelle ueberhaupt anfragen.
         #expect(LibriVoxClient.rowFields.contains("url_iarchive"))
-        let shelf = try #require(functionBody(of: "static func books(genre: String, limit: Int, offset: Int = 0)", in: text))
-        #expect(shelf.contains("\"extended\""),
-                "das Fach braucht die Gattungen — ohne den Parameter liefert die Quelle keine")
+        // R53-Nachlese: die zweite Haelfte dieses Zauns pruefte den
+        // LibriVox-Gattungsfeed — der ist GELOESCHT (er lieferte `lv:`-Buecher
+        // fuer eine Flaeche aus `lva:`-Dokumenten, also zwei Kennungen fuer
+        // dieselben Titel). Der Zaun haelt jetzt fest, dass er nicht
+        // zurueckkommt, statt seine Parameter zu bewachen.
+        #expect(!text.contains("func books(genre:"),
+                "der LibriVox-Gattungsfeed ist zurueck — zwei Kennungen fuer dieselben Titel")
     }
 
     /// R53 (the owner: „Alle 4 Bibs haben moeglicherweise auch Kachelreihen

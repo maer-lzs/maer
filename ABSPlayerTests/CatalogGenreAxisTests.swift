@@ -9,16 +9,6 @@ import Testing
 
 /// R1/R2 (09.08.): the shelves ask the server, and one page shows a title once.
 struct CatalogShelfQueryTests {
-    @Test("a shelf resolves to the LibriVox genres that fold onto it")
-    func librivoxGenresPerShelf() {
-        let scifi = CatalogGenreAxis.librivoxGenres(forShelf: "scifi")
-        #expect(scifi.contains("science fiction"))
-        #expect(!scifi.isEmpty)
-        // A shelf key that does not exist yields nothing (no accidental
-        // "everything" query).
-        #expect(CatalogGenreAxis.librivoxGenres(forShelf: "does-not-exist").isEmpty)
-    }
-
     @Test("a shelf resolves to subject terms for the subject-based catalogs")
     func subjectsPerShelf() {
         #expect(!CatalogGenreAxis.subjects(forShelf: "poetry").isEmpty)

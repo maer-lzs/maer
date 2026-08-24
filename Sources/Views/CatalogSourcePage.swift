@@ -42,6 +42,9 @@ struct CatalogSourcePage: View {
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
+    /// R53 Nachlese: warum das Nachladen stoppte — ein Fehlschlag ist keine
+    /// Erschoepfung und bekommt einen Weg zurueck.
+    @State private var pageFailure: String?
     /// R53: which shelves could not be ASKED — kept apart from „the source has
     /// nothing here", which looks identical on the surface but is not.
     @State private var shelfFailures: [String: String] = [:]
@@ -204,7 +207,18 @@ struct CatalogSourcePage: View {
                 }
             }
             .padding(.horizontal)
-            if isLoading { ProgressView().frame(maxWidth: .infinity).padding() }
+            if isLoading {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if pageFailure != nil {
+                HStack(spacing: 10) {
+                    Text("Could not load more.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("Retry") { Task { await load() } }
+                        .font(.footnote)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
         }
         .padding(.top, TabContentLayout.topInset)
     }
@@ -406,6 +420,12 @@ struct CatalogSourcePage: View {
         }
     }
 
+    /// R53 Nachlese: `try?` machte hier aus JEDEM Netzfehler „Ende der
+    /// Liste" — an allen vier Quellen. Milder als bei den Faechern (die Seite
+    /// hoert auf nachzuladen, statt leer zu wirken), aber dieselbe
+    /// Verwechslung: Fehlschlag sieht aus wie Erschoepfung, und es gibt
+    /// keinen Weg zurueck. Ein Fehler endet die Liste jetzt NICHT — er wird
+    /// benannt und bleibt wiederholbar.
     private func load() async {
         guard !source.isFeedBased, !isLoading, !reachedEnd else { return }
         isLoading = true
@@ -416,45 +436,51 @@ struct CatalogSourcePage: View {
         let provider = FreeCatalogProvider.shared
         let codes = SuggestionLanguages.current()
         var new: [LibraryItem] = []
-        switch source {
-        case .librivox:
-            guard let docs = try? await ArchiveOrgClient.popularLibriVoxByLanguage(
-                rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
-            else { reachedEnd = true; return }
-            new = docs.compactMap { provider.remember(popular: $0) }
-            if docs.count < pageSize { reachedEnd = true }
-        case .archiveBooks:
-            // P1: the fallback is a session state — once fallen back, deeper
-            // pages browse the unfiltered corpus too (the returned flag
-            // rides back in; the old page-1-only guard ended the trove after
-            // one page for German users).
-            guard let result = try? await ArchiveOrgClient.audiobooksOutsideLibriVox(
-                rows: pageSize, languageCodes: codes, page: page, unfiltered: languageFallback)
-            else { reachedEnd = true; return }
-            languageFallback = result.unfiltered
-            new = result.docs.compactMap { provider.remember(popular: $0) }
-            if result.docs.count < pageSize { reachedEnd = true }
-        case .gutenberg:
-            // gutendex pages at 32; P1: same session-state rule as archive —
-            // the same corner flagged in review (a first-page fallback that
-            // never continued).
-            var books = (try? await GutenbergClient.audiobooks(
-                languages: languageFallback ? [] : codes, page: page)) ?? []
-            if books.isEmpty, page == 1, !codes.isEmpty, !languageFallback {
-                books = (try? await GutenbergClient.audiobooks(languages: [], page: 1)) ?? []
-                if !books.isEmpty { languageFallback = true }
+        do {
+            switch source {
+            case .librivox:
+                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
+                    rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
+                new = docs.compactMap { provider.remember(popular: $0) }
+                if docs.count < pageSize { reachedEnd = true }
+            case .archiveBooks:
+                // P1: the fallback is a session state — once fallen back, deeper
+                // pages browse the unfiltered corpus too (the returned flag
+                // rides back in; the old page-1-only guard ended the trove after
+                // one page for German users).
+                let result = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+                    rows: pageSize, languageCodes: codes, page: page, unfiltered: languageFallback)
+                languageFallback = result.unfiltered
+                new = result.docs.compactMap { provider.remember(popular: $0) }
+                if result.docs.count < pageSize { reachedEnd = true }
+            case .gutenberg:
+                // gutendex pages at 32; P1: same session-state rule as archive —
+                // the same corner flagged in review (a first-page fallback that
+                // never continued).
+                var books = try await GutenbergClient.audiobooks(
+                    languages: languageFallback ? [] : codes, page: page)
+                if books.isEmpty, page == 1, !codes.isEmpty, !languageFallback {
+                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                    if !books.isEmpty { languageFallback = true }
+                }
+                new = books.compactMap { provider.remember(gutenberg: $0) }
+                if books.isEmpty { reachedEnd = true }
+            case .oldTimeRadio:
+                let docs = try await ArchiveOrgClient.popularOldTimeRadio(
+                    rows: pageSize, page: page)
+                new = docs.compactMap { provider.remember(popular: $0) }
+                if docs.count < pageSize { reachedEnd = true }
+            default:
+                reachedEnd = true
             }
-            new = books.compactMap { provider.remember(gutenberg: $0) }
-            if books.isEmpty { reachedEnd = true }
-        case .oldTimeRadio:
-            guard let docs = try? await ArchiveOrgClient.popularOldTimeRadio(
-                rows: pageSize, page: page)
-            else { reachedEnd = true; return }
-            new = docs.compactMap { provider.remember(popular: $0) }
-            if docs.count < pageSize { reachedEnd = true }
-        default:
-            reachedEnd = true
+        } catch {
+            // Cancellation is not a failure — the next pass fetches again.
+            guard let reason = FreeCatalog.failureReason(error) else { return }
+            pageFailure = reason
+            Logger.library.error("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) FAILED: \(reason, privacy: .public)")
+            return
         }
+        pageFailure = nil
         var seen = Set(items.map(\.id))
         items += new.filter { seen.insert($0.id).inserted }
         page += 1
