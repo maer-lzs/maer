@@ -160,5 +160,31 @@ struct CatalogStoreReadFenceTests {
         #expect(!text.contains("await coverLoads("),
                 "eine Cover-Probe je Kachel ist zurueck im Bauweg")
     }
+
+    /// R45/R48: eine Reihe holt keine Kapitel. Der alte Vollabruf war zu 95 %
+    /// Kapitelliste (291 kB fuer 20 Buecher, gemessen am Endpunkt); die
+    /// Feldliste laesst sie weg und traegt dafuer `genres`. Der Zaun haelt
+    /// beide Haelften fest — was die Reihe holt UND was sie nicht holt.
+    @Test("die Reihen-Feldliste laesst die Kapitel weg und traegt die Gattungen")
+    func rowFieldsCarryGenresAndNoChapters() {
+        let fields = LibriVoxClient.rowFields
+        #expect(fields.contains("genres"), "die Gattungen sind der Grund fuer den Umbau")
+        #expect(!fields.contains("sections"),
+                "Kapitel gehoeren an die Detailseite, nicht in jede Kachel")
+        for needed in ["url_iarchive", "url_rss", "authors", "title"] {
+            #expect(fields.contains(needed), "\(needed) fehlt der Reihe")
+        }
+    }
+
+    /// R47: die gemessenen OTR-Begriffe liegen auf der EINEN Achse.
+    @Test("die nachgemessenen OTR-Begriffe sind einsortiert")
+    func measuredOTRTermsAreOnTheAxis() {
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective"]) == ["crime"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["mystery"]) == ["crime"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Crime Drama"]) == ["crime"])
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Drama"]) == ["drama"])
+        // Rot-Probe: die Zuordnung bleibt EXAKT, kein Teilstring.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Western Electric"]).isEmpty)
+    }
 }
 #endif

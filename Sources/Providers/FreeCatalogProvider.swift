@@ -347,7 +347,18 @@ final class FreeCatalogProvider: AudioProvider {
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
-            guard let book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
+            guard var book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
+            // R45/R48: the ROW no longer carries the chapter list (95 % of the
+            // old payload, 291 kB → 45 kB for 20 books). It is fetched HERE,
+            // once, for the one book the user actually opened — metadata
+            // where it is needed instead of on every tile.
+            if (book.sections?.isEmpty ?? true) {
+                let id = String(itemId.dropFirst(FreeCatalog.librivoxPrefix.count))
+                if let full = try await LibriVoxClient.book(id: id) {
+                    book = full
+                    librivoxBooks[itemId] = full
+                }
+            }
             let tracks = FreeCatalog.tracks(from: book.sections)
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
             return LibraryItemDetail(

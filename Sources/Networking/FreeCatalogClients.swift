@@ -46,6 +46,7 @@ nonisolated enum LibriVoxClient {
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "offset", value: String(offset)),
             URLQueryItem(name: "genre", value: genre),
+            URLQueryItem(name: "fields", value: rowFields),
         ]
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)
@@ -55,6 +56,19 @@ nonisolated enum LibriVoxClient {
         return try decodeFeed(data)
     }
 
+    /// R45/R48: the fields a ROW needs. Measured at the live endpoint —
+    /// `extended=1` alone answers 291 kB for 20 books, of which **95 % is the
+    /// chapter list**; `extended=1` PLUS `fields=` answers **45 kB** and
+    /// still carries `genres`, which the full response does too but nobody
+    /// asked for. Factor 6,4, and MORE content than before.
+    ///
+    /// `sections` is deliberately absent: a row shows no chapters. The detail
+    /// path fetches the full book by id when it needs them
+    /// (`FreeCatalogProvider.fetchItemDetail`) — metadata where it is needed,
+    /// not on every tile.
+    static let rowFields = "id,title,language,totaltimesecs,url_iarchive,"
+        + "url_librivox,url_rss,authors,genres,description"
+
     static func newBooks(sinceDays: Int, limit: Int) async throws -> [LibriVoxBook] {
         let since = Int(Date().timeIntervalSince1970) - sinceDays * 86_400
         var comp = URLComponents(string: "https://librivox.org/api/feed/audiobooks/")!
@@ -63,6 +77,7 @@ nonisolated enum LibriVoxClient {
             URLQueryItem(name: "extended", value: "1"),
             URLQueryItem(name: "limit", value: String(limit)),
             URLQueryItem(name: "since", value: String(since)),
+            URLQueryItem(name: "fields", value: rowFields),
         ]
         guard let url = comp.url else { return [] }
         var request = URLRequest(url: url)

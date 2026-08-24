@@ -147,6 +147,13 @@ nonisolated enum CatalogGenreAxis {
         // shelf (the Horror/Suspense 114 is ONE shelf), western and
         // music/variety are NEW shelves (82 / 159 bundles).
         "crime": "crime",
+        // R47 (the reviewer's Messung ueber 300 OTR-Items): diese Begriffe sind
+        // haeufiger als manches, das die Achse schon kannte — sie fehlten
+        // schlicht. Exakte Terme wie alle anderen, kein Teilstring.
+        "detective": "crime",
+        "mystery": "crime",
+        "crime drama": "crime",
+        "drama": "drama",
         "comedy": "comedy",
         "horror": "horror",
         "suspense": "horror",
