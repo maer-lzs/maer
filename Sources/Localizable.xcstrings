@@ -2918,6 +2918,16 @@
         }
       }
     },
+    "Genres could not be loaded." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Genres konnten nicht geladen werden."
+          }
+        }
+      }
+    },
     "Genres show the stations of the selected countries. Several are allowed." : {
       "localizations" : {
         "de" : {

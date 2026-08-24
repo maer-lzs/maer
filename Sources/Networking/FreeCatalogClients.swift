@@ -125,7 +125,11 @@ nonisolated enum LibriVoxClient {
 /// killed SRG. Only the TRADEMARK "Project Gutenberg" may not be used for
 /// own works; naming the source is fine and we do it in the row.
 nonisolated enum GutenbergClient {
-    nonisolated struct Book: Decodable, Sendable {
+    /// R53: also Encodable — the Gutenberg shelf stock is cached for a day
+    /// (the owner's decision), and caching the SOURCE form means a cached shelf
+    /// rebuilds exactly the tiles a live one would, through the same
+    /// `remember(gutenberg:)`. No second shape, no second truth.
+    nonisolated struct Book: Codable, Sendable {
         let id: Int
         let title: String?
         let authors: [Author]?
@@ -135,7 +139,7 @@ nonisolated enum GutenbergClient {
         /// so the genre axis has material here too.
         let subjects: [String]?
 
-        nonisolated struct Author: Decodable, Sendable { let name: String? }
+        nonisolated struct Author: Codable, Sendable { let name: String? }
     }
 
     nonisolated struct Response: Decodable, Sendable {
@@ -147,6 +151,15 @@ nonisolated enum GutenbergClient {
         try JSONDecoder().decode(Response.self, from: data).results ?? []
     }
 
+    /// R53: the stock rides in the answer we fetch anyway (`count`) and was
+    /// thrown away at decode time — the same shape as `numFound` on the
+    /// archive.org side. A shelf can therefore state its real size instead of
+    /// its loaded excerpt.
+    nonisolated static func decodeWithCount(_ data: Data) throws -> (books: [Book], total: Int?) {
+        let answer = try JSONDecoder().decode(Response.self, from: data)
+        return (answer.results ?? [], answer.count)
+    }
+
     /// Audiobooks in the given languages. Gutendex pages at 32 entries; the
     /// caller decides how many pages are worth it.
     /// `topic` (R1) filters server-side over subjects AND bookshelves —
@@ -154,6 +167,13 @@ nonisolated enum GutenbergClient {
     /// stock; the shelf shows honestly what exists.
     static func audiobooks(languages: [String], page: Int = 1,
                            search: String? = nil, topic: String? = nil) async throws -> [Book] {
+        try await audiobooksWithTotal(languages: languages, page: page,
+                                      search: search, topic: topic).books
+    }
+
+    static func audiobooksWithTotal(languages: [String], page: Int = 1,
+                                    search: String? = nil, topic: String? = nil)
+        async throws -> (books: [Book], total: Int?) {
         var comp = URLComponents(string: "https://gutendex.com/books/")!
         var items = [URLQueryItem(name: "mime_type", value: "audio/mpeg"),
                      URLQueryItem(name: "page", value: String(page))]
@@ -168,7 +188,7 @@ nonisolated enum GutenbergClient {
             items.append(URLQueryItem(name: "topic", value: topic))
         }
         comp.queryItems = items
-        guard let url = comp.url else { return [] }
+        guard let url = comp.url else { return ([], nil) }
         var request = URLRequest(url: url)
         // R45 invariant 3: a limit a source can NEVER meet is a wrong limit.
         // Measured: gutendex computes a cold `mime_type` query in 30–40 s and
@@ -179,7 +199,108 @@ nonisolated enum GutenbergClient {
         request.timeoutInterval = 45
         request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
         let (data, _) = try await RequestRetryPolicy.fetch(request)
-        return try decode(data)
+        return try decodeWithCount(data)
+    }
+}
+
+/// R53: ONE shape for "what does this source hold on this shelf" — four
+/// sources behind it, and the overview row, its chevron and the full page all
+/// ask through here. Before this, the question went through
+/// `archiveBaseQuery` alone, so the two sources without an archive.org query
+/// (LibriVox, Gutenberg) silently answered nothing and lost every shelf row.
+///
+/// The fetch stays raw and `Sendable`: turning documents into tiles needs the
+/// provider and therefore the main actor, and that is the caller's job.
+nonisolated enum CatalogShelfSource {
+    enum Answer: Sendable {
+        case archive(docs: [ArchivePopularDoc], total: Int?)
+        case gutenberg(books: [GutenbergClient.Book], total: Int?)
+        /// The source cannot serve shelves at all — the surface must then not
+        /// promise them (`hasChips`), rather than stay silently empty.
+        case unsupported
+    }
+
+    /// the owner's decision: the GUTENBERG shelves are fetched once a day and
+    /// read from store afterwards. Only Gutenberg — archive.org answers a
+    /// shelf in 0,63–0,80 s, where a store would be work without a win and a
+    /// second truth beside it. gutendex costs 30–41 s per COLD topic and
+    /// 30–70 ms warm (its own server cache); capping concurrency would still
+    /// mean eighteen requests per VISIT, the store means eighteen per DAY.
+    ///
+    /// It lives in the mechanism that already has expiry, and whose founding
+    /// rule is the one that matters here: **a failed lookup is never written
+    /// down.** So a broken day cannot freeze the page for the rest of it.
+    struct GutenbergShelf: Codable, Sendable {
+        var total: Int?
+        var books: [GutenbergClient.Book]
+    }
+
+    static let gutenbergShelfStore = ResolutionCacheStore<GutenbergShelf>(
+        key: "catalogGutenbergShelfStock", positiveTTL: 24 * 3600, negativeTTL: 24 * 3600)
+
+    /// Whether a source can answer the shelf question at all. `hasChips` reads
+    /// this instead of guessing, so a surface can never promise a shelf row
+    /// that no query backs.
+    static func canServeShelves(_ source: CatalogSource) -> Bool {
+        switch source {
+        case .librivox, .archiveBooks, .oldTimeRadio, .gutenberg: true
+        default: false
+        }
+    }
+
+    /// The OVERVIEW's shelf preview. Same query as the full page, plus the
+    /// day store for Gutenberg. A throw propagates and stores NOTHING — so a
+    /// bad minute cannot freeze the page for the rest of the day.
+    /// The stored day, read ONCE per pass. Reading it per shelf would decode
+    /// the whole store eighteen times for one page — the same class as the
+    /// memoized keychain read (one IPC per access in a hot path).
+    static func storedDay() -> [String: GutenbergShelf?] { gutenbergShelfStore.load() }
+
+    static func preview(source: CatalogSource, shelf: String, languages: [String],
+                        rows: Int, storedDay: [String: GutenbergShelf?] = [:]) async throws -> Answer {
+        if source == .gutenberg, let stored = storedDay[shelf] {
+            return .gutenberg(books: stored?.books ?? [], total: stored?.total)
+        }
+        let answer = try await page(source: source, shelf: shelf,
+                                    languages: languages, rows: rows)
+        if source == .gutenberg, case .gutenberg(let books, let total) = answer {
+            // An empty shelf is a clean ANSWER and may be remembered; only a
+            // failure may not — and that one never reaches this line.
+            gutenbergShelfStore.store(
+                books.isEmpty ? .absent
+                              : .found(GutenbergShelf(total: total, books: Array(books.prefix(rows)))),
+                for: shelf)
+        }
+        return answer
+    }
+
+    static func page(source: CatalogSource, shelf: String, languages: [String],
+                     rows: Int, page: Int = 1) async throws -> Answer {
+        let terms = CatalogGenreAxis.subjects(forShelf: shelf)
+        guard !terms.isEmpty else { return .unsupported }
+        switch source {
+        case .librivox, .archiveBooks, .oldTimeRadio:
+            guard let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { return .unsupported }
+            let clause = terms.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+            let hit = try await ArchiveOrgClient.popularWithTotal(
+                query: "\(base) AND (\(clause))", rows: rows, page: page)
+            return .archive(docs: hit.docs, total: hit.total)
+        case .gutenberg:
+            // gutendex takes ONE topic per request; a shelf folds a few, so
+            // the same two the full page uses are asked and merged.
+            var books: [GutenbergClient.Book] = []
+            var total = 0
+            var sawTotal = false
+            for topic in terms.prefix(2) {
+                let hit = try await GutenbergClient.audiobooksWithTotal(
+                    languages: languages, page: page, topic: topic)
+                books += hit.books
+                if let count = hit.total { total += count; sawTotal = true }
+            }
+            return .gutenberg(books: books, total: sawTotal ? total : nil)
+        default:
+            return .unsupported
+        }
     }
 }
 
@@ -314,8 +435,16 @@ nonisolated enum ArchiveOrgClient {
     /// statement) and, through `isCuratedArchiveDoc`, the MacLean denylist.
     /// A shelf appends its subject clause to THIS string; it never writes its
     /// own.
+    /// R53: `.librivox` belongs here, and it did not — which is why the
+    /// LibriVox page lost every shelf row. The query is the SAME one the
+    /// popular row already falls back to (`popularLibriVox`), so the shelf,
+    /// its chevron and the full page count one stock. No licence clause:
+    /// LibriVox is public domain by source, and the popular row never carried
+    /// one either — adding it here would silently shrink the shelves.
     static func archiveBaseQuery(for source: CatalogSource) -> String? {
         switch source {
+        case .librivox:
+            "collection:librivoxaudio AND mediatype:(audio)"
         case .archiveBooks:
             "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
                 + " AND mediatype:(audio) AND licenseurl:[* TO *]"

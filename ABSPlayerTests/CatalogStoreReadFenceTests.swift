@@ -268,6 +268,92 @@ struct CatalogStoreReadFenceTests {
                 "das Fach braucht die Gattungen — ohne den Parameter liefert die Quelle keine")
     }
 
+    /// R53 (the owner: „Alle 4 Bibs haben moeglicherweise auch Kachelreihen
+    /// verloren") — mein eigener R46-Bau nahm zwei von vier Quellen die
+    /// Faecher: `shelves` las nur noch `shelfStock`, und das fuellte sich
+    /// ausschliesslich ueber `archiveBaseQuery`, die fuer LibriVox und
+    /// Gutenberg `nil` lieferte. Die Flaeche versprach die Faecher
+    /// (`hasChips`) und lieferte sie nie.
+    ///
+    /// Der Zaun haelt die INVARIANTE, nicht den Einzelfall: jede Quelle, die
+    /// Faecher verspricht, kann sie auch erfragen — und umgekehrt.
+    @Test("keine Quelle verspricht Faecher, die sie nicht erfragen kann")
+    func everyShelfPromiseIsBackedByAQuery() {
+        for source in CatalogSource.allCases where CatalogShelfSource.canServeShelves(source) {
+            // Entweder es gibt eine archive.org-Basis — oder die Quelle hat
+            // ihren EIGENEN Weg im geteilten Fach-Abruf.
+            let ownWay = source == .gutenberg
+            #expect(ArchiveOrgClient.archiveBaseQuery(for: source) != nil || ownWay,
+                    "\(source.rawValue) verspricht Faecher ohne Abfrage dahinter")
+        }
+        // Rot-Probe: die Regression war genau das Fehlen dieser Basis.
+        #expect(ArchiveOrgClient.archiveBaseQuery(for: .librivox) != nil,
+                "LibriVox ist wieder ohne Fach-Abfrage — das war R53")
+        // Und die Quellen ohne Achse versprechen auch nichts.
+        #expect(!CatalogShelfSource.canServeShelves(.oerr))
+    }
+
+    /// R53: LibriVox-Kacheln dieser Flaeche sind archive.org-Dokumente und
+    /// tragen SUBJECTS, keine LibriVox-Gattungsnamen. Gemessen an den 120
+    /// meistgeladenen `librivoxaudio`-Eintraegen: die Gattungs-Achse ordnete
+    /// 40 ein, die Subject-Achse 58.
+    @Test("die Seite liest die Schreibfamilie, die ihre Kacheln wirklich tragen")
+    func theSurfaceReadsTheSpellingFamilyItsTilesCarry() throws {
+        let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
+                              encoding: .utf8)
+        let body = try #require(functionBody(of: "private func shelvesOf(_ item: LibraryItem)", in: text))
+        #expect(!body.contains("forLibriVoxGenres"),
+                "die Flaeche liest wieder Gattungsnamen aus Eintraegen, die Subjects tragen")
+        // Ein echter archive.org-Subject aus dem gemessenen Bestand.
+        #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective Fiction"]) == ["crime"])
+    }
+
+    /// R53, zwei Klassen, die ich beide selbst schon einmal gemessen habe:
+    /// das Tor darf den Lauf nicht buchen, BEVOR er stattfand (R39), und ein
+    /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen (703df85).
+    @Test("das Faecher-Tor bucht nach dem Lauf, und ein Fehlschlag ist unterscheidbar")
+    func theShelfGateBooksAfterwardsAndFailuresAreVisible() throws {
+        let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
+                              encoding: .utf8)
+        let body = try #require(functionBody(of: "private func loadShelves()", in: text))
+        let gate = try #require(body.range(of: "shelvesLoaded = true"))
+        let work = try #require(body.range(of: "withTaskGroup"))
+        #expect(gate.lowerBound > work.upperBound,
+                "das Tor bucht den Lauf wieder, bevor er stattgefunden hat")
+        #expect(body.contains("Task.isCancelled"),
+                "ein abgebrochener Lauf gilt wieder als erledigt")
+        #expect(!body.contains("try? await"),
+                "ein Fehlschlag wird wieder verschluckt und sieht aus wie leer")
+        #expect(body.contains("failureReason"), "der Grund wird nicht mehr benannt")
+    }
+
+    /// the owner's ENTSCHEID: die Gutenberg-Faecher werden je Tag einmal geholt.
+    /// Der Speicher liegt in dem Mechanismus, der einen Ablauf schon HAT —
+    /// und dessen Gruendungsregel genau die ist, die hier zaehlt: ein
+    /// Fehlschlag wird nie aufgeschrieben (sonst waere die Seite den Rest des
+    /// Tages kaputt). Der Zaun prueft beide Invarianten am Verhalten.
+    @Test("der Tages-Speicher laeuft ab und nimmt niemals einen Fehlschlag auf")
+    func theDayStoreExpiresAndNeverKeepsAFailure() throws {
+        let suite = "shelfstore-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let store = CatalogShelfSource.gutenbergShelfStore
+        let shelf = CatalogShelfSource.GutenbergShelf(total: 67, books: [])
+
+        #expect(store.store(.found(shelf), for: "adventure", defaults: defaults))
+        #expect(store.load(defaults: defaults)["adventure"] != nil, "der Treffer fehlt")
+        // Ein Fehlschlag schreibt NICHTS — auch nicht ueber einen Treffer.
+        #expect(store.store(.failed, for: "crime", defaults: defaults) == false)
+        #expect(store.load(defaults: defaults)["crime"] == nil,
+                "ein Fehlschlag ist im Tages-Speicher gelandet")
+        // Ein sauberer Lauf ohne Inhalt IST eine Antwort und darf bleiben.
+        #expect(store.store(.absent, for: "poetry", defaults: defaults))
+        // Und der Ablauf haengt am EINTRAG: einen Tag spaeter ist er weg.
+        let morgen = Date().addingTimeInterval(24 * 3600 + 60)
+        #expect(store.load(defaults: defaults, now: morgen).isEmpty,
+                "der Tages-Speicher altert nicht — das ist die Bestands-Positiv-Klasse")
+    }
+
     private func sourceFile(_ path: String) -> URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()

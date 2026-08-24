@@ -41,6 +41,10 @@ struct CatalogSourcePage: View {
     /// „was ist zufaellig da" where the heading asks „wie viel gibt es".
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
+    @State private var shelvesLoading = false
+    /// R53: which shelves could not be ASKED — kept apart from „the source has
+    /// nothing here", which looks identical on the surface but is not.
+    @State private var shelfFailures: [String: String] = [:]
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -48,10 +52,10 @@ struct CatalogSourcePage: View {
     /// Chips only where the axis carries (measured per source, 9ef73a4).
     /// P5/P7: the genre scaffolding covers the measured sources — LibriVox,
     /// Gutenberg (H), IA audiobooks (26% shelve) and OTR (40% shelve).
-    private var hasChips: Bool {
-        source == .librivox || source == .gutenberg
-            || source == .archiveBooks || source == .oldTimeRadio
-    }
+    /// R53: a surface promises shelves only where a query actually backs them.
+    /// The old list named four sources by hand while the loader could serve
+    /// two — so LibriVox and Gutenberg promised shelves and showed none.
+    private var hasChips: Bool { CatalogShelfSource.canServeShelves(source) }
 
     private func genres(of item: LibraryItem) -> [String] {
         item.media?.metadata?.genres ?? []
@@ -69,12 +73,15 @@ struct CatalogSourcePage: View {
         }
     }
 
+    /// R53: this page's LibriVox items are archive.org documents
+    /// (`librivoxPopular` → `remember(popular:)`), so they carry archive
+    /// SUBJECTS — not LibriVox genre names. Reading them through the LibriVox
+    /// genre axis matched a part of them by luck. Measured over the 120 most
+    /// downloaded `librivoxaudio` entries: the genre axis placed 40, the
+    /// subject axis places 58. The books that DO speak LibriVox genres („Neu
+    /// bei LibriVox") stand in their own row and never come through here.
     private func shelvesOf(_ item: LibraryItem) -> [String] {
-        // LibriVox speaks its own genre names; every archive-subject family
-        // (Gutenberg LCSH, IA, OTR) goes through the subjects branch.
-        source == .librivox
-            ? CatalogGenreAxis.shelves(forLibriVoxGenres: genres(of: item))
-            : CatalogGenreAxis.shelves(forSubjects: genres(of: item))
+        CatalogGenreAxis.shelves(forSubjects: genres(of: item))
     }
 
     /// R46: the grid below the shelf rows shows what is NOT already standing
@@ -150,6 +157,21 @@ struct CatalogSourcePage: View {
             if hasChips {
                 ForEach(shelves, id: \.key) { shelf in
                     genreRow(shelf)
+                }
+                // R53 / Regel 3: a shelf we could not ASK must not look like a
+                // shelf the source does not HAVE. Only shown when nothing at
+                // all arrived — a partial failure leaves the shelves that did.
+                if shelves.isEmpty, !shelfFailures.isEmpty {
+                    HStack(spacing: 10) {
+                        Text("Genres could not be loaded.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        Button("Retry") {
+                            shelfFailures = [:]
+                            Task { await loadShelves() }
+                        }
+                        .font(.footnote)
+                    }
+                    .padding(.horizontal)
                 }
             }
             // LibriVox keeps its "new additions" as a second lens on the
@@ -248,32 +270,79 @@ struct CatalogSourcePage: View {
     /// shelf's full page uses (one truth, `f220ecd`). Shelves run concurrently
     /// because they are independent; a shelf that fails simply does not
     /// appear, exactly like a shelf without stock.
+    /// R53: the shelves ask their OWN source. The gate is booked after the
+    /// pass, not before it — a cancelled `.task` (back, tab switch, swipe)
+    /// used to leave the gate shut and the shelves gone for the life of the
+    /// view. That is the R39 class at a new place.
+    ///
+    /// And a failure is an ANSWER: a shelf that could not be asked is counted
+    /// and named, so „the source has nothing here" and „we could not ask"
+    /// stop looking the same.
     private func loadShelves() async {
-        guard hasChips, !shelvesLoaded else { return }
-        shelvesLoaded = true
+        guard hasChips, !shelvesLoaded, !shelvesLoading else { return }
+        shelvesLoading = true
+        defer { shelvesLoading = false }
         let provider = FreeCatalogProvider.shared
         let keys = CatalogGenreAxis.librivoxShelves.map(\.key)
-        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?).self) { group in
+        let languages = SuggestionLanguages.current()
+        let source = source
+        let storedDay = source == .gutenberg ? CatalogShelfSource.storedDay() : [:]
+        var failures: [String: String] = [:]
+        await withTaskGroup(of: (String, CatalogShelfSource.Answer?, String?).self) { group in
+            var started = 0
             for key in keys {
-                let subjects = CatalogGenreAxis.subjects(forShelf: key)
-                guard !subjects.isEmpty,
-                      let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { continue }
-                group.addTask {
-                    let clause = subjects.prefix(6).map { "subject:\"\($0)\"" }
-                        .joined(separator: " OR ")
-                    let hit = try? await ArchiveOrgClient.popularWithTotal(
-                        query: "\(base) AND (\(clause))", rows: RowPreview.limit)
-                    return (key, hit?.docs ?? [], hit?.total)
+                // gutendex is a small free service and pays 30-41 s for a COLD
+                // topic (warm: 30-70 ms). Eighteen at once would be rude and
+                // would not arrive faster — the shelves publish as they come.
+                if source == .gutenberg, started >= 4 {
+                    for await answered in group {
+                        applyShelf(answered, provider: provider, failures: &failures)
+                        break
+                    }
+                    started -= 1
                 }
+                group.addTask {
+                    do {
+                        return (key, try await CatalogShelfSource.preview(
+                            source: source, shelf: key, languages: languages,
+                            rows: RowPreview.limit, storedDay: storedDay), nil)
+                    } catch {
+                        return (key, nil, FreeCatalog.failureReason(error))
+                    }
+                }
+                started += 1
             }
-            for await (key, docs, total) in group {
-                let kept = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
-                    .compactMap { provider.remember(popular: $0) }
-                guard !kept.isEmpty else { continue }
-                shelfStock[key] = (kept, total)
+            for await answered in group {
+                applyShelf(answered, provider: provider, failures: &failures)
             }
         }
-        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count)")
+        shelfFailures = failures
+        // A cancelled pass is not a finished pass — it must be allowed again.
+        if !Task.isCancelled { shelvesLoaded = true }
+        for (key, reason) in failures {
+            Logger.library.error("FREECAT shelf=\(key, privacy: .public) source=\(source.rawValue, privacy: .public) FAILED: \(reason, privacy: .public)")
+        }
+        Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled)")
+    }
+
+    private func applyShelf(_ answered: (String, CatalogShelfSource.Answer?, String?),
+                            provider: FreeCatalogProvider,
+                            failures: inout [String: String]) {
+        let (key, answer, reason) = answered
+        if let reason { failures[key] = reason; return }
+        switch answer {
+        case .archive(let docs, let total):
+            let kept = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
+                .compactMap { provider.remember(popular: $0) }
+            guard !kept.isEmpty else { return }
+            shelfStock[key] = (kept, total)
+        case .gutenberg(let books, let total):
+            let kept = books.compactMap { provider.remember(gutenberg: $0) }
+            guard !kept.isEmpty else { return }
+            shelfStock[key] = (kept, total)
+        case .unsupported, .none:
+            return
+        }
     }
 
     private var shelfRow: some View {
@@ -480,40 +549,23 @@ struct CatalogShelfPage: View {
         defer { isLoading = false }
         let provider = FreeCatalogProvider.shared
         do {
+            // R53/f220ecd, one truth: the full page asks the SAME shelf query
+            // as the overview row and its chevron. A second query here would
+            // promise a stock above that the page below cannot show — and for
+            // LibriVox it would also hand back other item ids (`lv:` books
+            // instead of the `lva:` documents the row is built from).
             var fresh: [LibraryItem] = []
-            switch source {
-            case .librivox:
-                // A shelf folds 2-3 LibriVox genres; ask for each and merge
-                // (the API takes ONE genre per request).
-                let genres = CatalogGenreAxis.librivoxGenres(forShelf: shelfKey)
-                let offset = (page - 1) * pageSize
-                for genre in genres {
-                    let books = try await LibriVoxClient.books(genre: genre, limit: pageSize, offset: offset)
-                    fresh += books.compactMap { provider.remember(book: $0) }
-                }
-            case .gutenberg:
-                let topics = CatalogGenreAxis.subjects(forShelf: shelfKey)
-                for topic in topics.prefix(2) {
-                    let books = try await GutenbergClient.audiobooks(
-                        languages: SuggestionLanguages.current(), page: page, topic: topic)
-                    fresh += books.compactMap { provider.remember(gutenberg: $0) }
-                }
-            case .archiveBooks, .oldTimeRadio:
-                let subjects = CatalogGenreAxis.subjects(forShelf: shelfKey)
-                // BEFUND f220ecd: the shelf appends to the source's ONE base
-                // query — rebuilding it lost the LibriVox de-duplication, the
-                // licence clause and (via isCuratedArchiveDoc) the denylist.
-                guard !subjects.isEmpty,
-                      let base = ArchiveOrgClient.archiveBaseQuery(for: source)
-                else { reachedEnd = true; return }
-                let clause = subjects.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
-                let docs = try await ArchiveOrgClient.popular(
-                    query: "\(base) AND (\(clause))", rows: pageSize, page: page)
+            switch try await CatalogShelfSource.page(
+                source: source, shelf: shelfKey, languages: SuggestionLanguages.current(),
+                rows: pageSize, page: page) {
+            case .archive(let docs, _):
                 // Same gate as the row: de-duplication + denylist (893a7ea —
                 // filtered wherever WE assemble the offer).
                 fresh = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
                     .compactMap { provider.remember(popular: $0) }
-            default:
+            case .gutenberg(let books, _):
+                fresh = books.compactMap { provider.remember(gutenberg: $0) }
+            case .unsupported:
                 reachedEnd = true; return
             }
             Logger.library.notice("FREECAT shelf=\(shelfKey, privacy: .public) source=\(source.rawValue, privacy: .public) page=\(page) loaded=\(fresh.count)")
