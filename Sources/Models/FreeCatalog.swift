@@ -931,3 +931,56 @@ nonisolated enum FreeCatalog {
         return out
     }
 }
+
+/// R49 (Form von the owner abgenommen): die drei Achsen, die `musicinfo` neben
+/// den Gattungen traegt — als FILTER auf der Vollseite eines Fachs, nicht als
+/// eigene Reihen.
+///
+/// Gemessen an 200 populaeren Titeln (26.08.): `vocalinstrumental`
+/// vocal 179 / instrumental 21 · `speed` medium 142, high 38, low 12,
+/// verylow 2 · Stimmungen in den `vartags` (energetic 58, love 52, happy 24,
+/// emotional 18, upbeat 11, sentimental 10, romantic 9).
+///
+/// Instrumental ist ein SCHALTER, kein Fach — es ist eine Ja-Nein-Frage.
+nonisolated struct JamendoFilter: Equatable, Sendable {
+    enum Tempo: String, CaseIterable, Sendable {
+        case slow, medium, fast
+        /// Jamendos eigene Stufen; `verylow` faellt mit `low` zusammen, weil
+        /// zwei von zweihundert Titeln kein eigenes Fach rechtfertigen.
+        var apiValues: [String] {
+            switch self {
+            case .slow: ["low", "verylow"]
+            case .medium: ["medium"]
+            case .fast: ["high"]
+            }
+        }
+    }
+
+    /// Die Stimmungen, die im gemessenen Bestand wirklich vorkommen — keine
+    /// erfundene Liste. Sie laufen ueber `fuzzytags`, weil Jamendo sie dort
+    /// fuehrt und nicht als eigenes Feld.
+    enum Mood: String, CaseIterable, Sendable {
+        case energetic, happy, emotional, romantic, upbeat
+    }
+
+    var tempo: Tempo?
+    var mood: Mood?
+    var instrumentalOnly = false
+
+    static let none = JamendoFilter()
+
+    var isActive: Bool { tempo != nil || mood != nil || instrumentalOnly }
+
+    var extraTags: [String] { mood.map { [$0.rawValue] } ?? [] }
+
+    var queryItems: [URLQueryItem] {
+        var out: [URLQueryItem] = []
+        if let tempo {
+            out.append(URLQueryItem(name: "speed", value: tempo.apiValues.joined(separator: "+")))
+        }
+        if instrumentalOnly {
+            out.append(URLQueryItem(name: "vocalinstrumental", value: "instrumental"))
+        }
+        return out
+    }
+}

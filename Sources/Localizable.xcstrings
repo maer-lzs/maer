@@ -54,12 +54,42 @@
         }
       }
     },
+    "Emotional" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emotional"
+          }
+        }
+      }
+    },
+    "Energetic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Energiegeladen"
+          }
+        }
+      }
+    },
     "Experimental" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Experimentell"
+          }
+        }
+      }
+    },
+    "Fast" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnell"
           }
         }
       }
@@ -94,12 +124,42 @@
         }
       }
     },
+    "Happy" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fröhlich"
+          }
+        }
+      }
+    },
+    "Instrumental" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instrumental"
+          }
+        }
+      }
+    },
     "Loading genres…" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Genres werden geladen …"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mittel"
           }
         }
       }
@@ -154,6 +214,16 @@
         }
       }
     },
+    "No tracks with this filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Titel mit diesem Filter"
+          }
+        }
+      }
+    },
     "Radio Plays to Subscribe" : {
       "localizations" : {
         "de" : {
@@ -164,12 +234,42 @@
         }
       }
     },
+    "Reset filter" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filter zurücksetzen"
+          }
+        }
+      }
+    },
     "Rights not stated" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rechtelage nicht angegeben"
+          }
+        }
+      }
+    },
+    "Romantic" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Romantisch"
+          }
+        }
+      }
+    },
+    "Slow" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langsam"
           }
         }
       }
@@ -210,6 +310,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
+          }
+        }
+      }
+    },
+    "The shelf has titles — this combination has none." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Fach hat Titel — diese Kombination nicht."
+          }
+        }
+      }
+    },
+    "Upbeat" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschwingt"
           }
         }
       }

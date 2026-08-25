@@ -595,6 +595,8 @@ struct JamendoShelfPage: View {
     @State private var reachedEnd = false
     @State private var loadFailed = false
     @State private var offset = 0
+    /// R49: die aktive Auswahl von Stimmung, Tempo und Instrumental.
+    @State private var filter = JamendoFilter.none
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
     private let pageSize = 40
@@ -605,6 +607,8 @@ struct JamendoShelfPage: View {
 
     var body: some View {
         ScrollView {
+            filterBar
+                .padding(.top, TabContentLayout.topInset)
             CoverGrid(columns: columns) {
                 ForEach(items) { item in
                     // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
@@ -635,6 +639,19 @@ struct JamendoShelfPage: View {
             // back in, and a truly empty shelf says that instead.
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
+            } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
+                // R49-Auflage (the reviewer): ein Filter, der zu null Treffern fuehrt,
+                // SAGT das — er zeigt keine leere Flaeche. Und er laesst sich
+                // von hier aus zuruecknehmen, damit die Reihe nicht als
+                // kaputt gelesen wird.
+                ContentUnavailableView {
+                    Label("No tracks with this filter", systemImage: "line.3.horizontal.decrease")
+                } description: {
+                    Text("The shelf has titles — this combination has none.")
+                } actions: {
+                    Button("Reset filter") { applyFilter(.none) }
+                }
+                .padding(.top, 40)
             } else if items.isEmpty && loadFailed {
                 ContentUnavailableView {
                     Label { Text(verbatim: title) } icon: { Image(systemName: "music.note") }
@@ -659,6 +676,86 @@ struct JamendoShelfPage: View {
         }
     }
 
+    /// R49 (Form von the owner abgenommen): Stimmung und Tempo als FILTER auf
+    /// der Vollseite eines Fachs, Instrumental als SCHALTER — keine eigenen
+    /// Reihen. Drei neue Familien auf einer Seite waeren genau die
+    /// Ueberfuellung, gegen die R51 aufgeraeumt hat.
+    ///
+    /// Alle drei filtert Jamendo SERVER-seitig (am Endpunkt verprobt), die
+    /// Seite wirft also nichts nachtraeglich weg.
+    @ViewBuilder
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                filterChip(title: String(localized: "Instrumental"),
+                           selected: filter.instrumentalOnly) {
+                    var neu = filter; neu.instrumentalOnly.toggle(); applyFilter(neu)
+                }
+                ForEach(JamendoFilter.Tempo.allCases, id: \.rawValue) { tempo in
+                    filterChip(title: Self.tempoTitle(tempo), selected: filter.tempo == tempo) {
+                        var neu = filter
+                        neu.tempo = filter.tempo == tempo ? nil : tempo
+                        applyFilter(neu)
+                    }
+                }
+                ForEach(JamendoFilter.Mood.allCases, id: \.rawValue) { mood in
+                    filterChip(title: Self.moodTitle(mood), selected: filter.mood == mood) {
+                        var neu = filter
+                        neu.mood = filter.mood == mood ? nil : mood
+                        applyFilter(neu)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .scrollClipDisabled()
+    }
+
+    private func filterChip(title: String, selected: Bool,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(verbatim: title)
+                .font(.subheadline)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary),
+                            in: Capsule())
+                .foregroundStyle(selected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Capsule())
+    }
+
+    private static func tempoTitle(_ tempo: JamendoFilter.Tempo) -> String {
+        switch tempo {
+        case .slow: String(localized: "Slow")
+        case .medium: String(localized: "Medium")
+        case .fast: String(localized: "Fast")
+        }
+    }
+
+    private static func moodTitle(_ mood: JamendoFilter.Mood) -> String {
+        switch mood {
+        case .energetic: String(localized: "Energetic")
+        case .happy: String(localized: "Happy")
+        case .emotional: String(localized: "Emotional")
+        case .romantic: String(localized: "Romantic")
+        case .upbeat: String(localized: "Upbeat")
+        }
+    }
+
+    /// Jede Aenderung setzt die Seite zurueck — sonst mischten sich
+    /// gefilterte und ungefilterte Treffer in einem Raster.
+    private func applyFilter(_ neu: JamendoFilter) {
+        guard neu != filter else { return }
+        filter = neu
+        items = []
+        offset = 0
+        reachedEnd = false
+        loadFailed = false
+        Task { await load() }
+    }
+
     private func load(retry: Bool = false) async {
         guard !isLoading, !reachedEnd else { return }
         if retry { loadFailed = false }
@@ -669,7 +766,7 @@ struct JamendoShelfPage: View {
         let tags = CatalogGenreAxis.musicTags(forShelf: shelfKey)
         do {
             let tracks = try await JamendoClient.popularTracks(limit: pageSize, tags: tags,
-                                                               offset: offset)
+                                                               offset: offset, filter: filter)
             let new = tracks.compactMap { provider.remember(track: $0) }
             var seen = Set(items.map(\.id))
             items += new.filter { seen.insert($0.id).inserted }

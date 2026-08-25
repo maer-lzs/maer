@@ -788,6 +788,46 @@ struct CatalogStoreReadFenceTests {
         #expect(!FreeCatalog.isCatalogId("abs-item-id"))
     }
 
+    /// R49 (Form von the owner abgenommen): Stimmung und Tempo sind FILTER auf
+    /// der Vollseite eines Fachs, Instrumental ein SCHALTER — keine eigenen
+    /// Reihen-Familien. Alle drei filtert Jamendo SERVER-seitig, am Endpunkt
+    /// verprobt; die Seite wirft nichts nachtraeglich weg.
+    ///
+    /// Gemessen an 200 populaeren Titeln (26.08.): vocal 179 / instrumental
+    /// 21 · speed medium 142, high 38, low 12, verylow 2 · Stimmungen in den
+    /// vartags (energetic 58, love 52, happy 24, emotional 18, upbeat 11).
+    @Test("die Jamendo-Filter reisen in der Abfrage, nicht im Nachhinein")
+    func theJamendoFiltersTravelInTheQuery() {
+        #expect(!JamendoFilter.none.isActive)
+        #expect(JamendoFilter.none.queryItems.isEmpty)
+        #expect(JamendoFilter.none.extraTags.isEmpty)
+
+        var filter = JamendoFilter()
+        filter.instrumentalOnly = true
+        #expect(filter.isActive)
+        #expect(filter.queryItems.contains { $0.name == "vocalinstrumental" && $0.value == "instrumental" })
+
+        filter.tempo = .fast
+        #expect(filter.queryItems.contains { $0.name == "speed" && $0.value == "high" })
+        // „verylow" faellt mit „low" zusammen — zwei von zweihundert Titeln
+        // rechtfertigen kein eigenes Fach, aber sie duerfen nicht verloren
+        // gehen.
+        filter.tempo = .slow
+        let langsam = try? #require(filter.queryItems.first { $0.name == "speed" }?.value)
+        #expect(langsam?.contains("low") == true)
+        #expect(langsam?.contains("verylow") == true)
+
+        // Die Stimmung laeuft ueber die Tags, weil Jamendo sie dort fuehrt.
+        filter.mood = .energetic
+        #expect(filter.extraTags == ["energetic"])
+        #expect(!filter.queryItems.contains { $0.name == "mood" },
+                "die Stimmung wandert in ein Feld, das die Quelle nicht kennt")
+        // Jede angebotene Stufe hat auch einen Wert fuer die Quelle.
+        for tempo in JamendoFilter.Tempo.allCases {
+            #expect(!tempo.apiValues.isEmpty, "\(tempo.rawValue) hat keinen Quellwert")
+        }
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

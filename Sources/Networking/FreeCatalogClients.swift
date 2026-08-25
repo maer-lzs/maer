@@ -712,8 +712,17 @@ nonisolated enum JamendoClient {
     /// P8: `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR —
     /// the API can do it better than filtering a local 200 pool); `offset`
     /// pages the shelf grid.
-    static func popularTracks(limit: Int, tags: [String] = [],
-                              offset: Int = 0) async throws -> [JamendoTrack] {
+    /// R49 (the owner hat die Form abgenommen): Stimmung, Tempo und
+    /// Instrumental sind FILTER auf der Vollseite eines Fachs — keine eigenen
+    /// Reihen-Familien. Drei neue Familien auf einer Seite waeren genau die
+    /// Ueberfuellung, gegen die R51 aufgeraeumt hat.
+    ///
+    /// Alle drei filtert Jamendo SERVER-seitig, am Endpunkt verprobt
+    /// (`vocalinstrumental=instrumental`, `speed=high|low`, Stimmung ueber
+    /// `fuzzytags`) — die Seite muss nichts nachtraeglich wegwerfen, und die
+    /// Zahl am Chevron bleibt die Zahl dessen, was man bekommt.
+    static func popularTracks(limit: Int, tags: [String] = [], offset: Int = 0,
+                              filter: JamendoFilter = .none) async throws -> [JamendoTrack] {
         guard let id = await clientId() else { return [] }
         var comp = URLComponents(string: "https://api.jamendo.com/v3.0/tracks/")!
         comp.queryItems = [
@@ -723,9 +732,11 @@ nonisolated enum JamendoClient {
             URLQueryItem(name: "order", value: "popularity_week"),
             URLQueryItem(name: "audioformat", value: "mp32"),
         ]
-        if !tags.isEmpty {
-            comp.queryItems?.append(URLQueryItem(name: "fuzzytags", value: tags.joined(separator: "+")))
+        let alleTags = tags + filter.extraTags
+        if !alleTags.isEmpty {
+            comp.queryItems?.append(URLQueryItem(name: "fuzzytags", value: alleTags.joined(separator: "+")))
         }
+        comp.queryItems?.append(contentsOf: filter.queryItems)
         if offset > 0 {
             comp.queryItems?.append(URLQueryItem(name: "offset", value: String(offset)))
         }
