@@ -14,6 +14,16 @@
         }
       }
     },
+    "Blues" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Blues"
+          }
+        }
+      }
+    },
     "Change Countries" : {
       "localizations" : {
         "de" : {
@@ -44,6 +54,16 @@
         }
       }
     },
+    "Experimental" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimentell"
+          }
+        }
+      }
+    },
     "From open catalogs — LibriVox, Project Gutenberg, Internet Archive and Old Time Radio. Separate from your own library." : {
       "localizations" : {
         "de" : {
@@ -60,6 +80,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aus dem Rundfunk, von unabhängigen Studios und aus offenen Katalogen. Getrennt von deiner Bibliothek."
+          }
+        }
+      }
+    },
+    "Gothic & Industrial" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gothic & Industrial"
           }
         }
       }
@@ -130,6 +160,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörspiele zum Abonnieren"
+          }
+        }
+      }
+    },
+    "Soul & Funk" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soul & Funk"
+          }
+        }
+      }
+    },
+    "Soundtrack" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filmmusik"
+          }
+        }
+      }
+    },
+    "Spoken Word" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gesprochenes"
+          }
+        }
+      }
+    },
+    "World" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Welt"
           }
         }
       }

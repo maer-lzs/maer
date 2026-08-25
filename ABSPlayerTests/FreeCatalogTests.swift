@@ -1070,13 +1070,20 @@ struct CatalogGenreAxisTests {
 
     @Test("P8: Musik-Achse — Faltung aufs Eltern-Regal, Server-Tags je Regal")
     func musicAxisFolding() {
-        #expect(CatalogGenreAxis.musicTags(forShelf: "pop") == ["electropop", "pop", "poprock"])
-        #expect(CatalogGenreAxis.musicTags(forShelf: "folk") == ["folk", "singersongwriter"])
-        #expect(CatalogGenreAxis.musicTags(forShelf: "hiphop") == ["hiphop", "rap"])
+        // Die gefaltete Achse: der Name des Fachs FUEHRT, der Rest folgt
+        // alphabetisch und gedeckelt. (Ein rein alphabetischer Schnitt haette
+        // `electronic` aus dem Elektronik-Fach geworfen — 8bit bis dance
+        // fuellen die ersten acht.)
+        #expect(CatalogGenreAxis.musicTags(forShelf: "pop").first == "pop")
+        #expect(CatalogGenreAxis.musicTags(forShelf: "pop").contains("electropop"))
+        #expect(CatalogGenreAxis.musicTags(forShelf: "folk").contains("singersongwriter"))
+        #expect(CatalogGenreAxis.musicTags(forShelf: "hiphop").contains("rap"))
         #expect(CatalogGenreAxis.musicTags(forShelf: "unknown").isEmpty)
-        // Every shelf resolves at least its own tag.
+        // Every shelf resolves at least its own tag — und zwar zuerst.
         for shelf in CatalogGenreAxis.musicShelves {
-            #expect(CatalogGenreAxis.musicTags(forShelf: shelf.key).contains(shelf.key))
+            #expect(CatalogGenreAxis.musicTags(forShelf: shelf.key).first == shelf.key,
+                    "\(shelf.key) fuehrt seine eigene Abfrage nicht an")
+            #expect(CatalogGenreAxis.musicTags(forShelf: shelf.key).count <= 8)
         }
     }
 

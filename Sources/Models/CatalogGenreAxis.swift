@@ -172,31 +172,157 @@ nonisolated enum CatalogGenreAxis {
     /// onto their parent shelf as AXIS entries (electropop→pop), no special
     /// code; netlabels inherits this axis later. Server-side use: the shelf
     /// query sends ALL its tags (fuzzytags OR-join) via `musicTags(forShelf:)`.
+    /// R-Musik (the owner's ENTSCHEID: „Falte die ganzen sehr kleinen Töpfe …
+    /// bleiben wir bei circa 30"): the folded axis. Two spelling families ride
+    /// in ONE table — Jamendo writes its tags without separators
+    /// (`electropop`, `singersongwriter`), archive.org subjects use spaces and
+    /// hyphens (`trip-hop`, `drum and bass`). Lookup normalises both sides, so
+    /// each term is listed ONCE, in the form the SOURCE queries with.
+    ///
+    /// Measured before building (1.000 netlabel titles, 200 Jamendo tracks):
+    /// the old 14-term axis covered 36,0 % of netlabels and 81,0 % of Jamendo.
+    /// The ceiling is what carries terms at all — 93,5 % / 98,0 %.
     static let musicAxis: [String: String] = [
-        "pop": "pop", "electropop": "pop", "poprock": "pop",
-        "rock": "rock",
+        // electronic — the big fold: every club and machine sub-genre
         "electronic": "electronic", "electro": "electronic",
-        "dance": "dance",
-        "indie": "indie",
-        "folk": "folk", "singersongwriter": "folk",
-        "hiphop": "hiphop", "rap": "hiphop",
-        "ambient": "ambient", "chillout": "ambient",
+        "electronica": "electronic", "idm": "electronic", "techno": "electronic",
+        "house": "electronic", "deep house": "electronic", "tech house": "electronic",
+        "trance": "electronic", "psytrance": "electronic", "dance": "electronic",
+        "edm": "electronic", "club": "electronic", "disco": "electronic",
+        "drum and bass": "electronic", "dnb": "electronic", "jungle": "electronic",
+        "breaks": "electronic", "breakbeat": "electronic", "broken beat": "electronic",
+        "glitch": "electronic", "downtempo": "electronic", "trip-hop": "electronic",
+        "dub": "electronic", "dubstep": "electronic", "minimal": "electronic",
+        "acid": "electronic", "chiptune": "electronic", "8bit": "electronic",
+        "synth": "electronic", "synthwave": "electronic", "vaporwave": "electronic",
+        "ebm": "electronic", "electroacoustic": "electronic", "beats": "electronic",
+        // ambient
+        "ambient": "ambient", "chillout": "ambient", "chill": "ambient",
+        "drone": "ambient", "soundscape": "ambient", "new age": "ambient",
+        "dark ambient": "ambient", "atmospheric": "ambient", "ethereal": "ambient",
+        "meditation": "ambient", "space music": "ambient",
+        // experimental
+        "experimental": "experimental", "noise": "experimental",
+        "avant-garde": "experimental", "sound art": "experimental",
+        "improvisation": "experimental", "free improvisation": "experimental",
+        "musique concrete": "experimental", "field recording": "experimental",
+        "abstract": "experimental", "plunderphonics": "experimental",
+        "collage": "experimental", "turntablism": "experimental",
+        "lowercase": "experimental",
+        // rock
+        "rock": "rock", "alternative": "rock", "punk": "rock", "metal": "rock",
+        "psychedelic": "rock", "progressive": "rock", "prog-rock": "rock",
+        "post-rock": "rock", "post-punk": "rock", "garage": "rock",
+        "grunge": "rock", "shoegaze": "rock", "hard rock": "rock",
+        "indie rock": "rock", "stoner": "rock", "surf": "rock", "emo": "rock",
+        "math rock": "rock", "noise rock": "rock", "hardcore": "rock",
+        "grindcore": "rock", "doom": "rock", "black metal": "rock",
+        "death metal": "rock", "sludge": "rock", "screamo": "rock",
+        // indie
+        "indie": "indie", "lo-fi": "indie", "lofi": "indie", "bedroom": "indie",
+        "diy": "indie", "underground": "indie",
+        // pop
+        "pop": "pop", "electropop": "pop", "poprock": "pop", "synthpop": "pop",
+        "dream pop": "pop", "power pop": "pop", "indiepop": "pop",
+        "alternativepop": "pop", "art pop": "pop", "chanson": "pop",
+        // hiphop
+        "hiphop": "hiphop", "hip-hop": "hiphop", "rap": "hiphop",
+        "instrumental hip-hop": "hiphop", "abstract hip-hop": "hiphop",
+        "boom bap": "hiphop", "trap": "hiphop",
+        // jazz
+        "jazz": "jazz", "nu jazz": "jazz", "bebop": "jazz", "swing": "jazz",
+        "fusion": "jazz", "jazzy": "jazz", "free jazz": "jazz",
+        "big band": "jazz", "lounge": "jazz",
+        // folk
+        "folk": "folk", "singersongwriter": "folk", "acoustic": "folk",
+        "country": "folk", "alt-country": "folk", "americana": "folk",
+        "bluegrass": "folk", "fingerstyle": "folk",
+        // soul
+        "soul": "soul", "funk": "soul", "rnb": "soul", "r&b": "soul",
+        "gospel": "soul", "motown": "soul", "rocksteady": "soul",
+        // blues
+        "blues": "blues", "delta blues": "blues", "boogie": "blues",
+        // classical
+        "classical": "classical", "neoclassical": "classical",
+        "contemporary classical": "classical", "modern classical": "classical",
+        "piano": "classical", "orchestral": "classical", "baroque": "classical",
+        "chamber music": "classical", "opera": "classical", "cello": "classical",
+        "violin": "classical", "classical guitar": "classical",
+        // world
+        "world": "world", "reggae": "world", "ska": "world", "latin": "world",
+        "afrobeat": "world", "tribal": "world", "ethnic": "world",
+        "balkan": "world", "flamenco": "world", "celtic": "world",
+        "oriental": "world", "bossa nova": "world", "cumbia": "world",
+        "salsa": "world", "gypsy": "world", "roots": "world",
+        // soundtrack
+        "soundtrack": "soundtrack", "filmscore": "soundtrack",
+        "film score": "soundtrack", "score": "soundtrack",
+        "game music": "soundtrack", "videogame": "soundtrack",
+        // spoken
+        "spoken": "spoken", "spoken word": "spoken", "poetry": "spoken",
+        "audiobook": "spoken",
+        // gothic — measured as its own family in the netlabel stock
+        "gothic": "gothic", "industrial": "gothic", "darkwave": "gothic",
+        "coldwave": "gothic", "minimal wave": "gothic", "goth": "gothic",
     ]
 
-    /// Shelf key → display title, in browse order (the measured filled ones).
+    /// Shelf key → display title, in browse order.
     static let musicShelves: [(key: String, title: String)] = [
-        ("pop", String(localized: "Pop")),
-        ("rock", String(localized: "Rock")),
         ("electronic", String(localized: "Electronic")),
-        ("dance", String(localized: "Dance")),
-        ("indie", String(localized: "Indie")),
-        ("folk", String(localized: "Folk")),
-        ("hiphop", String(localized: "Hip-Hop")),
         ("ambient", String(localized: "Ambient")),
+        ("experimental", String(localized: "Experimental")),
+        ("rock", String(localized: "Rock")),
+        ("indie", String(localized: "Indie")),
+        ("pop", String(localized: "Pop")),
+        ("hiphop", String(localized: "Hip-Hop")),
+        ("jazz", String(localized: "Jazz")),
+        ("folk", String(localized: "Folk")),
+        ("soul", String(localized: "Soul & Funk")),
+        ("blues", String(localized: "Blues")),
+        ("classical", String(localized: "Classical")),
+        ("world", String(localized: "World")),
+        ("soundtrack", String(localized: "Soundtrack")),
+        ("gothic", String(localized: "Gothic & Industrial")),
+        ("spoken", String(localized: "Spoken Word")),
     ]
+
+    /// One spelling for two families: Jamendo writes `triphop`, archive.org
+    /// writes `trip-hop`, and a human writes `trip hop`. Separators carry no
+    /// meaning here, so they are dropped for the LOOKUP — the table keeps the
+    /// form each source queries with.
+    static func normalizedMusicTerm(_ term: String) -> String {
+        term.lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    private static let musicAxisNormalized: [String: String] = {
+        var out: [String: String] = [:]
+        for (term, shelf) in musicAxis { out[normalizedMusicTerm(term)] = shelf }
+        return out
+    }()
+
+    /// Which shelf does this tag/subject fall on? nil = unknown, never guessed.
+    static func musicShelf(forTag tag: String) -> String? {
+        musicAxisNormalized[normalizedMusicTerm(tag)]
+    }
 
     /// All tags that fold onto one shelf — the server-side shelf query.
+    /// Jamendo's `fuzzytags` speak WITHOUT separators — the hyphenated and
+    /// spaced spellings in the table belong to archive.org and would only
+    /// lengthen the query here. Capped, because a shelf folds up to
+    /// thirty-five terms and an OR-join of all of them is noise, not reach.
     static func musicTags(forShelf shelf: String) -> [String] {
+        let own = musicAxis.filter { $0.value == shelf && normalizedMusicTerm($0.key) == $0.key }
+            .map(\.key).sorted()
+        // The shelf's OWN name leads — an alphabetical cut would have dropped
+        // `electronic` from the electronic shelf (8bit … dance fill the eight
+        // first), and with it the tag that actually carries the query.
+        guard own.contains(shelf) else { return Array(own.prefix(8)) }
+        return [shelf] + own.filter { $0 != shelf }.prefix(7)
+    }
+
+    /// archive.org `subject:` terms of one shelf — same shape as the book
+    /// shelves use, same cap.
+    static func musicSubjects(forShelf shelf: String) -> [String] {
         musicAxis.filter { $0.value == shelf }.map(\.key).sorted()
     }
 

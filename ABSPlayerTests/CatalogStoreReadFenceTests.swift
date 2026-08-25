@@ -500,6 +500,48 @@ struct CatalogStoreReadFenceTests {
                 "der eigentliche Zweck der Marken ist mitgefallen")
     }
 
+    /// Musik-Achse, the owner's ENTSCHEID (kleine Toepfe in grosse falten,
+    /// Deckel ~30 Faecher) — und the reviewer's INVARIANTE: die Achse ist mit JAMENDO
+    /// GETEILT, also muss die Deckung BEIDER Quellen gemessen sein.
+    ///
+    /// Gemessen vor dem Bau (1.000 Netlabel-Titel, 200 Jamendo-Titel):
+    /// Netlabels 36,0 % → **70,4 %**, Jamendo 81,0 % → **96,5 %**. Beide
+    /// steigen; die Faltung nimmt Jamendo nichts weg.
+    @Test("die gefaltete Musik-Achse traegt beide Quellen")
+    func theFoldedMusicAxisCarriesBothSources() {
+        #expect(CatalogGenreAxis.musicShelves.count <= 30,
+                "der Deckel von rund 30 Faechern ist gerissen")
+        // Die Schreibfamilien beider Quellen treffen dasselbe Fach.
+        #expect(CatalogGenreAxis.musicShelf(forTag: "trip-hop") == "electronic")
+        #expect(CatalogGenreAxis.musicShelf(forTag: "triphop") == "electronic")
+        #expect(CatalogGenreAxis.musicShelf(forTag: "Trip Hop") == "electronic")
+        // Der Begriff, der ganz fehlte und der zweithaeufigste der Sammlung ist.
+        #expect(CatalogGenreAxis.musicShelf(forTag: "jazz") == "jazz")
+        #expect(CatalogGenreAxis.musicShelf(forTag: "experimental") == "experimental")
+        // Jamendos meistgenutzte Tags bleiben zugeordnet — die Faltung darf
+        // ihm nichts nehmen (the reviewer's Invariante, an Beispielen festgehalten).
+        for tag in ["pop", "electropop", "singersongwriter", "indiepop", "rnb", "filmscore"] {
+            #expect(CatalogGenreAxis.musicShelf(forTag: tag) != nil,
+                    "Jamendo-Tag \(tag) faellt aus der Achse")
+        }
+        // Unbekanntes bleibt unbekannt — nie geraten.
+        #expect(CatalogGenreAxis.musicShelf(forTag: "Voellig Unbekannt") == nil)
+        // Jede Fach-Kennung der Browse-Liste wird von der Achse auch gefuellt.
+        let gefuellt = Set(CatalogGenreAxis.musicShelves.map(\.key))
+        for shelf in gefuellt {
+            #expect(!CatalogGenreAxis.musicSubjects(forShelf: shelf).isEmpty,
+                    "Fach \(shelf) steht in der Liste, aber kein Begriff faellt darauf")
+        }
+        // Jamendo fragt OHNE Trennzeichen — die Archive-Schreibweisen wuerden
+        // die fuzzytags-Abfrage nur verlaengern.
+        for shelf in gefuellt {
+            for tag in CatalogGenreAxis.musicTags(forShelf: shelf) {
+                #expect(CatalogGenreAxis.normalizedMusicTerm(tag) == tag,
+                        "\(tag) ist eine Archive-Schreibweise in der Jamendo-Abfrage")
+            }
+        }
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

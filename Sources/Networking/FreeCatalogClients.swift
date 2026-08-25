@@ -494,7 +494,7 @@ nonisolated enum ArchiveOrgClient {
         try await popularArchiveMusic(query: ArchiveMusicCatalog.classical.query, rows: rows, page: page)
     }
 
-    private static func popularArchiveMusic(query: String, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
+    static func popularArchiveMusic(query: String, rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popular(query: query, rows: rows, page: page)
     }
 

@@ -25,6 +25,10 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// catalogs). Kept as DATA so the UI can pick a glyph from the English
     /// term instead of the localised title.
     var subject: String = ""
+    /// R-Netlabels: does this area carry a GENRE AXIS? Only the undivided
+    /// collections do — a shelf area (Schellack) is already one genre, and a
+    /// second cut inside it would be a shelf of a shelf.
+    var hasGenreShelves: Bool = false
     /// Stock MEASURED on 09.08. — the rotation window is a tenth of it
     /// (`CatalogRotation`). Drift of a few percent only shifts the window
     /// slightly, so this does not need to be exact, only honest.
@@ -41,12 +45,19 @@ nonisolated enum ArchiveMusicCatalog {
     /// audio items, 61.111 WITH a stated licence — the query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
     /// (mostly NC/ND variants, which is exactly why the capsule matters).
+    /// R-Netlabels (the owner am Geraet: „Was ist mit Netlabels, warum ist die
+    /// Seite nicht nach Genre aufgeteilt?"). Gemessen an 1.000 meistgeladenen
+    /// Titeln: **93,5 % tragen ein subject-Feld** — die beste Datenlage aller
+    /// Archive-Quellen (OTR 40 %, LibriVox/Gutenberg um 41 %). Die Faecher
+    /// haengen also an den Subjects, nicht an der Lizenzfrage; beides ist
+    /// unabhaengig, und die Sperre aus der R45-Groessenordnung traegt nicht.
     static let netlabels = ArchiveMusicArea(
         key: "netlabels",
         query: "collection:netlabels AND mediatype:(audio) AND licenseurl:[* TO *]",
         title: String(localized: "Netlabels"),
         headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive — separate from your own library. Each tile shows the licence of its release."),
         placeholderSystemImage: "opticaldisc",
+        hasGenreShelves: true,
         measuredTotal: 61_112)
 
     // MARK: - Shellac 78s (the SAME collection the classical area uses)

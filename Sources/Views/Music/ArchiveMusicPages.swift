@@ -25,6 +25,11 @@ struct ArchiveMusicPage: View {
     @State private var page = 1
     @State private var reachedEnd = false
     @State private var detailItem: LibraryItem?
+    /// R-Netlabels: Bestand je Fach — dieselbe Konstruktion wie R53
+    /// (`CatalogShelfSource`): ein Fach erscheint, weil die QUELLE es hat.
+    @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
+    @State private var shelvesLoaded = false
+    @State private var shelvesLoading = false
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -53,6 +58,12 @@ struct ArchiveMusicPage: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
+                        ForEach(genreShelves, id: \.key) { shelf in
+                            genreRow(shelf)
+                        }
+                        if !genreShelves.isEmpty {
+                            RowHeading.plain("Popular")
+                        }
                         CoverGrid(columns: columns) {
                             ForEach(items) { item in
                                 // Shared catalog tile (Regel 2): carries the
@@ -107,10 +118,108 @@ struct ArchiveMusicPage: View {
                 .accessibilityIdentifier("catalog-shuffle")
             }
         }
-        .task { if items.isEmpty { await loadMore(reset: true) } }
+        .task {
+            async let shelvesTask: Void = loadShelves()
+            if items.isEmpty { await loadMore(reset: true) }
+            await shelvesTask
+        }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
+    }
+
+    /// G8 unveraendert: ein Fach erscheint nur, wenn die Quelle es fuellt.
+    private var genreShelves: [(key: String, title: String)] {
+        guard area.hasGenreShelves else { return [] }
+        return CatalogGenreAxis.musicShelves.filter {
+            !(shelfStock[$0.key]?.items.isEmpty ?? true)
+        }
+    }
+
+    private func genreRow(_ shelf: (key: String, title: String)) -> some View {
+        let stock = shelfStock[shelf.key]
+        let shown = stock?.items.count ?? 0
+        return VStack(alignment: .leading, spacing: 10) {
+            if let total = stock?.total {
+                RowHeading(title: "", verbatimTitle: shelf.title,
+                           total: total, shown: shown, showsTotal: true,
+                           destination: MusicRoute.archiveMusicShelf(area: area.key,
+                                                                     shelf: shelf.key))
+            } else {
+                RowHeading(title: "", verbatimTitle: shelf.title, font: .title3,
+                           variant: .entry,
+                           destination: MusicRoute.archiveMusicShelf(area: area.key,
+                                                                     shelf: shelf.key))
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(stock?.items ?? []) { item in
+                        FreeCatalogBookTile(
+                            item: item,
+                            placeholderSystemImage: area.placeholderSystemImage,
+                            onTap: {
+                                Task {
+                                    await CatalogTap.open(item: item,
+                                                          coordinator: playerCoordinator,
+                                                          pushMusicRoute: { pushRoute($0) })
+                                }
+                            })
+                        .contextMenu {
+                            Button { detailItem = item } label: {
+                                Label("Details", systemImage: "info.circle")
+                            }
+                            CatalogQueueButtons(itemId: item.id)
+                        }
+                        .cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+        }
+    }
+
+    /// R53-Form, hier fuer die Musik: je Fach den BESTAND fragen (dieselbe
+    /// Abfrage wie die Vollseite), Tor NACH dem Lauf buchen, Abbruch oeffnet
+    /// wieder, und ein Fehlschlag ist eine Antwort statt eines leeren Fachs.
+    private func loadShelves() async {
+        guard area.hasGenreShelves, !shelvesLoaded, !shelvesLoading else { return }
+        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        shelvesLoading = true
+        defer { shelvesLoading = false }
+        let provider = FreeCatalogProvider.shared
+        let base = area.query
+        var failures = 0
+        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
+            for shelf in CatalogGenreAxis.musicShelves {
+                let key = shelf.key
+                let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
+                guard !terms.isEmpty else { continue }
+                group.addTask {
+                    let clause = terms.prefix(6).map { "subject:\"\($0)\"" }
+                        .joined(separator: " OR ")
+                    do {
+                        let hit = try await ArchiveOrgClient.popularWithTotal(
+                            query: "\(base) AND (\(clause))", rows: RowPreview.limit)
+                        return (key, hit.docs, hit.total, nil)
+                    } catch {
+                        return (key, [], nil, FreeCatalog.failureReason(error))
+                    }
+                }
+            }
+            for await (key, docs, total, reason) in group {
+                if let reason {
+                    failures += 1
+                    Logger.library.error("FREECAT shelf=\(key, privacy: .public) area=\(area.key, privacy: .public) FAILED: \(reason, privacy: .public)")
+                    continue
+                }
+                let kept = docs.compactMap { provider.remember(popular: $0) }
+                guard !kept.isEmpty else { continue }
+                shelfStock[key] = (kept, total)
+            }
+        }
+        if !Task.isCancelled { shelvesLoaded = true }
+        Logger.library.notice("FREECAT shelves area=\(area.key, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures)")
     }
 
     private func loadMore(reset: Bool = false) async {
@@ -133,6 +242,109 @@ struct ArchiveMusicPage: View {
         } catch {
             guard !error.isCancellation else { return }
             Logger.library.error("FREECAT \(area.key, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
+            loadFailed = items.isEmpty
+        }
+    }
+}
+
+/// R-Netlabels: die Vollseite eines Genre-Fachs. Dieselbe Form wie das
+/// Jamendo-Fach — und dieselbe ABFRAGE wie die Vorschau-Reihe davor
+/// (f220ecd, eine Wahrheit): Bereichs-Abfrage plus die Begriffe des Fachs.
+struct ArchiveMusicShelfPage: View {
+    @Environment(\.pushMusicRoute) private var pushRoute
+    let areaKey: String
+    let shelfKey: String
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @State private var items: [LibraryItem] = []
+    @State private var detailItem: LibraryItem?
+    @State private var isLoading = false
+    @State private var reachedEnd = false
+    @State private var loadFailed = false
+    @State private var page = 1
+
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+    private let pageSize = 30
+
+    private var area: ArchiveMusicArea? {
+        ArchiveMusicCatalog.all.first { $0.key == areaKey }
+    }
+    private var title: String {
+        CatalogGenreAxis.musicShelves.first { $0.key == shelfKey }?.title ?? shelfKey
+    }
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(items) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        placeholderSystemImage: area?.placeholderSystemImage ?? "opticaldisc",
+                        onTap: {
+                            Task {
+                                await CatalogTap.open(item: item,
+                                                      coordinator: playerCoordinator,
+                                                      pushMusicRoute: { pushRoute($0) })
+                            }
+                        })
+                    .contextMenu {
+                        Button { detailItem = item } label: {
+                            Label("Details", systemImage: "info.circle")
+                        }
+                        CatalogQueueButtons(itemId: item.id)
+                    }
+                    .onAppear {
+                        if item.id == items.last?.id { Task { await load() } }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, TabContentLayout.topInset)
+            if isLoading {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if items.isEmpty && loadFailed {
+                // Regel 3: ein Fehlschlag ist kein leeres Fach.
+                ContentUnavailableView {
+                    Label(title, systemImage: "music.note")
+                } description: {
+                    Text("Could not load the catalog. Check your connection and try again.")
+                } actions: {
+                    Button("Retry") { Task { await load(reset: true) } }
+                }
+                .padding(.top, 40)
+            }
+            Color.clear.frame(height: 1).bottomBarClearance()
+        }
+        .navigationTitle(Text(verbatim: title))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { if items.isEmpty { await load(reset: true) } }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    private func load(reset: Bool = false) async {
+        guard AppStorageKeys.freeCatalogsMasterActive else { return }
+        guard !isLoading, !reachedEnd || reset else { return }
+        guard let area else { reachedEnd = true; return }
+        if reset { page = 1; reachedEnd = false; loadFailed = false; items = [] }
+        isLoading = true
+        defer { isLoading = false }
+        let terms = CatalogGenreAxis.musicSubjects(forShelf: shelfKey)
+        guard !terms.isEmpty else { reachedEnd = true; return }
+        let clause = terms.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+        do {
+            let docs = try await ArchiveOrgClient.popularArchiveMusic(
+                query: "\(area.query) AND (\(clause))", rows: pageSize, page: page)
+            let provider = FreeCatalogProvider.shared
+            let fresh = docs.compactMap { provider.remember(popular: $0) }
+            if fresh.isEmpty { reachedEnd = true; return }
+            var seen = Set(items.map(\.id))
+            items += fresh.filter { seen.insert($0.id).inserted }
+            page += 1
+            if docs.count < pageSize { reachedEnd = true }
+        } catch {
+            guard !error.isCancellation else { return }
+            Logger.library.error("FREECAT shelf=\(shelfKey, privacy: .public) area=\(areaKey, privacy: .public) FAILED: \(String(describing: error), privacy: .public)")
             loadFailed = items.isEmpty
         }
     }

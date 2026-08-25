@@ -46,6 +46,9 @@ enum MusicRoute: Hashable {
     case freeJamendo
     /// P8: one Jamendo genre shelf (server-paged grid).
     case jamendoShelf(String)
+    /// R-Netlabels: ein Genre-Fach eines Archive-Musikbereichs — dieselbe
+    /// Form wie das Jamendo-Fach, nur mit der Archive-Abfrage dahinter.
+    case archiveMusicShelf(area: String, shelf: String)
     /// Auftrag L1: the small music-catalog page behind Start's mixed
     /// "Entdecken · Musik" row (the I2 surface, earlier) — one source row per
     /// active catalog (classical · Jamendo), each heading onto its existing
@@ -63,6 +66,8 @@ enum MusicRoute: Hashable {
              (.freeJamendo, .freeJamendo), (.freeCatalogArea, .freeCatalogArea):
             return true
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
+        case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
+            return a1 == a2 && s1 == s2
         case let (.archiveMusic(a), .archiveMusic(b)): return a == b
         case let (.catalogAlbum(a), .catalogAlbum(b)): return a == b
         case let (.maerPlaylist(a), .maerPlaylist(b)): return a == b
@@ -91,6 +96,8 @@ enum MusicRoute: Hashable {
         case .freeJamendo:      hasher.combine(11)
         case .freeCatalogArea:  hasher.combine(12)
         case .jamendoShelf(let k): hasher.combine(13); hasher.combine(k)
+        case .archiveMusicShelf(let a, let sh):
+            hasher.combine(17); hasher.combine(a); hasher.combine(sh)
         }
     }
 
@@ -115,6 +122,7 @@ enum MusicRoute: Hashable {
         case .freeJamendo: return "music-route-free-jamendo"
         case .freeCatalogArea: return "music-route-free-catalog-area"
         case .jamendoShelf: return "music-route-jamendo-shelf"
+        case .archiveMusicShelf: return "music-route-archive-music-shelf"
         }
     }
 }
@@ -185,6 +193,9 @@ extension View {
                 MusicCatalogAreaPage(playerCoordinator: playerCoordinator)
             case .jamendoShelf(let key):
                 JamendoShelfPage(shelfKey: key, playerCoordinator: playerCoordinator)
+            case .archiveMusicShelf(let areaKey, let shelfKey):
+                ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
+                                      playerCoordinator: playerCoordinator)
             case .shelfPage(let shelf):
                 MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
             case .freeJamendo:
