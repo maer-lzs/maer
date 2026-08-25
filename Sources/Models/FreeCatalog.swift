@@ -344,8 +344,22 @@ nonisolated enum FreeCatalog {
 
     /// e948444 (pure): the licence URL as a short, honest label. Unknown
     /// forms keep the raw URL rather than being flattened to "free".
+    /// R47: darf von diesem Eintrag eine KOPIE gezogen werden? Nur mit
+    /// deklarierter Lizenz — the owner's Grenze: „Download, wenn er kommt, dann
+    /// nur die lizenzierten Sachen." Anzeigen und Streamen ist davon
+    /// unberuehrt; das ist derselbe Vorgang wie der Browser eines Besuchers.
+    static func mayDownload(licenceURL: String?) -> Bool {
+        guard let licenceURL else { return false }
+        return !licenceURL.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// R47: was an der Kachel steht, wenn die Quelle nichts sagt. NIE gar
+    /// nichts — eine fehlende Angabe ist eine Information, keine Luecke, und
+    /// sie ist ausdruecklich KEINE Behauptung ueber die Rechtelage.
+    static let unstatedRights = String(localized: "Rights not stated")
+
     static func licenceLabel(_ url: String?) -> String? {
-        guard let url, !url.isEmpty else { return nil }
+        guard let url, !url.isEmpty else { return unstatedRights }
         let lower = url.lowercased()
         if lower.contains("publicdomain") || lower.contains("mark/1.0") {
             // P6a (063219c): claim and derived fact stop sharing one word —

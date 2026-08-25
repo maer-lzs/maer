@@ -358,6 +358,46 @@ nonisolated enum CatalogGenreAxis {
         return librivoxShelves.map(\.key).filter(hit.contains)
     }
 
+    // MARK: - R47: die Jahrzehnte-Achse fuer Old Time Radio
+
+    /// the owner's ENTSCHEID: „Ja, nach Jahrzehnten." Fuer Old Time Radio ist
+    /// die ZEIT die natuerlichere Gliederung als das Genre — „Hoerspiele der
+    /// 40er" erklaert sich von selbst, und the reviewer's Messung an 300 Items zeigt
+    /// die Jahre dicht belegt („1950s" 50 · „1940s" 47 · Einzeljahre 1943-1956
+    /// mit je 15-38 Treffern), waehrend 59 % kein Genre-Fach bekommen.
+    ///
+    /// Die Faecher stehen NEBEN den Genres, nicht an ihrer Stelle: ein Stueck
+    /// hat beides, und die Genre-Achse traegt inzwischen (R47-Begriffe).
+    static let decadeShelves: [(key: String, title: String)] = [
+        ("1930s", "1930er"), ("1940s", "1940er"),
+        ("1950s", "1950er"), ("1960s", "1960er"),
+    ]
+
+    /// Ein Einzeljahr faellt auf sein Jahrzehnt, eine bereits gefaltete
+    /// Angabe („1940s") bleibt. **Positiv zugeordnet:** was kein Jahr nennt,
+    /// faellt sichtbar heraus statt in ein Sammelfach — dieselbe Regel wie
+    /// bei den Gattungen.
+    static func decade(forSubject subject: String) -> String? {
+        let term = subject.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        // Bereits gefaltet („1940s") bleibt, wie es ist.
+        if term.range(of: #"^19[0-9]0s$"#, options: .regularExpression) != nil { return term }
+        guard let year = term.range(of: #"^(19[0-9]{2})$"#, options: .regularExpression)
+            .flatMap({ Int(term[$0]) }) else { return nil }
+        return "\(year / 10 * 10)s"
+    }
+
+    /// Welche Jahrzehnte traegt dieser Eintrag? Mehrfach moeglich (eine
+    /// Serie laeuft ueber die Wende), dedupliziert, in Browse-Ordnung.
+    static func decades(forSubjects subjects: [String]) -> [String] {
+        var hit = Set<String>()
+        for raw in subjects {
+            for part in raw.components(separatedBy: " -- ") {
+                if let decade = decade(forSubject: part) { hit.insert(decade) }
+            }
+        }
+        return decadeShelves.map(\.key).filter(hit.contains)
+    }
+
     /// Is this LibriVox genre an EPOCH rather than a genre? (Only used to
     /// explain the drop in the log — the mapping ignores it either way.)
     static func isEpoch(_ genre: String) -> Bool {

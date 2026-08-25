@@ -58,6 +58,7 @@ struct ArchiveMusicPage: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
+                        ArchiveRightsNote()
                         ForEach(genreShelves, id: \.key) { shelf in
                             genreRow(shelf)
                         }
@@ -368,6 +369,7 @@ struct ShellacShelvesPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
+                ArchiveRightsNote()
                 // Regel 3: a failed load says so and offers a retry — a
                 // caption-only page would read as "nothing here".
                 if rows.values.allSatisfy(\.isEmpty), loadFailed {

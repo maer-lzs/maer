@@ -591,8 +591,10 @@ struct CatalogGenreAxisTests {
         // An unknown form keeps its URL rather than being flattened to "free".
         #expect(FreeCatalog.licenceLabel("https://example.org/some-licence")
                 == "https://example.org/some-licence")
-        #expect(FreeCatalog.licenceLabel(nil) == nil)
-        #expect(FreeCatalog.licenceLabel("") == nil)
+        // R47: eine fehlende Angabe schweigt NICHT mehr. Sie ist selbst eine
+        // Information — und ausdruecklich keine Behauptung ueber die Rechte.
+        #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights)
+        #expect(FreeCatalog.licenceLabel("") == FreeCatalog.unstatedRights)
     }
 
     @Test("e948444: the track bound is a parameter — series bundles are the unit there")

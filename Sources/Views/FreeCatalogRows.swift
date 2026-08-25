@@ -39,8 +39,15 @@ struct FreeCatalogRows: View {
                     RowHeading.entry("Discover · Music",
                                      destination: MusicRoute.freeCatalogArea)
                         .accessibilityIdentifier("home-discover-music")
-                    tileRow(items: HomeSections.interleave([classical, freeMusic],
-                                                           limit: RowPreview.limit))
+                    // R52, zweite Instanz: Start und Musik-Tab schoepfen aus
+                    // demselben Topf. Start ordnet ihn mit SEINEM Startwert,
+                    // damit die beiden Reihen nicht dieselben Titel in
+                    // derselben Folge zeigen — die Stabilitaet innerhalb der
+                    // Sitzung bleibt, die Zwillingsbildung faellt.
+                    tileRow(items: HomeSections.interleave(
+                        [CatalogMix.ordered(classical, for: .musicHome),
+                         CatalogMix.ordered(freeMusic, for: .musicHome)],
+                        limit: RowPreview.limit))
                     if freeMusic.isEmpty, let problem = freeMusicProblem {
                         Text(problem).font(.caption).foregroundStyle(.secondary)
                             .padding(.horizontal)
@@ -841,8 +848,10 @@ struct FreeCatalogDetailSheet: View {
             itemDescription = item.media?.metadata?.description
             if itemDescription == nil, item.id.hasPrefix(FreeCatalog.archivePrefix) {
                 let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
-                let meta = try? await ArchiveOrgClient.metadata(identifier: identifier)
-                itemDescription = meta?.metadata?.description?.joined
+                // Teilpfad statt Vollabruf: das Blatt will die Beschreibung,
+                // nicht die Dateiliste (1,36 MB → 8,3 kB, gemessen).
+                let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier)
+                itemDescription = meta?.description?.joined
             }
         }
         // Library picker (first use / vanished remembered target). The

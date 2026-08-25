@@ -164,6 +164,16 @@
         }
       }
     },
+    "Rights not stated" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechtelage nicht angegeben"
+          }
+        }
+      }
+    },
     "Soul & Funk" : {
       "localizations" : {
         "de" : {
@@ -190,6 +200,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gesprochenes"
+          }
+        }
+      }
+    },
+    "The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Internet Archive garantiert die Rechtelage seiner Aufnahmen nicht. Das Hören liegt in deiner Verantwortung."
           }
         }
       }

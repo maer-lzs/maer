@@ -381,3 +381,27 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
             .padding(.horizontal)
     }
 }
+
+/// R47 (the owner's ENTSCHEID): „Wir stellen die gleiche Warnung oben in die
+/// Hauptseite von archive.org-Bib" — und, auf Nachfrage, auf JEDER Fläche,
+/// deren Inhalte von dort stammen: Old Time Radio · Netlabels · Alte
+/// Schallplatten · Archive-Hörbücher.
+///
+/// EINE Formulierung, EINE Komponente (Regel 2) — nicht vier Textvarianten,
+/// die auseinanderdriften. Sie steht am ANFANG der Fläche, nicht in einer
+/// Fußnote, die niemand liest; keine Rechtsberatung, kein Paragraph, ein
+/// Satz in unserem Ton. **Der Wortlaut trägt the owner's Aussage und geht vor
+/// dem Tag durch seine Abnahme.**
+struct ArchiveRightsNote: View {
+    var body: some View {
+        Label {
+            Text("The Internet Archive does not guarantee the rights status of its recordings. Listening is up to you.")
+        } icon: {
+            Image(systemName: "info.circle")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal)
+        .accessibilityElement(children: .combine)
+    }
+}

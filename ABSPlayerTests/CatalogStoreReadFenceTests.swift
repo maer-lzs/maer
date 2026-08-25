@@ -542,6 +542,77 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
+    /// R52, ZWEITE INSTANZ derselben Klasse (the reviewer's `df12a60`): Start
+    /// „Entdecken · Musik" und der Musik-Tab schoepfen aus DEMSELBEN Topf.
+    /// Sie bekommen jetzt je Flaeche ihre eigene Ordnung — dieselbe Antwort
+    /// wie bei den Buch-Reihen, nur an einem anderen Ort.
+    @Test("die beiden Musik-Reihen zeigen denselben Topf nicht in derselben Folge")
+    func theTwoMusicRowsAreNotTwins() {
+        let topf = (1...20).map { LibraryItem(id: "jam:t\($0)", media: nil, addedAt: nil) }
+        let start = CatalogMix.ordered(topf, for: .musicHome, session: 99)
+        let tab = CatalogMix.ordered(topf, for: .musicTab, session: 99)
+        #expect(start.map(\.id) != tab.map(\.id), "die beiden Reihen sind Zwillinge")
+        // Nichts geht verloren und nichts kommt dazu — es ist eine Ordnung,
+        // kein Filter.
+        #expect(Set(start.map(\.id)) == Set(topf.map(\.id)))
+        #expect(start.count == topf.count && tab.count == topf.count)
+        // Innerhalb einer Sitzung sortiert sich nichts um.
+        #expect(CatalogMix.ordered(topf, for: .musicHome, session: 99).map(\.id) == start.map(\.id))
+        // Rot-Probe: mit DEMSELBEN Startwert waeren sie identisch — das
+        // Instrument sieht den Unterschied also nur wegen der Ableitung.
+        var gen = RediscoverSections.SplitMix64(seed: CatalogMix.seed(for: .musicHome, session: 99))
+        _ = gen.next()
+        #expect(CatalogMix.seed(for: .musicHome, session: 99)
+                != CatalogMix.seed(for: .musicTab, session: 99))
+        // Und eine Liste mit einem Eintrag bleibt, wie sie ist.
+        #expect(CatalogMix.ordered(Array(topf.prefix(1)), for: .musicTab).count == 1)
+    }
+
+    /// R47 (the owner's ENTSCHEID): die Lizenz-Oeffnung mit ihrer Grenze —
+    /// anzeigen und streamen auch OHNE Deklaration, herunterladen NUR mit.
+    /// Und: eine fehlende Angabe ist sichtbar, nie gar nichts und nie eine
+    /// Behauptung.
+    @Test("anzeigen ohne Deklaration, laden nur mit — und die Luecke ist sichtbar")
+    func displayIsOpenButCopyingStaysLicensed() {
+        // Der ANZEIGE-Weg traegt den Filter nicht mehr.
+        for source in [CatalogSource.oldTimeRadio, .archiveBooks] {
+            let query = try? #require(ArchiveOrgClient.archiveBaseQuery(for: source))
+            #expect(query?.contains("licenseurl") == false,
+                    "\(source.rawValue) filtert die ANZEIGE wieder nach Lizenz")
+        }
+        #expect(!ArchiveMusicCatalog.netlabels.query.contains("licenseurl"))
+        // Der LADE-Weg tut es sehr wohl.
+        #expect(!FreeCatalog.mayDownload(licenceURL: nil))
+        #expect(!FreeCatalog.mayDownload(licenceURL: ""))
+        #expect(!FreeCatalog.mayDownload(licenceURL: "   "))
+        #expect(FreeCatalog.mayDownload(licenceURL: "https://creativecommons.org/licenses/by/4.0/"))
+        // Und die Kachel sagt es, statt zu schweigen.
+        #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights)
+        #expect(FreeCatalog.licenceLabel("") == FreeCatalog.unstatedRights)
+        // Rot-Probe: eine echte Angabe wird weiterhin als solche gelesen.
+        #expect(FreeCatalog.licenceLabel("https://creativecommons.org/licenses/by-nc-nd/3.0/") == "CC BY-NC-ND")
+    }
+
+    /// R47: die Jahrzehnte-Achse. Einzeljahre falten, bereits gefaltete
+    /// Angaben bleiben, und was kein Jahr nennt, faellt HERAUS statt in ein
+    /// Sammelfach — dieselbe positive Zuordnung wie bei den Gattungen.
+    @Test("Einzeljahre falten auf ihr Jahrzehnt, Jahrloses faellt heraus")
+    func singleYearsFoldOntoTheirDecade() {
+        #expect(CatalogGenreAxis.decade(forSubject: "1943") == "1940s")
+        #expect(CatalogGenreAxis.decade(forSubject: "1949") == "1940s")
+        #expect(CatalogGenreAxis.decade(forSubject: "1950") == "1950s")
+        #expect(CatalogGenreAxis.decade(forSubject: "1940s") == "1940s")
+        #expect(CatalogGenreAxis.decade(forSubject: " 1950S ") == "1950s")
+        // Kein Jahr = kein Fach. Nie geraten, nie gesammelt.
+        #expect(CatalogGenreAxis.decade(forSubject: "detective") == nil)
+        #expect(CatalogGenreAxis.decade(forSubject: "otrr set") == nil)
+        #expect(CatalogGenreAxis.decade(forSubject: "19") == nil)
+        // Mehrere Jahre → mehrere Faecher, dedupliziert, in Browse-Ordnung.
+        #expect(CatalogGenreAxis.decades(forSubjects: ["1955", "1943", "1949", "drama"])
+                == ["1940s", "1950s"])
+        #expect(CatalogGenreAxis.decades(forSubjects: ["detective"]).isEmpty)
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

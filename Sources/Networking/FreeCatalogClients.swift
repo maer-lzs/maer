@@ -284,8 +284,25 @@ nonisolated enum CatalogShelfSource {
         return answer
     }
 
+    /// R47: ein JAHRZEHNT-Fach. Es fragt das `year`-Feld als Spanne statt
+    /// elf Schlagwort-Varianten zu veroderten — exakter, kuerzer, und es
+    /// trifft auch die Eintraege, die das Jahr nur im Jahresfeld fuehren.
+    static func decadePage(source: CatalogSource, decade: String,
+                           rows: Int, page: Int = 1) async throws -> Answer {
+        guard let base = ArchiveOrgClient.archiveBaseQuery(for: source),
+              let start = Int(decade.dropLast()) else { return .unsupported }
+        let hit = try await ArchiveOrgClient.popularWithTotal(
+            query: "\(base) AND year:[\(start) TO \(start + 9)]", rows: rows, page: page)
+        return .archive(docs: hit.docs, total: hit.total)
+    }
+
     static func page(source: CatalogSource, shelf: String, languages: [String],
                      rows: Int, page: Int = 1) async throws -> Answer {
+        // R47: ein Jahrzehnt-Fach laeuft ueber dieselbe EINE Tuer wie ein
+        // Gattungs-Fach — sonst fuehrte sein Chevron auf eine leere Seite.
+        if CatalogGenreAxis.decadeShelves.contains(where: { $0.key == shelf }) {
+            return try await decadePage(source: source, decade: shelf, rows: rows, page: page)
+        }
         let terms = CatalogGenreAxis.subjects(forShelf: shelf)
         guard !terms.isEmpty else { return .unsupported }
         switch source {
@@ -414,7 +431,14 @@ nonisolated enum ArchiveOrgClient {
     /// items with a stated licence. Measured 05.08.: 8.854 items total, 2.316
     /// with `licenseurl` (26 %). We do not suggest anything whose rights
     /// situation is unknown, and "no statement" is not "free".
-    static let oldTimeRadioQuery = "collection:oldtimeradio AND licenseurl:[* TO *]"
+    /// R47 (the owner's ENTSCHEID): der Lizenzfilter fiel vom ANZEIGE-Weg.
+    /// „Auch die Sachen ohne Lizenzangabe mit reinnehmen — sie sind auf
+    /// archive.org, dort wird alles frei zum Download angeboten." Wir zeigen
+    /// und streamen, was dort oeffentlich liegt; ein Eintrag ohne Angabe
+    /// traegt sichtbar „Rechtelage nicht angegeben" (nie gar nichts, nie eine
+    /// Behauptung). Der Filter bleibt genau dort, wo er eine KOPIE schuetzt —
+    /// siehe `mayDownload`.
+    static let oldTimeRadioQuery = "collection:oldtimeradio"
 
     static func popularOldTimeRadio(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
         try await popular(query: oldTimeRadioQuery, rows: rows, page: page)
@@ -457,7 +481,7 @@ nonisolated enum ArchiveOrgClient {
             "collection:librivoxaudio AND mediatype:(audio)"
         case .archiveBooks:
             "collection:audio_bookspoetry AND NOT collection:librivoxaudio"
-                + " AND mediatype:(audio) AND licenseurl:[* TO *]"
+                + " AND mediatype:(audio)"
         case .oldTimeRadio:
             oldTimeRadioQuery + " AND mediatype:(audio)"
         default:
@@ -561,6 +585,30 @@ nonisolated enum ArchiveOrgClient {
             let prefix = String(decoding: data.prefix(80), as: UTF8.self)
             throw FreeCatalog.CatalogDecodeError(status: status, answerPrefix: prefix)
         }
+    }
+
+    /// R47/„billiger Zug": the metadata WITHOUT the file list. archive.org
+    /// serves a sub-path, and it is the difference between 1,36 MB and 8,3 kB
+    /// (measured; 99 % of the full answer is the file list — for one OTR
+    /// bundle 3.966 entries with checksums, plus 66 user reviews).
+    ///
+    /// Only ONE caller needs this shape: the detail sheet, which wants the
+    /// description. Everything else needs the files, and for those the full
+    /// answer IS the point — this is not a cheaper version of that call, it
+    /// is a different question.
+    static func metadataOnly(identifier: String) async throws -> MetadataResponse.Meta? {
+        guard let url = URL(string: "https://archive.org/metadata/\(identifier)/metadata") else {
+            throw URLError(.badURL)
+        }
+        var request = URLRequest(url: url)
+        request.setValue(LibriVoxClient.userAgent, forHTTPHeaderField: "User-Agent")
+        let (data, _) = try await RequestRetryPolicy.fetch(request)
+        // MEASURED, not assumed: the sub-path wraps its answer in `result`
+        // (8.282 B against 1.359.765 B for the same item — factor 164).
+        // Decoding it as the bare block would have answered nothing at all,
+        // silently, which is exactly how the cover field was almost lost.
+        struct SubPath: Decodable { let result: MetadataResponse.Meta? }
+        return try JSONDecoder().decode(SubPath.self, from: data).result
     }
 
     /// Item metadata (files with lengths → direct stream URLs).

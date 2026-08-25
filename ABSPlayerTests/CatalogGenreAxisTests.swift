@@ -24,14 +24,22 @@ struct CatalogShelfQueryTests {
         let books = try #require(ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks))
         #expect(books.contains("NOT collection:librivoxaudio"),
                 "without it a shelf shows the LibriVox duplicates again (measured: 1.098 of 1.602)")
-        #expect(books.contains("licenseurl:[* TO *]"),
-                "we suggest nothing whose rights situation is unknown")
+        // R47 (the owner's ENTSCHEID): der Lizenzfilter ist vom ANZEIGE-Weg
+        // GEFALLEN — „auch die Sachen ohne Lizenzangabe mit reinnehmen, sie
+        // sind auf archive.org". Die Grenze sitzt jetzt am Kopieren
+        // (`mayDownload`), nicht am Zeigen; die fehlende Angabe ist an der
+        // Kachel SICHTBAR statt den Eintrag zu verschweigen.
+        #expect(!books.contains("licenseurl"),
+                "die Anzeige filtert wieder nach Lizenz")
         #expect(books.contains("mediatype:(audio)"),
                 "without it the collection also returns TEXT items")
 
         let otr = try #require(ArchiveOrgClient.archiveBaseQuery(for: .oldTimeRadio))
-        #expect(otr.contains("licenseurl:[* TO *]"), "the OTR row carries it, the shelf must too")
+        #expect(!otr.contains("licenseurl"), "die OTR-Anzeige filtert wieder nach Lizenz")
         #expect(otr.contains("mediatype:(audio)"))
+        // Die andere Haelfte des Entscheids muss dabei greifen.
+        #expect(!FreeCatalog.mayDownload(licenceURL: nil))
+        #expect(FreeCatalog.mayDownload(licenceURL: "https://creativecommons.org/licenses/by/4.0/"))
 
         // Feed-based sources have no archive base — they must not silently
         // fall back to some other collection.

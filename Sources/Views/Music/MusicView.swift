@@ -244,7 +244,11 @@ struct MusicView: View {
                     RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         .jamendoShuffle(coordinator: playerCoordinator)
                     if !rows.freeMusic.isEmpty {
-                        freeTileRow(rows.freeMusic)
+                        // R52, zweite Instanz: eigener Startwert je Flaeche —
+                        // dieselbe Menge, aber nicht dieselbe Reihe wie auf
+                        // Start (dort mischt sich Klassik dazwischen, hier
+                        // steht die volle Liste).
+                        freeTileRow(CatalogMix.ordered(rows.freeMusic, for: .musicTab))
                     } else if let problem = rows.freeMusicProblem {
                         Text(problem).font(.caption).foregroundStyle(.secondary)
                             .padding(.horizontal)

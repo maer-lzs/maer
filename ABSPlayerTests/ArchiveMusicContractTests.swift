@@ -59,11 +59,16 @@ struct ArchiveMusicContractTests {
 
     @Test("netlabels only ever asks for items that state a licence")
     func netlabelsRequiresStatedLicence() {
-        // Measured 08.08.: 76.950 audio items, 61.111 with `licenseurl` —
-        // the row shows the licence per tile, so it must not fetch the rest
-        // (mostly NC/ND, i.e. NOT public domain — guessing is not an option).
-        #expect(ArchiveMusicCatalog.netlabels.query.contains("licenseurl:[* TO *]"))
+        // R47 (the owner's ENTSCHEID): die ANZEIGE ist geoeffnet — 18 % der
+        // Netlabel-Titel tragen keine Lizenzangabe und werden damit erstmals
+        // sichtbar, mit „Rechtelage nicht angegeben" an der Kachel. Die
+        // Deklaration entscheidet weiterhin ueber die KOPIE.
+        #expect(!ArchiveMusicCatalog.netlabels.query.contains("licenseurl"),
+                "die Netlabels-Anzeige filtert wieder nach Lizenz")
         #expect(ArchiveMusicCatalog.netlabels.query.contains("collection:netlabels"))
+        #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights,
+                "ein Eintrag ohne Angabe schweigt wieder")
+        #expect(!FreeCatalog.mayDownload(licenceURL: nil))
     }
 
     /// The selector under "Old Records" must never resolve to the undivided

@@ -53,7 +53,7 @@ nonisolated enum ArchiveMusicCatalog {
     /// unabhaengig, und die Sperre aus der R45-Groessenordnung traegt nicht.
     static let netlabels = ArchiveMusicArea(
         key: "netlabels",
-        query: "collection:netlabels AND mediatype:(audio) AND licenseurl:[* TO *]",
+        query: "collection:netlabels AND mediatype:(audio)",
         title: String(localized: "Netlabels"),
         headerNote: String(localized: "Creative-Commons releases from netlabels on the Internet Archive — separate from your own library. Each tile shows the licence of its release."),
         placeholderSystemImage: "opticaldisc",

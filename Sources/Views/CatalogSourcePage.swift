@@ -50,6 +50,9 @@ struct CatalogSourcePage: View {
     /// R51: which shelves the stored day says this source HAS — read once
     /// when the page opens, so the warm visit can draw exactly those.
     @State private var knownShelfKeys: Set<String> = []
+    /// R47: der Bestand je JAHRZEHNT — nur Old Time Radio, wo die Zeit die
+    /// natuerlichere Gliederung ist als das Genre.
+    @State private var decadeStock: [String: (items: [LibraryItem], total: Int?)] = [:]
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -174,6 +177,12 @@ struct CatalogSourcePage: View {
     /// dem Chevron weiter, dort wo Scrollen die Form ist.
     private var catalogGrid: some View {
         LazyVStack(alignment: .leading, spacing: 14) {
+            // R47: die Warnung steht am ANFANG jeder Flaeche, deren Inhalte
+            // von archive.org kommen — LibriVox und Gutenberg liefern ihre
+            // eigenen Bestaende und sagen selbst, was gilt.
+            if source == .oldTimeRadio || source == .archiveBooks {
+                ArchiveRightsNote()
+            }
             popularRow
             // LibriVox keeps its "new additions" as a second lens on the
             // same source — the overview shows one row per source only.
@@ -200,6 +209,9 @@ struct CatalogSourcePage: View {
                     } else {
                         shelfPlaceholderRow(title: slot.title)
                     }
+                }
+                ForEach(decadeRows, id: \.key) { decade in
+                    decadeRow(decade)
                 }
                 if showsShelfPlaceholder {
                     shelfPlaceholderRow(title: String(localized: "Loading genres…"))
@@ -252,6 +264,41 @@ struct CatalogSourcePage: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
+        }
+    }
+
+    /// R47: die Jahrzehnte STEHEN NEBEN den Genres, nicht an ihrer Stelle —
+    /// ein Stueck hat beides. G8 gilt wie ueberall: leeres Jahrzehnt, keine
+    /// Reihe.
+    private var decadeRows: [(key: String, title: String)] {
+        guard source == .oldTimeRadio else { return [] }
+        return CatalogGenreAxis.decadeShelves.filter {
+            !(decadeStock[$0.key]?.items.isEmpty ?? true)
+        }
+    }
+
+    private func decadeRow(_ decade: (key: String, title: String)) -> some View {
+        let stock = decadeStock[decade.key]
+        let shown = RowPreview.cut(stock?.items ?? [])
+        return VStack(alignment: .leading, spacing: 10) {
+            if let total = stock?.total {
+                RowHeading(title: "", verbatimTitle: decade.title,
+                           total: total, shown: shown.count, showsTotal: true,
+                           destination: FreeAudiobooksRoute.shelf(source, decade.key))
+            } else {
+                RowHeading(title: "", verbatimTitle: decade.title, font: .title3,
+                           variant: .entry,
+                           destination: FreeAudiobooksRoute.shelf(source, decade.key))
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(shown) { item in
+                        tile(item).cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
         }
     }
 
@@ -372,11 +419,49 @@ struct CatalogSourcePage: View {
         }
         shelfFailures = failures
         // A cancelled pass is not a finished pass — it must be allowed again.
+        await loadDecades()
         if !Task.isCancelled { shelvesLoaded = true }
         for (key, reason) in failures {
             Logger.library.error("FREECAT shelf=\(key, privacy: .public) source=\(source.rawValue, privacy: .public) FAILED: \(reason, privacy: .public)")
         }
         Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled)")
+    }
+
+    /// R47: die Jahrzehnte, nebenlaeufig und in derselben Form wie die
+    /// Gattungen — Fehlschlag benannt, leeres Jahrzehnt keine Reihe.
+    private func loadDecades() async {
+        guard source == .oldTimeRadio else { return }
+        let provider = FreeCatalogProvider.shared
+        let source = source
+        await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
+            for decade in CatalogGenreAxis.decadeShelves {
+                let key = decade.key
+                group.addTask {
+                    do {
+                        switch try await CatalogShelfSource.decadePage(
+                            source: source, decade: key, rows: RowPreview.limit) {
+                        case .archive(let docs, let total): return (key, docs, total, nil)
+                        default: return (key, [], nil, nil)
+                        }
+                    } catch {
+                        return (key, [], nil, FreeCatalog.failureReason(error))
+                    }
+                }
+            }
+            for await (key, docs, total, reason) in group {
+                if let reason {
+                    Logger.library.error("FREECAT decade=\(key, privacy: .public) FAILED: \(reason, privacy: .public)")
+                    continue
+                }
+                let kept = docs.filter {
+                    FreeCatalog.isCuratedArchiveDoc(
+                        $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
+                }.compactMap { provider.remember(popular: $0) }
+                guard !kept.isEmpty else { continue }
+                decadeStock[key] = (kept, total)
+            }
+        }
+        Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
     }
 
     private func applyShelf(_ answered: (String, CatalogShelfSource.Answer?, String?),
@@ -662,7 +747,9 @@ struct CatalogShelfPage: View {
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
     private var title: String {
-        CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title ?? ""
+        CatalogGenreAxis.librivoxShelves.first { $0.key == shelfKey }?.title
+            ?? CatalogGenreAxis.decadeShelves.first { $0.key == shelfKey }?.title
+            ?? ""
     }
 
     var body: some View {
