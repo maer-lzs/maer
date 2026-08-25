@@ -450,6 +450,56 @@ struct CatalogStoreReadFenceTests {
                 "die Sperrliste ist mit der Trennung mitgefallen")
     }
 
+    /// R51, letzter Griff: der Platzhalter gegen den Layout-Shift haengt an
+    /// der GEMESSENEN Wartezeit, nicht am Quellennamen (the reviewer's Invariante aus
+    /// `0757f89` — sonst steht in einem Monat ein `== .gutenberg` da, dessen
+    /// Grund niemand mehr kennt). Gemessen: archive.org 0,63-0,80 s je Fach,
+    /// gutendex 30-41 s kalt.
+    @Test("der Platzhalter haengt an der Wartezeit, nicht am Quellennamen")
+    func thePlaceholderHangsOnTheMeasuredWait() throws {
+        #expect(CatalogShelfSource.showsLoadingPlaceholder(.gutenberg),
+                "die einzige langsame Quelle bekommt keinen Platzhalter")
+        for schnell in [CatalogSource.librivox, .archiveBooks, .oldTimeRadio] {
+            #expect(!CatalogShelfSource.showsLoadingPlaceholder(schnell),
+                    "\(schnell.rawValue) zeigt ein Skelett fuer unter eine Sekunde")
+        }
+        // Die Entscheidung MUSS aus der Zahl folgen — sonst ist es doch ein
+        // Sonderfall mit anderem Namen.
+        for source in CatalogSource.allCases where CatalogShelfSource.canServeShelves(source) {
+            #expect(CatalogShelfSource.showsLoadingPlaceholder(source)
+                    == (CatalogShelfSource.coldShelfSeconds(source) >= CatalogShelfSource.visibleWaitSeconds))
+        }
+        // Rot-Probe am Quelltext: kein Sonderfall auf den Namen in der Regel.
+        let text = try String(contentsOf: sourceFile("Sources/Networking/FreeCatalogClients.swift"),
+                              encoding: .utf8)
+        let body = try #require(functionBody(of: "static func showsLoadingPlaceholder(_ source: CatalogSource)", in: text))
+        #expect(!body.contains("== .gutenberg"),
+                "die Ausnahme ist zur Regel geworden — Schwelle statt Sonderfall")
+    }
+
+    /// R50 (the owner: der Jamendo-Titel LAEUFT, der Mini-Player zeigt „ab 0:00
+    /// — noch 3 Min."). Die Zeile beobachtet die Zeit sehr wohl — erfunden
+    /// war das KAPITEL: fuer ein Stueck ohne Kapitel legte `withTimeMarks`
+    /// EINE Marke an, benannt nach Sekunde null und ueber das ganze Stueck.
+    /// Damit stand die Startformulierung fest, waehrend die Wiedergabe lief.
+    /// Ohne Kapitel faellt der Untertitel auf die laufende Uhr zurueck.
+    @Test("ein Stueck ohne Kapitel bekommt keine erfundene Marke")
+    func aPieceWithoutChaptersGetsNoInventedMark() {
+        // Ein Katalog-Titel: keine Kapitel, drei Minuten.
+        #expect(ChapterModel.withTimeMarks([], duration: 222).isEmpty,
+                "die Startformulierung ist zurueck — eine Marke ueber das ganze Stueck")
+        #expect(ChapterModel.resolved(chapters: [], tracks: [], duration: 222).chapters.isEmpty)
+        // Rot-Probe: ein LANGES Stueck ohne Kapitel bekommt weiterhin
+        // Sprungmarken — das Instrument sieht den Unterschied.
+        let lang = ChapterModel.withTimeMarks([], duration: 4 * ChapterModel.step)
+        #expect(lang.count > 1, "die Sprungmarken sind fuer lange Stuecke mitgestorben")
+        // Und der eigentliche Zweck bleibt: eine TEILweise Kapitelliste wird
+        // weiterhin bis zum Ende aufgefuellt.
+        let teil = [ABSChapter(id: 0, start: 0, end: 600, title: "Eins")]
+        #expect(ChapterModel.withTimeMarks(teil, duration: 3600).count > teil.count,
+                "der eigentliche Zweck der Marken ist mitgefallen")
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

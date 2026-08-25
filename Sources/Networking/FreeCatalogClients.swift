@@ -215,6 +215,39 @@ nonisolated enum CatalogShelfSource {
     static let gutenbergShelfStore = ResolutionCacheStore<GutenbergShelf>(
         key: "catalogGutenbergShelfStock", positiveTTL: 24 * 3600, negativeTTL: 24 * 3600)
 
+    /// What ONE shelf query costs COLD, measured at the endpoint:
+    /// archive.org answers in 0,63-0,80 s (all shelves concurrently, so the
+    /// whole cold pass is about a second); gutendex computes a cold topic in
+    /// 30-41 s and answers the warm one in 30-70 ms.
+    static func coldShelfSeconds(_ source: CatalogSource) -> Double {
+        switch source {
+        case .gutenberg: 35
+        case .librivox, .archiveBooks, .oldTimeRadio: 0.8
+        default: 0
+        }
+    }
+
+    /// Is the wait long enough to be worth SAYING? The placeholder that
+    /// covers the cold pass hangs on this THRESHOLD, never on a source name —
+    /// a skeleton shown for one second is worse than none, and if one of the
+    /// fast sources ever turns slow the same rule catches it without anyone
+    /// remembering to add a special case.
+    static let visibleWaitSeconds: Double = 3
+
+    static func showsLoadingPlaceholder(_ source: CatalogSource) -> Bool {
+        coldShelfSeconds(source) >= visibleWaitSeconds
+    }
+
+    /// Which shelves the stored day KNOWS this source has — the warm visit
+    /// can draw exactly those and fill them in place, so nothing moves and no
+    /// shelf appears that does not exist.
+    static func knownShelfKeys(for source: CatalogSource) -> Set<String> {
+        guard source == .gutenberg else { return [] }
+        return Set(gutenbergShelfStore.load().compactMap { key, value in
+            (value?.books.isEmpty == false) ? key : nil
+        })
+    }
+
     /// Whether a source can answer the shelf question at all. `hasChips` reads
     /// this instead of guessing, so a surface can never promise a shelf row
     /// that no query backs.

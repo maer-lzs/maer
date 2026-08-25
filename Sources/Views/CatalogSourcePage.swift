@@ -47,6 +47,9 @@ struct CatalogSourcePage: View {
     /// R53: which shelves could not be ASKED — kept apart from „the source has
     /// nothing here", which looks identical on the surface but is not.
     @State private var shelfFailures: [String: String] = [:]
+    /// R51: which shelves the stored day says this source HAS — read once
+    /// when the page opens, so the warm visit can draw exactly those.
+    @State private var knownShelfKeys: Set<String> = []
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -75,6 +78,36 @@ struct CatalogSourcePage: View {
         }
     }
 
+    /// R51, gegen den Layout-Shift: die Reihen der Faecher-Fläche in
+    /// Browse-Ordnung, jede entweder GEFUELLT oder als Platzhalter.
+    ///
+    /// Der warme Besuch kennt aus dem Tages-Speicher genau die Faecher, die
+    /// es gibt — sie stehen sofort da und fuellen sich AN ORT UND STELLE.
+    /// Nichts springt, und es erscheint nie ein Fach, das die Quelle nicht
+    /// hat (G8 bleibt unverletzt). Der kalte Besuch kennt nichts und bekommt
+    /// stattdessen den EINEN benannten Block weiter unten.
+    private var shelfSlots: [(key: String, title: String, ready: Bool)] {
+        guard hasChips else { return [] }
+        return CatalogGenreAxis.librivoxShelves.compactMap { shelf in
+            if shelfStock[shelf.key]?.items.isEmpty == false {
+                return (shelf.key, shelf.title, true)
+            }
+            if !shelvesLoaded, knownShelfKeys.contains(shelf.key) {
+                return (shelf.key, shelf.title, false)
+            }
+            return nil
+        }
+    }
+
+    /// Der kalte Erstbesuch: EIN benannter Block statt achtzehn einzelner
+    /// Einschuebe. Er haengt an der gemessenen Wartezeit, nicht am Namen der
+    /// Quelle — bei archive.org ist der kalte Fall unter einer Sekunde, und
+    /// ein Skelett dafuer waere schlechter als keins.
+    private var showsShelfPlaceholder: Bool {
+        hasChips && !shelvesLoaded && knownShelfKeys.isEmpty
+            && CatalogShelfSource.showsLoadingPlaceholder(source)
+    }
+
     /// R53: this page's LibriVox items are archive.org documents
     /// (`librivoxPopular` → `remember(popular:)`), so they carry archive
     /// SUBJECTS — not LibriVox genre names. Reading them through the LibriVox
@@ -98,6 +131,7 @@ struct CatalogSourcePage: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .task {
+            knownShelfKeys = CatalogShelfSource.knownShelfKeys(for: source)
             async let shelvesTask: Void = loadShelves()
             if items.isEmpty {
                 // Seed from the overview's already-loaded preview so the page
@@ -160,8 +194,15 @@ struct CatalogSourcePage: View {
             // axis carries — tile row per filled shelf, counting chevron onto
             // the shelf grid.
             if hasChips {
-                ForEach(shelves, id: \.key) { shelf in
-                    genreRow(shelf)
+                ForEach(shelfSlots, id: \.key) { slot in
+                    if slot.ready {
+                        genreRow((key: slot.key, title: slot.title))
+                    } else {
+                        shelfPlaceholderRow(title: slot.title)
+                    }
+                }
+                if showsShelfPlaceholder {
+                    shelfPlaceholderRow(title: String(localized: "Loading genres…"))
                 }
                 // R53 / Regel 3: a shelf we could not ASK must not look like a
                 // shelf the source does not HAVE. Only shown when nothing at
@@ -212,6 +253,29 @@ struct CatalogSourcePage: View {
             .frame(maxWidth: .infinity)
             .padding()
         }
+    }
+
+    /// Eine Reihe, die ihren Platz schon einnimmt: Ueberschrift wie die
+    /// echte, darunter Kachel-Skelette in derselben Groesse. Sie ersetzt sich
+    /// selbst, sobald der Inhalt da ist — deshalb springt nichts.
+    private func shelfPlaceholderRow(title: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RowHeading.plain(verbatim: title)
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(0..<RowPreview.limit, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.quaternary)
+                            .aspectRatio(1, contentMode: .fit)
+                            .cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+            .allowsHitTesting(false)
+        }
+        .accessibilityHidden(true)
     }
 
     /// H: one shelf's preview row (filter over `items`).

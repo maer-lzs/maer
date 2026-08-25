@@ -122,10 +122,22 @@ nonisolated enum ChapterModel {
     /// the un-chaptered tail with jump marks every 15 minutes, named by their
     /// start time ("from 3:15", "from 3:30" …). T9d: better than one 5–6 h
     /// "remaining" lump when coverage stops early.
+    /// Step width of the jump marks — 15 minutes.
+    static let step = 900.0
+
     static func withTimeMarks(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
+        // R50: this covers a PARTIAL chapter list, as the name and the doc
+        // above say. With NO chapters at all there is nothing to complete —
+        // and inventing one mark for a whole single-file item produced the
+        // catalogue defect the owner saw: a Jamendo track showed „ab 0:00 —
+        // noch 3 Min." and looked frozen, because that ONE invented chapter
+        // spans the entire piece and is named after second zero. Without a
+        // chapter the subtitle falls back to the running clock, which is what
+        // a track needs. Marks below the step width would be the same lie in
+        // small: a single mark that covers everything is not navigation.
+        guard !valid.isEmpty || duration > step * 2 else { return [] }
         let lastEnd = valid.last?.end ?? 0
         guard duration > lastEnd + 1 else { return valid }
-        let step = 900.0   // 15 minutes
         var marks: [ABSChapter] = []
         var start = lastEnd
         var id = (valid.last?.id ?? -1) + 1
