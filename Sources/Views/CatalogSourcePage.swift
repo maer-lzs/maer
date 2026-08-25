@@ -34,7 +34,6 @@ struct CatalogSourcePage: View {
     /// P1: language-fallback as SESSION state (one truth, held here).
     @State private var languageFallback = false
     @State private var detailItem: LibraryItem?
-    @State private var selectedShelf: String?
     /// R46: what a shelf ACTUALLY has, asked at the source. Before this the
     /// page classified a randomly loaded pool itself, so "Horror" stood there
     /// with one tile while the source held 102 — the surface answered
@@ -87,25 +86,6 @@ struct CatalogSourcePage: View {
         CatalogGenreAxis.shelves(forSubjects: genres(of: item))
     }
 
-    /// R46: the grid below the shelf rows shows what is NOT already standing
-    /// above it. Same page, same item, twice — that was the duplication
-    /// the owner saw („Gunsmoke Radio Show" in der Western-Reihe und direkt
-    /// darunter im Raster).
-    private var restItems: [LibraryItem] {
-        let above = shownInShelfRows
-        return onShelf(items).filter { !above.contains($0.id) }
-    }
-
-    /// The visible cut: everything, or one shelf. An item WITHOUT genre data
-    /// stays visible (1790dda rule — unknown is not "does not match").
-    private func onShelf(_ items: [LibraryItem]) -> [LibraryItem] {
-        guard let selectedShelf else { return items }
-        return items.filter {
-            let shelves = shelvesOf($0)
-            return shelves.isEmpty || shelves.contains(selectedShelf)
-        }
-    }
-
     var body: some View {
         ScrollView {
             if source.isFeedBased {
@@ -151,12 +131,34 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
+    /// R51 Runde 2, the owner's ENTSCHEID zur Seitenordnung: „Beliebt nach oben
+    /// als Kachelreihe, nicht Infinite Scroll. Darunter Neu bei LibriVox,
+    /// darunter die Genres als Kachelreihen."
+    ///
+    /// Die Seite besteht damit AUSSCHLIESSLICH aus Kachelreihen. Das endlose
+    /// Nachladen ist nicht verschwunden — es lebt auf der Vollseite hinter
+    /// dem Chevron weiter, dort wo Scrollen die Form ist.
     private var catalogGrid: some View {
         LazyVStack(alignment: .leading, spacing: 14) {
+            popularRow
+            // LibriVox keeps its "new additions" as a second lens on the
+            // same source — the overview shows one row per source only.
+            if source == .librivox, !store.sourceRows.librivoxNew.isEmpty {
+                RowHeading.plain("New at LibriVox")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 14) {
+                        ForEach(RowPreview.cut(store.sourceRows.librivoxNew)) { item in
+                            tile(item)
+                                .cardRowSlot(spacing: 14)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .scrollClipDisabled()
+            }
             // f374116 (H erweitert): genres are the STANDARD FORM where the
             // axis carries — tile row per filled shelf, counting chevron onto
-            // the shelf grid. The chips died here (structure beats filter);
-            // shelf = filter over the loaded stock, no second client.
+            // the shelf grid.
             if hasChips {
                 ForEach(shelves, id: \.key) { shelf in
                     genreRow(shelf)
@@ -177,50 +179,39 @@ struct CatalogSourcePage: View {
                     .padding(.horizontal)
                 }
             }
-            // LibriVox keeps its "new additions" as a second lens on the
-            // same source — the overview shows one row per source only.
-            if source == .librivox, !store.sourceRows.librivoxNew.isEmpty {
-                RowHeading.plain("New at LibriVox")
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 14) {
-                        ForEach(RowPreview.cut(store.sourceRows.librivoxNew)) { item in
-                            tile(item)
-                                .cardRowSlot(spacing: 14)
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .scrollClipDisabled()
-            }
-            // R46 Punkt 2: EIN Name fuer jede Flaeche. „Beliebt" stand nur im
-            // LibriVox-Zweig; bei OTR, Archive-Hoerbuechern und Gutenberg folgte
-            // auf die letzte Faecher-Reihe ein NAMENLOSES Raster, das endlos
-            // nachlaedt — fuer the owner las sich das als „Western hoert nie auf".
-            // Ohne Ueberschrift gibt es keine Grenze.
-            RowHeading.plain("Popular")
-            CoverGrid(columns: columns) {
-                ForEach(restItems) { item in
-                    tile(item)
-                        .onAppear {
-                            if item.id == restItems.last?.id { Task { await load() } }
-                        }
-                }
-            }
-            .padding(.horizontal)
-            if isLoading {
-                ProgressView().frame(maxWidth: .infinity).padding()
-            } else if pageFailure != nil {
-                HStack(spacing: 10) {
-                    Text("Could not load more.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                    Button("Retry") { Task { await load() } }
-                        .font(.footnote)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-            }
         }
         .padding(.top, TabContentLayout.topInset)
+    }
+
+    /// R46 Punkt 2 gilt weiter: jede Flaeche traegt ihren Namen. Was frueher
+    /// ein namenloses Endlos-Raster war, ist jetzt die benannte Reihe ganz
+    /// oben — mit dem Chevron auf die Vollseite, wo Scrollen hingehoert.
+    @ViewBuilder
+    private var popularRow: some View {
+        let preview = RowPreview.cut(items)
+        if !preview.isEmpty {
+            RowHeading.entry("Popular", destination: FreeAudiobooksRoute.popular(source))
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(preview) { item in
+                        tile(item).cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
+        } else if isLoading {
+            ProgressView().frame(maxWidth: .infinity).padding()
+        } else if pageFailure != nil {
+            HStack(spacing: 10) {
+                Text("Could not load more.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("Retry") { Task { await load() } }
+                    .font(.footnote)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+        }
     }
 
     /// H: one shelf's preview row (filter over `items`).
@@ -263,21 +254,6 @@ struct CatalogSourcePage: View {
                 .scrollClipDisabled()
             }
         }
-    }
-
-    /// R46: the ids already standing in a shelf row above. The grid below
-    /// leaves them out — „zwei identische Kacheln auf einer Seite lesen sich
-    /// als Fehler, nicht als Wahrheit" is the same rule `primaryShelf`
-    /// enforces WITHIN the shelves; it does not stop at the last row.
-    private var shownInShelfRows: Set<String> {
-        guard hasChips else { return [] }
-        var out = Set<String>()
-        for shelf in shelves {
-            for item in RowPreview.cut(shelfStock[shelf.key]?.items ?? []) {
-                out.insert(item.id)
-            }
-        }
-        return out
     }
 
     /// The stock of every shelf, asked ONCE per visit — the same query the
@@ -346,8 +322,10 @@ struct CatalogSourcePage: View {
         if let reason { failures[key] = reason; return }
         switch answer {
         case .archive(let docs, let total):
-            let kept = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
-                .compactMap { provider.remember(popular: $0) }
+            let kept = docs.filter {
+                FreeCatalog.isCuratedArchiveDoc(
+                    $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
+            }.compactMap { provider.remember(popular: $0) }
             guard !kept.isEmpty else { return }
             shelfStock[key] = (kept, total)
         case .gutenberg(let books, let total):
@@ -357,36 +335,6 @@ struct CatalogSourcePage: View {
         case .unsupported, .none:
             return
         }
-    }
-
-    private var shelfRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                shelfChip(key: nil, title: String(localized: "All"))
-                ForEach(shelves, id: \.key) { shelf in
-                    shelfChip(key: shelf.key, title: shelf.title)
-                }
-            }
-            .padding(.horizontal)
-        }
-        .scrollClipDisabled()
-    }
-
-    private func shelfChip(key: String?, title: String) -> some View {
-        let selected = selectedShelf == key
-        let fill: AnyShapeStyle = selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary)
-        return Button {
-            withAnimation(.snappy(duration: 0.2)) { selectedShelf = key }
-        } label: {
-            Text(title)
-                .font(.subheadline.weight(.medium))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(fill, in: Capsule())
-                .foregroundStyle(selected ? Color.white : Color.primary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("freebooks-shelf-\(key ?? "all")")
     }
 
     private func tile(_ item: LibraryItem) -> some View {
@@ -411,6 +359,61 @@ struct CatalogSourcePage: View {
     }
 
     private func seedItems() -> [LibraryItem] {
+        CatalogPopularSource.seed(source: source, store: store)
+    }
+
+    /// R53 Nachlese: `try?` machte hier aus JEDEM Netzfehler „Ende der
+    /// Liste" — an allen vier Quellen. Milder als bei den Faechern (die Seite
+    /// hoert auf nachzuladen, statt leer zu wirken), aber dieselbe
+    /// Verwechslung: Fehlschlag sieht aus wie Erschoepfung, und es gibt
+    /// keinen Weg zurueck. Ein Fehler endet die Liste jetzt NICHT — er wird
+    /// benannt und bleibt wiederholbar.
+    /// R51 Runde 2: die Vorschau-Reihe laedt ueber DENSELBEN Weg wie die
+    /// Vollseite hinter ihrem Chevron (`CatalogPopularSource`) — sonst zeigte
+    /// die Reihe oben einen anderen Ausschnitt als die Seite dahinter.
+    private func load() async {
+        guard !source.isFeedBased, !isLoading, !reachedEnd else { return }
+        isLoading = true
+        defer { isLoading = false }
+        #if DEBUG
+        if UITestSeed.isActive { reachedEnd = true; return }
+        #endif
+        switch await CatalogPopularSource.page(
+            source: source, page: page, rows: pageSize, unfiltered: languageFallback) {
+        case .cancelled:
+            return
+        case .failed(let reason):
+            pageFailure = reason
+            Logger.library.error("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) FAILED: \(reason, privacy: .public)")
+        case .loaded(let fresh, let unfiltered, let atEnd):
+            languageFallback = unfiltered
+            pageFailure = nil
+            var seen = Set(items.map(\.id))
+            items += fresh.filter { seen.insert($0.id).inserted }
+            page += 1
+            if atEnd || fresh.isEmpty { reachedEnd = true }
+            Logger.library.notice("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) items=\(items.count)")
+        }
+    }
+}
+
+
+/// R51 Runde 2 (Regel 2): der EINE Ladeweg der Beliebtheits-Liste. Die
+/// Vorschau-Reihe der Quellenseite und die Vollseite hinter ihrem Chevron
+/// fragen hier durch — sonst zeigte die Reihe oben einen anderen Ausschnitt
+/// als die Seite dahinter, und das ist die f220ecd-Klasse.
+///
+/// Ein Fehlschlag ist KEINE Erschoepfung: `failed` traegt seinen Grund,
+/// `cancelled` bleibt still, und nur `loaded` darf die Liste enden.
+@MainActor
+enum CatalogPopularSource {
+    enum Answer {
+        case loaded(items: [LibraryItem], unfiltered: Bool, atEnd: Bool)
+        case failed(String)
+        case cancelled
+    }
+
+    static func seed(source: CatalogSource, store: FreeCatalogStore) -> [LibraryItem] {
         switch source {
         case .librivox:     store.sourceRows.librivoxPopular
         case .archiveBooks: store.sourceRows.archiveBooks
@@ -420,72 +423,158 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// R53 Nachlese: `try?` machte hier aus JEDEM Netzfehler „Ende der
-    /// Liste" — an allen vier Quellen. Milder als bei den Faechern (die Seite
-    /// hoert auf nachzuladen, statt leer zu wirken), aber dieselbe
-    /// Verwechslung: Fehlschlag sieht aus wie Erschoepfung, und es gibt
-    /// keinen Weg zurueck. Ein Fehler endet die Liste jetzt NICHT — er wird
-    /// benannt und bleibt wiederholbar.
+    static func page(source: CatalogSource, page: Int, rows: Int,
+                     unfiltered: Bool) async -> Answer {
+        let provider = FreeCatalogProvider.shared
+        let codes = SuggestionLanguages.current()
+        var fresh: [LibraryItem] = []
+        var fallback = unfiltered
+        var atEnd = false
+        func curated(_ docs: [ArchivePopularDoc]) -> [LibraryItem] {
+            docs.filter {
+                FreeCatalog.isCuratedArchiveDoc(
+                    $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
+            }.compactMap { provider.remember(popular: $0) }
+        }
+        do {
+            switch source {
+            case .librivox:
+                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
+                    rowsPerLanguage: rows, languageCodes: codes, limit: rows, page: page)
+                fresh = curated(docs)
+                if docs.count < rows { atEnd = true }
+            case .archiveBooks:
+                // P1: the fallback is a SESSION state — once fallen back,
+                // deeper pages browse the unfiltered corpus too.
+                let result = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
+                    rows: rows, languageCodes: codes, page: page, unfiltered: unfiltered)
+                fallback = result.unfiltered
+                fresh = curated(result.docs)
+                if result.docs.count < rows { atEnd = true }
+            case .gutenberg:
+                var books = try await GutenbergClient.audiobooks(
+                    languages: unfiltered ? [] : codes, page: page)
+                if books.isEmpty, page == 1, !codes.isEmpty, !unfiltered {
+                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
+                    if !books.isEmpty { fallback = true }
+                }
+                fresh = books.compactMap { provider.remember(gutenberg: $0) }
+                if books.isEmpty { atEnd = true }
+            case .oldTimeRadio:
+                let docs = try await ArchiveOrgClient.popularOldTimeRadio(rows: rows, page: page)
+                fresh = curated(docs)
+                if docs.count < rows { atEnd = true }
+            default:
+                atEnd = true
+            }
+        } catch {
+            guard let reason = FreeCatalog.failureReason(error) else { return .cancelled }
+            return .failed(reason)
+        }
+        return .loaded(items: fresh, unfiltered: fallback, atEnd: atEnd)
+    }
+}
+
+
+/// R51 Runde 2: die Vollseite hinter dem „Beliebt"-Chevron. Sie ist die
+/// Heimat des endlosen Nachladens, das the owner von der Uebersicht haben
+/// wollte — dieselbe Kachel, dieselbe Seitenlogik, nur ohne die Reihen
+/// drumherum. Regel 2: sie teilt sich den Lade-Weg der Quellenseite ueber
+/// `CatalogPopularSource`, damit Vorschau-Reihe und Vollseite denselben
+/// Bestand in derselben Ordnung zeigen.
+struct CatalogPopularPage: View {
+    let source: CatalogSource
+    @ObservedObject var playerCoordinator: PlayerCoordinator
+    @ObservedObject private var store = FreeCatalogStore.shared
+    @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
+    @State private var detailItem: LibraryItem?
+    @State private var items: [LibraryItem] = []
+    @State private var page = 1
+    @State private var isLoading = false
+    @State private var reachedEnd = false
+    @State private var languageFallback = false
+    @State private var pageFailure: String?
+
+    private let pageSize = 30
+    private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
+
+    var body: some View {
+        ScrollView {
+            CoverGrid(columns: columns) {
+                ForEach(items) { item in
+                    FreeCatalogBookTile(
+                        item: item,
+                        onTap: {
+                            if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                                pushFreeAudiobooksRoute(.series(itemId: item.id))
+                            } else {
+                                detailItem = item
+                            }
+                        })
+                    .contextMenu {
+                        Button {
+                            Task { await playerCoordinator.open(item: item) }
+                        } label: { Label("Play", systemImage: "play.fill") }
+                        CatalogQueueButtons(itemId: item.id)
+                    }
+                    .onAppear {
+                        if item.id == items.last?.id { Task { await load() } }
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, TabContentLayout.topInset)
+            if isLoading {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if pageFailure != nil {
+                // Regel 3: ein Fehlschlag ist keine Erschoepfung.
+                HStack(spacing: 10) {
+                    Text("Could not load more.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    Button("Retry") { Task { await load() } }
+                        .font(.footnote)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            }
+            Color.clear.frame(height: 1).bottomBarClearance()
+        }
+        .navigationTitle(Text("Popular"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if items.isEmpty {
+                items = CatalogPopularSource.seed(source: source, store: store)
+                await load()
+            }
+        }
+        .sheet(item: $detailItem) { item in
+            FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
     private func load() async {
-        guard !source.isFeedBased, !isLoading, !reachedEnd else { return }
+        guard !isLoading, !reachedEnd else { return }
         isLoading = true
         defer { isLoading = false }
         #if DEBUG
         if UITestSeed.isActive { reachedEnd = true; return }
         #endif
-        let provider = FreeCatalogProvider.shared
-        let codes = SuggestionLanguages.current()
-        var new: [LibraryItem] = []
-        do {
-            switch source {
-            case .librivox:
-                let docs = try await ArchiveOrgClient.popularLibriVoxByLanguage(
-                    rowsPerLanguage: pageSize, languageCodes: codes, limit: pageSize, page: page)
-                new = docs.compactMap { provider.remember(popular: $0) }
-                if docs.count < pageSize { reachedEnd = true }
-            case .archiveBooks:
-                // P1: the fallback is a session state — once fallen back, deeper
-                // pages browse the unfiltered corpus too (the returned flag
-                // rides back in; the old page-1-only guard ended the trove after
-                // one page for German users).
-                let result = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
-                    rows: pageSize, languageCodes: codes, page: page, unfiltered: languageFallback)
-                languageFallback = result.unfiltered
-                new = result.docs.compactMap { provider.remember(popular: $0) }
-                if result.docs.count < pageSize { reachedEnd = true }
-            case .gutenberg:
-                // gutendex pages at 32; P1: same session-state rule as archive —
-                // the same corner flagged in review (a first-page fallback that
-                // never continued).
-                var books = try await GutenbergClient.audiobooks(
-                    languages: languageFallback ? [] : codes, page: page)
-                if books.isEmpty, page == 1, !codes.isEmpty, !languageFallback {
-                    books = try await GutenbergClient.audiobooks(languages: [], page: 1)
-                    if !books.isEmpty { languageFallback = true }
-                }
-                new = books.compactMap { provider.remember(gutenberg: $0) }
-                if books.isEmpty { reachedEnd = true }
-            case .oldTimeRadio:
-                let docs = try await ArchiveOrgClient.popularOldTimeRadio(
-                    rows: pageSize, page: page)
-                new = docs.compactMap { provider.remember(popular: $0) }
-                if docs.count < pageSize { reachedEnd = true }
-            default:
-                reachedEnd = true
-            }
-        } catch {
-            // Cancellation is not a failure — the next pass fetches again.
-            guard let reason = FreeCatalog.failureReason(error) else { return }
+        let answer = await CatalogPopularSource.page(
+            source: source, page: page, rows: pageSize, unfiltered: languageFallback)
+        switch answer {
+        case .failed(let reason):
             pageFailure = reason
-            Logger.library.error("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) FAILED: \(reason, privacy: .public)")
+            Logger.library.error("FREECAT popular source=\(source.rawValue, privacy: .public) page=\(page) FAILED: \(reason, privacy: .public)")
+        case .cancelled:
             return
+        case .loaded(let fresh, let unfiltered, let atEnd):
+            languageFallback = unfiltered
+            pageFailure = nil
+            var seen = Set(items.map(\.id))
+            items += fresh.filter { seen.insert($0.id).inserted }
+            page += 1
+            if atEnd || fresh.isEmpty { reachedEnd = true }
         }
-        pageFailure = nil
-        var seen = Set(items.map(\.id))
-        items += new.filter { seen.insert($0.id).inserted }
-        page += 1
-        if new.isEmpty { reachedEnd = true }
-        Logger.library.notice("FREECAT page source=\(source.rawValue, privacy: .public) page=\(page) items=\(items.count)")
     }
 }
 
@@ -587,8 +676,10 @@ struct CatalogShelfPage: View {
             case .archive(let docs, _):
                 // Same gate as the row: de-duplication + denylist (893a7ea —
                 // filtered wherever WE assemble the offer).
-                fresh = docs.filter { FreeCatalog.isCuratedArchiveDoc($0) }
-                    .compactMap { provider.remember(popular: $0) }
+                fresh = docs.filter {
+                    FreeCatalog.isCuratedArchiveDoc(
+                        $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
+                }.compactMap { provider.remember(popular: $0) }
             case .gutenberg(let books, _):
                 fresh = books.compactMap { provider.remember(gutenberg: $0) }
             case .unsupported:

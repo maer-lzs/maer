@@ -419,6 +419,46 @@ struct CatalogStoreReadFenceTests {
         #expect(home != CatalogMix.tiles(for: .books, rows: rows).map(\.id))
     }
 
+    /// R51 Runde 2 (the owner's Bild: „Lyrik · 2829" mit ZWEI Kacheln). Die
+    /// Ursache war kein duenner Bestand, sondern ein Trennfilter auf seiner
+    /// EIGENEN Quelle: `isNotLibriVoxDuplicate` verwirft jedes Dokument, in
+    /// dem „librivox" vorkommt — auf der LibriVox-Seite also fast alles.
+    /// Am lebenden Endpunkt mit der Abfrage der Flaeche gemessen: **12 von 12
+    /// verworfen** (LibriVox), **0 von 12** bei Archive-Hoerbuechern und OTR,
+    /// **0 von 50** im breiten Abzug der Archive-Hoerbuecher.
+    ///
+    /// INVARIANTE: ein Filter, der zwei Quellen voneinander trennt, laeuft
+    /// nie auf der Quelle, die er definiert.
+    @Test("der Trennfilter laeuft nie auf der Quelle, die er definiert")
+    func theSeparationNeverRunsOnItsOwnSource() {
+        #expect(!FreeCatalog.separatesFromLibriVox(.librivox),
+                "die LibriVox-Seite filtert wieder gegen sich selbst")
+        for other in [CatalogSource.archiveBooks, .oldTimeRadio, .gutenberg] {
+            #expect(FreeCatalog.separatesFromLibriVox(other),
+                    "\(other.rawValue) trennt nicht mehr von LibriVox")
+        }
+        // Am VERHALTEN, nicht nur an der Regel — ein echter Titel aus der
+        // gemessenen Verworfen-Liste.
+        let doc = ArchivePodDoc.librivoxAnniversary
+        #expect(!FreeCatalog.isCuratedArchiveDoc(doc, separatingFromLibriVox: true),
+                "die Rot-Probe sieht den Filter nicht — er wirft nichts weg")
+        #expect(FreeCatalog.isCuratedArchiveDoc(doc, separatingFromLibriVox: false),
+                "der Titel faellt weiterhin auf seiner eigenen Quelle")
+        // Die Sperrliste gilt UNABHAENGIG davon weiter, auf beiden Wegen.
+        let gesperrt = ArchivePodDoc.denied
+        #expect(!FreeCatalog.isCuratedArchiveDoc(gesperrt, separatingFromLibriVox: false),
+                "die Sperrliste ist mit der Trennung mitgefallen")
+    }
+
+    private enum ArchivePodDoc {
+        static let librivoxAnniversary = try! JSONDecoder().decode(
+            ArchivePopularDoc.self,
+            from: Data(#"{"identifier":"librivox_8th_anniversary","title":"LibriVox 8th Anniversary Collection"}"#.utf8))
+        static let denied = try! JSONDecoder().decode(
+            ArchivePopularDoc.self,
+            from: Data(#"{"identifier":"HMSUlyssesAM","title":"HMS Ulysses"}"#.utf8))
+    }
+
     /// Genug Bestand in JEDER Katalog-Bahn, damit die Proben oben wirklich
     /// etwas messen (ein gruener Lauf ohne Messung ist der teuerste Ausgang).
     private static func filledRows() -> CatalogSourceLoader.SourceRows {

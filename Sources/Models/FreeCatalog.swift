@@ -380,13 +380,33 @@ nonisolated enum FreeCatalog {
         "HMSUlyssesAM", "PuppetOnAChainAM", "AlistairMacleanTheLastFrontierChapter5",
     ]
 
-    /// The one curation gate of the archive audiobook row: not a LibriVox
-    /// duplicate AND not on the exclusion denylist (P4).
-    static func isCuratedArchiveDoc(_ doc: ArchivePopularDoc) -> Bool {
+    /// The one curation gate of the archive audiobook rows: not on the
+    /// exclusion denylist (P4), and — where it applies — not a LibriVox
+    /// duplicate.
+    ///
+    /// R51 Runde 2: `separatingFromLibriVox` exists because that second half
+    /// is a SEPARATION between two sources, and a separation must never run
+    /// on the source it defines. On the LibriVox page it was a self-filter:
+    /// measured at the live endpoint with the page's own query
+    /// (`collection:librivoxaudio … subject:"poetry"`, 12 rows), it threw
+    /// away **12 of 12** — a shelf whose chevron says 2.865 showed two tiles.
+    /// Where it belongs it costs nothing: 0 of 50 on the archive audiobooks
+    /// (the `NOT collection:librivoxaudio` clause already does the work; the
+    /// text check stays as the cross-collection safety net).
+    static func isCuratedArchiveDoc(_ doc: ArchivePopularDoc,
+                                    separatingFromLibriVox: Bool = true) -> Bool {
         guard let id = doc.identifier, !curatedExclusions.contains(id) else {
-            return doc.identifier == nil ? isNotLibriVoxDuplicate(doc) : false
+            guard doc.identifier == nil else { return false }
+            return separatingFromLibriVox ? isNotLibriVoxDuplicate(doc) : true
         }
-        return isNotLibriVoxDuplicate(doc)
+        return separatingFromLibriVox ? isNotLibriVoxDuplicate(doc) : true
+    }
+
+    /// Does this source NEED the separation? Only a source that is not
+    /// LibriVox itself. Asking the source instead of the call site keeps the
+    /// answer in one place — the same rule the shelf query follows.
+    static func separatesFromLibriVox(_ source: CatalogSource) -> Bool {
+        source != .librivox
     }
 
     static func isNotLibriVoxDuplicate(_ doc: ArchivePopularDoc) -> Bool {
