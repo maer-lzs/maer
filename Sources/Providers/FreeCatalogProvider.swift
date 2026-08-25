@@ -100,9 +100,13 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Auftrag O: is this item a radio-play series bundle (the class that gets
     /// a SHOW PAGE with an episode list instead of the detail sheet)?
-    func isOldTimeRadio(itemId: String) -> Bool {
+    /// R56: die Frage ist „hat dieses Stueck TEILE?", nicht „liegt es in der
+    /// Radio-Sammlung?". Der alte Name behauptete das eine und pruefte das
+    /// andere — die Aufrufer wollten immer nur wissen, ob eine Teileliste
+    /// aufgeht.
+    func hasPartsList(itemId: String) -> Bool {
         guard let collections = itemCollections[itemId] else { return false }
-        return ArchiveItemForm.isRadioPlayBundle(collections: collections)
+        return ArchiveItemForm.hasParts(collections: collections)
     }
 
     /// e948444: stated licence per item id, for the detail sheet.
@@ -399,7 +403,7 @@ final class FreeCatalogProvider: AudioProvider {
             // there the bundle is the unit, not an accident. Read from the
             // item's own collections, so a bundle reached by deep link or from
             // a playlist is no longer dropped for being too long.
-            let cap = ArchiveItemForm.isRadioPlayBundle(collections: collections)
+            let cap = ArchiveItemForm.isCuratedSeriesCollection(collections: collections)
                 ? FreeCatalog.seriesTrackCap : FreeCatalog.defaultTrackCap
             guard FreeCatalog.trackCountPlausible(tracks.count, cap: cap) else {
                 Logger.library.notice("FREECAT gate: \(identifier, privacy: .public) dropped — \(tracks.count) tracks (collection bundle)")

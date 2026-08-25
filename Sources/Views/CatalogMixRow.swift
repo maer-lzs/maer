@@ -52,7 +52,7 @@ struct CatalogMixRow: View {
                 // Auftrag O: OTR bundles push their show page (episode list);
                 // every other catalog item keeps the detail sheet.
                 onTap: {
-                    if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                    if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                         pushFreeAudiobooksRoute(.series(itemId: item.id))
                     } else {
                         detailItem = item

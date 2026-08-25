@@ -655,6 +655,92 @@ struct CatalogStoreReadFenceTests {
         #expect(Set(ImageCache.thumbnailVariants) == Set([400, 600]))
     }
 
+    /// R58 (the owner am Geraet: „Es gibt nur 3 Krimis in Gutenberg?"): die
+    /// Faecher fragten die ALPHABETISCH ersten Begriffe. Krimi bekam „crime"
+    /// (5 Treffer) statt „mystery" (49) und „detective" (47) — 4 statt 141
+    /// Titel; Science-Fiction fragte zwei Begriffe mit zusammen NULL.
+    ///
+    /// Dieselbe Klasse, die der Zaun beim alphabetischen Deckel der
+    /// Musik-Achse gefangen hat — dort gefangen, hier live auf der Flaeche.
+    @Test("ein Fach fragt seine ergiebigsten Begriffe, nie die alphabetisch ersten")
+    func aShelfAsksItsRichestTermsNotItsFirstAlphabetically() {
+        let krimi = CatalogGenreAxis.subjects(forShelf: "crime")
+        #expect(krimi.count >= 3, "die Probe misst nichts")
+        // Die drei, die gefragt werden, sind die gemessen ergiebigsten.
+        let gefragt = Array(krimi.prefix(3))
+        #expect(gefragt.contains("mystery"), "der ergiebigste Krimi-Begriff faellt wieder weg")
+        #expect(gefragt.contains("detective"))
+        // Rot-Probe: alphabetisch waere „crime" vorn — genau der schwache.
+        #expect(krimi.sorted().first == "crime")
+        #expect(gefragt.first != "crime", "die Sortierung ist wieder alphabetisch")
+        // Und die Ordnung faellt monoton mit der gemessenen Ergiebigkeit.
+        let ertrag = krimi.map { CatalogGenreAxis.measuredGutenbergYield[$0] ?? 0 }
+        #expect(ertrag == ertrag.sorted(by: >), "die Reihenfolge folgt nicht der Messung")
+        // Das Fach, das heute LEER war: seine Spitze traegt jetzt.
+        let scifi = CatalogGenreAxis.subjects(forShelf: "scifi")
+        #expect(scifi.first == "science fiction",
+                "Science-Fiction fragt wieder zwei Begriffe mit null Treffern")
+        #expect((CatalogGenreAxis.measuredGutenbergYield["science fiction"] ?? 0) > 0)
+    }
+
+    /// R58, zweite Haelfte: bei archive.org faellt der Deckel ganz. Gemessen
+    /// am Endpunkt (Netlabels, Elektronik-Fach): mit den ersten sechs
+    /// Begriffen **3.395** Eintraege in 0,52 s, mit allen fuenfunddreissig
+    /// **31.338** in 0,58 s. Faktor 9 fuer fuenf Hundertstelsekunden — der
+    /// Deckel kostete fast alles und sparte nichts. Er galt fuer Jamendos
+    /// UNSCHARFE `fuzzytags`, nicht fuer `subject:`, das exakt trifft.
+    @Test("die archive.org-Faecher kuerzen ihre Begriffsliste nicht mehr")
+    func theArchiveShelvesDoNotCapTheirTerms() throws {
+        for path in ["Sources/Networking/FreeCatalogClients.swift",
+                     "Sources/Views/Music/ArchiveMusicPages.swift"] {
+            let text = try String(contentsOf: sourceFile(path), encoding: .utf8)
+            #expect(!text.contains("prefix(6).map { \"subject:"),
+                    "\(path) kuerzt die Begriffe wieder alphabetisch")
+        }
+        // Die Musik-Faecher, bei denen der Fach-Name selbst herausfiel.
+        for shelf in ["electronic", "rock", "world", "pop", "folk", "soul"] {
+            let terms = CatalogGenreAxis.musicSubjects(forShelf: shelf)
+            #expect(terms.contains(shelf), "\(shelf) traegt seinen eigenen Namen nicht")
+            // Rot-Probe: mit dem alten Deckel waere genau das passiert.
+            if terms.count > 6 {
+                #expect(!terms.sorted().prefix(6).contains(shelf),
+                        "die Rot-Probe traegt nicht — hier haette der Deckel nichts gekostet")
+            }
+        }
+    }
+
+    /// R57 (the owner am Geraet: „Geschichte · 1609" und „Biografien · 570"
+    /// beginnen mit exakt denselben zwei Kacheln). Jedes Fach fragte seine
+    /// Quelle mit derselben Sortierung, Seite 1 — ein Titel, der beide
+    /// Faecher traegt, stand also in beiden oben. Die Ueberschneidung ist
+    /// richtig, der gleiche AUSSCHNITT nicht.
+    @Test("benachbarte Faecher greifen an verschiedenen Stellen ihres Bestands")
+    func neighbouringShelvesDoNotShowTheSameExcerpt() {
+        let tag = Date(timeIntervalSince1970: 1_756_000_000)
+        let geschichte = CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: tag)
+        let biografien = CatalogShelfSource.shelfPage(shelf: "biography", rows: 12, on: tag)
+        #expect(geschichte != biografien,
+                "zwei Faecher fragen wieder dieselbe Seite — die Zwillinge sind zurueck")
+        // INVARIANTE 2: innerhalb EINES Tages stabil — eine Reihe, die sich
+        // unter den Fingern umsortiert, ist ein Layout-Sprung in Zeitlupe.
+        #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: tag) == geschichte)
+        #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12,
+                                             on: tag.addingTimeInterval(3600)) == geschichte)
+        // Und am naechsten Tag bewegt sie sich.
+        let morgen = tag.addingTimeInterval(86_400)
+        #expect(CatalogShelfSource.shelfPage(shelf: "history", rows: 12, on: morgen) != geschichte)
+        // Der Startwert haengt am Namen, nicht am Prozess — `hashValue` waere
+        // je Start ein anderer und die Mischung damit nie stabil.
+        #expect(CatalogRotation.salt(forShelf: "history")
+                == CatalogRotation.salt(forShelf: "history"))
+        #expect(CatalogRotation.salt(forShelf: "history")
+                != CatalogRotation.salt(forShelf: "biography"))
+        // Rot-Probe: ohne Startwert waeren beide gleich — das Instrument
+        // sieht den Unterschied also nur wegen des Salzes.
+        #expect(CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0)
+                == CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0))
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

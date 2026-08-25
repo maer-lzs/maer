@@ -197,7 +197,9 @@ struct ArchiveMusicPage: View {
                 let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
                 guard !terms.isEmpty else { continue }
                 group.addTask {
-                    let clause = terms.prefix(6).map { "subject:\"\($0)\"" }
+                    // R58: kein Deckel — bei `subject:` ist ein laengeres ODER
+                    // schlicht mehr Bestand (gemessen: Faktor 9 fuer 0,05 s).
+                    let clause = terms.map { "subject:\"\($0)\"" }
                         .joined(separator: " OR ")
                     do {
                         let hit = try await ArchiveOrgClient.popularWithTotal(
@@ -332,7 +334,7 @@ struct ArchiveMusicShelfPage: View {
         defer { isLoading = false }
         let terms = CatalogGenreAxis.musicSubjects(forShelf: shelfKey)
         guard !terms.isEmpty else { reachedEnd = true; return }
-        let clause = terms.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+        let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
         do {
             let docs = try await ArchiveOrgClient.popularArchiveMusic(
                 query: "\(area.query) AND (\(clause))", rows: pageSize, page: page)

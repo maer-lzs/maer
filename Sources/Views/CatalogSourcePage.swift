@@ -464,6 +464,18 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
     }
 
+    /// R57 INVARIANTE 1: ein Titel darf in zwei Faechern stehen — er gehoert
+    /// ja in beide —, aber nicht als ZWILLING direkt untereinander. Was auf
+    /// dieser Seite schon weiter oben stand, sortiert sich hier nach hinten.
+    /// Es LEERT kein Fach (dieselbe Regel wie der Malus der Mischreihen: ein
+    /// Ausschluss nach hinten, kein Wegwerfen).
+    private func withoutTwins(_ items: [LibraryItem]) -> [LibraryItem] {
+        let oben = Set(shelfStock.values.flatMap { $0.items.prefix(RowPreview.limit) }.map(\.id))
+        guard !oben.isEmpty else { return items }
+        let frisch = items.filter { !oben.contains($0.id) }
+        return frisch + items.filter { oben.contains($0.id) }
+    }
+
     private func applyShelf(_ answered: (String, CatalogShelfSource.Answer?, String?),
                             provider: FreeCatalogProvider,
                             failures: inout [String: String]) {
@@ -476,11 +488,11 @@ struct CatalogSourcePage: View {
                     $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
             }.compactMap { provider.remember(popular: $0) }
             guard !kept.isEmpty else { return }
-            shelfStock[key] = (kept, total)
+            shelfStock[key] = (withoutTwins(kept), total)
         case .gutenberg(let books, let total):
             let kept = books.compactMap { provider.remember(gutenberg: $0) }
             guard !kept.isEmpty else { return }
-            shelfStock[key] = (kept, total)
+            shelfStock[key] = (withoutTwins(kept), total)
         case .unsupported, .none:
             return
         }
@@ -493,7 +505,7 @@ struct CatalogSourcePage: View {
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
             onTap: {
-                if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                     pushFreeAudiobooksRoute(.series(itemId: item.id))
                 } else {
                     detailItem = item
@@ -654,7 +666,7 @@ struct CatalogPopularPage: View {
                     FreeCatalogBookTile(
                         item: item,
                         onTap: {
-                            if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                            if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                                 pushFreeAudiobooksRoute(.series(itemId: item.id))
                             } else {
                                 detailItem = item
@@ -761,7 +773,7 @@ struct CatalogShelfPage: View {
                         // P7/O: OTR bundles in shelf grids push their show
                         // page too — same tap class everywhere.
                         onTap: {
-                            if FreeCatalogProvider.shared.isOldTimeRadio(itemId: item.id) {
+                            if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
                                 pushFreeAudiobooksRoute(.series(itemId: item.id))
                             } else {
                                 detailItem = item

@@ -296,6 +296,13 @@ nonisolated enum CatalogShelfSource {
         return .archive(docs: hit.docs, total: hit.total)
     }
 
+    /// R57: welche Seite die VORSCHAU eines Fachs zeigt. Nur die Vorschau —
+    /// wer die Vollseite oeffnet, blaettert von vorn.
+    static func shelfPage(shelf: String, rows: Int, on date: Date = Date()) -> Int {
+        CatalogRotation.page(total: 600, rowSize: rows, on: date,
+                             salt: CatalogRotation.salt(forShelf: shelf))
+    }
+
     static func page(source: CatalogSource, shelf: String, languages: [String],
                      rows: Int, page: Int = 1) async throws -> Answer {
         // R47: ein Jahrzehnt-Fach laeuft ueber dieselbe EINE Tuer wie ein
@@ -308,23 +315,55 @@ nonisolated enum CatalogShelfSource {
         switch source {
         case .librivox, .archiveBooks, .oldTimeRadio:
             guard let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { return .unsupported }
-            let clause = terms.prefix(6).map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+            // R58: KEIN Deckel. Er stand hier aus dem Jamendo-Grund („ein
+            // OR-Join aus fuenfunddreissig Begriffen ist Rauschen statt
+            // Reichweite") — der gilt fuer `fuzzytags` mit unscharfen
+            // Treffern, nicht fuer `subject:"…"`, das EXAKT trifft. Am
+            // Endpunkt gemessen (Netlabels): Elektronik 3.395 gegen 31.338
+            // Eintraege, und die Abfrage dauert 0,52 s gegen 0,58 s.
+            // **Faktor 9 an Bestand fuer fuenf Hundertstelsekunden.**
+            let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+            // R57: die Vorschau greift je Fach an einer ANDEREN Stelle des
+            // Bestands — sonst beginnen zwei Faecher, die sich einen Titel
+            // teilen, mit derselben Kachel.
             let hit = try await ArchiveOrgClient.popularWithTotal(
-                query: "\(base) AND (\(clause))", rows: rows, page: page)
+                query: "\(base) AND (\(clause))", rows: rows,
+                page: page == 1 ? shelfPage(shelf: shelf, rows: rows) : page)
             return .archive(docs: hit.docs, total: hit.total)
         case .gutenberg:
-            // gutendex takes ONE topic per request; a shelf folds a few, so
-            // the same two the full page uses are asked and merged.
-            var books: [GutenbergClient.Book] = []
-            var total = 0
-            var sawTotal = false
-            for topic in terms.prefix(2) {
-                let hit = try await GutenbergClient.audiobooksWithTotal(
-                    languages: languages, page: page, topic: topic)
-                books += hit.books
-                if let count = hit.total { total += count; sawTotal = true }
+            // gutendex takes ONE topic per request. R58: die drei
+            // ERGIEBIGSTEN statt der alphabetisch ersten zwei — und sie
+            // laufen NEBENLAEUFIG, denn nacheinander kostete jeder Begriff
+            // volle 30 s kalt. Drei gleichzeitig kosten damit so viel wie
+            // einer, und der Deckel muss nicht mehr gegen die Reichweite
+            // abgewogen werden.
+            let topics = Array(terms.prefix(3))
+            let hits = await withTaskGroup(of: (books: [GutenbergClient.Book], total: Int?)?.self) { group in
+                for topic in topics {
+                    group.addTask {
+                        try? await GutenbergClient.audiobooksWithTotal(
+                            languages: languages, page: page, topic: topic)
+                    }
+                }
+                var out: [(books: [GutenbergClient.Book], total: Int?)] = []
+                for await hit in group { if let hit { out.append(hit) } }
+                return out
             }
-            return .gutenberg(books: books, total: sawTotal ? total : nil)
+            guard !hits.isEmpty else { throw URLError(.cannotLoadFromNetwork) }
+            var seen = Set<Int>()
+            var books: [GutenbergClient.Book] = []
+            for hit in hits where !hit.books.isEmpty {
+                for book in hit.books where seen.insert(book.id).inserted { books.append(book) }
+            }
+            // R58 Invariante 3: steht am Fach eine Zahl, ist es die Zahl des
+            // BESTANDS. Ueber mehrere Themen ist sie das nicht — die Mengen
+            // ueberschneiden sich, und eine Summe waere eine erfundene Zahl
+            // (R46: nie eine geratene Menge). Also gibt es die Zahl nur, wo
+            // genau EIN Thema das Fach traegt; sonst die Existenz-Form des
+            // Chevrons. Vorher war es beides gemischt — deshalb trug Krimi
+            // keine Zahl und Romane eine.
+            let total = topics.count == 1 ? hits.first?.total : nil
+            return .gutenberg(books: books, total: total)
         default:
             return .unsupported
         }

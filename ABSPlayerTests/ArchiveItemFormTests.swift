@@ -48,13 +48,33 @@ struct ArchiveItemFormTests {
         #expect(ArchiveItemForm.of(collections: ["georgeblood", "oldtimeradio"]) == .work)
     }
 
-    @Test("Radio-play bundles are recognised by their collection")
-    func radioPlayBundle() {
-        #expect(ArchiveItemForm.isRadioPlayBundle(collections: ["oldtimeradio", "radioprograms"]))
+    /// R56: aus EINEM Namen sind ZWEI Fragen geworden, weil es zwei waren.
+    @Test("kuratierte Seriensammlung: nur dort ist das Buendel die Einheit")
+    func curatedSeriesCollection() {
+        #expect(ArchiveItemForm.isCuratedSeriesCollection(collections: ["oldtimeradio", "radioprograms"]))
         // The sibling collection alone is not the curated one we query.
-        #expect(!ArchiveItemForm.isRadioPlayBundle(collections: ["radioprograms"]))
-        #expect(!ArchiveItemForm.isRadioPlayBundle(collections: ["librivoxaudio"]))
-        #expect(!ArchiveItemForm.isRadioPlayBundle(collections: []))
+        #expect(!ArchiveItemForm.isCuratedSeriesCollection(collections: ["radioprograms"]))
+        #expect(!ArchiveItemForm.isCuratedSeriesCollection(collections: ["librivoxaudio"]))
+        #expect(!ArchiveItemForm.isCuratedSeriesCollection(collections: []))
+    }
+
+    /// R56 (the owner am Geraet: ein Archive-Hoerbuch mit acht benannten
+    /// Dateien, keine auswaehlbar): die Teileliste haengt an der FORM, nicht
+    /// an der Sammlung. Vorher fielen die Archive-Hoerbuecher durch beide
+    /// Raster — keine LibriVox-Kapitel, keine OTR-Folgenseite.
+    @Test("ein Werk hat Teile, gleich in welcher der drei Sammlungen es liegt")
+    func everyWorkHasParts() {
+        #expect(ArchiveItemForm.hasParts(collections: ["oldtimeradio"]))
+        #expect(ArchiveItemForm.hasParts(collections: ["librivoxaudio"]))
+        // Der Fall aus the owner's Bild — vorher fiel er durch.
+        #expect(ArchiveItemForm.hasParts(collections: ["audio_bookspoetry"]),
+                "das Archive-Hoerbuch bekommt wieder keine Teileliste")
+        // Ein ALBUM hat keine Teile — seine Stuecke sind eigene Eintraege.
+        #expect(!ArchiveItemForm.hasParts(collections: ["netlabels"]))
+        #expect(!ArchiveItemForm.hasParts(collections: ["georgeblood"]))
+        // Und ohne Aussage der Quelle wird nichts geraten.
+        #expect(!ArchiveItemForm.hasParts(collections: []))
+        #expect(!ArchiveItemForm.hasParts(collections: ["radioprograms"]))
     }
 
     /// Both lists hold only collections the app itself queries — a name nobody
@@ -107,7 +127,7 @@ struct ArchiveItemFormTests {
             collection: ArchiveStringList(["oldtimeradio", "radioprograms"]))
         let item = try #require(provider.remember(popular: doc))
         #expect(provider.archiveForm(itemId: item.id) == .work)
-        #expect(provider.isOldTimeRadio(itemId: item.id))
+        #expect(provider.hasPartsList(itemId: item.id))
 
         let album = ArchivePopularDoc(
             identifier: "formtest-net", title: ArchiveStringList(["A"]),
@@ -116,10 +136,10 @@ struct ArchiveItemFormTests {
             collection: ArchiveStringList(["bad-panda", "netlabels"]))
         let albumItem = try #require(provider.remember(popular: album))
         #expect(provider.archiveForm(itemId: albumItem.id) == .album)
-        #expect(!provider.isOldTimeRadio(itemId: albumItem.id))
+        #expect(!provider.hasPartsList(itemId: albumItem.id))
 
         // Nothing known yet: no form, no claim.
         #expect(provider.archiveForm(itemId: FreeCatalog.archivePrefix + "never-seen") == nil)
-        #expect(!provider.isOldTimeRadio(itemId: FreeCatalog.archivePrefix + "never-seen"))
+        #expect(!provider.hasPartsList(itemId: FreeCatalog.archivePrefix + "never-seen"))
     }
 }

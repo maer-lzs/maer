@@ -918,7 +918,7 @@ struct LibraryView: View {
             // Q1: NACHSCHLAGEN — the existing detail sheet with the prominent
             // Play (the item was remembered by the search fan-out). OTR-class
             // items get their show page like everywhere else.
-            if FreeCatalogProvider.shared.isOldTimeRadio(itemId: result.id) {
+            if FreeCatalogProvider.shared.hasPartsList(itemId: result.id) {
                 navigationPath.append(FreeAudiobooksRoute.series(itemId: result.id))
             } else if let item = FreeCatalogProvider.shared.libraryItem(forId: result.id) {
                 freeBookDetail = item

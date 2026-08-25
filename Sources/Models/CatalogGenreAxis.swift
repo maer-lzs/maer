@@ -328,13 +328,104 @@ nonisolated enum CatalogGenreAxis {
 
     // MARK: - R1 (09.08.): the shelves ask the SERVER, not a local pool
 
+    /// R58 (the owner am Geraet: „Es gibt nur 3 Krimis in Gutenberg?"): wie
+    /// ERGIEBIG jeder Begriff ist, gemessen an gutendex' Hoerbuch-Bestand
+    /// (26.08.). Die Zahl steht hier als DATEN, weil die Auswahl sie braucht
+    /// und die App sie nicht zur Laufzeit messen kann.
+    ///
+    /// Der Grund: die Faecher fragten `terms.prefix(2)` einer ALPHABETISCH
+    /// sortierten Liste. Krimi bekam damit „crime" (5) und
+    /// „crime & mystery fiction" statt „mystery" (49) und „detective" (47) —
+    /// **4 statt 141 Titel**, und Science-Fiction fragte zwei Begriffe mit
+    /// zusammen NULL Treffern. Dieselbe Falle, die der Zaun beim
+    /// alphabetischen Deckel der Musik-Achse gefangen hat; hier stand sie
+    /// live auf der Flaeche.
+    ///
+    /// Ein Begriff ohne Eintrag zaehlt als 0 und faellt hinter alle
+    /// gemessenen — nie vor sie.
+    static let measuredGutenbergYield: [String: Int] = [
+        "fiction": 503,
+        "poetry": 111,
+        "music": 99,
+        "children": 97,
+        "history": 87,
+        "adventure": 67,
+        "adventure stories": 62,
+        "science fiction": 58,
+        "juvenile fiction": 51,
+        "short stories": 50,
+        "mystery": 48,
+        "detective": 47,
+        "detective and mystery stories": 46,
+        "bible": 45,
+        "children's literature": 39,
+        "love stories": 38,
+        "humorous stories": 35,
+        "fairy tales": 31,
+        "historical fiction": 31,
+        "domestic fiction": 30,
+        "satire": 26,
+        "bildungsromans": 23,
+        "horror": 23,
+        "horror tales": 23,
+        "sea stories": 22,
+        "children's stories": 18,
+        "drama": 16,
+        "detective fiction": 14,
+        "biography": 13,
+        "philosophy": 13,
+        "war stories": 12,
+        "ghost stories": 9,
+        "folklore": 8,
+        "epistolary fiction": 7,
+        "romance": 6,
+        "christianity": 5,
+        "gothic fiction": 5,
+        "comedy": 4,
+        "crime": 4,
+        "plays": 4,
+        "religion": 3,
+        "children's fiction": 2,
+        "western": 2,
+        "musical": 1,
+        "action & adventure fiction": 0,
+        "autobiography": 0,
+        "biography & autobiography": 0,
+        "crime & mystery fiction": 0,
+        "crime drama": 0,
+        "fantastic fiction": 0,
+        "general fiction": 0,
+        "horror & supernatural fiction": 0,
+        "humorous fiction": 0,
+        "literary fiction": 0,
+        "memoirs": 0,
+        "myths, legends & fairy tales": 0,
+        "nautical & marine fiction": 0,
+        "sci-fi": 0,
+        "single author collections": 0,
+        "suspense": 0,
+        "theology": 0,
+        "thriller": 0,
+        "variety": 0,
+        "westerns": 0,
+    ]
+
     /// A shelf → the subject terms for the SUBJECT-based catalogs
     /// (archive.org `subject:`, gutendex `topic=`). Both spelling families
     /// ride along, because a shelf can be reached from either.
+    ///
+    /// R58: sortiert nach gemessener ERGIEBIGKEIT, nicht alphabetisch. Wer
+    /// kuerzt, kuerzt damit die schwaechsten weg statt der staerksten;
+    /// archive.org kuerzt gar nicht mehr (dort ist ein laengeres ODER
+    /// schlicht mehr Bestand).
     static func subjects(forShelf shelf: String) -> [String] {
         let terms = lcshAxis.filter { $0.value == shelf }.map(\.key)
             + librivoxAxis.filter { $0.value == shelf }.map(\.key)
-        return Array(Set(terms)).sorted()
+        return Array(Set(terms)).sorted {
+            let left = measuredGutenbergYield[$0] ?? 0
+            let right = measuredGutenbergYield[$1] ?? 0
+            return left == right ? $0 < $1 : left > right
+        }
     }
 
     /// R2: on ONE page a title belongs to exactly one shelf — the first in

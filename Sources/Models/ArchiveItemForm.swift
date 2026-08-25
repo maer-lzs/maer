@@ -54,7 +54,31 @@ nonisolated enum ArchiveItemForm: String, Sendable {
     /// — it used to be an in-memory set that only the radio-play row filled, so
     /// the same item was a bundle when it came from that row and an ordinary
     /// item when it came from search, a playlist or a cold start.
-    static func isRadioPlayBundle(collections: [String]) -> Bool {
+    /// R56 (the owner am Geraet: ein Archive-Hoerbuch ohne Teileliste, gemessen
+    /// acht benannte Audiodateien bei „Weird Tales", keine auswaehlbar).
+    ///
+    /// Die Frage hiess frueher „liegt es in `oldtimeradio`?" — also nach der
+    /// SAMMLUNG statt nach der FORM. Damit fielen die Archive-Hoerbuecher
+    /// durch BEIDE Raster: sie sind keine LibriVox-Buecher (also keine
+    /// Kapitel) und nicht Old Time Radio (also keine Folgenseite), obwohl sie
+    /// genau wie beide aus benannten Teilen bestehen.
+    ///
+    /// Ein WERK ist ein Werk, gleich in welcher der drei Sammlungen es liegt.
+    /// Ob am Ende wirklich eine Liste erscheint, entscheidet die Teilezahl —
+    /// EIN Teil bekommt keine Liste, das waere die R50-Luege in neuer Form.
+    static func hasParts(collections: [String]) -> Bool {
+        of(collections: collections) == .work
+    }
+
+    /// R56: die ANDERE Frage, die frueher an demselben Namen hing — ist das
+    /// eine KURATIERTE SERIENSAMMLUNG? Dort ist das Buendel die Einheit
+    /// (Gunsmoke 487 Folgen, Suspense 911), also gilt die hohe Teile-Grenze.
+    /// Fuer ein LibriVox-Buch oder ein Archive-Hoerbuch gilt sie NICHT — dort
+    /// waeren hunderte Teile ein Sammelband und kein Werk.
+    ///
+    /// Ein Name, zwei Fragen war der eigentliche Fehler: „hat es Teile?" und
+    /// „darf es hunderte haben?" sind verschiedene Saetze.
+    static func isCuratedSeriesCollection(collections: [String]) -> Bool {
         collections.contains("oldtimeradio")
     }
 }

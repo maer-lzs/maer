@@ -123,9 +123,16 @@ struct PodcastsView: View {
                         .padding(.horizontal)
                     }
                     nextUpSection
-                    hoerspieleSection
+                    // R55 (the owner's ENTSCHEID): eigener Bestand vor
+                    // Schaufenster. „Empfohlen" und „Neue Folgen" stehen
+                    // hoeher, „Hoerspiele zum Abonnieren" rutscht zwei Reihen
+                    // runter — der Podcast-Tab ist die Flaeche der ABOS, und
+                    // die Kuration ist die Tuer nach draussen, nicht der
+                    // Anfang. Passt zum R52-Entscheid: was hier steht, ist
+                    // Feed-Kuration, weil man Feeds abonniert.
                     recommendationsSection
                     latestEpisodesSection
+                    hoerspieleSection
                     // The server group is daily stock like the
                     // subscriptions — it sits right after Latest Episodes,
                     // ABOVE Premium and the subscription grid, not trailing.
