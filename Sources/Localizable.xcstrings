@@ -154,6 +154,16 @@
         }
       }
     },
+    "Loading parts…" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teile werden geladen …"
+          }
+        }
+      }
+    },
     "Medium" : {
       "localizations" : {
         "de" : {

@@ -35,14 +35,33 @@ struct ArchiveMusicContractTests {
         }
     }
 
-    @Test("no area offers an undivided view of the 78s collection")
-    func noUndividedShellacView() {
-        // Auflage 1: an area on georgeblood is only ever a shelf. The
-        // classical area is the historical shelf of the same collection and
-        // carries its own subject, so it satisfies the same rule.
-        for area in ArchiveMusicCatalog.all where area.query.contains("collection:georgeblood") {
-            #expect(area.query.contains("subject:"),
-                    "\(area.key) would show the whole collection unfiltered")
+    /// R62 (OWNER DECISION: „beim Schellack genauso aufsetzen"): die alte
+    /// Regel „ein Bereich auf georgeblood ist IMMER nur ein Fach" ist
+    /// aufgehoben — die Flaeche bekommt ihre Beliebt-Reihe. **Der GRUND der
+    /// alten Regel bleibt aber gueltig**, und deshalb stirbt der Fall nicht,
+    /// sondern wandert: sie existierte, weil die frueher entfernte
+    /// Gemeinfrei-Behauptung nicht zurueckkommen darf (die Sammlung fuehrt
+    /// KEIN Lizenzfeld, gemessen 0 von 187.034).
+    ///
+    /// Neue Regel: ein Bereich auf georgeblood ist entweder ein Fach (mit
+    /// Subject-Klausel) oder die EINE ausdruecklich benannte Eltern-Abfrage —
+    /// und die behauptet nichts ueber Rechte.
+    @Test("nur EIN Bereich sieht die ganze 78er-Sammlung, und er behauptet nichts")
+    func onlyTheNamedParentSeesTheWholeCollection() {
+        let ganze = ArchiveMusicCatalog.all
+            .filter { $0.query.contains("collection:georgeblood") && !$0.query.contains("subject:") }
+        #expect(ganze.map(\.key) == [ArchiveMusicCatalog.shellacAll.key],
+                "ein unbenannter Bereich zeigt die ganze Sammlung ungefiltert")
+        // Der Grund der alten Regel, als eigener Satz gepruefet.
+        for area in ganze {
+            let text = (area.headerNote + " " + area.title).lowercased()
+            #expect(!text.contains("public domain"))
+            #expect(!text.contains("gemeinfrei"))
+        }
+        // Und jedes FACH bleibt ein Fach.
+        for shelf in ArchiveMusicCatalog.shellacShelves {
+            #expect(shelf.query.contains("subject:"),
+                    "\(shelf.key) would show the whole collection unfiltered")
         }
     }
 
@@ -68,6 +87,36 @@ struct ArchiveMusicContractTests {
         #expect(ArchiveMusicCatalog.netlabels.query.contains("collection:netlabels"))
         #expect(FreeCatalog.licenceLabel(nil) == FreeCatalog.unstatedRights,
                 "ein Eintrag ohne Angabe schweigt wieder")
+        #expect(!FreeCatalog.mayDownload(licenceURL: nil))
+    }
+
+    /// R62 (the reviewer's Auflage 1): die neue „Beliebt"-Reihe der Schellack-Flaeche
+    /// muss DIESELBE Grundlage haben wie ihre Faecher — sonst zapft sie eine
+    /// andere Menge an als das, was darunter steht, und der Vertragstest
+    /// faengt es nicht, weil er nur die Faecher kannte. **Deshalb zieht er
+    /// jetzt mit.**
+    @Test("die Eltern-Abfrage teilt die Grundlage ihrer Faecher")
+    func theParentQuerySharesItsShelvesFoundation() {
+        let eltern = ArchiveMusicCatalog.shellacAll
+        #expect(eltern.query.contains("collection:georgeblood"),
+                "die Beliebt-Reihe zapft eine andere Sammlung an als ihre Faecher")
+        #expect(eltern.query.contains("mediatype:(audio)"))
+        // Und sie traegt KEINE Fach-Klausel — sonst waere sie ein zehntes Fach.
+        #expect(!eltern.query.contains("subject:"))
+        // Jedes Fach steht auf derselben Sammlung.
+        for shelf in ArchiveMusicCatalog.shellacShelves {
+            #expect(shelf.query.contains("collection:georgeblood"),
+                    "\(shelf.key) steht auf einer anderen Grundlage als die Beliebt-Reihe")
+            #expect(shelf.query.contains("subject:"), "\(shelf.key) hat seine Fach-Klausel verloren")
+        }
+        // Rot-Probe: die breitere 78rpm-Sammlung waere die zweite Wahrheit.
+        #expect(!eltern.query.contains("78rpm"))
+        // R47/R62: die Sammlung fuehrt KEIN Lizenzfeld (gemessen: 0 von
+        // 187.034). Die Reihe besteht also ganz aus „Rechtelage nicht
+        // angegeben" — anzeigen ja, herunterladen nein. Die frueher
+        // entfernte Gemeinfrei-Behauptung darf nicht zurueckkommen.
+        #expect(!eltern.headerNote.lowercased().contains("public domain"))
+        #expect(!eltern.headerNote.lowercased().contains("gemeinfrei"))
         #expect(!FreeCatalog.mayDownload(licenceURL: nil))
     }
 

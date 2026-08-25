@@ -49,6 +49,10 @@ enum MusicRoute: Hashable {
     /// R-Netlabels: ein Genre-Fach eines Archive-Musikbereichs — dieselbe
     /// Form wie das Jamendo-Fach, nur mit der Archive-Abfrage dahinter.
     case archiveMusicShelf(area: String, shelf: String)
+    /// R62: die Vollseite hinter dem „Beliebt"-Chevron eines Musik-Bereichs —
+    /// dieselbe Trennung wie bei den Katalogseiten (Uebersicht = Reihen,
+    /// Scrollen = eigene Seite). EINE Ansicht, zwei Rollen.
+    case archiveMusicPopular(String)
     /// Auftrag L1: the small music-catalog page behind Start's mixed
     /// "Entdecken · Musik" row (the I2 surface, earlier) — one source row per
     /// active catalog (classical · Jamendo), each heading onto its existing
@@ -68,6 +72,7 @@ enum MusicRoute: Hashable {
         case let (.jamendoShelf(a), .jamendoShelf(b)): return a == b
         case let (.archiveMusicShelf(a1, s1), .archiveMusicShelf(a2, s2)):
             return a1 == a2 && s1 == s2
+        case let (.archiveMusicPopular(a), .archiveMusicPopular(b)): return a == b
         case let (.archiveMusic(a), .archiveMusic(b)): return a == b
         case let (.catalogAlbum(a), .catalogAlbum(b)): return a == b
         case let (.maerPlaylist(a), .maerPlaylist(b)): return a == b
@@ -98,6 +103,7 @@ enum MusicRoute: Hashable {
         case .jamendoShelf(let k): hasher.combine(13); hasher.combine(k)
         case .archiveMusicShelf(let a, let sh):
             hasher.combine(17); hasher.combine(a); hasher.combine(sh)
+        case .archiveMusicPopular(let a): hasher.combine(18); hasher.combine(a)
         }
     }
 
@@ -123,6 +129,7 @@ enum MusicRoute: Hashable {
         case .freeCatalogArea: return "music-route-free-catalog-area"
         case .jamendoShelf: return "music-route-jamendo-shelf"
         case .archiveMusicShelf: return "music-route-archive-music-shelf"
+        case .archiveMusicPopular: return "music-route-archive-music-popular"
         }
     }
 }
@@ -196,6 +203,13 @@ extension View {
             case .archiveMusicShelf(let areaKey, let shelfKey):
                 ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
                                       playerCoordinator: playerCoordinator)
+            case .archiveMusicPopular(let areaKey):
+                // R62: DIESELBE Ansicht, ohne die Faecher — die Vollseite ist
+                // keine zweite Seite, sondern dieselbe in ihrer zweiten Rolle.
+                if let area = ArchiveMusicCatalog.all.first(where: { $0.key == areaKey }) {
+                    ArchiveMusicPage(area: area.withoutGenreShelves,
+                                     playerCoordinator: playerCoordinator)
+                }
             case .shelfPage(let shelf):
                 MusicShelfPage(shelf: shelf, playerCoordinator: playerCoordinator)
             case .freeJamendo:

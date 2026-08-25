@@ -59,13 +59,18 @@ struct ArchiveMusicPage: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         ArchiveRightsNote()
-                        ForEach(genreShelves, id: \.key) { shelf in
-                            genreRow(shelf)
-                        }
-                        if !genreShelves.isEmpty {
-                            RowHeading.plain("Popular")
-                        }
-                        CoverGrid(columns: columns) {
+                        // R62 (the owner's ENTSCHEID, dieselbe Ordnung wie die
+                        // Katalogseiten aus R51): „Beliebt" steht OBEN als
+                        // Kachelreihe mit Chevron, die Faecher darunter. Das
+                        // endlose Nachladen lebt auf der Vollseite hinter dem
+                        // Chevron weiter — dort, wo Scrollen die Form ist.
+                        if area.hasGenreShelves {
+                            popularRow
+                            ForEach(genreShelves, id: \.key) { shelf in
+                                genreRow(shelf)
+                            }
+                        } else {
+                            CoverGrid(columns: columns) {
                             ForEach(items) { item in
                                 // Shared catalog tile (Regel 2): carries the
                                 // licence capsule (40b8f96) — which is what
@@ -97,9 +102,10 @@ struct ArchiveMusicPage: View {
                                 }
                             }
                         }
-                        .padding(.horizontal)
-                        if isLoading && !items.isEmpty {
-                            ProgressView().frame(maxWidth: .infinity).padding()
+                            .padding(.horizontal)
+                            if isLoading && !items.isEmpty {
+                                ProgressView().frame(maxWidth: .infinity).padding()
+                            }
                         }
                     }
                     .padding(.top, TabContentLayout.topInset)
@@ -126,6 +132,41 @@ struct ArchiveMusicPage: View {
         }
         .sheet(item: $detailItem) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
+        }
+    }
+
+    /// R62: dieselbe Form wie `CatalogSourcePage.popularRow` — benannte Reihe
+    /// mit Chevron, das endlose Nachladen auf der Vollseite dahinter.
+    @ViewBuilder
+    private var popularRow: some View {
+        let preview = RowPreview.cut(items)
+        if !preview.isEmpty {
+            RowHeading.entry("Popular", destination: MusicRoute.archiveMusicPopular(area.key))
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 14) {
+                    ForEach(preview) { item in
+                        FreeCatalogBookTile(
+                            item: item,
+                            placeholderSystemImage: area.placeholderSystemImage,
+                            onTap: {
+                                Task {
+                                    await CatalogTap.open(item: item,
+                                                          coordinator: playerCoordinator,
+                                                          pushMusicRoute: { pushRoute($0) })
+                                }
+                            })
+                        .contextMenu {
+                            Button { detailItem = item } label: {
+                                Label("Details", systemImage: "info.circle")
+                            }
+                            CatalogQueueButtons(itemId: item.id)
+                        }
+                        .cardRowSlot(spacing: 14)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .scrollClipDisabled()
         }
     }
 
@@ -383,6 +424,22 @@ struct ShellacShelvesPage: View {
                         Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
                     }
                 }
+                // R62 (the owner: „beim Schellack genauso aufsetzen"): dieselbe
+                // Ordnung wie ueberall — „Beliebt" oben als Reihe mit Chevron,
+                // die neun Faecher darunter. Der alte Kommentar „the shelves
+                // ARE the surface" gilt damit nicht mehr; die Eltern-Abfrage
+                // hat DIESELBE Grundlage wie die Faecher (georgeblood), sonst
+                // waere die Reihe eine zweite Wahrheit.
+                VStack(alignment: .leading, spacing: 10) {
+                    RowHeading.entry("Popular",
+                                     destination: MusicRoute.archiveMusicPopular(
+                                        ArchiveMusicCatalog.shellacAll.key))
+                    if let beliebt = rows[ArchiveMusicCatalog.shellacAll.key], !beliebt.isEmpty {
+                        tileRow(beliebt, shelf: ArchiveMusicCatalog.shellacAll)
+                    } else {
+                        ProgressView().frame(maxWidth: .infinity).padding(.vertical, 8)
+                    }
+                }
                 ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
                     if let items = rows[shelf.key], !items.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
@@ -442,9 +499,15 @@ struct ShellacShelvesPage: View {
         guard rows.isEmpty else { return }
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
         let provider = FreeCatalogProvider.shared
-        for shelf in ArchiveMusicCatalog.shellacShelves {
+        // R62: die Eltern-Abfrage laeuft mit — sie ist die „Beliebt"-Reihe
+        // und teilt die Grundlage der Faecher.
+        for shelf in [ArchiveMusicCatalog.shellacAll] + ArchiveMusicCatalog.shellacShelves {
             do {
-                let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12, on: Date())
+                // R57: je Flaeche eine eigene Tagesseite, damit die
+                // Beliebt-Reihe nicht mit einem Fach identisch beginnt.
+                let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12,
+                                                on: Date(),
+                                                salt: CatalogRotation.salt(forShelf: shelf.key))
                 let docs = try await ArchiveOrgClient.popularMusic(area: shelf, rows: 12, page: page)
                 Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
                 rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }

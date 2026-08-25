@@ -29,6 +29,15 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// collections do — a shelf area (Schellack) is already one genre, and a
     /// second cut inside it would be a shelf of a shelf.
     var hasGenreShelves: Bool = false
+
+    /// R62: derselbe Bereich in seiner zweiten Rolle — die Vollseite hinter
+    /// dem „Beliebt"-Chevron zeigt das endlose Raster OHNE die Faecher. Eine
+    /// Ansicht, zwei Rollen; keine zweite Seite, die auseinanderdriften kann.
+    var withoutGenreShelves: ArchiveMusicArea {
+        var copy = self
+        copy.hasGenreShelves = false
+        return copy
+    }
     /// Stock MEASURED on 09.08. — the rotation window is a tenth of it
     /// (`CatalogRotation`). Drift of a few percent only shifts the window
     /// slightly, so this does not need to be exact, only honest.
@@ -106,8 +115,31 @@ nonisolated enum ArchiveMusicCatalog {
             measuredTotal: total)
     }
 
+    /// R62 (the owner: „beim Schellack genauso aufsetzen"): die ELTERN-Abfrage
+    /// der Schellack-Flaeche — sie gab es nicht, weil die neun Faecher je
+    /// eine eigene Abfrage tragen und niemand nach der ganzen Flaeche fragte.
+    ///
+    /// **Dieselbe Grundlage wie die Faecher** (`collection:georgeblood`),
+    /// nicht die breitere `78rpm`-Sammlung — sonst zapfte die Beliebt-Reihe
+    /// eine andere Menge an als ihre Faecher, und das waere genau die zweite
+    /// Wahrheit, gegen die dieser Zug laeuft. Der Vertragstest prueft es mit.
+    ///
+    /// **Rechtelage:** gemessen tragen NULL von 187.034 Eintraegen eine
+    /// Lizenzangabe. Die Reihe besteht also vollstaendig aus „Rechtelage
+    /// nicht angegeben" — nach R47 zulaessig (anzeigen ja, herunterladen
+    /// nein), und die frueher entfernte Gemeinfrei-Behauptung kommt dadurch
+    /// NICHT durch die Hintertuer zurueck: die Kapsel je Titel und die
+    /// archive.org-Warnung gelten unveraendert.
+    static let shellacAll = ArchiveMusicArea(
+        key: "shellac-all",
+        query: "collection:georgeblood AND mediatype:(audio)",
+        title: String(localized: "Popular"),
+        headerNote: String(localized: "Digitised 78 rpm records from the Internet Archive — separate from your own library. The recording year is the only rights information the source states."),
+        placeholderSystemImage: "opticaldisc.fill",
+        measuredTotal: 187_034)
+
     /// Every area that has its own full page (for contract tests).
-    static var all: [ArchiveMusicArea] { [netlabels] + shellacShelves }
+    static var all: [ArchiveMusicArea] { [netlabels, shellacAll] + shellacShelves }
 
     /// The shelf behind a key — for the few callers that address one directly
     /// (search deck, the popularity row on Home).

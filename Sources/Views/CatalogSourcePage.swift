@@ -884,6 +884,8 @@ struct ArchiveSeriesPage: View {
     var flavor: Flavor = .series
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detail: LibraryItemDetail?
+    /// R61: der billige Kopf, damit das Blatt nicht auf die Liste wartet.
+    @State private var quick: LibraryItemDetail?
     @State private var failed = false
     @State private var visibleCount = 100
 
@@ -936,14 +938,31 @@ struct ArchiveSeriesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
+                // R61 (the owner, H3: „Liste ist da, braucht nur sehr lange"):
+                // das Blatt wartet NICHT mehr auf die Teileliste. Gemessen
+                // haengt die Antwortzeit nicht an der Datenmenge, sondern an
+                // archive.orgs Warteschlange (2 kB in 26 s, 1,3 MB in 11 s) —
+                // ein kleinerer Abruf hilft also nicht, das Warten aus dem Weg
+                // zu nehmen schon. Kopf, Titel und Beschreibung stehen sofort
+                // aus dem billigen Teilpfad; die Liste kommt darunter, mit
+                // BENANNTEM Ladezustand statt leerer Flaeche.
                 if let detail {
                     header(detail)
                     episodeList
-                } else if failed {
-                    Text("Could not load the episode list. Tap to try again.")
-                        .font(.footnote).foregroundStyle(.secondary)
+                } else if let quick {
+                    header(quick)
+                    if failed {
+                        listProblem
+                    } else {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                            Text("Loading parts…")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
                         .padding(.horizontal)
-                        .onTapGesture { failed = false; Task { await load() } }
+                    }
+                } else if failed {
+                    listProblem
                 } else {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 }
@@ -964,7 +983,37 @@ struct ArchiveSeriesPage: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
+        .task {
+            async let kopf: Void = loadQuickHeader()
+            await load()
+            await kopf
+        }
+    }
+
+    private var listProblem: some View {
+        Text("Could not load the episode list. Tap to try again.")
+            .font(.footnote).foregroundStyle(.secondary)
+            .padding(.horizontal)
+            .onTapGesture { failed = false; Task { await load() } }
+    }
+
+    /// Der billige Kopf: Titel, Urheber und Beschreibung aus dem Teilpfad
+    /// (8,3 kB statt 1,36 MB). Er laeuft NEBEN dem Vollabruf, nicht vor ihm —
+    /// wer zuerst da ist, zeichnet.
+    private func loadQuickHeader() async {
+        guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return }
+        let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))
+        guard let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier),
+              detail == nil else { return }
+        quick = LibraryItemDetail(
+            id: itemId,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: meta.title?.joined, authorName: meta.creator?.joined,
+                    narratorName: nil, seriesName: nil, genres: nil,
+                    publishedYear: nil, description: meta.description?.joined),
+                duration: nil, chapters: nil, tracks: nil),
+            userMediaProgress: nil)
     }
 
     private func load() async {
