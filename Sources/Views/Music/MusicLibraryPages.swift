@@ -169,7 +169,10 @@ struct MusicSongRow: View {
             Task { await playerCoordinator.open(item: entry.item) }
         } label: {
             HStack(spacing: 12) {
-                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id)) { image in
+                // R54: 44-pt-Zelle in einer Liste — sie braucht die Vorschau,
+                // nicht das Vollbild, und den warmen Treffer erst recht.
+                CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
+                                 useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     RoundedRectangle(cornerRadius: 6)

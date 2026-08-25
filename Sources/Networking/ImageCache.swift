@@ -28,6 +28,20 @@ final class ImageCache {
     /// derivable from the disk tiers.
     private let thumbCache = NSCache<NSString, UIImage>()
     private let thumbPixelSize: CGFloat = 400
+    /// R54: every preview size the app asks for. They are ours, not the
+    /// server's — so an invalidation can name them instead of emptying the
+    /// whole store. A new size belongs in here; the fence holds that.
+    nonisolated static let thumbnailVariants: [CGFloat] = [400, 600]
+
+    /// Wie viele Bilder jeder Speicher fassen SOLL. Die Kostengrenze wird
+    /// daraus abgeleitet, nicht danebengeschrieben — vorher sagten die beiden
+    /// Grenzen verschiedene Zahlen, und die kleinere band unsichtbar.
+    /// Vorschauen bekommen den groesseren Anteil, weil sie das sind, was jede
+    /// Reihe und jedes Raster braucht; Vollbilder stehen nur ein- oder
+    /// zweimal auf dem Schirm.
+    nonisolated static let thumbBudget = 240
+    nonisolated static let fullCoverBudget = 6
+
     private let diskDirectory: URL
     private let persistentDirectory: URL
 
@@ -43,11 +57,31 @@ final class ImageCache {
             .compactMap { ($0 as? UIWindowScene)?.screen }.first
         let shortSidePixels = screen.map { min($0.bounds.width, $0.bounds.height) * $0.scale } ?? 1500
         maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
-        memoryCache.countLimit = 300
-        // Byte cap against memory pressure from large decoded covers.
-        memoryCache.totalCostLimit = 150 * 1024 * 1024
-        thumbCache.countLimit = 600
-        thumbCache.totalCostLimit = 40 * 1024 * 1024
+        // R54 (the owner: „in manchen Kachelreihen werden Bilder sofort wieder
+        // weggeworfen, wenn man seitlich scrollt"). Beide Speicher trugen
+        // ZWEI Grenzen, die verschiedene Zahlen meinten — und die kleinere
+        // band, ohne dass die groessere es verriet. Ausgerechnet:
+        //
+        //   Vorschau  400 x 400 x 4  =   640 kB  →  40 MB fassten ~62 Bilder,
+        //                                           NICHT die genannten 600.
+        //   Vollbild ~2000 x 2000 x 4 = ~16 MB   → 150 MB fassten ~9 Bilder,
+        //                                           NICHT die genannten 300.
+        //
+        // Eine EINZIGE Reihe zeigt zwoelf Kacheln, und Start traegt sechs
+        // Reihen. Der Speicher war also nach zwei, drei Reihen voll, und jede
+        // zurueckkehrende Kachel fand nichts mehr — genau das Symptom.
+        //
+        // Die Verteilung war ausserdem umgekehrt zur Nutzung: die Darstellung,
+        // die JEDE Reihe und JEDES Raster braucht, hatte ein Viertel des
+        // Budgets der Darstellung, die immer nur ein- oder zweimal auf dem
+        // Schirm steht. Jetzt sagen beide Grenzen JE Speicher dieselbe Zahl,
+        // damit keine mehr Zierde ist.
+        // Die Grenze IST die Rechnung — so kann sie nicht wieder von der
+        // Stueckzahl abweichen, die daneben steht.
+        memoryCache.countLimit = Self.fullCoverBudget
+        memoryCache.totalCostLimit = Self.fullCoverBudget * Int(maxPixelSize * maxPixelSize) * 4
+        thumbCache.countLimit = Self.thumbBudget
+        thumbCache.totalCostLimit = Self.thumbBudget * Int(thumbPixelSize * thumbPixelSize) * 4
         let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         diskDirectory = caches.appendingPathComponent("CoverCache", isDirectory: true)
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -277,8 +311,15 @@ final class ImageCache {
     func invalidate(url: URL) {
         let cacheKey = key(for: url)
         memoryCache.removeObject(forKey: cacheKey as NSString)
-        // Thumbnails are keyed "<fileKey>@<size>" — clear all size variants.
-        thumbCache.removeAllObjects()
+        // R54: this used to be `removeAllObjects()` — ONE url emptied EVERY
+        // preview in the app. Its only caller runs in a loop over hundreds of
+        // entries on pull-to-refresh, so one pull cleared the previews of
+        // every tab, several hundred times over. The size variants are known
+        // (they are OUR parameter, not the server's), so they are removed by
+        // name: the invalidation now costs what it claims to cost.
+        for size in Self.thumbnailVariants {
+            thumbCache.removeObject(forKey: "\(cacheKey)@\(Int(size))" as NSString)
+        }
         let target = diskDirectory.appendingPathComponent(cacheKey)
         Task.detached(priority: .utility) {
             try? FileManager.default.removeItem(at: target)

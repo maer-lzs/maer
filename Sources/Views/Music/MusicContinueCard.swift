@@ -62,7 +62,11 @@ struct MusicContinueCard: View {
                 // Playlists keep the F5 mosaic — that IS their cover.
                 Group {
                     if isAlbum {
-                        CachedAsyncImage(url: coverURLs.first) { image in
+                        // R54: eine Karte IN EINER REIHE holt sich den warmen
+                        // Vorschau-Speicher ab — ohne das Kennzeichen zeigt
+                        // sie beim Wiedereintritt immer erst den Platzhalter,
+                        // auch wenn das Bild schon im Speicher liegt.
+                        CachedAsyncImage(url: coverURLs.first, useThumbnail: true) { image in
                             image.resizable().aspectRatio(contentMode: .fill)
                         } placeholder: {
                             Rectangle().fill(tint)

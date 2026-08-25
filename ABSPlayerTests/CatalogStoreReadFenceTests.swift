@@ -613,6 +613,48 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogGenreAxis.decades(forSubjects: ["detective"]).isEmpty)
     }
 
+    /// R54 (the owner: „in manchen Kachelreihen werden Bilder sofort wieder
+    /// weggeworfen, wenn man seitlich scrollt"). Drei Ursachen, alle im
+    /// Bild-Zwischenspeicher. Der Zaun haelt die beiden, die sich rechnen
+    /// lassen — die dritte (Zellen holen den warmen Treffer ab) haengt an
+    /// Aufrufstellen und steht im Inventar.
+    @Test("beide Speichergrenzen meinen dieselbe Zahl, und eine Ungueltigkeit raeumt nur ihren Eintrag")
+    func theCacheLimitsAgreeAndInvalidationIsTargeted() throws {
+        // Die Kostenrechnung, an der die alte Konfiguration scheiterte:
+        // 400 x 400 x 4 = 640 kB je Vorschau. 40 MB fassten davon ~62, waehrend
+        // `countLimit` 600 versprach — die kleinere Grenze band unsichtbar.
+        // 400 x 400 x 4 = 640.000 Bytes je Vorschau (dezimal — nicht 640 KiB;
+        // an dieser Verwechslung ist mein erster Anlauf gerissen).
+        let vorschauKosten: Int = 400 * 400 * 4
+        #expect(vorschauKosten == 640_000)
+        // 40 MB fassten davon rund 62, waehrend `countLimit` 600 versprach.
+        let altesBudget: Int = 40 * 1024 * 1024
+        #expect(altesBudget / vorschauKosten < 70)
+        let text = try String(contentsOf: sourceFile("Sources/Networking/ImageCache.swift"),
+                              encoding: .utf8)
+        // Beide Grenzen je Speicher sagen jetzt dieselbe Zahl — sonst ist eine
+        // von beiden wieder Zierde.
+        #expect(text.contains("thumbCache.countLimit = Self.thumbBudget"),
+                "die Stueckzahl steht wieder als eigene Zahl neben der Kostengrenze")
+        #expect(text.contains("thumbCache.totalCostLimit = Self.thumbBudget"),
+                "die Kostengrenze wird nicht mehr aus der Stueckzahl abgeleitet")
+        #expect(text.contains("memoryCache.countLimit = Self.fullCoverBudget"))
+        #expect(text.contains("memoryCache.totalCostLimit = Self.fullCoverBudget"))
+        // Und die Vorschauen bekommen mehr als die Vollbilder — sie sind das,
+        // was JEDE Reihe und JEDES Raster braucht.
+        #expect(ImageCache.thumbBudget > ImageCache.fullCoverBudget * 10)
+        // Ursache 2: eine Ungueltigkeit raeumt ihre Groessenvarianten, nicht
+        // den ganzen Speicher.
+        let body = try #require(functionBody(of: "func invalidate(url: URL)", in: text))
+        #expect(!body.contains("thumbCache.removeAllObjects()"),
+                "eine einzelne URL leert wieder alle Vorschauen der App")
+        #expect(body.contains("thumbnailVariants"),
+                "die Groessenvarianten werden nicht mehr benannt")
+        // Die Varianten muessen die WIRKLICH angefragten sein — sonst raeumt
+        // die gezielte Fassung an der Sache vorbei.
+        #expect(Set(ImageCache.thumbnailVariants) == Set([400, 600]))
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,
