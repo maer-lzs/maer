@@ -224,12 +224,32 @@
         }
       }
     },
+    "Nothing to clear" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts zu räumen"
+          }
+        }
+      }
+    },
     "Radio Plays to Subscribe" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hörspiele zum Abonnieren"
+          }
+        }
+      }
+    },
+    "Reload Catalog Data" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Katalogdaten neu laden"
           }
         }
       }

@@ -26,6 +26,21 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     struct Stored: Codable {
         var value: Value?
         var resolvedAt: Double
+        /// R60: der FINGERABDRUCK der Regel, aus der dieser Wert stammt.
+        ///
+        /// Ein zwischengespeichertes Ergebnis gilt nur, solange die Regel
+        /// gilt, die es erzeugt hat. Der Tages-Speicher der Gutenberg-Faecher
+        /// war allein nach dem Fach-Namen abgelegt — als R58 die Begriffe
+        /// austauschte, lieferte er bis zu vierundzwanzig Stunden weiter die
+        /// Antwort der ALTEN Regel. Nicht nur beim Pruefen: jeder Nutzer
+        /// haette nach dem Update einen Tag lang die kaputten Faecher gesehen.
+        ///
+        /// Mit dem Abdruck im Eintrag ist ein Wert der alten Regel nach einer
+        /// Aenderung schlicht nicht mehr auffindbar — automatisch, ohne dass
+        /// jemand an ein Leeren denken muss. Ein Generations-Zaehler waere die
+        /// schwaechere Form: er verlaesst sich darauf, dass niemand ihn
+        /// vergisst. (Klasse „Bestands-Positiv, das nie ablaeuft" — R25.)
+        var rule: String?
     }
 
     let key: String
@@ -40,7 +55,14 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     }
 
     /// Entries still within their TTL, ready for the session cache.
-    func load(defaults: UserDefaults = .standard, now: Date = Date()) -> [String: Value?] {
+    /// Entries still within their TTL, ready for the session cache.
+    ///
+    /// R60: `rule` liefert je Eintrag den Abdruck der Regel, die HEUTE gilt.
+    /// Ein Eintrag, dessen Abdruck nicht passt, wird ueberlesen — er ist die
+    /// Antwort einer Regel, die es nicht mehr gibt. Wer keine Regel hat
+    /// (`nil`), bekommt das alte Verhalten.
+    func load(defaults: UserDefaults = .standard, now: Date = Date(),
+              rule: ((String) -> String)? = nil) -> [String: Value?] {
         guard let data = defaults.data(forKey: key),
               let stored = try? JSONDecoder().decode([String: Stored].self, from: data) else { return [:] }
         let nowSeconds = now.timeIntervalSince1970
@@ -48,6 +70,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         for (id, entry) in stored {
             let ttl = entry.value == nil ? negativeTTL : positiveTTL
             guard nowSeconds - entry.resolvedAt <= ttl else { continue }
+            if let rule, entry.rule != rule(id) { continue }
             out[id] = entry.value
         }
         return out
@@ -56,7 +79,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     /// Writes an outcome. Returns whether anything was stored — `failed`
     /// never is, which is the whole point of this type.
     @discardableResult
-    func store(_ outcome: Outcome, for id: String,
+    func store(_ outcome: Outcome, for id: String, rule: String? = nil,
                defaults: UserDefaults = .standard, now: Date = Date()) -> Bool {
         let value: Value?
         switch outcome {
@@ -66,7 +89,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         }
         var stored = defaults.data(forKey: key)
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
-        stored[id] = Stored(value: value, resolvedAt: now.timeIntervalSince1970)
+        stored[id] = Stored(value: value, resolvedAt: now.timeIntervalSince1970, rule: rule)
         guard let data = try? JSONEncoder().encode(stored) else { return false }
         defaults.set(data, forKey: key)
         return true

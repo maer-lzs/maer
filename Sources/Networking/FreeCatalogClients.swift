@@ -243,9 +243,18 @@ nonisolated enum CatalogShelfSource {
     /// shelf appears that does not exist.
     static func knownShelfKeys(for source: CatalogSource) -> Set<String> {
         guard source == .gutenberg else { return [] }
-        return Set(gutenbergShelfStore.load().compactMap { key, value in
+        return Set(storedDay().compactMap { key, value in
             (value?.books.isEmpty == false) ? key : nil
         })
+    }
+
+    /// R60: der Abdruck der Regel, aus der die Antwort eines Fachs stammt —
+    /// die BEGRIFFE, die wirklich gefragt wurden, in ihrer Reihenfolge.
+    /// Aendert R58 (oder irgendwer nach ihm) die Auswahl, passt der Abdruck
+    /// nicht mehr und der alte Eintrag ist nicht mehr auffindbar. Kein
+    /// Generations-Zaehler, den man hochzudrehen vergessen kann.
+    static func shelfRule(for shelf: String) -> String {
+        CatalogGenreAxis.subjects(forShelf: shelf).prefix(3).joined(separator: "|")
     }
 
     /// Whether a source can answer the shelf question at all. `hasChips` reads
@@ -264,7 +273,9 @@ nonisolated enum CatalogShelfSource {
     /// The stored day, read ONCE per pass. Reading it per shelf would decode
     /// the whole store eighteen times for one page — the same class as the
     /// memoized keychain read (one IPC per access in a hot path).
-    static func storedDay() -> [String: GutenbergShelf?] { gutenbergShelfStore.load() }
+    static func storedDay() -> [String: GutenbergShelf?] {
+        gutenbergShelfStore.load(rule: shelfRule(for:))
+    }
 
     static func preview(source: CatalogSource, shelf: String, languages: [String],
                         rows: Int, storedDay: [String: GutenbergShelf?] = [:]) async throws -> Answer {
@@ -279,7 +290,7 @@ nonisolated enum CatalogShelfSource {
             gutenbergShelfStore.store(
                 books.isEmpty ? .absent
                               : .found(GutenbergShelf(total: total, books: Array(books.prefix(rows)))),
-                for: shelf)
+                for: shelf, rule: shelfRule(for: shelf))
         }
         return answer
     }

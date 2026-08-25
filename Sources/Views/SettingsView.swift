@@ -113,6 +113,9 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
 
     @State private var coverCacheBytes: Int64 = 0
+    /// R60: was der Debug-Hebel zuletzt geraeumt hat — er sagt es, statt
+    /// stumm zu wirken (Vorbild: der Cover-Cache-Knopf daneben).
+    @State private var clearedStores: String?
     @State private var showDeleteAllDownloads = false
 
     /// Same speed steps as the full player's speed menu.
@@ -413,6 +416,25 @@ struct SettingsView: View {
                 coverCacheBytes = ImageCache.shared.cacheSizeBytes()
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
+            }
+            // R60 (the owner's ENTSCHEID): der Debug-Hebel fuer die ABGELEITETEN
+            // Speicher — damit die kalte Form von Hand erreichbar ist, statt
+            // einmal in 24 Stunden. Er fasst NICHTS an, was dem Nutzer
+            // gehoert; die Grenze steht als Liste in `DerivedStores`, nicht
+            // in dieser Beschriftung. Und er ist KEIN Ersatz fuer den
+            // Fingerabdruck: kein Nutzer wird ihn druecken.
+            Button {
+                let geleert = DerivedStores.clear()
+                clearedStores = geleert.isEmpty
+                    ? String(localized: "Nothing to clear")
+                    : geleert.joined(separator: " · ")
+            } label: {
+                Label("Reload Catalog Data", systemImage: "arrow.clockwise.circle")
+            }
+            if let clearedStores {
+                Text(verbatim: clearedStores)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             // Destructive — ONE row, the dialog offers all/per-type.
             Button(role: .destructive) {

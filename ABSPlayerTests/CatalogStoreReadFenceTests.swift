@@ -828,6 +828,86 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
+    /// R60 (the owner: „kann ich nicht pruefen, da der Stand noch auf dem
+    /// letzten Tagesstand steht"): der Tages-Speicher war allein nach dem
+    /// FACH-Namen abgelegt. Als R58 die Begriffe austauschte, lieferte er bis
+    /// zu 24 h weiter die Antwort der ALTEN Regel — nicht nur beim Pruefen:
+    /// jeder Nutzer haette nach dem Update einen Tag lang die kaputten
+    /// Faecher gesehen.
+    ///
+    /// Die Klasse ist „Bestands-Positiv, das nie ablaeuft" (R25) in
+    /// allgemeiner Form: **ein Ergebnis ueberlebt die Berechnung, die es
+    /// hervorgebracht hat.**
+    @Test("ein gespeichertes Ergebnis gilt nur, solange seine Regel gilt")
+    func aStoredResultOnlyHoldsWhileItsRuleHolds() throws {
+        let suite = "r60-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let store = CatalogShelfSource.gutenbergShelfStore
+        let shelf = CatalogShelfSource.GutenbergShelf(total: 5, books: [])
+
+        // Gespeichert unter der Regel von GESTERN.
+        #expect(store.store(.found(shelf), for: "crime", rule: "crime|crime & mystery fiction",
+                            defaults: defaults))
+        #expect(store.load(defaults: defaults)["crime"] != nil,
+                "die Probe misst nichts — nichts wurde gespeichert")
+
+        // Mit der Regel von HEUTE ist der Eintrag nicht mehr auffindbar.
+        let heute = CatalogShelfSource.shelfRule(for: "crime")
+        #expect(heute != "crime|crime & mystery fiction",
+                "die Rot-Probe traegt nicht — die Regel hat sich gar nicht geaendert")
+        #expect(store.load(defaults: defaults, rule: { _ in heute })["crime"] == nil,
+                "der Eintrag der alten Regel wird weiter ausgeliefert")
+
+        // Und unter DERSELBEN Regel bleibt er selbstverstaendlich gueltig —
+        // der Abdruck darf den Speicher nicht wertlos machen.
+        #expect(store.store(.found(shelf), for: "crime", rule: heute, defaults: defaults))
+        #expect(store.load(defaults: defaults, rule: { _ in heute })["crime"] != nil)
+
+        // Der Abdruck ist die WIRKLICH gefragte Auswahl, nicht der Fach-Name.
+        #expect(heute.contains("mystery"), "der Abdruck kennt die Begriffe nicht")
+        #expect(CatalogShelfSource.shelfRule(for: "crime")
+                != CatalogShelfSource.shelfRule(for: "horror"))
+    }
+
+    /// R60, the owner's Auflage 1: der Debug-Hebel raeumt NUR Abgeleitetes.
+    /// „Das ist die Grenze zwischen ‚neu holen' und ‚Datenverlust', und sie
+    /// muss am Code stehen, nicht in der Beschriftung."
+    @Test("der Hebel raeumt Abgeleitetes und fasst Nutzerbesitz nie an")
+    func theLeverClearsOnlyDerivedStores() throws {
+        let suite = "r60-lever-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        // Kein Schluessel des Hebels darf wie Nutzerbesitz aussehen.
+        for entry in DerivedStores.all {
+            for besitz in DerivedStores.userOwnedPrefixes {
+                #expect(!entry.key.hasPrefix(besitz),
+                        "\(entry.key) sieht aus wie Nutzerbesitz")
+            }
+            #expect(!entry.label.isEmpty, "der Hebel muss sagen, was er raeumt")
+        }
+
+        // Am VERHALTEN: Abgeleitetes geht, Besitz bleibt.
+        for entry in DerivedStores.all { defaults.set(["x": 1.0], forKey: entry.key) }
+        defaults.set([12.0, 1.0], forKey: "localPosition.jam:1")
+        defaults.set(["meine"], forKey: "maerPlaylists")
+
+        let geleert = DerivedStores.clear(defaults: defaults)
+        #expect(geleert.count == DerivedStores.all.count,
+                "der Hebel meldet nicht, was er wirklich geraeumt hat")
+        for entry in DerivedStores.all {
+            #expect(defaults.object(forKey: entry.key) == nil, "\(entry.key) liegt noch")
+        }
+        #expect(defaults.object(forKey: "localPosition.jam:1") != nil,
+                "ein HOERSTAND wurde geraeumt — das ist Datenverlust")
+        #expect(defaults.object(forKey: "maerPlaylists") != nil,
+                "eine PLAYLIST wurde geraeumt — das ist Datenverlust")
+
+        // „Nichts zu raeumen" ist eine ehrliche Antwort, keine leere Meldung.
+        #expect(DerivedStores.clear(defaults: defaults).isEmpty)
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,
