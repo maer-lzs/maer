@@ -4,6 +4,7 @@
 // Additional terms apply — see LICENSE-ADDITIONAL-TERMS
 
 import SwiftUI
+import OSLog
 
 /// A "Listen Again" tile for a catalogue title that was started as an album
 /// track. Shares the album tile, so the mixed row keeps ONE density — a row
@@ -18,6 +19,32 @@ struct CatalogTrackCell: View {
     let width: CGFloat
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var resolved: LibraryItem?
+    /// R59: ein Platzhalter ist ein UEBERGANG, kein Endzustand. Der Zaehler
+    /// laesst die Aufloesung beim naechsten Erscheinen der Zelle erneut
+    /// laufen — vorher verschluckte `try?` den Fehlschlag, es gab keinen
+    /// zweiten Anlauf und keinen sichtbaren Zustand, und die Kachel hiess
+    /// dauerhaft „Unbekannter Titel".
+    @State private var attempt = 0
+
+    /// Holt den Namen nach. **Ein Transportfehler ist etwas anderes als
+    /// „gibt es nicht mehr":** der erste laesst den Eintrag stehen und wird
+    /// wiederholt, der zweite vermerkt das Stueck als tot, damit die Reihe
+    /// es auslaesst. Der HOERSTAND bleibt in beiden Faellen — er ist
+    /// Nutzerbesitz; verschwinden darf die Kachel, nicht der Eintrag.
+    private func resolve() async {
+        do {
+            _ = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
+            resolved = AppSession.shared.libraryItem(forId: itemId)
+        } catch {
+            guard let reason = FreeCatalog.failureReason(error) else { return }
+            if FreeCatalog.isGone(error) {
+                DeadCatalogItems.note(.dead, for: itemId)
+                Logger.library.notice("FREECAT resolve \(itemId, privacy: .public) → weg: \(reason, privacy: .public)")
+            } else {
+                Logger.library.error("FREECAT resolve \(itemId, privacy: .public) FAILED: \(reason, privacy: .public)")
+            }
+        }
+    }
 
     var body: some View {
         if let item = resolved ?? AppSession.shared.libraryItem(forId: itemId) {
@@ -26,12 +53,7 @@ struct CatalogTrackCell: View {
         } else if let stub = AppSession.shared.playableItem(forId: itemId) {
             AlbumCell(item: stub, width: width, playerCoordinator: playerCoordinator)
                 .frame(width: width, alignment: .top)
-                .task {
-                    // Fills the provider's session cache; the local state then
-                    // re-renders this tile with what the detail knows.
-                    _ = try? await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)
-                    resolved = AppSession.shared.libraryItem(forId: itemId)
-                }
+                .task(id: attempt) { await resolve() }
         }
     }
 }

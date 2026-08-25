@@ -123,7 +123,8 @@ nonisolated enum ContinueSources {
     /// different number for the same row would be the asymmetry, not the
     /// symmetry.
     static func positionless(in defaults: [String: Any],
-                             serverKnows: Set<String>) -> [Extra] {
+                             serverKnows: Set<String>,
+                             deadStore: UserDefaults = .standard) -> [Extra] {
         var out: [Extra] = []
         for (key, value) in defaults {
             guard key.hasPrefix("localPosition.") else { continue }
@@ -139,6 +140,16 @@ nonisolated enum ContinueSources {
                 || (id.hasPrefix(FreeCatalog.archivePrefix)
                     && id.contains(CatalogSongID.separator))
             guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
+            // R59 (the owner am Geraet: die erste Kachel heisst „Unbekannter
+            // Titel" und laeuft nicht): der Tot-Vermerk wurde bisher NUR beim
+            // Bauen der Katalogreihen gelesen — diese Reihe liest den
+            // HOERVERLAUF und kam an ihm vorbei. Ein Stueck, das die Quelle
+            // nicht mehr kennt, verlaesst damit auch hier die Reihe.
+            //
+            // Der EINTRAG bleibt: ein Hoerstand ist Nutzerbesitz, und
+            // „vermerkt" ist kein Urteil auf Dauer (der Vermerk altert). Nur
+            // die Kachel geht.
+            guard !DeadCatalogItems.isDead(id, defaults: deadStore) else { continue }
             out.append(Extra(id: id, position: stored[0], updatedAtMs: stored[1],
                              duration: ProgressMark.markedDuration(stored) ?? 0))
         }

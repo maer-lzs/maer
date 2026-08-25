@@ -741,6 +741,53 @@ struct CatalogStoreReadFenceTests {
                 == CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0))
     }
 
+    /// R59 (the owner am Geraet: die erste Kachel in „Wieder anhoeren" heisst
+    /// „Unbekannter Titel" — und laeuft nicht). Der Fund liegt nicht in der
+    /// Zelle: der Tot-Vermerk wurde NUR beim Bauen der Katalogreihen gelesen,
+    /// und diese Reihe liest den HOERVERLAUF. Lernen und Lesen waren nicht
+    /// verbunden.
+    @Test("ein totes Stueck verlaesst die Reihe, sein Hoerstand bleibt")
+    func aDeadItemLeavesTheRowButKeepsItsProgress() throws {
+        let suite = "r59-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let tot = FreeCatalog.jamendoPrefix + "1234"
+        let lebt = FreeCatalog.jamendoPrefix + "5678"
+        // Zwei angefangene Katalog-Titel im Verlauf (Album-Form, positionslos).
+        let verlauf: [String: Any] = [
+            "localPosition.\(tot)": [12.0, 1_756_000_000_000.0, 180.0, 1.0],
+            "localPosition.\(lebt)": [30.0, 1_756_000_000_000.0, 200.0, 1.0],
+        ]
+        let vorher = ContinueSources.positionless(in: verlauf, serverKnows: [],
+                                                  deadStore: defaults)
+        #expect(vorher.count == 2, "die Probe misst nichts — der Verlauf ist leer")
+
+        DeadCatalogItems.note(.dead, for: tot, defaults: defaults)
+        let nachher = ContinueSources.positionless(in: verlauf, serverKnows: [],
+                                                   deadStore: defaults)
+        #expect(nachher.map(\.id) == [lebt], "das tote Stueck steht weiter in der Reihe")
+        // INVARIANTE: der EINTRAG bleibt — ein Hoerstand ist Nutzerbesitz.
+        #expect(verlauf["localPosition.\(tot)"] != nil,
+                "der Hoerstand wurde still geloescht")
+    }
+
+    /// R59: „konnte nicht fragen" und „gibt es nicht mehr" sind zwei Saetze.
+    /// Nur der zweite darf vermerken — sonst raeumt ein Funkloch die Reihe.
+    @Test("nur ein klares Weg vermerkt, ein Transportfehler nie")
+    func onlyAClearGoneIsRecorded() {
+        #expect(FreeCatalog.isGone(URLError(.resourceUnavailable)))
+        #expect(FreeCatalog.isGone(APIError.http(404, "")))
+        // Das Funkloch, der Abbruch, das ueberlastete Netz: kein Urteil.
+        #expect(!FreeCatalog.isGone(URLError(.notConnectedToInternet)))
+        #expect(!FreeCatalog.isGone(URLError(.timedOut)))
+        #expect(!FreeCatalog.isGone(URLError(.cancelled)))
+        #expect(!FreeCatalog.isGone(APIError.http(503, "")))
+        // Und vermerkt wird nur, was uns gehoert — ein Server-Buch nicht.
+        #expect(FreeCatalog.isCatalogId(FreeCatalog.jamendoPrefix + "1"))
+        #expect(FreeCatalog.isCatalogId(FreeCatalog.archivePrefix + "x"))
+        #expect(!FreeCatalog.isCatalogId("abs-item-id"))
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

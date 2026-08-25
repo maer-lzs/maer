@@ -249,6 +249,15 @@ final class PlayerCoordinator: ObservableObject {
                         offlineFallback: false, autoplay: autoplay, restart: restart,
                         carriedSleep: carriedSleep, generation: generation)
         } catch {
+            // R59: der Abspielstart ist die Stelle, an der Lebendigkeit
+            // GELERNT wird (R45s Abrechnung). Sagt die Quelle „gibt es nicht
+            // mehr", wird das vermerkt — sonst steht das tote Stueck morgen
+            // wieder in „Wieder anhoeren". Ein blosser Transportfehler
+            // vermerkt NICHTS: ein Funkloch ist kein Urteil ueber den Titel.
+            if FreeCatalog.isGone(error), FreeCatalog.isCatalogId(item.id) {
+                DeadCatalogItems.note(.dead, for: item.id)
+                Logger.player.notice("FREECAT play \(item.id, privacy: .public) → weg")
+            }
             // Server unreachable (e.g. offline on the go) — if the book is
             // downloaded, continue with the book details saved at download time
             // instead of failing entirely. Without this even a long-downloaded

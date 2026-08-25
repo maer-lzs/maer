@@ -517,6 +517,25 @@ nonisolated enum FreeCatalog {
     /// otherwise a short reason for log AND error line. One look then tells
     /// 429 / HTML answer / transport apart. Tested (A4) so the class of
     /// "cancelled task booked as broken source" cannot return.
+    /// R59: sagt dieser Fehlschlag „gibt es nicht mehr" — oder nur „ich
+    /// konnte gerade nicht fragen"? Nur der erste darf einen Eintrag als tot
+    /// vermerken; der zweite muss wiederholbar bleiben, sonst raeumt ein
+    /// Funkloch die Reihe leer. Dieselbe Dreiteilung wie in der
+    /// Negativ-Cache-Regel: Daten · leer · Fehlschlag.
+    /// Gehoert diese Kennung einem der freien Kataloge? Nur fuer die darf
+    /// ein Fehlschlag als „weg" vermerkt werden — ein Server-Buch ist
+    /// Sache des Servers.
+    static func isCatalogId(_ id: String) -> Bool {
+        [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
+            .contains { id.hasPrefix($0) }
+    }
+
+    static func isGone(_ error: Error) -> Bool {
+        if let url = error as? URLError { return url.code == .resourceUnavailable }
+        if let api = error as? APIError, case .http(let code, _) = api { return code == 404 }
+        return false
+    }
+
     static func failureReason(_ error: Error) -> String? {
         if error is CancellationError { return nil }
         if let urlError = error as? URLError {
