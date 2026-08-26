@@ -221,8 +221,8 @@ enum AppTheme {
 
     /// e9a9b05: the ON colour of every switch. The system green, not the brand
     /// accent — a switch has to be readable at a glance, and the anthracite
-    /// accent made "on" look like "off" (the owner, with the screenshot: four
-    /// switches, two states, one brightness nuance apart).
+    /// accent made "on" look like "off": four switches, two states, one
+    /// brightness nuance apart.
     static var switchOn: Color { Color(UIColor.systemGreen) }
 
     /// The accent as a DYNAMIC UIColor — also for UIKit-backed views (AirPlay

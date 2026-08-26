@@ -382,7 +382,7 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
     }
 }
 
-/// R47 (the owner's ENTSCHEID): „Wir stellen die gleiche Warnung oben in die
+/// R47: „Wir stellen die gleiche Warnung oben in die
 /// Hauptseite von archive.org-Bib" — und, auf Nachfrage, auf JEDER Fläche,
 /// deren Inhalte von dort stammen: Old Time Radio · Netlabels · Alte
 /// Schallplatten · Archive-Hörbücher.
@@ -390,7 +390,7 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
 /// EINE Formulierung, EINE Komponente (Regel 2) — nicht vier Textvarianten,
 /// die auseinanderdriften. Sie steht am ANFANG der Fläche, nicht in einer
 /// Fußnote, die niemand liest; keine Rechtsberatung, kein Paragraph, ein
-/// Satz in unserem Ton. **Der Wortlaut trägt the owner's Aussage und geht vor
+/// Satz in unserem Ton. **Der Wortlaut trägt the user's Aussage und geht vor
 /// dem Tag durch seine Abnahme.**
 struct ArchiveRightsNote: View {
     var body: some View {

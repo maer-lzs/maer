@@ -26,7 +26,7 @@ nonisolated enum ListeningClasses {
 /// THE local listening stock: every class writes here, every reading surface
 /// asks here.
 ///
-/// **The invariant (the owner, 17.08.):** what you listen to always stands on
+/// **The invariant:** what you listen to always stands on
 /// the device too — every class, every source, downloaded or streamed. The
 /// server is a sync MEDIUM and a messenger between devices, never the sole
 /// owner, and no sync may ever remove a local state without replacement.
@@ -109,6 +109,12 @@ nonisolated enum ListeningStore {
     static func record(_ itemId: String, position: Double, duration: Double,
                        atMs: Double, in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId) else { return }
+        // A position only comes into being while listening, so this is where a
+        // not-subscribed episode is written down — listened ones only, never
+        // browsed ones: otherwise the position would outlive its resolution and
+        // the tile would carry no name. Idempotent, so the per-second tick
+        // costs nothing.
+        BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         let key = AppStorageKeys.localPosition(itemId)
         defaults.set(ProgressMark.advancing(defaults.array(forKey: key) as? [Double],
                                             position: position, duration: duration,
@@ -145,6 +151,9 @@ nonisolated enum ListeningStore {
     static func noteStartedForm(_ itemId: String, form: ProgressMark.StartedForm,
                                 atMs: Double, in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId) else { return }
+        // Playback start is the earliest moment at which "this was listened to"
+        // is true — same rule as in `record`.
+        BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
         let key = AppStorageKeys.localPosition(itemId)
         let existing = defaults.array(forKey: key) as? [Double]
         defaults.set(ProgressMark.entry(position: existing?.first ?? 0,

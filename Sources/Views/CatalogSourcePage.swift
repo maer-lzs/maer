@@ -168,7 +168,7 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// R51 Runde 2, the owner's ENTSCHEID zur Seitenordnung: „Beliebt nach oben
+    /// R51 Runde 2, Entscheid zur Seitenordnung: „Beliebt nach oben
     /// als Kachelreihe, nicht Infinite Scroll. Darunter Neu bei LibriVox,
     /// darunter die Genres als Kachelreihen."
     ///
@@ -487,7 +487,7 @@ struct CatalogSourcePage: View {
                 FreeCatalog.isCuratedArchiveDoc(
                     $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
             }
-            // R57-Nachlese (the owner: nach hinten sortieren): Sammelbaende
+            // R57-Nachlese: Sammelbaende
             // bleiben auffindbar, stehen aber nicht mehr auf den ersten
             // Plaetzen. Ein Malus, kein Ausschluss — es LEERT kein Fach.
             let einzeln = erlaubt.filter { !FreeCatalog.isMultiAuthorCollection($0) }
@@ -644,7 +644,7 @@ enum CatalogPopularSource {
 
 
 /// R51 Runde 2: die Vollseite hinter dem „Beliebt"-Chevron. Sie ist die
-/// Heimat des endlosen Nachladens, das the owner von der Uebersicht haben
+/// Heimat des endlosen Nachladens, das the user von der Uebersicht haben
 /// wollte — dieselbe Kachel, dieselbe Seitenlogik, nur ohne die Reihen
 /// drumherum. Regel 2: sie teilt sich den Lade-Weg der Quellenseite ueber
 /// `CatalogPopularSource`, damit Vorschau-Reihe und Vollseite denselben
@@ -944,7 +944,7 @@ struct ArchiveSeriesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                // R61 (the owner, H3: „Liste ist da, braucht nur sehr lange"):
+                // R61:
                 // das Blatt wartet NICHT mehr auf die Teileliste. Gemessen
                 // haengt die Antwortzeit nicht an der Datenmenge, sondern an
                 // archive.orgs Warteschlange (2 kB in 26 s, 1,3 MB in 11 s) —

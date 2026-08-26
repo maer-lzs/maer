@@ -52,7 +52,7 @@ struct RadioMyStationsPage: View {
     }
 
     private func section(_ title: String, stations: [RadioStation], starred: Bool) -> some View {
-        // 1d68650 (the owner): TILE rows, not cards — two sections of
+        // 1d68650: TILE rows, not cards — two sections of
         // screen-filling cards are no overview. The cards stay reserved for
         // the tab's row; this page is the dividing-apart. Same build form and
         // metric as the browse rows, same tile behaviour (tap navigates,

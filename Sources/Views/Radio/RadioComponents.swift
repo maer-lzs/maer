@@ -23,7 +23,7 @@ struct RadioStationRow: View {
         // Live radio is a pure net gate (never "downloaded") — the ONE
         // observing leaf wraps the row so dim AND disabled stay reactive.
         MediaAvailabilityScope(itemId: station.id, isDownloadedOverride: { false }) { unavailable in
-        // The tap OPENS the station page (owner decision e285465) — the
+        // The tap OPENS the station page — the
         // page used to be reachable only through player and context menu.
         // Play stays explicit, as its own trailing control.
         // SIBLINGS, not nesting: a play button inside the navigation
@@ -302,7 +302,7 @@ struct RadioFeaturedCard: View {
     @StateObject private var colorLoader = CoverColorLoader()
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
-    /// f01d6d3 (the owner, replaces the 804fe18 counter rule): the ground is
+    /// f01d6d3: the ground is
     /// the LOGO'S BOTTOM EDGE colour — the gradient attaches there, and a
     /// whole-image mean can never join it (measured: bigFM's edge is white,
     /// its mean lavender; WDR 2's edge is WDR-red, its mean a dark plum —
@@ -337,7 +337,7 @@ struct RadioFeaturedCard: View {
     /// edges full, accent edges DAMPENED. The old zone ran the full edge
     /// colour at the boundary while both neighbours were calm, so a saturated
     /// ring between two calm zones was structurally guaranteed (measured on
-    /// the owner's screenshot: rise 1060→1220 to full WDR red, hard fall
+    /// the user's screenshot: rise 1060→1220 to full WDR red, hard fall
     /// behind); shrinking `transitionShare` only sharpened it. Now the full
     /// edge colour exists NOWHERE on a zone card — the seam stays byte-
     /// seamless, on the dampened level.
@@ -479,7 +479,7 @@ private struct RadioCardNowPlayingLeaf: View {
         // measured, a reserved space and a line of real glyphs differ by 2 pt,
         // and that is enough to push a whole row down when a station starts.
         //
-        // the owner named the mechanism more precisely than the symptom: "we
+        // the user named the mechanism more precisely than the symptom: "we
         // GET NEW INFO at the moment we click." The content arrives seconds
         // after the tap, so the geometry must already be final before it does.
         Line(text: text, host: host, isRunning: isRunning, ink: ink)
@@ -554,7 +554,7 @@ private struct RadioCardNowPlayingLeaf: View {
 ///
 /// cb2d1ed: the same row now also carries "My Stations", with the star glyph
 /// and the listening time. NOT a second card class: the form already carried
-/// the pill and the line machinery this row needs, and the owner's rule is that
+/// the pill and the line machinery this row needs, and the user's rule is that
 /// the FORM carries the behaviour — a card is an offer to continue, a tile is
 /// an entry in a choice.
 struct RadioFeaturedCardRow: View {
@@ -575,7 +575,7 @@ struct RadioFeaturedCardRow: View {
             if let destination {
                 // 776d548 (GT R2): the chevron is ALWAYS on for this row — the
                 // counted variant hides it when total == shown, and with two
-                // cards that suppressed the whole full page on the owner's device.
+                // cards that suppressed the whole full page on the user's device.
                 // This page is not "see more": it is where the two sources
                 // divide again and where an excluded favorite REAPPEARS. His
                 // rule is hard now: every starred favorite is reachable in at

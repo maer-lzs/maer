@@ -8,7 +8,7 @@ import OSLog
 
 /// 🟡 P10: archive.org's SEARCH INDEX and its actual holdings drift apart —
 /// withdrawn items stay in the index as ghost records and land in Discover
-/// with a dead cover and a dead stream (the owner's screenshot: two
+/// with a dead cover and a dead stream (the user's screenshot: two
 /// georgeblood 78s whose `metadata` endpoint answers `{"error": …}` while a
 /// healthy neighbour returns 20 files in the same moment).
 ///

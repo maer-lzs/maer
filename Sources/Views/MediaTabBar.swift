@@ -66,7 +66,7 @@ struct MediaTabBar: View {
         // that fits WHOLE (one size for all labels, no truncation, no number
         // that can drift from the truth).
         //
-        // cd2b3be (the owner's crash, twice in 12 s): everything inside these
+        // cd2b3be: everything inside these
         // closures is evaluated during the MEASUREMENT — and SwiftUI measures
         // on its AsyncRenderer, a background thread. A closure that captures
         // `self` (this View type is MainActor by project default) trips the

@@ -435,7 +435,7 @@ actor RadioLogoService {
 
     func logoURL(stationID: String, name: String, homepage: String?) async -> URL? {
         loadPersistedIfNeeded()
-        // 51ea272 (Kandidat 3 aus 9c7cad0, am Geraet gemessen): the owner's
+        // 51ea272 (Kandidat 3 aus 9c7cad0, am Geraet gemessen): the user'
         // Katalog-Eintrag heisst "Deutschlandfunk | DLF | AAC 192k" — the raw
         // name misses the table and falls through to the chain, which serves
         // the wordmark. The FOLD comes first (the same displayName cut the
@@ -444,7 +444,7 @@ actor RadioLogoService {
         let name = RadioMapping.displayName(name)
         // 9c7cad0: the curated table comes BEFORE every stored result.
         //
-        // Measured on the owner's device: the DLF card kept the wordmark on a
+        // Measured on the user's device: the DLF card kept the wordmark on a
         // build whose table carries the 1:1 mark — and clearing the IMAGE
         // cache brought the wordmark back, freshly fetched. The reason was
         // this method's order: a persisted positive never expires, so the

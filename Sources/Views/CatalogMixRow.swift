@@ -81,9 +81,8 @@ extension CatalogMix {
     // Project default is MainActor — no explicit attribute needed here.
     private static var recordedThisSession = false
 
-    /// R52 (the owner: „ich habe jetzt auf Hörbücher-Bib, Start und Podcast-Bib
-    /// jeweils einmal Hörbücher und Hörspiele als Kachelreihe"): the tiles a
-    /// SURFACE shows. Each surface names its own lanes and draws its own
+    /// Dieselbe Kachelreihe stand auf drei Flaechen. Die Kacheln, die eine
+    /// FLAECHE zeigt. Each surface names its own lanes and draws its own
     /// seed — the shared assembly for all three was what made the podcast tab
     /// and Start show the identical row under two different names.
     static func tiles(for surface: Surface,

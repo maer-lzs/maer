@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// P13: THE premium lock — the anatomy existed twice byte-identically in
-/// `PodcastComponents` and was missing exactly where the owner looked: Start's
+/// `PodcastComponents` and was missing exactly where the user looked: Start's
 /// "Latest Episodes". One component instead of copies (Regel 2), so the next
 /// surface inherits the mark rather than forgetting it.
 ///

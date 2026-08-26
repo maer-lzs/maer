@@ -115,7 +115,7 @@ extension PodcastPremiumMatch {
     /// suppressed (accepting it could move progress into the copy that will
     /// not survive the merge), and that suppression was SILENT. A person
     /// then sees the free+premium pair on the device and no way to it —
-    /// exactly the owner's ZEIT case. The guard stays; it just says so now.
+    /// exactly the user's ZEIT case. The guard stays; it just says so now.
     enum TwinState: Equatable {
         case pairs([Pair])
         /// Suppressed until the rotation twins are collapsed (bootstrap).

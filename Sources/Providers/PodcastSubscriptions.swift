@@ -1322,7 +1322,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             let resolved = Self.resolved(href, against: feedURL)
             if inItem { iImage = resolved } else if showImage == nil { showImage = resolved }
         }
-        // R65 (the owner: „kein Bild" bei Hoerspielprojekt.de): der Feed nennt
+        // R65: der Feed nennt
         // sein Bild ZWEIMAL, und dieser Leser fand keines von beiden — die
         // RSS-Form `<image><url>…</url></image>` las er gar nicht, und die
         // itunes-Form OHNE `href` (URL als Elementtext) fiel durch, weil das

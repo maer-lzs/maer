@@ -44,9 +44,8 @@ nonisolated enum CatalogRotation {
         page(total: total, rowSize: rowSize, on: date, salt: 0)
     }
 
-    /// R57 (the owner am Geraet: „Geschichte · 1609" und „Biografien · 570"
-    /// beginnen mit exakt denselben zwei Kacheln — ENTSCHEID: taeglich
-    /// durchmischen). Jedes Fach fragt seine Quelle mit derselben Sortierung,
+    /// Benachbarte Faecher begannen mit exakt denselben Kacheln, weil jedes
+    /// Fach seine Quelle mit derselben Sortierung fragt,
     /// Seite 1 — ein Titel, der zwei Faecher traegt, steht also in BEIDEN
     /// oben. Die Ueberschneidung ist inhaltlich richtig; falsch ist nur, dass
     /// beide denselben AUSSCHNITT zeigen.

@@ -124,7 +124,7 @@ struct RadioArtwork: View {
         return value
     }
 
-    /// Load order per the owner's decision: **Wikidata P154 is the PRIMARY
+    /// Load order per the user's decision: **Wikidata P154 is the PRIMARY
     /// source on every surface**, the station favicon (and the chain's touch
     /// icon) are the fallback. Measured on the case that decided it: the
     /// DLF-Kultur favicon is a ~1.8 KB wordmark and answers unreliably, the
@@ -270,8 +270,8 @@ struct RadioArtwork: View {
                     // transparent PNG never floats on black; the hue stays the
                     // station identity behind it.
                     //
-                    // 773d87b (the owner: "Kacheln sollten etwas weniger farbig
-                    // sein"): the saturation is CAPPED and the brightness runs
+                    // 773d87b: tiles are less saturated than the logo —
+                    // the saturation is CAPPED and the brightness runs
                     // counter to the measured logo luminance — a saturated
                     // ground competes with the mark (red SWR3 on lilac), and
                     // the ground's job is contrast, not company. Cards keep

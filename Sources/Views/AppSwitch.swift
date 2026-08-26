@@ -25,7 +25,7 @@ import SwiftUI
 /// there the accent works, because the alternatives calibrate it. A switch shows
 /// a two-valued state with nothing to compare against — and grey is the colour
 /// iOS uses for *inactive* everywhere else, so a grey ON reads as OFF. That is
-/// a statement about HUE, not about contrast ratio: measured on the owner's
+/// a statement about HUE, not about contrast ratio: measured on the user'
 /// screen, the anthracite ON track sits at 3,65:1 against the OFF track and the
 /// system green at 2,90:1. The number does not decide this; the meaning does.
 struct AppSwitch<Label: View>: View {

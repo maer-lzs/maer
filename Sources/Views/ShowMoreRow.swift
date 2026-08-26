@@ -52,7 +52,7 @@ struct ShowMoreRow: View {
     }
 }
 
-/// bb3d42c (owner decision nach Diskussion): the counting "show all" line
+/// bb3d42c: the counting "show all" line
 /// that NAVIGATES. Inline expansion is out where a real full page exists —
 /// it duplicated the page without its sorting and filters, and the platform
 /// convention (preview + "See All" → page) says the same.

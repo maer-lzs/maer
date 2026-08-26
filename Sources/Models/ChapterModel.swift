@@ -129,7 +129,7 @@ nonisolated enum ChapterModel {
         // R50: this covers a PARTIAL chapter list, as the name and the doc
         // above say. With NO chapters at all there is nothing to complete —
         // and inventing one mark for a whole single-file item produced the
-        // catalogue defect the owner saw: a Jamendo track showed „ab 0:00 —
+        // catalogue defect the user saw: a Jamendo track showed „ab 0:00 —
         // noch 3 Min." and looked frozen, because that ONE invented chapter
         // spans the entire piece and is named after second zero. Without a
         // chapter the subtitle falls back to the running clock, which is what

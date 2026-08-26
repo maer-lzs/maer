@@ -12,7 +12,7 @@ import SwiftUI
 /// A logo is a mark with its own colours; a saturated ground competes with it
 /// and in the worst case collides (the red SWR3 wordmark on a lilac tile was
 /// the visible case; the blue DLF wordmark on DLF-blue the reported one). The
-/// ground's job is CONTRAST, not company. the owner's call keeps the hue as the
+/// ground's job is CONTRAST, not company. the user's call keeps the hue as the
 /// station identity but caps its saturation — and his "glaube ich" means the
 /// final word is his, made at a before/after picture, so the cap is ONE named
 /// constant he can turn.
@@ -22,7 +22,7 @@ import SwiftUI
 nonisolated enum RadioTileGround {
     /// The saturation cap — the one number to turn, and it has been turned:
     /// 0.52 (old tint) → 0.13 ("etwas weniger farbig", 773d87b) → **0**
-    /// (97e3a5a, the owner FINAL: tiles are a neutral white–grey–black scale;
+    /// (97e3a5a, the user FINAL: tiles are a neutral white–grey–black scale;
     /// the 0.13 softening was a relay misreading of his intent, not a step he
     /// asked for). At 0 the hue term vanishes entirely — the ground carries
     /// only the counter-brightness, which is the whole point: the logo is the
@@ -30,7 +30,7 @@ nonisolated enum RadioTileGround {
     static let saturationCap: Double = 0
 
     /// The luminance threshold between "dark logo" and "light logo" — named
-    /// because it is the second number the owner may want to move. Mid-scale.
+    /// because it is the second number the user may want to move. Mid-scale.
     static let luminanceThreshold: Double = 0.5
 
     /// Brightness runs COUNTER to the logo, in few steps per mode — a
@@ -75,7 +75,7 @@ nonisolated enum RadioTileGround {
         return weighted / alphaSum
     }
 
-    /// f01d6d3 (the owner, replaces the 804fe18 counter rule for CARDS): the
+    /// f01d6d3: the
     /// card ground is measured at the LOGO'S BOTTOM EDGE, not as a whole-image
     /// mean — the gradient attaches at the logo's lower edge, and a mean can
     /// never join it (bigFM: black edge onto beige mean; WDR: white onto
@@ -97,12 +97,12 @@ nonisolated enum RadioTileGround {
         var color: Color { Color(red: red, green: green, blue: blue) }
     }
 
-    /// cbf0d50 (the owner, probeweise): full tone only when the edge colour is
+    /// cbf0d50: full tone only when the edge colour is
     /// the logo's DOMINANT colour — the share of visible pixels within
     /// `dominanceTolerance` of the edge must reach `dominanceShare`. DLF
     /// Kultur/1LIVE (edge == the mark's colour) stay full; WDR 2 (the edge
     /// catches the red bar of a blue-white mark) becomes a transition zone.
-    /// Both numbers are named — the owner turns them at the picture.
+    /// Both numbers are named — the user turns them at the picture.
     static let dominanceShare = 0.40
     static let dominanceTolerance = 0.25   // Euclidean RGB distance
 
@@ -124,7 +124,7 @@ nonisolated enum RadioTileGround {
     }
 
     /// The calmed variant of the SAME tone for the accent case — the counter
-    /// steps the owner approved for cards (804fe18 values), keyed by the edge's
+    /// steps the user approved for cards (804fe18 values), keyed by the edge's
     /// own luminance: dark edge → light pastel, light edge → muted dark.
     static func dampened(_ edge: Edge) -> Color {
         var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0

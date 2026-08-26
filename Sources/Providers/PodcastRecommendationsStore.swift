@@ -39,7 +39,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         /// From the catalog's trending/top charts.
         case popular
     }
-    /// ff92dde (the owner): EVERY card explains its real source — the line
+    /// ff92dde: EVERY card explains its real source — the line
     /// never lies (per-source provenance) and never stays silent. The ONE
     /// wording for all surfaces (Home row, tab row, full page — Regel 2;
     /// the tab surfaces passed no subtitle at all, which read as "the line
@@ -294,7 +294,7 @@ final class PodcastRecommendationsStore: ObservableObject {
         return (a, g, c)
     }
 
-    /// 9eccba0 (the owner): author/publisher parallels come FIRST — up to about
+    /// 9eccba0: author/publisher parallels come FIRST — up to about
     /// half the row, at most `perAuthorCap` shows per author — then category,
     /// charts last as the guaranteed filler (the row never shrinks on thin
     /// author days). The cap is ROW-wide (it also counts an author's category
@@ -408,7 +408,7 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     /// bc69cd8: the SEED of the recommendations — deliberately WITHOUT
     /// mirrored feeds. A Pinchflat capsule is a private mirror; feeding its
-    /// author/categories into a PUBLIC catalog search produced the owner's
+    /// author/categories into a PUBLIC catalog search produced the user'
     /// "because you listen to IDA" → Institute for Defense Analyses (four of
     /// six tiles were misses on a bare author string). Same capsule rule as
     /// in the gpodder sync: a mirror is not a subscription of the user's in
@@ -464,11 +464,11 @@ final class PodcastRecommendationsStore: ObservableObject {
 
     // MARK: - Filtern & Ranking
 
-    /// 973121e (the owner, freigegeben): REAL author equality, folded — the
+    /// 973121e: REAL author equality, folded — the
     /// measured word-collision fix. Both old holes are gone: the TITLE branch
     /// ("Einschlafen" booked 25/25 foreign shows as sameAuthor — a title is
     /// no proof of authorship) and the two-way `contains` ("Sport" pulled
-    /// Barstool/FOX Sports). the reviewer's optional word-boundary prefix is NOT
+    /// Barstool/FOX Sports). An optional word-boundary prefix is NOT
     /// built: it would not cover the "DIE ZEIT"/"ZEIT ONLINE" pair either
     /// (neither prefixes the other), and equality keeps the row honest —
     /// a publisher variant surfaces via genre/charts with its own reason.

@@ -54,8 +54,8 @@ nonisolated enum ArchiveMusicCatalog {
     /// audio items, 61.111 WITH a stated licence — the query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
     /// (mostly NC/ND variants, which is exactly why the capsule matters).
-    /// R-Netlabels (the owner am Geraet: „Was ist mit Netlabels, warum ist die
-    /// Seite nicht nach Genre aufgeteilt?"). Gemessen an 1.000 meistgeladenen
+    /// Netlabels war der einzige Musik-Bereich ohne Genre-Faecher. Gemessen
+    /// an 1.000 meistgeladenen
     /// Titeln: **93,5 % tragen ein subject-Feld** — die beste Datenlage aller
     /// Archive-Quellen (OTR 40 %, LibriVox/Gutenberg um 41 %). Die Faecher
     /// haengen also an den Subjects, nicht an der Lizenzfrage; beides ist
@@ -115,7 +115,7 @@ nonisolated enum ArchiveMusicCatalog {
             measuredTotal: total)
     }
 
-    /// R62 (the owner: „beim Schellack genauso aufsetzen"): die ELTERN-Abfrage
+    /// R62: die ELTERN-Abfrage
     /// der Schellack-Flaeche — sie gab es nicht, weil die neun Faecher je
     /// eine eigene Abfrage tragen und niemand nach der ganzen Flaeche fragte.
     ///

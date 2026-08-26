@@ -123,7 +123,7 @@ struct PodcastsView: View {
                         .padding(.horizontal)
                     }
                     nextUpSection
-                    // R55 (the owner's ENTSCHEID): eigener Bestand vor
+                    // R55: eigener Bestand vor
                     // Schaufenster. „Empfohlen" und „Neue Folgen" stehen
                     // hoeher, „Hoerspiele zum Abonnieren" rutscht zwei Reihen
                     // runter — der Podcast-Tab ist die Flaeche der ABOS, und

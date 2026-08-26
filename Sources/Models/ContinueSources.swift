@@ -11,7 +11,7 @@ import OSLog
 ///
 /// Third instance of "the row only knows the source it was born from": the
 /// row read the server library's `continueListening`, so a locally sideloaded
-/// book that is actively playing (the owner's Winterfell) and a started LibriVox
+/// book that is actively playing and a started LibriVox
 /// work were structurally invisible — for a serverless user the row was empty
 /// while he was in the middle of a book.
 ///
@@ -140,8 +140,8 @@ nonisolated enum ContinueSources {
                 || (id.hasPrefix(FreeCatalog.archivePrefix)
                     && id.contains(CatalogSongID.separator))
             guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
-            // R59 (the owner am Geraet: die erste Kachel heisst „Unbekannter
-            // Titel" und laeuft nicht): der Tot-Vermerk wurde bisher NUR beim
+            // Eine Kachel ohne Namen, die nicht laeuft: der Tot-Vermerk wurde
+            // bisher NUR beim
             // Bauen der Katalogreihen gelesen — diese Reihe liest den
             // HOERVERLAUF und kam an ihm vorbei. Ein Stueck, das die Quelle
             // nicht mehr kennt, verlaesst damit auch hier die Reihe.

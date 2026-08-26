@@ -79,7 +79,7 @@ struct RadioGenreView: View {
                         .padding(.top, 40)
                     worldwideOffer
                 } else {
-                    // 973121e (the owner): family collapse — a DISPLAY rule of
+                    // 973121e: family collapse — a DISPLAY rule of
                     // THIS list only. Same domain + explicit name head fold
                     // to one entry (Konferenz or best-voted in front); the
                     // variants expand in place via the existing ShowMoreRow

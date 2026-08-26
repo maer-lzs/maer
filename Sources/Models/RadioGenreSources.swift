@@ -148,7 +148,7 @@ nonisolated enum RadioGenreCuration {
 /// The selection is app-wide (one UserDefaults key, all genre pages), but each
 /// page used to hold a private `@State` COPY read once at init — two truths,
 /// and on the device a change did not reach the visible list until restart.
-/// The sim never hit the owner's exact constellation, so this is deliberately not
+/// The sim never hit the user's exact constellation, so this is deliberately not
 /// a point fix for one path: a shared observed object is the only construction
 /// that updates EVERY mounted page at the moment of the change, whatever the
 /// navigation cache did.
@@ -290,7 +290,7 @@ final class RadioBrowseSelection: ObservableObject {
     }
 }
 
-/// 973121e (the owner, freigegeben): family collapse as a DISPLAY rule of the
+/// 973121e: family collapse as a DISPLAY rule of the
 /// genre lists — the sport tag is 20/25 one provider's per-match channels
 /// (measured), and the flood hides that the tag is thin. Search, favorites,
 /// My Stations and Recents keep showing single channels; only the genre page

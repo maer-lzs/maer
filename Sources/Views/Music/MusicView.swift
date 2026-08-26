@@ -231,7 +231,7 @@ struct MusicView: View {
                 // criterion, so nothing may bypass a shelf.
                 ShellacSection(playerCoordinator: playerCoordinator)
             }
-            // R40 (ENTSCHEID the owner): THE free-music row — the chevron goes
+            // R40: THE free-music row — the chevron goes
             // straight to the Jamendo page (path and target share the name),
             // it carries the shuffle, and it now asks the AREA switch as well.
             // That switch is a privacy switch: off means no Jamendo request,

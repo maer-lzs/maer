@@ -54,8 +54,8 @@ nonisolated enum ArchiveItemForm: String, Sendable {
     /// — it used to be an in-memory set that only the radio-play row filled, so
     /// the same item was a bundle when it came from that row and an ordinary
     /// item when it came from search, a playlist or a cold start.
-    /// R56 (the owner am Geraet: ein Archive-Hoerbuch ohne Teileliste, gemessen
-    /// acht benannte Audiodateien bei „Weird Tales", keine auswaehlbar).
+    /// Ein Archive-Hoerbuch mit acht benannten Audiodateien bekam keine
+    /// auswaehlbare Teileliste.
     ///
     /// Die Frage hiess frueher „liegt es in `oldtimeradio`?" — also nach der
     /// SAMMLUNG statt nach der FORM. Damit fielen die Archive-Hoerbuecher

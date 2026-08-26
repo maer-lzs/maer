@@ -111,7 +111,7 @@ nonisolated enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    /// 🔴 P5 measuring order: every deletion names its CALLER. the owner also
+    /// 🔴 P5 measuring order: every deletion names its CALLER. the user also
     /// lost the Subsonic password, for which no automatic deletion path is
     /// measurable — so the next incident must leave a trail instead of a
     /// guess. Only the key name is logged, never a value.

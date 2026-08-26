@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// R60 (the owner's ENTSCHEID: „Ja, als Debug-Hebel in den Einstellungen"): die
+/// R60: die
 /// abgeleiteten Speicher an EINER Stelle, mit der Grenze IM CODE statt in
 /// einer Beschriftung.
 ///

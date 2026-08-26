@@ -147,7 +147,7 @@ nonisolated enum CatalogGenreAxis {
         // shelf (the Horror/Suspense 114 is ONE shelf), western and
         // music/variety are NEW shelves (82 / 159 bundles).
         "crime": "crime",
-        // R47 (the reviewer's Messung ueber 300 OTR-Items): diese Begriffe sind
+        // R47: diese Begriffe sind
         // haeufiger als manches, das die Achse schon kannte — sie fehlten
         // schlicht. Exakte Terme wie alle anderen, kein Teilstring.
         "detective": "crime",
@@ -172,7 +172,7 @@ nonisolated enum CatalogGenreAxis {
     /// onto their parent shelf as AXIS entries (electropop→pop), no special
     /// code; netlabels inherits this axis later. Server-side use: the shelf
     /// query sends ALL its tags (fuzzytags OR-join) via `musicTags(forShelf:)`.
-    /// R-Musik (the owner's ENTSCHEID: „Falte die ganzen sehr kleinen Töpfe …
+    /// R-Musik (Entscheid: „Falte die ganzen sehr kleinen Töpfe …
     /// bleiben wir bei circa 30"): the folded axis. Two spelling families ride
     /// in ONE table — Jamendo writes its tags without separators
     /// (`electropop`, `singersongwriter`), archive.org subjects use spaces and
@@ -328,7 +328,7 @@ nonisolated enum CatalogGenreAxis {
 
     // MARK: - R1 (09.08.): the shelves ask the SERVER, not a local pool
 
-    /// R58 (the owner am Geraet: „Es gibt nur 3 Krimis in Gutenberg?"): wie
+    /// R58: wie
     /// ERGIEBIG jeder Begriff ist, gemessen an gutendex' Hoerbuch-Bestand
     /// (26.08.). Die Zahl steht hier als DATEN, weil die Auswahl sie braucht
     /// und die App sie nicht zur Laufzeit messen kann.
@@ -451,9 +451,9 @@ nonisolated enum CatalogGenreAxis {
 
     // MARK: - R47: die Jahrzehnte-Achse fuer Old Time Radio
 
-    /// the owner's ENTSCHEID: „Ja, nach Jahrzehnten." Fuer Old Time Radio ist
+    /// Entscheid: „Ja, nach Jahrzehnten." Fuer Old Time Radio ist
     /// die ZEIT die natuerlichere Gliederung als das Genre — „Hoerspiele der
-    /// 40er" erklaert sich von selbst, und the reviewer's Messung an 300 Items zeigt
+    /// 40er" erklaert sich von selbst, und eine Messung an 300 Items zeigt
     /// die Jahre dicht belegt („1950s" 50 · „1940s" 47 · Einzeljahre 1943-1956
     /// mit je 15-38 Treffern), waehrend 59 % kein Genre-Fach bekommen.
     ///

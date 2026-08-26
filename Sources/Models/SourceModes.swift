@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// What a source is used FOR. the owner's rule: "everything that can do several
+/// What a source is used FOR. the user's rule: "everything that can do several
 /// things should be able to do them at the same time — people set up ONE
 /// server and want to be done, not ten."
 ///

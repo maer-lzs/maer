@@ -1084,7 +1084,7 @@ struct LibraryView: View {
     /// page, "New at LibriVox" tiles (MediaTile format, tap plays, context
     /// menu opens the license sheet), catalog≠library marking kept. The row
     /// hides entirely while the store is empty (service/toggle off, offline).
-    /// R52 (the owner's ENTSCHEID): this row shows the CATALOGUES — LibriVox,
+    /// R52: this row shows the CATALOGUES — LibriVox,
     /// Project Gutenberg, Internet Archive and Old Time Radio, mixed. No feed
     /// tile: a feed lands in the podcast tab as a subscription.
     ///

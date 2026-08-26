@@ -151,7 +151,7 @@ enum FreeCatalogLoader {
         /// R44: a FAILED row is an ANSWER too. Without this only Jamendo
         /// could ever be answered, so a failing LibriVox left the pass
         /// permanently incomplete — and the R39 reopen turned that into three
-        /// full network passes in a row (the wheel the owner saw spinning).
+        /// full network passes in a row.
         /// Cancellations never land here: a cancelled step is "not loaded
         /// yet" and must stay retryable.
         enum Row: Hashable { case books, classical, netlabels, freeMusic }
@@ -179,7 +179,7 @@ enum FreeCatalogLoader {
     /// grids and pages keep loading unprobed (dozens of requests per visit)
     /// — there the reactive marking heals, which is why a ghost record
     /// disappears there after the first tap.
-    /// R45 (the owner zweimal: „viel zu lang"): the probe chain is OFF the
+    /// R45: the probe chain is OFF the
     /// build path. It cost **43 s per pass** — up to 72 serial round trips
     /// and 4,5 MB of metadata to answer „gibt es ein Bild?" for 12 tiles.
     /// A check that costs more than its purpose is not a check; it is the
@@ -302,7 +302,7 @@ enum FreeCatalogLoader {
         }
         if jamendoOn {
             if JamendoClient.clientId() == nil {
-                // R39 Befund 3 (the owner): the key ships with the build — no
+                // R39 Befund 3: the key ships with the build — no
                 // user ever enters one, so an instruction to do so is wrong
                 // for every regular build. Only a self-built copy without the
                 // local key file lands here; the line says what holds

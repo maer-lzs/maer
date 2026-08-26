@@ -15,7 +15,7 @@ nonisolated enum SyncRules {
     /// 8b71fd7: may the player write a podcast's LOCAL state (localPosition +
     /// gpodder push)?
     ///
-    /// The reviver, measured on the owner's "Rest is History" episode: restoring
+    /// The reviver, measured on the user' "Rest is History" episode: restoring
     /// a loaded episode flushed the RESTORED state immediately — position
     /// 21:09 written with a FRESH timestamp, locally and to gpodder, on every
     /// app start of whichever device still held the episode. The finished

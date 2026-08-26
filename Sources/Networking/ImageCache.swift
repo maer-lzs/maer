@@ -57,8 +57,8 @@ final class ImageCache {
             .compactMap { ($0 as? UIWindowScene)?.screen }.first
         let shortSidePixels = screen.map { min($0.bounds.width, $0.bounds.height) * $0.scale } ?? 1500
         maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
-        // R54 (the owner: „in manchen Kachelreihen werden Bilder sofort wieder
-        // weggeworfen, wenn man seitlich scrollt"). Beide Speicher trugen
+        // Kachelreihen warfen ihre Bilder beim seitlichen Scrollen sofort
+        // wieder weg. Beide Speicher trugen
         // ZWEI Grenzen, die verschiedene Zahlen meinten — und die kleinere
         // band, ohne dass die groessere es verriet. Ausgerechnet:
         //

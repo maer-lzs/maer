@@ -39,9 +39,38 @@ final class RSSProvider: AudioProvider {
     }
 
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
-        guard let found = subs.episode(guid: itemId) else {
-            throw NSError(domain: "RSSProvider", code: 404)
+        // The subscription stock first — it is the one truth for what we own.
+        // Then the session store of browsed shows: an episode listed in a feed
+        // is playable whether it is subscribed or not. The 404 came from this
+        // lookup, never from the source.
+        if let found = subs.episode(guid: itemId)
+            ?? BrowsedEpisodes.shared.episode(guid: itemId) {
+            return await detail(show: found.show, episode: found.episode)
         }
+        // After a restart the session store is empty; the row written down for
+        // a listened episode then carries the resolution, so its position
+        // yields a tile with a name instead of an orphan.
+        if let kept = BrowsedEpisodes.shared.listened(guid: itemId) {
+            return LibraryItemDetail(
+                id: itemId,
+                media: LibraryItemMedia(
+                    metadata: LibraryItemMetadata(
+                        title: kept.episodeTitle, authorName: kept.showTitle,
+                        narratorName: nil, seriesName: nil, genres: nil,
+                        publishedYear: nil, description: nil),
+                    duration: kept.duration > 0 ? kept.duration : nil,
+                    chapters: nil,
+                    tracks: [ABSAudioTrack(index: 0, startOffset: 0,
+                                           duration: kept.duration,
+                                           contentUrl: kept.audioURL,
+                                           metadata: nil)]),
+                userMediaProgress: nil)
+        }
+        throw NSError(domain: "RSSProvider", code: 404)
+    }
+
+    private func detail(show: PodcastShow, episode: PodcastEpisode) async -> LibraryItemDetail {
+        let found = (show: show, episode: episode)
         let item = libraryItem(show: found.show, episode: found.episode)
         var media = item.media ?? emptyMedia
         // Lazily load Podcasting 2.0 chapters (only when opening the episode).

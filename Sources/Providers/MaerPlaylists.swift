@@ -122,7 +122,7 @@ final class MaerPlaylists: ObservableObject {
     /// P4: `knownTitle` comes from the SURFACE that added the entry — it had
     /// the name on screen at the moment of the tap. The cache lookup is only
     /// the fallback now: with a cold catalogue cache it answers nil, and the
-    /// snapshot loop used to `continue` wordlessly, which is how the owner's
+    /// snapshot loop used to `continue` wordlessly, which is how the user'
     /// shared list ended up as two "Unknown Title" rows on both devices.
     @discardableResult
     func add(itemId: String, to playlistId: String, knownTitle: String? = nil) -> AddOutcome {

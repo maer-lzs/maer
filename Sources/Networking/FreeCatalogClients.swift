@@ -103,7 +103,7 @@ nonisolated enum LibriVoxClient {
 /// own works; naming the source is fine and we do it in the row.
 nonisolated enum GutenbergClient {
     /// R53: also Encodable — the Gutenberg shelf stock is cached for a day
-    /// (the owner's decision), and caching the SOURCE form means a cached shelf
+    ///, and caching the SOURCE form means a cached shelf
     /// rebuilds exactly the tiles a live one would, through the same
     /// `remember(gutenberg:)`. No second shape, no second truth.
     nonisolated struct Book: Codable, Sendable {
@@ -197,7 +197,7 @@ nonisolated enum CatalogShelfSource {
         case unsupported
     }
 
-    /// the owner's decision: the GUTENBERG shelves are fetched once a day and
+    /// the user's decision: the GUTENBERG shelves are fetched once a day and
     /// read from store afterwards. Only Gutenberg — archive.org answers a
     /// shelf in 0,63–0,80 s, where a store would be work without a win and a
     /// second truth beside it. gutendex costs 30–41 s per COLD topic and
@@ -481,7 +481,7 @@ nonisolated enum ArchiveOrgClient {
     /// items with a stated licence. Measured 05.08.: 8.854 items total, 2.316
     /// with `licenseurl` (26 %). We do not suggest anything whose rights
     /// situation is unknown, and "no statement" is not "free".
-    /// R47 (the owner's ENTSCHEID): der Lizenzfilter fiel vom ANZEIGE-Weg.
+    /// R47: der Lizenzfilter fiel vom ANZEIGE-Weg.
     /// „Auch die Sachen ohne Lizenzangabe mit reinnehmen — sie sind auf
     /// archive.org, dort wird alles frei zum Download angeboten." Wir zeigen
     /// und streamen, was dort oeffentlich liegt; ein Eintrag ohne Angabe
@@ -723,7 +723,7 @@ nonisolated enum JamendoClient {
     /// P8: `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR —
     /// the API can do it better than filtering a local 200 pool); `offset`
     /// pages the shelf grid.
-    /// R49 (the owner hat die Form abgenommen): Stimmung, Tempo und
+    /// R49: Stimmung, Tempo und
     /// Instrumental sind FILTER auf der Vollseite eines Fachs — keine eigenen
     /// Reihen-Familien. Drei neue Familien auf einer Seite waeren genau die
     /// Ueberfuellung, gegen die R51 aufgeraeumt hat.

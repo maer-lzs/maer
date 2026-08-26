@@ -640,7 +640,7 @@ struct JamendoShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
-                // R49-Auflage (the reviewer): ein Filter, der zu null Treffern fuehrt,
+                // R49-Auflage: ein Filter, der zu null Treffern fuehrt,
                 // SAGT das — er zeigt keine leere Flaeche. Und er laesst sich
                 // von hier aus zuruecknehmen, damit die Reihe nicht als
                 // kaputt gelesen wird.
@@ -676,7 +676,7 @@ struct JamendoShelfPage: View {
         }
     }
 
-    /// R49 (Form von the owner abgenommen): Stimmung und Tempo als FILTER auf
+    /// R49: Stimmung und Tempo als FILTER auf
     /// der Vollseite eines Fachs, Instrumental als SCHALTER — keine eigenen
     /// Reihen. Drei neue Familien auf einer Seite waeren genau die
     /// Ueberfuellung, gegen die R51 aufgeraeumt hat.

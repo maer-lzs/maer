@@ -57,7 +57,7 @@ struct PodcastFeaturedCard: View {
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
         // P13/Q7: the Continue card carries the lock too — a free and a
         // premium copy of the SAME show can sit next to each other here
-        // (the owner's ZEIT case), and then the mark tells them apart. It sits
+        //, and then the mark tells them apart. It sits
         // on the COVER (the card's cover fills the top), never at the text;
         // the bottom corners carry the info pill and the download badge.
         .overlay(alignment: .topTrailing) {

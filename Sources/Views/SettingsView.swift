@@ -222,7 +222,7 @@ struct SettingsView: View {
         // e111072 (crash 4): MeasuredLadder, never ViewThatFits — same bomb,
         // same cure as the tab bar. Probes render on main; only the chosen
         // rung is built.
-        // 211ec20 (the owner): below the smallest TEXT rung sits the GLYPH
+        // 211ec20: below the smallest TEXT rung sits the GLYPH
         // rung (sentinel 0) — "Allgemein" always stays text, the four media
         // pills fall back to their tab-bar glyphs. The floor question of the
         // ladder is thereby answered instead of open.
@@ -239,7 +239,7 @@ struct SettingsView: View {
     /// The descending ladder — full `.subheadline` (15) first, the floor one
     /// step above the tab bar's smallest (the chips carry more padding). If
     /// even the smallest does not fit, the row overflows visibly and the
-    /// journey reports it — THEN the question goes back to the owner with the
+    /// journey reports it — THEN the question goes back to the user with the
     /// number, not before, and not with a silent second line as the escape.
     private static let chipFontSizes: [CGFloat] = [15, 14, 13, 12, 11]
 
@@ -282,7 +282,7 @@ struct SettingsView: View {
                             // tab bar. 2b5896d: active and inactive share EVERY
                             // measure — colour carries the state, never size.
                             .padding(.vertical, TabBarMetrics.Capsule.verticalPadding)
-                            // R27 (the owner, 16 Plus): five TEXT pills must fit
+                            // R27: five TEXT pills must fit
                             // 430-pt portrait — 16 pt of air per side stacked
                             // past that width, so the glyph rung won there
                             // although the text would fit with a tighter pill.
@@ -417,7 +417,7 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // R60 (the owner's ENTSCHEID): der Debug-Hebel fuer die ABGELEITETEN
+            // R60: der Debug-Hebel fuer die ABGELEITETEN
             // Speicher — damit die kalte Form von Hand erreichbar ist, statt
             // einmal in 24 Stunden. Er fasst NICHTS an, was dem Nutzer
             // gehoert; die Grenze steht als Liste in `DerivedStores`, nicht

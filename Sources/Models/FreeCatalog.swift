@@ -345,7 +345,7 @@ nonisolated enum FreeCatalog {
     /// e948444 (pure): the licence URL as a short, honest label. Unknown
     /// forms keep the raw URL rather than being flattened to "free".
     /// R47: darf von diesem Eintrag eine KOPIE gezogen werden? Nur mit
-    /// deklarierter Lizenz — the owner's Grenze: „Download, wenn er kommt, dann
+    /// deklarierter Lizenz — the user's Grenze: „Download, wenn er kommt, dann
     /// nur die lizenzierten Sachen." Anzeigen und Streamen ist davon
     /// unberuehrt; das ist derselbe Vorgang wie der Browser eines Besuchers.
     static func mayDownload(licenceURL: String?) -> Bool {
@@ -525,7 +525,7 @@ nonisolated enum FreeCatalog {
     /// Gehoert diese Kennung einem der freien Kataloge? Nur fuer die darf
     /// ein Fehlschlag als „weg" vermerkt werden — ein Server-Buch ist
     /// Sache des Servers.
-    /// R57-Nachlese (the owner's ENTSCHEID: nach hinten sortieren): ist das ein
+    /// R57-Nachlese: ist das ein
     /// SAMMELBAND mehrerer Autoren? Sie ranken in vielen Faechern oben und
     /// verdraengen einzelne Werke von den ersten Plaetzen.
     ///
@@ -950,7 +950,7 @@ nonisolated enum FreeCatalog {
     }
 }
 
-/// R49 (Form von the owner abgenommen): die drei Achsen, die `musicinfo` neben
+/// R49: die drei Achsen, die `musicinfo` neben
 /// den Gattungen traegt — als FILTER auf der Vollseite eines Fachs, nicht als
 /// eigene Reihen.
 ///

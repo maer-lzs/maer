@@ -132,7 +132,7 @@ extension PlayerViewModel {
                 // 8b71fd7: this branch is gated on an EVENT since load. The
                 // restore flush used to run through here and re-stamped the
                 // RESTORED position with a fresh timestamp, locally and to
-                // gpodder — the reviver that beat the owner's finished mark
+                // gpodder — the reviver that beat the user's finished mark
                 // twice. Restoring is loading, not listening: a merely-loaded
                 // episode writes nothing. (restart and deliberate seeks set
                 // the flag before they arrive here, so both still write —

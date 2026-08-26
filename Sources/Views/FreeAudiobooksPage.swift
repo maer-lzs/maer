@@ -20,7 +20,7 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     /// Paket 3: one source's full page (fundgrube + the axis that carries).
     case source(CatalogSource)
     /// R51 Runde 2: the endless "Popular" browsing of ONE source. It left the
-    /// overview when the owner decided that page is rows only — the scrolling
+    /// overview when the user decided that page is rows only — the scrolling
     /// did not disappear, it moved to where scrolling is the form.
     case popular(CatalogSource)
     /// H erweitert (f374116): one shelf of a genre-carrying source — the

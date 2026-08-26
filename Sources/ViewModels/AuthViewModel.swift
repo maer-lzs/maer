@@ -24,7 +24,7 @@ final class AuthViewModel: ObservableObject {
     @Published var errorMessage: String?
     /// 🔴 P5: the session is DOUBTED, never dissolved. A homeserver coming
     /// back up answers 401 for minutes; the old path logged out and DELETED
-    /// the keychain token, which no restart could heal (the owner had to
+    /// the keychain token, which no restart could heal (the user had to
     /// reinstall). The rule this state exists for: **credentials are deleted
     /// by the user, never by a server answer.** While suspect the app keeps
     /// the token, shows the state at the source entry (G8) and re-probes

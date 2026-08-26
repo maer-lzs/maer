@@ -452,7 +452,7 @@ final class PlayerCoordinator: ObservableObject {
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
-        // d7f12e1 A (the owner): the mini player offers NOTHING that is
+        // d7f12e1 A: the mini player offers NOTHING that is
         // finished by its own knowledge — the Weiterhören rule, applied to
         // the standby. Judged by the NUMBERS (the one derived finished rule),
         // never only a flag; an empty standby is honest. The event gate is

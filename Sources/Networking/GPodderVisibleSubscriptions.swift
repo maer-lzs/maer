@@ -11,7 +11,7 @@ import Foundation
 /// own comment promised the mirror exclusion it did not implement. Every
 /// capsule-carrying device therefore pushed the Pinchflat mirror URLs, and
 /// every device without mesh access inherited them as dead "premium" feeds
-/// (measured on the owner's iPad).
+///.
 ///
 /// Third instance of the class "rule sits only where it was reported", so
 /// this is a CONSOLIDATION, not a copied filter: both call sites read this

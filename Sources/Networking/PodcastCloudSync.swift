@@ -28,7 +28,7 @@ final class PodcastCloudSync {
     /// e32454e/2100b09: the EXISTING progress channel now also carries the
     /// classes that have no server behind them — catalog works and local
     /// sideloads keep their position in the very same `localPosition` store,
-    /// and the owner's goal for these rounds is "identical state on all
+    /// and the user's goal for these rounds is "identical state on all
     /// devices". A second channel for the same question would be exactly the
     /// second version we are abolishing everywhere else.
     ///

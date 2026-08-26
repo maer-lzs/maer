@@ -35,7 +35,7 @@ nonisolated enum CatalogMix {
     /// source) so no single catalog can dominate the row.
     /// 1092867: the row used to be fully DETERMINISTIC — ordered lanes into a
     /// fair interleave means the first tile of every lane is always the same,
-    /// which is why the owner saw the identical trio for days. The pot is not
+    /// which is why the user saw the identical trio for days. The pot is not
     /// the problem (measured: 38 curated feeds + four catalog lanes for 12
     /// seats) — the static pick is.
     static func row(feedGroups: [[HoerspielCuration.Entry]],

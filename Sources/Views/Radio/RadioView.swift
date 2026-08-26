@@ -119,7 +119,7 @@ struct RadioView: View {
                 // first row and a CARD; "Recently Played" sits below it as a
                 // small tile.
                 //
-                // The reason they stay apart is the owner's: recently played is a
+                // The reason they stay apart is the user': recently played is a
                 // STATE, my stations is a PREFERENCE — two truths do not
                 // belong in one row. And because the last-heard station is
                 // usually also the most-heard one, the upper row leaves it
@@ -167,7 +167,7 @@ struct RadioView: View {
                 }
                 regionSection
                 if !recents.isEmpty {
-                    // dbd0984 (the owner): "Zuletzt gespielt" sits BELOW the
+                    // dbd0984: "Zuletzt gespielt" sits BELOW the
                     // regional row — place 4, under the two discovery rows.
                     // The whole recent list as the plain tile row, small, no
                     // show line (stale for a station that stopped). The
@@ -319,7 +319,7 @@ struct RadioView: View {
                                                  sessionFailed: session.failed,
                                                  gaveUp: session.gaveUp))
                         // 52af077 (GT R1): the missing listening time needs a
-                        // MEASUREMENT, not a guess — the report answers the reviewer's two
+                        // MEASUREMENT, not a guess — the report answers two
                         // questions per card: does the store hold >= 3600 s for
                         // this id, and what does the card's line rule decide?
                         let seconds = ListeningStatsStore.shared.radioSeconds()
@@ -343,7 +343,7 @@ struct RadioView: View {
                         hoursBlock += "  Topf gesamt: \(seconds.count) Sender mit Sekunden, "
                             + "Summe \(seconds.values.reduce(0, +)) s\n"
                         // 51ea272: the POT itself, top entries with FULL keys and
-                        // resolved names — the reviewer's question is what six stations
+                        // resolved names — the question is what six stations
                         // booked onto one id, and only the pot can answer which
                         // id carries whose seconds.
                         // 2618461: the sync witness — does anything from the
@@ -365,7 +365,7 @@ struct RadioView: View {
                         // 2b7c857: only one of several favorites showed — the
                         // diagnosis answers WHICH favorites the store knows, which
                         // the row shows, and why one is missing (exclusion), so
-                        // the owner's device settles source vs. cap vs. ranking.
+                        // the user's device settles source vs. cap vs. ranking.
                         let storeFavs = RadioStore.favorites()
                         let shownIds = Set(myStations.map(\.id))
                         let excluded = RadioMyStations.excludedID(recents: RadioStore.recents())

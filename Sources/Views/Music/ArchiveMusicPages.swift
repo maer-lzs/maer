@@ -59,7 +59,7 @@ struct ArchiveMusicPage: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         ArchiveRightsNote()
-                        // R62 (the owner's ENTSCHEID, dieselbe Ordnung wie die
+                        // R62 (Entscheid, dieselbe Ordnung wie die
                         // Katalogseiten aus R51): „Beliebt" steht OBEN als
                         // Kachelreihe mit Chevron, die Faecher darunter. Das
                         // endlose Nachladen lebt auf der Vollseite hinter dem
@@ -424,7 +424,7 @@ struct ShellacShelvesPage: View {
                         Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
                     }
                 }
-                // R62 (the owner: „beim Schellack genauso aufsetzen"): dieselbe
+                // R62: dieselbe
                 // Ordnung wie ueberall — „Beliebt" oben als Reihe mit Chevron,
                 // die neun Faecher darunter. Der alte Kommentar „the shelves
                 // ARE the surface" gilt damit nicht mehr; die Eltern-Abfrage
