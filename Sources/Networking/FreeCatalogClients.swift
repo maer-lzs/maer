@@ -363,6 +363,36 @@ nonisolated enum CatalogShelfSource {
         return answer
     }
 
+    /// A DECADE shelf through the day store. Its query is fully determined by
+    /// the base query and the decade in the id, so the fingerprint needs no
+    /// term list.
+    static func decadePreview(source: CatalogSource, decade: String, rows: Int,
+                              storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+        if let stored = storedDay[decade] {
+            return .archive(docs: stored?.docs ?? [], total: stored?.total)
+        }
+        let answer = try await decadePage(source: source, decade: decade, rows: rows)
+        remember(answer, surface: source.rawValue, shelf: decade, rows: rows)
+        return answer
+    }
+
+    /// The POPULAR row of a music area, through the same day store. The
+    /// shellac surface asks it once per area, so a visit is ten queries in
+    /// series; stored, it is ten per day.
+    static func areaPopular(area: ArchiveMusicArea, rows: Int, page: Int,
+                            storedDay: [String: ShelfStock?] = [:]) async throws -> [ArchivePopularDoc] {
+        if let stored = storedDay[Self.popularShelf] { return stored?.docs ?? [] }
+        let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: rows, page: page)
+        remember(.archive(docs: docs, total: nil), surface: area.key,
+                 shelf: Self.popularShelf, rows: rows)
+        return docs
+    }
+
+    /// The shelf name under which an area's popular row is filed. It is not a
+    /// genre, so it carries no terms; its fingerprint is the area query
+    /// alone, and that is exactly what decides its content.
+    static let popularShelf = "popular"
+
     /// The music surfaces' shelf query. It lived in the view and therefore
     /// had neither the day store nor the cap; here it shares both, and the
     /// term list stays where every other shelf query takes it from.

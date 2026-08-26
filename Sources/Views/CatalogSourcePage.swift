@@ -431,13 +431,17 @@ struct CatalogSourcePage: View {
         guard source == .oldTimeRadio else { return }
         let provider = FreeCatalogProvider.shared
         let source = source
+        // The decades are shelves of the same surface, so they take the same
+        // day store. Four queries, so they need no cap of their own.
+        let storedDay = CatalogShelfSource.storedDay(surface: source.rawValue)
         await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
             for decade in CatalogGenreAxis.decadeShelves {
                 let key = decade.key
                 group.addTask {
                     do {
-                        switch try await CatalogShelfSource.decadePage(
-                            source: source, decade: key, rows: RowPreview.limit) {
+                        switch try await CatalogShelfSource.decadePreview(
+                            source: source, decade: key, rows: RowPreview.limit,
+                            storedDay: storedDay) {
                         case .archive(let docs, let total): return (key, docs, total, nil)
                         default: return (key, [], nil, nil)
                         }

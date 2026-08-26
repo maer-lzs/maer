@@ -523,7 +523,11 @@ struct ShellacShelvesPage: View {
                 let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12,
                                                 on: Date(),
                                                 salt: CatalogRotation.salt(forShelf: shelf.key))
-                let docs = try await ArchiveOrgClient.popularMusic(area: shelf, rows: 12, page: page)
+                // Ten areas in series, once per visit. Through the day store
+                // it is ten per day, and the series needs no cap.
+                let docs = try await CatalogShelfSource.areaPopular(
+                    area: shelf, rows: 12, page: page,
+                    storedDay: CatalogShelfSource.storedDay(surface: shelf.key))
                 Logger.library.notice("FREECAT \(shelf.key, privacy: .public) loaded=\(docs.count)")
                 rows[shelf.key] = docs.compactMap { provider.remember(popular: $0) }
             } catch {

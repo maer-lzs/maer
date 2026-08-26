@@ -364,6 +364,56 @@ struct CatalogStoreReadFenceTests {
         #expect(store.load(defaults: defaults, now: heute.addingTimeInterval(600))["adventure"] != nil)
     }
 
+    /// JEDER Weg, der Faecher holt, geht durch die eine Tuer. Der Auftrag
+    /// nennt Netlabels und Schellack ausdruecklich; die Jahrzehnte und die
+    /// Beliebt-Reihen der Schellack-Flaechen liefen an ihr vorbei, weil sie
+    /// eigene Ladewege sind. Ohne diesen Zaun faellt der naechste neue
+    /// Ladeweg genauso durch, und niemand sieht es.
+    @Test("jeder Faecher-Ladeweg geht durch die eine Tuer, nicht am Speicher vorbei")
+    func everyShelfPathGoesThroughTheOneDoor() throws {
+        let seite = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
+                              encoding: .utf8)
+        let dekaden = try #require(functionBody(of: "private func loadDecades() async {", in: seite))
+        #expect(dekaden.contains("decadePreview("),
+                "die Jahrzehnte fragen wieder ohne Speicher")
+        #expect(!dekaden.contains("CatalogShelfSource.decadePage("),
+                "die Jahrzehnte gehen an der Tuer vorbei")
+
+        let musik = try String(contentsOf: sourceFile("Sources/Views/Music/ArchiveMusicPages.swift"),
+                               encoding: .utf8)
+        #expect(musik.contains("CatalogShelfSource.musicPage("),
+                "die Musik-Faecher bauen ihre Abfrage wieder selbst")
+        #expect(musik.contains("CatalogShelfSource.areaPopular("),
+                "die Beliebt-Reihen der Schellack-Flaechen laufen wieder ohne Speicher")
+        #expect(!musik.contains("ArchiveOrgClient.popularMusic(area: shelf"),
+                "die Schellack-Schleife fragt den Client wieder direkt")
+    }
+
+    /// Und die Tuer LIEST den Speicher auch. Ein Zaun am Quelltext allein
+    /// zeigte nur, dass der Aufruf dasteht.
+    @Test("ein niedergeschriebener Tag beantwortet die Abfrage, ohne zu fragen")
+    func aStoredDayAnswersWithoutAsking() async throws {
+        let stock = CatalogShelfSource.ShelfStock(
+            total: 7, books: nil,
+            docs: [ArchivePopularDoc(identifier: "gunsmoke", title: nil, creator: nil,
+                                     downloads: nil, runtime: nil, licenseurl: nil,
+                                     year: nil, subject: nil)])
+        // Jahrzehnt: der gespeicherte Tag traegt die Antwort.
+        let jahrzehnt = try await CatalogShelfSource.decadePreview(
+            source: .oldTimeRadio, decade: "1950s", rows: 12, storedDay: ["1950s": stock])
+        guard case .archive(let docs, let total) = jahrzehnt else {
+            Issue.record("das Jahrzehnt antwortet nicht mit Archive-Kacheln"); return
+        }
+        #expect(docs.first?.identifier == "gunsmoke")
+        #expect(total == 7)
+
+        // Beliebt-Reihe einer Flaeche: dieselbe Antwort aus demselben Tag.
+        let beliebt = try await CatalogShelfSource.areaPopular(
+            area: ArchiveMusicCatalog.shellacShelves[0], rows: 12, page: 1,
+            storedDay: [CatalogShelfSource.popularShelf: stock])
+        #expect(beliebt.first?.identifier == "gunsmoke")
+    }
+
     /// Der Speicher schreibt jetzt Archive-Dokumente nieder, also muss der
     /// Eintrag seinen eigenen Leseweg ueberleben. Geprueft wird gegen die
     /// SERVER-Form: `creator` als blanke Zeichenkette, `year` als ZAHL, wie
