@@ -23,8 +23,8 @@ actor ArtistPortraitService {
     private var cache: [String: URL?] = [:]
     private var lastRequest = Date.distantPast
 
-    /// Trug bis 09.08. die PRIVATE Forge nach draussen. Jetzt die eine
-    /// gemeinsame Kennung (AppUserAgent).
+    /// Used to carry the PRIVATE forge address outside. Now the one shared
+    /// identifier (AppUserAgent).
     private static let userAgent = AppUserAgent.value
 
     /// Resolve the portrait for an artist: server URL wins immediately;

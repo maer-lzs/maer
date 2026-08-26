@@ -169,8 +169,8 @@ struct MusicSongRow: View {
             Task { await playerCoordinator.open(item: entry.item) }
         } label: {
             HStack(spacing: 12) {
-                // 44-pt-Zelle in einer Liste. Sie braucht die Vorschau,
-                // nicht das Vollbild, und den warmen Treffer erst recht.
+                // A 44 pt cell in a list. It needs the preview rather than
+                // the full image, and the warm hit even more so.
                 CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
                                  useThumbnail: true) { image in
                     image.resizable().aspectRatio(contentMode: .fill)
@@ -595,7 +595,7 @@ struct JamendoShelfPage: View {
     @State private var reachedEnd = false
     @State private var loadFailed = false
     @State private var offset = 0
-    /// Die aktive Auswahl von Stimmung, Tempo und Instrumental.
+    /// The active choice of mood, tempo and instrumental.
     @State private var filter = JamendoFilter.none
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -640,10 +640,9 @@ struct JamendoShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
-                // Ein Filter, der zu null Treffern fuehrt, SAGT das. Er
-                // zeigt keine leere Flaeche. Und er laesst sich
-                // von hier aus zuruecknehmen, damit die Reihe nicht als
-                // kaputt gelesen wird.
+                // A filter that leads to zero hits SAYS so instead of
+                // showing an empty surface, and it can be taken back from
+                // here, so the row is not read as broken.
                 ContentUnavailableView {
                     Label("No tracks with this filter", systemImage: "line.3.horizontal.decrease")
                 } description: {
@@ -676,12 +675,11 @@ struct JamendoShelfPage: View {
         }
     }
 
-    /// Stimmung und Tempo als FILTER auf
-    /// der Vollseite eines Fachs, Instrumental als SCHALTER. Keine eigenen
-    /// Reihen.
+    /// Mood and tempo as FILTERS on a shelf's full page, instrumental as a
+    /// SWITCH. No rows of their own.
     ///
-    /// Alle drei filtert Jamendo SERVER-seitig (am Endpunkt verprobt), die
-    /// Seite wirft also nichts nachtraeglich weg.
+    /// Jamendo filters all three SERVER-side (probed at the endpoint), so the
+    /// page throws nothing away afterwards.
     @ViewBuilder
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -743,8 +741,8 @@ struct JamendoShelfPage: View {
         }
     }
 
-    /// Jede Aenderung setzt die Seite zurueck. Sonst mischten sich
-    /// gefilterte und ungefilterte Treffer in einem Raster.
+    /// Every change resets the page, otherwise filtered and unfiltered hits
+    /// would mix in one grid.
     private func applyFilter(_ neu: JamendoFilter) {
         guard neu != filter else { return }
         filter = neu
@@ -877,15 +875,14 @@ struct MusicCatalogAreaPage: View {
     }
 }
 
-/// Die Seite einer Mär-Playlist. Bewusst schlicht. Eine Liste von
-/// Kennungen, jede Zeile löst sich beim Anzeigen selbst auf.
+/// The page of one playlist. Deliberately plain: a list of ids, and every
+/// row resolves itself when it is shown.
 ///
-/// Ein Eintrag, den DIESES Gerät nicht auflösen kann (ein
-/// Server-Titel ohne verbundenen Server, eine Datei, die hier nie lag), wird
-/// **sichtbar behalten, nicht entfernt**. Er sagt, warum er gerade nicht
-/// spielbar ist, und wird beim Abspielen übersprungen. Auflösbarkeit ist eine
-/// Eigenschaft des GERÄTS, nie des Eintrags; sonst beschnitte Gerät B die
-/// Liste von Gerät A.
+/// An entry THIS device cannot resolve (a server title without a connected
+/// server, a file that never lay here) is **kept visibly, not removed**. It
+/// says why it is not playable right now and is skipped during playback.
+/// Resolvability is a property of the DEVICE, never of the entry; otherwise
+/// device B would trim device A's list.
 struct MaerPlaylistPage: View {
     let playlistId: String
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -909,7 +906,7 @@ struct MaerPlaylistPage: View {
                         store.move(playlistId: playlistId, from: source, to: destination)
                     }
                 } footer: {
-                    // Einmal ruhig erklären, nicht bei jedem Hinzufügen.
+                    // Explained once, calmly, not on every add.
                     Text("Playlists on your devices can mix everything — your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
                 }
             }

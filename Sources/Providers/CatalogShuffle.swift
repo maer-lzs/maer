@@ -6,22 +6,22 @@
 import Foundation
 import OSLog
 
-/// Zufällig abspielen an einer Musik-Katalog-Reihe oder einem Fach. Und zwar
-/// aus dem GANZEN Fach, nicht aus den zwölf sichtbaren Kacheln. Ein Fach
-/// fasst mehrere tausend Aufnahmen; würfelte man unter der Vorschau, hörte
-/// man immer dieselben.
+/// Shuffle play on a music catalog row or a shelf, drawing from the WHOLE
+/// shelf rather than from the twelve visible tiles. A shelf holds several
+/// thousand recordings; drawing from the preview would always yield the same
+/// ones.
 ///
-/// Zwei Messungen bestimmen die Form:
-///  * archive.org kann `sort=random`, aber **nicht pro Aufruf**: drei schnelle
-///    Wiederholungen liefern identische Titel (Zwischenspeicher), erst nach
-///    einigen Minuten andere. Verschiedene SEITEN liefern dagegen sofort
-///    verschiedene Titel. Deshalb: Zufallssortierung UND zufällige Seite.
-///    dann ist jeder Tipp verschieden, nicht nur jeder zehnte.
-///  * Jamendo kennt `order=random` NICHT (`status=failed`), dort wird über
-///    einen zufälligen `offset` gezogen. Ehrlich benannt statt behauptet.
+/// Two measurements decide the shape:
+///  * archive.org supports `sort=random`, but **not per call**: three quick
+///    repetitions return identical titles (caching), different ones only
+///    after some minutes. Different PAGES return different titles at once.
+///    Hence random sort AND a random page, so every tap differs instead of
+///    every tenth.
+///  * Jamendo does NOT know `order=random` (`status=failed`), so there the
+///    draw runs over a random `offset`. Named honestly rather than claimed.
 ///
-/// Die Warteschlange wird NIE überschrieben: der erste Titel spielt sofort,
-/// der Rest wird angehängt. Ein Fehltipp darf keine Session zerstören.
+/// The queue is NEVER overwritten: the first track plays at once, the rest is
+/// appended. A mistaken tap must not destroy a session.
 @MainActor
 enum CatalogShuffle {
     /// How many titles one shuffle pulls (the first plays, the rest queue).
@@ -73,18 +73,17 @@ enum CatalogShuffle {
     }
 }
 
-/// M1-KORREKTUR: der Typ ist DATENGETRIEBEN, nicht sammlungsweise.
-/// Gemessen an echten Einträgen: Netlabels 4–79 Spuren, Schallplatten-Jazz 36,
-/// Klassik 1. Eine Regel je Fläche wäre also falsch. Die Antwort entscheidet.
+/// The form is DATA-DRIVEN, not decided per collection. Measured on real
+/// entries: netlabels 4 to 79 tracks, shellac jazz 36, classical 1. A rule
+/// per surface would therefore be wrong. The answer decides.
 ///
-/// Beim Tap wird die Detail-Antwort ohnehin geholt (ohne sie gibt es keine
-/// Abspieladresse), und genau sie trägt die Spurenzahl:
-///  * **eine Spur → sofort abspielen** (das M1-Gefühl bleibt: der Dreiminüter
-///    startet),
-///  * **mehrere Spuren → Albumseite** mit Titelliste; ein Tipp dort spielt
-///    DIESE Spur (Offset-Weg wie bei den OTR-Bündeln).
+/// The detail answer is fetched on tap anyway (without it there is no
+/// playback address), and it carries the track count:
+///  * **one track → play at once**, so a three-minute piece just starts,
+///  * **several tracks → album page** with a track list; a tap there plays
+///    THAT track, over the same offset path as the OTR bundles.
 ///
-/// Kein Raten, kein Sammlungs-Sonderfall, kein zweiter Ladeweg.
+/// No guessing, no per-collection special case, no second load path.
 @MainActor
 enum CatalogTap {
     static func open(item: LibraryItem,

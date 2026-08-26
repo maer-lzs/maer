@@ -113,8 +113,8 @@ struct SettingsView: View {
     @AppStorage(AppStorageKeys.radioTabEnabled) private var radioTab = true
 
     @State private var coverCacheBytes: Int64 = 0
-    /// Was der Debug-Hebel zuletzt geraeumt hat. Er sagt es, statt
-    /// stumm zu wirken (Vorbild: der Cover-Cache-Knopf daneben).
+    /// What the debug lever cleared last. It says so instead of acting
+    /// silently, like the cover-cache button beside it.
     @State private var clearedStores: String?
     @State private var showDeleteAllDownloads = false
 
@@ -143,13 +143,12 @@ struct SettingsView: View {
                     statsSection
                     networkServicesSection
                     aboutSection
-                // Die Pille ist der VOLLSTAENDIGE Einstieg
-                // ihres Typs. Ihr Verhalten UND die Quellen, die ihn speisen.
-                // Vorher lagen 90 % der Podcast-Einstellungen unter den
-                // Quellen, also musste man den Ort verlassen, der von
-                // Podcasts handelt, um ihr Verhalten zu erfahren.
-                // Die Quellen erscheinen als VERWEISE auf die eine Konto-Seite,
-                // nie als Kopien.
+                // The pill is the COMPLETE entry point of its media type:
+                // its behaviour AND the sources that feed it. Before, 90 %
+                // of the podcast settings lay under the sources, so one had
+                // to leave the place that is about podcasts to learn how
+                // podcasts behave. The sources appear as REFERENCES to the
+                // one account page, never as copies.
                 case .audiobooks:
                     audiobooksSection
                     MediaTypeSourcesSection(area: .audiobooks,
@@ -158,10 +157,10 @@ struct SettingsView: View {
                     recommendationsSection
                     // Premium management ALWAYS visible on the pill.
                     PremiumFeedsSection()
-                    // Was ein KONTO fuer Podcasts
-                    // tut, steht bei den Podcasts. Benannt nach dem Konto.
-                    // Auf der Konto-Seite bleiben Adresse, Zugang und die
-                    // MODI (welche Typen es ueberhaupt bedient).
+                    // What an ACCOUNT does for podcasts stands with the
+                    // podcasts, named after the account. The account page
+                    // keeps address, access and the MODES (which media types
+                    // it serves at all).
                     PodcastAccountBehaviour()
                     MediaTypeSourcesSection(area: .podcasts,
                                             absDestination: absPage)
@@ -417,12 +416,11 @@ struct SettingsView: View {
             } label: {
                 Label("Clear Cover Cache", systemImage: "trash")
             }
-            // Der Debug-Hebel fuer die ABGELEITETEN
-            // Speicher. Damit die kalte Form von Hand erreichbar ist, statt
-            // einmal in 24 Stunden. Er fasst NICHTS an, was dem Nutzer
-            // gehoert; die Grenze steht als Liste in `DerivedStores`, nicht
-            // in dieser Beschriftung. Und er ist KEIN Ersatz fuer den
-            // Fingerabdruck: kein Nutzer wird ihn druecken.
+            // The debug lever for the DERIVED stores, so the cold state is
+            // reachable by hand instead of once in 24 hours. It touches
+            // NOTHING that belongs to the user; the boundary stands as a
+            // list in `DerivedStores`, not in this label. It does not
+            // replace the rule fingerprint either.
             Button {
                 let geleert = DerivedStores.clear()
                 clearedStores = geleert.isEmpty

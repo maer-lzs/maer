@@ -147,7 +147,7 @@ nonisolated enum CatalogGenreAxis {
         // shelf (the Horror/Suspense 114 is ONE shelf), western and
         // music/variety are NEW shelves (82 / 159 bundles).
         "crime": "crime",
-        // Exakte Terme wie alle anderen, kein Teilstring.
+        // Exact terms like all the others, never a substring.
         "detective": "crime",
         "mystery": "crime",
         "crime drama": "crime",
@@ -325,12 +325,12 @@ nonisolated enum CatalogGenreAxis {
 
     // MARK: - The shelves ask the SERVER, not a local pool
 
-    /// Wie ergiebig jeder Begriff im Hoerbuch-Bestand von gutendex ist. Die
-    /// Zahl steht als Daten hier, weil die Begriffsauswahl sie braucht und
-    /// die App sie zur Laufzeit nicht messen kann.
+    /// How rich each term is in gutendex's audiobook stock. The number lives
+    /// here as data, because the term selection needs it and the app cannot
+    /// measure it at runtime.
     ///
-    /// Ein Begriff ohne Eintrag zaehlt als 0 und faellt hinter alle
-    /// gemessenen. Nie vor sie.
+    /// A term without an entry counts as 0 and sorts behind every measured
+    /// one, never in front of them.
     static let measuredGutenbergYield: [String: Int] = [
         "fiction": 503,
         "poetry": 111,
@@ -402,9 +402,9 @@ nonisolated enum CatalogGenreAxis {
     /// (archive.org `subject:`, gutendex `topic=`). Both spelling families
     /// ride along, because a shelf can be reached from either.
     ///
-    /// Sortiert nach gemessener Ergiebigkeit, nicht alphabetisch: wer die
-    /// Liste kuerzt, kuerzt damit die schwaechsten Begriffe weg statt der
-    /// staerksten. Der archive.org-Zweig kuerzt gar nicht.
+    /// Sorted by measured richness rather than alphabetically: whoever cuts
+    /// the list then cuts the weakest terms instead of the strongest. The
+    /// archive.org branch does not cut at all.
     static func subjects(forShelf shelf: String) -> [String] {
         let terms = lcshAxis.filter { $0.value == shelf }.map(\.key)
             + librivoxAxis.filter { $0.value == shelf }.map(\.key)
@@ -436,29 +436,29 @@ nonisolated enum CatalogGenreAxis {
         return librivoxShelves.map(\.key).filter(hit.contains)
     }
 
-    // MARK: - Die Jahrzehnte-Achse fuer Old Time Radio
+    // MARK: - The decade axis for Old Time Radio
 
-    /// Die Jahrzehnte, nach denen Old Time Radio gegliedert wird. Sie stehen
-    /// NEBEN den Genres, nicht an ihrer Stelle: ein Stueck hat beides.
+    /// The decades Old Time Radio is divided by. They stand BESIDE the
+    /// genres rather than in their place: an item has both.
     static let decadeShelves: [(key: String, title: String)] = [
         ("1930s", "1930er"), ("1940s", "1940er"),
         ("1950s", "1950er"), ("1960s", "1960er"),
     ]
 
-    /// Ein Einzeljahr faellt auf sein Jahrzehnt, eine bereits gefaltete
-    /// Angabe bleibt. Positiv zugeordnet: was kein Jahr nennt, faellt heraus
-    /// statt in ein Sammelfach. Dieselbe Regel wie bei den Gattungen.
+    /// A single year folds onto its decade, an already folded statement
+    /// stays. Assigned positively: whatever names no year drops out instead
+    /// of landing in a catch-all shelf, the same rule as for the genres.
     static func decade(forSubject subject: String) -> String? {
         let term = subject.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        // Eine bereits gefaltete Angabe bleibt, wie sie ist.
+        // An already folded statement stays as it is.
         if term.range(of: #"^19[0-9]0s$"#, options: .regularExpression) != nil { return term }
         guard let year = term.range(of: #"^(19[0-9]{2})$"#, options: .regularExpression)
             .flatMap({ Int(term[$0]) }) else { return nil }
         return "\(year / 10 * 10)s"
     }
 
-    /// Welche Jahrzehnte traegt dieser Eintrag? Mehrfach moeglich (eine
-    /// Serie laeuft ueber die Wende), dedupliziert, in Browse-Ordnung.
+    /// Which decades does this entry carry? More than one is possible (a
+    /// series runs across the turn), de-duplicated, in browse order.
     static func decades(forSubjects subjects: [String]) -> [String] {
         var hit = Set<String>()
         for raw in subjects {

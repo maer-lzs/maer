@@ -30,9 +30,9 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// second cut inside it would be a shelf of a shelf.
     var hasGenreShelves: Bool = false
 
-    /// Derselbe Bereich in seiner zweiten Rolle. Die Vollseite hinter dem
-    /// Beliebt-Chevron zeigt das endlose Raster OHNE die Faecher. Eine
-    /// Ansicht, zwei Rollen; keine zweite Seite, die auseinanderdriften kann.
+    /// The same area in its second role. The full page behind the popular
+    /// chevron shows the endless grid WITHOUT the shelves. One view, two
+    /// roles, and no second page that could drift apart.
     var withoutGenreShelves: ArchiveMusicArea {
         var copy = self
         copy.hasGenreShelves = false
@@ -54,10 +54,10 @@ nonisolated enum ArchiveMusicCatalog {
     /// audio items, 61.111 WITH a stated licence. The query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
     /// (mostly NC/ND variants, which is exactly why the capsule matters).
-    /// Gemessen an 1.000 meistgeladenen Titeln: 93,5 % tragen ein
-    /// subject-Feld. Die beste Datenlage aller Archive-Quellen (OTR 40 %,
-    /// LibriVox/Gutenberg um 41 %). Die Faecher haengen an den Subjects,
-    /// nicht an der Lizenzfrage; beides ist unabhaengig.
+    /// Measured over the 1,000 most downloaded titles: 93.5 % carry a
+    /// subject field, the best data of all archive sources (OTR 40 %,
+    /// LibriVox and Gutenberg around 41 %). The shelves hang on the subjects,
+    /// not on the licence question; the two are independent.
     static let netlabels = ArchiveMusicArea(
         key: "netlabels",
         query: "collection:netlabels AND mediatype:(audio)",
@@ -113,18 +113,18 @@ nonisolated enum ArchiveMusicCatalog {
             measuredTotal: total)
     }
 
-    /// Die ELTERN-Abfrage der Schellack-Flaeche, hinter deren Chevron die
-    /// Beliebt-Reihe steht.
+    /// The PARENT query of the shellac surface, with the popular row behind
+    /// its chevron.
     ///
-    /// Dieselbe Grundlage wie die Faecher (`collection:georgeblood`), nicht
-    /// die breitere `78rpm`-Sammlung. Sonst zapfte die Beliebt-Reihe eine
-    /// andere Menge an als ihre Faecher. Der Vertragstest prueft es mit.
+    /// The same basis as the shelves (`collection:georgeblood`), not the
+    /// wider `78rpm` collection. Otherwise the popular row would draw from a
+    /// different set than its shelves. The contract test covers it.
     ///
-    /// Rechtelage: gemessen tragen NULL von 187.034 Eintraegen eine
-    /// Lizenzangabe. Die Reihe traegt also durchgehend den Hinweis auf die
-    /// ungeklaerte Rechtelage. Anzeigen ja, herunterladen nein. Die frueher
-    /// entfernte Gemeinfrei-Behauptung kommt dadurch NICHT zurueck: die
-    /// Kapsel je Titel und die archive.org-Warnung gelten unveraendert.
+    /// Rights: measured, ZERO of 187,034 entries carry a licence statement,
+    /// so the row carries the note about the unclear rights situation
+    /// throughout. Showing yes, downloading no. The public-domain claim that
+    /// was removed earlier does NOT return through this: the per-title
+    /// capsule and the archive.org notice apply unchanged.
     static let shellacAll = ArchiveMusicArea(
         key: "shellac-all",
         query: "collection:georgeblood AND mediatype:(audio)",

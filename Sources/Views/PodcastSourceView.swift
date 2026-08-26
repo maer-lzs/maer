@@ -354,11 +354,11 @@ struct PodcastSourceView: View {
 
     private var pinchflatSection: some View {
         Section {
-            // Pinchflat war die EINZIGE der vierzehn
-            // Quellen ohne Ein-/Aus-Schalter. Stilllegen ging nur durch
-            // LOESCHEN, und danach mussten Adresse und Token neu eingetragen
-            // werden. Jetzt wie bei allen Nachbarn: ausschalten laesst die
-            // Zugangsdaten stehen.
+            // This was the ONLY one of the fourteen sources without an
+            // on/off switch. Shutting it down meant DELETING it, and
+            // afterwards address and token had to be entered again. Now it
+            // behaves like all its neighbours: switching off leaves the
+            // credentials in place.
             AppSwitch(isOn: $pinchflatEnabled) {
                 Label("Use Pinchflat", systemImage: "play.rectangle.on.rectangle")
             }

@@ -73,10 +73,11 @@ nonisolated enum OERRCuration {
         // English-language
         Broadcaster(tokens: ["bbc", "bbc radio 4", "bbc sounds"],
                     country: .uk, language: "en", storefront: "gb"),
-        // Gemessen: der reine Sprach-Begriff findet in au/ca/nz NUR die BBC
-        // (au 7/7, ca 2/2, nz 4/4. Kein einziger Treffer der dortigen
-        // Anstalt). Deshalb tragen diese Anstalten EIGENE Begriffe; damit
-        // liefern sie 19 von 25, 9 von 10 und 15 von 25 eigene Absender.
+        // Measured: the plain language term finds only the one large
+        // broadcaster in au/ca/nz (7 of 7, 2 of 2, 4 of 4, not a single hit
+        // from the local one). These broadcasters therefore carry terms of
+        // their OWN, which yields 19 of 25, 9 of 10 and 15 of 25 local
+        // senders.
         Broadcaster(tokens: ["abc", "abc listen", "australian broadcasting corporation"],
                     country: .australia, language: "en", storefront: "au",
                     searchTerms: ["ABC listen drama"]),
@@ -131,19 +132,18 @@ nonisolated enum OERRCuration {
         return nil
     }
 
-    /// Eine Absender-Regel allein reicht NICHT. Mit anstaltseigenen
-    /// Suchbegriffen fuellen sich au/ca/nz zwar. Aber mit Nachrichten und
-    /// Talk, die die Absender-Regel muehelos bestehen. Eine Reihe
-    /// oeffentlich-rechtlicher Hoerspiele mit einer Sport-Sendung darin waere
-    /// eine Falschaussage.
+    /// A sender rule alone is NOT enough. With the broadcasters' own search
+    /// terms au/ca/nz do fill up, but with news and talk that pass a sender
+    /// rule effortlessly. A row of public-broadcast radio plays with a sports
+    /// show in it would be a false statement.
     ///
-    /// Die Messung liefert die saubere Trennung gleich mit: ALLE echten
-    /// Treffer tragen die FORM-Kategorien `Drama`/`Fiction`, KEIN einziger
-    /// der Fehltreffer tut das. Form-Kategorie schlaegt Themen-Kategorie.
+    /// The measurement delivers the clean separation with it: ALL genuine
+    /// hits carry the FORM categories `Drama`/`Fiction`, and not one of the
+    /// false hits does. The form category beats the topic category.
     ///
-    /// Fehlen die Kategorien ganz (Verzeichnis liefert sie nicht), gilt der
-    /// Eintrag als NICHT belegt. Wir nehmen nichts auf, dessen Form wir
-    /// nicht kennen (dieselbe Linie wie bei der Rechtelage).
+    /// When the categories are missing entirely (the directory does not
+    /// deliver them), the entry counts as NOT evidenced. Nothing whose form
+    /// is unknown is taken in, the same line as with the rights situation.
     static let fictionCategories: Set<String> = ["drama", "fiction", "science fiction",
                                                  "comedy fiction", "drama & fiction"]
 

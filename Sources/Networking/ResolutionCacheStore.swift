@@ -26,20 +26,18 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     struct Stored: Codable {
         var value: Value?
         var resolvedAt: Double
-        /// Der FINGERABDRUCK der Regel, aus der dieser Wert stammt.
+        /// The FINGERPRINT of the rule this value came from.
         ///
-        /// Ein zwischengespeichertes Ergebnis gilt nur, solange die Regel
-        /// gilt, die es erzeugt hat. Der Tages-Speicher der Gutenberg-Faecher
-        /// war allein nach dem Fach-Namen abgelegt. Wurden die Begriffe
-        /// ausgetauscht, lieferte er bis zu vierundzwanzig Stunden weiter die
-        /// Antwort der ALTEN Regel, und nach einem Update saehe jeder Nutzer
-        /// einen Tag lang die alten Faecher.
+        /// A cached result only holds while the rule that produced it holds.
+        /// The day store of the genre shelves was filed under the shelf name
+        /// alone. When the terms were exchanged, it kept answering with the
+        /// OLD rule for up to twenty-four hours, and after an update every
+        /// user would see the old shelves for a day.
         ///
-        /// Mit dem Abdruck im Eintrag ist ein Wert der alten Regel nach einer
-        /// Aenderung schlicht nicht mehr auffindbar. Automatisch, ohne dass
-        /// jemand an ein Leeren denken muss. Ein Generations-Zaehler waere die
-        /// schwaechere Form: er verlaesst sich darauf, dass niemand ihn
-        /// vergisst.
+        /// With the fingerprint in the entry, a value of the old rule is
+        /// simply not findable after a change. Automatically, without anyone
+        /// having to think of clearing it. A generation counter would be the
+        /// weaker form, because it relies on nobody forgetting it.
         var rule: String?
     }
 
@@ -55,12 +53,11 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     }
 
     /// Entries still within their TTL, ready for the session cache.
-    /// Entries still within their TTL, ready for the session cache.
     ///
-    /// `rule` liefert je Eintrag den Abdruck der Regel, die HEUTE gilt.
-    /// Ein Eintrag, dessen Abdruck nicht passt, wird ueberlesen. Er ist die
-    /// Antwort einer Regel, die es nicht mehr gibt. Wer keine Regel hat
-    /// (`nil`), bekommt das alte Verhalten.
+    /// `rule` yields, per entry, the fingerprint of the rule that holds
+    /// TODAY. An entry whose fingerprint does not match is skipped: it is the
+    /// answer of a rule that no longer exists. A caller without a rule
+    /// (`nil`) gets the previous behaviour.
     func load(defaults: UserDefaults = .standard, now: Date = Date(),
               rule: ((String) -> String)? = nil) -> [String: Value?] {
         guard let data = defaults.data(forKey: key),

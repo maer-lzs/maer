@@ -5,31 +5,30 @@
 
 import Foundation
 
-/// Die App stellte sich fremden Servern unter SECHS handgepflegten Kennungen
-/// vor. Vier Versionswerte (`Maer/1.0` ganz ohne Adresse, `2.1`, `2.6`,
-/// `2.7`) auf sechs Zeichenketten. Und eine davon nannte die private
-/// Entwicklungs-Forge, die damit bei jedem Künstlerbild-Abruf an fremde
-/// Bilddienste ging.
+/// The app used to introduce itself to foreign servers under SIX hand-kept
+/// identifiers: four version values (`Maer/1.0` without any address, `2.1`,
+/// `2.6`, `2.7`) across six strings. One of them named the private
+/// development forge, which therefore travelled to foreign image services on
+/// every artist-portrait fetch.
 ///
-/// Dieselbe Fehlerklasse wie die verstreuten Aktivierungs-Vorgaben: derselbe
-/// Wert an N Stellen, und N−1 driften ab. Deshalb steht die Kennung ab jetzt
-/// **einmal** hier und leitet die Version aus dem Bundle ab. Beim nächsten
-/// Versionssprung zieht sie von selbst mit, statt dass fünf von sechs
-/// vergessen werden.
+/// The same error class as the scattered activation defaults: the same value
+/// in N places, and N−1 drift apart. The identifier therefore stands **once**
+/// here and derives the version from the bundle, so the next version bump
+/// carries it along instead of five of six being forgotten.
 ///
-/// Die Adresse ist `maer.fm` und nicht die Forge: sie bleibt gültig, wenn die
-/// Forge wechselt. MusicBrainz und Radio Browser verlangen ausdrücklich eine
-/// identifizierende Kennung mit Kontaktweg. Mit sechs Identitäten ist jede
-/// Zuordnung auf ihrer Seite wertlos.
+/// The address is `maer.fm` rather than the forge, because it stays valid
+/// when the forge changes. MusicBrainz and Radio Browser explicitly require
+/// an identifying agent with a contact path, and with six identities any
+/// attribution on their side is worthless.
 nonisolated enum AppUserAgent {
-    /// Die EINE Selbstvorstellung der App gegenüber fremden Servern.
+    /// The ONE way the app introduces itself to foreign servers.
     static let value: String = {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         return "Maer/\(version ?? "0") (+https://maer.fm)"
     }()
 
-    /// Setzt sie auf eine Anfrage. Damit keine Aufrufstelle den Feldnamen
-    /// selbst schreibt.
+    /// Sets it on a request, so no call site writes the header name
+    /// itself.
     static func apply(to request: inout URLRequest) {
         request.setValue(value, forHTTPHeaderField: "User-Agent")
     }

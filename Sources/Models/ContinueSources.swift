@@ -140,14 +140,13 @@ nonisolated enum ContinueSources {
                 || (id.hasPrefix(FreeCatalog.archivePrefix)
                     && id.contains(CatalogSongID.separator))
             guard ProgressMark.markedForm(stored) == .album || isMusicById else { continue }
-            // Eine Kachel ohne Namen, die nicht laeuft: der Tot-Vermerk wurde
-            // bisher NUR beim
-            // Bauen der Katalogreihen gelesen. Diese Reihe liest den
-            // HOERVERLAUF und kam an ihm vorbei. Ein Stueck, das die Quelle
-            // nicht mehr kennt, verlaesst damit auch hier die Reihe.
+            // A nameless tile that does not play: the dead mark used to be
+            // read ONLY while building the catalog rows. This row reads the
+            // listening history and passed it by. An item the source no
+            // longer knows now leaves this row too.
             //
-            // Der EINTRAG bleibt: ein Hoerstand ist Nutzerbesitz, und der
-            // Vermerk altert. Nur die Kachel geht.
+            // The ENTRY stays: a position belongs to the user, and the mark
+            // ages. Only the tile goes.
             guard !DeadCatalogItems.isDead(id, defaults: deadStore) else { continue }
             out.append(Extra(id: id, position: stored[0], updatedAtMs: stored[1],
                              duration: ProgressMark.markedDuration(stored) ?? 0))

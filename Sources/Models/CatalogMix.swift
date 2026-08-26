@@ -106,10 +106,10 @@ nonisolated enum CatalogMix {
         }
     }
 
-    /// Dieselbe Menge, je Flaeche eigene Ordnung. Rein
-    /// und getestet. Die Reihen sind LibraryItems, nicht Tiles, aber die
-    /// Frage ist dieselbe: zwei Flaechen duerfen nicht kachelgleich sein,
-    /// und innerhalb einer Sitzung darf sich nichts umsortieren.
+    /// The same set, its own order per surface. Pure and tested. These rows
+    /// are LibraryItems rather than tiles, but the question is the same: two
+    /// surfaces must not be tile-identical, and nothing may re-sort within a
+    /// session.
     static func ordered(_ items: [LibraryItem], for surface: Surface,
                         session: UInt64 = sessionSeed) -> [LibraryItem] {
         guard items.count > 1 else { return items }

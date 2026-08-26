@@ -244,10 +244,10 @@ struct MusicView: View {
                     RowHeading.entry("Free Music (Jamendo)", destination: MusicRoute.freeJamendo)
                         .jamendoShuffle(coordinator: playerCoordinator)
                     if !rows.freeMusic.isEmpty {
-                        // Eigener Startwert je Flaeche.
-                        // Dieselbe Menge, aber nicht dieselbe Reihe wie auf
-                        // Start (dort mischt sich Klassik dazwischen, hier
-                        // steht die volle Liste).
+                        // Its own seed per surface: the same set, but not
+                        // the same order as on the start surface, where
+                        // classical mixes in while the full list stands
+                        // here.
                         freeTileRow(CatalogMix.ordered(rows.freeMusic, for: .musicTab))
                     } else if let problem = rows.freeMusicProblem {
                         Text(problem).font(.caption).foregroundStyle(.secondary)
@@ -274,8 +274,8 @@ struct MusicView: View {
             // Sixth entry. The genre chip grid.
             browseRow("Genres", systemImage: "guitars", route: .genres)
             Divider().padding(.leading, 52)
-            // UMZUG (klassik-in-die-suche): the Free-Classical entry moved to
-            // the music SEARCH deck. The browse list stays the personal
+            // The Free-Classical entry moved to the music SEARCH deck. The
+            // browse list stays the personal
             // library (catalogue entries live in the discover context); the
             // Home teaser and both gates are untouched.
             browseRow("Downloaded", systemImage: "arrow.down.circle", route: .downloaded)

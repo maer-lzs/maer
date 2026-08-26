@@ -9,8 +9,8 @@ import Foundation
 /// The 2×2 mosaic degradation, the metadata line's duration, and the
 /// "recently changed first" sort key. Foundation-only.
 nonisolated enum PlaylistPresentation {
-    /// How many UNIQUE covers the portrait mosaic uses (Kursänderung 26.07:
-    /// one big + two small slots): 0 → tint+glyph, 1 → big cover only,
+    /// How many UNIQUE covers the portrait mosaic uses (one big and two
+    /// small slots): 0 → tint+glyph, 1 → big cover only,
     /// 2 → big + one small, 3 or more → all three slots. Never more than 3.
     static func mosaicTileCount(_ coverCount: Int) -> Int {
         min(max(coverCount, 0), 3)

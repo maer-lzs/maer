@@ -44,16 +44,15 @@ nonisolated enum CatalogRotation {
         page(total: total, rowSize: rowSize, on: date, salt: 0)
     }
 
-    /// Benachbarte Faecher begannen mit exakt denselben Kacheln, weil jedes
-    /// Fach seine Quelle mit derselben Sortierung fragt,
-    /// Seite 1. Ein Titel, der zwei Faecher traegt, steht also in BEIDEN
-    /// oben. Die Ueberschneidung ist inhaltlich richtig; falsch ist nur, dass
-    /// beide denselben AUSSCHNITT zeigen.
+    /// Neighbouring shelves began with exactly the same tiles, because every
+    /// shelf asks its source with the same sorting, page 1. A title carrying
+    /// two shelves therefore stands on top in BOTH. The overlap is correct in
+    /// substance; only showing the same EXCERPT twice is wrong.
     ///
-    /// Mit dem Fach-Schluessel im Startwert greifen sie an verschiedenen
-    /// Stellen ihres Bestands. Und weil nur der TAG die Seite bewegt, bleibt
-    /// die Mischung innerhalb des Tages stabil (Invariante 2: eine Reihe, die
-    /// sich unter den Fingern umsortiert, ist ein Layout-Sprung in Zeitlupe).
+    /// With the shelf key in the seed they reach into different places of
+    /// their stock. And because only the DAY moves the page, the mixture
+    /// stays stable within the day: a row that re-sorts under the fingers is
+    /// a layout jump in slow motion.
     static func page(total: Int, rowSize: Int, on date: Date, salt: Int) -> Int {
         guard total > 0, rowSize > 0 else { return 1 }
         let window = total / windowShare
@@ -62,10 +61,10 @@ nonisolated enum CatalogRotation {
         return 1 + ((dayIndex(on: date) &+ salt) % pages)
     }
 
-    /// Ein stabiler, quelltext-unabhaengiger Startwert aus dem Fach-Namen.
-    /// `hashValue` waere je Prozess gesalzen und die Mischung damit bei jedem
-    /// Start eine andere (dieselbe Ueberlegung wie beim Sitzungs-Startwert
-    /// der Mischreihen).
+    /// A stable seed derived from the shelf name and independent of the
+    /// source text. `hashValue` would be salted per process, making the
+    /// mixture different on every launch, the same consideration as for the
+    /// session seed of the mixed rows.
     static func salt(forShelf shelf: String) -> Int {
         shelf.unicodeScalars.reduce(0) { ($0 &* 31 &+ Int($1.value)) & 0xFFFF }
     }

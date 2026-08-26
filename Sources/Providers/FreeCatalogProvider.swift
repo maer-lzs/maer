@@ -100,9 +100,9 @@ final class FreeCatalogProvider: AudioProvider {
 
     /// Is this item a radio-play series bundle (the class that gets
     /// a SHOW PAGE with an episode list instead of the detail sheet)?
-    /// Die Frage ist, ob das Stueck TEILE hat. Nicht, ob es in der
-    /// Radio-Sammlung liegt: die Aufrufer wollen wissen, ob eine Teileliste
-    /// aufgeht.
+    /// The question is whether the item has PARTS, not whether it lies in
+    /// the radio-play collection: the callers want to know whether a parts
+    /// list opens.
     func hasPartsList(itemId: String) -> Bool {
         guard let collections = itemCollections[itemId] else { return false }
         return ArchiveItemForm.hasParts(collections: collections)

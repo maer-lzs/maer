@@ -54,30 +54,30 @@ nonisolated enum ArchiveItemForm: String, Sendable {
     /// It used to be an in-memory set that only the radio-play row filled, so
     /// the same item was a bundle when it came from that row and an ordinary
     /// item when it came from search, a playlist or a cold start.
-    /// Ein Archive-Hoerbuch mit acht benannten Audiodateien bekam keine
-    /// auswaehlbare Teileliste.
+    /// An archive audiobook with eight named audio files got no selectable
+    /// parts list.
     ///
-    /// Die Frage lautete frueher, ob es in `oldtimeradio` liegt. Also nach
-    /// der SAMMLUNG statt nach der FORM. Damit fielen die Archive-Hoerbuecher
-    /// durch BEIDE Raster: sie sind keine LibriVox-Buecher (also keine
-    /// Kapitel) und nicht Old Time Radio (also keine Folgenseite), obwohl sie
-    /// genau wie beide aus benannten Teilen bestehen.
+    /// The question used to be whether it lies in `oldtimeradio`, so it asked
+    /// about the COLLECTION instead of the FORM. The archive audiobooks fell
+    /// through BOTH grids: they are not LibriVox books (no chapters) and not
+    /// Old Time Radio (no episode page), although they consist of named parts
+    /// exactly like both.
     ///
-    /// Ein WERK ist ein Werk, gleich in welcher der drei Sammlungen es liegt.
-    /// Ob am Ende wirklich eine Liste erscheint, entscheidet die Teilezahl.
-    /// EIN Teil bekommt keine Liste, das waere eine erfundene Gliederung.
+    /// A WORK is a work, whichever of the three collections it lies in.
+    /// Whether a list actually appears is decided by the part count. ONE part
+    /// gets no list, because that would be an invented division.
     static func hasParts(collections: [String]) -> Bool {
         of(collections: collections) == .work
     }
 
-    /// Die ANDERE Frage, die frueher an demselben Namen hing. Ist das
-    /// eine KURATIERTE SERIENSAMMLUNG? Dort ist das Buendel die Einheit
-    /// (Gunsmoke 487 Folgen, Suspense 911), also gilt die hohe Teile-Grenze.
-    /// Fuer ein LibriVox-Buch oder ein Archive-Hoerbuch gilt sie NICHT. Dort
-    /// waeren hunderte Teile ein Sammelband und kein Werk.
+    /// The OTHER question that used to hang on the same name: is this a
+    /// CURATED SERIES collection? There the bundle is the unit (487 episodes
+    /// in one series, 911 in another), so the high part limit applies. For a
+    /// LibriVox book or an archive audiobook it does NOT, because hundreds of
+    /// parts would be an anthology rather than a work.
     ///
-    /// Ein Name, zwei Fragen war der eigentliche Fehler: ob es Teile hat und
-    /// ob es hunderte haben darf, sind verschiedene Saetze.
+    /// One name for two questions was the actual mistake: whether it has
+    /// parts and whether it may have hundreds are different sentences.
     static func isCuratedSeriesCollection(collections: [String]) -> Bool {
         collections.contains("oldtimeradio")
     }

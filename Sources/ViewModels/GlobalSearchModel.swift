@@ -119,9 +119,9 @@ final class GlobalSearchModel: ObservableObject {
             }
             if archiveOn {
                 group.addTask {
-                    // Third surface of the same class: the
-                    // Suche stand auf einer NACHGEBAUTEN Basis. Jetzt dieselbe
-                    // eine Wahrheit wie Reihe und Regal.
+                    // Third surface of the same class: search used to stand
+                    // on a REBUILT base query. Now the same one truth as the
+                    // row and the shelf.
                     let base = ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks) ?? ""
                     return .archive((try? await ArchiveOrgClient.popular(
                         query: base + " AND title:(\(query))", rows: 10)) ?? [])
@@ -151,11 +151,10 @@ final class GlobalSearchModel: ObservableObject {
 
     @MainActor
     private static func bookResult(_ item: LibraryItem, source: String) -> SearchResult {
-        // Gemessen: einzelne Werke liegen bei LibriVox mehrfach vor (zwei
-        // deutsche, zwei englische Lesungen desselben Titels). Die
-        // Titel-Normalisierung hebt das `(version 2)` heraus, sonst stuenden
-        // hier vier identische Zeilen; die Lesungs-Nummer gehoert deshalb
-        // sichtbar in die Zeile.
+        // Measured: single works exist several times on LibriVox (two German
+        // and two English readings of the same title). Title normalisation
+        // lifts the `(version 2)` out, otherwise four identical rows would
+        // stand here, so the reading number belongs visibly in the row.
         var subtitle = item.author
         if let version = FreeCatalogProvider.shared.readingVersion(forItemId: item.id) {
             let reading = String(localized: "Reading \(version)")

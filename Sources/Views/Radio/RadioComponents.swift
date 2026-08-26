@@ -285,8 +285,8 @@ struct RadioCardRow: View {
 /// "Zuletzt gespielt" is a CARD, not a tile. The Featured family
 /// the other tabs' continue rows use (cover face on top, text block on the
 /// card colour, radius 20). Tap plays, the info pill leads to the station
-/// page. Only the Zuletzt class renders this; Häufig stays a tile, the
-/// browse rows stay tiles.
+/// page. Only the recently-played class renders this; the most-played row
+/// stays a tile, and the browse rows stay tiles.
 struct RadioFeaturedCard: View {
     let station: RadioStation
     let playerCoordinator: PlayerCoordinator

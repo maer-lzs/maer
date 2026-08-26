@@ -81,10 +81,10 @@ extension CatalogMix {
     // Project default is MainActor. No explicit attribute needed here.
     private static var recordedThisSession = false
 
-    /// Dieselbe Kachelreihe stand auf drei Flaechen. Die Kacheln, die eine
-    /// FLAECHE zeigt. Each surface names its own lanes and draws its own
-    /// seed. The shared assembly for all three was what made the podcast tab
-    /// and Start show the identical row under two different names.
+    /// The tiles ONE surface shows. The same tile row used to stand on three
+    /// surfaces. Each surface names its own lanes and draws its own seed. The
+    /// shared assembly for all three was what made the podcast tab and the
+    /// start surface show the identical row under two different names.
     static func tiles(for surface: Surface,
                       rows: CatalogSourceLoader.SourceRows) -> [Tile] {
         let languages = SuggestionLanguages.current()

@@ -135,8 +135,9 @@ struct HomeView: View {
                                         freeMusic: freeCatalogStore.rows.freeMusic,
                                         classical: freeCatalogStore.rows.classical,
                                         freeMusicProblem: freeCatalogStore.rows.freeMusicProblem)
-                        // L2 "Entdecken · Hörbücher & Hörspiele": the SAME
-                        // mixed row/computation as the podcast tab,
+                        // The discover row for audiobooks and radio plays:
+                        // the SAME mixed row and computation as the podcast
+                        // tab,
                         // entry chevron onto the existing area page. Start
                         // gets its catalog teaser back. As a family with L1.
                         discoverAudiobooksSection
@@ -200,9 +201,9 @@ struct HomeView: View {
         .onReceive(NetworkMonitor.shared.$isConnected) { connected in
             guard connected, isActive else { return }
             Task {
-                // Hier werden die Lader WIRKLICH angestossen
-                // (nicht auf einen laufenden gewartet). Mit Budget, damit
-                // ein toter Server die Wiederkehr nicht wieder blockiert.
+                // The loaders are REALLY kicked here rather than waited on,
+                // and with a budget, so a dead server does not block the
+                // return again.
                 await SourceBudget.run { await freeCatalogStore.ensureLoaded() }
                 await SourceBudget.run { await freeCatalogStore.ensureSourcesLoaded() }
             }
@@ -351,9 +352,9 @@ RowHeading<LibraryListRoute>.action("Up Next") { showQueueSheet = true }
                                     // P16a: the ROW's metric, not the class's.
                                     // The album size is Start's density, and a
                                     // mixed row with two sizes reads as torn.
-                                    // Eine KACHEL navigiert,
-                                    // eine KARTE spielt. Die Grenze verläuft
-                                    // an der Bauform, nicht an der Fläche.
+                                    // A TILE navigates, a CARD plays. The
+                                    // line runs along the component shape,
+                                    // not along the surface.
                                     RadioStationCard(station: station,
                                                      playerCoordinator: playerCoordinator,
                                                      width: Self.recentlyPlayedTileWidth)
@@ -616,7 +617,7 @@ RowHeading(title: "Rediscover",
         let snapshot = PodcastSections.snapshot(shows: shows)
         let sections = await PodcastSections.computeDetached(shows: shows, snapshot: snapshot)
 
-        // Weiterhören: in-progress books + in-progress episodes, by last played.
+        // Continue: in-progress books and episodes, by last played.
         let hidden = ContinueHiddenStore.markers()
         let books = libraryViewModel.continueListening.map {
             (id: $0.id, ts: $0.progress?.lastUpdate ?? 0)

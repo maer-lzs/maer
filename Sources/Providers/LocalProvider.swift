@@ -59,8 +59,9 @@ final class LocalProvider: AudioProvider {
         let time = stored[0]
         return BookProgress(
             fraction: min(max(time / duration, 0), 1),
-            // Dieselbe eine Regel wie ueberall: kennt der Eintrag die Dauer
-            // von damals, gilt sie. Sonst die heutige.
+            // The same one rule as everywhere: if the entry knows the
+            // duration that applied back then, that one counts. Otherwise
+            // today's.
             isFinished: ProgressMark.isPlayed(stored: stored, currentDuration: duration),
             lastUpdate: stored[1],
             currentTime: time

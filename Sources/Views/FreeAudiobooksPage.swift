@@ -67,15 +67,14 @@ struct FreeAudiobooksPage: View {
     // genre axis and charts stay alive. Chip-driven, so legitimate view
     // state like the sub-pages' paging.
     //
-    // WARUM NUR die Hörspiel-Charts und keine Bücher-Charts (09.08.,
-    // gemessen. Damit die Buch-Reihe nicht in drei Monaten zurückkehrt):
-    // Apples FIKTIONS-Kategorien sind FORM-basiert (Drama 1484, SciFi 1485,
-    // Comedy Fiction 1486). Dort stehen echte Hörspiele. `Books` 1482 ist
-    // dagegen THEMA-basiert: 20 von 25 Chart-Einträgen waren Gespräche ÜBER
-    // Bücher, nicht Lesungen. Eine Form aus einer Themen-Kategorie
-    // herauszufiltern hieße raten, und selbst ein perfekter Filter ließe nur
-    // die fünf Lesungen übrig, die LibriVox/Gutenberg/Archiv ohnehin besser
-    // abdecken. Deshalb wurde X²·5 ersatzlos zurückgebaut.
+    // Why only the radio-play charts and no book charts, measured, so the
+    // book row does not return in three months: the FICTION categories are
+    // FORM-based (Drama 1484, SciFi 1485, Comedy Fiction 1486) and hold
+    // genuine radio plays. `Books` 1482 is TOPIC-based instead: 20 of 25
+    // chart entries were conversations ABOUT books rather than readings.
+    // Filtering a form out of a topic category would mean guessing, and even
+    // a perfect filter would leave only the five readings that
+    // LibriVox, Gutenberg and archive.org cover better anyway.
     @State private var selectedChip: String = CatalogGenreAxis.hoerspielChips[0].key
     @State private var chartResults: [PodcastSearchResult] = []
     @State private var chartsLoading = false

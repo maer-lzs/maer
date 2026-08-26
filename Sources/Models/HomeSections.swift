@@ -10,8 +10,7 @@ import Foundation
 /// timestamp (no heuristics). This core merges id/timestamp pairs from several
 /// sources; the view resolves the ids back to items via AppSession.
 nonisolated enum HomeSections {
-    /// Max music entries in the Continue row. A constant, not a
-    /// setting (kein Options-Zoo).
+    /// Max music entries in the Continue row. A constant, not a setting.
     static let continueMusicCap = 2
 
     /// Newest-first, de-duplicated by id, capped. An id appearing in several

@@ -400,8 +400,9 @@ nonisolated enum AppStorageKeys {
     static let radioRegionCountryName = "radioRegionCountryName"
     /// Explicitly chosen country (cascade step a. Beats every guess).
     /// The NATIONAL row has its own country now. Living where you are
-    /// and coming from somewhere else are two different facts. "Beliebt in
-    /// der Schweiz" plus the home stations from NRW. The region
+    /// and coming from somewhere else are two different facts: the popular
+    /// row of one country plus the home stations of another region. The
+    /// region
     /// row keeps `radioRegionCountryCode`/`-Name` + `radioRegionState`.
     static let radioNationalCountryCode = "radioNationalCountryCode"
     static let radioNationalCountryName = "radioNationalCountryName"
@@ -532,9 +533,9 @@ nonisolated enum AppStorageKeys {
         set { UserDefaults.standard.set(newValue, forKey: rssEnabled) }
     }
 
-    /// Dieselbe Klasse wie die Katalog-Vorgaben, nur bei Vorlieben: der
-    /// Standardwert stand an mehreren Lesestellen. Auch hier steht er nur
-    /// noch an EINEM Ort, damit der Zaun ohne Ausnahmen auskommt.
+    /// The same class as the catalog defaults, here for preferences: the
+    /// default value stood at several reading sites. It stands in ONE place
+    /// now, so the fence needs no exceptions.
     nonisolated static var smartRewindValue: Bool { boolValue(smartRewind) }
     nonisolated static var warnCellularDownloadValue: Bool { boolValue(warnCellularDownload) }
     nonisolated static let podcastAutoSaveOnPlay = "podcastAutoSaveOnPlay"
@@ -552,24 +553,23 @@ nonisolated enum AppStorageKeys {
 
     // MARK: - Katalog-Aktivierung
 
-    /// Die acht freien Katalogquellen hatten ein ZWEITES, handgeschriebenes
-    /// Aktivierungssystem mit exakt derselben Form wie das modellierte.
-    /// Hauptschalter ∧ Einzelschalter. Nur ohne Modell: die Vorgabe stand
-    /// 35× in elf Dateien, jede Lesestelle komponierte selbst. Alle 35
-    /// stimmten überein; erzwungen hat das niemand.
+    /// The eight free catalog sources carried a SECOND, hand-written
+    /// activation system in exactly the shape of the modelled one: master
+    /// switch ∧ individual switch, only without a model. The default stood
+    /// 35 times in eleven files and every reading site composed it itself.
+    /// All 35 agreed, and nothing enforced that.
     ///
-    /// Für Kataloge gilt damit dasselbe wie für Server-Quellen: EINE Antwort
-    /// je Quelle auf ihren Zustand, an EINEM Ort, über dieselbe reine
-    /// Regel. Die drei Ebenen bleiben, wie sie waren (Master > Bereich >
-    /// Dienst). `FreeCatalogActivation.effective` ist die dafür schon
-    /// vorhandene reine Funktion.
+    /// Catalogs now follow the same rule as server sources: ONE answer per
+    /// source about its state, in ONE place, through the same pure rule. The
+    /// three levels stay as they were (master > area > service).
+    /// `FreeCatalogActivation.effective` is the pure function for it.
     nonisolated static func boolValue(_ key: String, default defaultValue: Bool = true) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? defaultValue
     }
 
-    /// Der Hauptschalter über allen Katalogflächen.
+    /// The master switch above all catalog surfaces.
     nonisolated static var freeCatalogsMasterActive: Bool { boolValue(freeCatalogsMasterEnabled) }
-    /// Der archive.org-DIENST-Opt-out. Über den drei archive-Flächen.
+    /// The archive.org SERVICE opt-out, above the three archive surfaces.
     nonisolated static var archiveServiceActive: Bool {
         freeCatalogsMasterActive && boolValue(archivePopularEnabled)
     }
@@ -610,12 +610,11 @@ nonisolated enum AppStorageKeys {
     }
     nonisolated static var radioLogoChainActive: Bool { boolValue(radioLogoChainEnabled) }
 
-    /// Pinchflat war die EINZIGE der vierzehn Quellen ohne
-    /// Ein-/Aus-Schalter. Es gehörte zu keinem der beiden Systeme, also fiel
-    /// niemandem auf, dass es keins hatte. Praktisch spürbar: jede andere
-    /// Quelle lässt sich stilllegen OHNE sie zu entfernen (Zugangsdaten
-    /// bleiben); bei Pinchflat blieb nur Löschen und danach das Neueintragen
-    /// von Adresse und Token.
+    /// Pinchflat was the ONLY one of the fourteen sources without an on/off
+    /// switch. It belonged to neither of the two activation systems, so
+    /// nobody noticed it had none. In practice: every other source can be
+    /// shut down WITHOUT removing it, credentials included, while Pinchflat
+    /// left only deletion and afterwards re-entering address and token.
     static let pinchflatEnabled = "pinchflatEnabled"
     static var pinchflatActive: Bool {
         SourceActivation.effective(tabEnabled: podcastsTabEnabledValue,

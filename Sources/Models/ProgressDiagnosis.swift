@@ -98,9 +98,9 @@ nonisolated enum ProgressDiagnosis {
     /// comes from, so the report puts the sources side by side with their
     /// timestamps. Same model, second view; no second version.
     ///
-    /// It is deliberately the measuring tool for the rücksprung candidates
-    ///: server vs. local backup vs. cached detail, each with its
-    /// own time, plus what the sync queue still owes.
+    /// It is deliberately the measuring tool for the candidates of a
+    /// position jumping backwards: server against local backup against cached
+    /// detail, each with its own time, plus what the sync queue still owes.
     struct BookSources {
         let serverPosition: Double?
         let serverUpdatedAtMs: Double?

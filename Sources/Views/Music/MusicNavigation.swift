@@ -32,11 +32,11 @@ enum MusicRoute: Hashable {
     /// The shellac area exists ONLY as its genre shelves. This page lists
     /// them, there is no undivided view.
     case shellacArea
-    /// M1-Korrektur: ein Katalog-Titel mit MEHREREN Spuren oeffnet seine
-    /// Albumseite statt sofort zu spielen (datengetrieben, nicht sammlungs-
-    /// weise: Netlabels 4-79 Spuren, Klassik 1. Gemessen).
+    /// A catalog title with SEVERAL tracks opens its album page instead of
+    /// playing at once. Data-driven rather than per collection: measured,
+    /// netlabels carry 4 to 79 tracks and classical 1.
     case catalogAlbum(String)
-    /// Eine Maer-Playlist (quellenuebergreifend, auf den Geraeten).
+    /// One playlist, across sources and across the devices.
     case maerPlaylist(String)
     /// A shelf row's full page. Recent/newest as a grid. ONE parameterised
     /// page; Home's "Recently Played (Music)" row targets the same .recent
@@ -46,12 +46,12 @@ enum MusicRoute: Hashable {
     case freeJamendo
     /// One Jamendo genre shelf (server-paged grid).
     case jamendoShelf(String)
-    /// R-Netlabels: ein Genre-Fach eines Archive-Musikbereichs. Dieselbe
-    /// Form wie das Jamendo-Fach, nur mit der Archive-Abfrage dahinter.
+    /// A genre shelf of an archive music area. The same shape as the Jamendo
+    /// shelf, only with the archive query behind it.
     case archiveMusicShelf(area: String, shelf: String)
-    /// Die Vollseite hinter dem Beliebt-Chevron eines Musik-Bereichs.
-    /// Dieselbe Trennung wie bei den Katalogseiten (Uebersicht = Reihen,
-    /// Scrollen = eigene Seite). EINE Ansicht, zwei Rollen.
+    /// The full page behind a music area's popular chevron. The same split
+    /// as on the catalog pages: the overview is rows, scrolling is a page of
+    /// its own. ONE view, two roles.
     case archiveMusicPopular(String)
     /// The small music-catalog page behind Start's mixed
     /// "Entdecken · Musik" row (the I2 surface, earlier). One source row per
@@ -204,8 +204,8 @@ extension View {
                 ArchiveMusicShelfPage(areaKey: areaKey, shelfKey: shelfKey,
                                       playerCoordinator: playerCoordinator)
             case .archiveMusicPopular(let areaKey):
-                // DIESELBE Ansicht, ohne die Faecher. Die Vollseite ist
-                // keine zweite Seite, sondern dieselbe in ihrer zweiten Rolle.
+                // The SAME view without the shelves. The full page is not a
+                // second page but the same one in its second role.
                 if let area = ArchiveMusicCatalog.all.first(where: { $0.key == areaKey }) {
                     ArchiveMusicPage(area: area.withoutGenreShelves,
                                      playerCoordinator: playerCoordinator)

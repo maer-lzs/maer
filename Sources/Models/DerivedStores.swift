@@ -5,21 +5,21 @@
 
 import Foundation
 
-/// Die abgeleiteten Speicher an EINER Stelle, mit der Grenze IM CODE statt
-/// in einer Beschriftung.
+/// The derived stores in ONE place, with the boundary IN THE CODE instead of
+/// in a label.
 ///
-/// Abgeleitet heißt: aus einer Abfrage entstanden und jederzeit neu holbar.
-/// Nichts hier gehört dem Nutzer. Kein Hörstand, keine Playlist, kein
-/// Favorit, kein Download. Die Grenze zwischen neu holen und Datenverlust
-/// steht deshalb als LISTE da: wer einen Schlüssel hinzufügt, muss ihn hier
-/// hinschreiben, und der Zaun hält dagegen, dass Nutzerbesitz hineinrutscht.
+/// Derived means: produced by a query and fetchable again at any time.
+/// Nothing here belongs to the user. No position, no playlist, no favourite,
+/// no download. The boundary between fetching again and losing data
+/// therefore stands as a LIST: whoever adds a key has to write it down here,
+/// and the fence holds against user property slipping in.
 ///
-/// Der Hebel ersetzt den Fingerabdruck NICHT. Er macht die kalte Form von
-/// Hand erreichbar, damit ein Zustand, den man sonst einmal in 24 Stunden
-/// erwischt, überhaupt prüfbar ist.
+/// The lever does NOT replace the rule fingerprint. It makes the cold state
+/// reachable by hand, so a state one otherwise catches once in 24 hours can
+/// be checked at all.
 nonisolated enum DerivedStores {
-    /// Was geräumt wird. Anzeigename und Schlüssel. Der Name reist mit, weil
-    /// der Hebel sagen muss, WAS er geleert hat.
+    /// What gets cleared: display name and key. The name travels along,
+    /// because the lever has to say WHAT it emptied.
     struct Entry: Sendable {
         let label: String
         let key: String
@@ -31,15 +31,15 @@ nonisolated enum DerivedStores {
         Entry(label: "Withdrawn catalog items", key: DeadCatalogItems.storeKey),
     ]
 
-    /// Schlüssel, die dem NUTZER gehören. Sie stehen hier, damit der Zaun sie
-    /// gegen `all` halten kann. Eine Liste, die man vergisst zu pflegen,
-    /// wäre wertlos, eine, gegen die geprüft wird, nicht.
+    /// Keys that belong to the USER. They stand here so the fence can hold
+    /// them against `all`. A list nobody maintains would be worthless; one
+    /// that is checked against is not.
     static let userOwnedPrefixes = ["localPosition.", "playbackClaim", "userChoices",
                                     "maerPlaylists", "radioFavorites", "listeningStats"]
 
-    /// Räumt und sagt, was geräumt wurde. Gibt die Namen zurück, die wirklich
-    /// etwas enthielten. Nichts zu räumen ist eine Antwort, keine leere
-    /// Meldung.
+    /// Clears and says what was cleared. Returns the names that actually
+    /// held something. Nothing to clear is an answer, not an empty
+    /// message.
     @discardableResult
     static func clear(defaults: UserDefaults = .standard) -> [String] {
         var geleert: [String] = []

@@ -25,8 +25,8 @@ struct ArchiveMusicPage: View {
     @State private var page = 1
     @State private var reachedEnd = false
     @State private var detailItem: LibraryItem?
-    /// Bestand je Fach. Dieselbe Konstruktion wie `CatalogShelfSource`:
-    /// ein Fach erscheint, weil die QUELLE es hat.
+    /// The stock per shelf. The same construction as `CatalogShelfSource`:
+    /// a shelf appears because the SOURCE has it.
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
@@ -59,11 +59,11 @@ struct ArchiveMusicPage: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         ArchiveRightsNote()
-                        // Dieselbe Ordnung wie auf den Katalogseiten: die
-                        // Beliebt-Reihe steht OBEN als Kachelreihe mit
-                        // Chevron, die Faecher darunter. Das
-                        // endlose Nachladen lebt auf der Vollseite hinter dem
-                        // Chevron weiter. Dort, wo Scrollen die Form ist.
+                        // The same order as on the catalog pages: the
+                        // popular row sits ON TOP as a tile row with a
+                        // chevron, the shelves below it. Endless paging
+                        // lives on the full page behind the chevron, where
+                        // scrolling is the form.
                         if area.hasGenreShelves {
                             popularRow
                             ForEach(genreShelves, id: \.key) { shelf in
@@ -135,8 +135,8 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// Dieselbe Form wie `CatalogSourcePage.popularRow`. Benannte Reihe
-    /// mit Chevron, das endlose Nachladen auf der Vollseite dahinter.
+    /// The same shape as `CatalogSourcePage.popularRow`: a named row with a
+    /// chevron, endless paging on the full page behind it.
     @ViewBuilder
     private var popularRow: some View {
         let preview = RowPreview.cut(items)
@@ -170,7 +170,7 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// Ein Fach erscheint nur, wenn die Quelle es fuellt.
+    /// A shelf appears only when the source fills it.
     private var genreShelves: [(key: String, title: String)] {
         guard area.hasGenreShelves else { return [] }
         return CatalogGenreAxis.musicShelves.filter {
@@ -221,9 +221,9 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// Je Fach den BESTAND fragen (dieselbe
-    /// Abfrage wie die Vollseite), Tor NACH dem Lauf buchen, Abbruch oeffnet
-    /// wieder, und ein Fehlschlag ist eine Antwort statt eines leeren Fachs.
+    /// Ask the STOCK per shelf (the same query the full page uses), book the
+    /// gate AFTER the pass, a cancellation reopens it, and a failure is an
+    /// answer instead of an empty shelf.
     private func loadShelves() async {
         guard area.hasGenreShelves, !shelvesLoaded, !shelvesLoading else { return }
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
@@ -238,8 +238,8 @@ struct ArchiveMusicPage: View {
                 let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
                 guard !terms.isEmpty else { continue }
                 group.addTask {
-                    // Kein Deckel. Bei `subject:` ist ein laengeres ODER
-                    // schlicht mehr Bestand (gemessen: Faktor 9 fuer 0,05 s).
+                    // No cap. With `subject:` a longer OR is simply more
+                    // stock (measured: a factor of nine for 0.05 s).
                     let clause = terms.map { "subject:\"\($0)\"" }
                         .joined(separator: " OR ")
                     do {
@@ -291,9 +291,9 @@ struct ArchiveMusicPage: View {
     }
 }
 
-/// Die Vollseite eines Genre-Fachs. Dieselbe Form wie das Jamendo-Fach. Und
-/// dieselbe ABFRAGE wie die Vorschau-Reihe davor: Bereichs-Abfrage plus die
-/// Begriffe des Fachs.
+/// The full page of a genre shelf. The same shape as the Jamendo shelf, and
+/// the same QUERY as the preview row before it: the area query plus the
+/// shelf's terms.
 struct ArchiveMusicShelfPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     let areaKey: String
@@ -346,7 +346,7 @@ struct ArchiveMusicShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && loadFailed {
-                // Ein Fehlschlag ist kein leeres Fach.
+                // A failure is not an empty shelf.
                 ContentUnavailableView {
                     Label(title, systemImage: "music.note")
                 } description: {
@@ -424,10 +424,10 @@ struct ShellacShelvesPage: View {
                         Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
                     }
                 }
-                // Dieselbe Ordnung wie ueberall: die Beliebt-Reihe oben mit
-                // Chevron, die neun Faecher darunter. Die Eltern-Abfrage hat
-                // DIESELBE Grundlage wie die Faecher (georgeblood), sonst
-                // waere die Reihe eine zweite Wahrheit.
+                // The same order as everywhere: the popular row on top with
+                // a chevron, the nine shelves below it. The parent query has
+                // the SAME basis as the shelves (georgeblood), otherwise the
+                // row would be a second truth.
                 VStack(alignment: .leading, spacing: 10) {
                     RowHeading.entry("Popular",
                                      destination: MusicRoute.archiveMusicPopular(
@@ -464,10 +464,10 @@ struct ShellacShelvesPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
-                    // Bei MUSIK spielt der Tap: beim Buch fuehrt er ins
-                    // Detail, beim Dreiminueter direkt in die Wiedergabe.
-                    // Die ToS-Attribution traegt der Player, nicht nur das
-                    // Sheet.
+                    // For MUSIC the tap plays. On a book it leads into the
+                    // detail, on a three-minute track straight into
+                    // playback. The player carries the ToS attribution, not
+                    // only the sheet.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
@@ -494,12 +494,12 @@ struct ShellacShelvesPage: View {
         guard rows.isEmpty else { return }
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
         let provider = FreeCatalogProvider.shared
-        // Die Eltern-Abfrage laeuft mit. Sie ist die Beliebt-Reihe und
-        // teilt die Grundlage der Faecher.
+        // The parent query runs along. It is the popular row and shares the
+        // shelves' basis.
         for shelf in [ArchiveMusicCatalog.shellacAll] + ArchiveMusicCatalog.shellacShelves {
             do {
-                // Je Flaeche eine eigene Tagesseite, damit die
-                // Beliebt-Reihe nicht mit einem Fach identisch beginnt.
+                // A day page of its own per surface, so the popular row does
+                // not begin identically to a shelf.
                 let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12,
                                                 on: Date(),
                                                 salt: CatalogRotation.salt(forShelf: shelf.key))

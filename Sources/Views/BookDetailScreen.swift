@@ -292,8 +292,9 @@ struct BookDetailScreen: View {
 
         // The book's progress diagnosis. The same instrument the
         // podcast sheet carries, in its book view. It exists because a
-        // rücksprung could not be PROVEN: it puts server state, local
-        // second-backup and the cached detail side by side, each with its
+        // a position jumping backwards could not be PROVEN: it puts server
+        // state, local second backup and the cached detail side by side, each
+        // with its
         // timestamp, and names the start the app would pick right now.
         diagnosisSection
     }

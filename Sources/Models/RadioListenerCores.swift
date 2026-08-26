@@ -72,8 +72,8 @@ nonisolated enum RadioListenerCores {
 
     // MARK: - Germany
 
-    /// Source: ma 2026 Audio II (agma), Hörer pro Durchschnittsstunde Mo–Fr,
-    /// Einzelsender-Ranking as openly published by the trade press
+    /// Source: ma 2026 Audio II (agma), listeners per average hour Monday to
+    /// Friday, single-station ranking as openly published by the trade press
     /// (radioszene.de/215607, full table, 2026-07). Round: ma 2026 Audio II.
     static let germanyNational: [String] = [
         "BAYERN 1",

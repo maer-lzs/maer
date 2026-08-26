@@ -25,8 +25,8 @@ nonisolated enum RediscoverSections {
         case unheardSince(added: Date)
         /// Volume N of a series whose predecessor is finished.
         case nextInSeries(volume: Int)
-        /// A subscribed show long unheard that still has unplayed
-        /// episodes ("Lange nicht gehört · zuletzt vor N Wochen").
+        /// A subscribed show long unheard that still has unplayed episodes.
+        /// The line names how many weeks ago the last listen was.
         case showDormant(weeks: Int)
         /// The same, but WITHOUT an observed last listen. A show
         /// never heard since the log exists (or only backfill-stamped). The
@@ -41,8 +41,8 @@ nonisolated enum RediscoverSections {
 
     /// Inputs are plain value tuples so every caller (books, episodes, albums)
     /// can feed the same shapes; timestamps in seconds since 1970.
-    /// Share cap for the NEW show source. Sinngemäß the 2-of-10
-    /// continue rule: shows never displace books/episodes beyond a fifth.
+    /// Share cap for the NEW show source, following the 2-of-10 continue
+    /// rule: shows never displace books or episodes beyond a fifth.
     static func showCap(limit: Int) -> Int { max(2, limit / 5) }
 
     /// The pool IS the page: the FULL candidate pool,

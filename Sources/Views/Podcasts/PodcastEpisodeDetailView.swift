@@ -32,7 +32,7 @@ struct PodcastEpisodeDetailView: View {
     private var isInProgress: Bool {
         if case .inProgress = state { return true } else { return false }
     }
-    /// Reiche Folgen-Metadaten (Staffel/Typ/Personen/Transkript) aus dem Feed.
+    /// Rich episode metadata from the feed (season, type, people, transcript).
     private var podcastEpisode: PodcastEpisode? {
         show?.episodes.first { $0.guid == item.id }
     }
@@ -269,8 +269,8 @@ struct PodcastEpisodeDetailView: View {
             // X16c: marking played behaves like a natural end. If this episode
             // is the active session, playback stops and auto-continue advances
             // (parity with the audiobook detail page).
-            // (Die Konsequenz zieht jetzt `podcastSetPlayed` selbst. Eine
-            // Stelle fuer alle Flaechen, GT 09.08.)
+            // `podcastSetPlayed` draws that consequence itself now, in one
+            // place for every surface.
         } label: {
             Image(systemName: isPlayed ? "checkmark.circle.fill" : "checkmark.circle")
                 .font(.title2)

@@ -54,7 +54,7 @@ nonisolated enum PodcastGenres {
         // Fiction plus its SUB-genres. Apple keeps radio plays apart
         // from the parent chart. The ARD Radio Tatort tops "Drama" and never
         // appears under "Fiction" alone. Measured on the DE storefront, so the
-        // curated Hörspiel list stays a small socket instead of growing into a
+        // curated radio-play list stays a small socket instead of growing into a
         // hand-maintained duplicate of a query we already run.
         PodcastGenre(itunesGenreId: 1483, title: String(localized: "Fiction"), systemImage: "theatermasks"),
         PodcastGenre(itunesGenreId: 1484, title: String(localized: "Radio Play"), systemImage: "waveform.and.mic"),

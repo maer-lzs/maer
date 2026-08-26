@@ -815,11 +815,11 @@ struct PlayerView: View {
     }
 
     /// Variant A for ALL media types.
-    /// Extras-Reihe (Up Next · Lesezeichen · Lyrics [Musik] · Transcript
-    /// [Podcast] · Mehr-Menü mit Fahrmodus + Als gehört) und AirPlay
-    /// SOLO mittig darunter. Radio läuft über dieselbe Struktur (weniger
-    /// Einträge, AirPlay mittig passt überall); bei AX-Größen fällt die
-    /// Extras-Reihe in ein 2-Spalten-Grid.
+    /// An extras row (Up Next · bookmarks · lyrics for music · transcript
+    /// for podcasts · a more menu with drive mode and mark as heard) with
+    /// AirPlay SOLO centred below it. Radio runs through the same structure
+    /// with fewer entries. At accessibility sizes the extras row falls into a
+    /// two-column grid.
     /// Drive mode + mark-finished moved OUT of the "…" menu into
     /// the row. The menu emptied and is GONE. Overflow (the German-labels
     /// worst case with a full six-item row): ViewThatFits tries the labeled
@@ -858,10 +858,10 @@ struct PlayerView: View {
         catalogSourceControl
     }
 
-    /// Der Player war die Fläche mit dem stärksten Anlass, einen laufenden
-    /// Titel in eine Playliste zu legen, und der schwächsten Ausstattung.
-    /// Hier gab es weder Warteschlangen- noch Playlist-Aktion. Beides kommt
-    /// aus DERSELBEN geteilten Komponente wie überall sonst.
+    /// The player is the surface with the strongest reason to put a running
+    /// title into a playlist and had the weakest equipment for it: neither a
+    /// queue nor a playlist action. Both come from the SAME shared component
+    /// as everywhere else.
     @ViewBuilder
     private var playlistControl: some View {
         if let id = viewModel.item?.id {
@@ -883,11 +883,11 @@ struct PlayerView: View {
         .accessibilityIdentifier("player-drive-mode")
     }
 
-    /// Seit die Musik-Katalog-Kacheln beim Tap SPIELEN,
-    /// ueberspringt der Weg das Detail-Sheet. Und dort stand die
-    /// ToS-Pflichtangabe von Jamendo (Kuenstler, Anbieter, Rueckverweis).
-    /// Der Player traegt sie jetzt selbst: Lizenz/Quelle sichtbar, Link zur
-    /// Quellseite. Kein Katalog-Titel ⇒ keine Zeile.
+    /// Since the music catalog tiles PLAY on tap, the path skips the detail
+    /// sheet, and that is where the ToS-mandated attribution stood (artist,
+    /// provider, backlink). The player carries it itself now: licence and
+    /// source visible, with a link to the source page. No catalog title means
+    /// no line.
     @ViewBuilder
     private var catalogSourceControl: some View {
         if let id = viewModel.item?.id,
@@ -914,11 +914,11 @@ struct PlayerView: View {
     }
 
     private var markFinishedControl: some View {
-        // Im Player ist das markierte Element per Definition das laufende.
-        // Als gehoert zu markieren haelt es also an. `toggleFinished` allein
-        // kippt nur die Marke. Richtung ZUERST lesen, danach hat sie sich
-        // schon gedreht; die Gegenrichtung bleibt folgenlos, Position und
-        // Wiedergabe unveraendert.
+        // In the player the marked item is by definition the running one,
+        // so marking it as heard stops it. `toggleFinished` alone only flips
+        // the mark. Read the direction FIRST, because afterwards it has
+        // already turned; the opposite direction stays without effect and
+        // leaves position and playback untouched.
         Button {
             Task {
                 let wasFinished = viewModel.isFinished

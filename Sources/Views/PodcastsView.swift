@@ -123,10 +123,11 @@ struct PodcastsView: View {
                         .padding(.horizontal)
                     }
                     nextUpSection
-                    // Eigener Bestand vor Schaufenster: die Reihen der Abos
-                    // stehen hoeher, die Kuration rutscht zwei Reihen runter.
-                    // Der Podcast-Tab ist die Flaeche der ABOS, und was hier
-                    // steht, ist Feed-Kuration, weil man Feeds abonniert.
+                    // Own stock before the shop window: the subscription
+                    // rows stand higher and the curation moves two rows down.
+                    // The podcast tab is the surface of SUBSCRIPTIONS, and
+                    // what stands here is feed curation, because feeds are
+                    // what one subscribes to.
                     recommendationsSection
                     latestEpisodesSection
                     hoerspieleSection

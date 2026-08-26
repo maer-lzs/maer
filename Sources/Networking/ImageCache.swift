@@ -33,12 +33,11 @@ final class ImageCache {
     /// whole store. A new size belongs in here; the fence holds that.
     nonisolated static let thumbnailVariants: [CGFloat] = [400, 600]
 
-    /// Wie viele Bilder jeder Speicher fassen SOLL. Die Kostengrenze wird
-    /// daraus abgeleitet, nicht danebengeschrieben. Vorher sagten die beiden
-    /// Grenzen verschiedene Zahlen, und die kleinere band unsichtbar.
-    /// Vorschauen bekommen den groesseren Anteil, weil sie das sind, was jede
-    /// Reihe und jedes Raster braucht; Vollbilder stehen nur ein- oder
-    /// zweimal auf dem Schirm.
+    /// How many images each cache is MEANT to hold. The cost limit is
+    /// derived from this instead of written down beside it, because two
+    /// limits stating different numbers let the smaller one bind invisibly.
+    /// Previews get the larger share, because they are what every row and
+    /// every grid needs; full images stand on screen once or twice.
     nonisolated static let thumbBudget = 240
     nonisolated static let fullCoverBudget = 6
 
@@ -57,27 +56,27 @@ final class ImageCache {
             .compactMap { ($0 as? UIWindowScene)?.screen }.first
         let shortSidePixels = screen.map { min($0.bounds.width, $0.bounds.height) * $0.scale } ?? 1500
         maxPixelSize = min(2200, max(1500, shortSidePixels * 1.6))
-        // Kachelreihen warfen ihre Bilder beim seitlichen Scrollen sofort
-        // wieder weg. Beide Speicher trugen
-        // ZWEI Grenzen, die verschiedene Zahlen meinten. Und die kleinere
-        // band, ohne dass die groessere es verriet. Ausgerechnet:
+        // Tile rows threw their images away again as soon as one scrolled
+        // sideways. Both caches carried TWO limits meaning different numbers,
+        // and the smaller one bound without the larger one showing it. Worked
+        // out:
         //
-        //   Vorschau  400 x 400 x 4  =   640 kB  →  40 MB fassten ~62 Bilder,
-        //                                           NICHT die genannten 600.
-        //   Vollbild ~2000 x 2000 x 4 = ~16 MB   → 150 MB fassten ~9 Bilder,
-        //                                           NICHT die genannten 300.
+        //   preview  400 x 400 x 4  =   640 kB  →  40 MB held ~62 images,
+        //                                          NOT the stated 600.
+        //   full    ~2000 x 2000 x 4 = ~16 MB   → 150 MB held ~9 images,
+        //                                          NOT the stated 300.
         //
-        // Eine EINZIGE Reihe zeigt zwoelf Kacheln, und Start traegt sechs
-        // Reihen. Der Speicher war also nach zwei, drei Reihen voll, und jede
-        // zurueckkehrende Kachel fand nichts mehr. Genau das Symptom.
+        // A SINGLE row shows twelve tiles and the start surface carries six
+        // rows, so the cache was full after two or three rows and every
+        // returning tile found nothing. Exactly the symptom.
         //
-        // Die Verteilung war ausserdem umgekehrt zur Nutzung: die Darstellung,
-        // die JEDE Reihe und JEDES Raster braucht, hatte ein Viertel des
-        // Budgets der Darstellung, die immer nur ein- oder zweimal auf dem
-        // Schirm steht. Jetzt sagen beide Grenzen JE Speicher dieselbe Zahl,
-        // damit keine mehr Zierde ist.
-        // Die Grenze IST die Rechnung. So kann sie nicht wieder von der
-        // Stueckzahl abweichen, die daneben steht.
+        // The split was also the inverse of the use: the rendering every row
+        // and every grid needs had a quarter of the budget of the rendering
+        // that stands on screen once or twice. Now both limits state the same
+        // number PER cache, so neither is decoration.
+        //
+        // The limit IS the arithmetic, so it cannot drift from the count
+        // written beside it.
         memoryCache.countLimit = Self.fullCoverBudget
         memoryCache.totalCostLimit = Self.fullCoverBudget * Int(maxPixelSize * maxPixelSize) * 4
         thumbCache.countLimit = Self.thumbBudget

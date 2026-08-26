@@ -39,9 +39,9 @@ nonisolated struct PodcastShow: Codable, Identifiable {
     var explicit: Bool? = nil
     var funding: [PodcastFunding]? = nil
     var owner: String? = nil
-    /// Provenance. Which server MIRRORS
-    /// this feed (PinchflatMirror.originTag). nil = an ordinary subscription.
-    /// Herkunft ist ein Fakt am Feed, kein zweiter Ordnungsbaum.
+    /// Provenance. Which server MIRRORS this feed
+    /// (PinchflatMirror.originTag). nil = an ordinary subscription. Origin is
+    /// a fact on the feed, not a second ordering tree.
     var origin: String? = nil
     var showType: String? = nil    // episodic | serial
 }
@@ -564,11 +564,10 @@ final class PodcastSubscriptions: ObservableObject {
             }
             return e
         }
-        // Argument-Reihenfolge mit Absicht: Der ZWEITE gewinnt die
-        // Feed-Tatsachen, und das muss hier der Ueberlebende sein. Seine URL
-        // traegt den aktuellen Token. Die Speicher-Tatsachen ueberleben von
-        // beiden Seiten (siehe merge), der Verlierer verliert also nur seine
-        // veraltete Adresse.
+        // Argument order on purpose: the SECOND side wins the feed facts,
+        // and that has to be the survivor here, because its URL carries the
+        // current token. The store facts survive from either side (see
+        // merge), so the loser only loses its outdated address.
         survivor = merge(rekeyed, survivor)
         let loserMasked = maskedFeedURL(loser.feedURL)
         let survivorMasked = maskedFeedURL(survivor.feedURL)
@@ -583,9 +582,9 @@ final class PodcastSubscriptions: ObservableObject {
         return guid
     }
 
-    /// Zwei Fassungen derselben Sendung zusammenführen: Folgen als Vereinigung
-    /// nach `guid`, neueste zuerst. `internal`, damit die RSS-Härtung (bei
-    /// einem dünnen Abruf nie schrumpfen) im Unit-Test fahrbar ist.
+    /// Merge two versions of the same show: episodes as a union over `guid`,
+    /// newest first. `internal` so the RSS hardening (never shrink on a thin
+    /// fetch) can be driven from a unit test.
     ///
     /// **Classify fields instead of picking a side.**
     ///
@@ -594,24 +593,24 @@ final class PodcastSubscriptions: ObservableObject {
     /// died that way before.
     ///
     /// The classification is objective, not a judgement call:
-    ///  * **Feed-Tatsachen** (Titel, Bild, Beschreibung, Kategorien, die
-    ///    angekuendigte Dauer): das frische Parsen kennt sie am besten, die
-    ///    frische Seite gewinnt.
-    ///  * **Speicher-Tatsachen** (`origin`, die gemessene Assetlaenge): ein
-    ///    frisches Parsen kann sie GAR NICHT kennen. Sie ueberleben von der
-    ///    gespeicherten Seite, unabhaengig davon, wer mehr Folgen hat.
+    ///  * **Feed facts** (title, image, description, categories, the
+    ///    announced duration): a fresh parse knows them best, so the fresh
+    ///    side wins.
+    ///  * **Store facts** (`origin`, the measured asset length): a fresh
+    ///    parse CANNOT know them at all. They survive from the stored side,
+    ///    no matter which side has more episodes.
     ///
-    /// Die Folgenliste bleibt eine Vereinigung nach `guid`: ein duennes Parsen
-    /// (gueltiger Titel, wenige Folgen) darf den Zwischenspeicher nie leeren.
-    /// Und bei doppelter `guid` zieht die Klassifizierung auf FOLGEN-Ebene mit.
-    /// Sonst stuerbe dieselbe Tatsache nur unauffaelliger.
+    /// The episode list stays a union over `guid`: a thin parse (valid title,
+    /// few episodes) must never empty the cache. On a duplicate `guid` the
+    /// classification applies at EPISODE level too, otherwise the same fact
+    /// dies, only less visibly.
     ///
-    /// Die Speicher-Tatsachen werden nicht blind von `stored` genommen,
-    /// sondern: wer sie hat, behaelt sie (`stored ?? fresh`). Beim
-    /// Auffrischen ist das dasselbe, weil ein frisches Parsen sie nie hat.
-    /// Aber `collapseInto` benutzt denselben Merge, um einen Zwillings-Eintrag
-    /// in den ueberlebenden zu falten, und dort darf die Herkunft des
-    /// Verlierers nicht verlorengehen, nur weil er als zweites Argument steht.
+    /// The store facts are not taken blindly from `stored`. Whoever has them
+    /// keeps them (`stored ?? fresh`). On a refresh that is the same thing,
+    /// because a fresh parse never has them. But `collapseInto` uses this
+    /// same merge to fold a twin entry into the survivor, and there the
+    /// loser's origin must not be lost just because it is the second
+    /// argument.
     nonisolated static func merge(_ stored: PodcastShow, _ fresh: PodcastShow) -> PodcastShow {
         var result = fresh
         result.origin = stored.origin ?? fresh.origin
@@ -632,15 +631,16 @@ final class PodcastSubscriptions: ObservableObject {
         return result
     }
 
-    /// Was nur der Speicher ueber eine FOLGE weiss. Waechst diese Liste, muss
-    /// der Zaun `storeFactsSurviveARefresh` mitwachsen. Er ist genau dafuer da.
+    /// What only the store knows about an EPISODE. When this list grows, the
+    /// fence `storeFactsSurviveARefresh` has to grow with it. That is exactly
+    /// what it is for.
     private nonisolated static func carryStoreFacts(from stored: PodcastEpisode,
                                                     into fresh: inout PodcastEpisode) {
-        // Nur wenn die andere Seite selbst keine Messung traegt. Sonst waere
-        // ein aelterer Wert staerker als ein neuerer.
+        // Only when the other side carries no measurement of its own,
+        // otherwise an older value would beat a newer one.
         if fresh.measuredDuration == nil, let measured = stored.measuredDuration, measured > 0 {
             fresh.measuredDuration = measured
-            // Gespiegelt, damit jede Lesestelle die beste bekannte Laenge sieht.
+            // Mirrored so every reader sees the best known length.
             fresh.duration = measured
         }
     }
@@ -1035,9 +1035,9 @@ final class PodcastSubscriptions: ObservableObject {
         guard duration > 0, duration.isFinite, let idx = episodeIndex[guid] else { return }
         guard abs(shows[idx.show].episodes[idx.episode].duration - duration) > 1
                 || shows[idx.show].episodes[idx.episode].measuredDuration == nil else { return }
-        // In BEIDE Felder: `duration` bleibt die beste bekannte Laenge fuer
-        // jede Lesestelle, `measuredDuration` ist die Speicher-Tatsache, die
-        // der Merge ueber die naechste Auffrischung rettet.
+        // Into BOTH fields: `duration` stays the best known length for every
+        // reader, `measuredDuration` is the store fact the merge carries
+        // across the next refresh.
         shows[idx.show].episodes[idx.episode].duration = duration
         shows[idx.show].episodes[idx.episode].measuredDuration = duration
         save()
@@ -1321,16 +1321,15 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             let resolved = Self.resolved(href, against: feedURL)
             if inItem { iImage = resolved } else if showImage == nil { showImage = resolved }
         }
-        // Der Feed nennt
-        // sein Bild ZWEIMAL, und dieser Leser fand keines von beiden. Die
-        // RSS-Form `<image><url>…</url></image>` las er gar nicht, und die
-        // itunes-Form OHNE `href` (URL als Elementtext) fiel durch, weil das
-        // Attribut leer ist. Die App KANNTE die RSS-Form bereits an anderer
-        // Stelle (`FeedArtworkLookup`): zwei Leser, eine Schreibweise, einer
-        // kann mehr. Die Zwei-Wahrheiten-Klasse.
+        // A feed can name its image TWICE and this reader found neither. It
+        // did not read the RSS form `<image><url>…</url></image>` at all, and
+        // the itunes form WITHOUT `href` (the URL as element text) fell
+        // through because the attribute is empty. `FeedArtworkLookup` already
+        // understood the RSS form: two readers, one spelling, one of them
+        // knows more.
         //
-        // INVARIANTE: eine Schreibweise, die die App an EINER Stelle
-        // versteht, versteht sie ueberall.
+        // INVARIANT: a spelling the app understands in ONE place, it
+        // understands everywhere.
         if el == "image", !inItem { inChannelImage = true }
     }
 
@@ -1342,7 +1341,7 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?, qualifiedName qName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Die beiden Schreibweisen, die dieser Leser nicht kannte.
+        // The two spellings this reader did not know.
         if el == "image", !inItem { inChannelImage = false }
         if el == "url", inChannelImage, !inItem, showImage == nil, !value.isEmpty {
             showImage = Self.resolved(value, against: feedURL)

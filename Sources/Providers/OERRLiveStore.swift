@@ -65,10 +65,10 @@ final class OERRLiveStore: ObservableObject {
         for storefront in storefronts {
             guard let language = active.first(where: { $0.storefront == storefront })?.language,
                   let languageTerm = OERRCuration.searchTerms[language] else { continue }
-            // Der Sprach-Begriff findet in au/ca/nz nur die
-            // BBC. Die dortigen Anstalten brauchen eigene Begriffe. Der
-            // Sprach-Begriff bleibt als Grundlage, die Anstalts-Begriffe
-            // kommen dazu (Anstalten OHNE eigene Begriffe aendern sich nicht).
+            // The plain language term finds only the one large broadcaster
+            // in au/ca/nz. The local broadcasters need terms of their own.
+            // The language term stays as the basis and the broadcaster terms
+            // are added; broadcasters WITHOUT own terms are unchanged.
             var terms = [languageTerm]
             for broadcaster in active where broadcaster.storefront == storefront {
                 terms += broadcaster.searchTerms

@@ -40,8 +40,7 @@ struct CatalogSourcePage: View {
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
-    /// Warum das Nachladen stoppte. Ein Fehlschlag ist keine
-    /// Erschoepfung und bekommt einen Weg zurueck.
+    /// Why paging stopped. A failure is not exhaustion and gets a way back.
     @State private var pageFailure: String?
     /// Which shelves could not be ASKED. Kept apart from a source that has
     /// nothing here, which looks identical on the surface but is not.
@@ -49,8 +48,8 @@ struct CatalogSourcePage: View {
     /// Which shelves the stored day says this source HAS. Read once
     /// when the page opens, so the warm visit can draw exactly those.
     @State private var knownShelfKeys: Set<String> = []
-    /// Der Bestand je JAHRZEHNT. Nur Old Time Radio, wo die Zeit die
-    /// natuerlichere Gliederung ist als das Genre.
+    /// The stock per DECADE. Old Time Radio only, where time is the more
+    /// natural division than genre.
     @State private var decadeStock: [String: (items: [LibraryItem], total: Int?)] = [:]
 
     private let pageSize = 30
@@ -80,14 +79,13 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// Gegen den Layout-Shift: die Reihen der Faecher-Flaeche in
-    /// Browse-Ordnung, jede entweder GEFUELLT oder als Platzhalter.
+    /// Against the layout shift: the shelf rows in browse order, each one
+    /// either FILLED or a placeholder.
     ///
-    /// Der warme Besuch kennt aus dem Tages-Speicher genau die Faecher, die
-    /// es gibt. Sie stehen sofort da und fuellen sich AN ORT UND STELLE.
-    /// Nichts springt, und es erscheint nie ein Fach, das die Quelle nicht
-    /// hat. Der kalte Besuch kennt nichts und bekommt
-    /// stattdessen den EINEN benannten Block weiter unten.
+    /// A warm visit knows from the day store exactly which shelves exist.
+    /// They stand there at once and fill IN PLACE. Nothing jumps, and a shelf
+    /// the source does not have never appears. A cold visit knows nothing and
+    /// gets the ONE named block further down instead.
     private var shelfSlots: [(key: String, title: String, ready: Bool)] {
         guard hasChips else { return [] }
         return CatalogGenreAxis.librivoxShelves.compactMap { shelf in
@@ -101,10 +99,10 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// Der kalte Erstbesuch: EIN benannter Block statt achtzehn einzelner
-    /// Einschuebe. Er haengt an der gemessenen Wartezeit, nicht am Namen der
-    /// Quelle. Bei archive.org ist der kalte Fall unter einer Sekunde, und
-    /// ein Skelett dafuer waere schlechter als keins.
+    /// The cold first visit: ONE named block instead of eighteen separate
+    /// insertions. It hangs on the MEASURED wait, not on the source name. For
+    /// archive.org the cold case is under a second, and a skeleton for that
+    /// would be worse than none.
     private var showsShelfPlaceholder: Bool {
         hasChips && !shelvesLoaded && knownShelfKeys.isEmpty
             && CatalogShelfSource.showsLoadingPlaceholder(source)
@@ -167,16 +165,15 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// Die Seitenordnung: die Beliebt-Reihe oben als Kachelreihe, darunter
-    /// die neuesten Titel, darunter die Genres. Die Seite besteht
-    /// AUSSCHLIESSLICH aus Kachelreihen. Das endlose
-    /// Nachladen ist nicht verschwunden. Es lebt auf der Vollseite hinter
-    /// dem Chevron weiter, dort wo Scrollen die Form ist.
+    /// The page order: the popular row on top as a tile row, the newest
+    /// titles below it, the genres below that. The page consists
+    /// EXCLUSIVELY of tile rows. Endless paging has not disappeared. It lives
+    /// on the full page behind the chevron, where scrolling is the form.
     private var catalogGrid: some View {
         LazyVStack(alignment: .leading, spacing: 14) {
-            // Die Warnung steht am ANFANG jeder Flaeche, deren Inhalte
-            // von archive.org kommen. LibriVox und Gutenberg liefern ihre
-            // eigenen Bestaende und sagen selbst, was gilt.
+            // The notice stands at the START of every surface whose content
+            // comes from archive.org. LibriVox and Gutenberg carry their own
+            // holdings and state their own terms.
             if source == .oldTimeRadio || source == .archiveBooks {
                 ArchiveRightsNote()
             }
@@ -233,9 +230,9 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// Jede Flaeche traegt ihren Namen. Was frueher
-    /// ein namenloses Endlos-Raster war, ist jetzt die benannte Reihe ganz
-    /// oben. Mit dem Chevron auf die Vollseite, wo Scrollen hingehoert.
+    /// Every surface carries its name. What used to be a nameless endless
+    /// grid is the named row at the top, with the chevron onto the full page
+    /// where scrolling belongs.
     @ViewBuilder
     private var popularRow: some View {
         let preview = RowPreview.cut(items)
@@ -264,9 +261,8 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// Die Jahrzehnte STEHEN NEBEN den Genres, nicht an ihrer Stelle.
-    /// Ein Stueck hat beides. G8 gilt wie ueberall: leeres Jahrzehnt, keine
-    /// Reihe.
+    /// The decades stand BESIDE the genres, not in their place. An item has
+    /// both. The usual gate applies: an empty decade gets no row.
     private var decadeRows: [(key: String, title: String)] {
         guard source == .oldTimeRadio else { return [] }
         return CatalogGenreAxis.decadeShelves.filter {
@@ -299,9 +295,9 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// Eine Reihe, die ihren Platz schon einnimmt: Ueberschrift wie die
-    /// echte, darunter Kachel-Skelette in derselben Groesse. Sie ersetzt sich
-    /// selbst, sobald der Inhalt da ist. Deshalb springt nichts.
+    /// A row that already takes its space: the same heading as the real one,
+    /// tile skeletons of the same size below it. It replaces itself as soon
+    /// as the content arrives, so nothing jumps.
     private func shelfPlaceholderRow(title: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             RowHeading.plain(verbatim: title)
@@ -424,8 +420,8 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled)")
     }
 
-    /// Die Jahrzehnte, nebenlaeufig und in derselben Form wie die
-    /// Gattungen. Fehlschlag benannt, leeres Jahrzehnt keine Reihe.
+    /// The decades, concurrent and in the same shape as the genres. A
+    /// failure is named, an empty decade gets no row.
     private func loadDecades() async {
         guard source == .oldTimeRadio else { return }
         let provider = FreeCatalogProvider.shared
@@ -461,11 +457,10 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
     }
 
-    /// Ein Titel darf in zwei Faechern stehen. Er gehoert
-    /// ja in beide, aber nicht als ZWILLING direkt untereinander. Was auf
-    /// dieser Seite schon weiter oben stand, sortiert sich hier nach hinten.
-    /// Es LEERT kein Fach (dieselbe Regel wie der Malus der Mischreihen: ein
-    /// Ausschluss nach hinten, kein Wegwerfen).
+    /// A title may stand in two shelves, because it belongs in both, but not
+    /// as a TWIN directly below itself. What already stood higher up on this
+    /// page sorts to the back here. It EMPTIES no shelf: the same rule as the
+    /// malus of the mixed rows, a move to the back and never a discard.
     private func withoutTwins(_ items: [LibraryItem]) -> [LibraryItem] {
         let oben = Set(shelfStock.values.flatMap { $0.items.prefix(RowPreview.limit) }.map(\.id))
         guard !oben.isEmpty else { return items }
@@ -484,9 +479,8 @@ struct CatalogSourcePage: View {
                 FreeCatalog.isCuratedArchiveDoc(
                     $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
             }
-            // Sammelbaende bleiben auffindbar, stehen aber nicht mehr auf
-            // den ersten
-            // Plaetzen. Ein Malus, kein Ausschluss. Es LEERT kein Fach.
+            // Multi-author collections stay findable but no longer take the
+            // first places. A malus, not an exclusion. It EMPTIES no shelf.
             let einzeln = erlaubt.filter { !FreeCatalog.isMultiAuthorCollection($0) }
             let sammlungen = erlaubt.filter { FreeCatalog.isMultiAuthorCollection($0) }
             let kept = (einzeln + sammlungen).compactMap { provider.remember(popular: $0) }
@@ -526,15 +520,15 @@ struct CatalogSourcePage: View {
         CatalogPopularSource.seed(source: source, store: store)
     }
 
-    /// `try?` machte hier aus JEDEM Netzfehler ein Ende der Liste. An allen
-    /// vier Quellen. Milder als bei den Faechern (die Seite
-    /// hoert auf nachzuladen, statt leer zu wirken), aber dieselbe
-    /// Verwechslung: Fehlschlag sieht aus wie Erschoepfung, und es gibt
-    /// keinen Weg zurueck. Ein Fehler endet die Liste jetzt NICHT. Er wird
-    /// benannt und bleibt wiederholbar.
-    /// Die Vorschau-Reihe laedt ueber DENSELBEN Weg wie die
-    /// Vollseite hinter ihrem Chevron (`CatalogPopularSource`). Sonst zeigte
-    /// die Reihe oben einen anderen Ausschnitt als die Seite dahinter.
+    /// `try?` turned EVERY network error into an end of the list here, on
+    /// all four sources. Milder than on the shelves (the page stops paging
+    /// instead of looking empty), but the same confusion: a failure looks
+    /// like exhaustion and there is no way back. An error does NOT end the
+    /// list. It is named and stays repeatable.
+    ///
+    /// The preview row loads over the SAME path as the full page behind its
+    /// chevron (`CatalogPopularSource`). Otherwise the row on top shows a
+    /// different excerpt than the page behind it.
     private func load() async {
         guard !source.isFeedBased, !isLoading, !reachedEnd else { return }
         isLoading = true
@@ -562,13 +556,12 @@ struct CatalogSourcePage: View {
 }
 
 
-/// Der EINE Ladeweg der Beliebtheits-Liste. Die Vorschau-Reihe der
-/// Quellenseite und die Vollseite hinter ihrem Chevron fragen hier durch.
-/// Sonst zeigt die Reihe oben einen anderen Ausschnitt als die Seite
-/// dahinter.
+/// The ONE load path of the popularity list. The source page's preview row
+/// and the full page behind its chevron both ask through here. Otherwise the
+/// row on top shows a different excerpt than the page behind it.
 ///
-/// Ein Fehlschlag ist KEINE Erschoepfung: `failed` traegt seinen Grund,
-/// `cancelled` bleibt still, und nur `loaded` darf die Liste enden.
+/// A failure is NOT exhaustion: `failed` carries its reason, `cancelled`
+/// stays silent, and only `loaded` may end the list.
 @MainActor
 enum CatalogPopularSource {
     enum Answer {
@@ -640,11 +633,10 @@ enum CatalogPopularSource {
 }
 
 
-/// Die Vollseite hinter dem Beliebt-Chevron. Sie ist die Heimat des endlosen
-/// Nachladens. Dieselbe Kachel, dieselbe Seitenlogik, nur ohne die Reihen
-/// drumherum. Sie teilt sich den Lade-Weg der Quellenseite ueber
-/// `CatalogPopularSource`, damit Vorschau-Reihe und Vollseite denselben
-/// Bestand in derselben Ordnung zeigen.
+/// The full page behind the popular chevron. It is the home of endless
+/// paging: the same tile, the same page logic, only without the rows around
+/// it. It shares the source page's load path over `CatalogPopularSource`, so
+/// preview row and full page show the same stock in the same order.
 struct CatalogPopularPage: View {
     let source: CatalogSource
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -690,7 +682,7 @@ struct CatalogPopularPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if pageFailure != nil {
-                // Ein Fehlschlag ist keine Erschoepfung.
+                // A failure is not exhaustion.
                 HStack(spacing: 10) {
                     Text("Could not load more.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -886,7 +878,7 @@ struct ArchiveSeriesPage: View {
     var flavor: Flavor = .series
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detail: LibraryItemDetail?
-    /// Der billige Kopf, damit das Blatt nicht auf die Liste wartet.
+    /// The cheap head, so the sheet does not wait for the file list.
     @State private var quick: LibraryItemDetail?
     @State private var failed = false
     @State private var visibleCount = 100
@@ -940,13 +932,13 @@ struct ArchiveSeriesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                // Das Blatt wartet NICHT auf die Teileliste. Gemessen
-                // haengt die Antwortzeit nicht an der Datenmenge, sondern an
-                // archive.orgs Warteschlange (2 kB in 26 s, 1,3 MB in 11 s).
-                // Ein kleinerer Abruf hilft also nicht, das Warten aus dem Weg
-                // zu nehmen schon. Kopf, Titel und Beschreibung stehen sofort
-                // aus dem billigen Teilpfad; die Liste kommt darunter, mit
-                // BENANNTEM Ladezustand statt leerer Flaeche.
+                // The sheet does NOT wait for the parts list. Measured, the
+                // response time hangs on archive.org's queue rather than on
+                // the payload size (2 kB in 26 s, 1.3 MB in 11 s), so a
+                // smaller request does not help. Moving the wait out of the
+                // way does. Head, title and description come at once from the
+                // cheap sub-path; the list follows below it, with a NAMED
+                // loading state instead of an empty surface.
                 if let detail {
                     header(detail)
                     episodeList
@@ -998,9 +990,9 @@ struct ArchiveSeriesPage: View {
             .onTapGesture { failed = false; Task { await load() } }
     }
 
-    /// Der billige Kopf: Titel, Urheber und Beschreibung aus dem Teilpfad
-    /// (8,3 kB statt 1,36 MB). Er laeuft NEBEN dem Vollabruf, nicht vor ihm.
-    /// Wer zuerst da ist, zeichnet.
+    /// The cheap head: title, creator and description from the sub-path
+    /// (8.3 kB instead of 1.36 MB). It runs BESIDE the full fetch, not before
+    /// it. Whichever arrives first draws.
     private func loadQuickHeader() async {
         guard itemId.hasPrefix(FreeCatalog.archivePrefix) else { return }
         let identifier = String(itemId.dropFirst(FreeCatalog.archivePrefix.count))

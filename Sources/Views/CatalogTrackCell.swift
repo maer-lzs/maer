@@ -19,18 +19,17 @@ struct CatalogTrackCell: View {
     let width: CGFloat
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var resolved: LibraryItem?
-    /// Ein Platzhalter ist ein UEBERGANG, kein Endzustand. Der Zaehler
-    /// laesst die Aufloesung beim naechsten Erscheinen der Zelle erneut
-    /// laufen. Vorher verschluckte `try?` den Fehlschlag, es gab keinen
-    /// zweiten Anlauf und keinen sichtbaren Zustand, und die Kachel trug
-    /// dauerhaft den Platzhalternamen.
+    /// A placeholder is a TRANSITION, not an end state. The counter lets the
+    /// resolution run again the next time the cell appears. Before, `try?`
+    /// swallowed the failure, there was no second attempt and no visible
+    /// state, and the tile carried the placeholder name permanently.
     @State private var attempt = 0
 
-    /// Holt den Namen nach. Ein Transportfehler ist etwas anderes als ein
-    /// klares Weg: der erste laesst den Eintrag stehen und wird
-    /// wiederholt, der zweite vermerkt das Stueck als tot, damit die Reihe
-    /// es auslaesst. Der HOERSTAND bleibt in beiden Faellen. Er ist
-    /// Nutzerbesitz; verschwinden darf die Kachel, nicht der Eintrag.
+    /// Fetches the name afterwards. A transport error is something other
+    /// than a clear gone: the first leaves the entry standing and is
+    /// repeated, the second marks the item as dead so the row skips it. The
+    /// POSITION stays in both cases, because it belongs to the user. The tile
+    /// may disappear, the entry may not.
     private func resolve() async {
         do {
             _ = try await FreeCatalogProvider.shared.fetchItemDetail(itemId: itemId)

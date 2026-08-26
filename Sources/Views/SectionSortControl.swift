@@ -27,8 +27,8 @@ nonisolated enum SortIndicator {
 /// Not a glass button but a plain control at the surface it sorts. No glass,
 /// no background, no border, in the accent colour.
 ///
-/// The idiom is the existing Land-ändern-Zeile unter den Radio
-/// rows (small, secondary, no surface), not a new machinery. The active value
+/// The idiom is the existing change-country line under the radio rows
+/// (small, secondary, no surface), not a new machinery. The active value
 /// appears as a short caption in front of the symbol as soon as it deviates:
 /// a bare symbol does not say WHAT it is sorted by.
 struct SectionSortControl<MenuContent: View>: View {

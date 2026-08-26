@@ -302,10 +302,10 @@ nonisolated enum FreeCatalog {
     /// 1. strip the " by <author> (<dates>)" tail (the author has his own
     ///    line; conservative. Only with a parenthesized date, so a title
     ///    that merely contains "by" survives),
-    /// 2. lift a trailing "version N" into its own field (Q3: multiple
-    ///    readings are LEGITIMATE. The marker moves to a meta line, the
-    ///    duplicate is never hidden),
-    /// 3. turn a trailing article back around ("X, Der" → "Der X"; de/en/fr).
+    /// 2. lift a trailing "version N" into its own field (multiple readings
+    ///    are LEGITIMATE. The marker moves to a meta line, the duplicate is
+    ///    never hidden),
+    /// 3. turn a trailing article back around ("X, The" → "The X"; de/en/fr).
     static func normalizedTitle(_ raw: String) -> (title: String, version: Int?) {
         var title = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         // (1) trailing ", version 2" / "(version 2)" FIRST. It sits AFTER
@@ -344,17 +344,17 @@ nonisolated enum FreeCatalog {
 
     /// The licence URL as a short, honest label. Unknown
     /// forms keep the raw URL rather than being flattened to "free".
-    /// Darf von diesem Eintrag eine KOPIE gezogen werden? Nur mit
-    /// deklarierter Lizenz. Anzeigen und Streamen ist davon unberuehrt; das
-    /// ist derselbe Vorgang wie der Browser eines Besuchers.
+    /// May a COPY be taken of this entry? Only with a declared licence.
+    /// Showing and streaming are untouched by this; that is the same act as a
+    /// visitor's browser performing it.
     static func mayDownload(licenceURL: String?) -> Bool {
         guard let licenceURL else { return false }
         return !licenceURL.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Was an der Kachel steht, wenn die Quelle nichts sagt. NIE gar
-    /// nichts. Eine fehlende Angabe ist eine Information, keine Luecke, und
-    /// sie ist ausdruecklich KEINE Behauptung ueber die Rechtelage.
+    /// What the tile carries when the source states nothing. NEVER nothing
+    /// at all. A missing statement is information rather than a gap, and it
+    /// is explicitly NOT a claim about the rights situation.
     static let unstatedRights = String(localized: "Rights not stated")
 
     static func licenceLabel(_ url: String?) -> String? {
@@ -516,26 +516,24 @@ nonisolated enum FreeCatalog {
     /// for log AND error line. One look then tells 429 / HTML answer /
     /// transport apart, so a cancelled task is never booked as a broken
     /// source.
-    /// Sagt dieser Fehlschlag, dass es den Eintrag nicht mehr gibt. Oder
-    /// nur, dass gerade nicht gefragt werden konnte? Nur der erste darf einen
-    /// Eintrag als tot vermerken; der zweite muss wiederholbar bleiben,
-    /// sonst raeumt ein
-    /// Funkloch die Reihe leer. Dieselbe Dreiteilung wie in der
-    /// Negativ-Cache-Regel: Daten · leer · Fehlschlag.
-    /// Gehoert diese Kennung einem der freien Kataloge? Nur fuer die darf
-    /// ein Fehlschlag als weg vermerkt werden. Ein Server-Buch ist
-    /// Sache des Servers.
-    /// Ist das ein SAMMELBAND mehrerer Autoren? Sie ranken in vielen
-    /// Faechern oben und verdraengen einzelne Werke von den ersten Plaetzen.
+    /// Does this failure say the entry is gone, or only that it could not be
+    /// asked right now? Only the first may mark an entry as dead; the second
+    /// has to stay repeatable, otherwise a dead spot empties the row. The
+    /// same three-way split as the negative-cache rule: data, empty, failed.
+    /// Does this id belong to one of the free catalogs? Only for those may a
+    /// failure be recorded as gone. A book on a server is the server's
+    /// business.
+    /// Is this a multi-author COLLECTION? They rank high in many shelves and
+    /// push single works out of the first places.
     ///
-    /// Gemessen an 150 LibriVox-Eintraegen: an der Schlagwortzahl liegt es
-    /// nicht (Sammelbaende 6,2 im Mittel, die uebrigen 6,4), und der Titel
-    /// taugt nicht als Signal. `Vanished Arizona: Recollections` enthaelt
-    /// `collection` und ist ein einzelnes Werk.
+    /// Measured over 150 LibriVox entries: the number of subjects is not the
+    /// signal (collections carry 6.2 on average, the rest 6.4), and the title
+    /// is not one either. `Vanished Arizona: Recollections` contains
+    /// `collection` and is a single work.
     ///
-    /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
-    /// `Various`. Fuenf von hundertfuenfzig, alle echt. Und weil es eine
-    /// exakte Gleichheit ist, kann kein Teilstring hineinrutschen.
+    /// What carries is LibriVox's own convention: `creator` is EXACTLY
+    /// `Various`. Five of a hundred and fifty, all of them genuine. And
+    /// because it is an exact equality, no substring can slip in.
     static func isMultiAuthorCollection(_ doc: ArchivePopularDoc) -> Bool {
         guard let creator = doc.creator?.values.first else { return false }
         return creator.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "various"
@@ -772,7 +770,7 @@ nonisolated enum FreeCatalog {
     /// `normalizedTitle` (Q2), because it is the same problem: a source
     /// writes housekeeping into the name and it eats the work's title.
     ///
-    /// GEMESSEN an acht Sammlungen; die Muster gehen weit auseinander:
+    /// MEASURED over eight collections; the patterns differ widely:
     /// ```
     /// Gunsmoke 52-04-26 (001) Billy the Kid
     /// YTJD 1948-12-07 000 Milford Brooks III (Dick Powell Audition)
@@ -780,23 +778,25 @@ nonisolated enum FreeCatalog {
     /// Richard Diamond 49-05-01 (002) Diamond In the Rough (AFRS)
     /// Suspense 420617 001 The Burning Court (128-44) 28455 30m00s
     /// Philip_Marlowe_47-06-12_xxx_Who_Shot_Waldo
-    /// XMinusOne55-04-24001NoContact          ← ganz ohne Trenner
+    /// XMinusOne55-04-24001NoContact          ← no separators at all
     /// ```
-    /// Regel (konservativ, nie raten): abgetrennt wird NUR, wenn ein DATUM
-    /// erkannt wurde. Das Datum ist wertvoll (Erstausstrahlung) und wandert
-    /// in die Metazeile statt weggeworfen zu werden; Kürzel und laufende
-    /// Nummer sind Redundanz (Sendungsname steht oben, Nummer links). Passt
-    /// nichts, bleibt der Titel unverändert.
+    /// The rule is conservative and never guesses: a head is cut off ONLY
+    /// when a DATE was recognised. The date is worth keeping (first
+    /// broadcast) and moves into the meta line instead of being thrown away;
+    /// the show shorthand and the running number are redundant, because the
+    /// show name stands above and the number to the left. If nothing
+    /// matches, the title stays as it is.
     static func otrEpisode(fromFileName raw: String) -> (title: String, airDate: String?) {
         var name = raw.replacingOccurrences(of: "_", with: " ")
             .trimmingCharacters(in: .whitespaces)
-        // Technischer Schwanz mancher Sammlungen: "(128-44) 28455 30m00s".
+        // The technical tail some collections carry: "(128-44) 28455 30m00s".
         name = name.replacingOccurrences(
             of: #"\s*\(\d{2,3}-\d{2}\)\s*\d+\s*\d+m\d+s\s*$"#,
             with: "", options: .regularExpression)
 
-        // Datum in den vier gemessenen Schreibweisen, mit optionalem Kürzel
-        // davor und optionaler Nummer dahinter ("000", "(001)", "xxx").
+        // The date in the four measured spellings, with an optional
+        // shorthand before it and an optional number after it ("000",
+        // "(001)", "xxx").
         let pattern = #"^(.*?)((?:19|20)\d{2}-\d{2}-\d{2}|\d{2}-\d{2}-\d{2}|(?:19|20)\d{6}|\d{6})[\s._-]*(?:\(?(?:\d{1,4}|[xX]{3})\)?)?[\s._-]*(.*)$"#
         guard let match = name.range(of: pattern, options: .regularExpression) else {
             return (name, nil)
@@ -807,7 +807,7 @@ nonisolated enum FreeCatalog {
               m.numberOfRanges == 4
         else { _ = match; return (name, nil) }
         let rest = ns.substring(with: m.range(at: 3)).trimmingCharacters(in: .whitespaces)
-        // Bleibt nach dem Abtrennen nichts übrig, war es kein Kopfmuster.
+        // If nothing is left after the cut, it was not a head pattern.
         guard !rest.isEmpty else { return (name, nil) }
         let date = isoAirDate(ns.substring(with: m.range(at: 2)))
         return (rest, date)
@@ -946,21 +946,21 @@ nonisolated enum FreeCatalog {
     }
 }
 
-/// Die drei Achsen, die `musicinfo` neben
-/// den Gattungen traegt. Als FILTER auf der Vollseite eines Fachs, nicht als
-/// eigene Reihen.
+/// The three axes `musicinfo` carries besides the genres. They are FILTERS
+/// on a shelf's full page, not rows of their own.
 ///
-/// Gemessen an 200 populaeren Titeln (26.08.): `vocalinstrumental`
-/// vocal 179 / instrumental 21 · `speed` medium 142, high 38, low 12,
-/// verylow 2 · Stimmungen in den `vartags` (energetic 58, love 52, happy 24,
-/// emotional 18, upbeat 11, sentimental 10, romantic 9).
+/// Measured over 200 popular tracks: `vocalinstrumental` vocal 179 /
+/// instrumental 21 · `speed` medium 142, high 38, low 12, verylow 2 · moods
+/// in the `vartags` (energetic 58, love 52, happy 24, emotional 18, upbeat
+/// 11, sentimental 10, romantic 9).
 ///
-/// Instrumental ist ein SCHALTER, kein Fach. Es ist eine Ja-Nein-Frage.
+/// Instrumental is a SWITCH rather than a shelf, because it is a yes-no
+/// question.
 nonisolated struct JamendoFilter: Equatable, Sendable {
     enum Tempo: String, CaseIterable, Sendable {
         case slow, medium, fast
-        /// Jamendos eigene Stufen; `verylow` faellt mit `low` zusammen, weil
-        /// zwei von zweihundert Titeln kein eigenes Fach rechtfertigen.
+        /// Jamendo's own steps. `verylow` folds into `low`, because two of
+        /// two hundred tracks do not justify a step of their own.
         var apiValues: [String] {
             switch self {
             case .slow: ["low", "verylow"]
@@ -970,9 +970,9 @@ nonisolated struct JamendoFilter: Equatable, Sendable {
         }
     }
 
-    /// Die Stimmungen, die im gemessenen Bestand wirklich vorkommen. Keine
-    /// erfundene Liste. Sie laufen ueber `fuzzytags`, weil Jamendo sie dort
-    /// fuehrt und nicht als eigenes Feld.
+    /// The moods that actually occur in the measured stock, not an invented
+    /// list. They run over `fuzzytags`, because that is where Jamendo carries
+    /// them rather than in a field of their own.
     enum Mood: String, CaseIterable, Sendable {
         case energetic, happy, emotional, romantic, upbeat
     }

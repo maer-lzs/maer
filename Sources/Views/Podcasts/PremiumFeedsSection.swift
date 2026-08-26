@@ -105,7 +105,7 @@ struct PremiumFeedsSection: View {
             // A bare iOS menu cannot carry an explaining
             // line. And the owner of the app did not recognise WHAT the
             // list was. So: a sheet with heading + purpose sentence and the
-            // plain sorted list (no new concept, "einfach die Liste").
+            // plain sorted list, without a new concept.
             if !freeShows.isEmpty {
                 Button {
                     showMarkPicker = true

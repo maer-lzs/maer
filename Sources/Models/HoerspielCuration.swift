@@ -77,8 +77,8 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Ö1 Hörspiel und Radiokunst", author: "ORF",
               feedURL: "https://podcast.orf.at/podcast/oe1/oe1_hoerspiel/oe1_hoerspiel.xml",
               country: .austria),
-        // The measured ÖRR sweep. Bestand vor
-        // Neuzugängen, so the four familiar tiles above keep their spots.
+        // The measured public-broadcast sweep. Existing entries come before
+        // new ones, so the four familiar tiles above keep their spots.
         Entry(title: "SWR Kultur Hörspiel", author: "SWR",
               feedURL: "https://www.swr.de/~podcast/swrkultur/hoerspiel/podcast-hoerspiel-100.xml",
               country: .germany),
@@ -109,10 +109,10 @@ nonisolated enum HoerspielCuration {
               feedURL: "https://decoderring.libsyn.com/rss", language: "en",
               group: .independent, form: .series),
         Entry(title: "PodCastle", author: "Escape Artists",
-              // 09.08. GEMESSEN: der /podcast/-Pfad antwortet mit HTTP 200 und
-              // einer WordPress-Fehlerseite (`<error>Database Error`), aus der
-              // die App eine Show baute. Der Pfad ohne /podcast/ liefert
-              // dieselbe Show mit Vollfolgen (PC 953-955, 5-100 MB, 40 Items).
+              // MEASURED: the /podcast/ path answers HTTP 200 with a
+              // WordPress error page (`<error>Database Error`) that the app
+              // built a show from. The path without /podcast/ returns the
+              // same show with full episodes (5 to 100 MB, 40 items).
               feedURL: "https://podcastle.org/feed/", language: "en",
               group: .independent, form: .anthology),
         Entry(title: "PseudoPod", author: "Escape Artists",

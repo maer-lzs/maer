@@ -29,7 +29,7 @@ nonisolated enum DeadCatalogItems {
     /// archive.org restores items now and then, so a mark is a measurement
     /// with a shelf life, not a verdict.
     static let ttlDays: Double = 30
-    /// Der Schluessel steht in `DerivedStores`. Er ist abgeleitet.
+    /// The key stands in `DerivedStores`, because it is derived.
     static let storeKey = "deadCatalogItems"
 
     /// What a liveness check found.

@@ -39,11 +39,11 @@ struct FreeCatalogRows: View {
                     RowHeading.entry("Discover · Music",
                                      destination: MusicRoute.freeCatalogArea)
                         .accessibilityIdentifier("home-discover-music")
-                    // Start und Musik-Tab schoepfen aus demselben Topf.
-                    // Start ordnet ihn mit SEINEM Startwert,
-                    // damit die beiden Reihen nicht dieselben Titel in
-                    // derselben Folge zeigen. Die Stabilitaet innerhalb der
-                    // Sitzung bleibt, die Zwillingsbildung faellt.
+                    // The start surface and the music tab draw from the
+                    // same pot. The start surface orders it with ITS OWN
+                    // seed, so the two rows do not show the same titles in
+                    // the same order. Stability within a session stays, the
+                    // twin forming goes.
                     tileRow(items: HomeSections.interleave(
                         [CatalogMix.ordered(classical, for: .musicHome),
                          CatalogMix.ordered(freeMusic, for: .musicHome)],
@@ -268,9 +268,9 @@ enum FreeCatalogLoader {
         let classicalOn = (AppStorageKeys.freeClassicalActive) && archiveOn
         if classicalOn {
             do {
-                // Tages-Rotation: die Reihe zeigt heute eine ANDERE Seite des
-                // Beliebtheits-Fensters als gestern (die All-Zeiten-Bestenliste
-                // aendert sich sonst nie).
+                // Daily rotation: the row shows a DIFFERENT page of the
+                // popularity window today than yesterday, because the
+                // all-time ranking never changes on its own.
                 let page = CatalogRotation.page(
                     total: ArchiveMusicCatalog.classical.measuredTotal, rowSize: 12, on: Date())
                 let docs = try await ArchiveOrgClient.popularMusic(
@@ -309,13 +309,13 @@ enum FreeCatalogLoader {
                 rows.freeMusicProblem = String(localized: "Nothing new here right now.")
             } else {
                 do {
-                    // Jamendo kennt KEINE Zufalls-Sortierung (gemessen:
-                    // `order=random` antwortet mit status=failed), also
-                    // dieselbe Tages-Rotation ueber den vorhandenen
-                    // `offset`. Fenster bewusst gesetzt statt gemessen: die
-                    // Beliebtheits-Spitze ist bei Jamendo ueber Wochen-,
-                    // Monats- und Download-Sortierung IDENTISCH (gemessen),
-                    // die oberen ~600 Titel sind das brauchbare Feld.
+                    // Jamendo has NO random sort (measured: `order=random`
+                    // answers with status=failed), so the same daily rotation
+                    // runs over the existing `offset`. The window is set
+                    // deliberately rather than measured: Jamendo's popularity
+                    // head is IDENTICAL across weekly, monthly and download
+                    // sorting (measured), and the top ~600 tracks are the
+                    // usable field.
                     let jamendoPage = CatalogRotation.page(total: 6_000, rowSize: 12, on: Date())
                     let tracks = try await JamendoClient.popularTracks(
                         limit: 12, offset: (jamendoPage - 1) * 12)
@@ -411,11 +411,11 @@ enum CatalogSourceLoader {
         let librivoxOn = AppStorageKeys.librivoxActive
         let archiveOn = AppStorageKeys.archiveBooksActive
 
-        // Tages-Rotation der BELIEBTHEITS-Reihen: dieselbe Sortierung, aber
-        // taeglich eine andere Seite des oberen Zehntels. Die Neu-Reihe
-        // rotiert NICHT. Sie ist per Definition schon taeglich frisch, weil
-        // sie nach Datum sortiert. Bestaende gemessen: LibriVox 21.711 ·
-        // IA-Hoerbuecher 4.257 · OTR (lizenziert) 2.309.
+        // Daily rotation of the POPULARITY rows: the same sorting, but a
+        // different page of the top tenth each day. The newest-first row does
+        // NOT rotate, because sorting by date makes it fresh daily anyway.
+        // Stocks measured: LibriVox 21,711 · archive audiobooks 4,257 · OTR
+        // (licensed) 2,309.
         let today = Date()
         let lvPage = CatalogRotation.page(total: 21_711, rowSize: 12, on: today)
         let iaPage = CatalogRotation.page(total: 4_257, rowSize: 12, on: today)
@@ -845,8 +845,9 @@ struct FreeCatalogDetailSheet: View {
             itemDescription = item.media?.metadata?.description
             if itemDescription == nil, item.id.hasPrefix(FreeCatalog.archivePrefix) {
                 let identifier = String(item.id.dropFirst(FreeCatalog.archivePrefix.count))
-                // Teilpfad statt Vollabruf: das Blatt will die Beschreibung,
-                // nicht die Dateiliste (1,36 MB → 8,3 kB, gemessen).
+                // The sub-path instead of the full fetch: the sheet wants
+                // the description, not the file list (1.36 MB → 8.3 kB,
+                // measured).
                 let meta = try? await ArchiveOrgClient.metadataOnly(identifier: identifier)
                 itemDescription = meta?.description?.joined
             }

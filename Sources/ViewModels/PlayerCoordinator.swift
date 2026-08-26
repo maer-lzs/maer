@@ -249,11 +249,11 @@ final class PlayerCoordinator: ObservableObject {
                         offlineFallback: false, autoplay: autoplay, restart: restart,
                         carriedSleep: carriedSleep, generation: generation)
         } catch {
-            // Der Abspielstart ist die Stelle, an der Lebendigkeit GELERNT
-            // wird. Sagt die Quelle, dass es den Titel nicht mehr gibt, wird
-            // das vermerkt. Sonst steht das tote Stueck morgen wieder in
-            // der Reihe. Ein blosser Transportfehler vermerkt NICHTS: ein
-            // Funkloch ist kein Urteil ueber den Titel.
+            // The playback start is where liveness is LEARNED. When the
+            // source says the title is gone, that is recorded, otherwise the
+            // dead item stands in the row again tomorrow. A mere transport
+            // error records NOTHING: a dead spot is no verdict about the
+            // title.
             if FreeCatalog.isGone(error), FreeCatalog.isCatalogId(item.id) {
                 DeadCatalogItems.note(.dead, for: item.id)
                 Logger.player.notice("FREECAT play \(item.id, privacy: .public) → weg")
@@ -453,8 +453,8 @@ final class PlayerCoordinator: ObservableObject {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
         // The mini player offers NOTHING that is
-        // finished by its own knowledge. The Weiterhören rule, applied to
-        // the standby. Judged by the NUMBERS (the one derived finished rule),
+        // finished by its own knowledge. The continue rule, applied to the
+        // standby. Judged by the NUMBERS (the one derived finished rule),
         // never only a flag; an empty standby is honest. The event gate is
         // untouched. This path still writes no position.
         if Self.standbyCountsAsFinished(ListeningStore.mark(lastId)) {

@@ -149,14 +149,12 @@ nonisolated enum SearchScope: String, CaseIterable, Identifiable {
     var kinds: Set<SearchResult.Kind> {
         switch self {
         case .library: return Set(SearchResult.Kind.allCases).subtracting([.catalogShow])
-        // `.catalogBook` gehoert HIER hin. Sonst entstehen vollstaendige
-        // Ergebnisse, die diese Zeile eine Zeile spaeter wegfiltert.
-        // ACHTUNG beim Aendern:
-        // dieselbe Fall-Zeile steht ein zweites Mal in
-        // `SearchRanking.kinds(for:)`. Das ist die REIHENFOLGE der
-        // Sektionen, nicht der Bereichs-Filter; dort gehoert `.catalogBook`
-        // gerade NICHT hinein (die Reihenfolge haengt es selbst hinten an,
-        // sonst entstuende die Sektion doppelt).
+        // `.catalogBook` belongs HERE. Otherwise complete results are built
+        // and filtered away one line later. Careful when changing it: the
+        // same case line exists a second time in `SearchRanking.kinds(for:)`.
+        // That one is the ORDER of the sections, not the scope filter, and
+        // `.catalogBook` does NOT belong there, because the order appends it
+        // itself and the section would otherwise appear twice.
         case .audiobooks: return [.book, .author, .series, .catalogBook]
         case .podcasts: return [.show, .episode]
         case .music: return [.album, .artist, .song, .playlist]

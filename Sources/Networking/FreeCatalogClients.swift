@@ -8,7 +8,7 @@ import Foundation
 /// The two KEYLESS free-audiobook services. Decode failures THROW. A broken
 /// answer never becomes a silently empty row.
 nonisolated enum LibriVoxClient {
-    /// EINE Kennung fuer die ganze App. Siehe AppUserAgent.
+    /// ONE identifier for the whole app. See AppUserAgent.
     static let userAgent = AppUserAgent.value
 
     nonisolated static func decodeFeed(_ data: Data) throws -> [LibriVoxBook] {
@@ -236,11 +236,10 @@ nonisolated enum CatalogShelfSource {
         })
     }
 
-    /// Der Abdruck der Regel, aus der die Antwort eines Fachs stammt: die
-    /// Begriffe, die wirklich gefragt wurden, in ihrer Reihenfolge. Aendert
-    /// sich die Auswahl, passt der Abdruck nicht mehr und der alte Eintrag ist
-    /// nicht mehr auffindbar. Ohne Generations-Zaehler, den man
-    /// hochzudrehen vergessen kann.
+    /// The fingerprint of the rule a shelf's answer came from: the terms
+    /// that were actually asked, in their order. When the selection changes,
+    /// the fingerprint no longer matches and the old entry is simply not
+    /// findable, without a generation counter somebody can forget to raise.
     static func shelfRule(for shelf: String) -> String {
         CatalogGenreAxis.subjects(forShelf: shelf).prefix(3).joined(separator: "|")
     }
@@ -283,9 +282,9 @@ nonisolated enum CatalogShelfSource {
         return answer
     }
 
-    /// Ein Jahrzehnt-Fach. Es fragt das `year`-Feld als Spanne statt elf
-    /// Schlagwort-Varianten zu veroderten. Exakter, kuerzer, und es trifft
-    /// auch die Eintraege, die das Jahr nur im Jahresfeld fuehren.
+    /// A DECADE shelf. It asks the `year` field as a range instead of
+    /// or-joining eleven subject spellings. More exact, shorter, and it also
+    /// catches the entries that carry the year only in the year field.
     static func decadePage(source: CatalogSource, decade: String,
                            rows: Int, page: Int = 1) async throws -> Answer {
         guard let base = ArchiveOrgClient.archiveBaseQuery(for: source),
@@ -295,8 +294,8 @@ nonisolated enum CatalogShelfSource {
         return .archive(docs: hit.docs, total: hit.total)
     }
 
-    /// Welche Seite die VORSCHAU eines Fachs zeigt. Nur die Vorschau. Wer
-    /// die Vollseite oeffnet, blaettert von vorn.
+    /// Which page a shelf's PREVIEW shows. The preview only. Whoever opens
+    /// the full page starts from the front.
     static func shelfPage(shelf: String, rows: Int, on date: Date = Date()) -> Int {
         CatalogRotation.page(total: 600, rowSize: rows, on: date,
                              salt: CatalogRotation.salt(forShelf: shelf))
@@ -304,8 +303,8 @@ nonisolated enum CatalogShelfSource {
 
     static func page(source: CatalogSource, shelf: String, languages: [String],
                      rows: Int, page: Int = 1) async throws -> Answer {
-        // Ein Jahrzehnt-Fach laeuft ueber dieselbe EINE Tuer wie ein
-        // Gattungs-Fach. Sonst fuehrte sein Chevron auf eine leere Seite.
+        // A decade shelf runs through the same ONE door as a genre shelf,
+        // otherwise its chevron would lead to an empty page.
         if CatalogGenreAxis.decadeShelves.contains(where: { $0.key == shelf }) {
             return try await decadePage(source: source, decade: shelf, rows: rows, page: page)
         }
@@ -314,26 +313,24 @@ nonisolated enum CatalogShelfSource {
         switch source {
         case .librivox, .archiveBooks, .oldTimeRadio:
             guard let base = ArchiveOrgClient.archiveBaseQuery(for: source) else { return .unsupported }
-            // Kein Deckel auf der Begriffsliste: `subject:` trifft exakt,
-            // ein laengeres ODER ist hier also schlicht mehr Bestand. Der
-            // Deckel gehoert zu Jamendos unscharfen `fuzzytags`, nicht
-            // hierher. Gemessen bringt er Faktor 9 weniger Bestand bei
-            // gleicher Antwortzeit.
+            // No cap on the term list: `subject:` matches exactly, so a
+            // longer OR is simply more stock here. The cap belongs to
+            // Jamendo's fuzzy `fuzzytags`, not here. Measured, it costs a
+            // factor of nine in stock at the same response time.
             let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
-            // Die Vorschau greift je Fach an einer ANDEREN Stelle des
-            // Bestands. Sonst beginnen zwei Faecher, die sich einen Titel
-            // teilen, mit derselben Kachel.
+            // The preview reaches into a DIFFERENT place of the stock per
+            // shelf. Otherwise two shelves that share a title begin with the
+            // same tile.
             let hit = try await ArchiveOrgClient.popularWithTotal(
                 query: "\(base) AND (\(clause))", rows: rows,
                 page: page == 1 ? shelfPage(shelf: shelf, rows: rows) : page)
             return .archive(docs: hit.docs, total: hit.total)
         case .gutenberg:
-            // gutendex takes ONE topic per request: die drei ergiebigsten
-            // Begriffe statt der alphabetisch ersten. Und sie
-            // laufen NEBENLAEUFIG, denn nacheinander kostete jeder Begriff
-            // volle 30 s kalt. Drei gleichzeitig kosten damit so viel wie
-            // einer, und der Deckel muss nicht mehr gegen die Reichweite
-            // abgewogen werden.
+            // gutendex takes ONE topic per request, so this asks the three
+            // richest terms instead of the alphabetically first ones. They
+            // run CONCURRENTLY, because sequentially each term cost a full
+            // 30 s cold. Three at once therefore cost as much as one, and the
+            // cap no longer has to be weighed against reach.
             let topics = Array(terms.prefix(3))
             let hits = await withTaskGroup(of: (books: [GutenbergClient.Book], total: Int?)?.self) { group in
                 for topic in topics {
@@ -352,10 +349,11 @@ nonisolated enum CatalogShelfSource {
             for hit in hits where !hit.books.isEmpty {
                 for book in hit.books where seen.insert(book.id).inserted { books.append(book) }
             }
-            // Steht am Fach eine Zahl, ist es die Zahl des BESTANDS. Ueber
-            // mehrere Themen waere eine Summe erfunden, weil die Mengen sich
-            // ueberschneiden. Die Zahl gibt es deshalb nur, wo genau EIN
-            // Thema das Fach traegt; sonst die Existenz-Form des Chevrons.
+            // When a shelf carries a number, it is the number of the STOCK.
+            // Over several topics a sum would be invented, because the sets
+            // overlap. The number therefore exists only where exactly ONE
+            // topic carries the shelf; otherwise the chevron takes its
+            // existence form.
             let total = topics.count == 1 ? hits.first?.total : nil
             return .gutenberg(books: books, total: total)
         default:
@@ -462,11 +460,11 @@ nonisolated enum ArchiveOrgClient {
     /// items with a stated licence. Measured 05.08.: 8.854 items total, 2.316
     /// with `licenseurl` (26 %). We do not suggest anything whose rights
     /// situation is unknown, and "no statement" is not "free".
-    /// Der ANZEIGE-Weg traegt keinen Lizenzfilter: gezeigt und gestreamt
-    /// wird, was dort oeffentlich liegt, und ein Eintrag ohne Angabe traegt
-    /// sichtbar den Hinweis auf die ungeklaerte Rechtelage. Nie gar nichts,
-    /// nie eine Behauptung. Gefiltert wird nur dort, wo eine KOPIE entsteht.
-    /// Siehe `mayDownload`.
+    /// The DISPLAY path carries no licence filter: what lies there publicly
+    /// is shown and streamed, and an entry without a statement visibly
+    /// carries the note about its unclear rights situation. Never nothing at
+    /// all, never a claim. Filtering happens only where a COPY comes into
+    /// being. See `mayDownload`.
     static let oldTimeRadioQuery = "collection:oldtimeradio"
 
     static func popularOldTimeRadio(rows: Int, page: Int = 1) async throws -> [ArchivePopularDoc] {
@@ -700,13 +698,13 @@ nonisolated enum JamendoClient {
     /// `tags` loads a genre shelf SERVER-side (fuzzytags, +-joined = OR.
     /// Better than filtering a local 200 pool); `offset` pages the shelf
     /// grid.
-    /// Stimmung, Tempo und Instrumental sind FILTER auf der Vollseite eines
-    /// Fachs. Keine eigenen Reihen-Familien.
+    /// Mood, tempo and instrumental are FILTERS on a shelf's full page, not
+    /// row families of their own.
     ///
-    /// Alle drei filtert Jamendo SERVER-seitig, am Endpunkt verprobt
-    /// (`vocalinstrumental=instrumental`, `speed=high|low`, Stimmung ueber
-    /// `fuzzytags`). Die Seite muss nichts nachtraeglich wegwerfen, und die
-    /// Zahl am Chevron bleibt die Zahl dessen, was man bekommt.
+    /// Jamendo filters all three SERVER-side, probed at the endpoint
+    /// (`vocalinstrumental=instrumental`, `speed=high|low`, mood over
+    /// `fuzzytags`). The page throws nothing away afterwards, and the number
+    /// at the chevron stays the number of what one gets.
     static func popularTracks(limit: Int, tags: [String] = [], offset: Int = 0,
                               filter: JamendoFilter = .none) async throws -> [JamendoTrack] {
         guard let id = await clientId() else { return [] }

@@ -175,9 +175,8 @@ enum PinchflatSync {
     /// One mirror pass. Returns the mirrored-group size on success.
     @discardableResult
     static func mirror() async throws -> Int {
-        // Der Schalter wirkt HIER. Aus heisst keine Anfragen,
-        // nicht nur eine versteckte Oberflaeche (dieselbe Linie wie bei allen
-        // anderen Quellen).
+        // The switch acts HERE. Off means no requests, not merely a hidden
+        // surface, the same line as with every other source.
         guard AppStorageKeys.pinchflatActive else { return 0 }
         guard let host = PinchflatClient.serverURL?.host else { return 0 }
         let serverFeeds = try await PinchflatClient.fetchFeedURLs()

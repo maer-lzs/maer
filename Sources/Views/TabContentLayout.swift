@@ -277,9 +277,9 @@ extension View {
 // MARK: - Shuffle gesture as a shared extension
 
 extension RowHeading {
-    /// Zufällig abspielen an einer archive.org-Musikreihe. Aus dem GANZEN
-    /// shelf, not from the preview. The row is today's pick from the good
-    /// stuff, this button reaches across everything: two gestures, two
+    /// Shuffle play on an archive.org music row, drawing from the WHOLE
+    /// shelf rather than from the preview. The row is today's pick from the
+    /// good part, this button reaches across everything: two gestures, two
     /// meanings.
     @MainActor
     func catalogShuffle(area: ArchiveMusicArea, coordinator: PlayerCoordinator) -> RowHeading {
@@ -304,8 +304,8 @@ extension RowHeading {
 
 
 /// "Play Next" / "Play Last" for catalogue titles.
-/// `PlayQueue` speichert schon heute beliebige Kennungen quellenübergreifend.
-/// Only the entry points were missing. ONE building block for every catalogue
+/// `PlayQueue` already stores arbitrary ids across sources. Only the entry
+/// points were missing. ONE building block for every catalogue
 /// tile (music AND books), so the next surface does not reinvent it.
 struct CatalogQueueButtons: View {
     let itemId: String
@@ -381,14 +381,13 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
     }
 }
 
-/// Der Rechtehinweis steht auf JEDER Fläche, deren Inhalte von archive.org
-/// stammen: Old Time Radio · Netlabels · Alte Schallplatten ·
-/// Archive-Hörbücher.
+/// The rights notice stands on EVERY surface whose content comes from
+/// archive.org: Old Time Radio, netlabels, the shellac shelves and the
+/// archive audiobooks.
 ///
-/// EINE Formulierung, EINE Komponente. Nicht vier Textvarianten, die
-/// auseinanderdriften. Sie steht am ANFANG der Fläche, nicht in einer
-/// Fußnote, die niemand liest; keine Rechtsberatung, kein Paragraph, ein
-/// Satz.
+/// ONE wording, ONE component, not four text variants that drift apart. It
+/// stands at the START of the surface rather than in a footnote nobody reads.
+/// No legal advice, no paragraph, one sentence.
 struct ArchiveRightsNote: View {
     var body: some View {
         Label {
