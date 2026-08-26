@@ -78,6 +78,11 @@ struct PodcastShowView: View {
 
     /// The show as the SUBSCRIPTION stores know it. Looked up per render, so
     /// subscribing on this page switches the state without a new push.
+    ///
+    /// A show handed in BY VALUE ends the search: it came from a store, and
+    /// the stores load asynchronously. Without that last step a page opened
+    /// during a cold start would find empty stores, read itself as browsed and
+    /// offer subscribing to a show that is already subscribed.
     private var storedShow: PodcastShow? {
         if let id = seedShow?.id, id.hasPrefix("abspod:") {
             return absPodcast.shows.first { $0.id == id } ?? seedShow
@@ -85,9 +90,10 @@ struct PodcastShowView: View {
         if let found = subs.shows.first(where: {
             PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
         }) { return found }
-        return absPodcast.shows.first {
+        if let found = absPodcast.shows.first(where: {
             PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
-        }
+        }) { return found }
+        return seedShow
     }
 
     private var mode: PodcastShowMode { storedShow != nil ? .subscribed : .browsed }

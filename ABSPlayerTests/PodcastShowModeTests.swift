@@ -107,6 +107,26 @@ struct PodcastShowModeTests {
                 "die Route fuehrt einen nicht abonnierten Feed nicht mehr auf die Seite")
     }
 
+    /// Der Abo-Zustand darf nicht am LADEZUSTAND der Speicher haengen. Die
+    /// Speicher fuellen sich nebenlaeufig; eine Seite, die waehrend eines
+    /// Kaltstarts geoeffnet wird, findet sie leer. Wer die Sendung als WERT
+    /// hereinreicht, hat sie aus einem Speicher, und damit endet die Suche.
+    /// Sonst boete die Seite an, eine bereits abonnierte Sendung zu
+    /// abonnieren, und das ist genau die Abnahme-Marke.
+    @Test("a show handed in by value ends the lookup, so a cold open stays subscribed")
+    func aSeededShowCountsAsSubscribed() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let page = try String(
+            contentsOf: root.appendingPathComponent("Sources/Views/Podcasts/PodcastShowView.swift"),
+            encoding: .utf8)
+        let body = try #require(functionBody(of: "private var storedShow: PodcastShow? {", in: page))
+        #expect(body.contains("return seedShow"),
+                "die Suche endet nicht mehr beim hereingereichten Wert")
+        #expect(!body.contains("return nil"),
+                "die Suche kann wieder leer ausgehen, obwohl eine Sendung hereingereicht wurde")
+    }
+
     /// Der Download-Knopf ist im angesehenen Zustand ABWESEND, nicht
     /// abgeschaltet. Die Seite loest die Faehigkeit einmal auf und reicht sie
     /// hinunter, wie die Herkunfts-Kapsel.
@@ -141,4 +161,22 @@ struct PodcastShowModeTests {
         // Rot-Probe: an einer echten Katalog-Kennung greift dieselbe Frage.
         #expect(FreeCatalog.isCatalogId(FreeCatalog.jamendoPrefix + "1234"))
     }
+}
+
+/// Cuts a declaration's body brace-exact. A character window would read past
+/// the closing brace and answer for the code after it.
+func functionBody(of head: String, in text: String) -> String? {
+    guard let start = text.range(of: head) else { return nil }
+    var depth = 0
+    var index = text.index(before: start.upperBound)
+    while index < text.endIndex {
+        let character = text[index]
+        if character == "{" { depth += 1 }
+        if character == "}" {
+            depth -= 1
+            if depth == 0 { return String(text[start.upperBound..<index]) }
+        }
+        index = text.index(after: index)
+    }
+    return nil
 }
