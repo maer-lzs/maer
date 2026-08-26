@@ -942,6 +942,54 @@ struct CatalogStoreReadFenceTests {
                 "die Sammelbaende werden nicht mehr angehaengt, sondern verworfen")
     }
 
+    /// R65 Befund 1 (the owner an der Sendungsseite „Hoerspielprojekt.de":
+    /// „kein Bild"). Der Feed nennt sein Bild ZWEIMAL, und unser Leser fand
+    /// keines von beiden: die RSS-Form `<image><url>…</url></image>` las er
+    /// gar nicht, und die itunes-Form OHNE `href` fiel durch, weil das
+    /// Attribut leer ist.
+    ///
+    /// **Die App KANNTE die RSS-Form bereits** (`FeedArtworkLookup` sagt es
+    /// woertlich) — zwei Leser, eine Schreibweise, einer kann mehr. Das ist
+    /// die Zwei-Wahrheiten-Klasse.
+    ///
+    /// Gemessen ueber die 21 kuratierten Feeds: **zwei** schreiben die
+    /// itunes-Textform (hoerspielprojekt.de, hoer-talk.de) — der eine Befund
+    /// erklaert also zwei fehlende Bilder, nicht nur eines.
+    @Test("der Feed-Leser versteht jede Schreibweise des Sendungsbilds")
+    func theFeedReaderUnderstandsEverySpelling() {
+        func bild(_ kanal: String) -> String? {
+            let xml = """
+            <?xml version="1.0"?><rss version="2.0"><channel>
+            <title>T</title>\(kanal)
+            <item><title>E</title><guid>g1</guid>
+            <enclosure url="https://example.org/a.mp3" type="audio/mpeg"/></item>
+            </channel></rss>
+            """
+            return RSSFeedParser(feedURL: "https://example.org/feed.xml")
+                .parse(Data(xml.utf8))?.artworkURL
+        }
+        // Die Form, die schon ging.
+        #expect(bild("<itunes:image href=\"https://example.org/a.jpg\"/>") == "https://example.org/a.jpg")
+        // Die beiden, die durchfielen — the owner's Feed nennt BEIDE.
+        #expect(bild("<itunes:image>https://example.org/b.jpg</itunes:image>") == "https://example.org/b.jpg",
+                "die itunes-Textform faellt wieder durch")
+        #expect(bild("<image><title>T</title><url>https://example.org/c.jpg</url></image>") == "https://example.org/c.jpg",
+                "die RSS-Form faellt wieder durch")
+        // Rot-Probe: ohne Bild wird keines erfunden.
+        #expect(bild("") == nil)
+        // Und ein ITEM-Bild wird nicht zum Sendungsbild.
+        let ausItem = """
+        <?xml version="1.0"?><rss version="2.0"><channel><title>T</title>
+        <item><title>E</title><guid>g1</guid>
+        <itunes:image>https://example.org/folge.jpg</itunes:image>
+        <enclosure url="https://example.org/a.mp3" type="audio/mpeg"/></item>
+        </channel></rss>
+        """
+        #expect(RSSFeedParser(feedURL: "https://example.org/feed.xml")
+            .parse(Data(ausItem.utf8))?.artworkURL == nil,
+                "ein Folgenbild wird zum Sendungsbild erklaert")
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

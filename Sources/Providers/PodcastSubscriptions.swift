@@ -1234,6 +1234,8 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
     /// R4: guids already emitted — duplicate-guid items are dropped in-parse.
     private var seenGuids: Set<String> = []
     private var inItem = false
+    /// R65: stehen wir gerade im RSS-Kanalbild (`<image><url>…</url></image>`)?
+    private var inChannelImage = false
     private var text = ""
     /// B1 (09.08.): the FIRST element of the document. A server can answer
     /// HTTP 200 with well-formed XML that is not a feed at all — measured:
@@ -1320,6 +1322,17 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
             let resolved = Self.resolved(href, against: feedURL)
             if inItem { iImage = resolved } else if showImage == nil { showImage = resolved }
         }
+        // R65 (the owner: „kein Bild" bei Hoerspielprojekt.de): der Feed nennt
+        // sein Bild ZWEIMAL, und dieser Leser fand keines von beiden — die
+        // RSS-Form `<image><url>…</url></image>` las er gar nicht, und die
+        // itunes-Form OHNE `href` (URL als Elementtext) fiel durch, weil das
+        // Attribut leer ist. Die App KANNTE die RSS-Form bereits an anderer
+        // Stelle (`FeedArtworkLookup`): zwei Leser, eine Schreibweise, einer
+        // kann mehr — die Zwei-Wahrheiten-Klasse.
+        //
+        // INVARIANTE: eine Schreibweise, die die App an EINER Stelle
+        // versteht, versteht sie ueberall.
+        if el == "image", !inItem { inChannelImage = true }
     }
 
     func parser(_ parser: XMLParser, foundCharacters string: String) { text += string }
@@ -1330,6 +1343,16 @@ nonisolated final class RSSFeedParser: NSObject, XMLParserDelegate {
 
     func parser(_ parser: XMLParser, didEndElement el: String, namespaceURI: String?, qualifiedName qName: String?) {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // R65: die beiden Schreibweisen, die dieser Leser nicht kannte.
+        if el == "image", !inItem { inChannelImage = false }
+        if el == "url", inChannelImage, !inItem, showImage == nil, !value.isEmpty {
+            showImage = Self.resolved(value, against: feedURL)
+        }
+        if el == "itunes:image", !value.isEmpty {
+            let resolved = Self.resolved(value, against: feedURL)
+            if inItem { if iImage.isEmpty { iImage = resolved } }
+            else if showImage == nil { showImage = resolved }
+        }
         // Closing a person (name = text content) — possible in item and channel.
         if el == "podcast:person", let a = pendingPersonAttrs, !value.isEmpty {
             let person = PodcastPerson(name: value, role: a["role"], img: a["img"], href: a["href"])
