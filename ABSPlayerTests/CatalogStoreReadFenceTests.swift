@@ -908,6 +908,40 @@ struct CatalogStoreReadFenceTests {
         #expect(DerivedStores.clear(defaults: defaults).isEmpty)
     }
 
+    /// R57-Nachlese (the owner's ENTSCHEID: nach hinten sortieren). the reviewer's
+    /// Erklaerung — Sammelbaende tragen sehr viele Schlagworte und ranken
+    /// deshalb oben — **traegt nicht:** gemessen an 150 LibriVox-Eintraegen
+    /// haben sie im Mittel 6,2 Schlagworte, die uebrigen 6,4. Und der TITEL
+    /// taugt nicht als Signal: „Vanished Arizona: Recollections" enthaelt
+    /// „collection" und ist ein einzelnes Werk.
+    ///
+    /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
+    /// „Various" — exakte Gleichheit, also kann kein Teilstring hineinrutschen.
+    @Test("Sammelbaende erkennt die Konvention, nicht der Titel")
+    func collectionsAreRecognisedByConventionNotByTitle() throws {
+        func doc(_ creator: String, _ title: String) throws -> ArchivePopularDoc {
+            let json = "{\"identifier\":\"x\",\"title\":\"\(title)\",\"creator\":\"\(creator)\"}"
+            return try JSONDecoder().decode(ArchivePopularDoc.self, from: Data(json.utf8))
+        }
+        // Die gemessenen echten Faelle.
+        #expect(FreeCatalog.isMultiAuthorCollection(try doc("Various", "Children's Short Works, Vol. 031")))
+        #expect(FreeCatalog.isMultiAuthorCollection(try doc("various", "La Lecture, tome 8")))
+        // Rot-Probe: die Titel-Falle, die eine Wortsuche gefangen haette.
+        #expect(!FreeCatalog.isMultiAuthorCollection(
+            try doc("Martha Summerhayes", "Vanished Arizona: Recollections of the Army")),
+                "ein einzelnes Werk wird als Sammelband einsortiert")
+        // Und ein Urheber, der „various" nur ENTHAELT, ist keiner.
+        #expect(!FreeCatalog.isMultiAuthorCollection(try doc("Various Artists Ensemble", "X")))
+        #expect(!FreeCatalog.isMultiAuthorCollection(try doc("", "X")))
+        // Der Malus ORDNET, er wirft nichts weg — das ist der Unterschied
+        // zwischen „nach hinten" und „ausschliessen".
+        let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
+                              encoding: .utf8)
+        let body = try #require(functionBody(of: "private func applyShelf(", in: text))
+        #expect(body.contains("einzeln + sammlungen"),
+                "die Sammelbaende werden nicht mehr angehaengt, sondern verworfen")
+    }
+
     private enum ArchivePodDoc {
         static let librivoxAnniversary = try! JSONDecoder().decode(
             ArchivePopularDoc.self,

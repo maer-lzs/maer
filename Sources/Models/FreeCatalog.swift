@@ -525,6 +525,24 @@ nonisolated enum FreeCatalog {
     /// Gehoert diese Kennung einem der freien Kataloge? Nur fuer die darf
     /// ein Fehlschlag als „weg" vermerkt werden — ein Server-Buch ist
     /// Sache des Servers.
+    /// R57-Nachlese (the owner's ENTSCHEID: nach hinten sortieren): ist das ein
+    /// SAMMELBAND mehrerer Autoren? Sie ranken in vielen Faechern oben und
+    /// verdraengen einzelne Werke von den ersten Plaetzen.
+    ///
+    /// **Gemessen an 150 LibriVox-Eintraegen, und die naheliegende Erklaerung
+    /// traegt NICHT:** Sammelbaende haben im Mittel 6,2 Schlagworte, die
+    /// uebrigen 6,4 — an der Schlagwortzahl liegt es also nicht. Und der
+    /// Titel taugt nicht als Signal: „Vanished Arizona: **Recollections**"
+    /// enthaelt „collection" und ist ein einzelnes Werk.
+    ///
+    /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
+    /// „Various". Fuenf von hundertfuenfzig, alle echt, kein Fehlgriff — und
+    /// weil es eine exakte Gleichheit ist, kann kein Teilstring hineinrutschen.
+    static func isMultiAuthorCollection(_ doc: ArchivePopularDoc) -> Bool {
+        guard let creator = doc.creator?.values.first else { return false }
+        return creator.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "various"
+    }
+
     static func isCatalogId(_ id: String) -> Bool {
         [librivoxPrefix, archivePrefix, jamendoPrefix, gutenbergPrefix]
             .contains { id.hasPrefix($0) }

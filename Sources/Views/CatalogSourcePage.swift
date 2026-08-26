@@ -483,10 +483,16 @@ struct CatalogSourcePage: View {
         if let reason { failures[key] = reason; return }
         switch answer {
         case .archive(let docs, let total):
-            let kept = docs.filter {
+            let erlaubt = docs.filter {
                 FreeCatalog.isCuratedArchiveDoc(
                     $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
-            }.compactMap { provider.remember(popular: $0) }
+            }
+            // R57-Nachlese (the owner: nach hinten sortieren): Sammelbaende
+            // bleiben auffindbar, stehen aber nicht mehr auf den ersten
+            // Plaetzen. Ein Malus, kein Ausschluss — es LEERT kein Fach.
+            let einzeln = erlaubt.filter { !FreeCatalog.isMultiAuthorCollection($0) }
+            let sammlungen = erlaubt.filter { FreeCatalog.isMultiAuthorCollection($0) }
+            let kept = (einzeln + sammlungen).compactMap { provider.remember(popular: $0) }
             guard !kept.isEmpty else { return }
             shelfStock[key] = (withoutTwins(kept), total)
         case .gutenberg(let books, let total):
