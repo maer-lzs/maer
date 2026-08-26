@@ -381,6 +381,21 @@ struct SwitchableTileRow<Heading: View, Selector: View, Content: View>: View {
     }
 }
 
+extension SwitchableTileRow where Selector == EmptyView {
+    /// A row WITHOUT a selector: heading, then tiles. An ordinary catalogue
+    /// row keeps the loading and the failure state this way, instead of
+    /// building its own stack that would show neither.
+    init(state: LoadState, senderLine: String? = nil,
+         emptyText: LocalizedStringKey = "Nothing here right now.",
+         failedText: LocalizedStringKey = "This could not be loaded. Check your connection.",
+         @ViewBuilder heading: @escaping () -> Heading,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.init(state: state, senderLine: senderLine, emptyText: emptyText,
+                  failedText: failedText, heading: heading,
+                  selector: { EmptyView() }, content: content)
+    }
+}
+
 /// The rights notice stands on EVERY surface whose content comes from
 /// archive.org: Old Time Radio, netlabels, the shellac shelves and the
 /// archive audiobooks.

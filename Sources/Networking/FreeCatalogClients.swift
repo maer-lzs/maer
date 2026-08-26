@@ -379,12 +379,15 @@ nonisolated enum CatalogShelfSource {
     /// The POPULAR row of a music area, through the same day store. The
     /// shellac surface asks it once per area, so a visit is ten queries in
     /// series; stored, it is ten per day.
+    /// `slot` separates two rows that ask the SAME area on different pages.
+    /// Without it the tab row and the row on the area page would overwrite
+    /// each other's day, and one of them would show the other's excerpt.
     static func areaPopular(area: ArchiveMusicArea, rows: Int, page: Int,
+                            slot: String = popularShelf,
                             storedDay: [String: ShelfStock?] = [:]) async throws -> [ArchivePopularDoc] {
-        if let stored = storedDay[Self.popularShelf] { return stored?.docs ?? [] }
+        if let stored = storedDay[slot] { return stored?.docs ?? [] }
         let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: rows, page: page)
-        remember(.archive(docs: docs, total: nil), surface: area.key,
-                 shelf: Self.popularShelf, rows: rows)
+        remember(.archive(docs: docs, total: nil), surface: area.key, shelf: slot, rows: rows)
         return docs
     }
 

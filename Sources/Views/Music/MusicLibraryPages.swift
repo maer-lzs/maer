@@ -828,10 +828,8 @@ struct MusicCatalogAreaPage: View {
                         }
                     }
                 }
-                // 🟡 The SAME section as the music tab (shared
-                // component, not a copy). The page rendered navigation
-                // tiles only: capsules were operable and led into
-                // emptiness, with no row, no loading and no failure state.
+                // The SAME row as the music tab (shared component, not a
+                // copy), so the two surfaces cannot drift apart.
                 ShellacSection(playerCoordinator: playerCoordinator)
             }
             .padding(.top, 12)

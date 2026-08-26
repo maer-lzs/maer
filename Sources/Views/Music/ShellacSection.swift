@@ -6,32 +6,38 @@
 import SwiftUI
 import OSLog
 
-/// 🟡 THE "Old Records" section. The three-level structure in ONE place,
-/// rendered by the music tab AND by "Discover · Music".
+/// THE "Old Records" row, rendered by the music tab AND by "Discover ·
+/// Music". One view for both, so the two cannot drift apart.
 ///
-/// Measured root: the collection page had no shelf LOADER at all. It rendered
-/// the capsules as navigation tiles and nothing else. The capsules were
-/// operable and led into emptiness, with no row, no loading and no failure
-/// state. Copying the tab's
-/// block would have been the second version that drifts; this is the shared
-/// one, and with it the collection page inherits the shelf line,
-/// the loading state and the visible failure automatically.
+/// It is an ordinary catalogue tile row now, built like the netlabels and
+/// Jamendo rows: a heading with a chevron, tiles below it. It used to carry
+/// three levels in one row (selection capsules that switched the shelf in
+/// place, and a second heading naming the selected shelf). The nine shelves
+/// live on the surface behind the chevron, which shows them below its own
+/// popular row.
 ///
-/// Three levels, three targets: the row HEAD means the area (genre
-/// overview), the capsules switch in place, the shelf LINE below them names
-/// what the title row shows and leads counted into that shelf's full page.
+/// The content is the PARENT query of the shelves, so the row and the
+/// shelves draw from one basis instead of two.
 struct ShellacSection: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.pushMusicRoute) private var pushRoute
 
-    @State private var selectedShelfKey = ArchiveMusicCatalog.shellacShelves[0].key
     @State private var titles: [LibraryItem] = []
     @State private var isLoading = false
     @State private var failed = false
 
-    private var selectedShelf: ArchiveMusicArea {
-        ArchiveMusicCatalog.shelfOrFirst(key: selectedShelfKey)
-    }
+    private var area: ArchiveMusicArea { ArchiveMusicCatalog.shellacAll }
+
+    /// The row reaches into a DIFFERENT place of the same stock than the
+    /// popular row on the surface behind the chevron. Both rotate daily; with
+    /// the same seed they would begin with the same tiles, and the chevron
+    /// would lead to what the user is already looking at.
+    static let rowSalt = CatalogRotation.salt(forShelf: "shellac-all-row")
+
+    /// The store slot of this row. The area page files its own row under the
+    /// area key too, and two rows of the same area on different pages must
+    /// not overwrite each other's day.
+    static let rowSlot = "popular-row"
 
     var body: some View {
         SwitchableTileRow(
@@ -41,35 +47,11 @@ struct ShellacSection: View {
             failedText: "This shelf could not be loaded. Check your connection."
         ) {
             RowHeading.entry("Old Records", destination: MusicRoute.shellacArea)
-        } selector: {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(ArchiveMusicCatalog.shellacShelves) { shelf in
-                        CategoryTile(title: shelf.title,
-                                     systemImage: MusicGenreGlyphs.symbol(for: shelf.subject),
-                                     count: nil,
-                                     accessibilityId: "shellac-tile-\(shelf.key)",
-                                     isSelected: shelf.key == selectedShelfKey) {
-                            selectedShelfKey = shelf.key
-                        }
-                        .frame(width: 200)
-                    }
-                }
-                .padding(.horizontal)
-            }
-            RowHeading(title: "", verbatimTitle: selectedShelf.title,
-                       font: .headline,
-                       total: selectedShelf.measuredTotal,
-                       shown: titles.count,
-                       showsTotal: true,
-                       destination: MusicRoute.archiveMusic(selectedShelf))
-                .catalogShuffle(area: selectedShelf, coordinator: playerCoordinator)
+                .catalogShuffle(area: area, coordinator: playerCoordinator)
         } content: {
             tileRow
         }
-        // The loading duty sits at the SURFACE that shows the data, never at
-        // the path that happened to visit it. That was the defect.
-        .task(id: selectedShelfKey) { await load() }
+        .task { await load() }
     }
 
     private var tileRow: some View {
@@ -100,18 +82,21 @@ struct ShellacSection: View {
     }
 
     private func load() async {
+        guard titles.isEmpty else { return }
         isLoading = true
         failed = false
         defer { isLoading = false }
-        let area = selectedShelf
+        let area = area
         // Same daily rotation as the other popularity rows: the all-time
         // ranking would otherwise never change.
-        let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12, on: Date())
+        let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12,
+                                        on: Date(), salt: Self.rowSalt)
         do {
-            let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
-            // 🟡 A shown preview goes through the ONE probed
-            // entry point. This row was a sibling surface that kept showing
-            // withdrawn items.
+            let docs = try await CatalogShelfSource.areaPopular(
+                area: area, rows: 12, page: page, slot: Self.rowSlot,
+                storedDay: CatalogShelfSource.storedDay(surface: area.key))
+            // A shown preview goes through the ONE probed entry point. This
+            // row was a sibling surface that kept showing withdrawn items.
             titles = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,
                                                  provider: FreeCatalogProvider.shared)
             failed = titles.isEmpty

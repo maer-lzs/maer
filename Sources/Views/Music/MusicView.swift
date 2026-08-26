@@ -217,18 +217,10 @@ struct MusicView: View {
                         freeTileRow(freeCatalogStore.rows.netlabels)
                     }
             }
-            // The 78s are reachable ONLY through
-            // their genre shelves. The entry leads to the shelf list, never
-            // to an undivided view of the collection.
+            // An ordinary catalogue row like the two around it: heading with
+            // a chevron, tiles below. The nine shelves stand on the surface
+            // behind the chevron, under its own popular row.
             if shellacArea {
-                // The shelf tiles SELECT; the row below shows titles of the
-                // selected shelf. Three levels, each with its own target.
-                // The ROW head means the AREA (genre
-                // overview), the capsules switch in place, and the shelf
-                // LINE under them names the active shelf and leads counted
-                // into its full page. There is deliberately no "all" state.
-                // The safety of this area comes from its inclusion
-                // criterion, so nothing may bypass a shelf.
                 ShellacSection(playerCoordinator: playerCoordinator)
             }
             // THE free-music row. The chevron goes

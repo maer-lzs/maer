@@ -5,6 +5,7 @@
 
 #if canImport(Testing)
 import Testing
+import Foundation
 @testable import ABSPlayer
 
 /// The CONTRACT of the 78 rpm area (as a counter-
@@ -61,6 +62,53 @@ struct ArchiveMusicContractTests {
             #expect(shelf.query.contains("subject:"),
                     "\(shelf.key) would show the whole collection unfiltered")
         }
+    }
+
+    /// „Alte Schallplatten" ist eine gewoehnliche Kachelreihe wie Netlabels
+    /// und Jamendo: Kopfzeile mit Chevron, Kacheln darunter. Die
+    /// Auswahl-Kapseln, die frueher das Fach IN der Reihe wechselten, stehen
+    /// jetzt als Faecher auf der Flaeche hinter dem Chevron.
+    @Test("die 78er-Reihe ist eine gewoehnliche Kachelreihe, ohne Auswahl in der Reihe")
+    func theOldRecordsRowIsAnOrdinaryTileRow() throws {
+        let text = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent().deletingLastPathComponent()
+                .appendingPathComponent("Sources/Views/Music/ShellacSection.swift"),
+            encoding: .utf8)
+        #expect(!text.contains("CategoryTile"),
+                "die Auswahl-Kapseln sind in der Reihe zurueck")
+        #expect(!text.contains("selectedShelfKey"),
+                "die Reihe waehlt wieder ein Fach in sich selbst")
+        #expect(text.contains("MusicRoute.shellacArea"),
+                "die Kopfzeile fuehrt nicht mehr auf die Flaeche mit den Faechern")
+        // Der Inhalt ist die ELTERN-Abfrage, nicht ein einzelnes Fach. Sonst
+        // zeigte die Reihe einen Ausschnitt und behauptete die Sammlung.
+        #expect(text.contains("ArchiveMusicCatalog.shellacAll"),
+                "die Reihe zeigt wieder ein einzelnes Fach")
+    }
+
+    /// Die Reihe im Tab und die Beliebt-Reihe auf der Flaeche dahinter
+    /// greifen in DIESELBE Sammlung. Mit demselben Startwert begaennen beide
+    /// mit denselben Kacheln, und das Chevron fuehrte auf das, was der Nutzer
+    /// schon ansieht.
+    @Test("die Tab-Reihe und die Reihe der Flaeche greifen an verschiedene Stellen")
+    func theTabRowAndTheAreaRowDrawDifferentExcerpts() {
+        let flaeche = CatalogRotation.salt(forShelf: ArchiveMusicCatalog.shellacAll.key)
+        #expect(ShellacSection.rowSalt != flaeche, "beide Reihen teilen ihren Startwert")
+
+        // Die Seiten selbst, an einem festen Tag. Zwei Startwerte, die modulo
+        // der Seitenzahl zusammenfielen, faenden JEDEN Tag dieselbe Seite:
+        // der Tag geht in beide gleich ein. Ein Tag genuegt darum als Beweis.
+        let tag = Date(timeIntervalSince1970: 1_756_000_000)
+        let gesamt = ArchiveMusicCatalog.shellacAll.measuredTotal
+        #expect(CatalogRotation.page(total: gesamt, rowSize: 12, on: tag,
+                                     salt: ShellacSection.rowSalt)
+                != CatalogRotation.page(total: gesamt, rowSize: 12, on: tag, salt: flaeche),
+                "beide Reihen zeigen dieselbe Seite der Sammlung")
+
+        // Und im Tages-Speicher haben sie getrennte Plaetze, sonst
+        // ueberschriebe die eine der anderen ihren Tag.
+        #expect(ShellacSection.rowSlot != CatalogShelfSource.popularShelf)
     }
 
     @Test("keys, route ids and titles are unique across areas")
