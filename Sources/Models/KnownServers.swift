@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// d990695: the register of addresses that DEMONSTRABLY worked.
+/// The register of addresses that DEMONSTRABLY worked.
 ///
 /// Password managers deliver user and password — the part a self-hoster
 /// mistypes is the ADDRESS, and every form only ever knew its own last one
@@ -16,10 +16,10 @@ import Foundation
 /// last worked. Credentials stay in the keychain; hostnames are private, so
 /// nothing here is ever logged.
 ///
-/// **Never deleted automatically** (the P5 lesson: an outage is not a reason
+/// **Never deleted automatically** (an outage is not a reason
 /// to delete anything) — an entry leaves only by hand.
 ///
-/// P3.1 hook: this is deliberately a plain, codable value list. When the
+/// Hook: this is deliberately a plain, codable value list. When the
 /// iCloud config travel arrives (after the ID flip), it only has to
 /// transport this array — no reshaping.
 nonisolated struct KnownServer: Codable, Equatable, Identifiable, Sendable {

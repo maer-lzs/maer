@@ -55,9 +55,8 @@ struct SourceModesTests {
         #expect(!none.needsLibraryAssignment, "nichts zugeordnet, nichts zuzuordnen")
     }
 
-    /// Der Befund, den the reviewer an meinem eigenen Zug fand: der Alt-Wert kann den
-    /// Leer-Zustand nicht ausdruecken, und wer ihn trotzdem liest, bekommt
-    /// „Musik" — das stille Gegenteil der Eingabe.
+    /// Der Alt-Wert kann den Leer-Zustand nicht ausdruecken: wer ihn trotzdem
+    /// liest, bekommt einen Modus — das stille Gegenteil der Eingabe.
     @Test("beide aus heisst: speist nichts, nicht Musik")
     func emptyMeansNothingNotMusic() {
         let none = SourceModes(servesMusic: false, servesAudiobooks: false)
@@ -68,7 +67,7 @@ struct SourceModesTests {
 
         let suite = UserDefaults(suiteName: "subsonic-modes-\(UUID().uuidString)")!
         suite.set("music", forKey: AppStorageKeys.subsonicContentType)
-        // Die Ableitung selbst bleibt unveraendert: ein gespeichertes „music"
+        // Die Ableitung selbst bleibt unveraendert: ein gespeicherter Wert
         // IST ein Modus. Der Leer-Zustand entsteht nur durch die Eingabe.
         #expect(SourceModes.fromLegacyContentType(
             suite.string(forKey: AppStorageKeys.subsonicContentType)).servesMusic)

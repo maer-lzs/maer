@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// eb10440: the genre pages' country selection and list shaping.
+/// The genre pages' country selection and list shaping.
 @Suite struct RadioGenreCountriesTests {
 
     // MARK: - Selection
@@ -125,7 +125,7 @@ import Foundation
         #expect(RadioGenreCuration.ranked(list, deviceLanguage: nil).map(\.name) == ["A", "B"])
     }
 
-    /// R37: the home share is a QUOTA, not a bonus — the old all-matching-
+    /// The home share is a QUOTA, not a bonus — the old all-matching-
     /// first rule tipped the worldwide page into "only Germany" (measured:
     /// 18 German stations in the broad pot filled every visible slot). The
     /// quota is bounded above AND below by construction, so it cannot tip
@@ -137,9 +137,9 @@ import Foundation
         for i in 0..<10 { list.append(station("WORLD\(i)", votes: 900 - i, languages: ["en"])) }
         let ranked = RadioGenreCuration.ranked(list, deviceLanguage: "de")
         let headNames = ranked.prefix(RadioGenreCuration.homeQuota).map(\.name)
-        // The head is the home quota, in vote order — R21 stays satisfied.
+        // The head is the home quota, in vote order.
         #expect(headNames == ["DE0", "DE1", "DE2", "DE3"])
-        // The visible page carries more than one language (the R37 invariant).
+        // The visible page carries more than one language.
         let visible = ranked.prefix(12)
         #expect(visible.contains { $0.name.hasPrefix("WORLD") })
         #expect(visible.filter { $0.name.hasPrefix("DE") }.count
@@ -174,7 +174,7 @@ import Foundation
     }
 }
 
-/// eb10440 carries a Codable change on a PERSISTED type. A synthesized
+/// A Codable change on a PERSISTED type. A synthesized
 /// decoder does not fall back to a property's default value on a missing key
 /// — it throws, and the read site swallows that with `try?`. So the test that
 /// matters uses the REAL old form (a favorite stored before this change), not
@@ -217,7 +217,7 @@ import Foundation
     }
 }
 
-/// 973121e: family collapse of the genre LISTS — the three ordered fences.
+/// Family collapse of the genre LISTS — the three ordered fences.
 @Suite struct RadioGenreFamiliesTests {
 
     private func station(_ name: String, votes: Int = 100,
@@ -276,7 +276,7 @@ import Foundation
     }
 }
 
-/// c0674d4: the multi-country group's failure semantics — a cancel is not a
+/// The multi-country group's failure semantics — a cancel is not a
 /// failure in the COUNT either. Three refresh-cancels produced
 /// cannotConnectToHost ("Verbindungsfehler" on intact net), one level above
 /// the fixed single catches.

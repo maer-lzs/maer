@@ -65,7 +65,7 @@ final class PlayerCoordinator: ObservableObject {
 
     init(provider: any AudioProvider) {
         self.provider = provider
-        // Takeover (3e4db13): a foreign claim on the item THIS device is
+        // Takeover: a foreign claim on the item THIS device is
         // playing means another device took over on explicit play — this
         // side stands down by itself and pushes its final state (pause()
         // force-syncs). No remote control, no locks; the claim age in the
@@ -79,7 +79,7 @@ final class PlayerCoordinator: ObservableObject {
             Logger.player.notice("CLAIM takeover: standing down after \(Int((Date().timeIntervalSince1970 * 1000 - claim.t) / 1000), privacy: .public)s (device \(claim.deviceId.prefix(8), privacy: .public))")
             vm.pause()
         }
-        // R30: the standby follows the fresh truth while the app runs — a
+        // The standby follows the fresh truth while the app runs — a
         // pointer adoption and every deliberate progress change re-ask the
         // standby question (both fire rarely; the refresh guards itself).
         NotificationCenter.default.addObserver(
@@ -127,7 +127,7 @@ final class PlayerCoordinator: ObservableObject {
     /// - Parameter autoplay: true on a deliberate open by the user (starts
     ///   playback right after loading), false on a silent restore after app
     ///   start (stays paused).
-    /// X16: whether opening a title starts from the beginning. An explicit
+    /// Whether opening a title starts from the beginning. An explicit
     /// restart always does; a finished title does when it is a deliberate play
     /// (autoplay) — there is nothing to resume; a silent restore never does (it
     /// must not reset a finished book's position just by relaunching).
@@ -135,7 +135,7 @@ final class PlayerCoordinator: ObservableObject {
         explicitRestart || (autoplay && isFinished)
     }
 
-    /// X19: a running FIXED-minutes sleep timer carries across an item change
+    /// A running FIXED-minutes sleep timer carries across an item change
     /// (auto-continue / manual open) — it means "stop after X min of listening",
     /// independent of the title. A position-based mode (until chapter/track end)
     /// is bound to the current item and does not carry (it fires at that boundary).
@@ -145,7 +145,7 @@ final class PlayerCoordinator: ObservableObject {
         return remaining
     }
 
-    /// 🔴 P15: every `open()` draws a GENERATION. After each await the call
+    /// 🔴 Every `open()` draws a GENERATION. After each await the call
     /// asks "am I still the current one?" — a stale return cleans itself up
     /// (including a player it already built) instead of starting a second
     /// audio track. Without this, hammering play on a bad connection queued
@@ -179,7 +179,7 @@ final class PlayerCoordinator: ObservableObject {
         // playing its local files. No-op once the scan has merged.
         await DownloadManager.shared.ensureScanned()
 
-        // B2/A2: offline, a title that is not on the device cannot play — say
+        // Offline, a title that is not on the device cannot play — say
         // so clearly, and BEFORE tearing anything down: the running session
         // (mini player) must survive the rejected tap, otherwise it looks like
         // a crash. The hint is rendered both in the player and as a banner in
@@ -190,7 +190,7 @@ final class PlayerCoordinator: ObservableObject {
             return
         }
 
-        // X19: capture a running fixed-minutes sleep timer BEFORE tearing down the
+        // Capture a running fixed-minutes sleep timer BEFORE tearing down the
         // old session, so it can continue on the next title.
         let carriedSleep = Self.carriedSleepRemaining(
             remaining: viewModel?.sleepTimerRemaining,
@@ -207,7 +207,7 @@ final class PlayerCoordinator: ObservableObject {
         // Determine the item's source (server vs. local files) — the injected
         // `provider` is the default source, local items are routed away.
         let itemProvider = AppSession.shared.provider(for: item.id)
-        // 🔴 P15 (2): DOWNLOADED means LOCAL FIRST — always, not only when
+        // 🔴 DOWNLOADED means LOCAL FIRST. Not only when
         // the monitor says "offline". The degraded case (connected but
         // unusable, one bar of LTE) ran into the network timeouts although
         // the book AND its detail were on the device. This is no new code
@@ -216,7 +216,7 @@ final class PlayerCoordinator: ObservableObject {
         // follows.
         if DownloadManager.shared.isDownloaded(itemId: item.id),
            let cached = DownloadManager.shared.loadCachedDetail(forItemId: item.id) {
-            // 5f4fdee: if the cached detail carries NO progress, the local
+            // If the cached detail carries NO progress, the local
             // route would show a confident "00:00" until someone presses play
             // — and that invitation is the dangerous one. So ask the server
             // FIRST in that case, with the same 1.5 s patience the play path
@@ -249,11 +249,11 @@ final class PlayerCoordinator: ObservableObject {
                         offlineFallback: false, autoplay: autoplay, restart: restart,
                         carriedSleep: carriedSleep, generation: generation)
         } catch {
-            // R59: der Abspielstart ist die Stelle, an der Lebendigkeit
-            // GELERNT wird (R45s Abrechnung). Sagt die Quelle „gibt es nicht
-            // mehr", wird das vermerkt — sonst steht das tote Stueck morgen
-            // wieder in „Wieder anhoeren". Ein blosser Transportfehler
-            // vermerkt NICHTS: ein Funkloch ist kein Urteil ueber den Titel.
+            // Der Abspielstart ist die Stelle, an der Lebendigkeit GELERNT
+            // wird. Sagt die Quelle, dass es den Titel nicht mehr gibt, wird
+            // das vermerkt — sonst steht das tote Stueck morgen wieder in
+            // der Reihe. Ein blosser Transportfehler vermerkt NICHTS: ein
+            // Funkloch ist kein Urteil ueber den Titel.
             if FreeCatalog.isGone(error), FreeCatalog.isCatalogId(item.id) {
                 DeadCatalogItems.note(.dead, for: item.id)
                 Logger.player.notice("FREECAT play \(item.id, privacy: .public) → weg")
@@ -301,7 +301,7 @@ final class PlayerCoordinator: ObservableObject {
                        autoplay: Bool, restart: Bool,
                        carriedSleep: TimeInterval?, generation: Int) async {
         let newViewModel = PlayerViewModel(provider: provider)
-        // X16: a finished title has nothing left to resume — its saved
+        // A finished title has nothing left to resume — its saved
         // position is the end. A deliberate play (autoplay) therefore restarts
         // from the beginning via the existing restart mechanic; a silent
         // restore (autoplay == false) leaves it untouched.
@@ -331,7 +331,7 @@ final class PlayerCoordinator: ObservableObject {
         }
     }
 
-    /// Shuffle-play a set of playable items in random order. Regel 2: the whole
+    /// Shuffle-play a set of playable items in random order. The whole
     /// music library, a playlist and an album all funnel here — each supplies its
     /// own pool, the shared `MediaShuffle` sets the order. The first item starts
     /// now; the shuffled tail becomes the Up-Next context and plays through the
@@ -452,7 +452,7 @@ final class PlayerCoordinator: ObservableObject {
     func restoreLastSession(from entries: [LibraryEntry]) async {
         guard viewModel == nil, activeItem == nil else { return }
         guard let lastId = UserDefaults.standard.string(forKey: lastItemKey) else { return }
-        // d7f12e1 A: the mini player offers NOTHING that is
+        // The mini player offers NOTHING that is
         // finished by its own knowledge — the Weiterhören rule, applied to
         // the standby. Judged by the NUMBERS (the one derived finished rule),
         // never only a flag; an empty standby is honest. The event gate is
@@ -468,7 +468,7 @@ final class PlayerCoordinator: ObservableObject {
     }
 
     /// The standby pointer's resolution chain, shared by the start restore and
-    /// the live refresh (R30).
+    /// the live refresh.
     private func resolveStandbyItem(_ lastId: String,
                                     entries: [LibraryEntry] = []) async -> LibraryItem? {
         // Podcast episodes resolve through the subscriptions' episode index,
@@ -483,7 +483,7 @@ final class PlayerCoordinator: ObservableObject {
             ?? AppSession.shared.libraryItem(forId: lastId) {
             return item
         }
-        // N1 fallback 1: ids without a local index entry (sub: albums/songs)
+        // Ids without a local index entry (sub: albums/songs)
         // still resolve over their provider — restore from a light item built
         // out of the fetched detail. A successful open() re-writes lastItemKey,
         // healing the stale value for the next launch.
@@ -491,7 +491,7 @@ final class PlayerCoordinator: ObservableObject {
             .fetchItemDetail(itemId: lastId) {
             return LibraryItem(id: detail.id, media: detail.media, addedAt: nil)
         }
-        // N1 fallback 2: the episode fell out of its feed (rotating news
+        // The episode fell out of its feed (rotating news
         // feeds) — restore the SHOW context with its newest episode instead of
         // silently showing no mini player at all.
         if let showId = Self.showId(forEpisodeId: lastId),
@@ -502,7 +502,7 @@ final class PlayerCoordinator: ObservableObject {
         return nil
     }
 
-    /// R30 under the MIRROR decision: two devices at rest show the SAME piece
+    /// Under the MIRROR rule two devices at rest show the SAME piece
     /// within one reconcile beat — a fresher foreign pointer swaps the paused
     /// mini player (the choice family already decided by event time; the
     /// mirror follows), a held pointer that turned finished clears it. Only a

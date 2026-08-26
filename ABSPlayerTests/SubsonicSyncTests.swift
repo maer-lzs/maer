@@ -9,7 +9,7 @@ import Combine
 import Foundation
 @testable import ABSPlayer
 
-/// Y35/Y36: the music sync core — a successful run records exactly one
+/// The music sync core — a successful run records exactly one
 /// `.music` history entry (correct counters) and fires the `librarySynced`
 /// signal (the live Music tab reloads on it); a failed run records an error
 /// entry and stays silent.
@@ -105,7 +105,7 @@ struct SubsonicSyncTests {
         #expect(!SubsonicClient.isCancellation(SubsonicClient.SubsonicError.network))
     }
 
-    // M1 (01.08): bookmark continue-scope — playlists AND albums, in every
+    // Bookmark continue-scope — playlists AND albums, in every
     // mode (the Booksonic-only album condition is gone); single songs never.
     @Test("continueScope: playlists and albums always, songs never (M1)")
     func continueScopeM1() {
@@ -126,7 +126,7 @@ struct SubsonicSyncTests {
         #expect(SubsonicClient.removeIndexItems([2]).map(\.value) == ["2"])
     }
 
-    // Kompat-Paket 170ff18: Funkwhale sends ids as NUMBERS.
+    // Funkwhale sends ids as NUMBERS.
     @Test("Lenient id decode: string and int, all four DTOs share it")
     func lenientIDDecoding() throws {
         let album = try JSONDecoder().decode(SubsonicAlbum.self,
@@ -146,10 +146,10 @@ struct SubsonicSyncTests {
         #expect(playlist.id == "3")
     }
 
-    // Kompat-Paket 170ff18: Booksonic negotiates the protocol version down.
+    // Booksonic negotiates the protocol version down.
     @Test("Version negotiation persists per host")
     func versionNegotiation() {
-        // dec8332: the HOST is unique per run. With a constant one the
+        // The HOST is unique per run. With a constant one the
         // CFPrefs flush race bit: the defer-removal was not flushed at
         // process end while the write was, so the NEXT run found the key
         // already there. A per-run host makes the flush irrelevant — same

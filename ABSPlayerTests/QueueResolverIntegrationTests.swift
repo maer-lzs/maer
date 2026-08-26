@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// T3/T5 regression: the global Up-Next queue holds ids of ALL media types, so
+/// The global Up-Next queue holds ids of ALL media types, so
 /// the resolver behind it (AppSession.libraryItem → LibraryViewModel/Subsonic)
 /// must resolve books + music too, not just podcasts. The night's unit tests
 /// stubbed the resolver (`resolves: { _ in true }`), which hid that the real

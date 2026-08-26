@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// 0714d26: playback resolution for the free-catalog rows — owns the
+/// Playback resolution for the free-catalog rows — owns the
 /// `lv:` (LibriVox book), `lva:` (archive.org item) and `jam:` (Jamendo
 /// track) namespaces. NOT a library source: `isAvailable` stays false (no
 /// tab, no search fan-out) — the Discover rows remember their items here and
@@ -50,10 +50,10 @@ final class FreeCatalogProvider: AudioProvider {
         }
         let id = FreeCatalog.librivoxPrefix + book.id
         librivoxBooks[id] = book
-        // 40b8f96: LibriVox recordings are public domain — the capsule says so
+        // LibriVox recordings are public domain — the capsule says so
         // instead of leaving the class blank where we DO know it.
         licences[id] = String(localized: "Public domain")
-        // Q2: ONE normalization at the intake — every surface shows it.
+        // ONE normalization at the intake — every surface shows it.
         let normalized = book.title.map(FreeCatalog.normalizedTitle)
         readingVersions[id] = normalized?.version
         let item = LibraryItem(
@@ -61,7 +61,7 @@ final class FreeCatalogProvider: AudioProvider {
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
                     title: normalized?.title, authorName: FreeCatalog.authorLine(book.authors),
-                    // 48e786d Schritt 0: pass the genres THROUGH — they were
+                    // Pass the genres THROUGH — they were
                     // decoded away for months while the axis waited for them.
                     narratorName: nil, seriesName: nil,
                     genres: book.genres?.compactMap(\.name),
@@ -98,20 +98,19 @@ final class FreeCatalogProvider: AudioProvider {
         return ArchiveItemForm.of(collections: collections)
     }
 
-    /// Auftrag O: is this item a radio-play series bundle (the class that gets
+    /// Is this item a radio-play series bundle (the class that gets
     /// a SHOW PAGE with an episode list instead of the detail sheet)?
-    /// R56: die Frage ist „hat dieses Stueck TEILE?", nicht „liegt es in der
-    /// Radio-Sammlung?". Der alte Name behauptete das eine und pruefte das
-    /// andere — die Aufrufer wollten immer nur wissen, ob eine Teileliste
+    /// Die Frage ist, ob das Stueck TEILE hat — nicht, ob es in der
+    /// Radio-Sammlung liegt: die Aufrufer wollen wissen, ob eine Teileliste
     /// aufgeht.
     func hasPartsList(itemId: String) -> Bool {
         guard let collections = itemCollections[itemId] else { return false }
         return ArchiveItemForm.hasParts(collections: collections)
     }
 
-    /// e948444: stated licence per item id, for the detail sheet.
+    /// Stated licence per item id, for the detail sheet.
     private var licences: [String: String] = [:]
-    /// Q3: reading version per item id ("Lesung 2") — a meta fact, never part
+    /// Reading version per item id ("Lesung 2") — a meta fact, never part
     /// of the title and never a dedupe (multiple readings are legitimate).
     private var readingVersions: [String: Int] = [:]
 
@@ -119,7 +118,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     func licence(forItemId id: String) -> String? { licences[id] }
 
-    /// 0ce5df3: a Gutenberg audiobook as a library item. Non-audiobooks
+    /// A Gutenberg audiobook as a library item. Non-audiobooks
     /// (music examples inside scholarly texts) are filtered by path.
     func remember(gutenberg book: GutenbergClient.Book) -> LibraryItem? {
         guard let audio = book.formats?["audio/mpeg"],
@@ -156,7 +155,7 @@ final class FreeCatalogProvider: AudioProvider {
 
     func remember(popular doc: ArchivePopularDoc) -> LibraryItem? {
         guard let identifier = doc.identifier else { return nil }
-        // 🟡 P10: a KNOWN-dead identifier never becomes a tile again — the
+        // 🟡 A KNOWN-dead identifier never becomes a tile again. The
         // curated rows skip it and fill up. Search and direct navigation do
         // not read this list (same line as "not interested"): they answer
         // what the index holds, and a dead item there is honest.
@@ -164,11 +163,11 @@ final class FreeCatalogProvider: AudioProvider {
         let id = FreeCatalog.archivePrefix + identifier
         if let licence = FreeCatalog.licenceLabel(doc.licenseurl) { licences[id] = licence }
         rememberCollections(doc.collection?.values, forItemId: id)
-        // Q2: archive rows carry the same LibriVox title pattern (the
+        // Archive rows carry the same LibriVox title pattern (the
         // librivoxaudio collection) — same one-place normalization.
-        // O-P3 (09.08.): the OTR bundles additionally carry archive.org
-        // COLLECTION housekeeping in the title („… - Single Episodes"), which
-        // pushed the work's name out of the tile. Same family, applied first.
+        // The OTR bundles additionally carry archive.org COLLECTION
+        // housekeeping in the title (`… - Single Episodes`), which pushes the
+        // work's name out of the tile. Same family, applied first.
         let normalized = doc.title?.first
             .map(FreeCatalog.normalizedCollectionTitle)
             .map(FreeCatalog.normalizedTitle)
@@ -177,14 +176,14 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    // 3ac9183: first entry leads (composer first); the
+                    // First entry leads (composer first); the
                     // detail sheet names everyone via the joined form.
                     title: normalized?.title, authorName: doc.creator?.first, narratorName: nil,
-                    // 50aefa8: the recording year, where the index has one.
+                    // The recording year, where the index has one.
                     seriesName: nil, genres: doc.subject?.values,
                     publishedYear: doc.year?.first.map(LenientString.init),
                     description: nil),
-                // ea6e002: the search index carries the runtime for most
+                // The search index carries the runtime for most
                 // items — the card's time line reads it from here.
                 duration: FreeCatalog.runtimeSeconds(doc.runtime), chapters: nil, tracks: nil),
             addedAt: nil)
@@ -200,10 +199,9 @@ final class FreeCatalogProvider: AudioProvider {
             id: id,
             media: LibraryItemMedia(
                 metadata: LibraryItemMetadata(
-                    // Befund W: Jamendo delivers names HTML-encoded
-                    // ("Bessonn&amp;sa") — decode at the ONE intake through
-                    // the existing text preparation (Regel 2, no second
-                    // decoder). Title AND artist.
+                    // Jamendo delivers names HTML-encoded — decode at the
+                    // ONE intake through the existing text preparation, not
+                    // in a second decoder. Title AND artist.
                     title: track.name.map(podcastPlainText),
                     authorName: track.artist_name.map(podcastPlainText),
                     narratorName: nil,
@@ -218,7 +216,7 @@ final class FreeCatalogProvider: AudioProvider {
     func librivoxBook(forId id: String) -> LibriVoxBook? { librivoxBooks[id] }
     func jamendoTrack(forId id: String) -> JamendoTrack? { jamendoTracks[id] }
 
-    /// M1-Auflage (09.08.): the source page of a catalog item — the ToS-
+    /// The source page of a catalog item: the ToS-
     /// mandated backlink for Jamendo, and the honest provenance for the
     /// archive/LibriVox items. Needed because the music tiles now PLAY on
     /// tap and thereby skip the detail sheet, where the attribution used to
@@ -250,7 +248,7 @@ final class FreeCatalogProvider: AudioProvider {
     func fetchLibraries() async throws -> [ABSLibrary] { [] }
     func fetchLibraryItems(libraryId: String) async throws -> [LibraryItem] { [] }
 
-    /// 9081fa1 Strukturfix: detail metadata STARTS from the remembered item
+    /// Detail metadata STARTS from the remembered item
     /// and overrides only what the detail answer really knows better. Year and
     /// genres were each forgotten here once — with this, a field added on the
     /// remember side reaches the detail automatically, instead of being a
@@ -266,7 +264,7 @@ final class FreeCatalogProvider: AudioProvider {
             seriesName: known?.seriesName,
             genres: known?.genres,
             publishedYear: known?.publishedYear,
-            // Auftrag O/P2: the metadata API's description reaches the detail.
+            // The metadata API's description reaches the detail.
             description: description ?? known?.description)
     }
 
@@ -352,7 +350,7 @@ final class FreeCatalogProvider: AudioProvider {
     func fetchItemDetail(itemId: String) async throws -> LibraryItemDetail {
         if itemId.hasPrefix(FreeCatalog.librivoxPrefix) {
             guard var book = librivoxBooks[itemId] else { throw URLError(.resourceUnavailable) }
-            // R45/R48: the ROW no longer carries the chapter list (95 % of the
+            // The ROW no longer carries the chapter list (95 % of the
             // old payload, 291 kB → 45 kB for 20 books). It is fetched HERE,
             // once, for the one book the user actually opened — metadata
             // where it is needed instead of on every tile.
@@ -397,9 +395,9 @@ final class FreeCatalogProvider: AudioProvider {
             }
             let tracks = FreeCatalog.archiveTracks(identifier: identifier, files: meta.files ?? [])
             guard !tracks.isEmpty else { throw URLError(.resourceUnavailable) }
-            // aed5d25 (2): plausibility gate — a collection bundle with
+            // Plausibility gate — a collection bundle with
             // hundreds of parts is not a book; named in the log, never mute.
-            // e948444: a CURATED series collection passes the higher bound —
+            // A CURATED series collection passes the higher bound —
             // there the bundle is the unit, not an accident. Read from the
             // item's own collections, so a bundle reached by deep link or from
             // a playlist is no longer dropped for being too long.
@@ -459,11 +457,11 @@ final class FreeCatalogProvider: AudioProvider {
         throw URLError(.resourceUnavailable)
     }
 
-    /// b395e5f: session cache id → hi-res cover (resolved lazily; nil result
+    /// Session cache id → hi-res cover (resolved lazily; nil result
     /// is cached too so a broken feed is fetched only once).
     private var hiresCovers: [String: URL?] = [:]
 
-    /// b395e5f: resolve the HI-RES cover behind a LibriVox book — ONE light
+    /// Resolve the HI-RES cover behind a LibriVox book — ONE light
     /// tag scan of the book's `url_rss` (itunes:image; no full feed parse),
     /// redirects followed by URLSession. Falls back to nil → callers keep
     /// the archive thumb; failures stay silent by spec (log only).

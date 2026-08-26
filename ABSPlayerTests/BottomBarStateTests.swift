@@ -9,7 +9,7 @@ import Combine
 import CoreGraphics
 @testable import ABSPlayer
 
-/// P1 regression: the bottom bar publishes ONLY when `collapsed` actually
+/// The bottom bar publishes ONLY when `collapsed` actually
 /// flips — publishing the raw offset every scroll frame was the main scroll
 /// stutter (whole-library re-render per frame).
 @MainActor
@@ -118,7 +118,7 @@ struct BottomBarStateTests {
         #expect(!state.collapsed)
     }
 
-    /// X21: the collapse is held back until the delay past scroll start; expanding
+    /// The collapse is held back until the delay past scroll start; expanding
     /// is never delayed.
     @Test("shouldCollapse: below threshold / force-expanded / within the delay do NOT collapse")
     func collapseDelayDecision() {
@@ -160,7 +160,7 @@ struct BottomBarStateTests {
                                                elapsedSinceScrollStart: 1.0, collapseDelay: 0.4))
     }
 
-    /// Y31: layout/programmatic offsets (a pushed page populating) must NEVER
+    /// Layout/programmatic offsets (a pushed page populating) must NEVER
     /// collapse the bar — only user scrolling may. The album page reported
     /// ~1400 pt without any touch and stranded the bar collapsed (the isolated
     /// harness failure).
@@ -253,7 +253,7 @@ struct CalmGateTests {
 }
 
 
-/// H2 belt: a report-driven re-flip is blocked while the previous flip's morph
+/// A report-driven re-flip is blocked while the previous flip's morph
 /// still runs — whatever geometry the morph perturbs cannot feed back.
 @MainActor
 struct FlipCooldownTests {

@@ -10,7 +10,7 @@ import UIKit
 import OSLog
 
 /// Drive mode (for users without CarPlay): a VARIANT of the full player —
-/// same state, different layout (Regel 2, no second truth about what plays).
+/// same state, different layout — no second truth about what plays.
 /// Guiding rule: glanceable, not readable — sub-second glances, buttons hit
 /// without aiming. It is an INTERACTION mode, not a safety promise.
 @MainActor
@@ -73,7 +73,7 @@ final class DriveModeController: ObservableObject {
         }
     }
 
-    /// 9357955: auto-start is an EXPLICIT opt-in (default OFF) — nothing
+    /// Auto-start is an EXPLICIT opt-in (default OFF) — nothing
     /// starts by itself just because a Bluetooth device connects.
     var autoStartEnabled: Bool {
         UserDefaults.standard.bool(forKey: AppStorageKeys.driveModeAutoStart)
@@ -122,7 +122,7 @@ final class DriveModeController: ObservableObject {
         AVAudioSession.sharedInstance().currentRoute.outputs.map { ($0.uid, $0.portName) }
     }
 
-    /// 01fab43 (1): pure candidate filter — the picker offers EXTERNAL routes
+    /// Pure candidate filter — the picker offers EXTERNAL routes
     /// only. The built-in speaker/receiver were listed before (a pointless
     /// "car audio" choice that crowded the real device out); every Bluetooth
     /// flavor plus CarPlay/USB/headphone ports stays in.
@@ -141,7 +141,7 @@ final class DriveModeController: ObservableObject {
         outputs.filter { carPortTypes.contains($0.portType) }.map { ($0.uid, $0.name) }
     }
 
-    /// b81949f (pure): the picker list — CONNECTED route outputs plus the
+    /// The picker list — CONNECTED route outputs plus the
     /// paired devices `availableInputs` reports, deduped by uid, the
     /// connected ones first (they are what the user is most likely picking).
     /// A remembered device stays in the list even when neither source names

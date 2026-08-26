@@ -10,7 +10,7 @@ import Foundation
 /// switch and search-deck tile all read from here instead of repeating the
 /// same four strings — and ONE parameterised page renders any of them.
 ///
-/// Foundation-only by rule (Befund Y): this layer carries DATA; fetching,
+/// Foundation-only by rule: this layer carries DATA; fetching,
 /// gating and rendering live in their own layers.
 nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// Stable key — route identifier suffix and log tag.
@@ -30,8 +30,8 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
     /// second cut inside it would be a shelf of a shelf.
     var hasGenreShelves: Bool = false
 
-    /// R62: derselbe Bereich in seiner zweiten Rolle — die Vollseite hinter
-    /// dem „Beliebt"-Chevron zeigt das endlose Raster OHNE die Faecher. Eine
+    /// Derselbe Bereich in seiner zweiten Rolle — die Vollseite hinter dem
+    /// Beliebt-Chevron zeigt das endlose Raster OHNE die Faecher. Eine
     /// Ansicht, zwei Rollen; keine zweite Seite, die auseinanderdriften kann.
     var withoutGenreShelves: ArchiveMusicArea {
         var copy = self
@@ -50,16 +50,14 @@ nonisolated struct ArchiveMusicArea: Hashable, Sendable, Identifiable {
 
 /// The music catalogs we surface, as data.
 nonisolated enum ArchiveMusicCatalog {
-    /// Netlabel releases under Creative Commons. Measured 08.08.: 76.950
+    /// Netlabel releases under Creative Commons. Measured: 76.950
     /// audio items, 61.111 WITH a stated licence — the query keeps only
     /// those, so every tile SHOWS its licence instead of the app guessing
     /// (mostly NC/ND variants, which is exactly why the capsule matters).
-    /// Netlabels war der einzige Musik-Bereich ohne Genre-Faecher. Gemessen
-    /// an 1.000 meistgeladenen
-    /// Titeln: **93,5 % tragen ein subject-Feld** — die beste Datenlage aller
-    /// Archive-Quellen (OTR 40 %, LibriVox/Gutenberg um 41 %). Die Faecher
-    /// haengen also an den Subjects, nicht an der Lizenzfrage; beides ist
-    /// unabhaengig, und die Sperre aus der R45-Groessenordnung traegt nicht.
+    /// Gemessen an 1.000 meistgeladenen Titeln: 93,5 % tragen ein
+    /// subject-Feld — die beste Datenlage aller Archive-Quellen (OTR 40 %,
+    /// LibriVox/Gutenberg um 41 %). Die Faecher haengen an den Subjects,
+    /// nicht an der Lizenzfrage; beides ist unabhaengig.
     static let netlabels = ArchiveMusicArea(
         key: "netlabels",
         query: "collection:netlabels AND mediatype:(audio)",
@@ -71,7 +69,7 @@ nonisolated enum ArchiveMusicCatalog {
 
     // MARK: - Shellac 78s (the SAME collection the classical area uses)
 
-    /// „Alte Schallplatten" is built POSITIVELY: it exists only as named
+    /// The shellac area is built POSITIVELY: it exists only as named
     /// genre shelves, never as one undivided view over the whole 187.034-item
     /// collection. What does not meet an inclusion criterion simply never
     /// appears — construction instead of post-filtering, so no exclusion list
@@ -115,21 +113,18 @@ nonisolated enum ArchiveMusicCatalog {
             measuredTotal: total)
     }
 
-    /// R62: die ELTERN-Abfrage
-    /// der Schellack-Flaeche — sie gab es nicht, weil die neun Faecher je
-    /// eine eigene Abfrage tragen und niemand nach der ganzen Flaeche fragte.
+    /// Die ELTERN-Abfrage der Schellack-Flaeche, hinter deren Chevron die
+    /// Beliebt-Reihe steht.
     ///
-    /// **Dieselbe Grundlage wie die Faecher** (`collection:georgeblood`),
-    /// nicht die breitere `78rpm`-Sammlung — sonst zapfte die Beliebt-Reihe
-    /// eine andere Menge an als ihre Faecher, und das waere genau die zweite
-    /// Wahrheit, gegen die dieser Zug laeuft. Der Vertragstest prueft es mit.
+    /// Dieselbe Grundlage wie die Faecher (`collection:georgeblood`), nicht
+    /// die breitere `78rpm`-Sammlung — sonst zapfte die Beliebt-Reihe eine
+    /// andere Menge an als ihre Faecher. Der Vertragstest prueft es mit.
     ///
-    /// **Rechtelage:** gemessen tragen NULL von 187.034 Eintraegen eine
-    /// Lizenzangabe. Die Reihe besteht also vollstaendig aus „Rechtelage
-    /// nicht angegeben" — nach R47 zulaessig (anzeigen ja, herunterladen
-    /// nein), und die frueher entfernte Gemeinfrei-Behauptung kommt dadurch
-    /// NICHT durch die Hintertuer zurueck: die Kapsel je Titel und die
-    /// archive.org-Warnung gelten unveraendert.
+    /// Rechtelage: gemessen tragen NULL von 187.034 Eintraegen eine
+    /// Lizenzangabe. Die Reihe traegt also durchgehend den Hinweis auf die
+    /// ungeklaerte Rechtelage — anzeigen ja, herunterladen nein. Die frueher
+    /// entfernte Gemeinfrei-Behauptung kommt dadurch NICHT zurueck: die
+    /// Kapsel je Titel und die archive.org-Warnung gelten unveraendert.
     static let shellacAll = ArchiveMusicArea(
         key: "shellac-all",
         query: "collection:georgeblood AND mediatype:(audio)",

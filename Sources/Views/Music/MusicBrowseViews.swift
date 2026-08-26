@@ -91,7 +91,7 @@ struct ArtistPortraitCircle: View {
     /// Reports whether a REAL image resolved (feeds the C row).
     var onResolved: ((Bool) -> Void)? = nil
     @State private var imageURL: URL?
-    /// e3dabb3: the flip re-runs the task (id below) — off swaps to the
+    /// The flip re-runs the task (id below) — off swaps to the
     /// color circle IMMEDIATELY, no app restart.
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var webImages = true
 
@@ -115,7 +115,7 @@ struct ArtistPortraitCircle: View {
                 artistId: artist.id, name: artist.name,
                 serverImageURL: info?.imageURL,
                 musicBrainzId: info?.musicBrainzId)
-            // bdfe8dc: ONE policy decides what renders (and names the source
+            // ONE policy decides what renders (and names the source
             // in the log) — the surfaces no longer each reason about it.
             let source = ArtistImagePolicy.source(serverImageURL: info?.imageURL,
                                                   webImageURL: resolved, webEnabled: webImages)
@@ -149,7 +149,7 @@ struct MusicArtistView: View {
     @State private var topSongs: [MusicTopSong] = []
     @State private var similarInLibrary: [MusicArtist] = []
     @State private var bioExpanded = false
-    /// D12/B11: rank column scales with Dynamic Type.
+    /// Rank column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var rankWidth: CGFloat = 22
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -198,7 +198,7 @@ struct MusicArtistView: View {
     @ViewBuilder
     private var header: some View {
         let bio = strippedBio
-        // bdfe8dc: the artist PAGE renders the library server's own image —
+        // The artist PAGE renders the library server's own image —
         // the open-source chain never feeds this surface (webImageURL: nil
         // states that), so the web opt-out has nothing to gate here. Routed
         // through the shared policy anyway: ONE decision, one place to change
@@ -243,7 +243,7 @@ struct MusicArtistView: View {
     private var topSongsSection: some View {
         if !topSongs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                // 9ac20e5: server topSongs (global charts) — honest label.
+                // Server topSongs (global charts) — honest label.
                 RowHeading.plain("Popular Songs")
                 ForEach(Array(topSongs.enumerated()), id: \.element.id) { index, entry in
                     Button {
@@ -269,7 +269,7 @@ struct MusicArtistView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    // M2: top songs are queueable — the ONE shared music menu.
+                    // Top songs are queueable — the ONE shared music menu.
                     .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
                 }
             }

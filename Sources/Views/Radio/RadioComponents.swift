@@ -6,8 +6,8 @@
 import SwiftUI
 import OSLog
 
-/// F4: THE radio station row — shared by the favorites/recents lists and the
-/// genre drilldown (Regel 2). Plays directly (F3: play replaces the active
+/// THE radio station row — shared by the favorites/recents lists and the
+/// genre drilldown. Plays directly (F3: play replaces the active
 /// playback, never queued); favorite toggles from the context menu. Offline the
 /// row dims and carries the white status glyph, and the tap is disabled.
 struct RadioStationRow: View {
@@ -101,7 +101,7 @@ struct RadioPlayMenuButton: View {
 /// F4-discovery: a station as a compact card for the horizontal browse rows
 /// (Popular / From your region) — the shared `RadioArtwork` (Y58) over the name.
 ///
-/// f83c442 / 99ee104: a TILE navigates on tap, always — play is the explicit
+/// A TILE navigates on tap, always — play is the explicit
 /// corner glyph. The boundary runs along the BUILD FORM, not the surface: a
 /// card shows ONE state you continue, a tile is an entry in a choice you first
 /// want to look at. The per-caller tap mode is gone rather than defaulted:
@@ -112,7 +112,7 @@ struct RadioStationCard: View {
     let station: RadioStation
     /// Cell-cost sweep: plain reference — actions only, no subscription.
     let playerCoordinator: PlayerCoordinator
-    /// 1d68650: a starred station carries the glyph on the TILE too — the
+    /// A starred station carries the glyph on the TILE too — the
     /// full page renders favorites as tiles, and without the star the
     /// section order would be unexplainable there just as on the cards.
     var isFavorite: Bool = false
@@ -172,14 +172,14 @@ struct RadioStationCard: View {
                     // card heights otherwise).
                     .lineLimit(2, reservesSpace: true)
                     .frame(width: width, alignment: .topLeading)
-                // cb2d1ed/e9649ee: TILES carry no show line — only the "My
+                // TILES carry no show line — only the "My
                 // Stations" cards, the station page and the player do. The
                 // line used to sit here reserved-but-empty on every tile of
                 // every row, and that empty text line per row was measured as
-                // part of the row-spacing finding (85a7c00: 63 pt where the
-                // section spacing says 24). Removing it is the decided fix;
-                // adjusting spacing constants against it would have corrected
-                // a number against a state that no longer exists.
+                // part of the row-spacing finding (63 pt where the section
+                // spacing says 24). Adjusting spacing constants against it
+                // would correct a number against a state that no longer
+                // exists.
             }
         }
         .buttonStyle(.plain)
@@ -229,7 +229,7 @@ struct RadioFavoriteButton: View {
     }
 }
 
-/// 6b3a35d (3): the ONE live marker — red dot + LIVE. Shared by the full
+/// The ONE live marker — red dot + LIVE. Shared by the full
 /// player's live row and the drive-mode progress line (no second pattern).
 struct LiveBadge: View {
     var body: some View {
@@ -246,7 +246,7 @@ enum RadioPlay {
     /// The recent-ring records centrally in `RadioProvider.fetchItemDetail`.
     @MainActor
     static func play(_ station: RadioStation, playerCoordinator: PlayerCoordinator) {
-        // 86cf180 log-first: the tap line — together with the play line in
+        // The tap line — together with the play line in
         // fetchItemDetail one glance shows a tile↔stream swap.
         Logger.library.notice("RADIO tap uuid=\(station.id, privacy: .public) name=\(station.name, privacy: .public) stream=\(station.streamURL, privacy: .public)")
         RadioProvider.shared.remember([station])   // keep catalog hits resolvable
@@ -255,8 +255,8 @@ enum RadioPlay {
 }
 
 /// The shared horizontal station-card row (title + RadioStationCard carousel) —
-/// used by the radio tab's sections AND the Home "Radio" section (Regel 2: one
-/// row component, no copies).
+/// used by the radio tab's sections AND the Home "Radio" section — one row
+/// component, no copies.
 struct RadioCardRow: View {
     let title: String
     let stations: [RadioStation]
@@ -269,7 +269,7 @@ struct RadioCardRow: View {
             Text(title).font(.title3).bold().padding(.horizontal)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 14) {
-                    // 6fcb301: the radio card rows ran UNCAPPED — part of why
+                    // The radio card rows ran UNCAPPED — part of why
                     // the cold start felt sluggish (every station a cell).
                     ForEach(RowPreview.cut(stations)) { station in
                         RadioStationCard(station: station, playerCoordinator: playerCoordinator,
@@ -282,7 +282,7 @@ struct RadioCardRow: View {
     }
 }
 
-/// a1077a9: "Zuletzt gespielt" is a CARD, not a tile — the Featured family
+/// "Zuletzt gespielt" is a CARD, not a tile — the Featured family
 /// the other tabs' continue rows use (cover face on top, text block on the
 /// card colour, radius 20). Tap plays, the info pill leads to the station
 /// page. Only the Zuletzt class renders this; Häufig stays a tile, the
@@ -290,19 +290,19 @@ struct RadioCardRow: View {
 struct RadioFeaturedCard: View {
     let station: RadioStation
     let playerCoordinator: PlayerCoordinator
-    /// cb2d1ed: a starred station carries the glyph — without it the order of
+    /// A starred station carries the glyph — without it the order of
     /// "My Stations" (preference before measured time) is unexplainable.
     var isFavorite: Bool = false
     /// Measured listening time, for the card line's second state.
     var listenedSeconds: Int = 0
     @Environment(\.pushRadioRoute) private var pushRadioRoute
-    /// f7b7941: the card colour comes from the COVER, like BookFeaturedCard —
+    /// The card colour comes from the COVER, like BookFeaturedCard —
     /// the hash tint stays the placeholder colour until an accent is loaded
     /// (DLF Kultur was orange logo on hash-green card).
     @StateObject private var colorLoader = CoverColorLoader()
 
     private var tint: Color { RadioArtwork.color(for: station.id) }
-    /// f01d6d3: the ground is
+    /// The ground is
     /// the LOGO'S BOTTOM EDGE colour — the gradient attaches there, and a
     /// whole-image mean can never join it (measured: bigFM's edge is white,
     /// its mean lavender; WDR 2's edge is WDR-red, its mean a dark plum —
@@ -310,7 +310,7 @@ struct RadioFeaturedCard: View {
     /// ALL ink on the card follows the ground's luminance, not just the
     /// title — white ink on bigFM's white ground would erase star and line.
     @State private var edge: RadioTileGround.Edge?
-    /// cbf0d50: share of visible logo pixels near the edge colour — full tone
+    /// Share of visible logo pixels near the edge colour — full tone
     /// only when the edge IS the mark's dominant colour.
     @State private var dominance: Double = 1
 
@@ -333,16 +333,15 @@ struct RadioFeaturedCard: View {
     private var titleColor: Color { inkIsLight ? .white : .black.opacity(0.85) }
     private var captionColor: Color { inkIsLight ? .white.opacity(0.9) : .black.opacity(0.6) }
 
-    /// R23 round 2 (fe87e51): the seam binds to the CARD colour — dominant
-    /// edges full, accent edges DAMPENED. The old zone ran the full edge
-    /// colour at the boundary while both neighbours were calm, so a saturated
-    /// ring between two calm zones was structurally guaranteed (measured on
-    /// the user's screenshot: rise 1060→1220 to full WDR red, hard fall
-    /// behind); shrinking `transitionShare` only sharpened it. Now the full
+    /// The seam binds to the CARD colour — dominant edges full, accent edges
+    /// DAMPENED. A zone that runs the full edge colour at the boundary while
+    /// both neighbours are calm guarantees a saturated ring between two calm
+    /// zones (measured: rise 1060→1220 to the full edge colour, hard fall
+    /// behind); shrinking `transitionShare` only sharpens it. Now the full
     /// edge colour exists NOWHERE on a zone card — the seam stays byte-
     /// seamless, on the dampened level.
     private var textZoneGround: Color { cardColor }
-    // 48e514e (1): family metrics — the pill reserve scales with Dynamic Type
+    // Family metrics — the pill reserve scales with Dynamic Type
     // exactly like Book-/PodcastFeaturedCard's.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
 
@@ -362,15 +361,15 @@ struct RadioFeaturedCard: View {
                         // The JOIN is the exact CARD colour (dominant: full
                         // edge, accent: dampened) — the artwork already runs
                         // out into the calm tone, so no saturation peak can
-                        // exist between the two calm zones (R23 round 2).
+                        // exist between the two calm zones.
                         LinearGradient(colors: [.clear, cardColor],
                                        startPoint: .top, endPoint: .bottom)
                             .frame(height: CardMetrics.featuredCardWidth
                                    * RadioArtwork.cardGradientShare)
                     }
                 VStack(alignment: .leading, spacing: 5) {
-                    // 48e514e (2): the caption line belongs to the running
-                    // show (9d22148) — the raw first community tag is gone;
+                    // The caption line belongs to the running
+                    // show — the raw first community tag is gone;
                     // a card without a known show carries just name + LIVE.
                     RadioCardNowPlayingLeaf(stationID: station.id,
                                             host: .featuredCard,
@@ -383,10 +382,10 @@ struct RadioFeaturedCard: View {
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                     HStack(spacing: 6) {
-                        // 52af077 (GT R1): NO static LIVE — the badge lives in
+                        // NO static LIVE — the badge lives in
                         // the card LINE's running state, where it is true.
                         //
-                        // 5bab0ad: the star line RESERVES its height on every
+                        // The star line RESERVES its height on every
                         // card. Rendered always and hidden by opacity — a
                         // conditional row made the favorite card TALLER than
                         // its neighbours, which is the same class this package
@@ -410,7 +409,7 @@ struct RadioFeaturedCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(.plain)
-        // 5bab0ad: the height fence can only measure what it can find.
+        // The height fence can only measure what it can find.
         .accessibilityIdentifier("radio-card")
         // Recompute on station AND image change: the await follows the
         // cadenced chain, so the accent lands when the two-stage artwork's
@@ -421,8 +420,8 @@ struct RadioFeaturedCard: View {
                 homepage: station.homepage)
                 ?? station.faviconURL.flatMap { URL(string: $0) }
             await colorLoader.load(from: url)
-            // f01d6d3: the ground colour comes from the logo's bottom edge;
-            // cbf0d50: whether it may fill the surface depends on DOMINANCE.
+            // The ground colour comes from the logo's bottom edge;
+            // Whether it may fill the surface depends on DOMINANCE.
             if let url, let loaded = await ImageCache.shared.loadedImage(for: url) {
                 let measured = RadioTileGround.bottomEdgeColor(of: loaded.image)
                 edge = measured
@@ -431,9 +430,9 @@ struct RadioFeaturedCard: View {
                 }
             }
         }
-        // 48e514e (1): the family's pill at the family's place — bottom-left
-        // in the text zone, the SHARED CardDetailPill (a1077a9 had asked for
-        // exactly this; the top-left ⓘ was the deviation).
+        // The family's pill at the family's place — bottom-left
+        // in the text zone, the SHARED CardDetailPill — the top-left ⓘ was
+        // the deviation.
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: RadioRoute.station(station)).padding(12)
         }
@@ -445,13 +444,13 @@ struct RadioFeaturedCard: View {
     }
 }
 
-/// 9d22148: the running show on the ACTIVE station's card — the ICY title
+/// The running show on the ACTIVE station's card — the ICY title
 /// the player already parses, observed in this ONE leaf so only the active
 /// card re-renders on a title tick. Dormant tiles never mount it, and no
 /// tile ever opens a stream for it: the catalog has no now-playing, and
 /// twelve connections per row would be rude to the stations.
 private struct RadioCardNowPlayingLeaf: View {
-    /// cb2d1ed/e9649ee: ONE host left — the featured card. Tiles carry no
+    /// ONE host left — the featured card. Tiles carry no
     /// show line at all any more (the reserved-but-empty line per tile was
     /// measured as part of the row-spacing excess), so the tile host fell out
     /// WITH its callers rather than lingering as the switch nobody sets.
@@ -467,10 +466,10 @@ private struct RadioCardNowPlayingLeaf: View {
     /// rule) — THIS leaf carries the only subscription, so the active flip
     /// and the title ticks re-render leaves, never cards.
     @ObservedObject var coordinator: PlayerCoordinator
-    /// cb2d1ed: measured listening time of THIS station. Makes the line's
+    /// Measured listening time of THIS station. Makes the line's
     /// second state possible — the same line, never a second one.
     var listenedSeconds: Int = 0
-    /// f01d6d3: the card's ink follows its ground; the leaf inherits it.
+    /// The card's ink follows its ground; the leaf inherits it.
     var ink: Color = .white.opacity(0.9)
 
     var body: some View {
@@ -537,8 +536,8 @@ private struct RadioCardNowPlayingLeaf: View {
 
         var body: some View {
             // ONE line, fixed height, whatever the state — the badge rides
-            // INSIDE the line (52af077: a static LIVE outside it was a false
-            // statement while an audiobook played).
+            // INSIDE the line — a static LIVE outside it would be a false
+            // statement while an audiobook plays.
             HStack(spacing: 6) {
                 if isRunning { LiveBadge() }
                 Text(verbatim: text)
@@ -552,7 +551,7 @@ private struct RadioCardNowPlayingLeaf: View {
 
 /// The card row for the Zuletzt class — RadioView and Home share it.
 ///
-/// cb2d1ed: the same row now also carries "My Stations", with the star glyph
+/// The same row now also carries "My Stations", with the star glyph
 /// and the listening time. NOT a second card class: the form already carried
 /// the pill and the line machinery this row needs, and the user's rule is that
 /// the FORM carries the behaviour — a card is an offer to continue, a tile is
@@ -573,7 +572,7 @@ struct RadioFeaturedCardRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let destination {
-                // 776d548 (GT R2): the chevron is ALWAYS on for this row — the
+                // The chevron is ALWAYS on for this row — the
                 // counted variant hides it when total == shown, and with two
                 // cards that suppressed the whole full page on the user's device.
                 // This page is not "see more": it is where the two sources
@@ -626,7 +625,7 @@ struct RadioStationListPage: View {
     }
 }
 
-/// b942da6/b1ab99d: the region picker sheet — curated state list with a
+/// The region picker sheet — curated state list with a
 /// search field (typing filters; free text without a hit selects nothing),
 /// plus the "Change Country" layer (explicit country choice, cascade step a).
 /// Counts render as plain numerals (no new catalog strings).
@@ -690,7 +689,7 @@ struct RadioRegionPickerSheet: View {
 /// curation rules — no hardcoded lists), searchable; choosing persists the
 /// explicit country and resets the old country's region choice.
 ///
-/// eb10440: the SAME list serves the genre pages' multi-select — one country
+/// The SAME list serves the genre pages' multi-select — one country
 /// surface, one curation, one loading state. `selection` nil keeps the
 /// single-choice behaviour (national/region rows, unchanged); a non-nil set
 /// switches to toggling with a worldwide row on top.
@@ -724,7 +723,7 @@ struct RadioCountryPickerList: View {
                         }
                     }
                     .tint(.primary)
-                    // e77e0b1 side finding: with an EMPTY LabeledContent value
+                    // With an EMPTY LabeledContent value
                     // the button flattened to a bare StaticText in the a11y
                     // tree and lost its identifier — combine keeps it a button.
                     .accessibilityElement(children: .combine)

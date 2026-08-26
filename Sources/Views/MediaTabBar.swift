@@ -23,10 +23,10 @@ struct MediaTabBar: View {
     var glassMorphID: String? = nil
     var glassMorphNamespace: Namespace.ID? = nil
 
-    /// D7/B6: at accessibility sizes the caption labels truncated anyway —
+    /// At accessibility sizes the caption labels truncated anyway —
     /// icons only, the label lives on as the accessibility label.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    /// N1: shared namespace so the active pill glides between tabs.
+    /// Shared namespace so the active pill glides between tabs.
     @Namespace private var pillNS
 
     /// N1d: THE one gap between the pill's edge and the bar's edge — the bar's
@@ -39,7 +39,7 @@ struct MediaTabBar: View {
     /// was tried and is NOT usable here: resolving it inside the bar broke the
     /// bottom bar reproducibly — the capsule identity above makes it
     /// unnecessary anyway.)
-    /// e053f53: 6 → 5 — the pill breathes a touch taller inside the SAME
+    /// 6 → 5 — the pill breathes a touch taller inside the SAME
     /// bar height (the gap is the pill's vertical inset; smaller gap =
     /// taller pill, bar metrics and morph untouched).
     private static let pillGap: CGFloat = 5
@@ -49,7 +49,7 @@ struct MediaTabBar: View {
 
     /// The label size at rest, and the sizes the bar may fall back to.
     ///
-    /// 7fb1cc1: ONE size for the whole row. A per-label shrink makes the size a
+    /// ONE size for the whole row. A per-label shrink makes the size a
     /// property of the WORD — "Radio" big, "Hörbücher" small, and the user
     /// looks for the reason; a shared size makes it a property of the BAR, and
     /// that nobody notices. The row is offered as a WHOLE at each size, so all
@@ -61,12 +61,12 @@ struct MediaTabBar: View {
     static let labelSizes: [CGFloat] = [11, 10.5, 10, 9.5, 9, 8.5, 8]
 
     var body: some View {
-        // 85a7c00: NO arithmetic about the available width — SwiftUI measures.
+        // NO arithmetic about the available width — SwiftUI measures.
         // The ladder offers the row at descending sizes and takes the first
         // that fits WHOLE (one size for all labels, no truncation, no number
         // that can drift from the truth).
         //
-        // cd2b3be: everything inside these
+        // Everything inside these
         // closures is evaluated during the MEASUREMENT — and SwiftUI measures
         // on its AsyncRenderer, a background thread. A closure that captures
         // `self` (this View type is MainActor by project default) trips the
@@ -80,7 +80,7 @@ struct MediaTabBar: View {
         let hideLabels = dynamicTypeSize.isAccessibilitySize
         let namespace = pillNS
         let onSelect = self.onSelect
-        // e111072 (crash 4): MeasuredLadder, never ViewThatFits — four device
+        // MeasuredLadder, never ViewThatFits — four device
         // crashes proved the sizing engine's off-main reach cannot be
         // enumerated (even nonisolated data-pure candidates trapped). The
         // ladder probes the REAL rows invisibly on main and builds only the
@@ -102,14 +102,12 @@ struct MediaTabBar: View {
     }
 }
 
-/// One row of the bar at one ladder size. History (crash 1–4): as a
-/// ViewThatFits candidate this was made data-pure (cd2b3be), then
-/// `nonisolated` (4b2f7a8) — and STILL trapped on the AsyncRenderer
-/// (e111072: the sizing engine wraps evaluation in ObservationCenter and
-/// reached a live isolated reference no fix could name). Since e111072 it is
-/// only ever evaluated on the MAIN render path — as `MeasuredLadder`'s
-/// hidden probe or as the chosen row. `nonisolated` stays as belt and
-/// braces, not as the load-bearing fix.
+/// One row of the bar at one ladder size. As a ViewThatFits candidate this
+/// was data-pure and `nonisolated` and STILL trapped on the AsyncRenderer:
+/// the sizing engine wraps evaluation in ObservationCenter and reaches a live
+/// isolated reference. It is therefore only ever evaluated on the MAIN render
+/// path — as `MeasuredLadder`'s hidden probe or as the chosen row.
+/// `nonisolated` stays as belt and braces, not as the load-bearing fix.
 nonisolated private struct TabRowCandidate: View {
     let types: [MediaType]
     let selected: MediaType
@@ -121,8 +119,8 @@ nonisolated private struct TabRowCandidate: View {
     var probing: Bool = false
     let onSelect: (MediaType) -> Void
 
-    /// e053f53 mirror — kept in sync with `MediaTabBar.pillGap` via the
-    /// shared constant there.
+    /// Mirror — kept in sync with `MediaTabBar.pillGap` via the shared
+    /// constant there.
     private static let pillGap: CGFloat = 5
     private static let cellSpacing: CGFloat = 4
 
@@ -149,7 +147,7 @@ nonisolated private struct TabRowCandidate: View {
                     // Selected → the type's own tint; unselected → neutral. The
                     // colour appears only on the active selector, never always.
                     .foregroundStyle(selected == type ? type.tint : Color.primary)
-                    // 98c621f: the ONE capsule metric — horizontal stays (that
+                    // The ONE capsule metric — horizontal stays (that
                     // width is exactly the room the longest title needs),
                     // vertical is what grew.
                     .padding(.horizontal, TabBarMetrics.Capsule.horizontalPadding)

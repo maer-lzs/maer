@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 🟡 P7: a composing surface waits for its sources — but never without end
+/// 🟡 A composing surface waits for its sources, but never without end
 /// on ONE of them. The measurement the order asks for runs here: a source
 /// that hangs must not decide how long the start page stays empty.
 struct SourceBudgetTests {

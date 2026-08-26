@@ -34,27 +34,27 @@ final class BottomBarState: ObservableObject {
     /// still rolling out.
     private var forceExpanded = false
     private var userDragging = false
-    /// S10: after the scroll comes fully to rest, re-expand the bar so the
+    /// After the scroll comes fully to rest, re-expand the bar so the
     /// mini-player returns without a tab switch. Cancelled the moment scrolling
     /// resumes. X21: shortened from 1.5 s → 0.9 s so the bar returns sooner.
     private var idleExpandTask: Task<Void, Never>?
     private let idleExpandDelay: Duration = .milliseconds(900)
 
-    /// X21: instant the current scroll gesture began — the collapse morph is held
+    /// Instant the current scroll gesture began — the collapse morph is held
     /// back until `collapseDelaySeconds` past this, so it does not fire right at
     /// scroll-start. The hitch was traced to a LAYOUT SHIFT, not to this flip
     /// — the signpost below stays as standing instrumentation for device
     /// traces, not because the question is still open.
     private var scrollStartedAt: Date = .distantPast
-    /// Y31: true once a USER gesture drove the current surface's scrolling —
+    /// True once a USER gesture drove the current surface's scrolling —
     /// cleared on reset(). Collapsing requires it: pushed pages emit large
     /// layout-driven offsets while populating (the album page reported ~1400 pt
     /// without any touch), and those must never collapse the bar.
     private var hasUserScrolled = false
-    /// X21: how long after scroll-start the bar may collapse. Internal so tests
+    /// How long after scroll-start the bar may collapse. Internal so tests
     /// can zero it out; app default 0.2 s (X21c: 0.4 s felt sluggish).
     var collapseDelaySeconds: TimeInterval = 0.2
-    /// H2 belt: report-driven RE-flips are blocked while the previous flip's
+    /// Report-driven RE-flips are blocked while the previous flip's
     /// morph still runs AND the offset has barely moved since — the morph's own
     /// residual geometry perturbation (a few pt) cannot feed back into a new
     /// decision, while a GENUINE quick direction change (a real swipe moves the
@@ -67,7 +67,7 @@ final class BottomBarState: ObservableObject {
     private var lastFlip: Date = .distantPast
     private var scrollYAtLastFlip: CGFloat = 0
 
-    /// X21: signpost each `collapsed` flip so a device Instruments trace can
+    /// Signpost each `collapsed` flip so a device Instruments trace can
     /// correlate the collapse/expand morphs with scroll hitches.
     private static let signpostLog = OSLog(subsystem: "de.lzs.ABSPlayer", category: "BottomBar")
 
@@ -119,7 +119,7 @@ final class BottomBarState: ObservableObject {
         }
     }
 
-    /// S10: the scroll view reached `.idle` (finger up AND deceleration done).
+    /// The scroll view reached `.idle` (finger up AND deceleration done).
     /// Schedule the auto-expand; a fresh drag cancels it via `setUserDragging`.
     func scrollDidRest() {
         armCollapseWatchdog()
@@ -138,7 +138,7 @@ final class BottomBarState: ObservableObject {
         applyCollapsed()
     }
 
-    /// 8be0e17: WATCHDOG against a stuck collapse. The auto-expand hangs on
+    /// WATCHDOG against a stuck collapse. The auto-expand hangs on
     /// `scrollDidRest()`, which rides the scroll-phase change to `.idle`. If
     /// that event never arrives — a surface that stops reporting mid-gesture,
     /// a phase the system skips — `collapsed` stays true, and with it the
@@ -184,7 +184,7 @@ final class BottomBarState: ObservableObject {
                                            elapsedSinceScrollStart: elapsed,
                                            collapseDelay: collapseDelaySeconds)
         guard newValue != collapsed else { return }
-        // H2 belt: a re-flip within the morph window that the offset barely
+        // A re-flip within the morph window that the offset barely
         // moved for is the morph's own perturbation — swallow it. Genuine
         // moves (real swipes) and explicit expands pass.
         if !forceExpanded,
@@ -207,7 +207,7 @@ final class BottomBarState: ObservableObject {
     /// window briefly read as "expand", making the bar flutter open and shut on
     /// every touch. Expanding happens only by scrolling back under the
     /// threshold, force-expand, or the idle auto-expand.
-    /// Y31: collapsing additionally requires that a USER gesture drove the
+    /// Collapsing additionally requires that a USER gesture drove the
     /// scrolling — programmatic/layout offsets (pushed pages populating) never
     /// collapse; expanding stays immediate as before.
     static func shouldCollapse(scrollY: CGFloat, forceExpanded: Bool, alreadyCollapsed: Bool,
@@ -228,17 +228,16 @@ extension View {
     /// incoming one over `collapsed`. That oscillation restarted the bar's
     /// collapse spring + matchedGeometry morph every flip, and the morph
     /// perturbed scroll geometry into more reports — a runaway loop that froze
-    /// the UI (see s16b-hitch-status). Gating reporting to the visible tab breaks
+    /// the UI. Gating reporting to the visible tab breaks
     /// it at the root. Pushed detail pages keep the default (they live in the
     /// active tab's stack, never a second competing root).
-    /// Auftrag K settled the reporter's role in the tile-row hang: NONE.
-    /// Measured variants — callback guard (this form), constant transform on
-    /// inactive tabs (1a), modifiers not installed at all (1b) — all hung
-    /// identically with the row in a lazy tab root (329 s class), and the
-    /// hang5 sample shows a pure LazyStack placement loop WITHOUT the
-    /// reporter in the cycle (its hang3 appearance was bycatch). The root
-    /// was the podcast tab's outer LazyVStack (see PodcastsView); the
-    /// simplest reporting form stays.
+    /// The reporter has NO part in the tile-row hang. Measured variants —
+    /// callback guard (this form), constant transform on inactive tabs,
+    /// modifiers not installed at all — all hung identically with the row in
+    /// a lazy tab root, and the sample shows a pure LazyStack placement loop
+    /// WITHOUT the reporter in the cycle. The root was the podcast tab's
+    /// outer LazyVStack (see PodcastsView); the simplest reporting form
+    /// stays.
     func reportsBottomBarScroll(active: Bool = true) -> some View {
         onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
             guard active else { return }
@@ -247,7 +246,7 @@ extension View {
         .onScrollPhaseChange { _, newPhase in
             guard active else { return }
             BottomBarState.shared.setUserDragging(newPhase == .tracking || newPhase == .interacting)
-            // S10: fully at rest → schedule the auto-expand.
+            // Fully at rest → schedule the auto-expand.
             if newPhase == .idle { BottomBarState.shared.scrollDidRest() }
         }
     }

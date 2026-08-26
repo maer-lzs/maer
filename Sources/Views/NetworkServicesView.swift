@@ -5,10 +5,10 @@
 
 import SwiftUI
 
-/// a449534 (4): "Network Services & Privacy" — EVERY external service on one
+/// "Network Services & Privacy" — EVERY external service on one
 /// page: a purpose sentence per row plus the REAL opt-out switch, bound to
 /// the SAME AppStorage keys as the feature homes (second access point, one
-/// truth — Regel 2). Head rule: servers first, overlays only fill gaps, no
+/// truth). Head rule: servers first, overlays only fill gaps, no
 /// accounts anywhere.
 struct NetworkServicesView: View {
     @AppStorage(AppStorageKeys.musicArtistImagesOnline) private var artistImagesOnline = true
@@ -25,13 +25,12 @@ struct NetworkServicesView: View {
 
     var body: some View {
         Form {
-            // #85 (f9ba23b S4): every service toggle carries a stable a11y id
-            // — journeys match ids, never labels (the label predicate found
-            // the tab pill behind the sheet once, 8b4327c). One convention,
-            // no half-set.
+            // Every service toggle carries a stable a11y id — journeys
+            // match ids, never labels (a label predicate once matched the tab
+            // pill behind the sheet). One convention, no half-set.
             Section {
                 AppSwitch(isOn: $artistImagesOnline) {
-                    // bdfe8dc/22cf822: name the boundary AND its second half.
+                    // Name the boundary AND its second half.
                     // Switching this off stops OUR web chain; portraits the
                     // server delivers keep showing — and the server may fetch
                     // those from external services itself (measured: 98 of
@@ -48,13 +47,13 @@ struct NetworkServicesView: View {
                 .accessibilityIdentifier("network-hires-covers-toggle")
                 AppSwitch(isOn: $lyricsOnline) {
                     serviceLabel(NetworkServiceNames.lyrics,
-                                 // 22cf822 parity: same half-truth applies —
+                                 // Same half-truth applies —
                                  // the server can carry lyrics from its own
                                  // agents; our opt-out only gates OUR lookup.
                                  purpose: "Open lyrics lookup when your server has none — lyrics your server already carries stay, wherever it got them.")
                 }
                 .accessibilityIdentifier("network-lrclib-toggle")
-                // feb46bb: the APPLE switch is its own, with the honest
+                // The APPLE switch is its own, with the honest
                 // transparency line — what Apple sees and what it never
                 // does. The Discover FEATURE toggle stays in the settings.
                 AppSwitch(isOn: $appleCatalog) {
@@ -67,7 +66,7 @@ struct NetworkServicesView: View {
                                  purpose: "The community station catalog behind the Radio tab.")
                 }
                 .accessibilityIdentifier("network-radiobrowser-toggle")
-                // e4bd910: the agreed logo fallback chain — ONE switch for
+                // The agreed logo fallback chain — ONE switch for
                 // both stages (Wikidata P154 first, then the homepage
                 // touch icon); off = placeholder right after the favicon.
                 AppSwitch(isOn: $radioLogoChain) {
@@ -123,7 +122,7 @@ struct NetworkServicesView: View {
     }
 }
 
-/// f79c40c/2ee3c32: the suggestion-language MULTI-select — device locale
+/// The suggestion-language MULTI-select — device locale
 /// preselected; the choice drives catalog/recommendation requests, NOT the
 /// app language (that stays the iOS system setting).
 struct SuggestionLanguagesView: View {
@@ -138,10 +137,9 @@ struct SuggestionLanguagesView: View {
 
     var body: some View {
         Form {
-            // #85 (f9ba23b S4): every service toggle carries a stable a11y id
-            // — journeys match ids, never labels (the label predicate found
-            // the tab pill behind the sheet once, 8b4327c). One convention,
-            // no half-set.
+            // Every service toggle carries a stable a11y id — journeys
+            // match ids, never labels (a label predicate once matched the tab
+            // pill behind the sheet). One convention, no half-set.
             Section {
                 ForEach(choices, id: \.self) { code in
                     Button {
@@ -176,7 +174,7 @@ struct SuggestionLanguagesView: View {
             selected.insert(code)
         }
         UserDefaults.standard.set(Array(selected).sorted(), forKey: AppStorageKeys.suggestionLanguages)
-        // 784aceb: bite WITHOUT an app restart — invalidate the two caches
+        // Bite WITHOUT an app restart — invalidate the two caches
         // that hold language-shaped results and recompute right away (the
         // stores apply calm-gated; genre chips and catalog searches read the
         // key live and need no reset).

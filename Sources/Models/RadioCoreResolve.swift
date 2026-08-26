@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 19a8b4c: resolves the first-hand core-list NAMES (RadioListenerCores)
+/// Resolves the first-hand core-list NAMES (RadioListenerCores)
 /// against the live Radio-Browser catalog. Pure and fixture-tested — the
 /// ladder below was developed against the real DE/AT/CH catalogs (reference
 /// run in the delivery report); every rule exists because a real station

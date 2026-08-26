@@ -85,8 +85,8 @@ nonisolated enum ArtistPortraitLookup {
         claimFileName(fromEntityData: data, entity: entity, property: "P18")
     }
 
-    /// Generalized claim-image extraction (P18 portraits, P154 logos — the
-    /// radio logo chain reuses the SAME parser, Regel 2).
+    /// Generalized claim-image extraction (P18 portraits, P154 logos) — the
+    /// radio logo chain reuses the SAME parser.
     static func claimFileName(fromEntityData data: Data, entity: String, property: String) -> String? {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let entities = root["entities"] as? [String: Any],

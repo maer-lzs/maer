@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// S19: pure, tested validation + lookup for chapter metadata. Some server
+/// Pure, tested validation + lookup for chapter metadata. Some server
 /// items ship BROKEN chapters (overlapping, out-of-range, zero-length). The
 /// player must not derive a "current chapter" / "X min left in chapter" from
 /// those and show nonsense that counts down to a non-existent end. Both the
@@ -67,7 +67,7 @@ nonisolated enum ChapterModel {
         // become "Part N". Podcasts keep partial coverage as-is. Neither takes the
         // audiobook track/rest fallback.
         if isPodcast || isMusic { return (valid, false) }
-        // X20: a multi-file book navigates by FILE. When its chapter list merely
+        // A multi-file book navigates by FILE. When its chapter list merely
         // MIRRORS the file structure (one per track, aligned to track starts) it
         // is file navigation, not real chapters — relabel as "Part N" so it reads
         // "Teil", not "Kapitel", even though it covers the book. Real "Kapitel"
@@ -80,7 +80,7 @@ nonisolated enum ChapterModel {
         return (withTimeMarks(valid, duration: duration), true)
     }
 
-    /// X23: ONE label for every chapter-selector surface (player list button,
+    /// ONE label for every chapter-selector surface (player list button,
     /// selector sheet title, detail-page selector row) — media-type aware:
     /// music navigates tracks, a fallback book navigates parts ("Teile"), only
     /// real chapters read "Chapters". Keeps the selector wording in lockstep
@@ -91,7 +91,7 @@ nonisolated enum ChapterModel {
         return String(localized: "Chapters")
     }
 
-    /// X20: do the chapters merely mirror the file/track structure — one chapter
+    /// Do the chapters merely mirror the file/track structure — one chapter
     /// per track, each starting at a track boundary (within tolerance)? Then they
     /// are file navigation ("parts"), not real embedded chapters.
     static func chaptersMirrorTracks(_ chapters: [ABSChapter], tracks: [ABSAudioTrack], duration: Double) -> Bool {
@@ -126,12 +126,12 @@ nonisolated enum ChapterModel {
     static let step = 900.0
 
     static func withTimeMarks(_ valid: [ABSChapter], duration: Double) -> [ABSChapter] {
-        // R50: this covers a PARTIAL chapter list, as the name and the doc
+        // This covers a PARTIAL chapter list, as the name and the doc
         // above say. With NO chapters at all there is nothing to complete —
         // and inventing one mark for a whole single-file item produced the
-        // catalogue defect the user saw: a Jamendo track showed „ab 0:00 —
-        // noch 3 Min." and looked frozen, because that ONE invented chapter
-        // spans the entire piece and is named after second zero. Without a
+        // catalogue defect: a track kept the start wording and looked
+        // frozen, because that ONE invented chapter spans the entire piece
+        // and is named after second zero. Without a
         // chapter the subtitle falls back to the running clock, which is what
         // a track needs. Marks below the step width would be the same lie in
         // small: a single mark that covers everything is not navigation.

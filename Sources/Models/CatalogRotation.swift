@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Auftrag 09.08.: the catalog rows always showed the same titles — with
+/// The catalog rows always showed the same titles — with
 /// `sort=downloads desc` that is structural, because it is the all-time
 /// ranking and the all-time ranking does not move.
 ///

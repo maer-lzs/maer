@@ -16,10 +16,10 @@ struct MusicContinueCard: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
     @State private var coverURLs: [URL] = []
-    /// 7ade0cf: the text-block color comes from the cover EDGE the block
+    /// The text-block color comes from the cover EDGE the block
     /// touches — the SAME cached CoverColorLoader extraction the playlist
     /// cards use (one mechanism, deterministic fallback without a cover).
-    /// bd66c5b: EXACT Featured-card anatomy — the mixed Continue row holds
+    /// EXACT Featured-card anatomy — the mixed Continue row holds
     /// ONE card format (book · episode · album/playlist), so this card uses
     /// the same width, cover face, tint block, line reserves and pill as
     /// Book-/PodcastFeaturedCard; the mosaic/album cover simply fills the
@@ -55,14 +55,14 @@ struct MusicContinueCard: View {
             Task { await playerCoordinator.open(item: item) }
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                // c58585e/7ade0cf: an ALBUM fills the WHOLE cover face
+                // An ALBUM fills the WHOLE cover face
                 // (aspectFill, top-aligned crop — exactly like the other
                 // Featured cards; the mosaic path rendered its big-bottom/
                 // tint-top layout here, which read as an inverted color band).
                 // Playlists keep the F5 mosaic — that IS their cover.
                 Group {
                     if isAlbum {
-                        // R54: eine Karte IN EINER REIHE holt sich den warmen
+                        // Eine Karte IN EINER REIHE holt sich den warmen
                         // Vorschau-Speicher ab — ohne das Kennzeichen zeigt
                         // sie beim Wiedereintritt immer erst den Platzhalter,
                         // auch wenn das Bild schon im Speicher liegt.
@@ -120,7 +120,7 @@ struct MusicContinueCard: View {
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: MusicRoute.album(item)).padding(12)
         }
-        // b594a7c: the SAME shuffle corner button as the playlist cards —
+        // The SAME shuffle corner button as the playlist cards —
         // second action only, the card TAP stays RESUME (the row's purpose);
         // music cards only, books/episodes are never shuffled.
         .overlay(alignment: .bottomTrailing) {
@@ -134,7 +134,7 @@ struct MusicContinueCard: View {
             }
             .padding(12)
         }
-        // df0b3bb 3 (Paritaet): this card lives only in Continue contexts, so
+        // This card lives only in Continue contexts, so
         // it carries the same "take it off this row" entry as the book and
         // episode cards. The saved position is untouched.
         .contextMenu {
@@ -147,7 +147,7 @@ struct MusicContinueCard: View {
         .task(id: coverURLs.first) { await colorLoader.load(from: coverURLs.first) }
         .task(id: item.id) {
             let music = AppSession.shared.musicProvider
-            // M1: an ALBUM has one cover — skip the playlist mosaic lookup.
+            // An ALBUM has one cover — skip the playlist mosaic lookup.
             if music.kind(of: item.id) == .album {
                 coverURLs = [AppSession.shared.coverURL(forItemId: item.id)].compactMap { $0 }
             } else {

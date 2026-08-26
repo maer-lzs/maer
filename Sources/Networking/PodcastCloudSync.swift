@@ -25,7 +25,7 @@ final class PodcastCloudSync {
 
     private let store = NSUbiquitousKeyValueStore.default
     private let blobKey = "podcastProgress"
-    /// e32454e/2100b09: the EXISTING progress channel now also carries the
+    /// The EXISTING progress channel now also carries the
     /// classes that have no server behind them — catalog works and local
     /// sideloads keep their position in the very same `localPosition` store,
     /// and the user's goal for these rounds is "identical state on all
@@ -70,7 +70,7 @@ final class PodcastCloudSync {
         reconcile()
     }
 
-    /// beff8bd: the reason goes through the ONE watch — every observer of this
+    /// The reason goes through the ONE watch — every observer of this
     /// notification asks WHY, none re-implements the comparison.
     @objc private nonisolated func cloudChanged(_ note: Notification) {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int
@@ -117,7 +117,7 @@ final class PodcastCloudSync {
             // Personen-Ebene: reconciled transitions land in the listen log.
             PodcastListenLog.shared.noteReconciled(guids: outcome.toLocal.keys)
         }
-        // F9: record full-scan merges that moved anything (single-key writes
+        // Record full-scan merges that moved anything (single-key writes
         // stay out — they would flood the ring buffer).
         if !outcome.toLocal.isEmpty || !outcome.toCloud.isEmpty {
             SyncHistoryStore.shared.append(SyncHistory.entry(
@@ -127,7 +127,7 @@ final class PodcastCloudSync {
                 duration: 0,
                 deviceId: SyncHistoryStore.deviceId))
         } else {
-            // Y48/Y50: a clean full-scan merge leaves no ring entry — still show
+            // A clean full-scan merge leaves no ring entry — still show
             // it ran via the "last checked" stamp.
             SyncHistoryStore.shared.noteChecked(.iCloud)
         }

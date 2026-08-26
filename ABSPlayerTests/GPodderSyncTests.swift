@@ -6,7 +6,7 @@
 import Testing
 @testable import ABSPlayer
 
-// MARK: - 🔴 P1 (iPad round): one visibility rule, mirrors never leak
+// MARK: - 🔴 One visibility rule, mirrors never leak
 
 struct GPodderVisibilityTests {
     private func show(_ url: String, origin: String? = nil) -> (feedURL: String, origin: String?) {
@@ -36,7 +36,7 @@ struct GPodderVisibilityTests {
     }
 
     @Test func mirrorsOnTheServerAreCleanedUpNotReAdopted() {
-        // the owner's state: four mirrors were pushed by the old half-rule and
+        // The measured state: four mirrors were pushed by the old half-rule and
         // sit on the server and in prev; locally they are mirrors (hidden).
         let mirrors = Set((1...4).map { "https://pinchflat.mesh/feed/\($0).xml" })
         let normal = Set(["https://example.org/a.xml", "https://example.org/b.xml"])
@@ -75,7 +75,7 @@ struct GPodderVisibilityTests {
     }
 }
 
-// MARK: - 24857d7: „aus" heisst vollstaendig unsichtbar (keine Asymmetrie)
+// MARK: - Aus heisst vollstaendig unsichtbar (keine Asymmetrie)
 
 struct GPodderPremiumAsymmetryTests {
     private func show(_ url: String) -> (feedURL: String, origin: String?) { (url, nil) }
@@ -92,8 +92,8 @@ struct GPodderPremiumAsymmetryTests {
         #expect(split.byNorm.keys.contains(normalNorm))
 
         // … und die SERVER-Seite wird fuer dieses Geraet ebenfalls gefiltert:
-        // ohne diesen Schnitt waere der Feed „server-only" ⇒ adoptiert, und
-        // eine Runde spaeter „lokal unsichtbar + auf dem Server" ⇒ entfernt.
+        // ohne diesen Schnitt gaelte der Feed als server-only ⇒ adoptiert,
+        // und eine Runde spaeter als lokal unsichtbar ⇒ entfernt.
         let merge = GPodderSubscriptionMerge.compute(
             local: [normalNorm], server: [normalNorm], prev: [normalNorm],
             hiddenLocally: split.hiddenNorms)

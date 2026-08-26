@@ -18,7 +18,7 @@ final class CoverColorLoader: ObservableObject {
     @Published var accent: Color = .gray
     @Published var topAccent: Color = .gray
     @Published var bottomAccent: Color = .gray
-    /// X24: true once a real cover accent has ever been loaded (or restored
+    /// True once a real cover accent has ever been loaded (or restored
     /// from disk). Consumers use it to distinguish "accent available" from the
     /// neutral first-run state — the accent itself never resets to neutral.
     @Published private(set) var hasAccent = false

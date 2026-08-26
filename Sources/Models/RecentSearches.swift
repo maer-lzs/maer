@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Y30: the last search terms, remembered locally (UserDefaults) — shown on
+/// The last search terms, remembered locally (UserDefaults) — shown on
 /// top of the empty-field browse deck; tapping one re-runs the search.
 nonisolated enum RecentSearches {
     static let storageKey = "recentSearches"

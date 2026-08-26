@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// F6: pure ranking matrix, local podcast filter, per-provider timeout, and the
+/// Pure ranking matrix, local podcast filter, per-provider timeout, and the
 /// aggregator's debounce/cancel/partial/failure behaviour with mock providers.
 struct SearchRankingTests {
     @Test("context ranking: the active tab's sections lead, catalog is always last")
@@ -54,10 +54,9 @@ struct SearchRankingTests {
         #expect(!SearchScope.library.includesCatalog)
         #expect(SearchScope.podcasts.kinds == [.show, .episode])
         #expect(SearchScope.podcasts.includesCatalog)
-        // A1 (09.08.): DIESER Fall stand vorher hier als
-        // `[.book, .author, .series]` + `!includesCatalog` — der Test hat also
-        // die kaputte Verdrahtung festgeschrieben, weshalb Auftrag Q
-        // wirkungslos bleiben konnte, ohne dass etwas rot wurde. Lehre: ein
+        // Dieser Fall stand vorher als `[.book, .author, .series]` +
+        // `!includesCatalog` und schrieb damit die kaputte Verdrahtung fest.
+        // Ein
         // Unit-Test über eine Filtermenge ist KEIN Zaun gegen "erreicht nie
         // den Schirm" — das kann nur die Journey
         // (`testBookScopeShowsCatalogResults`).
@@ -105,8 +104,8 @@ struct GlobalSearchModelTests {
         return model
     }
 
-    /// 2c6bc8f-Kriterium (Suite ZWEIMAL hintereinander gruen): die alte
-    /// Frist von 3 s machte das Gruen lastabhaengig — im zweiten Lauf auf
+    /// Die Suite muss ZWEIMAL hintereinander gruen sein: eine Frist von 3 s
+    /// macht das Gruen lastabhaengig — im zweiten Lauf auf
     /// demselben Simulator brauchten die Faelle 4,2 s und fielen rot, ohne
     /// dass etwas kaputt war. Die Schleife bricht ab, sobald die Bedingung
     /// wahr ist; eine grosszuegige Frist kostet nur im Fehlerfall Zeit und

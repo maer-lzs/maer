@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// fb21fbd: what the section header says about the ACTIVE sort/filter.
+/// What the section header says about the ACTIVE sort/filter.
 ///
 /// Pure so the rule is testable: only DEVIATIONS from the default are named.
 /// That is the whole point of the move — today a filtered grid looks broken
@@ -24,11 +24,10 @@ nonisolated enum SortIndicator {
     }
 }
 
-/// Not a glass button but a plain control at the surface it sorts (
-/// Symbol"): the sort/filter control as it sits AT the surface it acts on —
-/// no glass, no background, no border, in the accent colour.
+/// Not a glass button but a plain control at the surface it sorts — no glass,
+/// no background, no border, in the accent colour.
 ///
-/// The idiom is the existing „Land ändern" / „Region ändern" under the radio
+/// The idiom is the existing Land-ändern-Zeile unter den Radio
 /// rows (small, secondary, no surface), not a new machinery. The active value
 /// appears as a short caption in front of the symbol as soon as it deviates:
 /// a bare symbol does not say WHAT it is sorted by.

@@ -29,8 +29,8 @@ struct ContentTokenTests {
     }
 }
 
-/// Drive mode (9357955 + 9941a9a): the pure route-change decision and the
-/// portrait transport fit. (The sleep cycle left with its button — 0693e05.)
+/// Drive mode: the pure route-change decision and the
+/// portrait transport fit. (The sleep cycle left with its button.)
 struct DriveModeTests {
     @Test("Auto-start requires the opt-in toggle — connect alone never enters")
     func autoStartOptIn() {
@@ -93,7 +93,7 @@ struct DriveModeTests {
     }
 }
 
-/// Listen log (2825f15): played transitions land show-independently, the
+/// Listen log: played transitions land show-independently, the
 /// unplayed tombstone survives, only a NEWER play flips it back.
 @MainActor
 struct PodcastListenLogTests {

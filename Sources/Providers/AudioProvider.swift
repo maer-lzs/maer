@@ -147,7 +147,7 @@ extension AudioProvider {
     var isAvailable: Bool { true }
 }
 
-/// F6: search is a PROVIDER CAPABILITY, not a feature island — every provider
+/// Search is a PROVIDER CAPABILITY, not a feature island — every provider
 /// that can search conforms and returns only what it has. Implementations are
 /// offline-first: without a network they search their cached/downloaded stock
 /// (the same protocol, no separate path).

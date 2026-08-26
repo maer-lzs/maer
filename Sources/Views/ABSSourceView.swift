@@ -40,7 +40,7 @@ struct ABSSourceView: View {
                         Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 } else {
-                    // F10: serverless mode — Audiobookshelf attaches HERE.
+                    // Serverless mode — Audiobookshelf attaches HERE.
                     Button {
                         showABSSetup = true
                     } label: {

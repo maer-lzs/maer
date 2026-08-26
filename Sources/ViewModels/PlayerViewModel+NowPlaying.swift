@@ -12,7 +12,7 @@ import UIKit
 /// Lockscreen/Dynamic Island: RemoteCommands, NowPlaying-Info, Artwork.
 extension PlayerViewModel {
 
-    // MARK: - Shared now-playing title/subtitle (Regel 2 — one source, three surfaces)
+    // MARK: - Shared now-playing title/subtitle (one source, three surfaces)
 
     /// True for a Subsonic music item (`sub:`) — its playing "work" is the song,
     /// not the album.
@@ -20,12 +20,12 @@ extension PlayerViewModel {
     /// knew only `sub:` and left Jellyfin items reading as books here.
     var isMusicItem: Bool { item.map { MediaFamily.of($0.id) == .music } == true }
 
-    /// F2: live radio (`radio:`) — no duration, no seek, elapsed only; the
+    /// Live radio (`radio:`) — no duration, no seek, elapsed only; the
     /// player switches to its live abstraction and Now Playing flags the
     /// stream as live.
     var isLiveStream: Bool { item?.id.hasPrefix("radio:") == true }
 
-    /// F2: ICY "Artist - Title" parsed from the in-stream metadata (nil while
+    /// ICY "Artist - Title" parsed from the in-stream metadata (nil while
     /// the stream sent nothing yet).
     var icyNowPlaying: (title: String, artist: String?)? {
         icyStreamTitle.flatMap { ICYMetadata.parse(streamTitle: $0) }
@@ -53,15 +53,15 @@ extension PlayerViewModel {
         return icy.title
     }
 
-    /// X14: the large title = the work (book/episode title; the SONG title for
+    /// The large title = the work (book/episode title; the SONG title for
     /// music). One derivation for the full player, lock screen and CarPlay —
     /// never empty.
     var nowPlayingTitle: String {
-        // F2: live radio — the ICY song title when the stream ships one,
+        // Live radio — the ICY song title when the stream ships one,
         // otherwise the station name.
         if isLiveStream {
             if let icy = icyNowPlaying { return icy.title }
-            return stationName   // 71b277f: trimmed everywhere (one derivation)
+            return stationName   // Trimmed everywhere (one derivation)
         }
         return NowPlayingPresentation.title(
             isMusic: isMusicItem,
@@ -75,7 +75,7 @@ extension PlayerViewModel {
     /// author (a fallback marker is never a chapter name → suppressed). The full
     /// player uses its own richer line (it also surfaces the fallback marker).
     var nowPlayingSubtitle: String? {
-        // F2: live radio — artist from ICY; with a song title showing, the
+        // Live radio — artist from ICY; with a song title showing, the
         // station name moves to the subtitle slot.
         if isLiveStream {
             if let icy = icyNowPlaying {
@@ -180,7 +180,7 @@ extension PlayerViewModel {
     }
 
     func updateNowPlayingInfo() {
-        // F2: live streams have nothing to skip into — lock-screen/headset
+        // Live streams have nothing to skip into — lock-screen/headset
         // skip gestures are DISABLED for radio (re-enabled on the next
         // regular item; this runs on every item switch). Position/rate
         // commands are never registered, and the live flag below removes the
@@ -200,7 +200,7 @@ extension PlayerViewModel {
         info[MPMediaItemPropertyTitle] = nowPlayingTitle
         info[MPMediaItemPropertyArtist] = nowPlayingSubtitle ?? ""
         if isLiveStream {
-            // F2: the system live treatment (no scrubber, "LIVE" pill on the
+            // The system live treatment (no scrubber, "LIVE" pill on the
             // lock screen) — duration/elapsed stay out.
             info[MPNowPlayingInfoPropertyIsLiveStream] = true
             info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0
@@ -231,7 +231,7 @@ extension PlayerViewModel {
     }
 
     func loadArtwork(coverURL: URL?) {
-        // cd5cc4a (1): radio favicons pass the same quality gate as the
+        // Radio favicons pass the same quality gate as the
         // in-app tiles; missing/broken/tiny → the SAME deterministic
         // gradient+initials placeholder — one design through to the lock
         // screen and CarPlay.
@@ -256,7 +256,7 @@ extension PlayerViewModel {
             await MainActor.run {
                 self?.artworkImage = image
                 self?.updateNowPlayingInfo()
-                // X9/V8: write the RELIABLY-loaded cover to the shared app-group
+                // Write the RELIABLY-loaded cover to the shared app-group
                 // file the home widget reads, then refresh it. The old path wrote
                 // only from ImageCache.thumbnail, which is typically still empty
                 // right after an item change (auto-continue) — so the widget

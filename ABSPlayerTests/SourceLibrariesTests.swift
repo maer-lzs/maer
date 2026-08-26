@@ -20,7 +20,7 @@ struct SourceLibrariesTests {
     private let two = [SourceLibrary(id: "1", name: "Musik"),
                        SourceLibrary(id: "2", name: "Hoerbuecher")]
 
-    // MARK: - Auflage 3: ein Modus, ein Verhalten wie heute
+    // MARK: - Ein Modus, ein Verhalten wie heute
 
     @Test("ein Modus fragt die Bibliotheksliste gar nicht erst")
     func oneModeIgnoresLibraries() {
@@ -44,7 +44,7 @@ struct SourceLibrariesTests {
                                         assignment: SourceLibraryAssignment()))
     }
 
-    // MARK: - Auflage 2: G8 bleibt hart
+    // MARK: - Das Tor bleibt hart
 
     @Test("zwei Modi ohne Zuordnung bedienen NICHTS — kein leerer Tab")
     func twoModesWithoutAssignmentServeNothing() {
@@ -108,13 +108,11 @@ struct SourceLibrariesTests {
 
     // MARK: - Der Uebergang, nicht der Endzustand
 
-    /// Der teuerste Fehler dieses Zuges, gefunden bevor er ausgeliefert war:
-    /// die Verbindung und die Belieferung eines Tabs sind ZWEI Fragen. Haengt
-    /// die Verbindung an der zweiten, dann sperrt das Einschalten des zweiten
-    /// Modus die Quelle aus ihrer eigenen Einrichtung aus — nichts zugeordnet
-    /// heisst „bedient nichts" heisst „kein Client" heisst „Bibliotheksliste
-    /// nie abrufbar". Ein Endzustands-Test sieht das nie; der Uebergang ist
-    /// der Fall.
+    /// Die Verbindung und die Belieferung eines Tabs sind ZWEI Fragen.
+    /// Haengt die Verbindung an der zweiten, dann sperrt das Einschalten des
+    /// zweiten Modus die Quelle aus ihrer eigenen Einrichtung aus: nichts
+    /// zugeordnet heisst kein Client heisst Bibliotheksliste nie abrufbar.
+    /// Ein Endzustands-Test sieht das nie; der Uebergang ist der Fall.
     @Test("zweiter Modus an: die Verbindung bleibt, die Tabs bleiben aus")
     func switchingOnTheSecondModeKeepsTheConnection() {
         let tabs: Set<MediaType> = [.music, .audiobooks]
@@ -142,7 +140,7 @@ struct SourceLibrariesTests {
                 "ein abgeschalteter Tab von zweien laesst die Quelle leben")
     }
 
-    // MARK: - Auflage 1: die Migration ist keine
+    // MARK: - Die Migration ist keine
 
     @Test("das Paar liest den Altbestand, ohne etwas zu schreiben")
     func pairReadsLegacyStockWithoutWriting() {
@@ -154,7 +152,7 @@ struct SourceLibrariesTests {
 
         // Genau die Praesenz-Pruefung, die die Ablage fuehrt: ein nie
         // geschriebener Schluessel antwortet false, und zweimal false hiesse
-        // „speist nichts" — das stille Gegenteil des gespeicherten Wunsches.
+        // speist nichts — das stille Gegenteil des gespeicherten Wunsches.
         let pairWasWritten = suite.object(forKey: AppStorageKeys.subsonicServesMusicKey) != nil
             || suite.object(forKey: AppStorageKeys.subsonicServesAudiobooksKey) != nil
         #expect(!pairWasWritten)
@@ -173,7 +171,8 @@ struct SourceLibrariesTests {
     func writtenPairWinsOverLegacy() {
         let suite = UserDefaults(suiteName: "source-libraries-\(UUID().uuidString)")!
         defer { suite.removeSuite(named: suite.description) }
-        // Alt-Wert sagt „Musik", das Paar sagt „nichts" — und das Paar gewinnt,
+        // Der Alt-Wert nennt einen Modus, das Paar nennt keinen — und das
+        // Paar gewinnt,
         // sonst speist der Server weiter den Musik-Tab.
         suite.set("music", forKey: AppStorageKeys.subsonicContentType)
         suite.set(false, forKey: AppStorageKeys.subsonicServesMusicKey)

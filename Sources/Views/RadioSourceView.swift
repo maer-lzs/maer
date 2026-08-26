@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// F1/F4: the radio source page — the shared source pattern (Etappe E):
+/// The radio source page — the shared source pattern (Etappe E):
 /// toggle + the manual stream list (name + URL). The catalog needs no
 /// account: Radio Browser is an open, key-free community directory.
 struct RadioSourceView: View {
@@ -21,7 +21,7 @@ struct RadioSourceView: View {
                 AppSwitch("Show Radio tab", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("radio-tab-toggle")
-                    // Y37 pattern: the toggle acts immediately, the tab bar
+                    // The toggle acts immediately, the tab bar
                     // reacts live in both directions.
                     .onChange(of: enabled) { _, _ in
                         AppSession.shared.notifySourcesChanged()

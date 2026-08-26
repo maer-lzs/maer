@@ -131,7 +131,7 @@ struct FullPlayerOverlay: View {
             .accessibilityAddTraits(.isButton)
     }
 
-    /// S13: a continuous full-height swipe strip along EACH screen edge, so
+    /// A continuous full-height swipe strip along EACH screen edge, so
     /// drag-to-dismiss works from anywhere on the sides — symmetric left/right.
     /// The strips are narrow (`sideStripWidth`) and the scrubber is inset past
     /// them (PlayerView), so they sit entirely in the outer margin, spatially

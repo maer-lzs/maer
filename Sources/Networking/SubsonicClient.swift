@@ -18,7 +18,7 @@ struct SubsonicClient {
     private let password: String
 
     /// API version we speak and a stable client name (both required by the API).
-    /// Booksonic compat (170ff18): the version NEGOTIATES — Booksonic-Air
+    /// Booksonic compat: the version NEGOTIATES — Booksonic-Air
     /// answers 1.16.1 with error 30 on EVERY call; on that error we retry
     /// once with the fallback and persist the choice per server host.
     private static let preferredVersion = "1.16.1"
@@ -102,7 +102,7 @@ struct SubsonicClient {
 
     private func get(_ endpoint: String, _ params: [String: String] = [:],
                      extraItems: [URLQueryItem] = []) async throws -> SubsonicBody {
-        // Y39: retry parity with the ABS client — transient failures and the
+        // Retry parity with the ABS client — transient failures and the
         // 401 probe run INSIDE the shared policy fetch; on top the Subsonic
         // specialty: auth errors arrive as API code 40/41 in a 200 envelope,
         // so those get the SAME single probe before they count.
@@ -234,12 +234,12 @@ struct SubsonicClient {
         return body.searchResult3?.song ?? []
     }
 
-    /// M3: server genres with song/album counters (getGenres).
+    /// Server genres with song/album counters (getGenres).
     func genres() async throws -> [SubsonicGenre] {
         try await get("getGenres").genres?.genre ?? []
     }
 
-    /// M3: albums of ONE genre (getAlbumList2 type=byGenre).
+    /// Albums of ONE genre (getAlbumList2 type=byGenre).
     func albumsByGenre(genre: String, size: Int = 100, offset: Int = 0,
                        musicFolderIds: [String] = []) async throws -> [SubsonicAlbum] {
         try await merging(musicFolderIds) { folderId in
@@ -250,7 +250,7 @@ struct SubsonicClient {
         }
     }
 
-    /// M3: songs of ONE genre, paged (getSongsByGenre).
+    /// Songs of ONE genre, paged (getSongsByGenre).
     func songsByGenre(genre: String, count: Int, offset: Int,
                       musicFolderIds: [String] = []) async throws -> [SubsonicSong] {
         try await merging(musicFolderIds) { folderId in
@@ -296,7 +296,7 @@ struct SubsonicClient {
         try await get("getPlaylist", ["id": id]).playlist
     }
 
-    /// F5: create a server playlist. Newer servers echo the created playlist
+    /// Create a server playlist. Newer servers echo the created playlist
     /// (with its id) in the response; older ones return an empty body.
     func createPlaylist(name: String) async throws -> SubsonicPlaylist? {
         try await get("createPlaylist", ["name": name]).playlist

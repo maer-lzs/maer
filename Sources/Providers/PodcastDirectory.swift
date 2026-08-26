@@ -28,7 +28,7 @@ protocol PodcastDirectory {
     func search(_ term: String) async throws -> [PodcastSearchResult]
 }
 
-/// M5: curated podcast genres for the search browse chips. Charts come from
+/// Curated podcast genres for the search browse chips. Charts come from
 /// the KEYLESS iTunes genre charts (works regardless of which directory the
 /// user configured for text search — honest capability: always available).
 nonisolated struct PodcastGenre: Identifiable, Equatable {
@@ -51,7 +51,7 @@ nonisolated enum PodcastGenres {
         PodcastGenre(itunesGenreId: 1533, title: String(localized: "Science"), systemImage: "atom"),
         PodcastGenre(itunesGenreId: 1487, title: String(localized: "History"), systemImage: "building.columns"),
         PodcastGenre(itunesGenreId: 1304, title: String(localized: "Education"), systemImage: "graduationcap"),
-        // dd26a3c: Fiction plus its SUB-genres. Apple keeps radio plays apart
+        // Fiction plus its SUB-genres. Apple keeps radio plays apart
         // from the parent chart — the ARD Radio Tatort tops "Drama" and never
         // appears under "Fiction" alone. Measured on the DE storefront, so the
         // curated Hörspiel list stays a small socket instead of growing into a
@@ -66,7 +66,7 @@ nonisolated enum PodcastGenres {
 // MARK: - iTunes / Apple (no key)
 
 /// Apple's podcast search — keyless, returns the feed URL directly.
-/// The ONE place that answers which directory may be asked (feb46bb): the
+/// The ONE place that answers which directory may be asked: the
 /// Apple switch is a hard no-request gate, PodcastIndex takes over where it
 /// is configured, and "nobody" is an honest answer — the surfaces then show
 /// only what needs no directory.
@@ -94,12 +94,11 @@ struct ITunesDirectory: PodcastDirectory {
             let artworkUrl600: String?
             let artworkUrl100: String?
             let feedUrl: String?
-            /// L2 (09.08.): Apple's FORM categories — the same lever the
-            /// chart decision rested on (Drama 1484/Fiction are form-based,
-            /// „Books" 1482 is topic-based). The OERR rule needs them,
-            /// because a sender rule alone puts the broadcaster's NEWS into
-            /// a radio-play row (measured: ABC Sport, Checkpoint, Front
-            /// Burner all pass a sender-only rule).
+            /// The FORM categories — the same lever the chart rows rest on
+            /// (Drama 1484 and Fiction are form-based, `Books` 1482 is
+            /// topic-based). The public-broadcast rule needs them, because a
+            /// sender rule alone puts the broadcaster's NEWS into a
+            /// radio-play row (measured on sport and news shows).
             let genres: [String]?
         }
         let results: [Item]
@@ -112,14 +111,14 @@ struct ITunesDirectory: PodcastDirectory {
     /// X²·3: the OERR live rule searches per broadcaster STOREFRONT — an
     /// explicit country overrides the suggestion-language default.
     func search(_ term: String, country: String?) async throws -> [PodcastSearchResult] {
-        // aa18a0f: the no-request gate sits AT the URL builders, not only at
+        // The no-request gate sits AT the URL builders, not only at
         // the selection — a future call site cannot slip past it. The import
         // never runs through here (MTLibrary is local and carries the feed
         // URLs); the lookup below is part of the CHART path, its only caller
         // is topPodcasts (measured).
         guard AppStorageKeys.appleCatalogEnabledValue else { return [] }
         var components = URLComponents(string: "https://itunes.apple.com/search")!
-        // f79c40c: the FIRST selected suggestion language sets the search
+        // The FIRST selected suggestion language sets the search
         // storefront (a per-keystroke multi-storefront fan-out would be
         // wasteful — honest simplification, reported; charts DO interleave).
         let storefront = country ?? SuggestionLanguages.storefront(
@@ -148,10 +147,10 @@ struct ITunesDirectory: PodcastDirectory {
         return URL(string: "https://itunes.apple.com/\(storefront)/rss/toppodcasts/limit=\(limit)\(genrePart)/json")
     }
 
-    /// M5 + f79c40c: the top chart narrowed to ONE genre (nil = all), results
+    /// The top chart narrowed to ONE genre (nil = all), results
     /// fairly interleaved and deduped by feed.
     ///
-    /// 757e2eb: a language now spans SEVERAL storefronts (English deviates by
+    /// A language now spans SEVERAL storefronts (English deviates by
     /// up to 56 % between US and NZ), rotating per day so the request count
     /// stays flat while the variety arrives over the week. Each storefront is
     /// its own interleave lane — that way one market cannot dominate the row.

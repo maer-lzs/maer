@@ -28,16 +28,16 @@ struct PlayerView: View {
     @State private var showBookmarks = false
     /// Up-Next home at the player: the global queue opens as a sheet from here.
     @State private var showQueue = false
-    /// M4: lyrics of the CURRENT song (nil = none/still loading) + panel state.
+    /// Lyrics of the CURRENT song (nil = none/still loading) + panel state.
     @State private var songLyrics: SongLyrics?
     @AppStorage(AppStorageKeys.musicLyricsOnlineLookup) private var lyricsOnline = true
     @State private var showLyrics = false
-    /// V7: transcript of the CURRENT episode (nil = no tag/unparseable).
+    /// Transcript of the CURRENT episode (nil = no tag/unparseable).
     @State private var transcript: SongLyrics?
     @State private var showTranscript = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.verticalSizeClass) private var verticalSizeClass
-    /// D2/B2: at accessibility sizes the fixed-spacing control rows used to
+    /// At accessibility sizes the fixed-spacing control rows used to
     /// overflow the screen horizontally — spacing shrinks and the secondary/
     /// tertiary rows fall back to a two-column grid (ViewThatFits).
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -122,12 +122,12 @@ struct PlayerView: View {
         .foregroundStyle(.white)
         .tint(.white)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
-        // M4: fetch lyrics per song change (cached; nil hides the button).
-        // e3dabb3: the task id carries the opt-out — a flip re-evaluates
+        // Fetch lyrics per song change (cached; nil hides the button).
+        // The task id carries the opt-out — a flip re-evaluates
         // IMMEDIATELY (off drops cached web lyrics, no app restart).
         .task(id: "\(viewModel.currentMusicSong?.id ?? "-")-\(lyricsOnline)") {
             #if DEBUG
-            // 84acc50: harness hook — force the FULL six-item extras row
+            // Harness hook — force the FULL six-item extras row
             // (lyrics+transcript present) for the German-overflow screenshot.
             if ProcessInfo.processInfo.arguments.contains("-uitest-fullrow") {
                 let dummy = SongLyrics(synced: false, lines: [LyricsLine(start: nil, text: "-")])
@@ -145,7 +145,7 @@ struct PlayerView: View {
                 LyricsPanel(lyrics: songLyrics, songStart: song.start, viewModel: viewModel)
             }
         }
-        // V7: the transcript panel IS the lyrics panel (episode times are
+        // The transcript panel IS the lyrics panel (episode times are
         // absolute → songStart 0); entry exists only with a parsed transcript.
         .sheet(isPresented: $showTranscript) {
             if let transcript {
@@ -257,7 +257,7 @@ struct PlayerView: View {
                         .resizable().aspectRatio(1, contentMode: .fit)
                         .transition(.opacity)
                 } else {
-                    // Y58: radio — never upscale a low-res favicon fullscreen. A
+                    // Radio — never upscale a low-res favicon fullscreen. A
                     // station-color field carries a small, sharp logo (or the SF
                     // symbol). Shared with the station rows via `RadioArtwork`.
                     RadioArtwork(stationID: viewModel.item?.id ?? "",
@@ -280,7 +280,7 @@ struct PlayerView: View {
         .frame(maxWidth: 300)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(radius: 12, y: 6)
-        // S9: horizontal swipe on the cover = previous/next chapter. For music
+        // Horizontal swipe on the cover = previous/next chapter. For music
         // each song is a chapter, so this is prev/next track. `simultaneous` so
         // it never blocks vertical scroll or the drag-to-dismiss; only a clearly
         // horizontal fling acts. No-op when the item has no chapters (guarded in
@@ -300,7 +300,7 @@ struct PlayerView: View {
         }
     }
 
-    /// S9: cover swipe → chapter/track navigation. Only a clearly horizontal
+    /// Cover swipe → chapter/track navigation. Only a clearly horizontal
     /// fling (dominant x, past a threshold) acts, so vertical scroll and the
     /// drag-to-dismiss stay untouched. Left = next, right = previous.
     private var chapterSwipeGesture: some Gesture {
@@ -316,15 +316,15 @@ struct PlayerView: View {
     private var chapterHeader: some View {
         VStack(spacing: 4) {
             if viewModel.isLiveStream {
-                // F2/ICY: radio shows the STATION as the big title, with the
+                // Radio shows the STATION as the big title, with the
                 // current ICY song underneath (in-app arrangement; the lock
                 // screen stays song-first per Apple's convention).
-                // 0aa18b7 ROOT CAUSE: this live branch rendered the station
-                // as PLAIN text — the V10 tappable title only lived in the
-                // else branch radio never reaches. Same wrapper now (G8:
-                // plain again when the station cannot be resolved).
+                // This live branch used to render the station as PLAIN text
+                // while the tappable title only lived in the else branch
+                // radio never reaches. Same wrapper now — plain again when
+                // the station cannot be resolved.
                 sourceTappable(target: titleTarget, a11yId: "player-source-title") {
-                    // 6b3a35d (4): pipe-junk trimmed for display everywhere.
+                    // Pipe-junk trimmed for display everywhere.
                     Text(RadioMapping.displayName(viewModel.stationName))
                         .font(.title3).bold()
                         .multilineTextAlignment(.center)
@@ -338,12 +338,12 @@ struct PlayerView: View {
                         .lineLimit(2)
                 }
             } else {
-            // X14: the WORK is the large title (shared derivation — book/episode
+            // The WORK is the large title (shared derivation — book/episode
             // title, the song title for music). It had silently vanished from the
             // player once T9d stopped baking the work title into the chapter
             // names ("Kapitel 71 – Armageddon …"); the player never had its own
             // title line, so only the cleaned chapter ("Teil 12") was left.
-            // 9aad53c: title/subtitle navigate to the source page (Apple-
+            // Title/subtitle navigate to the source page (Apple-
             // Media convention) — book title → book detail, podcast subtitle
             // → show page, music subtitle → album page. Plain text when no
             // target resolves (radio, unresolvable ids).
@@ -372,7 +372,7 @@ struct PlayerView: View {
             }
             if let chapter = viewModel.currentChapter {
                 // Chapter remaining + estimated finish time at current speed.
-                // X18: music has no "chapters" — drop the "in chapter" phrasing.
+                // Music has no "chapters" — drop the "in chapter" phrasing.
                 Text(viewModel.isMusicItem
                      ? "\(chapterRemainingMinutes(chapter)) min left · ends \(estimatedFinishTime())"
                      : "\(chapterRemainingMinutes(chapter)) min left in chapter · ends \(estimatedFinishTime())")
@@ -385,10 +385,10 @@ struct PlayerView: View {
         .padding(.horizontal)
     }
 
-    /// X14: the line under the work title in the full player. For music the
+    /// The line under the work title in the full player. For music the
     /// artist (the song is the title); for a fallback book the part/time marker
     /// (which the lock screen deliberately hides); otherwise "chapter · author".
-    // MARK: - 9aad53c source navigation
+    // MARK: - Source navigation
 
     /// Gate 2: taps go through the ONE central router (environment wiring
     /// was fragile across presentation contexts — silent no-op on device).
@@ -406,9 +406,9 @@ struct PlayerView: View {
     @ViewBuilder
     private func sourceTappable(target: PlayerSourceTarget?, a11yId: String,
                                 @ViewBuilder content: () -> some View) -> some View {
-        // G8: only offer the tap affordance when a route can actually be
+        // Only offer the tap affordance when a route can actually be
         // taken — no target OR no registered router handler renders PLAIN.
-        // ccc41d5: a subtle chevron marks the navigable line (discoverability
+        // A subtle chevron marks the navigable line (discoverability
         // after the device-confirmed Gate 2); it exists ONLY together with
         // the resolvable target — the same G8 condition, one branch.
         if let target, PlayerSourceRouter.shared.canRoute {
@@ -461,7 +461,7 @@ struct PlayerView: View {
         // A catalogue item has its own page; without this it fell into the
         // book branch and opened an empty audiobook detail.
         if PlayerSourceTargets.isCatalog(id) { return .catalogAlbum(itemId: id) }
-        // G8: no target means no menu entry — and the reason is logged rather
+        // No target means no menu entry — and the reason is logged rather
         // than swallowed, so an unknown namespace surfaces instead of hiding.
         if MediaFamily.of(id) == .unknown {
             Logger.library.error("PLAYERSOURCE no target for unknown id family: \(id, privacy: .public)")
@@ -532,7 +532,7 @@ struct PlayerView: View {
         return station
     }
 
-    /// F2: live radio — no scrubber, no duration; a LIVE mark plus the
+    /// Live radio — no scrubber, no duration; a LIVE mark plus the
     /// elapsed listening time (the only honest number for a stream). Teil 1: a
     /// quality menu appears when the station ships codec/bitrate variants.
     private var liveRow: some View {
@@ -621,13 +621,13 @@ struct PlayerView: View {
             }
             .monospacedDigit()
             .font(.caption)
-            // D2: long durations ("-4:50:22") clipped at the right edge at
+            // Long durations ("-4:50:22") clipped at the right edge at
             // accessibility sizes — scale down instead of overflowing.
             .lineLimit(1)
             .minimumScaleFactor(0.5)
             .foregroundStyle(.white.opacity(0.8))
         }
-        // S13: extra horizontal inset (16 → 24, on top of the content's 16) so
+        // Extra horizontal inset (16 → 24, on top of the content's 16) so
         // the slider track — and the thumb at position 0/1 — sits clear of the
         // 20pt full-height edge dismiss strips. The transport/chapter buttons are
         // centered and already well inside; only the full-width slider needed it.
@@ -637,7 +637,7 @@ struct PlayerView: View {
     @ViewBuilder
     private var transportControls: some View {
         if viewModel.isLiveStream {
-            // F2: live — play/pause is the whole transport.
+            // Live — play/pause is the whole transport.
             Button { viewModel.togglePlayPause() } label: {
                 Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .font(.system(size: 68))
@@ -650,7 +650,7 @@ struct PlayerView: View {
 
     private var fullTransportControls: some View {
         let skip = Int(viewModel.skipInterval)
-        // D2: `.title`-scaled icons at AX sizes pushed the row past the screen
+        // `.title`-scaled icons at AX sizes pushed the row past the screen
         // edge — tighter spacing and a capped type size keep all five controls
         // on screen (375pt worst case); the play glyph is fixed-size anyway.
         return HStack(spacing: isAccessibilitySize ? 12 : 24) {
@@ -689,13 +689,13 @@ struct PlayerView: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
     }
 
-    /// D2: one horizontal row while it fits; at accessibility sizes the four
+    /// One horizontal row while it fits; at accessibility sizes the four
     /// controls fall back to a leading-aligned two-column grid instead of
     /// clipping past the screen edge.
     @ViewBuilder
     private var secondaryControls: some View {
         if viewModel.isLiveStream {
-            // F2: no speed, no chapters, no skip interval for live audio —
+            // No speed, no chapters, no skip interval for live audio —
             // the sleep timer stays (clock-based options only; the chapter/
             // track-end options gate themselves out without chapters).
             HStack(spacing: 32) {
@@ -708,13 +708,13 @@ struct PlayerView: View {
         }
     }
 
-    /// d0dc536: G8 rule for row 2 — no chapters/parts ⇒ NO chapters button
+    /// G8 rule for row 2 — no chapters/parts ⇒ NO chapters button
     /// (a disabled ghost was a broken promise); the row closes up. Speed/
     /// skip/sleep are universal and stay.
     private var hasChapterEntry: Bool { !viewModel.chapters.isEmpty }
 
     private var regularSecondaryControls: some View {
-        // 4b2f7a8/e0a0788: MeasuredFits, not ViewThatFits — these controls
+        // MeasuredFits, not ViewThatFits — these controls
         // carry live viewModel bindings, and ViewThatFits would evaluate
         // their bodies on the AsyncRenderer (the tab-bar crash, same bomb).
         MeasuredFits {
@@ -760,7 +760,7 @@ struct PlayerView: View {
 
     private var chaptersControl: some View {
             Button { showChapters = true } label: {
-                // X18/X23: shared selector label — tracks for music, parts for a
+                // Shared selector label — tracks for music, parts for a
                 // fallback book, chapters otherwise.
                 Label(ChapterModel.selectorLabel(isMusic: viewModel.isMusicItem,
                                                  isFallback: viewModel.chaptersAreFallback),
@@ -785,7 +785,7 @@ struct PlayerView: View {
                         viewModel.startSleepTimer(minutes: minutes)
                     }
                 }
-                // X18: music has no "chapter" boundary — "Until End of Track"
+                // Music has no "chapter" boundary — "Until End of Track"
                 // (below) is the song boundary, so skip the chapter option.
                 if !viewModel.chapters.isEmpty && !viewModel.isMusicItem {
                     Button("Until End of Chapter") {
@@ -816,19 +816,19 @@ struct PlayerView: View {
 
     /// Variant A for ALL media types —
     /// Extras-Reihe (Up Next · Lesezeichen · Lyrics [Musik] · Transcript
-    /// [Podcast] · „…"-Mehr-Menü mit Fahrmodus + Als gehört) und AirPlay
-    /// SOLO mittig darunter (Apple-Position). Radio läuft über dieselbe
-    /// Struktur (weniger Einträge, AirPlay mittig passt überall). D2: bei
-    /// AX-Größen fällt die Extras-Reihe in ein 2-Spalten-Grid.
-    /// 84acc50: drive mode + mark-finished moved OUT of the "…" menu into
+    /// [Podcast] · Mehr-Menü mit Fahrmodus + Als gehört) und AirPlay
+    /// SOLO mittig darunter. Radio läuft über dieselbe Struktur (weniger
+    /// Einträge, AirPlay mittig passt überall); bei AX-Größen fällt die
+    /// Extras-Reihe in ein 2-Spalten-Grid.
+    /// Drive mode + mark-finished moved OUT of the "…" menu into
     /// the row — the menu emptied and is GONE. Overflow (the German-labels
     /// worst case with a full six-item row): ViewThatFits tries the labeled
     /// row first; when it cannot fit, the SAME buttons render icon-only
     /// (a11y labels intact) — never the jagged two-column grid again. With
-    /// G8-gated entries missing (no lyrics/transcript), labels usually fit.
+    /// gated entries missing (no lyrics/transcript), labels usually fit.
     private var tertiaryControls: some View {
         VStack(spacing: 18) {
-            // 4b2f7a8/e0a0788: MeasuredFits, not ViewThatFits — same bomb as
+            // MeasuredFits, not ViewThatFits — same bomb as
             // the secondary row, same cure.
             MeasuredFits {
                 HStack(spacing: 36) {
@@ -858,11 +858,10 @@ struct PlayerView: View {
         catalogSourceControl
     }
 
-    /// ERWEITERUNG 7baf2c2, Punkt 1: „Wenn ich einen Song höre, will ich ihn
-    /// in eine Playliste tun, wenn er gut ist." Der Player war die Fläche mit
-    /// dem stärksten Anlass und der schwächsten Ausstattung — hier gab es
-    /// weder Warteschlangen- noch Playlist-Aktion. Beides kommt aus DERSELBEN
-    /// geteilten Komponente wie überall sonst (Regel 2).
+    /// Der Player war die Fläche mit dem stärksten Anlass, einen laufenden
+    /// Titel in eine Playliste zu legen, und der schwächsten Ausstattung —
+    /// hier gab es weder Warteschlangen- noch Playlist-Aktion. Beides kommt
+    /// aus DERSELBEN geteilten Komponente wie überall sonst.
     @ViewBuilder
     private var playlistControl: some View {
         if let id = viewModel.item?.id {
@@ -884,7 +883,7 @@ struct PlayerView: View {
         .accessibilityIdentifier("player-drive-mode")
     }
 
-    /// M1-Auflage (09.08.): seit die Musik-Katalog-Kacheln beim Tap SPIELEN,
+    /// Seit die Musik-Katalog-Kacheln beim Tap SPIELEN,
     /// ueberspringt der Weg das Detail-Sheet — und dort stand die
     /// ToS-Pflichtangabe von Jamendo (Kuenstler, Anbieter, Rueckverweis).
     /// Der Player traegt sie jetzt selbst: Lizenz/Quelle sichtbar, Link zur
@@ -915,11 +914,11 @@ struct PlayerView: View {
     }
 
     private var markFinishedControl: some View {
-        // GT 09.08.: im Player ist das markierte Element per Definition das
-        // laufende — „gehoert" muss es also anhalten (X16c). `toggleFinished`
-        // allein kippt nur die Marke. Richtung ZUERST lesen, danach hat sie
-        // sich schon gedreht; „ungehoert" bleibt folgenlos (Position und
-        // Wiedergabe unveraendert, Auflage 3).
+        // Im Player ist das markierte Element per Definition das laufende —
+        // als gehoert zu markieren haelt es also an. `toggleFinished` allein
+        // kippt nur die Marke. Richtung ZUERST lesen, danach hat sie sich
+        // schon gedreht; die Gegenrichtung bleibt folgenlos, Position und
+        // Wiedergabe unveraendert.
         Button {
             Task {
                 let wasFinished = viewModel.isFinished
@@ -936,7 +935,7 @@ struct PlayerView: View {
         .accessibilityIdentifier("player-mark-finished")
     }
 
-    /// V7: transcript — podcast episodes only, and only when the feed's
+    /// Transcript — podcast episodes only, and only when the feed's
     /// `podcast:transcript` actually parsed (no tag → no entry, silently).
     @ViewBuilder
     private var transcriptControl: some View {
@@ -964,7 +963,7 @@ struct PlayerView: View {
             .frame(width: 44, height: 44)
     }
 
-    /// M4: lyrics — music items only, and only when lyrics exist for the
+    /// Lyrics — music items only, and only when lyrics exist for the
     /// current song (server-first, LRCLIB fallback).
     @ViewBuilder
     private var lyricsControl: some View {
@@ -994,7 +993,7 @@ struct PlayerView: View {
         guard let current = viewModel.currentChapter,
               let idx = viewModel.chapters.firstIndex(of: current) else { return "" }
         let count = viewModel.chapters.count
-        // X18: music counts tracks, not chapters.
+        // Music counts tracks, not chapters.
         return viewModel.isMusicItem
             ? String(localized: "Track \(idx + 1) of \(count)")
             : String(localized: "Chapter \(idx + 1) of \(count)")

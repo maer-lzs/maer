@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// O-P1/O-P3 (09.08.): the OTR title family. Every case below is a REAL name
+/// The OTR title family. Every case below is a REAL name
 /// measured at archive.org across eight collections on 09.08. — the patterns
 /// differ per series, which is exactly why the rule is conservative.
 struct OTRTitleTests {
@@ -57,8 +57,8 @@ struct OTRTitleTests {
     @Test("O-P2: the description's repeated heading and its hole are gone")
     func descriptionHeadingAndHole() {
         // The real shape (measured): a centred heading repeating the title,
-        // then blank lines, then the text. Author is „Old Time Radio
-        // Researchers Group" — so this is NOT the author line.
+        // then blank lines, then the text. The author field carries the
+        // uploading group — so this is NOT the author line.
         let text = "YOURS TRULY, JOHNNY DOLLAR\n\n\nFor over twelve years, from 1949 …"
         let tidied = FreeCatalog.tidiedDescription(text, title: "Yours Truly, Johnny Dollar - Single Episodes")
         #expect(tidied.hasPrefix("For over twelve years"))

@@ -21,7 +21,7 @@ struct GPodderSettingsView: View {
     @State private var isSyncing = false
     @State private var statusMessage: String?
     @State private var statusIsError = false
-    // S20: last sync outcome, persisted across restarts (sticky guard warning).
+    // Last sync outcome, persisted across restarts (sticky guard warning).
     @State private var storedReport = GPodderSync.shared.storedReport
 
     var body: some View {
@@ -61,7 +61,7 @@ struct GPodderSettingsView: View {
                     isTesting = true
                     Task {
                         let err = await GPodderSync.shared.testConnection()
-                        // d990695: only a WORKING address is remembered.
+                        // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .gpodder) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
@@ -95,7 +95,7 @@ struct GPodderSettingsView: View {
                 }
             }
 
-            // S20: persisted last-sync outcome — survives an app restart, and
+            // Persisted last-sync outcome — survives an app restart, and
             // the mass-delete guard warning stays until the next clean sync.
             if let stored = storedReport {
                 Section {
@@ -140,7 +140,7 @@ struct GPodderSettingsView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
-        // Y26/Y38 parity: the mask always prefills the LAST stored state —
+        // The mask always prefills the LAST stored state —
         // also refills fields the early @State init may have read empty.
         .onAppear {
             if serverURL.isEmpty { serverURL = AppStorageKeys.gpodderServerURLValue }

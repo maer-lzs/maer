@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// X1c (Regel 2): THE latest-episodes grid — identical on Home and the
+/// X1c: THE latest-episodes grid — identical on Home and the
 /// podcast tab. Two rows collapsed / up to six expanded (inline, not
 /// persisted), columns adaptive by width (iPhone 3, small iPad 4, large
 /// iPad 5). Tiles are the shared `MediaTile` with the show cover as the
@@ -17,12 +17,12 @@ struct LatestEpisodesGrid: View {
     let items: [LibraryItem]
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @Environment(\.pushPodcastRoute) private var pushRoute
-    /// A3: connectivity/download flips must re-render the badge state.
-    // Front 2 fix 2: NO grid-level store observing — a download progress tick
-    // used to re-render all ~30 tiles on TWO mounted tabs. Availability is
-    // resolved per tile by the shared MediaAvailabilityScope (TF4/E1 pattern).
-    /// Welle 3b: the full page reuses THIS grid without the row cap —
-    /// Regel 2, one grid, two cuts.
+    /// Connectivity/download flips must re-render the badge state.
+    // NO grid-level store observing — a download progress tick used to
+    // re-render all ~30 tiles on TWO mounted tabs. Availability is resolved
+    // per tile by the shared MediaAvailabilityScope.
+    /// The full page reuses THIS grid without the row cap — one grid, two
+    /// cuts.
     var alwaysExpanded = false
     /// Y3a: 2 rows collapsed, up to 6 expanded — inline, not persisted.
     @State private var expanded = false
@@ -40,10 +40,10 @@ struct LatestEpisodesGrid: View {
         // items.count instead of Int.max: cols * rows must not overflow.
         let rows = alwaysExpanded ? max(items.count, 1) : (expanded ? 6 : 2)
         let shown = Array(items.prefix(cols * rows))
-        // Paket B: membership resolved ONCE per render (cell-cost rule),
+        // Membership resolved ONCE per render (cell-cost rule),
         // handed to the tiles as a value.
         let mirrored = PodcastSubscriptions.shared.mirroredEpisodeGuids()
-        // P13 (same cell-cost rule): the premium classification is a
+        // Same cell-cost rule: the premium classification is a
         // keychain/defaults lookup — resolved ONCE per render for the shown
         // episodes, handed to the tiles as a value. Starts "Latest Episodes"
         // was the one episode surface without the lock (measured).
@@ -77,7 +77,7 @@ struct LatestEpisodesGrid: View {
             // so a withAnimation transaction there gives the identical curve in
             // both directions (Y45's goal) without the per-frame tracking.
             // Curve unchanged: Y62 `.easeInOut(0.35)` (no overshoot on collapse).
-            // P11: the anatomy now lives in `ShowMoreRow` (Regel 2) — the
+            // The anatomy now lives in `ShowMoreRow` — the
             // trace finding above is preserved there, not restated here.
             if !alwaysExpanded {
                 ShowMoreRow(expanded: $expanded, hasMore: items.count > cols * 2,
@@ -100,13 +100,13 @@ struct LatestEpisodesGrid: View {
                 title: item.title,
                 coverURL: AppSession.shared.coverURL(forItemId: item.id),
                 cornerBadgeURL: showBadgeURL(for: item),
-                // Q7: the tile anchors the lock itself — on the cover, not
+                // The tile anchors the lock itself — on the cover, not
                 // over the title text (where the outer modifier put it).
                 isPremium: isPremium,
                 progress: episodeProgress(item),
                 unavailable: unavailable,
-                // Paket B: origin capsule for mirrored episodes (host-computed
-                // set, word is the carrier — a916a5a).
+                // Origin capsule for mirrored episodes (host-computed
+                // set, word is the carrier).
                 badgeText: mirrored.contains(item.id) ? "YouTube" : nil,
                 badgeSystemImage: mirrored.contains(item.id) ? "play.rectangle" : nil,
                 onTap: { pushRoute(.episode(itemId: item.id)) }

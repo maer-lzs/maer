@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// 🟡 P7: the answer to "source instead of start". A composed surface waits
+/// 🟡 The answer to "source instead of start". A composed surface waits
 /// for its sources — but it must never wait WITHOUT END on one of them. A
 /// homeserver that is down (or a reverse proxy still coming up) answers
 /// slowly rather than at all, and the old serial chain in `HomeView.compute`

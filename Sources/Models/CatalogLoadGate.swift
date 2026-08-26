@@ -51,12 +51,10 @@ nonisolated struct CatalogLoadGate: Equatable, Sendable {
     /// network came back.
     mutating func reopen() { attempted = false }
 
-    /// R39: an INCOMPLETE pass (a cancelled step left a row unanswered) is not
+    /// An INCOMPLETE pass (a cancelled step left a row unanswered) is not
     /// an attempt that may close the session. Without this the gate held the
     /// door shut although `loaded` was false: reading surfaces asked, the gate
-    /// said "already tried", and the rows stayed empty until relaunch — the
-    /// visible half of the R34 class that the `loaded` fix alone did not
-    /// cover.
+    /// said "already tried", and the rows stayed empty until relaunch.
     ///
     /// Bounded on purpose: the gate exists because an empty pass that reopens
     /// itself feeds a render loop (the 100 %-CPU wedge). A few retries heal a

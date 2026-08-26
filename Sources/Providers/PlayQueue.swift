@@ -76,13 +76,13 @@ final class PlayQueue: ObservableObject {
 
     /// To the very front (play next). Any existing occurrence (incl. a twin) is
     /// pulled to the front rather than duplicated.
-    /// F3 (decided): radio stations NEVER enter the queue — play only
+    /// Radio stations NEVER enter the queue — play only
     /// replaces the active playback. Pure rule, tested.
     nonisolated static func canEnqueue(_ id: String) -> Bool {
         !id.hasPrefix("radio:")
     }
 
-    /// R1 defensive gate: text-only rss episodes never enter the queue —
+    /// Text-only rss episodes never enter the queue —
     /// even if some future call site forgets its own gate.
     private func isQueueable(_ id: String) -> Bool {
         PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)

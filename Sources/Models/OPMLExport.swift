@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// a449534 point 5: subscriptions as an OPML document — the export
+/// Subscriptions as an OPML document — the export
 /// counterpart of the importer. Pure builder (tested); no network.
 nonisolated enum OPMLExport {
-    /// bb89772 SECURITY: premium/token feeds are EXCLUDED from the export by
-    /// default — a shared OPML must never give the access away. Detection:
-    /// the caller's premium marking (S22 management) PLUS the defensive
+    /// Premium/token feeds are EXCLUDED from the export by default — a
+    /// shared OPML must never give the access away. Detection: the caller's
+    /// premium marking PLUS the defensive
     /// secret-parameter net (token/freebie/auth/key/secret) as a second
     /// layer. Pure; the count feeds the visible hint.
     static func partition(shows: [(title: String, feedURL: String)],

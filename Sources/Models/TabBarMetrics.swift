@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 98c621f: the ONE capsule metric — the tab bar's active pill and the settings
+/// The ONE capsule metric — the tab bar's active pill and the settings
 /// tabs' chips share it. One value, one place, no two numbers that drift apart.
 ///
 /// What is deliberately NOT here any more: a computed label scale.
@@ -25,7 +25,7 @@ nonisolated enum TabBarMetrics {
         /// Unchanged on purpose: that width is exactly the room the longest
         /// title needs, and taking it would undo the other order.
         static let horizontalPadding: CGFloat = 8
-        /// The value before 98c621f, kept so the fence can state the change
+        /// The previous value, kept so the fence can state the change
         /// instead of describing it.
         static let previousVerticalPadding: CGFloat = 8
     }

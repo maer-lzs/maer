@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// R1/R2 (09.08.): the shelves ask the server, and one page shows a title once.
+/// The shelves ask the server, and one page shows a title once.
 struct CatalogShelfQueryTests {
     @Test("a shelf resolves to subject terms for the subject-based catalogs")
     func subjectsPerShelf() {
@@ -15,7 +15,7 @@ struct CatalogShelfQueryTests {
         #expect(CatalogGenreAxis.subjects(forShelf: "does-not-exist").isEmpty)
     }
 
-    /// BEFUND f220ecd (der Zaun dazu): jede Fläche derselben Quelle muss auf
+    /// Jede Fläche derselben Quelle muss auf
     /// DERSELBEN Basis stehen. Der Regal-Pfad hatte die Basis nachgebaut und
     /// dabei drei beschlossene Punkte verloren — Entdopplung, Lizenzklausel
     /// und (über `isCuratedArchiveDoc`) die Sperrliste.
@@ -24,11 +24,9 @@ struct CatalogShelfQueryTests {
         let books = try #require(ArchiveOrgClient.archiveBaseQuery(for: .archiveBooks))
         #expect(books.contains("NOT collection:librivoxaudio"),
                 "without it a shelf shows the LibriVox duplicates again (measured: 1.098 of 1.602)")
-        // R47 (the owner's ENTSCHEID): der Lizenzfilter ist vom ANZEIGE-Weg
-        // GEFALLEN — „auch die Sachen ohne Lizenzangabe mit reinnehmen, sie
-        // sind auf archive.org". Die Grenze sitzt jetzt am Kopieren
-        // (`mayDownload`), nicht am Zeigen; die fehlende Angabe ist an der
-        // Kachel SICHTBAR statt den Eintrag zu verschweigen.
+        // Der Lizenzfilter ist vom ANZEIGE-Weg gefallen: die Grenze sitzt am
+        // Kopieren (`mayDownload`), nicht am Zeigen, und die fehlende Angabe
+        // ist an der Kachel SICHTBAR statt den Eintrag zu verschweigen.
         #expect(!books.contains("licenseurl"),
                 "die Anzeige filtert wieder nach Lizenz")
         #expect(books.contains("mediatype:(audio)"),
@@ -49,7 +47,7 @@ struct CatalogShelfQueryTests {
 
     @Test("the denylist is one truth — it filters wherever we assemble the offer")
     func denylistCoversEveryArchiveSurface() {
-        // 893a7ea: same gate for row, trove, shelf and search. The pure
+        // Same gate for row, trove, shelf and search. The pure
         // predicate is the single place; this pins that a known excluded id
         // is recognised, so a surface that forgets to call it stands out in
         // review rather than in a device session.

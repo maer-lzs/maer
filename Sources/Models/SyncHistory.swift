@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// F9: one persisted sync run — the settings' "Sync History" list renders
+/// One persisted sync run — the settings' "Sync History" list renders
 /// these. Modeled future-proof: entries carry a stable id and a device id so a
 /// later stage can merge histories across devices (iCloud; Android via an
 /// alternative store) — deliberately NOT built now.
@@ -14,7 +14,7 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
         case gpodder
         case absProgress
         case iCloud
-        /// Y27: the music library refresh is a visible sync operation too.
+        /// The music library refresh is a visible sync operation too.
         case music
     }
 
@@ -46,7 +46,7 @@ nonisolated struct SyncHistoryEntry: Codable, Identifiable, Equatable {
     let counters: [Counter]
     /// Error in clear text — nil for a clean run.
     let error: String?
-    /// F9/S20: a tripped guard (mass-delete veto) becomes a PERMANENT marked
+    /// A tripped guard (mass-delete veto) becomes a PERMANENT marked
     /// entry instead of a transient warning.
     let guardNote: String?
     /// The exact feeds a sync removed (local unsubscribe or server drop), as

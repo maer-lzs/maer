@@ -337,7 +337,7 @@ final class UserChoiceCloudSync {
         // Scalar (static or dynamic-prefix) key.
         if key == AppStorageKeys.lastPlayedItemId, case .string(let id)? = entry.value,
            PlayerCoordinator.standbyCountsAsFinished(ListeningStore.mark(id, in: defaults)) {
-            // d7f12e1 A, applied to adoption: a pointer that is finished by
+            // Applied to adoption: a pointer that is finished by
             // local numbers is never adopted — and never stamps, so a later
             // un-finish re-offers it.
             return false

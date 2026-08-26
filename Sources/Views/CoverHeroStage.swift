@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// 8d54582: THE hero cover stage — the book-detail page's full-bleed cover
+/// THE hero cover stage — the book-detail page's full-bleed cover
 /// anatomy (image fills the stage frame, clipped), extracted so the drive
-/// mode reuses the SAME part instead of rebuilding it (Regel 2). The drive
+/// mode reuses the SAME part instead of rebuilding it. The drive
 /// mode additionally fades the stage's bottom edge into its background
 /// (`fadeTo`); the book page keeps its own gradient backdrop and passes nil.
 struct CoverHeroStage<CoverOverride: View>: View {
@@ -16,7 +16,7 @@ struct CoverHeroStage<CoverOverride: View>: View {
     /// Fade the BOTTOM edge into this color (nil = no fade — the host owns
     /// the backdrop, like the book detail).
     var fadeTo: Color? = nil
-    /// 6b3a35d: a caller-supplied cover view replacing the URL image (drive
+    /// A caller-supplied cover view replacing the URL image (drive
     /// mode passes `RadioArtwork` so the favicon gate + gradient/initials
     /// placeholder apply — the SAME chain as player/detail, no side path).
     /// Concrete generic, no AnyView (cell-cost rule).

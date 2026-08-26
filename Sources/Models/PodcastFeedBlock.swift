@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 6446a04: the IN-FEED signal for "do not list this publicly" — the
+/// The IN-FEED signal for "do not list this publicly" — the
 /// de-facto standard hosters set on private/premium feeds (Captivate,
 /// Megaphone, Acast document it as a required step), plus its Podcasting-2.0
 /// successor. Reading it replaces hand-marking for the whole class of

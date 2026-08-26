@@ -93,7 +93,7 @@ struct PodcastSubscribeToServerTests {
 
     @Test("es gibt nichts zu erben — der Wert wurde nie gespeichert")
     func noMigrationNeeded() {
-        // Geprueft statt angenommen (the reviewer's Auflage 3): der Schluessel ist neu,
+        // Geprueft statt angenommen: der Schluessel ist neu,
         // ein Altbestand kann gar nicht existieren, und der Default deckt den
         // ungesetzten Fall mit dem bisherigen Verhalten ab.
         let d = suite()

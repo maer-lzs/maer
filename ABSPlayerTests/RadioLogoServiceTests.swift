@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 95c5c16: the negative cache poisoned itself — a transport failure was
+/// The negative cache poisoned itself — a transport failure was
 /// written down as "this station has no logo" and held for 14 days, so ONE
 /// disturbed phase (the RB outage on 03.08.) wiped every logo. These tests
 /// fence the rule: only a clean run that found nothing may be booked.
@@ -51,7 +51,7 @@ struct RadioLogoCacheTests {
         #expect(read(defaults).count == 1)
     }
 
-    /// b9de792 (v4): a stored "no" is only valid for the chain that produced
+    /// A stored "no" is only valid for the chain that produced
     /// it. The sibling stage joined on 21.08. — negatives booked by the
     /// shorter chain kept answering for 14 days ("bigFM Deutsch Rap" showed
     /// initials although the family favicon exists). v3→v4 drops negatives
@@ -73,7 +73,7 @@ struct RadioLogoCacheTests {
         #expect(kept["radio:rb:preSiblingNo"] == nil)
     }
 
-    /// e0a0788 (v5): the audit caught the runtime P154 stage booking FOREIGN
+    /// The audit caught the runtime P154 stage booking FOREIGN
     /// marks — and a positive never expires. v5 drops exactly the MEASURED
     /// files (LIFE magazine, Reset Media), nothing else: no sweep, no
     /// negative touched, every honest positive stays.
@@ -138,7 +138,7 @@ struct RadioLogoCacheTests {
         #expect(url?.query?.contains("width=800") == true)
     }
 
-    /// cb8bac1: the v3 healing — a positive persisted as a width=400 Commons
+    /// The v3 healing — a positive persisted as a width=400 Commons
     /// URL becomes FILE-based, so the read builds today's width; touch icons
     /// and negatives stay as they are. The width change that shipped without
     /// a bump left devices on rejected 400×46 renders for 14 days.
@@ -176,13 +176,13 @@ struct RadioLogoGateVersioningTests {
     }
 }
 
-// MARK: - e32454e: die generierten Daten sind die erste Stufe
+// MARK: - Die generierten Daten sind die erste Stufe
 
 struct RadioLogoDataTests {
     @Test("die Tabelle traegt DATEINAMEN, nie fertige URLs")
     func storesFileNamesOnly() {
-        // Die cb8bac1-Regel strukturell geprueft: kein Eintrag ist eine URL,
-        // sonst waere die Breite wieder eingebacken.
+        // Strukturell geprueft: kein Eintrag ist eine URL, sonst waere die
+        // Breite wieder eingebacken.
         for (_, file) in RadioLogoData.commonsFiles {
             #expect(!file.contains("http"))
             #expect(!file.contains("width="))
@@ -199,15 +199,14 @@ struct RadioLogoDataTests {
         #expect(RadioLogoData.commonsFile(forName: "Ein Sender ohne Eintrag") == nil)
     }
 
-    /// 383a3e8 family stage of the table: a variant name carries the family
+    /// Family stage of the table: a variant name carries the family
     /// head's mark — measured 12/122 initial-showing core stations covered,
     /// 0 false heads. The guards ARE the test surface.
     @Test("Familienkopf deckt Varianten; eigener Eintrag gewinnt; Wortgrenze hart")
     func familyHeadCoversVariants() {
-        // The variant has no own entry — the family mark answers. (bigFM was
-        // the original example; its table entry fell as a gate corpse
-        // [c0addba: 256×37 raster can never render], so the fence rides on
-        // the RADIO BOB! family, whose mark is an SVG and scales.)
+        // The variant has no own entry — the family mark answers. The fence
+        // rides on a family whose mark is an SVG and scales; a 256×37 raster
+        // entry can never render and would fall at the quality gate.
         #expect(RadioLogoData.commonsFile(forName: "Radio Bob! rockt Schleswig-Holstein") == nil)
         let head = RadioLogoData.commonsFile(forName: "RADIO BOB!")
         #expect(head != nil)
@@ -225,7 +224,7 @@ struct RadioLogoDataTests {
         #expect(RadioLogoService.curatedFile(forName: "bigFM Deutsch Rap") == nil)
     }
 
-    /// R25/R32: the display re-opens the decision — an undersized stored
+    /// The display re-opens the decision — an undersized stored
     /// positive discards immediately, a dead address after TWO consecutive
     /// load failures; one failure is never a verdict, success clears strikes.
     @Test @MainActor func displayReDecision() async {
@@ -265,7 +264,7 @@ struct RadioLogoDataTests {
     }
 }
 
-// MARK: - 11c32f1: the owner's Bundesliga-Entscheid
+// MARK: - Bundesliga-Sender
 
 struct RadioLogoBundesligaTests {
 

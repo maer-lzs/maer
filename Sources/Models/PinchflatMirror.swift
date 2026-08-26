@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// Pinchflat Paket A (a7fa35e Nachschärfung): the server is the SOURCE OF
-/// TRUTH for the group — the OPML list is MIRRORED, not imported. Connect =
+/// The server is the SOURCE OF TRUTH for the group — the OPML list is
+/// MIRRORED, not imported. Connect =
 /// done; new channels appear on refresh by themselves; a channel deleted in
 /// Pinchflat leaves the group (progress stays, like any unsubscribe). Hiding
 /// a channel is the OPT-OUT exception and survives mirror runs.

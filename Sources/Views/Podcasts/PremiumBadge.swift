@@ -5,15 +5,15 @@
 
 import SwiftUI
 
-/// P13: THE premium lock — the anatomy existed twice byte-identically in
+/// THE premium lock — the anatomy existed twice byte-identically in
 /// `PodcastComponents` and was missing exactly where the user looked: Start's
-/// "Latest Episodes". One component instead of copies (Regel 2), so the next
+/// "Latest Episodes". One component instead of copies, so the next
 /// surface inherits the mark rather than forgetting it.
 ///
 /// **Cell cost:** the caller passes the already-resolved `isPremium` — the
 /// classification is a keychain/UserDefaults lookup, and resolving it PER
-/// CELL is what the grid's "Paket B" comment warns about. Grids resolve the
-/// set once per render and ask it here.
+/// CELL is what the grid's cell-cost rule warns about. Grids resolve the set
+/// once per render and ask it here.
 struct PremiumLockBadge: View {
     let isPremium: Bool
 

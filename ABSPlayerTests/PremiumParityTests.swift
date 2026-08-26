@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// P2: Premium-Parität über zwei private Kanäle — was über den EIGENEN
+/// Premium-Parität über zwei private Kanäle — was über den EIGENEN
 /// gpodder-Server reisen darf, was nur über iCloud kann, und was in keinem
 /// Fall das Gerät verlässt.
 struct PremiumParityTests {
@@ -50,7 +50,7 @@ struct PremiumParityTests {
         ]
         let premium: (String) -> Bool = { $0.contains("auth=") }
         // Solange Rotations-Zwillinge offen sind, WARTET das Angebot — und
-        // sagt es, statt still nichts zu zeigen (der iPad-Befund).
+        // sagt es, statt still nichts zu zeigen.
         #expect(PodcastPremiumMatch.twinState(shows: rotationTwins, isPremium: premium)
                 == .waitingForRotationMerge)
         // Ohne sie liegt das Paar als Angebot vor.

@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// Z1: the ONE app-key resolution rule (Jamendo + PodcastIndex) — a
+/// The ONE app-key resolution rule (Jamendo + PodcastIndex) — a
 /// user-entered value always beats the build-injected one; an absent
 /// injection (nil or empty Info.plist substitution) resolves to "".
 struct AppKeyResolutionTests {

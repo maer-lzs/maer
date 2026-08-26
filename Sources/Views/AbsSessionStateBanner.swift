@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// 🔴 P5 (G8): the visible half of "credentials are deleted by the user, not
+/// 🔴 The visible half of "credentials are deleted by the user, not
 /// by a server answer". While the session is doubted the app keeps the token
 /// and probes by itself — but silence would read as "everything is fine, the
 /// library is just empty". So the state says which of the two it is:

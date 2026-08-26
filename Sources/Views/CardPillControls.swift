@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// 5219a7: THE card "Details" pill — Book- and PodcastFeaturedCard carried
-/// byte-identical private copies; the playlist card is the third caller, so
-/// the anatomy moves into ONE component (Regel 2: extend, don't copy).
+/// THE card "Details" pill — Book- and PodcastFeaturedCard carried
+/// byte-identical private copies and the playlist card is the third caller,
+/// so the anatomy lives in ONE component.
 /// Bottom-LEFT of a card, opens the detail route.
 struct CardDetailPill<Value: Hashable>: View {
     let value: Value

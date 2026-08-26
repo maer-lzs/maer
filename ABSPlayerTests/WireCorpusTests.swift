@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// V3: THE shared wire-corpus (`Fixtures/WireCorpus`) — the five canonical broken
+/// THE shared wire-corpus (`Fixtures/WireCorpus`) — the five canonical broken
 /// server answers (captive-portal HTML, half JSON, empty body, foreign JSON,
 /// foreign array) run against every client's decode layer. Contract per the
 /// badPayload-Lehre: "connection went weird" must THROW (or land in a visible

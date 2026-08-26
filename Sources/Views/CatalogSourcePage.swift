@@ -6,20 +6,19 @@
 import SwiftUI
 import OSLog
 
-/// Paket 3 (11be262/9ef73a4): THE one parameterised source page — every
-/// catalog row's chevron lands here. Fundgrube with staged paging (the page IS
-/// the target surface, so no preview cap — 6fcb301 Punkt 5), ordered by the
-/// axis that CARRIES for this source:
+/// THE one parameterised source page — every catalog row's chevron lands
+/// here. Fundgrube with staged paging (the page IS the target surface, so no
+/// preview cap), ordered by the axis that CARRIES for this source:
 ///
-///   LibriVox / Gutenberg → genre chips (ONE axis, Regel 2 — the LCSH
-///     spellings extend `CatalogGenreAxis`, no second axis next to it)
+///   LibriVox / Gutenberg → genre chips (ONE axis — the LCSH spellings
+///     extend `CatalogGenreAxis`, no second axis next to it)
 ///   Internet Archive → NO chips (subjects are collection boilerplate,
 ///     measured: "livres audio gratuits", "mp3", "learn french")
 ///   Old Time Radio → no chips (series bundles are the unit)
 ///   Feed sources → the curated rows, complete (no paging — the stock IS the
 ///     curation)
 ///
-/// G8 for chips: only shelves the LOADED stock fills appear — an empty chip
+/// Only shelves the LOADED stock fills appear — an empty chip
 /// is an affordance without a target.
 struct CatalogSourcePage: View {
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
@@ -31,36 +30,36 @@ struct CatalogSourcePage: View {
     @State private var page = 1
     @State private var isLoading = false
     @State private var reachedEnd = false
-    /// P1: language-fallback as SESSION state (one truth, held here).
+    /// Language-fallback as SESSION state (one truth, held here).
     @State private var languageFallback = false
     @State private var detailItem: LibraryItem?
-    /// R46: what a shelf ACTUALLY has, asked at the source. Before this the
+    /// What a shelf ACTUALLY has, asked at the source. Before this the
     /// page classified a randomly loaded pool itself, so "Horror" stood there
     /// with one tile while the source held 102 — the surface answered
-    /// „was ist zufaellig da" where the heading asks „wie viel gibt es".
+    /// what happened to be loaded where the heading asks how much there is.
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
-    /// R53 Nachlese: warum das Nachladen stoppte — ein Fehlschlag ist keine
+    /// Warum das Nachladen stoppte — ein Fehlschlag ist keine
     /// Erschoepfung und bekommt einen Weg zurueck.
     @State private var pageFailure: String?
-    /// R53: which shelves could not be ASKED — kept apart from „the source has
-    /// nothing here", which looks identical on the surface but is not.
+    /// Which shelves could not be ASKED — kept apart from a source that has
+    /// nothing here, which looks identical on the surface but is not.
     @State private var shelfFailures: [String: String] = [:]
-    /// R51: which shelves the stored day says this source HAS — read once
+    /// Which shelves the stored day says this source HAS — read once
     /// when the page opens, so the warm visit can draw exactly those.
     @State private var knownShelfKeys: Set<String> = []
-    /// R47: der Bestand je JAHRZEHNT — nur Old Time Radio, wo die Zeit die
+    /// Der Bestand je JAHRZEHNT — nur Old Time Radio, wo die Zeit die
     /// natuerlichere Gliederung ist als das Genre.
     @State private var decadeStock: [String: (items: [LibraryItem], total: Int?)] = [:]
 
     private let pageSize = 30
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
 
-    /// Chips only where the axis carries (measured per source, 9ef73a4).
-    /// P5/P7: the genre scaffolding covers the measured sources — LibriVox,
-    /// Gutenberg (H), IA audiobooks (26% shelve) and OTR (40% shelve).
-    /// R53: a surface promises shelves only where a query actually backs them.
+    /// Chips only where the axis carries (measured per source). The genre
+    /// scaffolding covers the measured sources — LibriVox, Gutenberg, IA
+    /// audiobooks (26 % shelve) and OTR (40 % shelve).
+    /// A surface promises shelves only where a query actually backs them.
     /// The old list named four sources by hand while the loader could serve
     /// two — so LibriVox and Gutenberg promised shelves and showed none.
     private var hasChips: Bool { CatalogShelfSource.canServeShelves(source) }
@@ -71,7 +70,7 @@ struct CatalogSourcePage: View {
 
     /// Which shelves the loaded stock fills — via the source's OWN spelling
     /// family (LibriVox genre names vs. Gutenberg LCSH subjects).
-    /// R46: a shelf appears because the SOURCE has it, not because the
+    /// A shelf appears because the SOURCE has it, not because the
     /// loaded pool happened to contain one of its titles. G8 still holds —
     /// a shelf whose stock is empty does not appear at all.
     private var shelves: [(key: String, title: String)] {
@@ -81,13 +80,13 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// R51, gegen den Layout-Shift: die Reihen der Faecher-Fläche in
+    /// Gegen den Layout-Shift: die Reihen der Faecher-Flaeche in
     /// Browse-Ordnung, jede entweder GEFUELLT oder als Platzhalter.
     ///
     /// Der warme Besuch kennt aus dem Tages-Speicher genau die Faecher, die
     /// es gibt — sie stehen sofort da und fuellen sich AN ORT UND STELLE.
     /// Nichts springt, und es erscheint nie ein Fach, das die Quelle nicht
-    /// hat (G8 bleibt unverletzt). Der kalte Besuch kennt nichts und bekommt
+    /// hat. Der kalte Besuch kennt nichts und bekommt
     /// stattdessen den EINEN benannten Block weiter unten.
     private var shelfSlots: [(key: String, title: String, ready: Bool)] {
         guard hasChips else { return [] }
@@ -111,13 +110,13 @@ struct CatalogSourcePage: View {
             && CatalogShelfSource.showsLoadingPlaceholder(source)
     }
 
-    /// R53: this page's LibriVox items are archive.org documents
+    /// This page's LibriVox items are archive.org documents
     /// (`librivoxPopular` → `remember(popular:)`), so they carry archive
     /// SUBJECTS — not LibriVox genre names. Reading them through the LibriVox
     /// genre axis matched a part of them by luck. Measured over the 120 most
     /// downloaded `librivoxaudio` entries: the genre axis placed 40, the
-    /// subject axis places 58. The books that DO speak LibriVox genres („Neu
-    /// bei LibriVox") stand in their own row and never come through here.
+    /// subject axis places 58. The books that DO speak LibriVox genres stand
+    /// in the newest-first row and never come through here.
     private func shelvesOf(_ item: LibraryItem) -> [String] {
         CatalogGenreAxis.shelves(forSubjects: genres(of: item))
     }
@@ -149,7 +148,7 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// E-Rest (7d192e2): a feed source is a TILE GRID too — the list form
+    /// E-Rest: a feed source is a TILE GRID too — the list form
     /// belongs to search; that the curation IS the full stock answers the
     /// chevron question, not the FORM question (blueprint pages are grids).
     /// Same tile as every catalog-show surface (show-preview tap + subscribe
@@ -168,16 +167,14 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// R51 Runde 2, Entscheid zur Seitenordnung: „Beliebt nach oben
-    /// als Kachelreihe, nicht Infinite Scroll. Darunter Neu bei LibriVox,
-    /// darunter die Genres als Kachelreihen."
-    ///
-    /// Die Seite besteht damit AUSSCHLIESSLICH aus Kachelreihen. Das endlose
+    /// Die Seitenordnung: die Beliebt-Reihe oben als Kachelreihe, darunter
+    /// die neuesten Titel, darunter die Genres — die Seite besteht
+    /// AUSSCHLIESSLICH aus Kachelreihen. Das endlose
     /// Nachladen ist nicht verschwunden — es lebt auf der Vollseite hinter
     /// dem Chevron weiter, dort wo Scrollen die Form ist.
     private var catalogGrid: some View {
         LazyVStack(alignment: .leading, spacing: 14) {
-            // R47: die Warnung steht am ANFANG jeder Flaeche, deren Inhalte
+            // Die Warnung steht am ANFANG jeder Flaeche, deren Inhalte
             // von archive.org kommen — LibriVox und Gutenberg liefern ihre
             // eigenen Bestaende und sagen selbst, was gilt.
             if source == .oldTimeRadio || source == .archiveBooks {
@@ -199,7 +196,7 @@ struct CatalogSourcePage: View {
                 }
                 .scrollClipDisabled()
             }
-            // f374116 (H erweitert): genres are the STANDARD FORM where the
+            // Genres are the STANDARD FORM where the
             // axis carries — tile row per filled shelf, counting chevron onto
             // the shelf grid.
             if hasChips {
@@ -216,7 +213,7 @@ struct CatalogSourcePage: View {
                 if showsShelfPlaceholder {
                     shelfPlaceholderRow(title: String(localized: "Loading genres…"))
                 }
-                // R53 / Regel 3: a shelf we could not ASK must not look like a
+                // A shelf that could not be ASKED must not look like a
                 // shelf the source does not HAVE. Only shown when nothing at
                 // all arrived — a partial failure leaves the shelves that did.
                 if shelves.isEmpty, !shelfFailures.isEmpty {
@@ -236,7 +233,7 @@ struct CatalogSourcePage: View {
         .padding(.top, TabContentLayout.topInset)
     }
 
-    /// R46 Punkt 2 gilt weiter: jede Flaeche traegt ihren Namen. Was frueher
+    /// Jede Flaeche traegt ihren Namen. Was frueher
     /// ein namenloses Endlos-Raster war, ist jetzt die benannte Reihe ganz
     /// oben — mit dem Chevron auf die Vollseite, wo Scrollen hingehoert.
     @ViewBuilder
@@ -267,7 +264,7 @@ struct CatalogSourcePage: View {
         }
     }
 
-    /// R47: die Jahrzehnte STEHEN NEBEN den Genres, nicht an ihrer Stelle —
+    /// Die Jahrzehnte STEHEN NEBEN den Genres, nicht an ihrer Stelle —
     /// ein Stueck hat beides. G8 gilt wie ueberall: leeres Jahrzehnt, keine
     /// Reihe.
     private var decadeRows: [(key: String, title: String)] {
@@ -325,11 +322,11 @@ struct CatalogSourcePage: View {
         .accessibilityHidden(true)
     }
 
-    /// H: one shelf's preview row (filter over `items`).
+    /// One shelf's preview row (filter over `items`).
     ///
-    /// R2 (09.08.): on THIS page a title belongs to exactly one shelf — its
-    /// FIRST in browse order. „Eudemian Ethics" carries Philosophy AND
-    /// Religion and therefore stood twice on one screen, which reads as a
+    /// On THIS page a title belongs to exactly one shelf — its
+    /// FIRST in browse order. A title that carries Philosophy AND Religion
+    /// otherwise stands twice on one screen, which reads as a
     /// bug rather than as the truth of its subjects. On the shelf FULL pages
     /// it may appear in both — there it is the truth.
     @ViewBuilder
@@ -337,7 +334,7 @@ struct CatalogSourcePage: View {
         if let stock = shelfStock[shelf.key], !stock.items.isEmpty {
             let shown = RowPreview.cut(stock.items)
             VStack(alignment: .leading, spacing: 10) {
-                // R46: the chevron counts the SOURCE's stock. With the pool
+                // The chevron counts the SOURCE's stock. With the pool
                 // count it was `1 > 1` for every shelf, so the door to the
                 // full shelf was invisible everywhere — the rule was right,
                 // it was fed the wrong number.
@@ -368,17 +365,17 @@ struct CatalogSourcePage: View {
     }
 
     /// The stock of every shelf, asked ONCE per visit — the same query the
-    /// shelf's full page uses (one truth, `f220ecd`). Shelves run concurrently
+    /// shelf's full page uses — one truth. Shelves run concurrently
     /// because they are independent; a shelf that fails simply does not
     /// appear, exactly like a shelf without stock.
-    /// R53: the shelves ask their OWN source. The gate is booked after the
+    /// The shelves ask their OWN source. The gate is booked after the
     /// pass, not before it — a cancelled `.task` (back, tab switch, swipe)
     /// used to leave the gate shut and the shelves gone for the life of the
-    /// view. That is the R39 class at a new place.
+    /// view.
     ///
     /// And a failure is an ANSWER: a shelf that could not be asked is counted
-    /// and named, so „the source has nothing here" and „we could not ask"
-    /// stop looking the same.
+    /// and named, so a source without stock here and a shelf that could not
+    /// be asked stop looking the same.
     private func loadShelves() async {
         guard hasChips, !shelvesLoaded, !shelvesLoading else { return }
         shelvesLoading = true
@@ -427,7 +424,7 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT shelves source=\(source.rawValue, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures.count) gebucht=\(!Task.isCancelled)")
     }
 
-    /// R47: die Jahrzehnte, nebenlaeufig und in derselben Form wie die
+    /// Die Jahrzehnte, nebenlaeufig und in derselben Form wie die
     /// Gattungen — Fehlschlag benannt, leeres Jahrzehnt keine Reihe.
     private func loadDecades() async {
         guard source == .oldTimeRadio else { return }
@@ -464,7 +461,7 @@ struct CatalogSourcePage: View {
         Logger.library.notice("FREECAT decades source=\(source.rawValue, privacy: .public) gefuellt=\(decadeStock.count)")
     }
 
-    /// R57 INVARIANTE 1: ein Titel darf in zwei Faechern stehen — er gehoert
+    /// Ein Titel darf in zwei Faechern stehen — er gehoert
     /// ja in beide —, aber nicht als ZWILLING direkt untereinander. Was auf
     /// dieser Seite schon weiter oben stand, sortiert sich hier nach hinten.
     /// Es LEERT kein Fach (dieselbe Regel wie der Malus der Mischreihen: ein
@@ -487,8 +484,8 @@ struct CatalogSourcePage: View {
                 FreeCatalog.isCuratedArchiveDoc(
                     $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
             }
-            // R57-Nachlese: Sammelbaende
-            // bleiben auffindbar, stehen aber nicht mehr auf den ersten
+            // Sammelbaende bleiben auffindbar, stehen aber nicht mehr auf
+            // den ersten
             // Plaetzen. Ein Malus, kein Ausschluss — es LEERT kein Fach.
             let einzeln = erlaubt.filter { !FreeCatalog.isMultiAuthorCollection($0) }
             let sammlungen = erlaubt.filter { FreeCatalog.isMultiAuthorCollection($0) }
@@ -505,8 +502,8 @@ struct CatalogSourcePage: View {
     }
 
     private func tile(_ item: LibraryItem) -> some View {
-        // 174f855: NACHSCHLAGEN — tap = detail, long-press = Play shortcut.
-        // Auftrag O: OTR bundles push their show page (episode list).
+        // NACHSCHLAGEN — tap = detail, long-press = Play shortcut.
+        // OTR bundles push their show page (episode list).
         FreeCatalogBookTile(
             item: item,
             placeholderSystemImage: source == .oldTimeRadio ? "waveform.and.mic" : "book.closed",
@@ -529,13 +526,13 @@ struct CatalogSourcePage: View {
         CatalogPopularSource.seed(source: source, store: store)
     }
 
-    /// R53 Nachlese: `try?` machte hier aus JEDEM Netzfehler „Ende der
-    /// Liste" — an allen vier Quellen. Milder als bei den Faechern (die Seite
+    /// `try?` machte hier aus JEDEM Netzfehler ein Ende der Liste — an allen
+    /// vier Quellen. Milder als bei den Faechern (die Seite
     /// hoert auf nachzuladen, statt leer zu wirken), aber dieselbe
     /// Verwechslung: Fehlschlag sieht aus wie Erschoepfung, und es gibt
     /// keinen Weg zurueck. Ein Fehler endet die Liste jetzt NICHT — er wird
     /// benannt und bleibt wiederholbar.
-    /// R51 Runde 2: die Vorschau-Reihe laedt ueber DENSELBEN Weg wie die
+    /// Die Vorschau-Reihe laedt ueber DENSELBEN Weg wie die
     /// Vollseite hinter ihrem Chevron (`CatalogPopularSource`) — sonst zeigte
     /// die Reihe oben einen anderen Ausschnitt als die Seite dahinter.
     private func load() async {
@@ -565,10 +562,10 @@ struct CatalogSourcePage: View {
 }
 
 
-/// R51 Runde 2 (Regel 2): der EINE Ladeweg der Beliebtheits-Liste. Die
-/// Vorschau-Reihe der Quellenseite und die Vollseite hinter ihrem Chevron
-/// fragen hier durch — sonst zeigte die Reihe oben einen anderen Ausschnitt
-/// als die Seite dahinter, und das ist die f220ecd-Klasse.
+/// Der EINE Ladeweg der Beliebtheits-Liste. Die Vorschau-Reihe der
+/// Quellenseite und die Vollseite hinter ihrem Chevron fragen hier durch —
+/// sonst zeigt die Reihe oben einen anderen Ausschnitt als die Seite
+/// dahinter.
 ///
 /// Ein Fehlschlag ist KEINE Erschoepfung: `failed` traegt seinen Grund,
 /// `cancelled` bleibt still, und nur `loaded` darf die Liste enden.
@@ -611,7 +608,7 @@ enum CatalogPopularSource {
                 fresh = curated(docs)
                 if docs.count < rows { atEnd = true }
             case .archiveBooks:
-                // P1: the fallback is a SESSION state — once fallen back,
+                // The fallback is a SESSION state — once fallen back,
                 // deeper pages browse the unfiltered corpus too.
                 let result = try await ArchiveOrgClient.audiobooksOutsideLibriVox(
                     rows: rows, languageCodes: codes, page: page, unfiltered: unfiltered)
@@ -643,10 +640,9 @@ enum CatalogPopularSource {
 }
 
 
-/// R51 Runde 2: die Vollseite hinter dem „Beliebt"-Chevron. Sie ist die
-/// Heimat des endlosen Nachladens, das the user von der Uebersicht haben
-/// wollte — dieselbe Kachel, dieselbe Seitenlogik, nur ohne die Reihen
-/// drumherum. Regel 2: sie teilt sich den Lade-Weg der Quellenseite ueber
+/// Die Vollseite hinter dem Beliebt-Chevron. Sie ist die Heimat des endlosen
+/// Nachladens — dieselbe Kachel, dieselbe Seitenlogik, nur ohne die Reihen
+/// drumherum. Sie teilt sich den Lade-Weg der Quellenseite ueber
 /// `CatalogPopularSource`, damit Vorschau-Reihe und Vollseite denselben
 /// Bestand in derselben Ordnung zeigen.
 struct CatalogPopularPage: View {
@@ -694,7 +690,7 @@ struct CatalogPopularPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if pageFailure != nil {
-                // Regel 3: ein Fehlschlag ist keine Erschoepfung.
+                // Ein Fehlschlag ist keine Erschoepfung.
                 HStack(spacing: 10) {
                     Text("Could not load more.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -776,7 +772,7 @@ struct CatalogShelfPage: View {
                 ForEach(items) { item in
                     FreeCatalogBookTile(
                         item: item,
-                        // P7/O: OTR bundles in shelf grids push their show
+                        // OTR bundles in shelf grids push their show
                         // page too — same tap class everywhere.
                         onTap: {
                             if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
@@ -800,7 +796,7 @@ struct CatalogShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && loadFailed {
-                // Regel 3: a failed load is not "this shelf is empty".
+                // A failed load is not "this shelf is empty".
                 ContentUnavailableView {
                     Label(title, systemImage: "books.vertical")
                 } description: {
@@ -820,7 +816,7 @@ struct CatalogShelfPage: View {
         }
     }
 
-    /// R1 (09.08.): the shelf ASKS for its shelf instead of filtering the
+    /// The shelf ASKS for its shelf instead of filtering the
     /// preview pool. The pool held 12-20 titles, so every shelf of every
     /// source together could never show more than that — the measured stock
     /// is orders of magnitude bigger (LibriVox Poetry ≥1.200, archive.org
@@ -833,7 +829,7 @@ struct CatalogShelfPage: View {
         defer { isLoading = false }
         let provider = FreeCatalogProvider.shared
         do {
-            // R53/f220ecd, one truth: the full page asks the SAME shelf query
+            // One truth: the full page asks the SAME shelf query
             // as the overview row and its chevron. A second query here would
             // promise a stock above that the page below cannot show — and for
             // LibriVox it would also hand back other item ids (`lv:` books
@@ -843,8 +839,8 @@ struct CatalogShelfPage: View {
                 source: source, shelf: shelfKey, languages: SuggestionLanguages.current(),
                 rows: pageSize, page: page) {
             case .archive(let docs, _):
-                // Same gate as the row: de-duplication + denylist (893a7ea —
-                // filtered wherever WE assemble the offer).
+                // Same gate as the row: de-duplication + denylist, applied
+                // wherever the offer is assembled.
                 fresh = docs.filter {
                     FreeCatalog.isCuratedArchiveDoc(
                         $0, separatingFromLibriVox: FreeCatalog.separatesFromLibriVox(source))
@@ -869,7 +865,7 @@ struct CatalogShelfPage: View {
 }
 
 
-/// Auftrag O: the show page of an archive.org SERIES bundle (Old-Time-Radio
+/// The show page of an archive.org SERIES bundle (Old-Time-Radio
 /// class) — the question "is that really 255 hours without a pause?"
 /// answered honestly: the bundle's files ARE episodes, the app knew them all
 /// along (FreeCatalog.archiveTracks); this page finally shows them. Blueprint
@@ -890,7 +886,7 @@ struct ArchiveSeriesPage: View {
     var flavor: Flavor = .series
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var detail: LibraryItemDetail?
-    /// R61: der billige Kopf, damit das Blatt nicht auf die Liste wartet.
+    /// Der billige Kopf, damit das Blatt nicht auf die Liste wartet.
     @State private var quick: LibraryItemDetail?
     @State private var failed = false
     @State private var visibleCount = 100
@@ -944,8 +940,7 @@ struct ArchiveSeriesPage: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 14) {
-                // R61:
-                // das Blatt wartet NICHT mehr auf die Teileliste. Gemessen
+                // Das Blatt wartet NICHT auf die Teileliste. Gemessen
                 // haengt die Antwortzeit nicht an der Datenmenge, sondern an
                 // archive.orgs Warteschlange (2 kB in 26 s, 1,3 MB in 11 s) —
                 // ein kleinerer Abruf hilft also nicht, das Warten aus dem Weg
@@ -1044,7 +1039,7 @@ struct ArchiveSeriesPage: View {
                     if let author = detail.media.metadata?.authorName {
                         Text(verbatim: author).font(.subheadline).foregroundStyle(.secondary)
                     }
-                    // O3: the honest second line — the episode count the tile
+                    // The honest second line — the episode count the tile
                     // could not carry without a second fetch.
                     Text(effectiveFlavor == .album
                          ? "\(tracks.count) tracks"
@@ -1061,7 +1056,7 @@ struct ArchiveSeriesPage: View {
             }
             .padding(.horizontal)
             if let description = detail.media.metadata?.description, !description.isEmpty {
-                // O-P2: the leading heading repeats the title and leaves a
+                // The leading heading repeats the title and leaves a
                 // hole underneath — both go (measured, see tidiedDescription).
                 Text(verbatim: FreeCatalog.tidiedDescription(
                     podcastPlainText(description),
@@ -1073,7 +1068,7 @@ struct ArchiveSeriesPage: View {
         }
     }
 
-    /// O-P1: "07.12.1948 · 29 Min." — date in the user's format, duration in
+    /// "07.12.1948 · 29 Min.": date in the user's format, duration in
     /// the existing wording. Either part may be missing; both missing means
     /// no line at all (never an empty separator).
     private func episodeMetaLine(airDate: String?, duration: Double?) -> String? {
@@ -1114,7 +1109,7 @@ struct ArchiveSeriesPage: View {
     }
 
     /// The title the ROW shows — the same derivation, so what lands in a
-    /// playlist is what the person tapped (P4).
+    /// playlist is what the person tapped.
     private func trackTitle(_ track: ABSAudioTrack) -> String {
         let raw = FreeCatalog.trackDisplayTitle(contentUrl: track.contentUrl)
         let stated = track.metadata?.title
@@ -1144,7 +1139,7 @@ struct ArchiveSeriesPage: View {
                 Text(verbatim: "\(index + 1)")
                     .font(.caption.monospacedDigit()).foregroundStyle(.tertiary)
                     .frame(width: 34, alignment: .trailing)
-                // O-P1: the name's housekeeping head (series shorthand,
+                // The name's housekeeping head (series shorthand,
                 // date, running number) is taken OFF the title — but the
                 // date is the first broadcast and therefore moves into the
                 // meta line instead of being thrown away.
@@ -1184,9 +1179,9 @@ struct ArchiveSeriesPage: View {
             if effectiveFlavor == .album {
                 let songId = CatalogSongID.make(album: itemId, index: index)
                 CatalogQueueButtons(itemId: songId)
-                // f208790: "playlists are SONGS" — a catalog track is as
+                // "playlists are SONGS" — a catalog track is as
                 // enqueueable as a server song, and it hands its title over
-                // (P4 rule) so a cold cache cannot turn it into a placeholder.
+                // so a cold cache cannot turn it into a placeholder.
                 AddToPlaylistButton(itemId: songId,
                                     knownTitles: [songId: trackTitle(track)])
             }

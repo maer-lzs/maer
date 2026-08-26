@@ -135,7 +135,7 @@ struct ListeningStatsSyncTests {
         #expect(ListeningStatsSync.cappedItems(items, limit: 2) == ["a": 100, "b": 100])
     }
 
-    // MARK: - „Haeufig gehoert" rankt nach ZEIT
+    // MARK: - Die Haeufig-gehoert-Reihe rankt nach ZEIT
 
     private func station(_ id: String) -> RadioStation {
         RadioStation(id: "radio:rb:\(id)", name: id.uppercased(), streamURL: "https://s/\(id)")
@@ -233,8 +233,8 @@ struct ListeningByClassTests {
     }
 }
 
-/// Die Logo-Diagnose. Ihr Wert haengt an EINER Unterscheidung: „die Kette hat
-/// nichts gefunden" und „die Kette ist nie fertig geworden" sehen auf dem
+/// Die Logo-Diagnose. Ihr Wert haengt an EINER Unterscheidung: eine Kette,
+/// die nichts gefunden hat, und eine, die nie fertig wurde, sehen auf dem
 /// Bildschirm gleich aus (Buchstaben), sind aber verschiedene Ursachen mit
 /// verschiedenen Fixes.
 struct RadioLogoReportTests {
@@ -274,7 +274,7 @@ struct RadioLogoReportTests {
         #expect(text.contains("Sender in den Reihen: 0"))
     }
 
-    /// 4fe882b: "OHNE ERGEBNIS" is one of THREE causes, and the report must
+    /// "OHNE ERGEBNIS" is one of THREE causes, and the report must
     /// name which — queued, transport-failed, or given up. They look the same
     /// on screen and need different fixes.
     @Test("OHNE ERGEBNIS trennt Warteschlange, Fehlschlag und Aufgabe")
@@ -293,7 +293,7 @@ struct RadioLogoReportTests {
         #expect(text.contains("N · Favicon nein · Kette OHNE ERGEBNIS — nie versucht"))
     }
 
-    /// 4fe882b format rule: ids shorten to the FIRST characters after the
+    /// Ids shorten to the FIRST characters after the
     /// prefix — the v1-UUID tail is an import batch's shared node field, six
     /// different stations can end identically there.
     @Test("Kurz-id nimmt den Anfang nach dem Praefix, nie das Ende")
@@ -305,7 +305,7 @@ struct RadioLogoReportTests {
 }
 #endif
 
-/// d7f12e1 A: the mini player offers nothing that is finished by its own
+/// The mini player offers nothing that is finished by its own
 /// knowledge — judged by the NUMBERS, and only on evidence.
 @Suite struct StandbyFinishedTests {
 

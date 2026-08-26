@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// 🔴 P15: Play-Haemmern unter schlechtem Netz darf nie zwei Tonspuren
+/// 🔴 Play-Haemmern unter schlechtem Netz darf nie zwei Tonspuren
 /// erzeugen — jeder open() zieht eine Generation, nur die letzte gewinnt.
 struct OpenGateTests {
     @Test("N schnelle Taps auf DENSELBEN Titel ⇒ genau EIN Versuch")

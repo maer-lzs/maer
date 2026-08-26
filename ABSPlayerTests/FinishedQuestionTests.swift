@@ -11,7 +11,7 @@ import Foundation
 /// Die Fertig-Frage, an EINER Stelle beantwortet.
 ///
 /// Der Fall, der sie erzwungen hat: ein Buch stand mit 18:40:56 von 18:40:56
-/// auf dem Server — und das Flag sagte trotzdem „nicht fertig". Es blieb damit
+/// auf dem Server — und das Flag sagte trotzdem nicht fertig. Es blieb damit
 /// an erster Stelle in Weiterhoeren, obwohl es durchgehoert war.
 struct FinishedQuestionTests {
 
@@ -22,7 +22,7 @@ struct FinishedQuestionTests {
     @Test("die Zahlen entscheiden mit — ein Flag darf nicht fehlen duerfen")
     func numbersDecideToo() {
         #expect(progress(1.0, flag: false).countsAsFinished,
-                "Position gleich Dauer, Flag verloren — genau the owner's Fall")
+                "Position gleich Dauer, Flag verloren")
         #expect(progress(1.0, flag: true).countsAsFinished)
         #expect(progress(0.5, flag: true).countsAsFinished,
                 "ein gesetztes Flag gilt weiter, auch mitten im Buch")
@@ -56,12 +56,11 @@ struct FinishedQuestionTests {
                                           finished: half.countsAsFinished))
     }
 
-    /// Der zweite Befund am selben Buch, und der eigentliche Grund, warum es
-    /// nach dem ersten Fix NOCH dastand: dieses Geraet hatte den Endstand
-    /// einmal gesendet, und dieser Zeuge wurde als „begonnen" gelesen.
+    /// Der zweite Fall am selben Buch: dieses Geraet hatte den Endstand
+    /// einmal gesendet, und dieser Zeuge wurde als begonnen gelesen.
     @Test("der Zeuge belegt den ANFANG und darf das Ende nicht ueberstimmen")
     func theWitnessCannotOutvoteTheEnd() {
-        // Genau the owner's Lage: Server sagt fertig, und der eigene Push steht
+        // Die gemessene Lage: Server sagt fertig, und der eigene Push steht
         // mit der vollen Dauer daneben.
         #expect(!ContinueSources.isStarted(serverSaysStarted: false,
                                            flushed: [67256, 1.7e12],

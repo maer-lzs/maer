@@ -33,7 +33,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
     private var favoriteAlbumIds: Set<String>?
     private var playlistMosaicCache: [String: [String]] = [:]
     private var playlistArtistCache: [String: [String]] = [:]
-    /// M6: per-track play counts of the last detail fetch, by item id.
+    /// Per-track play counts of the last detail fetch, by item id.
     private var playCountsByItemId: [String: [Int?]] = [:]
 
     func trackPlayCounts(forItemId itemId: String) -> [Int?] {
@@ -116,7 +116,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     // MARK: - Library (AudioProvider)
 
-    /// facf3e3: the music library is always there (this source IS the music
+    /// The music library is always there (this source IS the music
     /// source); an audiobook library appears only when the server actually has
     /// one — a books library is a plugin-side setup, not a given.
     func fetchLibraries() async throws -> [ABSLibrary] {
@@ -157,7 +157,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             let pl = try? await client.item(id: playlistId)
             title = pl?.name; artist = nil; genre = nil
         } else if let bookId = Self.id(itemId, kind: "book") {
-            // facf3e3: ONE file, no chapters — and the server's own reading
+            // ONE file, no chapters — and the server's own reading
             // position travels back with it, over the measured road.
             guard let book = try await client.item(id: bookId) else {
                 throw JellyfinClient.JellyfinError.decoding
@@ -192,7 +192,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         let (tracks, chapters, total) = Self.tracksAndChapters(from: songs)
         songsByItemId[itemId] = tracks.map { ($0.contentUrl, $0.startOffset ?? 0) }
         lastScrobbledSong[itemId] = nil
-        // M6: per-track play counts (UserData.PlayCount) for the client-side
+        // Per-track play counts (UserData.PlayCount) for the client-side
         // "Top Songs" ranking.
         playCountsByItemId[itemId] = songs.map { $0.userData?.playCount }
         let media = LibraryItemMedia(
@@ -394,7 +394,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return songs[trackIndex].id
     }
 
-    /// 961a14e: per-song artist names — same playlistSongs fetch as the
+    /// Per-song artist names — same playlistSongs fetch as the
     /// mosaic, cached alongside it.
     func playlistArtistNames(forItemId itemId: String) async -> [String] {
         guard let client, let rawId = Self.id(itemId, kind: "playlist") else { return [] }
@@ -485,7 +485,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
             result[itemId] = BookmarkProgressMath.progress(
                 currentTime: stored[0], duration: duration, lastUpdate: stored[1])
         }
-        // M1: albums join the local fallback (Jellyfin continue stays local —
+        // Albums join the local fallback (Jellyfin continue stays local —
         // no per-song bookmark API; honest capability note in the report).
         for album in cachedAlbumItems {
             guard let stored = ListeningStore.backup(album.id),
@@ -498,7 +498,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     func updateProgress(itemId: String, currentTime: Double, duration: Double, isFinished: Bool) async throws {
         guard let client else { return }
-        // facf3e3: a BOOK keeps a real position, and it travels the measured
+        // A BOOK keeps a real position, and it travels the measured
         // road. The session route (`/Sessions/Playing…`) was measured NOT to
         // persist anything — it read back as 0 — so it is not used here even
         // though it is the more obvious one.
@@ -542,7 +542,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
         return PlaylistPresentation.changedDate(normalized).map { $0.timeIntervalSince1970 * 1000 }
     }
 
-    /// facf3e3: a Jellyfin audiobook as a library item.
+    /// A Jellyfin audiobook as a library item.
     ///
     /// ONE track, no chapters, and that is not a gap: measured, a book on
     /// Jellyfin is exactly one file, `Chapters` is 0, and Jellyfin generates
@@ -643,7 +643,7 @@ final class JellyfinProvider: AudioProvider, MusicProvider {
 
     // MARK: - Id namespace
 
-    /// facf3e3: the books library carries its Jellyfin view id, so the browse
+    /// The books library carries its Jellyfin view id, so the browse
     /// call knows which parent to ask.
     nonisolated static func libraryId(booksViewId: String) -> String { "jf:books:\(booksViewId)" }
     nonisolated static func booksViewId(fromLibraryId libraryId: String) -> String? {
@@ -711,7 +711,7 @@ extension JellyfinProvider: SearchableProvider {
                     id: item.id, kind: .song, title: name,
                     subtitle: hit.artists?.first, coverURL: coverURL(forItemId: item.id)))
             case "Playlist":
-                // M5: Jellyfin ships playlist hits SERVER-side (unlike
+                // Jellyfin ships playlist hits SERVER-side (unlike
                 // Subsonic's local filter — honest asymmetry, reported).
                 let pid = itemId(playlistId: hit.id)
                 if itemsById[pid] == nil {

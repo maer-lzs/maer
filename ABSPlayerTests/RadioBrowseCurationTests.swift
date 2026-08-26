@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Radio-Picker-Kuratierung (b942da6) against the REAL Swiss raw data
+/// Radio-Picker-Kuratierung against the REAL Swiss raw data
 /// (`Fixtures/RadioCatalog/ch-states.json`, Radio Browser 01.08.2026 — 35
 /// community entries incl. " Zürich" with a leading space, cities, and
 /// foreign junk like "Burgenland"/"Saarland").

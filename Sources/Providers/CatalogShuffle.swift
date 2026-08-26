@@ -6,12 +6,12 @@
 import Foundation
 import OSLog
 
-/// M2 (Auftrag 09.08.): „zufällig abspielen" an einer Musik-Katalog-Reihe oder
-/// einem Fach — und zwar **aus dem ganzen Fach**, nicht aus den zwölf
-/// sichtbaren Kacheln. „Jazz (78s)" heißt 6.794 Aufnahmen; würfelte man unter
-/// der Vorschau, hörte man immer dieselben.
+/// Zufällig abspielen an einer Musik-Katalog-Reihe oder einem Fach — und zwar
+/// aus dem GANZEN Fach, nicht aus den zwölf sichtbaren Kacheln. Ein Fach
+/// fasst mehrere tausend Aufnahmen; würfelte man unter der Vorschau, hörte
+/// man immer dieselben.
 ///
-/// Zwei Messungen (09.08.) bestimmen die Form:
+/// Zwei Messungen bestimmen die Form:
 ///  * archive.org kann `sort=random`, aber **nicht pro Aufruf**: drei schnelle
 ///    Wiederholungen liefern identische Titel (Zwischenspeicher), erst nach
 ///    einigen Minuten andere. Verschiedene SEITEN liefern dagegen sofort
@@ -73,7 +73,7 @@ enum CatalogShuffle {
     }
 }
 
-/// M1-KORREKTUR (224594b): der Typ ist DATENGETRIEBEN, nicht sammlungsweise.
+/// M1-KORREKTUR: der Typ ist DATENGETRIEBEN, nicht sammlungsweise.
 /// Gemessen an echten Einträgen: Netlabels 4–79 Spuren, Schallplatten-Jazz 36,
 /// Klassik 1. Eine Regel je Fläche wäre also falsch — die Antwort entscheidet.
 ///

@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Auftrag 09.08.: the row shows today's pick from the good part of the stock.
-/// The stock sizes below are the ones MEASURED on 09.08. at archive.org.
+/// The row shows today's pick from the good part of the stock. The stock
+/// sizes below are the ones MEASURED at archive.org.
 struct CatalogRotationTests {
     private func day(_ iso: String) -> Date {
         let f = DateFormatter()

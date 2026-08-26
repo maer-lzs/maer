@@ -5,11 +5,11 @@
 
 import Foundation
 
-/// b81949f (Regel 2): the ONE mechanism behind "resolve a missing piece of
-/// metadata lazily and remember it" — feed artwork (c125ccd), LibriVox
+/// The ONE mechanism behind "resolve a missing piece of
+/// metadata lazily and remember it" — feed artwork, LibriVox
 /// runtimes, and whatever comes next. Session cache plus a persisted one,
 /// TTL per outcome, and the rule that cost us every radio logo once
-/// (95c5c16) built in rather than re-decided per service:
+/// built in rather than re-decided per service:
 ///
 /// **A failed lookup is not a finding.** Only a clean run may be written
 /// down — negative or positive. Callers pass their outcome explicitly, so
@@ -26,20 +26,20 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     struct Stored: Codable {
         var value: Value?
         var resolvedAt: Double
-        /// R60: der FINGERABDRUCK der Regel, aus der dieser Wert stammt.
+        /// Der FINGERABDRUCK der Regel, aus der dieser Wert stammt.
         ///
         /// Ein zwischengespeichertes Ergebnis gilt nur, solange die Regel
         /// gilt, die es erzeugt hat. Der Tages-Speicher der Gutenberg-Faecher
-        /// war allein nach dem Fach-Namen abgelegt — als R58 die Begriffe
-        /// austauschte, lieferte er bis zu vierundzwanzig Stunden weiter die
-        /// Antwort der ALTEN Regel. Nicht nur beim Pruefen: jeder Nutzer
-        /// haette nach dem Update einen Tag lang die kaputten Faecher gesehen.
+        /// war allein nach dem Fach-Namen abgelegt — wurden die Begriffe
+        /// ausgetauscht, lieferte er bis zu vierundzwanzig Stunden weiter die
+        /// Antwort der ALTEN Regel, und nach einem Update saehe jeder Nutzer
+        /// einen Tag lang die alten Faecher.
         ///
         /// Mit dem Abdruck im Eintrag ist ein Wert der alten Regel nach einer
         /// Aenderung schlicht nicht mehr auffindbar — automatisch, ohne dass
         /// jemand an ein Leeren denken muss. Ein Generations-Zaehler waere die
         /// schwaechere Form: er verlaesst sich darauf, dass niemand ihn
-        /// vergisst. (Klasse „Bestands-Positiv, das nie ablaeuft" — R25.)
+        /// vergisst.
         var rule: String?
     }
 
@@ -57,7 +57,7 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     /// Entries still within their TTL, ready for the session cache.
     /// Entries still within their TTL, ready for the session cache.
     ///
-    /// R60: `rule` liefert je Eintrag den Abdruck der Regel, die HEUTE gilt.
+    /// `rule` liefert je Eintrag den Abdruck der Regel, die HEUTE gilt.
     /// Ein Eintrag, dessen Abdruck nicht passt, wird ueberlesen — er ist die
     /// Antwort einer Regel, die es nicht mehr gibt. Wer keine Regel hat
     /// (`nil`), bekommt das alte Verhalten.

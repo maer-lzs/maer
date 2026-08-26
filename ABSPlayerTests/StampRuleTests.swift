@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// The stamp rule (the owner, 17.08.): "we must always stamp in the same time
+/// The stamp rule: "we must always stamp in the same time
 /// zone, or without one." Stored and compared timestamps are epoch numbers —
 /// zone-free by construction; zones exist in the display only. Text stamps are
 /// translated exactly ONCE at the boundary, and the parser takes the offset

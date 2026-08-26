@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// R36: the areas list must be COMPLETE — free music steered a visible
+/// The areas list must be COMPLETE — free music steered a visible
 /// surface for months while its switch existed only under network services
 /// (a different question: privacy per service, not presence of an area), so
 /// the list looked complete and was not. A source-scan fence instead of a

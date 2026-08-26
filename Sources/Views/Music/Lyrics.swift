@@ -14,7 +14,7 @@ nonisolated struct LyricsLine: Equatable, Identifiable, Codable {
 }
 
 /// Lyrics of one song — synced (timestamps) or plain text.
-/// e3dabb3: `fromWeb` marks LRCLIB results so the opt-out can gate cached
+/// `fromWeb` marks LRCLIB results so the opt-out can gate cached
 /// entries too (off = neither load nor SHOW). Old disk entries decode with
 /// nil → treated as server lyrics (they age out via the 60-day TTL; honest
 /// deviation, named in the report).
@@ -108,7 +108,7 @@ final class LyricsService: ObservableObject {
     /// Generous TTL — lyrics don't change; negative hits retry after expiry.
     private nonisolated static let ttl: TimeInterval = 60 * 60 * 24 * 60
 
-    /// e3dabb3: cached WEB lyrics never surface while the opt-out is off —
+    /// Cached WEB lyrics never surface while the opt-out is off —
     /// one shared gate for memory AND disk hits.
     private nonisolated static func gated(_ lyrics: SongLyrics?) -> SongLyrics? {
         guard let lyrics else { return nil }

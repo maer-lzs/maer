@@ -6,16 +6,15 @@
 import SwiftUI
 import OSLog
 
-/// 🟡 P8: THE "Old Records" section — the three-level structure (a738dc4 +
-/// 284095b) in ONE place, rendered by the music tab AND by "Discover ·
-/// Music".
+/// 🟡 THE "Old Records" section — the three-level structure in ONE place,
+/// rendered by the music tab AND by "Discover · Music".
 ///
-/// Measured root of the device finding: the collection page never had a
-/// shelf LOADER at all. It rendered the capsules as navigation tiles and
-/// nothing else — so the capsules were operable and led into emptiness,
-/// with no row, no loading and no failure state (G8). Copying the tab's
+/// Measured root: the collection page had no shelf LOADER at all. It rendered
+/// the capsules as navigation tiles and nothing else — the capsules were
+/// operable and led into emptiness, with no row, no loading and no failure
+/// state. Copying the tab's
 /// block would have been the second version that drifts; this is the shared
-/// one (Regel 2), and with it the collection page inherits the shelf line,
+/// one, and with it the collection page inherits the shelf line,
 /// the loading state and the visible failure automatically.
 ///
 /// Three levels, three targets: the row HEAD means the area (genre
@@ -110,7 +109,7 @@ struct ShellacSection: View {
         let page = CatalogRotation.page(total: area.measuredTotal, rowSize: 12, on: Date())
         do {
             let docs = try await ArchiveOrgClient.popularMusic(area: area, rows: 12, page: page)
-            // 🟡 P10-Nachfassung: a shown preview goes through the ONE probed
+            // 🟡 A shown preview goes through the ONE probed
             // entry point — this row was a sibling surface that kept showing
             // withdrawn items.
             titles = await FreeCatalogLoader.picks(docs, cap: RowPreview.limit,

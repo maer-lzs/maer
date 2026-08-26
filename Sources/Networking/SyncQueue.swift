@@ -26,7 +26,7 @@ extension APIClient: ProgressSyncAPI {}
 /// type nested in SyncQueue it would inherit its MainActor isolation and could
 /// not be constructed as a default argument.
 ///
-/// 6a411cf: a CLASS, not a struct — it has to remember across the two calls
+/// A CLASS, not a struct — it has to remember across the two calls
 /// that the stored queue could not be read, and a value type cannot carry that
 /// from `load()` to `save()`. It lives behind SyncQueue's isolation, so the
 /// mutable state stays single-threaded.
@@ -34,7 +34,7 @@ final class SyncQueueFileStorage: SyncQueueStorage {
     private let fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("pending_sync.json")
 
-    /// 6a411cf: unread is not empty. What waits here are listening positions
+    /// Unread is not empty. What waits here are listening positions
     /// that never reached the server — the one thing this app must not lose
     /// quietly.
     private var readFailed = false
@@ -159,7 +159,7 @@ final class SyncQueue {
         } catch {
             return
         }
-        // Y48/Y50: the flush reached the server (fetch succeeded) — record the
+        // The flush reached the server (fetch succeeded) — record the
         // check even if no position ends up written below, so ABS progress sync
         // is visible in the history when nothing was hanging in the queue.
         await MainActor.run { SyncHistoryStore.shared.noteChecked(.absProgress) }
@@ -197,7 +197,7 @@ final class SyncQueue {
                 // next attempt comes automatically.
             }
         }
-        // F9: record the flush when it actually wrote something.
+        // Record the flush when it actually wrote something.
         if sent > 0 {
             await MainActor.run {
                 SyncHistoryStore.shared.append(SyncHistory.entry(

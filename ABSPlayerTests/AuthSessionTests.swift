@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 🔴 P5: **credentials are deleted by the user, never by a server answer.**
+/// 🔴 **Credentials are deleted by the user, never by a server answer.**
 /// A homeserver coming back up answers 401 for minutes; the old path logged
 /// out and dropped the keychain token, which no restart could undo.
 @MainActor
@@ -20,7 +20,7 @@ struct AuthSessionTests {
         defer { KeychainStore.delete(forKey: key) }
 
         let auth = AppSession.shared.authViewModel
-        // 2c6bc8f-Klasse: dieser Test veraendert einen SINGLETON — er stellt
+        // Dieser Test veraendert einen SINGLETON — er stellt
         // den Ausgangszustand danach wieder her, sonst traegt der naechste
         // Test in derselben Suite den Zweifel weiter.
         defer { auth.logout() }   // im Testlauf ist kein echter Zugang gesetzt
@@ -47,7 +47,7 @@ struct AuthSessionTests {
 
     @Test("eine erfolgreiche Neu-Anmeldung raeumt den Zweifel ab")
     func successfulSignInClearsTheDoubt() {
-        // Der vierte Fall (fae9a66): reject → Neu-Anmeldung → Zustand weg.
+        // Der vierte Fall: reject → Neu-Anmeldung → Zustand weg.
         // Geprueft an der QUELLE, weil der Erfolgspfad einen echten Server
         // braucht: der connect()-Erfolgszweig muss beide Flags raeumen —
         // die Probe-Schleife tut es nach `needsReauth` nicht mehr.

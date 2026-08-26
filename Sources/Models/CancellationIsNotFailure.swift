@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// c238542: the ONE answer to "was this run cancelled?" — because five
+/// The ONE answer to "was this run cancelled?" — because five
 /// instances of the throw-is-not-the-end class meant there was a sixth, and
 /// the sweep found EIGHT more `catch` sites booking a cancelled run as a
 /// failure (`failed = true` on an intact network).

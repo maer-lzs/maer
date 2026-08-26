@@ -59,7 +59,7 @@ extension PlayerViewModel {
 
     private func performSync(force: Bool) async {
         guard let item else { return }
-        // 5f4fdee: a start that no source answered may not push — not even
+        // A start that no source answered may not push — not even
         // forced. At 00:00 in a fresh session this would overwrite a server
         // that is hours ahead, and the suspicious-drop guard has no reference
         // value to catch it.
@@ -91,7 +91,7 @@ extension PlayerViewModel {
             )
             lastSyncedTime = currentTime
             suppressConflictForNextSync = false
-            // Y48/Y50: a real ABS progress write happened — keep the "last
+            // A real ABS progress write happened — keep the "last
             // checked" stamp current (throttled to disk in the store). Only for
             // progress-sync sources (books); Subsonic scrobbles, radio no-ops.
             if provider.capabilities.contains(.progressSync) {
@@ -115,7 +115,7 @@ extension PlayerViewModel {
             // the local crash backup removed after a successful sync.
             let isPodcast = item.id.hasPrefix("rss:") || item.id.hasPrefix("abspod:")
             if provider.capabilities.contains(.progressSync) && !isPodcast {
-                // c59e96e: the crash backup has done its job and goes —
+                // The crash backup has done its job and goes —
                 // but WHAT we pushed and WHEN stays. A deleted witness is
                 // not a fact; that is the same lesson as the `[0, now]`
                 // tombstone further down, one level further. Without this
@@ -129,7 +129,7 @@ extension PlayerViewModel {
             } else if SyncRules.mayWritePodcastLocalState(playedSinceLoad: eventSinceLoad,
                                                            deliberateRestart: false,
                                                            deliberateSeek: false) {
-                // 8b71fd7: this branch is gated on an EVENT since load. The
+                // This branch is gated on an EVENT since load. The
                 // restore flush used to run through here and re-stamped the
                 // RESTORED position with a fresh timestamp, locally and to
                 // gpodder — the reviver that beat the user's finished mark
@@ -358,7 +358,7 @@ extension PlayerViewModel {
             startSourceResolved = true
             let serverTime = fresh.userMediaProgress?.currentTime ?? 0
             let serverUpdate = fresh.userMediaProgress?.lastUpdate ?? 0
-            // 2a993f6 (Glied 4): whatever the server says now also goes into
+            // Whatever the server says now also goes into
             // the cached detail — that file IS the start source of a
             // downloaded book, and until here it kept the download-time state
             // for good. Covers the case the flushed witness cannot: downloaded

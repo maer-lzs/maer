@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The ONE shuffle-play entry point (Regel 2): the music-tab root (whole
+/// The ONE shuffle-play entry point: the music-tab root (whole
 /// library), a playlist detail and an album detail all use this same button —
 /// only the `pool` closure differs (each supplies its own item set). The shared
 /// `PlayerCoordinator.shufflePlay` orders them with the pure `MediaShuffle`.

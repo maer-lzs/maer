@@ -148,7 +148,7 @@ struct StartedFormTests {
 }
 
 /// the reviewer's Messfrage: was passiert mit der Form, wenn ein Geraet noch auf altem
-/// Stand ist und Dreiwert-Eintraege schreibt? Fuer the owner ist genau das der
+/// Stand ist und Dreiwert-Eintraege schreibt? Genau das ist der
 /// Alltag — iPhone aktualisiert, iPad noch nicht.
 struct StartedFormAcrossDevicesTests {
 

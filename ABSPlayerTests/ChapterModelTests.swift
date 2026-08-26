@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// S19: broken chapter metadata (Armageddon repro) must not produce nonsense
+/// Broken chapter metadata (Armageddon repro) must not produce nonsense
 /// chapter labels / negative "min left". ChapterModel drops untrustworthy
 /// chapters and only reports a current chapter that actually contains the time.
 struct ChapterModelTests {
@@ -212,7 +212,7 @@ struct ChapterModelTests {
         #expect(r.chapters.isEmpty)
     }
 
-    /// V6: displays must derive the current chapter from the VALIDATED list, not
+    /// Displays must derive the current chapter from the VALIDATED list, not
     /// the raw server chapters. "Letzte Flotte" shape: chapters cover only the
     /// first ~30% of the book; past that, the raw `last(where: t >= start)` names
     /// a phantom chapter, while validated `current` correctly returns nil.

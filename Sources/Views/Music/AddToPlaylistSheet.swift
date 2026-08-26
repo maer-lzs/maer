@@ -27,7 +27,7 @@ final class PlaylistPresenter: ObservableObject {
     static let shared = PlaylistPresenter()
     private init() {}
 
-    /// Entries looking for a home. The titles travel WITH the ids (P4): the
+    /// Entries looking for a home. The titles travel WITH the ids: the
     /// surface had the name on screen at the moment of the tap, the resolving
     /// routine may not (cold catalogue cache).
     struct AddRequest: Identifiable {
@@ -145,15 +145,14 @@ final class PlaylistPresenter: ObservableObject {
 
     // MARK: - Expansion (device world)
 
-    /// f208790 — "playlists are SONGS, not albums": a container lands as its
-    /// tracks, a WORK (reading, radio play) stays ONE entry, because that is
-    /// what it is. `PlaylistDestination.expansion` decides; this routine only
-    /// fetches what the decision asks for.
+    /// Playlists are SONGS, not albums: a container lands as its tracks, a
+    /// WORK (reading, radio play) stays ONE entry.
+    /// `PlaylistDestination.expansion` decides; this routine only fetches
+    /// what the decision asks for.
     ///
-    /// Why the first build only half-arrived (order point 4): the catalogue
-    /// provider grew out of the AUDIOBOOK path, where one id IS the whole
-    /// work — the playlist add inherited that assumption and asked the form
-    /// switch only for catalogue ids, never for a server album.
+    /// The catalogue provider grew out of the AUDIOBOOK path, where one id IS
+    /// the whole work — the playlist add inherited that assumption and asked
+    /// the form switch only for catalogue ids, never for a server album.
     static func expandedForDevice(_ ids: [String],
                                   titles carried: [String: String] = [:]) async -> (ids: [String], titles: [String: String]) {
         let music = AppSession.shared.musicProvider
@@ -210,7 +209,7 @@ final class PlaylistPresenter: ObservableObject {
         return (ids, titles)
     }
 
-    /// Regel 3: every outcome gets a sentence — including "was already in
+    /// Every outcome gets a sentence — including "was already in
     /// there" and above all the limit, which is reported instead of truncating
     /// silently.
     static func text(for outcome: MaerPlaylists.AddOutcome, listName: String) -> String? {
@@ -220,7 +219,7 @@ final class PlaylistPresenter: ObservableObject {
         case .limitReached(let limit):
             // The limit is not a private quota: playlists and podcast progress
             // share ONE iCloud budget, so the message must not suggest the
-            // playlists had a compartment of their own (Entscheid f35db87).
+            // playlists had a compartment of their own.
             return String(localized: "Your playlists are full (\(limit) entries) — they share the iCloud space with your podcast progress. Remove something first.")
         case .notQueueable:  return String(localized: "This cannot be added to a playlist.")
         }
@@ -255,7 +254,7 @@ struct AddToPlaylistButton: View {
     let itemId: String
     /// Several ids (an album, the queue) — the same action with a set.
     var itemIds: [String]?
-    /// P4: what the calling surface has ON SCREEN for these ids.
+    /// What the calling surface has ON SCREEN for these ids.
     var knownTitles: [String: String] = [:]
     /// A surface that only learns its entry asynchronously (an album track
     /// row has to ask the server which song sits at that index) hands a

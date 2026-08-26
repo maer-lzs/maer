@@ -21,7 +21,7 @@ struct PodcastFeaturedCard: View {
     let playerCoordinator: PlayerCoordinator
     @StateObject private var colorLoader = CoverColorLoader()
     private let width = CardMetrics.featuredCardWidth
-    // D5/B4: the overlay pill and the fixed line heights scale with Dynamic
+    // The overlay pill and the fixed line heights scale with Dynamic
     // Type — at AX sizes the pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
@@ -55,7 +55,7 @@ struct PodcastFeaturedCard: View {
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .task(id: coverURL) { await colorLoader.load(from: coverURL) }
         .overlay(alignment: .bottomLeading) { infoPill.padding(12) }
-        // P13/Q7: the Continue card carries the lock too — a free and a
+        // The Continue card carries the lock too — a free and a
         // premium copy of the SAME show can sit next to each other here
         //, and then the mark tells them apart. It sits
         // on the COVER (the card's cover fills the top), never at the text;
@@ -157,7 +157,7 @@ struct PodcastFeaturedCard: View {
 
 /// Recently-updated show tile: cover with a new-episode count badge, the show
 /// title and the relative update time. Shared by the podcast tab's "Recently
-/// Updated" grid and Home's "Latest Episodes" shelf (Regel 2). Tapping is the
+/// Updated" grid and Home's "Latest Episodes" shelf. Tapping is the
 /// caller's NavigationLink → the show page.
 struct RecentShowTile: View {
     let info: RecentShowInfo
@@ -197,7 +197,7 @@ struct RecentShowTile: View {
                             .padding(8)
                     }
                 }
-                // 92e25d6/P13: THE premium badge (shared component).
+                // THE premium badge (shared component).
                 .premiumLock(PodcastSubscriptions.isPremiumFeed(info.show.feedURL))
 
                 if info.newCount > 0 {
@@ -225,7 +225,7 @@ struct RecentShowTile: View {
 /// Compact show tile for the browse row.
 struct ShowTile: View {
     let show: PodcastShow
-    // D4/B3: the fixed tile width stays, but accessibility sizes get more
+    // The fixed tile width stays, but accessibility sizes get more
     // lines so titles remain readable instead of truncating to a fragment.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     private let size: CGFloat = 110
@@ -233,7 +233,7 @@ struct ShowTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: size, corner: 12)
-                // 92e25d6/P13: same shared badge as the recent-shows grid.
+                // Same shared badge as the recent-shows grid.
                 .premiumLock(PodcastSubscriptions.isPremiumFeed(show.feedURL))
             Text(show.title)
                 .font(.caption)
@@ -251,11 +251,10 @@ enum PodcastRowTap { case play, detail, none }
 
 /// Rich episode row: cover, show + title, date/remaining time, progress, and a
 /// trailing cluster of consistent gray controls (info · download · play/pause).
-/// Pinchflat Paket B (a916a5a): the origin capsule — a GENERIC video SF
-/// symbol + the word "YouTube" as a descriptive provenance line (the same
-/// class as "Apple Podcasts" as a sender line; NO trademark glyph). The word
-/// is the carrier; the symbol is Beiwerk with a GT-checked fallback ladder
-/// (5c2de4e: film → tv → word-only). Carried by `PodcastShow.origin` only,
+/// The origin capsule — a GENERIC video SF symbol plus the platform name as
+/// a descriptive provenance line, never a trademark glyph. The word is the
+/// carrier; the symbol is Beiwerk with a fallback ladder (film → tv →
+/// word-only). Carried by `PodcastShow.origin` only,
 /// never a URL heuristic. Placed on surfaces OUTSIDE the group row (latest
 /// episodes, downloads, search, show page) — inside the group the heading
 /// already says it.
@@ -288,15 +287,15 @@ struct PodcastEpisodeRow: View {
     /// lives in the observing EpisodeRowPlayButton leaf, live download state
     /// in PodcastDownloadButton.
     let playerCoordinator: PlayerCoordinator
-    /// f0b9c8a: the hosting SHOW page passes its title so the eyebrow can
+    /// The hosting SHOW page passes its title so the eyebrow can
     /// drop when it merely repeats it; surfaces that mix shows pass nil.
     var showTitle: String? = nil
-    /// Paket B: the HOST resolves membership once (set lookup) — a per-row
+    /// The HOST resolves membership once (set lookup) — a per-row
     /// shows×episodes scan would break the cell-cost convention.
     var showsOriginCapsule: Bool = false
     @Environment(\.pushPodcastRoute) private var pushRoute
 
-    /// R1: text-only episode (kept, no enclosure) — plain read, one per render.
+    /// Text-only episode (kept, no enclosure) — plain read, one per render.
     private var isTextOnly: Bool {
         !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
     }
@@ -308,14 +307,14 @@ struct PodcastEpisodeRow: View {
         let isPlayed = state == .played
         let textOnly = isTextOnly
         HStack(alignment: .center, spacing: 2) {
-            // A4: no Spacer next to the max-width row body — two equally
+            // No Spacer next to the max-width row body — two equally
             // flexible siblings made SwiftUI split the width and pushed the
             // trailing icons to the middle (visible in the show page's List).
             rowBody(state: state, isPlayed: isPlayed)
                 .layoutPriority(1)
             // Trailing controls: download + the large play button. Info is
             // gone — the whole row body opens the episode page instead.
-            // R1: text-only rows keep the SLOTS (cell-height convention) but
+            // Text-only rows keep the SLOTS (cell-height convention) but
             // render them invisible — no play/download affordance.
             PodcastDownloadButton(item: item, showsDownloadedState: false)
                 .opacity(textOnly ? 0 : 1)
@@ -329,7 +328,7 @@ struct PodcastEpisodeRow: View {
         .contentShape(Rectangle())
         .podcastEpisodeMenu(item: item, playerCoordinator: playerCoordinator)
         // Swipe actions apply in `List` contexts (show page, queue); in pure
-        // `LazyVStack` previews the context menu remains. R1: text-only rows
+        // `LazyVStack` previews the context menu remains. Text-only rows
         // offer no queue swipes (never queueable).
         .swipeActions(edge: .leading, allowsFullSwipe: true) {
             if !textOnly {
@@ -386,7 +385,7 @@ struct PodcastEpisodeRow: View {
     @ViewBuilder private func rowBody(state: EpisodePlayState, isPlayed: Bool) -> some View {
         switch rowTap {
         case .play:
-            // R1: a text-only episode cannot start — its tap opens the notes.
+            // A text-only episode cannot start — its tap opens the notes.
             if isTextOnly {
                 Button {
                     pushRoute(.episode(itemId: item.id))
@@ -442,7 +441,7 @@ struct PodcastEpisodeRow: View {
         var parts: [String] = []
         let date = relativeDateText(item)
         if !date.isEmpty { parts.append(date) }
-        // R1: mark the text-only row instead of showing play/duration meta.
+        // Mark the text-only row instead of showing play/duration meta.
         if isTextOnly {
             parts.append(String(localized: "Text only"))
             return parts.joined(separator: " · ")
@@ -558,8 +557,8 @@ struct PodcastDownloadButton: View {
 
 // MARK: - Inline subscribe control (Discover)
 
-/// Shared inline subscribe control (Regel 2: the podcast tab's Discover grid
-/// and the Home Discover row use the SAME flow): a green check when already
+/// Shared inline subscribe control — the podcast tab's Discover grid and the
+/// Home Discover row use the SAME flow: a green check when already
 /// subscribed, a spinner while subscribing, otherwise a "+" that subscribes on
 /// the ABS server when ABS podcasts are active, else locally + gpodder push.
 struct PodcastSubscribeBadge: View {
@@ -653,7 +652,7 @@ struct PodcastSubscribeButton: View {
 }
 
 /// Y2a: ONE recommendation tile for Home's Discover row AND the podcast tab's
-/// Recommended row (Regel 2) — a MediaTile with the subscribe corner control;
+/// Recommended row — a MediaTile with the subscribe corner control;
 /// the tile tap opens the temporary show preview.
 struct RecommendationTile: View {
     let result: PodcastSearchResult
@@ -661,7 +660,7 @@ struct RecommendationTile: View {
     /// X²·1: the CC capsule of a curated independent feed — only where the
     /// FEED states the licence (rides MediaTile's badge mechanics).
     var badgeText: String? = nil
-    /// Kachel-Auftrag: nil = the tile FILLS its containerRelativeFrame slot
+    /// nil = the tile FILLS its containerRelativeFrame slot
     /// (screen-relative rows); a numeric width remains for legacy callers.
     var width: CGFloat? = nil
     @Environment(\.pushPodcastRoute) private var pushRoute
@@ -676,8 +675,8 @@ struct RecommendationTile: View {
                 coverURL: result.artworkURL.flatMap { URL(string: $0) },
                 unavailable: unavailable,
                 badgeText: badgeText,
-                // 2e2c222 G: a result WITHOUT artwork resolves it from the
-                // feed — the c125ccd fallback the old LIST row had; without
+                // A result WITHOUT artwork resolves it from the feed — the
+                // same fallback the old LIST row had; without
                 // it every curated feed tile rendered gray (curation carries
                 // no artworkURL by design).
                 coverOverride: result.artworkURL == nil

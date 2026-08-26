@@ -85,7 +85,7 @@ final class PlaybackClaimSync: ObservableObject {
         _ = cloud.synchronize()
     }
 
-    /// Active withdrawal on pause (bf565d9): the hint on the other device
+    /// Active withdrawal on pause: the hint on the other device
     /// dies in delivery seconds instead of the 90-s ageing (which stays the
     /// fallback for crash/dead-zone/app-kill). Only the OWN claim is
     /// released — a foreign claim in the key means another device took over,

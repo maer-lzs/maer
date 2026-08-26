@@ -10,7 +10,7 @@ import Foundation
 /// timestamp (no heuristics). This core merges id/timestamp pairs from several
 /// sources; the view resolves the ids back to items via AppSession.
 nonisolated enum HomeSections {
-    /// 6c52b67: max music entries in the Continue row — a constant, not a
+    /// Max music entries in the Continue row — a constant, not a
     /// setting (kein Options-Zoo).
     static let continueMusicCap = 2
 
@@ -31,7 +31,7 @@ nonisolated enum HomeSections {
         .map(\.key)
     }
 
-    /// 6c52b67: cap ONE group's share of an already-ranked row — music
+    /// Cap ONE group's share of an already-ranked row — music
     /// entries (albums+playlists) accrue progress far more often than books/
     /// episodes and would dominate the Continue row. The newest `cap` capped
     /// ids stay, the freed slots go to the others by recency. EXCEPTION
@@ -58,8 +58,8 @@ nonisolated enum HomeSections {
     /// starves the others — a pure recency sort let a music library with fresher
     /// timestamps take every slot ("Recently Added" showed only music). Used for
     /// "Recently Added" (books + albums).
-    /// Generic since Auftrag K/L: the catalog mix rows (podcast tab + start)
-    /// interleave typed tiles through the SAME merge — one implementation.
+    /// Generic: the catalog mix rows (podcast tab + start) interleave typed
+    /// tiles through the SAME merge — one implementation.
     static func interleave<T>(_ sources: [[T]], limit: Int) -> [T] {
         var result: [T] = []
         var index = 0

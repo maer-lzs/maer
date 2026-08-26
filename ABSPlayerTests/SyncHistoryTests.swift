@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// F9: pure entry creation, the 50-run ring buffer, JSON persistence and the
+/// Pure entry creation, the 50-run ring buffer, JSON persistence and the
 /// permanence of guard entries (S20's final form).
 struct SyncHistoryTests {
     private func entry(minutesAgo: Double, guardNote: String? = nil) -> SyncHistoryEntry {
@@ -83,7 +83,7 @@ struct SyncHistoryTests {
         #expect(relaunched.entries.last?.guardNote == "Mass delete skipped")
     }
 
-    /// Y36 candidate check: a `.music` entry (Y27 counters) survives the
+    /// A `.music` entry (Y27 counters) survives the
     /// persistence round-trip exactly like the older services.
     @MainActor
     @Test("a .music entry persists across relaunch with its counters")
@@ -105,7 +105,7 @@ struct SyncHistoryTests {
         #expect(relaunched.entries.first?.counters.map(\.value) == [42, 512])
     }
 
-    /// Y48/Y50: `noteChecked` records a per-service "last checked" stamp that
+    /// `noteChecked` records a per-service "last checked" stamp that
     /// leaves NO ring entry and survives a relaunch.
     @MainActor
     @Test("noteChecked stamps a service without a ring entry, and persists")
@@ -154,7 +154,7 @@ struct SyncHistoryTests {
         #expect(store.lastChecked["absProgress"] == appendedAt)
     }
 
-    /// Y36 (Regel 3): an unreadable history file is parked as evidence, the
+    /// An unreadable history file is parked as evidence, the
     /// store starts empty, and the next append begins a fresh ring.
     @MainActor
     @Test("a corrupt history file is parked, not silently overwritten")

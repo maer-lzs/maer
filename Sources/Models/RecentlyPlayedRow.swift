@@ -5,8 +5,8 @@
 
 import Foundation
 
-/// P14: ONE "Recently Played" row for albums AND stations — both make the
-/// same promise (start it again, no position to resume), and since P9 both
+/// ONE "Recently Played" row for albums AND stations — both make the
+/// same promise (start it again, no position to resume), and both
 /// wear the same tile.
 ///
 /// **Deliberately a pure TIME order, not a fair interleave.** "Recently
@@ -31,7 +31,7 @@ nonisolated enum RecentlyPlayedRow {
 
     /// Merge by time. Entries WITHOUT a known time keep their source order
     /// and rank behind everything dated — a missing timestamp (a station
-    /// heard before P14, an album the server only sorted) is not a reason to
+    /// heard before the row existed, an album the server only sorted) is not a reason to
     /// invent one.
     ///
     /// - Parameters:

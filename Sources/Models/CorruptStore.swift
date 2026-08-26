@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// 6a411cf: the `.corrupt` pattern as ONE surface.
+/// The `.corrupt` pattern as ONE surface.
 ///
 /// The danger is not the decode failure — it is what happens NEXT. `try?` turns
 /// an unreadable file into an empty state, and the next save writes that empty

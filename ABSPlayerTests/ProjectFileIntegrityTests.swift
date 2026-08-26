@@ -27,7 +27,7 @@ struct ProjectFileIntegrityTests {
     }
 
     /// Zero, not one: the last remaining `wrapper.pb-project` entry was the
-    /// ORIGINAL injection (3648644) — a full self-subproject reference (file
+    /// ORIGINAL injection — a full self-subproject reference (file
     /// reference + Products group + `projectReferences` entry), not the
     /// orphan line it looked like. It is gone since the root fix, so the
     /// fence now says what it means instead of tolerating one corpse.
@@ -39,7 +39,7 @@ struct ProjectFileIntegrityTests {
                 "the project references itself — Xcode injected it; heal with git checkout -- Maer.xcodeproj/project.pbxproj")
     }
 
-    /// Since e885a01 the app target's synchronised group carries
+    /// The app target's synchronised group carries
     /// `path = Sources`. That is the STRUCTURAL guarantee behind two things
     /// that used to need maintenance: the project file cannot reference
     /// itself (it lies outside the swept folder), and nothing from the repo
@@ -53,8 +53,7 @@ struct ProjectFileIntegrityTests {
     /// Binärdatei und würde die Ausnahme aushöhlen, ohne dass jemand es
     /// bemerkt. Deshalb ist die Zahl hier festgenagelt: 0.
     /// GPL § 7 verlangt den Hinweis auf Zusatzbedingungen ausdrücklich **in
-    /// den Quelldateien** („in the relevant source files … a notice indicating
-    /// where to find the applicable terms") — nicht nur in der Wurzel. Eine
+    /// den Quelldateien** — nicht nur in der Wurzel. Eine
     /// neue Datei ohne diese Zeile ließe die Bedingung still ausfallen, und
     /// niemand würde es merken. Derselbe Mechanismus wie beim pbxproj-Zaun.
     @Test("every source file carries copyright, SPDX and the additional-terms notice")
@@ -97,11 +96,10 @@ struct ProjectFileIntegrityTests {
                 "the additional terms must travel with the binary they apply to")
     }
 
-    /// Auftrag afd452a: ein vollstaendiges JWT stand im Klartext in einer
-    /// gewoehnlichen View-Datei (`SetupView`, Demo-Zugang) — also im
-    /// oeffentlichen Spiegel und dauerhaft in der Historie. Der Zugang ist
-    /// zurueckgebaut; dieser Zaun sorgt dafuer, dass so etwas nicht als
-    /// „nur kurz zum Testen" wiederkommt. JWTs haben eine erkennbare Form
+    /// Ein vollstaendiges JWT stand im Klartext in einer gewoehnlichen
+    /// View-Datei — also im oeffentlichen Spiegel und dauerhaft in der
+    /// Historie. Der Zugang ist zurueckgebaut; dieser Zaun sorgt dafuer, dass
+    /// so etwas nicht zum Testen wiederkommt. JWTs haben eine erkennbare Form
     /// (`eyJ` = base64 von `{"`), das genuegt als Muster.
     @Test("no access token is hard-coded in the sources")
     func noHardCodedTokens() throws {
@@ -127,7 +125,7 @@ struct ProjectFileIntegrityTests {
                 "a JWT is hard-coded in the sources — credentials belong in App Store Connect's review notes, never in a shipped file")
     }
 
-    /// Befund 09.08.: SECHS handgepflegte User-Agent-Zeichenketten mit vier
+    /// SECHS handgepflegte User-Agent-Zeichenketten mit vier
     /// Versionswerten und zwei Adressen — eine davon nannte die private Forge und
     /// ging bei jedem Kuenstlerbild-Abruf nach draussen. Jetzt gibt es genau
     /// eine, aus der Bundle-Version abgeleitet. Der Zaun haelt das: kein
@@ -160,9 +158,9 @@ struct ProjectFileIntegrityTests {
         #expect(definitions == 1, "the identification is defined exactly once")
     }
 
-    /// Architektur-Befund 09.08.: die acht Katalogquellen hatten ein zweites,
-    /// handgeschriebenes Aktivierungssystem — die Vorgabe „an" stand 35× in
-    /// elf Dateien. Heute stimmten alle 35 überein; erzwungen hat das
+    /// Die acht Katalogquellen hatten ein zweites, handgeschriebenes
+    /// Aktivierungssystem — die Vorgabe stand 35× in elf Dateien. Alle 35
+    /// stimmten überein; erzwungen hat das
     /// niemand, ein `bool(forKey:)` an einer Stelle hätte sie gekippt.
     /// Jetzt steht sie einmal je Quelle in `AppStorageKeys`. Ohne diesen Zaun
     /// ist der Aufräumtag in drei Monaten rückgängig gemacht.
@@ -437,7 +435,7 @@ struct ProjectFileIntegrityTests {
 }
 #endif
 
-// MARK: - 🔴 P1: gpodder comparison sets read ONE visibility rule
+// MARK: - 🔴 gpodder comparison sets read ONE visibility rule
 
 extension ProjectFileIntegrityTests {
     /// Finds hand-rolled "what does gpodder see" filters: a `.filter {` whose
@@ -503,7 +501,7 @@ extension ProjectFileIntegrityTests {
     }
 }
 
-// MARK: - 🟡 P10-Nachfassung: kuratierte Picks kommen aus EINER geprobten Quelle
+// MARK: - 🟡 Kuratierte Picks kommen aus EINER geprobten Quelle
 
 extension ProjectFileIntegrityTests {
     /// Finds preview rows that build their items themselves instead of going
@@ -528,7 +526,7 @@ extension ProjectFileIntegrityTests {
                     || statement.contains("=docs.compactMap{FreeCatalogProvider.shared.remember(popular:")
             else { continue }
             // The wider second cut of an already probed fetch is sanctioned
-            // (cb99bf6) — it is not a preview.
+            // — it is not a preview.
             guard !statement.hasPrefix("rows.tabBooks") else { continue }
             offenders.append(text[..<hit.lowerBound].filter { $0 == "\n" }.count + 1)
         }
@@ -561,7 +559,7 @@ extension ProjectFileIntegrityTests {
     }
 }
 
-// MARK: - e32454e: das Instrument fragt die Regel, es kopiert sie nicht
+// MARK: - Das Instrument fragt die Regel, es kopiert sie nicht
 
 extension ProjectFileIntegrityTests {
     @Test("die Fortschritts-Diagnose vergleicht nicht selbst")
@@ -579,7 +577,7 @@ extension ProjectFileIntegrityTests {
                 "die Startregel ist wieder kopiert statt gefragt")
     }
 
-    /// c59e96e: the start path decides where a book begins. Both witnesses are
+    /// The start path decides where a book begins. Both witnesses are
     /// judged by the SHARED rules — the same reason as above, and the same
     /// failure mode: identical today, silently divergent the day a tolerance
     /// moves.
@@ -615,9 +613,10 @@ extension ProjectFileIntegrityTests {
                 "der Sync entfernt die Sicherung wieder roh, am Bestand vorbei")
     }
 
-    /// 2a993f6 (Glied 4): the cached detail is the start source of a
+    /// The cached detail is the start source of a
     /// downloaded book. Written only at download time it freezes — the
-    /// cb8bac1 class. It must keep a SECOND writer, the one that carries the
+    /// same class as a stale constant. It must keep a SECOND writer, the
+    /// one that carries the
     /// server's answer into it.
     @Test("das gecachte Detail wird nicht nur beim Herunterladen geschrieben")
     func cachedDetailIsKeptCurrent() throws {
@@ -635,7 +634,7 @@ extension ProjectFileIntegrityTests {
 }
 
 
-// MARK: - 973a38a: one precondition, one scroll helper
+// MARK: - One precondition, one scroll helper
 
 extension ProjectFileIntegrityTests {
     /// The journey file as text — the fences here measure its SHAPE, because a
@@ -750,7 +749,7 @@ extension ProjectFileIntegrityTests {
     }
 }
 
-// MARK: - 88c4eb6: the size class is not a caller's question
+// MARK: - The size class is not a caller's question
 
 extension ProjectFileIntegrityTests {
     /// Every place that spans a horizontal tile slot itself instead of asking
@@ -1435,5 +1434,125 @@ extension ProjectFileIntegrityTests {
         }
         #expect(offenders.isEmpty,
                 "these providers still answer with ONE type: \(offenders)")
+    }
+}
+
+// MARK: - Der Quelltext spricht ohne uns
+
+extension ProjectFileIntegrityTests {
+
+    /// Walks every shipped Swift file and hands out its text.
+    private static func sourceTexts() -> [(name: String, text: String)] {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+        var found: [(String, String)] = []
+        for folder in ["Sources", "MaerWidgets", "LiveActivityWidget"] {
+            let dir = root.appendingPathComponent(folder)
+            guard let walker = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)
+            else { continue }
+            for case let url as URL in walker where url.pathExtension == "swift" {
+                guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
+                found.append((url.lastPathComponent, text))
+            }
+        }
+        return found
+    }
+
+    /// The names of the people who build this app appear in exactly one place:
+    /// the copyright line. A comment addresses the NEXT reader, and the next
+    /// reader does not know us. The list is an enumeration rather than a
+    /// pattern, because a pattern on "capitalised word" would fire on every
+    /// type name.
+    static let personNames = ["Laurenz", "Momo", "fable", "Pie", "Takt"]
+
+    @Test("no person is named in the sources outside the copyright line")
+    func sourcesNamesNobody() throws {
+        let files = Self.sourceTexts()
+        guard !files.isEmpty else { return }
+        var offenders: [String] = []
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                if line.contains("Copyright (C)") { continue }
+                for person in Self.personNames where Self.names(person, in: String(line)) {
+                    offenders.append("\(name):\(number + 1) \(person)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "a person stands where a measurement belongs: \(offenders)")
+    }
+
+    /// Order shorthands carry a decision's history compactly, and only for us.
+    /// Wikidata property ids (`P18`, `P154`) share the shape and are external
+    /// vocabulary, so they are named as exceptions rather than pattern-matched
+    /// around.
+    static let wikidataProperties = ["P18", "P31", "P154"]
+
+    @Test("no order shorthand is left in a comment")
+    func commentsCarryNoOrderShorthands() throws {
+        let files = Self.sourceTexts()
+        guard !files.isEmpty else { return }
+        var offenders: [String] = []
+        for (name, text) in files {
+            for (number, line) in text.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard trimmed.hasPrefix("//") else { continue }
+                for hit in Self.orderShorthands(in: String(line)) {
+                    offenders.append("\(name):\(number + 1) \(hit)")
+                }
+            }
+        }
+        #expect(offenders.isEmpty, "an order shorthand says nothing to a stranger: \(offenders)")
+    }
+
+    /// Word-exact search: `Pie` must not fire on `Piece`, `fable` not on
+    /// `fable-auftraege`.
+    static func names(_ person: String, in line: String) -> Bool {
+        var search = line[line.startIndex...]
+        while let range = search.range(of: person) {
+            let beforeOK = range.lowerBound == line.startIndex
+                || !isWordCharacter(line[line.index(before: range.lowerBound)])
+            let afterOK = range.upperBound == line.endIndex
+                || !isWordCharacter(line[range.upperBound])
+            if beforeOK && afterOK { return true }
+            search = line[range.upperBound...]
+        }
+        return false
+    }
+
+    private static func isWordCharacter(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber || character == "-" || character == "_"
+    }
+
+    /// `R45`, `P10`, `Auftrag K`, `Auflage 1`. Wikidata properties share the
+    /// letter-plus-number shape and are named above as exceptions.
+    static func orderShorthands(in line: String) -> [String] {
+        var hits: [String] = []
+        for word in line.split(whereSeparator: { !isWordCharacter($0) }) {
+            let token = String(word)
+            guard token.count >= 2, let first = token.first,
+                  first == "R" || first == "P",
+                  token.dropFirst().allSatisfy(\.isNumber)
+            else { continue }
+            if wikidataProperties.contains(token) { continue }
+            hits.append(token)
+        }
+        if line.contains("Auftrag ") { hits.append("Auftrag") }
+        if line.contains("Auflage ") { hits.append("Auflage") }
+        return hits
+    }
+
+    /// The instrument itself, in both directions: a planted line goes red, the
+    /// copyright line and the external vocabulary stay green.
+    @Test("the two fences fire on a planted line and stay quiet on the header")
+    func theFencesFireInBothDirections() {
+        #expect(Self.names("Laurenz", in: "/// Laurenz am Geraet: kein Bild"))
+        #expect(!Self.names("Laurenz", in: "// Copyright (C) 2026 Laurenz Schröder"
+            .replacingOccurrences(of: "Laurenz", with: "Lorenz")))
+        #expect(!Self.names("Pie", in: "/// one Piece of the answer"))
+        #expect(!Self.names("fable", in: "/// see fable-auftraege"))
+        #expect(Self.orderShorthands(in: "/// R58: die Faecher fragen") == ["R58"])
+        #expect(Self.orderShorthands(in: "/// Auftrag K settled it") == ["Auftrag"])
+        #expect(Self.orderShorthands(in: "/// Wikidata P154 first").isEmpty)
+        #expect(Self.orderShorthands(in: "/// the row shows twelve tiles").isEmpty)
     }
 }

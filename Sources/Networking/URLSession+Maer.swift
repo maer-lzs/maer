@@ -18,7 +18,7 @@ extension URLSession {
         return URLSession(configuration: config)
     }()
 
-    /// S24: cover-image fetches. `ImageCache` already owns cover caching on disk,
+    /// Cover-image fetches. `ImageCache` already owns cover caching on disk,
     /// so this session keeps NO `URLCache` — otherwise every cover response is
     /// stored a SECOND time in the (app-unbounded, purgeable) URLCache, which
     /// balloons the "System Data" footprint during heavy scrolling. `nil` cache

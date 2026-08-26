@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// S21: import only ACTIVE (subscribed/followed) Apple Podcasts shows, not the
+/// Import only ACTIVE (subscribed/followed) Apple Podcasts shows, not the
 /// whole history; count paid/exclusive subscriptions (subscribed but no public
 /// feed) for a hint instead of dropping them silently.
 struct PodcastImportSelectionTests {
@@ -37,7 +37,7 @@ struct PodcastImportSelectionTests {
         #expect(r.paidUnimportable == 0)
     }
 
-    /// feb46bb, the no-request fence at the ONE selection: Apple off may
+    /// The no-request fence at the ONE selection: Apple off may
     /// never resolve to the Apple directory — PodcastIndex takes over where
     /// configured, and "nobody" is an honest answer, not a fallback to Apple.
     @Test("the Apple switch is a hard gate at the one directory selection")

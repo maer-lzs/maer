@@ -111,12 +111,12 @@ final class LibraryViewModel: ObservableObject {
     /// (immediately visible) page — drives the "Loading more…" footer.
     @Published var isLoadingMore = false
 
-    /// T3/T5: resolve a loaded audiobook/local item by id — for the global
+    /// Resolve a loaded audiobook/local item by id — for the global
     /// Up-Next queue (render + cross-media auto-continue) and session restore.
     /// The shelves are checked too, so an item that is only on a shelf still
     /// resolves before the full grid has paged in.
     func libraryItem(forId itemId: String) -> LibraryItem? {
-        // E2: the big `entries` list resolves via the O(1) index; the two small
+        // The big `entries` list resolves via the O(1) index; the two small
         // shelves stay a linear scan (an item only there still resolves).
         if let hit = entriesById[itemId] { return hit.item }
         for list in [continueListening, recentlyAdded] {
@@ -453,7 +453,7 @@ final class LibraryViewModel: ObservableObject {
         func matches(_ e: LibraryEntry) -> Bool {
             matchesFilter(e, filter: filter, downloadedIds: downloadedIds)
         }
-        // Single-book „series" render as a normal book; then apply the
+        // Single-book series render as a normal book; then apply the
         // filter: singles must match, stacks stay if ANY book matches.
         return result.compactMap { item in
             if case .series(let name, let books) = item {
@@ -586,7 +586,7 @@ final class LibraryViewModel: ObservableObject {
         // the next launch showed the empty library, which is why it survived
         // this long.
         await reloadLocalCache()
-        // F10: no signed-in book source (serverless start) — no server load,
+        // No signed-in book source (serverless start) — no server load,
         // and no fake offline/error state on the aggregation surfaces. What is
         // local still has to reach the list, so the rebuild runs.
         guard provider.isAvailable else {
@@ -613,8 +613,8 @@ final class LibraryViewModel: ObservableObject {
         isLoading = entries.isEmpty
         errorMessage = nil
         defer { isLoading = false }
-        // Befund M ("kein Spinner ohne Endzustand"): a BACKGROUND refresh with
-        // stock on screen must end promptly when the server is away — the
+        // No spinner without an end state: a BACKGROUND refresh with stock
+        // on screen ends promptly when the server is away — the
         // retry tower (3 attempts x ~20 s connect timeout, several call
         // sites) kept `isRefreshing` (= the floating activity pill over the
         // Continue cards) spinning for minutes on 5G where the mesh-only
@@ -675,7 +675,7 @@ final class LibraryViewModel: ObservableObject {
                 // the offline view depends on a complete downloaded set.
                 await DownloadManager.shared.ensureScanned()
                 isShowingOfflineCache = true
-                // B2 (user decision): offline shows the WHOLE library (last
+                // Offline shows the WHOLE library (last
                 // cached state) + banner; titles that aren't downloaded are
                 // dimmed reactively in the cells instead of being filtered out.
                 await rebuild(items: cache.items, progress: cache.progress)
@@ -701,7 +701,7 @@ final class LibraryViewModel: ObservableObject {
         try await loadContent(libraryId: library.id)
     }
 
-    /// F6: the last library id that actually loaded — the search endpoint's
+    /// The last library id that actually loaded — the search endpoint's
     /// fallback when no explicit settings choice is stored.
     static var lastKnownLibraryId: String?
 
@@ -723,7 +723,7 @@ final class LibraryViewModel: ObservableObject {
         // (sort, filter, series stacks, search) work on what is already
         // loaded and complete themselves as more pages arrive.
         let pageSize = 50
-        // Befund M: same fail-fast rule as loadLibrary — with stock on screen
+        // Same fail-fast rule as loadLibrary — with stock on screen
         // one attempt, full patience only on an empty first load.
         let first = try await withRetry(attempts: entries.isEmpty ? 3 : 1) {
             try await self.provider.fetchLibraryItemsPage(libraryId: id, limit: pageSize, page: 0)
@@ -845,7 +845,7 @@ final class LibraryViewModel: ObservableObject {
 
     /// Re-mix the list after importing/deleting local files — without querying
     /// the server again (uses the already-loaded server items).
-    /// df0b3bb 3: a title was taken off (or returned to) the Continue rows.
+    /// A title was taken off (or returned to) the Continue rows.
     /// Purely local — rebuild from what is already loaded, no server round trip
     /// for a decision the user just made on this device.
     func refreshContinueRows() async {
@@ -913,7 +913,7 @@ final class LibraryViewModel: ObservableObject {
     private var lastProgress: [String: BookProgress] = [:]
 
     /// Everything the off-main rebuild computation needs, as a value snapshot.
-    /// 96cb043/2100b09: started titles outside the server library — resolved
+    /// Started titles outside the server library — resolved
     /// HERE because the item lookup is main-actor bound, then handed to the
     /// off-main rebuild as plain data.
     @MainActor
@@ -946,9 +946,9 @@ final class LibraryViewModel: ObservableObject {
         let ascending: Bool
         let filter: FilterOption
         let downloadedIds: Set<String>
-        /// df0b3bb 3: per-item "not under Continue any more" markers.
+        /// Per-item "not under Continue any more" markers.
         var hiddenMarkers: [String: Double] = [:]
-        /// 96cb043/2100b09: started titles OUTSIDE the server library —
+        /// Started titles OUTSIDE the server library —
         /// local sideloads and catalog works, resolved by the caller (their
         /// item lookup is main-actor bound).
         var continueExtras: [LibraryEntry] = []
@@ -967,7 +967,7 @@ final class LibraryViewModel: ObservableObject {
         let grouped: [GridEntry]
     }
 
-    /// S6: the expensive part of a rebuild — makeEntry over every item, the
+    /// The expensive part of a rebuild — makeEntry over every item, the
     /// Continue/Recently unions and sorts, AND the memoized derived lists — runs
     /// OFF the main actor over the snapshot; the main actor only assigns.
     nonisolated static func computeRebuild(_ input: RebuildInput) -> RebuildOutput {
@@ -985,7 +985,7 @@ final class LibraryViewModel: ObservableObject {
         let byId = Dictionary(combined.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
 
         var continueById: [String: LibraryEntry] = [:]
-        // 305a292: ask the won source, not the raw one — a frozen cached zero
+        // Ask the won source, not the raw one — a frozen cached zero
         // must not delete a book from the row it belongs in.
         let defaults = UserDefaults.standard
         func started(_ e: LibraryEntry) -> Bool {
@@ -999,15 +999,15 @@ final class LibraryViewModel: ObservableObject {
             let e = makeEntry(item: item, progress: input.progress, queued: input.queued)
             if started(e) { continueById[e.id] = e }
         }
-        // df0b3bb: two things were missing here, and their absence was not a
+        // Two things were missing here, and their absence was not a
         // concept — `recentlyAdded` two lines below has had a cap all along.
         // (1) AGE: what has lain untouched for longer is not "continue" any
         //     more, it is a case for Rediscover — which owns that mechanic
         //     including the threshold. Same constant reused, no second one
         //     invented, so a title cannot sit in both rows at once.
-        // (2) CAP: a row is the preview of a page (3a3b1aa); the complete
+        // (2) CAP: a row is the preview of a page; the complete
         //     stock belongs behind the chevron.
-        // 96cb043/2100b09: the row takes the OTHER classes too — locally
+        // The row takes the OTHER classes too — locally
         // sideloaded books and catalog works keep their position in the same
         // second-backup, and both were structurally invisible here (the row
         // only knew the source it was born from). One collection, so the
@@ -1021,13 +1021,10 @@ final class LibraryViewModel: ObservableObject {
             .sorted { ($0.progress?.lastUpdate ?? 0) > ($1.progress?.lastUpdate ?? 0) }
         // The AGE CUTOFF is GONE.
         // Continue is the row of ALL started books again — a book left lying
-        // for four weeks is exactly what he wants to continue, not "gone from
-        // Continue". The e46e7b4 cutoff was my design decision inside
-        // df0b3bb/6fcb301; it hollowed out a visible surface nobody ordered
-        // hollowed. Lesson (into the report): capping (display) and culling
-        // (stock) are two different operations — df0b3bb ordered the first,
-        // I also built the second.
-        // C2: Rediscover keeps feeding from continueAll with its own
+        // for four weeks is exactly what is to be continued, not "gone from
+        // Continue". Capping (display) and culling (stock) are two different
+        // operations — this row caps and never culls.
+        // Rediscover keeps feeding from continueAll with its own
         // threshold — the overlap is WANTED (one row answers "what did I
         // start?", the other "what did I forget?").
         // The manual hide gesture (ContinueHidden) stays untouched.

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// P1 regression: the memoized `sortedFilteredEntries` / `seriesGroupedEntries`
+/// The memoized `sortedFilteredEntries` / `seriesGroupedEntries`
 /// must be IDENTICAL to a fresh computation after every mutation — a wrong or
 /// missing cache invalidation (stale list) must turn these red.
 @MainActor
@@ -300,7 +300,7 @@ struct LibraryDerivedListsTests {
 }
 #endif
 
-// MARK: - 96cb043 + 2100b09: Weiterhoeren kennt ALLE Quellen
+// MARK: - Weiterhoeren kennt ALLE Quellen
 
 struct ContinueSourcesTests {
     private func mark(_ pos: Double, _ ms: Double, _ dur: Double? = nil) -> [Double] {
@@ -332,7 +332,7 @@ struct ContinueSourcesTests {
         // 10 Sekunden sind ein Tipp, kein begonnenes Buch.
         #expect(ContinueSources.started(in: ["localPosition.lv:1": mark(10, 1)],
                                         serverKnows: []).isEmpty)
-        // Position am Ende ⇒ gehoert, nicht „weiterhoeren".
+        // Position am Ende ⇒ gehoert, nicht weiterhoeren.
         #expect(ContinueSources.started(in: ["localPosition.lv:2": mark(7_200, 1, 7_200)],
                                         serverKnows: []).isEmpty)
         // Ohne bekannte Dauer bleibt der Eintrag drin (nichts wird erfunden).

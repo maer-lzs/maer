@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// X16: a finished title has nothing left to resume (its saved position is the
+/// A finished title has nothing left to resume (its saved position is the
 /// end), so a deliberate play restarts it from the beginning — but a silent
 /// session restore must never reset it.
 struct CompletedResumeTests {

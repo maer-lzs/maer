@@ -11,18 +11,17 @@ import Testing
 /// RSS parser against the edge-case corpus (ballon5, corpus version 1.0).
 /// Ground truth: `RSS-MANIFEST.json` / the corpus MANIFEST table. Every case
 /// runs on every test run; where Mär deviates from the corpus expectation the
-/// assert is wrapped in `withKnownIssue` with a Befund ID (full list in the
-/// corpus report) — deviations stay visible, they are never bent green.
+/// assert is wrapped in `withKnownIssue` — deviations stay visible, they are
+/// never bent green.
 ///
-/// Befund register (see report). FIXED by the Härtungspaket: R2 (video/*
-/// and octet-stream-with-media-extension enclosures accepted), R3 (relative
-/// URLs resolved against the feed base), R4 (duplicate guids collapse
-/// in-parse), R5 (weekday-less / zone-name RFC-2822 forms parse), O1 (broken
-/// OPML fails visibly). STILL OPEN:
-/// - R1 RESOLVED: text-only items are KEPT and
-///   marked non-playable (`isPlayable == false`) — all five R1 cases strict.
-/// - R6: channel-level `podcast:guid` (PC20) is not read at all.
-/// - R7: `atom:link rel="next"` pagination (RFC 5005) is not surfaced.
+/// Covered: video/* and octet-stream-with-media-extension enclosures are
+/// accepted, relative URLs resolve against the feed base, duplicate guids
+/// collapse in-parse, weekday-less and zone-name RFC-2822 forms parse, broken
+/// OPML fails visibly, and text-only items are KEPT and marked non-playable
+/// (`isPlayable == false`).
+///
+/// Not read at all: channel-level `podcast:guid` (PC20) and
+/// `atom:link rel="next"` pagination (RFC 5005).
 struct RSSEdgeCorpusTests {
 
     private func parse(_ name: String, feedURL: String = "https://example.org/feed.xml") throws -> PodcastShow? {
@@ -53,7 +52,7 @@ struct RSSEdgeCorpusTests {
     @Test("guid isPermaLink=true: URL value is the identity")
     func guidPermalinkURL() throws {
         let show = try #require(try parse("guid-permalink-url"))
-        // R1 resolved: the enclosure-less items are kept, so the fixture
+        // The enclosure-less items are kept, so the fixture
         // asserts run strict.
         #expect(show.episodes.contains { $0.guid.hasSuffix(":https://example.com/episodes/42") })
         #expect(show.episodes.allSatisfy { !$0.isPlayable })
@@ -77,7 +76,7 @@ struct RSSEdgeCorpusTests {
     @Test("itunes:duration SS / MM:SS / HH:MM:SS, per-item image, episodeType")
     func itunesVariants() throws {
         let show = try #require(try parse("itunes-variants"))
-        // R1 resolved: all three text-only items are kept — the fixture's
+        // All three text-only items are kept — the fixture's
         // variant metadata is now assertable directly.
         #expect(show.episodes.count == 3)
         #expect(show.episodes.map(\.duration) == [185, 185, 3725])
@@ -159,7 +158,7 @@ struct RSSEdgeCorpusTests {
 
     // MARK: - Befunde (known deviations from the corpus ground truth)
 
-    @Test("R1 resolved: item without enclosure survives as non-playable")
+    @Test("item without enclosure survives as non-playable")
     func enclosureMissing() throws {
         let show = try #require(try parse("enclosure-missing"))
         #expect(show.episodes.count == 2)
@@ -167,36 +166,36 @@ struct RSSEdgeCorpusTests {
         #expect(show.episodes.filter { !$0.isPlayable }.count == 1)
     }
 
-    @Test("R2 fixed: octet-stream enclosure with media extension is kept")
+    @Test("octet-stream enclosure with media extension is kept")
     func enclosureWrongMime() throws {
         let show = try #require(try parse("enclosure-wrong-mime"))
         #expect(show.episodes.count == 2)
     }
 
-    @Test("R2 fixed: Podsync (video/mp4) feeds parse as episodes")
+    @Test("Podsync (video/mp4) feeds parse as episodes")
     func youtubePodsyncShape() throws {
         let show = try #require(try parse("youtube-podsync-shape"))
         #expect(show.episodes.count == 2)
         #expect(show.episodes.first?.guid.hasSuffix(":dQw4w9WgXcQ") == true)
     }
 
-    @Test("R3 fixed: relative URLs resolve against the feed base")
+    @Test("relative URLs resolve against the feed base")
     func relativeURLs() throws {
         let show = try #require(try parse("relative-urls", feedURL: "https://example.com/podcast/feed.xml"))
         #expect(show.episodes.first?.audioURL == "https://example.com/podcast/media/ep1.mp3")
         #expect(show.artworkURL == "https://example.com/podcast/art/cover.jpg")
     }
 
-    @Test("R4 fixed: duplicate guid collapses to one episode (first wins)")
+    @Test("duplicate guid collapses to one episode (first wins)")
     func duplicateGuid() throws {
         let show = try #require(try parse("duplicate-guid"))
         #expect(show.episodes.count == 1)
         #expect(show.episodes.first?.audioURL == "https://example.org/bytecast/ep-0007.mp3")
     }
 
-    @Test("R5 fixed: RFC-2822 variants (no weekday / zone name) parse")
+    @Test("RFC-2822 variants (no weekday / zone name) parse")
     func invalidPubdateTolerance() throws {
-        // The corpus fixture's items carry no enclosure (blocked by R1), so the
+        // The corpus fixture's items carry no enclosure, so the
         // date tolerance is probed with the fixture's exact date strings inline.
         func pubDate(_ s: String) -> Double {
             let xml = """
@@ -210,19 +209,19 @@ struct RSSEdgeCorpusTests {
         }
         #expect(pubDate("Wed, 15 Jan 2025 09:00:00 +0000") > 0)   // reference form parses
         #expect(pubDate("gestern abend") == 0)                     // garbage → 0, no crash
-        // R5 fixed: weekday-less and zone-name forms parse now.
+        // Weekday-less and zone-name forms parse now.
         #expect(pubDate("15 Jan 2025 09:00:00 GMT") > 0)
         #expect(pubDate("Wed, 15 Jan 2025 04:00:00 EST") > 0)
     }
 
-    @Test("R1 resolved (paged feed): items kept; R7 rel=next stays report-only")
+    @Test("paged feed: items kept; rel=next is not surfaced")
     func pagedFeed() throws {
         let show = try #require(try parse("paged-feed"))
         #expect(show.episodes.count == 2)
         #expect(show.episodes.allSatisfy { !$0.isPlayable })
     }
 
-    @Test("R1 resolved: CDATA/entity title survives on the kept text item")
+    @Test("CDATA/entity title survives on the kept text item")
     func cdataHTMLTitle() throws {
         let show = try #require(try parse("cdata-html-title"))
         #expect(show.episodes.contains { $0.title.contains("R&D") })

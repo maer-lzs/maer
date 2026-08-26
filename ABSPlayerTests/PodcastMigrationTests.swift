@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// P4 regression: the migration core (re-key ids/guids, move progress, dedupe
+/// The migration core (re-key ids/guids, move progress, dedupe
 /// feeds) is pure and must be idempotent; the async bootstrap runs exactly this
 /// decode→migrate pipeline, so pinning the pipeline pins the bootstrap.
 struct PodcastMigrationTests {

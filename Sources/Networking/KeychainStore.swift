@@ -17,11 +17,11 @@ nonisolated enum KeychainStore {
     /// items under the real service.
     static let service = "com.example.absplayer"
 
-    /// Y26: default accessibility is AfterFirstUnlock — without it the
+    /// Default accessibility is AfterFirstUnlock — without it the
     /// WhenUnlocked default makes every background/locked read fail, and a
     /// failed credential read used to cascade into "source logged out".
     /// The parameter exists for tests that need to construct legacy items.
-    /// P2 (2): `synchronizable` puts an item into the iCloud keychain — the
+    /// `synchronizable` puts an item into the iCloud keychain — the
     /// channel for what gpodder cannot carry (Basic-auth credentials). URL
     /// and secret are a PAIR: whoever stores one synchronized must store the
     /// other the same way, or a second device inherits half a state.
@@ -43,7 +43,7 @@ nonisolated enum KeychainStore {
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
-    /// Y34: one-time migration for EXISTING installs — items written before
+    /// One-time migration for EXISTING installs — items written before
     /// the Y26 fix carry WhenUnlocked and stay unreadable for background work
     /// (the nightly refresh, running for real since Y32, read them into the
     /// void on a locked device); the ABS token would otherwise only be
@@ -88,7 +88,7 @@ nonisolated enum KeychainStore {
     static func load(forKey key: String) -> String? {
         // Synchronizable ANY: a device that inherited an item through the
         // iCloud keychain must find it here, and a local item must keep
-        // being found after the switch was flipped (P2).
+        // being found after the switch was flipped.
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -100,7 +100,7 @@ nonisolated enum KeychainStore {
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         guard status == errSecSuccess, let data = result as? Data else {
-            // Y26 diagnosis: an unreadable item is NOT the same as a missing
+            // An unreadable item is NOT the same as a missing
             // one — log every non-notFound failure (e.g. -25308
             // interactionNotAllowed while the device is locked).
             if status != errSecItemNotFound {
@@ -111,7 +111,7 @@ nonisolated enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    /// 🔴 P5 measuring order: every deletion names its CALLER. the user also
+    /// 🔴 Every deletion names its CALLER. the user also
     /// lost the Subsonic password, for which no automatic deletion path is
     /// measurable — so the next incident must leave a trail instead of a
     /// guess. Only the key name is logged, never a value.

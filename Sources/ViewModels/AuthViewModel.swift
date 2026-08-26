@@ -22,7 +22,7 @@ final class AuthViewModel: ObservableObject {
     @Published var isLoggedIn: Bool
     @Published var isLoading = false
     @Published var errorMessage: String?
-    /// 🔴 P5: the session is DOUBTED, never dissolved. A homeserver coming
+    /// 🔴 The session is DOUBTED, never dissolved. A homeserver coming
     /// back up answers 401 for minutes; the old path logged out and DELETED
     /// the keychain token, which no restart could heal (the user had to
     /// reinstall). The rule this state exists for: **credentials are deleted
@@ -128,7 +128,7 @@ final class AuthViewModel: ObservableObject {
         apiClient.updateToken(token)
         do {
             _ = try await apiClient.fetchLibraries()
-            // d990695: a WORKING address goes into the known-server register —
+            // A WORKING address goes into the known-server register —
             // only on success, never credentials, never logged.
             KnownServers.remember(url.absoluteString, service: .audiobookshelf)
             KeychainStore.save(url.absoluteString, forKey: KeychainKey.serverURL)
@@ -136,13 +136,13 @@ final class AuthViewModel: ObservableObject {
             apiToken = ""
             password = ""
             isLoggedIn = true
-            // fae9a66: a SUCCESSFUL sign-in ends the doubt. Without this the
+            // A SUCCESSFUL sign-in ends the doubt. Without this the
             // banner and both flags survived the fresh login until the next
             // app start — and the probe loop no longer runs once
             // `needsReauth` is set, so nothing else would have cleared them.
             sessionSuspect = false
             needsReauth = false
-            // Y37/F10: the book tab appears live once the source exists.
+            // The book tab appears live once the source exists.
             AppSession.shared.notifySourcesChanged()
         } catch {
             errorMessage = Self.friendlyMessage(for: error)
@@ -190,7 +190,7 @@ final class AuthViewModel: ObservableObject {
     /// The USER's sign-out — the only path that may drop the token.
     func logout() {
         KeychainStore.delete(forKey: KeychainKey.apiToken)
-        // F10: empty the client too — `isAvailable` (tab visibility, search
+        // Empty the client too — `isAvailable` (tab visibility, search
         // fan-out) must flip with the logout, not only the root switch.
         apiClient.clearToken()
         isLoggedIn = false

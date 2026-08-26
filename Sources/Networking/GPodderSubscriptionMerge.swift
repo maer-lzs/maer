@@ -25,7 +25,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     var pendingRemoveFromServer: Set<String> = []
     /// Human-readable reason when a plausibility guard fired (nil = clean run).
     var warning: String?
-    /// 593d177 R1: set when the LOSS SIGNATURE (local empty ∧ prev full ∧
+    /// Set when the LOSS SIGNATURE (local empty ∧ prev full ∧
     /// server full) triggered the pure server adoption — the caller logs it.
     var recoveredFromServer = false
     /// False when the guard fired: the last-synced state must stay untouched,
@@ -49,7 +49,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
     /// Confirmation for removals. LOCAL side (server removed a feed —
     /// cross-device convergence): a SINGLE applies at once, 2–3 need the
     /// second consecutive sync (unchanged semantics).
-    /// 593d177 R2, SERVER side (`requireIntentForSingles`): a remove pushed
+    /// SERVER side (`requireIntentForSingles`): a remove pushed
     /// TOWARD the server applies immediately only with USER intent (UI
     /// unsubscribe); DERIVED singles — the loss class that nibbled the
     /// server copy — wait for the second consecutive confirmation too.
@@ -66,7 +66,7 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         return (apply, candidates.subtracting(apply))
     }
 
-    /// `hiddenLocally` (🔴 P1): normalized URLs that exist locally but are
+    /// 🔴 `hiddenLocally`: normalized URLs that exist locally but are
     /// invisible to gpodder (token feeds, Pinchflat mirrors — see
     /// GPodderVisibleSubscriptions). They are absent from `local` by
     /// construction, so a copy still sitting on the server would otherwise
@@ -90,11 +90,11 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
             return merge
         }
 
-        // 593d177 R1 (+486b293 Randfall): the LOSS SIGNATURE — the local
-        // store is empty while prev AND server hold a real state. But the
-        // emptiness only counts as LOSS where it is NOT explained by user
-        // intents: unsubscribing the LAST feed legitimately empties the
-        // store, and R1 must not resurrect it on every sync.
+        // The LOSS SIGNATURE — the local store is empty while prev AND
+        // server hold a real state. But the emptiness only counts as LOSS
+        // where it is NOT explained by user intents: unsubscribing the LAST
+        // feed legitimately empties the store, and the signature must not
+        // resurrect it on every sync.
         if local.isEmpty, !prev.isEmpty, !server.isEmpty {
             let explained = userRemovedLocally.intersection(prev)
             let unexplained = server.subtracting(explained)
@@ -130,12 +130,12 @@ nonisolated struct GPodderSubscriptionMerge: Equatable {
         }
         // Server side: same shape — but USER-intended removes never count
         // toward implausibility (unsubscribing all five feeds is a decision,
-        // not a glitch; 486b293).
-        // 🔴 P1 cleanup: a hidden feed (mirror/token) STILL sitting on the
+        // not a glitch).
+        // 🔴 Cleanup: a hidden feed (mirror/token) STILL sitting on the
         // server is a leftover from before the rule — removing it is a
         // grounded decision, not a suspect derivation, so it does not count
-        // toward implausibility (same treatment the user's own unsubscribes
-        // get, 486b293). Without this the everyday case — more than three
+        // toward implausibility, the same treatment a user's own
+        // unsubscribe gets. Without this the everyday case — more than three
         // mirrored capsules — would be blocked FOREVER instead of cleaned.
         // The second-confirmation guard still applies: it runs through the
         // existing intent channel, no new sync path.

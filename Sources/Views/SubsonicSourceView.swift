@@ -87,7 +87,7 @@ struct SubsonicSourceView: View {
                 Text("Booksonic libraries serve audiobooks: albums appear as books in the Audiobooks tab, tracks become chapters. Never guessed — you set it here.")
             }
 
-            // G8 lives here: with two modes on, what each one is fed from has
+            // With two modes on, what each one is fed from has
             // to be said before either becomes a tab.
             SourceLibraryAssignmentSection(
                 modes: modes,
@@ -96,13 +96,13 @@ struct SubsonicSourceView: View {
                 reload: libraryReload)
 
             Section {
-                // affb7e6: the tab is the USER's master (settings →
+                // The tab is the USER's master (settings →
                 // Libraries); this switch governs the SOURCE — its old label
                 // ("Show Music tab") promised tab behaviour it no longer has.
                 AppSwitch("Music server (Subsonic)", isOn: $enabled)
                     // Locale-independent handle for the UI-test harness.
                     .accessibilityIdentifier("music-tab-toggle")
-                    // Y37: the toggle acts IMMEDIATELY (like the ABS podcast
+                    // The toggle acts IMMEDIATELY (like the ABS podcast
                     // toggle) — save rebuilds the client and notifies the tab
                     // bar; before, nothing happened until the view closed.
                     .onChange(of: enabled) { _, _ in save() }
@@ -110,7 +110,7 @@ struct SubsonicSourceView: View {
                 Text("When on, your albums, artists and playlists appear in a Music tab in the library.")
             }
 
-            // a449534: the metadata feature toggles moved to the MUSIC pill in
+            // The metadata feature toggles moved to the MUSIC pill in
             // Settings (provider-wide, not source access) — see musicSection.
             Section {
                 Button {
@@ -118,7 +118,7 @@ struct SubsonicSourceView: View {
                     isTesting = true
                     Task {
                         let err = await SubsonicProvider.shared.testConnection()
-                        // d990695: only a WORKING address is remembered.
+                        // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .subsonic) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
@@ -128,7 +128,7 @@ struct SubsonicSourceView: View {
                 }
                 .disabled(isTesting || serverURL.isEmpty || username.isEmpty)
 
-                // Y27: the library refresh as a VISIBLE sync (parity with the
+                // The library refresh as a VISIBLE sync (parity with the
                 // other sources) — lands in Settings → Sync → Sync History.
                 Button {
                     save()
@@ -158,7 +158,7 @@ struct SubsonicSourceView: View {
         .bottomBarClearance()
         // Save on leaving so nothing is lost.
         .onDisappear { save() }
-        // Y26: the mask always prefills the LAST stored state — a kicked-out
+        // The mask always prefills the LAST stored state — a kicked-out
         // session costs at most the password re-entry. Also refills fields the
         // early @State init may have read empty.
         .onAppear {
@@ -182,7 +182,7 @@ struct SubsonicSourceView: View {
         if !trimmedUser.isEmpty {
             AppStorageKeys.subsonicUsernameValue = trimmedUser
         }
-        // Y26: NEVER persist an empty field as a keychain DELETE — when the
+        // NEVER persist an empty field as a keychain DELETE — when the
         // @State init read the password as empty (locked-device keychain
         // failure), the unconditional save on disappear silently erased the
         // stored credential. An empty field simply leaves the keychain alone.

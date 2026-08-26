@@ -46,7 +46,7 @@ final class ListeningStatsCloudSync {
     }
 
     private func handle(reason: Int?) {
-        // beff8bd: the reason goes through the ONE watch — the check used to
+        // The reason goes through the ONE watch — the check used to
         // live here, which made its coverage narrower than its purpose (this
         // service bails out when the iCloud switch is off, while the three
         // other cloud paths never looked at the reason at all).

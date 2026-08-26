@@ -15,28 +15,28 @@ enum PodcastRoute: Hashable {
     case episode(itemId: String)
     /// Y2b: the temporary show preview for a not-yet-subscribed show.
     case showPreview(feedURL: String)
-    /// V6: the chronological listen history (PodcastListenLog).
+    /// The chronological listen history (PodcastListenLog).
     case history
-    /// e96d396 B2: the premium shows' full page (Blaupause "Zuletzt
+    /// The premium shows' full page (Blaupause "Zuletzt
     /// hinzugefuegt": heading -> full grid). The S22 management surface is NOT
     /// this page — this one browses, management stays where it is.
     case premium
     /// Welle 3: the continue row's full page (HOEREN grid — tap plays).
     case nextUpAll
     /// Welle 3: the full recommendation pool — Home's Discover chevron and
-    /// the podcast tab's Recommended chevron land on the SAME page (Regel 2).
+    /// the podcast tab's Recommended chevron land on the SAME page.
     case recommendations
     /// Welle 3b: full pages behind the expanding rows (DIE REGEL: an
     /// expansion is not a page).
     case latestAll
     case downloadsAll
-    /// J2: the full subscription grid behind the "Recently Updated" preview.
+    /// The full subscription grid behind the "Recently Updated" preview.
     case subscriptions
-    /// Pinchflat Paket B: the mirrored group's full channel grid.
+    /// The mirrored group's full channel grid.
     case pinchflatGroup
     /// X²·5: the book-category charts (1482) as a full grid — measured: no
 
-    /// H (7749411): the two-stage chart form — charts page (genres as tile
+    /// H: the two-stage chart form — charts page (genres as tile
     /// rows) and one parameterised genre page (full grid).
     case charts
     case chartGenre(String)

@@ -139,7 +139,7 @@ func podcastSetPlayed(_ item: LibraryItem, _ played: Bool, syncCloud: Bool = tru
     // marking the RUNNING episode as heard left it playing (X16c decided the
     // rule long ago: mark = as if it had ended, stop + auto-continue).
     // `markPlayedAndAdvance` is a no-op for a non-active item, so this stays
-    // one line instead of a condition at every surface (Regel 2).
+    // one line instead of a condition at every surface.
     if played { AppSession.shared.playerCoordinator.markPlayedAndAdvance(itemId: item.id) }
     // Mirror on the server too: the abspod: copy is self (abspod item) or the
     // server episode bridged via the feed guid (rss item).

@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// Package 3: reconstruct a playlist's continue-listening position from a
+/// Reconstruct a playlist's continue-listening position from a
 /// Subsonic per-song bookmark. A playlist is one multi-track item with a single
 /// `currentTime` over the whole thing (like a multi-file book); a bookmark only
 /// knows song + position-within-song, so the enclosing offset must be added back
-/// — the SAME `songsByItemId` (id, start) mapping the scrobble uses (Regel 2, no
-/// second arithmetic). Foundation-only, pure, tested.
+/// — the SAME `songsByItemId` (id, start) mapping the scrobble uses, never a
+/// second arithmetic. Foundation-only, pure, tested.
 nonisolated enum BookmarkProgressMath {
     /// The multi-track `currentTime` for a bookmark: the bookmarked song's start
     /// offset within the playlist + the position inside that song. Returns nil

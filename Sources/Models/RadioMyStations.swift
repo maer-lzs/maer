@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// cb2d1ed: "My Stations" — the radio tab's first row, fed from TWO sources
+/// "My Stations" — the radio tab's first row, fed from TWO sources
 /// that used to be two rows: marked favorites and the stations with the most
 /// measured listening time.
 ///

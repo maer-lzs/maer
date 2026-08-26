@@ -17,7 +17,7 @@ import Foundation
 /// their contents differ, the older one is handed back as a rescue copy — the
 /// user sees that something happened instead of quietly losing an evening's
 /// work. A rescue copy stays on the device that made it (`isRescue`): pushing
-/// it would multiply it across devices, which is the trap noted in `ff1263c`.
+/// it would multiply it across devices.
 ///
 /// **Deletions need a mark.** Without one, a list deleted here comes back from
 /// iCloud on the next reconcile. A tombstone carries the moment of deletion and

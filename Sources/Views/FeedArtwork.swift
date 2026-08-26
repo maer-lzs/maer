@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// c125ccd: a catalog row's cover when the row itself brought none — the
+/// A catalog row's cover when the row itself brought none — the
 /// artwork is resolved LAZILY from the feed's channel image (persistently
 /// cached, negatives included) and rendered through the shared image path.
 /// Passed as `coverOverride` (the Y58 pattern), so framing, clipping,
@@ -46,7 +46,7 @@ struct FeedArtwork: View {
     }
 }
 
-/// c125ccd: the ONE cover decision of a search-result row — a concrete view
+/// The ONE cover decision of a search-result row — a concrete view
 /// (never `AnyView`; erasure is taxed per row creation, cell-cost rule).
 /// Radio hits keep the gated station artwork; a catalog show WITHOUT its own
 /// image resolves the feed's channel artwork; everything else falls through
@@ -73,7 +73,7 @@ struct SearchRowCover: View {
     }
 }
 
-/// b81949f (Regel 2): THE free-catalog book tile — the four surfaces
+/// THE free-catalog book tile — the four surfaces
 /// (Home-Discover mix, audiobooks-tab row, free-audiobooks area, classical)
 /// used to repeat the same MediaTile configuration; now they share one
 /// component. It also fills the card's time line: where the popularity
@@ -94,16 +94,16 @@ struct FreeCatalogBookTile: View {
             subtitle: item.author,
             coverURL: AppSession.shared.coverURL(forItemId: item.id),
             placeholderSystemImage: placeholderSystemImage,
-            // 50aefa8: year first, then runtime — for catalog items whose
+            // Year first, then runtime — for catalog items whose
             // rights status the source does not state, the year is the only
             // hint the user has.
             meta: FreeCatalog.catalogMetaLine(
                 year: item.media?.metadata?.publishedYear?.value,
                 runtime: bookTimeLine(progress: nil, duration: duration).trimmingCharacters(in: .whitespaces),
-                // Q3: the reading marker as a quiet meta part.
+                // The reading marker as a quiet meta part.
                 readingVersion: FreeCatalogProvider.shared.readingVersion(forItemId: item.id)),
             titleLineLimit: 1,
-            // 40b8f96: the LICENCE at a glance — the source follows from the
+            // The LICENCE at a glance — the source follows from the
             // section a tile stands in, the rights situation from nothing.
             // Unknown ⇒ no capsule (never guess).
             badgeText: FreeCatalogProvider.shared.licence(forItemId: item.id),

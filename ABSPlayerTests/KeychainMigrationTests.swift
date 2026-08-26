@@ -9,7 +9,7 @@ import Foundation
 import Security
 @testable import ABSPlayer
 
-/// Y34: legacy keychain items (WhenUnlocked) are rewritten once with
+/// Legacy keychain items (WhenUnlocked) are rewritten once with
 /// AfterFirstUnlock; the flag only sets on a successful pass.
 struct KeychainMigrationTests {
     private func accessibility(forKey key: String) -> String? {

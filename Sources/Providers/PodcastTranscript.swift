@@ -6,10 +6,10 @@
 import Foundation
 import OSLog
 
-/// V7: `podcast:transcript` parsing — SRT, WebVTT and the Podcasting-2.0
+/// `podcast:transcript` parsing — SRT, WebVTT and the Podcasting-2.0
 /// JSON shape, sniffed by CONTENT (the tag's `type` attribute is community
 /// data and lies). Everything maps onto the SAME `SongLyrics` shape the
-/// lyrics panel renders (Regel 2 — one synced-text surface, no second
+/// lyrics panel renders — one synced-text surface, no second
 /// panel idiom). Pure + tested; an unparseable document yields nil and the
 /// player entry simply stays away (no false affordance).
 nonisolated enum PodcastTranscript {
@@ -107,7 +107,7 @@ nonisolated enum PodcastTranscript {
     }
 }
 
-/// V7: fetch + session-cache for episode transcripts (URL → parsed panel
+/// Fetch + session-cache for episode transcripts (URL → parsed panel
 /// data). Network fetch is best-effort; a failure logs and the panel entry
 /// stays away (the tag promised something the server didn't deliver).
 @MainActor

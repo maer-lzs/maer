@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// M4: lyrics panel in the player — synced lyrics get a live highlight that
+/// Lyrics panel in the player — synced lyrics get a live highlight that
 /// follows playback (auto-scrolling) and tap-to-seek; unsynced lyrics render
 /// as static text.
 struct LyricsPanel: View {
     let lyrics: SongLyrics
-    /// V7: the transcript panel reuses this SAME surface — only the title
-    /// differs (Regel 2, one synced-text idiom).
+    /// The transcript panel reuses this SAME surface — only the title
+    /// differs — one synced-text idiom.
     var title: LocalizedStringKey = "Lyrics"
     /// Absolute start of the current song within the album item — line
     /// timestamps are relative to the song.

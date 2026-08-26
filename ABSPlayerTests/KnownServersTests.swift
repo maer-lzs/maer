@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// d990695: das Register merkt sich nur, was NACHWEISLICH funktioniert hat —
+/// Das Register merkt sich nur, was NACHWEISLICH funktioniert hat —
 /// nie Zugangsdaten, nie automatisch geloescht.
 struct KnownServersTests {
     private func fresh() -> UserDefaults {
@@ -43,7 +43,7 @@ struct KnownServersTests {
     func neverAutoDeletes() {
         let d = fresh()
         KnownServers.remember("https://a.example", service: .jellyfin, now: 1, defaults: d)
-        // Auch ein uralter Eintrag bleibt (Ausfall ist kein Loeschgrund, P5).
+        // Auch ein uralter Eintrag bleibt. Ausfall ist kein Loeschgrund.
         #expect(KnownServers.all(defaults: d).count == 1)
         let entry = KnownServers.all(defaults: d)[0]
         KnownServers.forget(entry, defaults: d)

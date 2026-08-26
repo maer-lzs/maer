@@ -201,7 +201,7 @@ nonisolated struct LibraryItemMedia: Codable {
     var episodes: [ABSPodcastEpisode]? = nil
 }
 
-/// F3: author reference from the expanded item payload — carries the server id
+/// Author reference from the expanded item payload — carries the server id
 /// the author-image endpoint needs (the flat `authorName` string does not).
 nonisolated struct ABSAuthorRef: Codable, Identifiable {
     let id: String
@@ -211,7 +211,7 @@ nonisolated struct ABSAuthorRef: Codable, Identifiable {
 nonisolated struct LibraryItemMetadata: Codable {
     let title: String?
     let authorName: String?
-    /// F3: authors with server ids (expanded payload only). Default nil keeps
+    /// Authors with server ids (expanded payload only). Default nil keeps
     /// existing memberwise-init callers valid.
     var authors: [ABSAuthorRef]? = nil
     let narratorName: String?

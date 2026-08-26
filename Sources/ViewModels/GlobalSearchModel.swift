@@ -7,11 +7,11 @@ import Foundation
 import Combine
 import OSLog
 
-/// F6: THE global search — fans out over every active SearchableProvider plus
+/// THE global search — fans out over every active SearchableProvider plus
 /// the "New Shows" catalog source (PodcastDirectory; NOT a provider
 /// capability), debounced, cancellable, with a per-provider timeout so one
 /// slow server never blocks the others. Partial results publish as they
-/// arrive; per-source errors are logged (Regel 3) and a TOTAL failure is a
+/// arrive; per-source errors are logged and a TOTAL failure is a
 /// visible state, never a silent empty list.
 @MainActor
 final class GlobalSearchModel: ObservableObject {
@@ -59,7 +59,7 @@ final class GlobalSearchModel: ObservableObject {
                     return seeded(query)
                 }
                 #endif
-                // Q1 (257853c): the BOOK scope asks the free CATALOGS in book
+                // The BOOK scope asks the free CATALOGS in book
                 // form — the podcast directory disappears here (LibriVox book
                 // feeds are indexed there, which produced podcast rows with a
                 // subscribe plus for "Struwwelpeter"). Every other scope keeps
@@ -72,7 +72,7 @@ final class GlobalSearchModel: ObservableObject {
                                             secret: AppStorageKeys.podcastIndexEffectiveSecret)
                     : ITunesDirectory()
                 let hits = try await directory.search(query)
-                // fb94905 (3): SEARCH is the exception — someone typing a
+                // SEARCH is the exception — someone typing a
                 // title wants to FIND it, even when they already have it.
                 // The row marks it instead (PodcastSubscribeBadge shows the
                 // green check for subscribed feeds), so nothing is hidden
@@ -88,7 +88,7 @@ final class GlobalSearchModel: ObservableObject {
             })
     }
 
-    /// Q1: the free-catalog book search — the three EXISTING clients
+    /// The free-catalog book search — the three EXISTING clients
     /// (LibriVox title API, gutendex search, archive advancedsearch with a
     /// title clause), concurrent; a failing source drops out. Gates: master
     /// plus each source's service opt-out (a source that is off contributes
@@ -100,7 +100,7 @@ final class GlobalSearchModel: ObservableObject {
         let provider = FreeCatalogProvider.shared
         let librivoxOn = AppStorageKeys.librivoxActive
         let archiveOn = AppStorageKeys.archiveBooksActive
-        // Isolation-checker rule (same as P8): only Sendable RAW payloads
+        // Isolation-checker rule: only Sendable RAW payloads
         // cross the group boundary; remember()/result building runs on the
         // main actor afterwards.
         enum RawHits: Sendable {
@@ -151,12 +151,11 @@ final class GlobalSearchModel: ObservableObject {
 
     @MainActor
     private static func bookResult(_ item: LibraryItem, source: String) -> SearchResult {
-        // S1 (09.08., gemessen): „Struwwelpeter" gibt es bei LibriVox VIER
-        // Mal (zwei deutsch, zwei englisch — je eine zweite Lesung). Q2 hebt
-        // das „(version 2)" aus dem Titel, sonst stuenden hier vier
-        // identische Zeilen. Q3s Lesungs-Nummer gehoert deshalb sichtbar in
-        // die Zeile — mehrere Lesungen sind legitim, aber sie muessen
-        // unterscheidbar sein.
+        // Gemessen: einzelne Werke liegen bei LibriVox mehrfach vor (zwei
+        // deutsche, zwei englische Lesungen desselben Titels). Die
+        // Titel-Normalisierung hebt das `(version 2)` heraus, sonst stuenden
+        // hier vier identische Zeilen; die Lesungs-Nummer gehoert deshalb
+        // sichtbar in die Zeile.
         var subtitle = item.author
         if let version = FreeCatalogProvider.shared.readingVersion(forItemId: item.id) {
             let reading = String(localized: "Reading \(version)")
@@ -226,7 +225,7 @@ final class GlobalSearchModel: ObservableObject {
                         .map { Section(kind: $0.kind, results: $0.results) }
                 } else {
                     failures += 1
-                    // Regel 3: a failed/timed-out source is never silent.
+                    // A failed/timed-out source is never silent.
                     Logger.library.error("search source \(source, privacy: .public) failed or timed out for query length \(query.count)")
                 }
             }

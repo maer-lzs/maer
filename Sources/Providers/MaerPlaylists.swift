@@ -107,7 +107,7 @@ final class MaerPlaylists: ObservableObject {
         return list
     }
 
-    /// Outcome of adding — Regel 3: nothing fails silently.
+    /// Outcome of adding — nothing fails silently.
     enum AddOutcome: Equatable {
         case added
         /// Already there — not an error, but not a silent repeat either.
@@ -119,7 +119,7 @@ final class MaerPlaylists: ObservableObject {
         case notQueueable
     }
 
-    /// P4: `knownTitle` comes from the SURFACE that added the entry — it had
+    /// `knownTitle` comes from the SURFACE that added the entry — it had
     /// the name on screen at the moment of the tap. The cache lookup is only
     /// the fallback now: with a cold catalogue cache it answers nil, and the
     /// snapshot loop used to `continue` wordlessly, which is how the user'
@@ -137,7 +137,7 @@ final class MaerPlaylists: ObservableObject {
             ?? Self.titleSnapshots(for: [itemId])[itemId] {
             playlists[index].titles[itemId] = title
         } else {
-            // Regel 3: the one routine whose only job is holding the name on
+            // The one routine whose only job is holding the name on
             // says so when it comes away empty.
             Logger.library.notice("PLAYLIST snapshot EMPTY for id=\(itemId, privacy: .public) — row will need the detail fetch")
         }
@@ -187,7 +187,7 @@ final class MaerPlaylists: ObservableObject {
             playlists[index].titles.merge(learned) { old, _ in old }
             save()
         }
-        // P4: the cache is only the shortcut — what it cannot answer goes
+        // The cache is only the shortcut — what it cannot answer goes
         // the SAME reload way the row goes, so a shared list heals itself
         // instead of staying at the placeholder forever.
         let stillMissing = playlists[index].itemIds.filter { playlists[index].titles[$0] == nil }

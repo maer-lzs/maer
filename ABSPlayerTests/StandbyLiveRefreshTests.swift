@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// R30: the standby follows the fresh truth WITHOUT an app restart — the
+/// The standby follows the fresh truth WITHOUT an app restart — the
 /// transitions, not the end states (the start path was already proven).
 @MainActor
 struct StandbyLiveRefreshTests {
@@ -86,7 +86,7 @@ struct StandbyLiveRefreshTests {
 
         await coord.refreshStandbyFromTruth()
 
-        // dcd115e point 3: finished ⇒ both clear — "both empty" is also
+        // Finished ⇒ both clear — "both empty" is also
         // "the same piece".
         #expect(coord.activeItem == nil)
         #expect(coord.viewModel == nil)

@@ -7,14 +7,14 @@ import Foundation
 import Combine
 import OSLog
 
-/// F9: narrow storage seam for the sync history — stage 2 (iCloud mirror) and
+/// Narrow storage seam for the sync history — stage 2 (iCloud mirror) and
 /// the Android long-term goal swap the implementation behind this protocol;
 /// neither is built now.
 @MainActor
 protocol SyncHistoryStoring: AnyObject {
     var entries: [SyncHistoryEntry] { get }
     func append(_ entry: SyncHistoryEntry)
-    /// Y48/Y50: record that a service ran a sync CHECK, without a ring entry —
+    /// Record that a service ran a sync CHECK, without a ring entry —
     /// so a clean run (nothing changed, nothing queued) is still visible as a
     /// "last checked" timestamp. Keyed by `Service.rawValue`.
     func noteChecked(_ service: SyncHistoryEntry.Service, at date: Date)
@@ -31,7 +31,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
     static let shared = SyncHistoryStore()
 
     @Published private(set) var entries: [SyncHistoryEntry] = []
-    /// Y48/Y50: newest "checked" moment per service (rawValue key), shown in the
+    /// Newest "checked" moment per service (rawValue key), shown in the
     /// history header. Updated by every check — also the ones that leave no ring
     /// entry (clean ABS flush, live music refresh).
     @Published private(set) var lastChecked: [String: Date] = [:]
@@ -49,7 +49,7 @@ final class SyncHistoryStore: ObservableObject, SyncHistoryStoring {
         // file gets its own last-checked store instead of a shared one.
         self.lastCheckedURL = entriesURL.deletingPathExtension()
             .appendingPathExtension("lastchecked.json")
-        // Y36 (Regel 3): a failed load must never be silent — a corrupt file
+        // A failed load must never be silent — a corrupt file
         // would drop the whole history and the next append would overwrite it.
         if FileManager.default.fileExists(atPath: self.fileURL.path) {
             do {

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// P8 regression: the chained writer must keep the store file valid under many
+/// The chained writer must keep the store file valid under many
 /// overlapping saves (ordering preserved, last snapshot wins, no interleaved
 /// JSON). Run this suite with Thread Sanitizer enabled to verify the detached
 /// encode/write path is race-free.

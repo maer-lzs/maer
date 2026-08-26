@@ -9,7 +9,7 @@ import Testing
 import UIKit
 @testable import ABSPlayer
 
-/// 383a3e8: the logo audit over the APP PATH — fold → table → (store: empty
+/// The logo audit over the APP PATH — fold → table → (store: empty
 /// on a fresh run, declared) → chain, driven through the app's own code
 /// (`RadioMapping.displayName`, `RadioLogoData`, `RadioLogoService.auditChain`)
 /// instead of a tool-side re-implementation (the cover-saga lesson). Gated:
@@ -91,7 +91,7 @@ import UIKit
     }
 
     /// Does the table's Commons thumb actually RENDER at the width the app
-    /// requests? Status alone was blind (c0addba): MediaWiki serves rasters
+    /// requests? Status alone was blind: MediaWiki serves rasters
     /// `thumbnail_unscaled`, so a 256×37 wordmark answers 200 and then dies
     /// at the app's 48-px gate — a gate corpse, not a live thumb.
     private func thumbLoads(file: String) async -> Bool {

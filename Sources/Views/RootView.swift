@@ -9,7 +9,7 @@ struct RootView: View {
     /// Process-wide session (see AppSession): the same instances are also used
     /// by the CarPlay scene.
     @ObservedObject private var authViewModel = AppSession.shared.authViewModel
-    /// F10: "start without a server" — the app is fully usable podcasts-first;
+    /// "start without a server" — the app is fully usable podcasts-first;
     /// ABS (and every other source) attaches later in the settings. No forced
     /// login wall: logging out in serverless mode stays in the app.
     @AppStorage(AppStorageKeys.serverlessMode) private var serverless = false

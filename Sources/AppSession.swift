@@ -16,7 +16,7 @@ import OSLog
 final class AppSession: ObservableObject {
     static let shared = AppSession()
 
-    /// Y37: source configuration as an OBSERVABLE state — bumped whenever a
+    /// Source configuration as an OBSERVABLE state — bumped whenever a
     /// source's availability may have changed (toggle, credential change,
     /// probe result). The tab bar derives `availableMediaTypes` from
     /// `isAvailable` on every render; without this signal nothing re-rendered
@@ -101,13 +101,13 @@ final class AppSession: ObservableObject {
         if itemId.hasPrefix("sub:") { return subsonicProvider }
         if itemId.hasPrefix("jf:") { return jellyfinProvider }
         if itemId.hasPrefix("radio:") { return radioProvider }
-        // c3ab12e: ask the SOURCE for its namespaces instead of repeating them
+        // Ask the SOURCE for its namespaces instead of repeating them
         // here — the literal list is exactly what went stale when Gutenberg
         // arrived.
         if FreeCatalog.allPrefixes.contains(where: itemId.hasPrefix) {
             return FreeCatalogProvider.shared
         }
-        // be087e4: the ROUTER now follows the rule too, not just the two
+        // The ROUTER now follows the rule too, not just the two
         // callers that asked. An id whose namespace belongs to nobody gets a
         // provider that refuses (and says so) — so all eleven callers, and any
         // future one, are covered without making the return type optional.
@@ -120,7 +120,7 @@ final class AppSession: ObservableObject {
     /// Cover URL of any item via ITS source — views must never assume a fixed
     /// provider (else wrong/no cover for local files and podcast episodes).
     func coverURL(forItemId itemId: String) -> URL? {
-        // c3ab12e Strukturfix: an id from an unknown namespace must NEVER turn
+        // An id from an unknown namespace must NEVER turn
         // into a request to the library server. This is the path that produced
         // the 404 storm (FeedArtwork → here → ABS, token in the query string),
         // so the guard sits here, not only in the prefix list above.

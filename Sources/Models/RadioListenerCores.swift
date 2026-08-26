@@ -5,19 +5,19 @@
 
 import Foundation
 
-/// 19a8b4c: first-hand listener-ranking CORES for the DACH discovery rows —
+/// First-hand listener-ranking CORES for the DACH discovery rows —
 /// the "Beliebt in …" and region rows rank by what the audience measurably
 /// listens to, not by Radio-Browser community votes (which vote like webradio
 /// enthusiasts, not like the public). Names in PUBLISHED rank order; the rank
 /// IS the array position. Pure data: names + order are facts from openly
 /// published rankings — no database extract, no listener figures, no frozen
-/// derived values (the cb8bac1 lesson). Station names resolve against the
+/// derived values. Station names resolve against the
 /// live Radio-Browser catalog at row build; what doesn't resolve (marketer
 /// entries like "RADIO NRW", combination packages) drops out honestly and is
 /// logged. Semi-annual maintenance = replace a table with the next round's
 /// names.
 ///
-/// 7976f4d — **what does NOT belong in here:** combination/marketer/framing
+/// What does NOT belong in here: combination/marketer/framing
 /// constructs ("radio NRW" is the framing programme of ~44 local stations,
 /// "… Funkpaket" a bundle of local stations, "bigFM (Gesamt)" a sum row,
 /// "… City-Kombi"/"… Premium" a sales package). Their listener figures
@@ -26,8 +26,8 @@ import Foundation
 /// few that do (the framing programme streams!) are why this rule is
 /// written down: the next round must not re-enter them.
 nonisolated enum RadioListenerCores {
-    /// The ONE visible priority mapping (72d233f (4)):
-    /// first-hand survey > Wikidata core > votes pure.
+    /// The ONE visible priority mapping: first-hand survey > Wikidata core >
+    /// votes pure.
     static func national(countryCode: String?) -> [String]? {
         switch countryCode?.uppercased() {
         case "DE": return germanyNational

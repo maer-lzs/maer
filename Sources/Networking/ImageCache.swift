@@ -28,7 +28,7 @@ final class ImageCache {
     /// derivable from the disk tiers.
     private let thumbCache = NSCache<NSString, UIImage>()
     private let thumbPixelSize: CGFloat = 400
-    /// R54: every preview size the app asks for. They are ours, not the
+    /// Every preview size the app asks for. They are ours, not the
     /// server's — so an invalidation can name them instead of emptying the
     /// whole store. A new size belongs in here; the fence holds that.
     nonisolated static let thumbnailVariants: [CGFloat] = [400, 600]
@@ -169,7 +169,7 @@ final class ImageCache {
         await thumbnail(for: url, maxPixelSize: thumbPixelSize)
     }
 
-    /// S16: synchronous memory-cache peek (no disk, no decode). Lets a cell show
+    /// Synchronous memory-cache peek (no disk, no decode). Lets a cell show
     /// a WARM, already display-ready thumbnail on its very first frame instead of
     /// flashing the placeholder and awaiting a round-trip each time it re-enters
     /// the viewport — takes the warm-cover cost fully out of the scroll path.
@@ -185,7 +185,7 @@ final class ImageCache {
         let fileKey = key(for: url)
         let cacheKey = "\(fileKey)@\(Int(maxPixelSize))" as NSString
         if let cached = thumbCache.object(forKey: cacheKey) {
-            // S16: a warm hit returns a display-ready image (see decodedThumbnail)
+            // A warm hit returns a display-ready image (see decodedThumbnail)
             // — no main-thread decode at draw time.
             PerfSignpost.cover.emitEvent("thumb-hit")
             return cached
@@ -251,7 +251,7 @@ final class ImageCache {
             kCGImageSourceCreateThumbnailWithTransform: true
         ]
         guard let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
-        // S16: force the pixel decode NOW, off the main actor, into a
+        // Force the pixel decode NOW, off the main actor, into a
         // display-ready bitmap. `CGImageSourceCreateThumbnailAtIndex` returns a
         // lazily-decoded image; without this the render server decodes it on the
         // MAIN thread at first draw — the exact hitch when the Downloaded rows
@@ -311,7 +311,7 @@ final class ImageCache {
     func invalidate(url: URL) {
         let cacheKey = key(for: url)
         memoryCache.removeObject(forKey: cacheKey as NSString)
-        // R54: this used to be `removeAllObjects()` — ONE url emptied EVERY
+        // This used to be `removeAllObjects()` — ONE url emptied EVERY
         // preview in the app. Its only caller runs in a loop over hundreds of
         // entries on pull-to-refresh, so one pull cleared the previews of
         // every tab, several hundred times over. The size variants are known
@@ -366,7 +366,7 @@ final class ImageCache {
     /// deliberately path-stable and otherwise never invalidates).
     private let cacheTTL: TimeInterval = 30 * 24 * 3600
     /// Upper bound for the purgeable cover cache.
-    /// b4fdc36: the fixed 200 MB cap became adaptive. Reasoning behind the
+    /// The fixed 200 MB cap became adaptive. Reasoning behind the
     /// numbers, and why the risk is asymmetric: the cache lives in Caches,
     /// is excluded from backup and gets purged by iOS under pressure — too
     /// large costs practically nothing, too small costs permanently (evict →
@@ -392,7 +392,7 @@ final class ImageCache {
 
     private var maxCacheBytes: Int { Int(Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())) }
 
-    /// b4fdc36: enforcement no longer waits for the next app start when the
+    /// Enforcement no longer waits for the next app start when the
     /// cache has run far past the cap — this is the factor that triggers an
     /// extra pass at the next calm moment.
     nonisolated static let enforcementOvershoot = 1.5
@@ -454,14 +454,14 @@ final class ImageCache {
                     if total <= maxBytes { break }
                 }
             }
-            // b4fdc36 (3): measurable instead of guessed — size, current cap,
+            // Measurable instead of guessed — size, current cap,
             // free space and how many files went. "Too small" is a claim that
             // needs this line.
             Logger.library.notice("COVERCACHE size=\(startTotal / 1_048_576)MB cap=\(maxBytes / 1_048_576)MB free=\(free / 1_048_576)MB evicted=\(evicted)")
         }
     }
 
-    /// b4fdc36 (2): a cheap check for the calm gate — true when the cache has
+    /// A cheap check for the calm gate — true when the cache has
     /// run far past its cap and deserves a pass before the next app start.
     func needsUrgentMaintenance() -> Bool {
         let cap = Self.cacheCapBytes(freeBytes: Self.freeDiskBytes())

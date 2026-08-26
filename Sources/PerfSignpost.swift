@@ -5,7 +5,7 @@
 
 import OSLog
 
-/// S16: signposts for scroll profiling in Instruments (Points of Interest +
+/// Signposts for scroll profiling in Instruments (Points of Interest +
 /// a dedicated cover-decode signposter). Effectively zero-cost when the app is
 /// not being traced. `nonisolated` so the off-main image pipeline can signal.
 ///

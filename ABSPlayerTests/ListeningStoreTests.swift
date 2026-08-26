@@ -134,10 +134,10 @@ struct ListeningStoreTests {
             #expect(mark?.source == .backup)
         }
 
-        // Und die Weiterhoeren-Bildung findet beide ohne Quelle — seit R33
-        // aber je auf ihrer TAB-Seite: das Werk in der Buch-Bildung, der
-        // TRACK (Song-Kennung = Musik per Bauform) in der Musik-Bildung.
-        // Keiner verschwindet (die R33-Invariante).
+        // Und die Weiterhoeren-Bildung findet beide ohne Quelle, je auf
+        // ihrer TAB-Seite: das Werk in der Buch-Bildung, der TRACK
+        // (Song-Kennung = Musik per Bauform) in der Musik-Bildung. Keiner
+        // verschwindet.
         let defaults: [String: Any] = [
             AppStorageKeys.localPosition(work): [412.0, 1_700_000_000_000.0, 3600.0],
             AppStorageKeys.localPosition(track): [412.0, 1_700_000_000_000.0, 3600.0],

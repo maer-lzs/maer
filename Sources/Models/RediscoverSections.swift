@@ -25,10 +25,10 @@ nonisolated enum RediscoverSections {
         case unheardSince(added: Date)
         /// Volume N of a series whose predecessor is finished.
         case nextInSeries(volume: Int)
-        /// 5dcbf21: a subscribed show long unheard that still has unplayed
+        /// A subscribed show long unheard that still has unplayed
         /// episodes ("Lange nicht gehört · zuletzt vor N Wochen").
         case showDormant(weeks: Int)
-        /// 49dc2c3: the same, but WITHOUT an observed last listen — a show
+        /// The same, but WITHOUT an observed last listen — a show
         /// never heard since the log exists (or only backfill-stamped). The
         /// subtitle names no week count instead of inventing one.
         case showDormantUnknown
@@ -41,7 +41,7 @@ nonisolated enum RediscoverSections {
 
     /// Inputs are plain value tuples so every caller (books, episodes, albums)
     /// can feed the same shapes; timestamps in seconds since 1970.
-    /// 5dcbf21: share cap for the NEW show source — sinngemäß the 2-of-10
+    /// Share cap for the NEW show source — sinngemäß the 2-of-10
     /// continue rule: shows never displace books/episodes beyond a fifth.
     static func showCap(limit: Int) -> Int { max(2, limit / 5) }
 
@@ -78,7 +78,7 @@ nonisolated enum RediscoverSections {
             .map { Pick(id: $0.id, reason: .unheardSince(added: Date(timeIntervalSince1970: $0.addedAt))) }
         pool.seriesNext = seriesNext
             .map { Pick(id: $0.id, reason: .nextInSeries(volume: $0.volume)) }
-        // 5dcbf21/49dc2c3 rules unchanged: shows share the paused threshold;
+        // Shows share the paused threshold;
         // an absent listen record qualifies immediately.
         pool.showsObserved = showsDormant
             .compactMap { entry in
@@ -95,7 +95,7 @@ nonisolated enum RediscoverSections {
         paused: [(id: String, lastPlayed: TimeInterval)],
         unheard: [(id: String, addedAt: TimeInterval)],
         seriesNext: [(id: String, volume: Int)],
-        /// 49dc2c3: `lastPlayed == nil` means "never observed", NOT
+        /// `lastPlayed == nil` means "never observed", NOT
         /// "excluded" — a show with unplayed episodes and no listen record is
         /// the most dormant candidate there is. The old signature silently
         /// dropped exactly those (and every user in the log's first weeks).
@@ -105,9 +105,9 @@ nonisolated enum RediscoverSections {
         limit: Int
     ) -> [Pick] {
         guard limit > 0 else { return [] }
-        // 13c5094: the FILTERS live in pool() now — the daily picks are a
+        // The FILTERS live in pool() now — the daily picks are a
         // seeded rotation OVER the pool, and the pool page shows the pool
-        // itself (one source of truth, Regel 2).
+        // itself — one source of truth.
         let pool = Self.pool(paused: paused, unheard: unheard,
                              seriesNext: seriesNext, showsDormant: showsDormant, now: now)
         let pausedPicks = pool.paused
@@ -152,7 +152,7 @@ nonisolated enum RediscoverSections {
         return out
     }
 
-    /// Both show reasons count against the same share cap (49dc2c3).
+    /// Both show reasons count against the same share cap.
     private static func isShow(_ pick: Pick) -> Bool {
         switch pick.reason {
         case .showDormant, .showDormantUnknown: return true

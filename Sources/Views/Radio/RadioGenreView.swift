@@ -9,7 +9,7 @@ import SwiftUI
 /// `RadioStationRow`s. Net-gated like the browse sections: offline it shows
 /// the offline state instead of an empty page.
 ///
-/// eb10440: the list is narrowed to the CHOSEN COUNTRIES. Without a narrowing
+/// The list is narrowed to the CHOSEN COUNTRIES. Without a narrowing
 /// the global vote ranking answers with whatever the world votes for, which
 /// on this device reads as junk. The default is the environment (the existing
 /// cascade), the choice holds for ALL genre pages, and worldwide stays
@@ -25,7 +25,7 @@ struct RadioGenreView: View {
     @State private var loadedKey: String?
     @State private var loadFailed = false
     @State private var showCountryPicker = false
-    /// e77e0b1: the OBSERVED shared selection — never a private copy. A
+    /// The OBSERVED shared selection — never a private copy. A
     /// `@State` snapshot read at init was two truths, and the visible list
     /// missed changes until restart on the device.
     @ObservedObject private var selection = RadioGenreCountrySelection.shared
@@ -43,7 +43,7 @@ struct RadioGenreView: View {
 
     private var isWorldwide: Bool { effectiveCodes.isEmpty }
 
-    /// 973121e: which collapsed families are open — per page visit, not
+    /// Which collapsed families are open — per page visit, not
     /// persisted (an expansion is a glance, not a setting).
     @State private var expandedFamilies: Set<String> = []
 
@@ -79,7 +79,7 @@ struct RadioGenreView: View {
                         .padding(.top, 40)
                     worldwideOffer
                 } else {
-                    // 973121e: family collapse — a DISPLAY rule of
+                    // Family collapse — a DISPLAY rule of
                     // THIS list only. Same domain + explicit name head fold
                     // to one entry (Konferenz or best-voted in front); the
                     // variants expand in place via the existing ShowMoreRow
@@ -156,7 +156,7 @@ struct RadioGenreView: View {
         return ListFormatter.localizedString(byJoining: names)
     }
 
-    /// G8: too few stations is shown, never hidden — with the one way out
+    /// Too few stations is shown, never hidden — with the one way out
     /// that exists. Worldwide itself has no wider fallback.
     @ViewBuilder
     private var worldwideOffer: some View {
@@ -209,7 +209,7 @@ struct RadioGenreView: View {
             union = try await RadioBrowserClient.byTag(tag: tag, countryCodes: effectiveCodes)
             loadFailed = false
         } catch {
-            // ebda0fa (GT R6b): a CANCELLED run is not a failure — the shared
+            // A CANCELLED run is not a failure — the shared
             // rule (`isCancellation`), asked before anything is booked.
             guard !error.isCancellation else { return }
             loadFailed = true

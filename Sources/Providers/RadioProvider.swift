@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// F1: internet radio as an AudioProvider — namespace `radio:`. Sources: the
+/// Internet radio as an AudioProvider — namespace `radio:`. Sources: the
 /// open Radio Browser catalog (search) + user-entered stream URLs (managed on
 /// the radio source page). Capability flags are HONEST: live audio has no
 /// seek, no duration, no progress, no download, no chapters — so none of the
@@ -54,7 +54,7 @@ final class RadioProvider: AudioProvider {
         // Teil 1: honor the user's per-station variant choice (else the best).
         let streamURL = RadioMapping.effectiveStreamURL(
             for: station, selectedURL: RadioStore.selectedVariantURL(for: station))
-        // 86cf180 log-first: what actually plays (vs the tap line above) +
+        // What actually plays (vs the tap line above) +
         // the permanent icy-name check against the tile name (log only) —
         // catches app-side swaps AND hijacked catalog entries.
         let isVariantChoice = streamURL != station.streamURL
@@ -120,7 +120,7 @@ final class RadioProvider: AudioProvider {
             duration: nil, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// F4: catalog search — live over Radio Browser; offline, favorites and
+    /// Catalog search — live over Radio Browser; offline, favorites and
     /// manual stations filter locally (offline-first like every provider).
     func searchStations(query: String) async -> [RadioStation] {
         let local = (RadioStore.favorites() + RadioStore.manualStations())

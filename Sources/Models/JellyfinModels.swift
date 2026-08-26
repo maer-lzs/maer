@@ -37,7 +37,7 @@ nonisolated struct JFItem: Decodable {
     let id: String
     let name: String?
     let type: String?             // "MusicAlbum" | "Audio" | "MusicArtist" | "Playlist" | "AudioBook"
-    /// facf3e3: the library's kind, on a `/Views` entry — "books" is what the
+    /// The library's kind, on a `/Views` entry — "books" is what the
     /// audiobook path looks for.
     let collectionType: String?
     /// 100-ns ticks (Jellyfin's duration unit) — divide by 10_000_000 for seconds.
@@ -71,7 +71,7 @@ nonisolated struct JFItem: Decodable {
 nonisolated struct JFUserData: Decodable {
     let isFavorite: Bool?
     let playCount: Int?
-    /// facf3e3: the listening position, in 100-ns ticks. MEASURED as the one
+    /// The listening position, in 100-ns ticks. MEASURED as the one
     /// road that carries: the session route (`/Sessions/Playing…`) read back
     /// as 0, this one read back identical.
     let playbackPositionTicks: Double?

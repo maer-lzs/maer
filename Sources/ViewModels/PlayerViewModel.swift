@@ -113,7 +113,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Absolute position in the WHOLE book, in seconds — regardless of whether
     /// the book consists of a single M4B file or several tracks.
     @Published var currentTime: Double = 0
-    /// 8b71fd7: whether anything HAPPENED since this item was loaded —
+    /// Whether anything HAPPENED since this item was loaded —
     /// playback, a deliberate restart, or a deliberate seek. The restore
     /// flush reads it: a merely-loaded episode must not re-stamp its old
     /// position as new (the reviver).
@@ -131,7 +131,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var skipInterval: Double =
         UserDefaults.standard.object(forKey: AppStorageKeys.skipInterval) as? Double ?? 30
     @Published var sleepTimerRemaining: TimeInterval?
-    /// F2: raw ICY StreamTitle from the live stream (radio) — parsed for
+    /// Raw ICY StreamTitle from the live stream (radio) — parsed for
     /// display via `icyNowPlaying`; reset on every item switch.
     @Published var icyStreamTitle: String?
     /// Teil 2: the resolved now-playing cover for the CURRENT ICY song (nil =
@@ -219,13 +219,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     /// Seconds before the timer end over which the volume fades gently — no hard
     /// stop mid-sentence.
-    /// Y12: seconds of volume fade before the sleep timer pauses — a named
+    /// Seconds of volume fade before the sleep timer pauses — a named
     /// knob for tuning; 8 s felt too abrupt, doubled to 16 s.
     let sleepFadeDuration: Double = 16
 
     /// Last value successfully written to the server.
     var lastSyncedTime: Double = 0
-    /// 5f4fdee: has ANY source answered where this book starts? A fresh
+    /// Has ANY source answered where this book starts? A fresh
     /// session that found nothing (no witness, no backup, no server answer)
     /// must not push — at 00:00 it would overwrite a server that is hours
     /// ahead, and the suspicious-drop guard has no reference to stop it.
@@ -402,7 +402,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     ///   intended backward jump. Makes "replay a finished episode" reliable for
     ///   every source, not just feeds without server progress.
     func load(item: LibraryItemDetail, isOfflineFallback: Bool = false, restart: Bool = false) async {
-        // 8b71fd7: a fresh load starts with NO event — restoring is loading,
+        // A fresh load starts with NO event — restoring is loading,
         // not listening. A deliberate restart is the user acting, so it counts.
         eventSinceLoad = restart
         self.item = item
@@ -467,7 +467,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = saved[0]
             restoredFromLocal = true
         }
-        // c59e96e: the flushed witness — what THIS device last pushed. For a
+        // The flushed witness — what THIS device last pushed. For a
         // downloaded book it is usually the ONLY local source: the crash
         // backup above is gone after every successful sync, and `item` here is
         // the detail saved at DOWNLOAD time, whose progress never moves. The
@@ -483,7 +483,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             startTime = flushed[0]
             restoredFromFlushed = true
         }
-        // cce35fc (4): a backward jump is never silent again. Whatever the
+        // A backward jump is never silent again. Whatever the
         // cause, the person notices it — so the log names it, with both
         // sides and their timestamps. Threshold 60 s: below that it is the
         // normal re-position, above it is a finding.
@@ -497,7 +497,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let source = restoredFromLocal ? "local" : (restoredFromFlushed ? "flushed" : "server")
             let detail = "start=\(Int(startTime))s server=\(Int(serverProgress))s@\(Int(serverUpdateMs))ms local=\(Int(saved[0]))s@\(Int(saved[1]))ms from=\(source)"
             Logger.library.warning("PROGRESS backward jump \(Int(saved[0] - startTime))s on \(item.id, privacy: .public): \(detail, privacy: .public)")
-            // efc68ca (2): the log line alone is out of reach — system logs
+            // The log line alone is out of reach — system logs
             // are not practical to hand over. The diagnosis is the only
             // window, so the last five jumps live in a ring beside it.
             var ring = (UserDefaults.standard.array(
@@ -590,7 +590,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     /// Cumulative start time (absolute seconds in the whole book) for a track
     /// index. Uses `startOffset` from the server if present, otherwise sums the
     /// individual durations itself.
-    /// M4: the Subsonic song currently playing (`sub:` items only) — id, its
+    /// The Subsonic song currently playing (`sub:` items only) — id, its
     /// absolute start within the album item, and lookup metadata for lyrics.
     var currentMusicSong: (id: String, start: Double, title: String?, artist: String?, duration: Double)? {
         guard item?.id.hasPrefix("sub:") == true,
@@ -649,7 +649,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         for index in startIndex..<tracks.count {
             guard let url = resolveTrackURL(index: index) else { continue }
             if isRadio {
-                // Y42: persistent breadcrumb — a station that never plays leaves
+                // Persistent breadcrumb — a station that never plays leaves
                 // the resolved stream URL and, below, its load error in the log.
                 Logger.player.notice("radio play: building stream \(url.absoluteString, privacy: .public)")
             }
@@ -663,7 +663,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
                 let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
                 item = AVPlayerItem(asset: asset)
             }
-            // F2: live radio — tap the in-stream ICY metadata (song title)
+            // Live radio — tap the in-stream ICY metadata (song title)
             // for the player UI and the lock screen.
             if isRadio {
                 let output = AVPlayerItemMetadataOutput(identifiers: nil)
@@ -682,7 +682,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             }
             itemTrackIndex[ObjectIdentifier(item)] = index
             // Surface a load failure that never starts playback (ATS block,
-            // dead stream, 404) — otherwise it stalls silently (Regel 3).
+            // dead stream, 404) — otherwise it stalls silently.
             // @Sendable: KVO fires on an arbitrary thread; an inheriting closure
             // would trap there under the MainActor default (the Y32 lesson). Only
             // Sendable values (index, description) cross onto the main actor.
@@ -760,7 +760,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     // MARK: - Playback
 
     func play() {
-        // 8b71fd7: playback is an EVENT — from here on the sync path may
+        // Playback is an EVENT — from here on the sync path may
         // write this item's local state.
         eventSinceLoad = true
         // Takeover contract: playing claims. The other device notices the
@@ -833,7 +833,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         player?.pause()
         isPlaying = false
         pausedAt = Date()
-        // bf565d9: pausing withdraws the claim actively — the other device's
+        // Pausing withdraws the claim actively — the other device's
         // hint line dies in delivery seconds, the 90-s ageing stays the
         // fallback for the paths without a clean pause.
         if let item { PlaybackClaimSync.shared.release(itemId: item.id) }
@@ -1165,7 +1165,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     private func updateCurrentChapter() {
-        // S19: only a chapter that actually CONTAINS the current time (validated
+        // Only a chapter that actually CONTAINS the current time (validated
         // list) — nil in a gap/past the end → the player omits the chapter line.
         let newChapter = ChapterModel.current(at: currentTime, in: chapters)
         guard newChapter != currentChapter else { return }
@@ -1176,7 +1176,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func stop() {
         ListeningStatsStore.shared.flush()
-        // Session end withdraws the claim like a pause does (bf565d9).
+        // Session end withdraws the claim like a pause does.
         if isPlaying, let item { PlaybackClaimSync.shared.release(itemId: item.id) }
         Task { await syncProgress(force: true) }
         player?.pause()
@@ -1205,7 +1205,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
 }
 
 
-/// F2: ICY timed-metadata tap for live radio. AVFoundation calls the delegate
+/// ICY timed-metadata tap for live radio. AVFoundation calls the delegate
 /// on OUR serial queue — nonisolated by construction (the Y32 class rule);
 /// the value hops to the MainActor inside `onValue`.
 private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMetadataOutputPushDelegate {
@@ -1224,7 +1224,7 @@ private nonisolated final class ICYMetadataCollector: NSObject, AVPlayerItemMeta
                         from track: AVPlayerItemTrack?) {
         let handoff = ItemHandoff(items: groups.flatMap(\.items))
         guard !handoff.items.isEmpty else { return }
-        // Y53: `stringValue` is synchronous and iOS-16-deprecated — load it
+        // `stringValue` is synchronous and iOS-16-deprecated — load it
         // asynchronously. The delegate runs on our serial queue; the Task hops
         // off it, the value reaches the main actor through `onValue`.
         let onValue = self.onValue

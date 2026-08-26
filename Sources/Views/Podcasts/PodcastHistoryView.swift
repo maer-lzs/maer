@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// V6: the chronological listen history over the show-independent
+/// The chronological listen history over the show-independent
 /// PodcastListenLog — newest play first, tombstones (marked unplayed)
 /// hidden. A row taps into the episode WHEN it still resolves (subscribed
 /// feed still carries the guid); an unresolvable one renders plain — the

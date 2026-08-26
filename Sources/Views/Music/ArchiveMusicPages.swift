@@ -6,15 +6,15 @@
 import SwiftUI
 import OSLog
 
-/// 50f4751 → parameterised: THE page for every archive.org music area
+/// THE page for every archive.org music area
 /// (classical · netlabels · the 78 rpm genre shelves). External free catalog,
 /// clearly marked as such (header line + licence capsule/detail sheet);
 /// NEVER mixed into the personal library surfaces. Popularity-sorted grid
 /// (archive.org downloads), paged; tiles play directly, context menu opens
 /// the licence sheet.
 ///
-/// Regel 2: there is no second page of this shape — the area carries what
-/// differs (query, title, note, symbol).
+/// There is no second page of this shape — the area carries what differs
+/// (query, title, note, symbol).
 struct ArchiveMusicPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     let area: ArchiveMusicArea
@@ -25,8 +25,8 @@ struct ArchiveMusicPage: View {
     @State private var page = 1
     @State private var reachedEnd = false
     @State private var detailItem: LibraryItem?
-    /// R-Netlabels: Bestand je Fach — dieselbe Konstruktion wie R53
-    /// (`CatalogShelfSource`): ein Fach erscheint, weil die QUELLE es hat.
+    /// Bestand je Fach — dieselbe Konstruktion wie `CatalogShelfSource`:
+    /// ein Fach erscheint, weil die QUELLE es hat.
     @State private var shelfStock: [String: (items: [LibraryItem], total: Int?)] = [:]
     @State private var shelvesLoaded = false
     @State private var shelvesLoading = false
@@ -59,9 +59,9 @@ struct ArchiveMusicPage: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal)
                         ArchiveRightsNote()
-                        // R62 (Entscheid, dieselbe Ordnung wie die
-                        // Katalogseiten aus R51): „Beliebt" steht OBEN als
-                        // Kachelreihe mit Chevron, die Faecher darunter. Das
+                        // Dieselbe Ordnung wie auf den Katalogseiten: die
+                        // Beliebt-Reihe steht OBEN als Kachelreihe mit
+                        // Chevron, die Faecher darunter. Das
                         // endlose Nachladen lebt auf der Vollseite hinter dem
                         // Chevron weiter — dort, wo Scrollen die Form ist.
                         if area.hasGenreShelves {
@@ -72,8 +72,8 @@ struct ArchiveMusicPage: View {
                         } else {
                             CoverGrid(columns: columns) {
                             ForEach(items) { item in
-                                // Shared catalog tile (Regel 2): carries the
-                                // licence capsule (40b8f96) — which is what
+                                // Shared catalog tile: carries the
+                                // licence capsule — which is what
                                 // makes the CC-licensed netlabel releases
                                 // honest at a glance.
                                 FreeCatalogBookTile(
@@ -135,7 +135,7 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// R62: dieselbe Form wie `CatalogSourcePage.popularRow` — benannte Reihe
+    /// Dieselbe Form wie `CatalogSourcePage.popularRow` — benannte Reihe
     /// mit Chevron, das endlose Nachladen auf der Vollseite dahinter.
     @ViewBuilder
     private var popularRow: some View {
@@ -170,7 +170,7 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// G8 unveraendert: ein Fach erscheint nur, wenn die Quelle es fuellt.
+    /// Ein Fach erscheint nur, wenn die Quelle es fuellt.
     private var genreShelves: [(key: String, title: String)] {
         guard area.hasGenreShelves else { return [] }
         return CatalogGenreAxis.musicShelves.filter {
@@ -221,7 +221,7 @@ struct ArchiveMusicPage: View {
         }
     }
 
-    /// R53-Form, hier fuer die Musik: je Fach den BESTAND fragen (dieselbe
+    /// Je Fach den BESTAND fragen (dieselbe
     /// Abfrage wie die Vollseite), Tor NACH dem Lauf buchen, Abbruch oeffnet
     /// wieder, und ein Fehlschlag ist eine Antwort statt eines leeren Fachs.
     private func loadShelves() async {
@@ -238,7 +238,7 @@ struct ArchiveMusicPage: View {
                 let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
                 guard !terms.isEmpty else { continue }
                 group.addTask {
-                    // R58: kein Deckel — bei `subject:` ist ein laengeres ODER
+                    // Kein Deckel — bei `subject:` ist ein laengeres ODER
                     // schlicht mehr Bestand (gemessen: Faktor 9 fuer 0,05 s).
                     let clause = terms.map { "subject:\"\($0)\"" }
                         .joined(separator: " OR ")
@@ -267,7 +267,7 @@ struct ArchiveMusicPage: View {
     }
 
     private func loadMore(reset: Bool = false) async {
-        // 5034add: master off ⇒ no traffic even if the route is still open.
+        // Master off ⇒ no traffic even if the route is still open.
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
         guard !isLoading, !reachedEnd || reset else { return }
         if reset { page = 1; reachedEnd = false; loadFailed = false }
@@ -291,9 +291,9 @@ struct ArchiveMusicPage: View {
     }
 }
 
-/// R-Netlabels: die Vollseite eines Genre-Fachs. Dieselbe Form wie das
-/// Jamendo-Fach — und dieselbe ABFRAGE wie die Vorschau-Reihe davor
-/// (f220ecd, eine Wahrheit): Bereichs-Abfrage plus die Begriffe des Fachs.
+/// Die Vollseite eines Genre-Fachs. Dieselbe Form wie das Jamendo-Fach — und
+/// dieselbe ABFRAGE wie die Vorschau-Reihe davor: Bereichs-Abfrage plus die
+/// Begriffe des Fachs.
 struct ArchiveMusicShelfPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     let areaKey: String
@@ -346,7 +346,7 @@ struct ArchiveMusicShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && loadFailed {
-                // Regel 3: ein Fehlschlag ist kein leeres Fach.
+                // Ein Fehlschlag ist kein leeres Fach.
                 ContentUnavailableView {
                     Label(title, systemImage: "music.note")
                 } description: {
@@ -394,10 +394,10 @@ struct ArchiveMusicShelfPage: View {
     }
 }
 
-/// „Alte Schallplatten": the shelves ARE the surface. There is deliberately
-/// no undivided view over the whole collection — safety comes from the
-/// inclusion criterion, so there must be no way around it (08.08.,
-/// Auflage 1). Each shelf heading is an entry chevron onto its own page.
+/// The shellac surface. There is deliberately no undivided view over the
+/// whole collection — safety comes from the inclusion criterion, so there
+/// must be no way around it. Each shelf heading is an entry chevron onto its
+/// own page.
 struct ShellacShelvesPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -413,7 +413,7 @@ struct ShellacShelvesPage: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
                 ArchiveRightsNote()
-                // Regel 3: a failed load says so and offers a retry — a
+                // A failed load says so and offers a retry — a
                 // caption-only page would read as "nothing here".
                 if rows.values.allSatisfy(\.isEmpty), loadFailed {
                     ContentUnavailableView {
@@ -424,11 +424,9 @@ struct ShellacShelvesPage: View {
                         Button("Retry") { Task { rows = [:]; loadFailed = false; await loadShelves() } }
                     }
                 }
-                // R62: dieselbe
-                // Ordnung wie ueberall — „Beliebt" oben als Reihe mit Chevron,
-                // die neun Faecher darunter. Der alte Kommentar „the shelves
-                // ARE the surface" gilt damit nicht mehr; die Eltern-Abfrage
-                // hat DIESELBE Grundlage wie die Faecher (georgeblood), sonst
+                // Dieselbe Ordnung wie ueberall: die Beliebt-Reihe oben mit
+                // Chevron, die neun Faecher darunter. Die Eltern-Abfrage hat
+                // DIESELBE Grundlage wie die Faecher (georgeblood), sonst
                 // waere die Reihe eine zweite Wahrheit.
                 VStack(alignment: .leading, spacing: 10) {
                     RowHeading.entry("Popular",
@@ -466,13 +464,10 @@ struct ShellacShelvesPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
-                    // M1 (09.08.): bei MUSIK spielt der Tap. Die Regel ist
-                    // dieselbe wie bei den Buechern, nur die Frage ist eine
-                    // andere: beim Buch fragt man „was ist das?" (→ Detail),
-                    // beim Dreiminueter „spiel" (→ Wiedergabe). Spiegelbildlich
-                    // und trotzdem konsistent — bitte nicht als Inkonsistenz
-                    // „aufraeumen". Die ToS-Attribution traegt jetzt der Player
-                    // (`player-zur-quellseite`), nicht mehr nur das Sheet.
+                    // Bei MUSIK spielt der Tap: beim Buch fuehrt er ins
+                    // Detail, beim Dreiminueter direkt in die Wiedergabe.
+                    // Die ToS-Attribution traegt der Player, nicht nur das
+                    // Sheet.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: shelf.placeholderSystemImage,
@@ -499,11 +494,11 @@ struct ShellacShelvesPage: View {
         guard rows.isEmpty else { return }
         guard AppStorageKeys.freeCatalogsMasterActive else { return }
         let provider = FreeCatalogProvider.shared
-        // R62: die Eltern-Abfrage laeuft mit — sie ist die „Beliebt"-Reihe
-        // und teilt die Grundlage der Faecher.
+        // Die Eltern-Abfrage laeuft mit — sie ist die Beliebt-Reihe und
+        // teilt die Grundlage der Faecher.
         for shelf in [ArchiveMusicCatalog.shellacAll] + ArchiveMusicCatalog.shellacShelves {
             do {
-                // R57: je Flaeche eine eigene Tagesseite, damit die
+                // Je Flaeche eine eigene Tagesseite, damit die
                 // Beliebt-Reihe nicht mit einem Fach identisch beginnt.
                 let page = CatalogRotation.page(total: shelf.measuredTotal, rowSize: 12,
                                                 on: Date(),

@@ -6,11 +6,11 @@
 import Foundation
 import OSLog
 
-/// 🟡 P10: archive.org's SEARCH INDEX and its actual holdings drift apart —
+/// 🟡 archive.org's SEARCH INDEX and its actual holdings drift apart —
 /// withdrawn items stay in the index as ghost records and land in Discover
-/// with a dead cover and a dead stream (the user's screenshot: two
-/// georgeblood 78s whose `metadata` endpoint answers `{"error": …}` while a
-/// healthy neighbour returns 20 files in the same moment).
+/// with a dead cover and a dead stream (measured: two georgeblood 78s whose
+/// `metadata` endpoint answers `{"error": …}` while a healthy neighbour
+/// returns 20 files in the same moment).
 ///
 /// **The three-way ladder, exactly as for the 401 probe** — because this is
 /// the same class ("a throw is not an end"):
@@ -18,8 +18,8 @@ import OSLog
 ///   nothing about the item.
 /// * **service reachable, item answers error/404** → remember the IDENTIFIER
 ///   as dead, WITH an expiry: archive.org does bring items back, and a
-///   permanent verdict from one measurement would be exactly the poisoned
-///   negative cache of `95c5c16`.
+///   permanent verdict from one measurement would be exactly a poisoned
+///   negative cache.
 /// * **healthy** → remember nothing (and drop an earlier mark).
 ///
 /// Only the identifier is remembered, never a judgement about content.
@@ -29,7 +29,7 @@ nonisolated enum DeadCatalogItems {
     /// archive.org restores items now and then, so a mark is a measurement
     /// with a shelf life, not a verdict.
     static let ttlDays: Double = 30
-    /// R60: der Schluessel steht in `DerivedStores` — er ist abgeleitet.
+    /// Der Schluessel steht in `DerivedStores` — er ist abgeleitet.
     static let storeKey = "deadCatalogItems"
 
     /// What a liveness check found.

@@ -19,15 +19,15 @@ struct CatalogTrackCell: View {
     let width: CGFloat
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @State private var resolved: LibraryItem?
-    /// R59: ein Platzhalter ist ein UEBERGANG, kein Endzustand. Der Zaehler
+    /// Ein Platzhalter ist ein UEBERGANG, kein Endzustand. Der Zaehler
     /// laesst die Aufloesung beim naechsten Erscheinen der Zelle erneut
     /// laufen — vorher verschluckte `try?` den Fehlschlag, es gab keinen
-    /// zweiten Anlauf und keinen sichtbaren Zustand, und die Kachel hiess
-    /// dauerhaft „Unbekannter Titel".
+    /// zweiten Anlauf und keinen sichtbaren Zustand, und die Kachel trug
+    /// dauerhaft den Platzhalternamen.
     @State private var attempt = 0
 
-    /// Holt den Namen nach. **Ein Transportfehler ist etwas anderes als
-    /// „gibt es nicht mehr":** der erste laesst den Eintrag stehen und wird
+    /// Holt den Namen nach. Ein Transportfehler ist etwas anderes als ein
+    /// klares Weg: der erste laesst den Eintrag stehen und wird
     /// wiederholt, der zweite vermerkt das Stueck als tot, damit die Reihe
     /// es auslaesst. Der HOERSTAND bleibt in beiden Faellen — er ist
     /// Nutzerbesitz; verschwinden darf die Kachel, nicht der Eintrag.

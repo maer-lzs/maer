@@ -6,7 +6,7 @@
 import Foundation
 import Combine
 
-/// eb10440: which countries feed the GENRE pages, and how their union is
+/// Which countries feed the GENRE pages, and how their union is
 /// shaped into a list. A genre is TASTE (several countries make sense), the
 /// "Popular in …" row is a PLACE (exactly one) — that separation is the
 /// decision, not an interpretation, so this type deliberately does not touch
@@ -53,7 +53,7 @@ nonisolated enum RadioGenreCountries {
     }
 }
 
-/// eb10440 point 4 + `c3a1091`: the genre list's shaping rules. Pure, so the
+/// The genre list's shaping rules. Pure, so the
 /// thresholds are testable without a network: votes floor, homepage present,
 /// name length, name hygiene, de-dupe over the country union, and the
 /// language BONUS (never a filter — 27 % of Swiss and 30 % of Austrian
@@ -96,7 +96,7 @@ nonisolated enum RadioGenreCuration {
     /// not three tiers — demoting a declared other language below undeclared
     /// ones would be a filter under another name, and the decision rejects a
     /// language filter.
-    /// R37: how many HEAD seats the device language may hold on a worldwide
+    /// How many HEAD seats the device language may hold on a worldwide
     /// page. A fixed quota instead of the old all-matching-first bonus — that
     /// bonus was uncalibratable and tipped the page twice in both directions
     /// (first no DLF at all, then nothing BUT German). A quota cannot tip:
@@ -136,14 +136,14 @@ nonisolated enum RadioGenreCuration {
         ranked(deduped(union).filter(passes), deviceLanguage: deviceLanguage)
     }
 
-    /// G8: visibly incomplete instead of silently thin. Worldwide is already
+    /// Visibly incomplete instead of silently thin. Worldwide is already
     /// the whole catalog — there is no wider fallback to offer there.
     static func offersWorldwide(count: Int, isWorldwide: Bool) -> Bool {
         !isWorldwide && count < sparseThreshold
     }
 }
 
-/// e77e0b1 (GT R6): the ONE observed source of the genre-country selection.
+/// The ONE observed source of the genre-country selection.
 ///
 /// The selection is app-wide (one UserDefaults key, all genre pages), but each
 /// page used to hold a private `@State` COPY read once at init — two truths,
@@ -290,7 +290,7 @@ final class RadioBrowseSelection: ObservableObject {
     }
 }
 
-/// 973121e: family collapse as a DISPLAY rule of the
+/// Family collapse as a DISPLAY rule of the
 /// genre lists — the sport tag is 20/25 one provider's per-match channels
 /// (measured), and the flood hides that the tag is thin. Search, favorites,
 /// My Stations and Recents keep showing single channels; only the genre page
@@ -348,7 +348,7 @@ nonisolated enum RadioGenreFamilies {
             let front = family.first {
                 RadioMapping.displayName($0.name).lowercased().contains("konferenz")
             } ?? family[0]
-            // R28: inside an expanded family the games sort NUMERICALLY
+            // Inside an expanded family the games sort NUMERICALLY
             // (vote order gave 8, 2, 5, 7 …). Members without a number keep
             // the vote order, behind the numbered ones; ties stay stable.
             let variants = family.filter { $0.id != front.id }

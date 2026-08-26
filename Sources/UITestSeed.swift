@@ -16,7 +16,7 @@ import Foundation
 enum UITestSeed {
     static var isActive: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") }
 
-    /// 32ff1e7: seeded recommendations. The harness must never reach the
+    /// Seeded recommendations. The harness must never reach the
     /// directory — otherwise the row's HEIGHT depends on network latency and
     /// a journey's precondition becomes a coin toss. Seeded rather than
     /// empty, so the start page keeps its realistic geometry.
@@ -39,7 +39,7 @@ enum UITestSeed {
     /// by an ever-present, tappable mini player; only the full-player journey
     /// requests it.
     static var seedsActivePlayer: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-player") }
-    /// F10 journey: force the SETUP screen (no login, no serverless flag) —
+    /// Force the SETUP screen (no login, no serverless flag) —
     /// independent of the seeded mode.
     static var forcesSetup: Bool { ProcessInfo.processInfo.arguments.contains("-uitest-setup") }
 
@@ -50,7 +50,7 @@ enum UITestSeed {
         AppSession.shared.authViewModel.isLoggedIn = false
     }
 
-    /// F6: seeded "New Shows" catalog for the search journey — real directory
+    /// Seeded "New Shows" catalog for the search journey — real directory
     /// requests would leave the harness. Active only in seed mode.
     static var catalogSearchOverride: (@MainActor (String) -> [SearchResult])? {
         guard isActive else { return nil }
@@ -58,7 +58,7 @@ enum UITestSeed {
             guard PodcastLocalSearch.matches("Seed Catalog Show", query)
                     || PodcastLocalSearch.matches("Seed Catalog Book", query)
                     || query.count >= 2 else { return [] }
-            // A3: BOTH kinds are seeded — the book scope filters to
+            // BOTH kinds are seeded — the book scope filters to
             // `.catalogBook`, the podcast scope to `.catalogShow`, so the
             // journey proves the WIRING of each scope, not just that some
             // result arrives.
@@ -76,7 +76,7 @@ enum UITestSeed {
 
     static func applyIfRequested() {
         guard isActive else { return }
-        // df0b3bb 3: the Continue-hide markers are PERSISTED by design (the
+        // The Continue-hide markers are PERSISTED by design (the
         // decision must survive restarts). In the harness that turns into
         // cross-journey pollution — one journey hides the seeded card and the
         // next no longer finds it. Every seeded launch therefore starts with
@@ -84,7 +84,7 @@ enum UITestSeed {
         UserDefaults.standard.removeObject(forKey: AppStorageKeys.continueHiddenMarkers)
         let session = AppSession.shared
         session.authViewModel.isLoggedIn = true
-        // F10: `isAvailable` is token-driven now — the harness needs one so
+        // `isAvailable` is token-driven now — the harness needs one so
         // the audiobooks tab (and the ABS search path) stay seeded-visible.
         session.apiClient.updateToken("uitest-token")
 
@@ -93,7 +93,7 @@ enum UITestSeed {
             bookEntry(id: "seed-book-1", title: "Seed Book One", author: "Ada Author",
                       chapters: [chapter(0, 0, 1800, "Chapter 1"), chapter(1, 1800, 3600, "Chapter 2")]),
             bookEntry(id: "seed-book-2", title: "Seed Book Two", author: "Ben Author", chapters: nil),
-            // e96d396 C3: a STALE start (five weeks back) — the journey zaun
+            // A STALE start (five weeks back) — the journey zaun
             // that Continue never grows an age cutoff again.
             bookEntry(id: "seed-book-old", title: "Seed Book Old", author: "Cora Author", chapters: nil,
                       progress: BookProgress(
@@ -141,7 +141,7 @@ enum UITestSeed {
         SubsonicProvider.shared.reloadConfig()
         SubsonicProvider.shared._seedForUITest(seedAlbums + [seedSong])
 
-        // F5: radio fixtures — favorites + catalog stations, only when the
+        // Radio fixtures — favorites + catalog stations, only when the
         // journey switches the source on (`-radioEnabled 1` launch arg).
         if AppStorageKeys.radioEnabledValue {
             for station in seedRadioStations where !RadioStore.isFavorite(station.id) {
@@ -149,7 +149,7 @@ enum UITestSeed {
             }
         }
 
-        // Befund-V journey: catalog rows arrive LATE (2 s) through the real
+        // Journey: catalog rows arrive LATE (2 s) through the real
         // calm-gated store path — the Entdecken row must appear on the first
         // Start stay without a tab switch.
         Task { @MainActor in
@@ -175,7 +175,7 @@ enum UITestSeed {
         queue.playLast("sub:album:seed-1")
         queue.playLast("rss:seed:ep-1")
 
-        // X14: a presentation-only active player (no audio) so the harness can
+        // A presentation-only active player (no audio) so the harness can
         // open the full player. A book with FALLBACK chapters ("Teil N von M") —
         // the exact case where the cleaned chapter names had hidden the work
         // title. Opt-in (`-uitest-player`) so it doesn't disturb navigation
@@ -210,7 +210,7 @@ enum UITestSeed {
     // Scroll depth (hitch/threshold journeys) — see the book fillers.
     + (5...24).map { musicAlbum(id: "sub:album:seed-\($0)", title: "Filler Album \($0)", artist: "Backing Band") }
 
-    /// bd66c5b: in-progress music for the Home Continue row — the mixed-row
+    /// In-progress music for the Home Continue row — the mixed-row
     /// journey (book + episode + album in ONE card format) needs it.
     static let seedMusicContinue: [String: BookProgress] = [
         "sub:album:seed-1": BookmarkProgressMath.progress(
@@ -253,7 +253,7 @@ enum UITestSeed {
             duration: 2400, chapters: nil, tracks: nil), addedAt: 0)
     }
 
-    /// F5: seeded stations (manual namespace — resolvable without a catalog).
+    /// Seeded stations (manual namespace — resolvable without a catalog).
     static let seedRadioStations = [
         RadioStation(id: "radio:manual:seed-1", name: "Seed Radio One",
                      streamURL: "https://seed.example/one.mp3"),

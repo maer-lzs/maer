@@ -49,13 +49,13 @@ extension PlayerViewModel {
         WidgetCenter.shared.reloadTimelines(ofKind: "ContinueListeningWidget")
     }
 
-    /// V8 (testable): the shared cover file must be rewritten exactly when the
+    /// The shared cover file must be rewritten exactly when the
     /// item changes (incl. the first item) — never for the same item.
     static func coverNeedsRewrite(previous: String?, current: String) -> Bool {
         previous != current
     }
 
-    /// X9/V8: write a small cover PNG (from the reliably-loaded lock-screen
+    /// Write a small cover PNG (from the reliably-loaded lock-screen
     /// artwork) into the shared app-group file the home widget reads, then
     /// refresh it. Dependable across item changes, unlike the
     /// ImageCache-thumbnail path which is often empty right after a switch.

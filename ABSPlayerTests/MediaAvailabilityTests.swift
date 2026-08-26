@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// Y60: the canonical offline-unavailable predicate shared by every downloadable
+/// The canonical offline-unavailable predicate shared by every downloadable
 /// media row (queue, browse deck, book/podcast rows).
 struct MediaAvailabilityTests {
     @Test("offline + not downloaded → unavailable; any other combination → available")

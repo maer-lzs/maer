@@ -32,7 +32,7 @@ final class GPodderSync {
         var warning: String?
     }
 
-    /// S20: the last sync outcome, persisted so the settings screen can show it
+    /// The last sync outcome, persisted so the settings screen can show it
     /// after an app restart. The mass-delete guard `warning` is STICKY — it
     /// survives until a later CLEAN sync (no warning, no error) clears it, so a
     /// one-off guard trip is not lost the moment the tab is reopened.
@@ -214,7 +214,7 @@ final class GPodderSync {
             report.error = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
         persist(report)   // S20: survive an app restart + keep a guard warning sticky
-        // F9/Y50: a run that CHANGED something, failed or tripped a guard lands
+        // A run that CHANGED something, failed or tripped a guard lands
         // as a ring entry (a guard becomes a PERMANENT marked entry); a clean
         // no-op run only bumps the "last checked" stamp, so the ring stays
         // meaningful.
@@ -270,7 +270,7 @@ final class GPodderSync {
         // mirror URLs and mesh-less devices inherited them as dead feeds.
         let visible = GPodderVisibleSubscriptions.current()
         let localByNorm = visible.byNorm
-        // 24857d7: the SERVER side goes through the SAME visibility source —
+        // The SERVER side goes through the SAME visibility source —
         // with the opt-in off, token feeds are invisible in both directions
         // (neither adopted nor cleaned up), otherwise the asymmetry becomes
         // a tug-of-war between two devices.
@@ -321,7 +321,7 @@ final class GPodderSync {
                 remove: merge.removeFromServer.compactMap { visibleServerByNorm[$0] }
             )
             report.pushedToServer = merge.addToServer.count
-            // R2: applied user-intent removes are consumed (one-shot).
+            // Applied user-intent removes are consumed (one-shot).
             PodcastSubscriptions.consumeUserRemovedFeeds(merge.removeFromServer)
             for norm in merge.removeFromServer {
                 let raw = visibleServerByNorm[norm] ?? norm
@@ -397,7 +397,7 @@ final class GPodderSync {
         guard let config,
               let found = PodcastSubscriptions.shared.episode(guid: rssItemId) else { return }
         let total = duration > 0 ? duration : found.episode.duration
-        // 8b71fd7: the action carries the EVENT's timestamp (the stored
+        // The action carries the EVENT's timestamp (the stored
         // entry's), not the push moment. The batch push further down has
         // always done it this way; this single push was the exception — and a
         // push-time stamp is how old knowledge travels dressed as new: any

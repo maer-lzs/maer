@@ -16,7 +16,7 @@ nonisolated enum PlayerDismissZones {
     /// Gap kept between a zone's bottom edge and the controls' top edge.
     static let controlsMargin: CGFloat = 8
 
-    /// S13: width of the continuous full-height swipe strip along each screen
+    /// Width of the continuous full-height swipe strip along each screen
     /// edge. Kept narrow so the interactive controls (scrubber, chapter
     /// buttons) stay clear of it — the scrubber is inset a touch more than this
     /// so its thumb at position 0/1 is never under the strip (D1).

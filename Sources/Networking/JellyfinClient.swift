@@ -149,12 +149,12 @@ final class JellyfinClient {
         throw JellyfinError.auth
     }
 
-    /// 8541008: a body with REAL JSON types.
+    /// A body with REAL JSON types.
     ///
     /// The dictionary variant below can only send strings, and the UserData
     /// endpoint wants a NUMBER for the ticks and a BOOL for `Played` — sending
     /// `"true"` is not the same thing, and a server that ignores a mistyped
-    /// field does it silently. the operator measured `Played: false` in every answer;
+    /// field does it silently. Measured: `Played: false` in every answer;
     /// this is the first thing to rule out before anyone concludes the server
     /// cannot mark a book finished.
     private func post(_ path: String, _ query: [String: String] = [:],
@@ -198,9 +198,9 @@ final class JellyfinClient {
         throw JellyfinError.auth
     }
 
-    // MARK: - facf3e3: audiobooks (scope MEASURED, not assumed)
+    // MARK: - Audiobooks (scope MEASURED, not assumed)
     //
-    // the operator measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0, and the
+    // Measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0, and the
     // measurements draw the scope of everything below:
     //
     //   * A book on Jellyfin is exactly ONE FILE. A folder of chapter files
@@ -325,7 +325,7 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// M3: the server's music genres. Jellyfin ships NO counts on this list
+    /// The server's music genres. Jellyfin ships NO counts on this list
     /// (honest limit — the page sorts alphabetically for this provider).
     func musicGenres() async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
@@ -335,7 +335,7 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// M3: albums of ONE genre (Genres filter on the items query).
+    /// Albums of ONE genre (Genres filter on the items query).
     func albumsByGenre(genre: String, startIndex: Int = 0, limit: Int = 100) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [
@@ -347,7 +347,7 @@ final class JellyfinClient {
         return result.items ?? []
     }
 
-    /// M3: songs of ONE genre, paged.
+    /// Songs of ONE genre, paged.
     func songsByGenre(genre: String, startIndex: Int, limit: Int) async throws -> [JFItem] {
         let (_, uid) = try await ensureAuth()
         let result = try await get("Users/\(uid)/Items", [

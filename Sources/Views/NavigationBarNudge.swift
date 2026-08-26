@@ -7,8 +7,8 @@ import SwiftUI
 import UIKit
 import OSLog
 
-/// df69f6b damping stage (a) — FB18304716 family: repeated title state
-/// transitions on a live large-title bar can drop the title permanently on
+/// Damping stage (a): repeated title state transitions on a live large-title
+/// bar can drop the title permanently on
 /// iOS 26. The one-tick retarget (stage b) alone proved flaky over long test
 /// runs, and a BLIND bar nudge (sizeToFit/prefersLargeTitles on every flip)
 /// made things worse — anything extra on the live bar feeds the bug. So the
@@ -19,7 +19,7 @@ import OSLog
 /// This is the single, tightly-scoped introspection point of the app (no
 /// scattering): `Probe` is a zero-size leaf inside the NavigationStack that
 /// captures the stack's `UINavigationController`. Root fix remains the
-/// per-tab stack structure (compat-sprint item 9).
+/// per-tab stack structure.
 enum NavigationBarNudge {
     private static weak var navigationController: UINavigationController?
 
@@ -65,9 +65,9 @@ enum NavigationBarNudge {
                 Logger.library.notice("titleNudge: skipped (pushed detail or mid-transition)")
                 return
             }
-            // Such-Freeze-Auftrag 01.08 (Verdacht 1): a DELIBERATELY hidden
-            // bar (search page, Y23 toolbar-hidden) has no visible title BY
-            // DESIGN — the nudge must never fight that state with rebuilds.
+            // A DELIBERATELY hidden bar (the search page hides its toolbar)
+            // has no visible title BY DESIGN — the nudge must never fight
+            // that state with rebuilds.
             guard !nav.isNavigationBarHidden, !nav.navigationBar.isHidden else {
                 Logger.library.notice("titleNudge: skipped (bar deliberately hidden)")
                 return

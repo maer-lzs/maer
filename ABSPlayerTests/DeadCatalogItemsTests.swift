@@ -8,10 +8,10 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 🟡 P10: erkanntes Tot-Sein wird gemerkt, ein FEHLSCHLAG nie — dieselbe
+/// 🟡 Erkanntes Tot-Sein wird gemerkt, ein FEHLSCHLAG nie. Dieselbe
 /// Drei-Wege-Leiter wie bei der 401-Probe.
 struct DeadCatalogItemsTests {
-    /// 2c6bc8f: eigene Suite je Lauf statt der echten Persistenz.
+    /// Eigene Suite je Lauf statt der echten Persistenz.
     private func freshDefaults() -> UserDefaults {
         UserDefaults(suiteName: "dead-items-\(UUID().uuidString)")!
     }
@@ -20,7 +20,7 @@ struct DeadCatalogItemsTests {
     func ladderSeparatesDeadFromUnmeasured() {
         let error = Data(#"{"error":"Unable to fetch metadata"}"#.utf8)
         let healthy = Data(#"{"files":[{"name":"a.mp3"}],"metadata":{"identifier":"x"}}"#.utf8)
-        // Der gemessene Fall aus dem Auftrag: HTTP 200 MIT Fehlerobjekt.
+        // Der gemessene Fall: HTTP 200 MIT Fehlerobjekt.
         #expect(DeadCatalogItems.liveness(httpStatus: 200, body: error) == .dead)
         #expect(DeadCatalogItems.liveness(httpStatus: 404, body: nil) == .dead)
         #expect(DeadCatalogItems.liveness(httpStatus: 200, body: healthy) == .alive)
@@ -45,7 +45,7 @@ struct DeadCatalogItemsTests {
         DeadCatalogItems.note(.dead, for: "gbia7003752a", now: now, defaults: defaults)
         #expect(DeadCatalogItems.isDead("gbia7003752a", now: now, defaults: defaults))
         // Nach der Frist zaehlt die alte Messung nicht mehr — archive.org
-        // holt Items gelegentlich zurueck (Negativ-Cache-Lehre 95c5c16).
+        // holt Items gelegentlich zurueck.
         let later = now.addingTimeInterval(DeadCatalogItems.ttlDays * 86_400 + 60)
         #expect(!DeadCatalogItems.isDead("gbia7003752a", now: later, defaults: defaults))
         // Und ein gesunder Fund raeumt die Markierung sofort ab.

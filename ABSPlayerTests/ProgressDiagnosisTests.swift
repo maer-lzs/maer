@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Das Messinstrument zum Befund „gehört kippt zurück": Es muss die beiden
-/// Ursachen TRENNEN, nicht eine davon nahelegen.
+/// Das Messinstrument dazu, dass eine Gehört-Marke zurückkippt: Es muss die
+/// beiden Ursachen TRENNEN, nicht eine davon nahelegen.
 struct ProgressDiagnosisTests {
     private func entry(position: Double, updatedAt: Double, duration: Double) -> ProgressDiagnosis.Entry {
         .init(title: "Folge 26", guid: "rss:x:26", position: position,
@@ -21,7 +21,7 @@ struct ProgressDiagnosisTests {
         // Als gehört markiert bei 3.420 s; der Feed meldet heute drei Minuten mehr.
         let e = entry(position: 3_420, updatedAt: 1_000, duration: 3_600)
         #expect(ProgressDiagnosis.verdict(e) == .inProgress(remaining: 180))
-        // Und mit der damaligen Dauer wäre es „gehört" gewesen.
+        // Und mit der damaligen Dauer waere es gehört gewesen.
         #expect(ProgressDiagnosis.verdict(entry(position: 3_420, updatedAt: 1_000, duration: 3_420)) == .played)
     }
 
@@ -64,7 +64,7 @@ struct ProgressDiagnosisTests {
 }
 
 
-// MARK: - c9529f1: die BUCH-Ansicht desselben Instruments
+// MARK: - Die BUCH-Ansicht desselben Instruments
 
 struct BookProgressDiagnosisTests {
     private func stamp(_ s: Double) -> String { String(Int(s)) }
@@ -72,7 +72,7 @@ struct BookProgressDiagnosisTests {
 
     @Test("der Bericht nennt den Ruecksprung, den der Start ausloesen wuerde")
     func namesTheBackwardJump() {
-        // the owner's Winterfell-Lage: lokal deutlich weiter, aber ÄLTER
+        // Die gemessene Lage: lokal deutlich weiter, aber ÄLTER
         // gestempelt als der Serverstand ⇒ der Start nimmt den Server und
         // wirft zurueck. Genau das muss das Instrument sagen.
         let sources = ProgressDiagnosis.BookSources(

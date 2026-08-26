@@ -93,7 +93,7 @@ struct RSSFeedParserTests {
         """
     }
 
-    // MARK: - Pure helpers (Korpus-Härtung R2/R3)
+    // MARK: - Pure helpers
 
     @Test("R2: enclosure acceptance — audio/video/octet-stream heuristic")
     func enclosureAcceptance() {

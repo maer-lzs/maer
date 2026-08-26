@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// P3.2 (iPad round): THE access-form fields. Six forms (Audiobookshelf,
+/// THE access-form fields. Six forms (Audiobookshelf,
 /// Subsonic, Jellyfin, gpodder, Pinchflat, premium feed login) carried the
 /// same modifier stacks as copies — four of them complete, Pinchflat and the
 /// feed login without any `textContentType` at all, which is exactly why no
 /// password manager offered to fill or save there.
 ///
-/// One parameterised set instead of six copies (Regel 2): the QuickType bar
+/// One parameterised set instead of six copies: the QuickType bar
 /// and the "save password?" prompt come from the content types, so getting
 /// them right in ONE place gets them right everywhere — including Bitwarden
 /// and any other manager, which read the same system hints as the keychain.
@@ -22,7 +22,7 @@ import SwiftUI
 enum CredentialField {
     /// Server address — URL keyboard, no autocorrect, `.URL` content type.
     ///
-    /// d990695: with a `service` it also offers the KNOWN addresses below the
+    /// With a `service` it also offers the KNOWN addresses below the
     /// field. Deliberately below and as its own control: the QuickType bar
     /// belongs to the password managers, and the address is the part they do
     /// not carry.
@@ -65,7 +65,7 @@ enum CredentialField {
 
 /// The suggestion row under a server field — own service type first, the
 /// other known addresses below (their value is the domain family). A tap
-/// fills the field; removing is a LONG PRESS, never automatic (P5 lesson:
+/// fills the field; removing is a LONG PRESS, never automatic (
 /// an outage is not a reason to delete).
 struct KnownServerSuggestions: View {
     let service: KnownServer.Service

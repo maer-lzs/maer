@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Y51: free→premium episode matching — conservative by design (a missed match
+/// Free→premium episode matching — conservative by design (a missed match
 /// is cheap, a wrong match moves progress onto the wrong episode).
 struct PodcastPremiumMatchTests {
     private func episode(_ guid: String, title: String, audio: String, pubDate: Double = 0) -> PodcastEpisode {
@@ -91,7 +91,7 @@ struct PodcastPremiumMatchTests {
     }
 }
 
-/// Y52: token-URL premium class — classification and masking (secrets never
+/// Token-URL premium class — classification and masking (secrets never
 /// shown or logged unmasked).
 struct PodcastTokenFeedTests {
     @Test("token classification: known secret param with value; conservative otherwise")
@@ -143,8 +143,8 @@ struct PodcastTokenFeedTests {
         #expect(twins.count == 1)
         #expect(twins.first?.freeId == "f1")
         #expect(twins.first?.premiumId == "p1")
-        // The real ZEIT podcatcher pattern IS detected now (7dba2b1 root):
-        // `freebie` joined the secret-parameter set with the OPML fix.
+        // The real podcatcher pattern IS detected: `freebie` is part of the
+        // secret-parameter set.
         #expect(PodcastSubscriptions.isTokenFeedURL(
             "https://premium-feed.zeit.de/x/rss-podcatcher?freebie=TOKEN"))
     }
@@ -220,7 +220,7 @@ struct PodcastTokenFeedTests {
     }
 }
 
-/// 6446a04: the in-feed "do not list publicly" signal — channel level only,
+/// The in-feed "do not list publicly" signal — channel level only,
 /// both namespaces, case-tolerant; a platform-bounded block says nothing.
 struct PodcastFeedBlockTests {
     @Test("itunes:block yes on channel level counts, case and whitespace tolerant")
@@ -274,7 +274,7 @@ struct PodcastFeedBlockTests {
     }
 }
 
-/// 6bae86b: the reduced provider-token scope — the probe DISPROVED the
+/// The reduced provider-token scope — the probe DISPROVED the
 /// "one token for the whole provider" assumption (ZEIT hands out a token per
 /// SHOW), so nothing anbieterweit was built. What has to hold instead: a
 /// per-show podcatcher URL added by hand runs through the EXISTING chain.
@@ -341,7 +341,7 @@ struct ProviderTokenChainTests {
         let feedURL = "https://tube.example/sources/abc/feed.xml"
         let key = PodcastSubscriptions.feedKey(feedURL)
         // Host credentials from the server setup — exactly the class the
-        // premium heuristic used to trip over (Befund T).
+        // premium heuristic used to trip over.
         PodcastFeedAuth.set(feedKey: key, user: "the implementer", password: "pw")
         defer { PodcastFeedAuth.remove(feedKey: key) }
         let defaults = UserDefaults(suiteName: "t2-zaun-\(UUID().uuidString)")!
@@ -384,7 +384,7 @@ struct ProviderTokenChainTests {
     @Test("U4-Zaun: Artwork-Fehlschlag persistiert KEIN Negativ — naechster Aufruf versucht neu")
     func artworkFailureIsNotAbsence() async {
         let service = FeedArtworkService()
-        // 2c6bc8f: the service persists its POSITIVE results in the real
+        // The service persists its POSITIVE results in the real
         // UserDefaults, so a fixed URL made this test poison ITSELF — the
         // healing step of one run answered the "poisoned" first call of the
         // next one from storage (green only on a freshly erased simulator).

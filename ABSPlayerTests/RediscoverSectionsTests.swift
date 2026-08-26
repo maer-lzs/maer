@@ -146,7 +146,7 @@ struct DiscoverFilterTests {
     }
 }
 
-/// F3: the author portrait's tap rule — several works ⇒ tappable filter, a
+/// The author portrait's tap rule — several works ⇒ tappable filter, a
 /// single work ⇒ plain image.
 struct AuthorPortraitRuleTests {
     @Test func tapRule() {
@@ -223,7 +223,7 @@ struct AuthorPortraitRuleTests {
     }
 }
 
-/// 70dd0d8/d05124b: the categories must reach the QUERY — compound Apple
+/// The categories must reach the QUERY — compound Apple
 /// names decompose for PodcastIndex, and map to genre ids for the keyless
 /// iTunes charts.
 struct PodcastCategoryMappingTests {
@@ -260,7 +260,7 @@ struct PodcastCategoryMappingTests {
         #expect(PodcastCategoryMapping.appleCategory(forGenreId: 999_999) == nil)
     }
 
-    /// fb21fbd: the header caption names only what DEVIATES from the default —
+    /// The header caption names only what DEVIATES from the default —
     /// that is what makes an invisible filter visible without shouting.
     @Test("Sort indicator names only deviations")
     func sortIndicatorSummary() {
@@ -275,7 +275,7 @@ struct PodcastCategoryMappingTests {
         #expect(SortIndicator.part("X", ifNot: false) == "X")
     }
 
-    /// df0b3bb 3: hiding a title from Continue must not touch its position —
+    /// Hiding a title from Continue must not touch its position —
     /// and must not banish it forever either. The marker holds the progress
     /// stamp at the moment of hiding, so listening on brings the entry back.
     @Test("Continue-hide marker releases as soon as progress moves on")
@@ -325,7 +325,7 @@ struct PodcastCategoryMappingTests {
         #expect(RowPreview.cut(Array(1...50)).count == 12)
         #expect(RowPreview.cut(Array(1...5)).count == 5)
         #expect(RowPreview.cut([Int]()).isEmpty)
-        // G8: a chevron only where something is hidden.
+        // A chevron only where something is hidden.
         #expect(RowPreview.showsChevron(total: 13))
         #expect(!RowPreview.showsChevron(total: 12))
         #expect(!RowPreview.showsChevron(total: 3))
@@ -385,7 +385,7 @@ struct PodcastCategoryMappingTests {
                                                 deviceRegion: "JP").first == "de")
         #expect(SuggestionLanguages.storefronts(for: "de", perRun: 2, daySeed: 1,
                                                 deviceRegion: nil).first == "de")
-        // The measured lists themselves (4ab17e8).
+        // The measured lists themselves.
         #expect(SuggestionLanguages.storefrontsByLanguage["es"] == ["es", "mx", "ar", "co", "cl"])
         #expect(SuggestionLanguages.storefrontsByLanguage["fr"] == ["fr", "be", "ch", "ca"])
     }
@@ -400,7 +400,7 @@ struct PodcastCategoryMappingTests {
         #expect(Array(mapped.prefix(3)) == ["Society", "Culture", "Health"])
     }
 
-    /// 51612b4: the chart share rotates daily THROUGH ITS OWN SLOTS — the
+    /// The chart share rotates daily THROUGH ITS OWN SLOTS — the
     /// personally justified entries keep their signal order and positions.
     @Test("chart entries rotate daily, personal entries keep their slots")
     func chartRotationKeepsPersonalSlots() {

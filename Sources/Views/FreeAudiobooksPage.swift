@@ -6,28 +6,28 @@
 import SwiftUI
 import OSLog
 
-/// b6150a4 → 11be262: the ONE merged catalog page — "Freie Hörbücher &
-/// Hörspiele". Radio-play feeds and public-domain catalogs share the surface;
-/// the German split Hörspiel/Hörbuch is not one the directories know, so the
-/// SOURCE is the ordering axis (one row per source, 733ac2a). The ACTION
+/// The ONE merged catalog page — "Freie Hörbücher & Hörspiele". Radio-play
+/// feeds and public-domain catalogs share the surface; the German split
+/// Hörspiel/Hörbuch is not one the directories know, so the SOURCE is the
+/// ordering axis (one row per source). The ACTION
 /// carries the remaining distinction: feed rows subscribe, catalog tiles play.
 nonisolated enum FreeAudiobooksRoute: Hashable {
     case area
-    /// 1790dda: the endless browsing of the LibriVox popularity list — its
+    /// The endless browsing of the LibriVox popularity list — its
     /// own page, so the overview stays an overview. Kept as an alias route:
-    /// it now lands on the parameterised source page (Paket 3).
+    /// it now lands on the parameterised source page.
     case allPopular
-    /// Paket 3: one source's full page (fundgrube + the axis that carries).
+    /// One source's full page (fundgrube + the axis that carries).
     case source(CatalogSource)
-    /// R51 Runde 2: the endless "Popular" browsing of ONE source. It left the
+    /// The endless "Popular" browsing of ONE source. It left the
     /// overview when the user decided that page is rows only — the scrolling
     /// did not disappear, it moved to where scrolling is the form.
     case popular(CatalogSource)
-    /// H erweitert (f374116): one shelf of a genre-carrying source — the
+    /// H erweitert: one shelf of a genre-carrying source — the
     /// full grid behind a genre row (shelf = FILTER over the source's stock,
     /// no second client).
     case shelf(CatalogSource, String)
-    /// Auftrag O: the SHOW PAGE of an archive.org series bundle — the class is
+    /// The SHOW PAGE of an archive.org series bundle — the class is
     /// read from the item's own collections (`ArchiveItemForm`). Tap stays
     /// NACHSCHLAGEN; the page replaces the detail sheet for this class only.
     case series(itemId: String)
@@ -36,7 +36,7 @@ nonisolated enum FreeAudiobooksRoute: Hashable {
     case oerrCountries
 }
 
-/// Paket 4: push the catalog area from non-link surfaces (the search deck's
+/// Push the catalog area from non-link surfaces (the search deck's
 /// category tile) — same pattern as PushRadioRouteKey.
 nonisolated struct PushFreeAudiobooksRouteKey: EnvironmentKey {
     static let defaultValue: @MainActor (FreeAudiobooksRoute) -> Void = { _ in }
@@ -51,27 +51,26 @@ extension EnvironmentValues {
 
 struct FreeAudiobooksPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// dd87a56: serverless, the audiobooks TAB shows this page's sections as
+    /// Serverless, the audiobooks TAB shows this page's sections as
     /// its core — embedded, the host provides scroll and title, and there is
     /// exactly ONE version of the sections (parameterised, not copied).
     var embedded = false
     /// X²·3: re-render when the live OERR entries land (calm-gated).
     @ObservedObject private var oerrStore = OERRLiveStore.shared
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
-    /// Paket 1: the load layer lives in the store — one pass, all catalog
+    /// The load layer lives in the store — one pass, all catalog
     /// sources, one visible failure per source. The page renders dumb.
     @ObservedObject private var store = FreeCatalogStore.shared
     @State private var detailItem: LibraryItem?
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
-    // Paket 4: the Apple radio-play charts moved here from the retired
-    // HoerspielePage — 11be262 keeps the genre axis and the charts alive
-    // ("alles andere bleibt gültig"); chip-driven, so legitimate view state
-    // like the sub-pages' paging.
+    // The radio-play charts moved here from the retired standalone page;
+    // genre axis and charts stay alive. Chip-driven, so legitimate view
+    // state like the sub-pages' paging.
     //
     // WARUM NUR die Hörspiel-Charts und keine Bücher-Charts (09.08.,
     // gemessen — damit die Buch-Reihe nicht in drei Monaten zurückkehrt):
     // Apples FIKTIONS-Kategorien sind FORM-basiert (Drama 1484, SciFi 1485,
-    // Comedy Fiction 1486) — dort stehen echte Hörspiele. „Books" 1482 ist
+    // Comedy Fiction 1486) — dort stehen echte Hörspiele. `Books` 1482 ist
     // dagegen THEMA-basiert: 20 von 25 Chart-Einträgen waren Gespräche ÜBER
     // Bücher, nicht Lesungen. Eine Form aus einer Themen-Kategorie
     // herauszufiltern hieße raten, und selbst ein perfekter Filter ließe nur
@@ -88,9 +87,8 @@ struct FreeAudiobooksPage: View {
     private var rows: CatalogSourceLoader.SourceRows { store.sourceRows }
     private var languages: [String] { SuggestionLanguages.current() }
 
-    // Paket 3: the genre-chip family moved to CatalogSourcePage — the
-    // control sits on the surface it acts on (48e786d decision), and the
-    // overview stays an overview.
+    // The genre-chip family moved to CatalogSourcePage — the control sits
+    // on the surface it acts on, and the overview stays an overview.
 
     private var catalogRowsEmpty: Bool {
         rows.librivoxPopular.isEmpty && rows.archiveBooks.isEmpty
@@ -141,7 +139,7 @@ struct FreeAudiobooksPage: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
-                // Reihenfolge (11be262): feeds first, catalogs after —
+                // Reihenfolge: feeds first, catalogs after —
                 // the feed rows are static curation and render instantly.
                 feedSection(.oerr)
                 feedSection(.independents)
@@ -152,7 +150,7 @@ struct FreeAudiobooksPage: View {
                 tileSection(.archiveBooks, items: rows.archiveBooks)
                 tileSection(.gutenberg, items: rows.gutenberg)
                 if catalogRowsEmpty {
-                    // R29: every state below ENDS — spinner only while the
+                    // Every state below ENDS — spinner only while the
                     // pass actually runs; an empty result and a failed run
                     // each get an honest line with a way back in.
                     if store.sourcesLoading {
@@ -193,7 +191,7 @@ struct FreeAudiobooksPage: View {
             }
     }
 
-    /// 3d6b412 E: feed sources are TILE rows too — the list form belongs to
+    /// Feed sources are TILE rows too — the list form belongs to
     /// search, the surface speaks ONE tile language. The action distinction
     /// lives in the tap convention now (tile tap = show preview =
     /// NACHSCHLAGEN; subscribing happens there). Hang risk assessed:
@@ -239,7 +237,7 @@ struct FreeAudiobooksPage: View {
     }
 
     /// A catalog source: preview tile row. An EMPTY row with a recorded
-    /// failure shows the reason (Regel 3) instead of silently missing.
+    /// failure shows the reason instead of silently missing.
     @ViewBuilder
     private func tileSection(_ source: CatalogSource, items: [LibraryItem],
                              placeholder: String = "book.closed") -> some View {
@@ -254,7 +252,7 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    /// A2/A3: the error line is TAPPABLE (retry — "unreachable" is a normal
+    /// The error line is TAPPABLE (retry — "unreachable" is a normal
     /// state for these sources and needs a visible way back, not a dead-end
     /// label) and carries the short REASON, so one look tells 429 / HTML
     /// answer / transport apart.
@@ -278,9 +276,8 @@ struct FreeAudiobooksPage: View {
         }
     }
 
-    // Paket 3: the separate "Show all" link died with the heading chevron —
-    // one affordance, one target (no journey held the old identifier;
-    // the earlier comment claiming one was my own stale assumption).
+    // The separate "Show all" link died with the heading chevron — one
+    // affordance, one target.
     @ViewBuilder
     private var librivoxSection: some View {
         tileSection(.librivox, items: rows.librivoxPopular)
@@ -300,7 +297,7 @@ struct FreeAudiobooksPage: View {
     }
 
 
-    // ── Apple radio-play charts (moved from the retired HoerspielePage, Paket 4) ──────
+    // ── Radio-play charts ───────────────────────────────────────────────
 
     private var chipRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -340,7 +337,7 @@ struct FreeAudiobooksPage: View {
             emptyText: "Nothing in this genre right now.",
             failedText: "The charts could not be loaded. Check your connection."
         ) {
-            // a738dc4/284095b sibling check: same three levels as the 78s
+            // Same three levels as the 78s
             // row — the head means the AREA (charts overview, chevron
             // earned by the page's existence), the chips switch in place,
             // and the genre LINE below leads counted into the active
@@ -406,9 +403,9 @@ struct FreeAudiobooksPage: View {
     }
 
     private func tile(_ item: LibraryItem, placeholder: String = "book.closed") -> some View {
-        // 174f855: NACHSCHLAGEN — tap opens the detail (rights line + the
+        // NACHSCHLAGEN — tap opens the detail (rights line + the
         // prominent Play); long-press keeps Play as the shortcut.
-        // Auftrag O: an OTR series bundle looks up its SHOW PAGE (episode
+        // An OTR series bundle looks up its SHOW PAGE (episode
         // list) instead of the sheet — same tap class, richer answer.
         FreeCatalogBookTile(
             item: item,

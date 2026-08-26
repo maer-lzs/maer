@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// P3 regression: the one-pass `PodcastSections.compute` must produce exactly
+/// The one-pass `PodcastSections.compute` must produce exactly
 /// what the former three separate passes produced, for arbitrary play/download
 /// state.
 @MainActor
@@ -306,7 +306,7 @@ struct PodcastSectionsTests {
 }
 #endif
 
-// MARK: - bc69cd8: Spiegel seeden nicht, tote Kacheln ruecken nach
+// MARK: - Spiegel seeden nicht, tote Kacheln ruecken nach
 
 struct RecommendationSeedTests {
     private func result(_ id: String, artwork: String?) -> PodcastSearchResult {
@@ -333,7 +333,7 @@ struct RecommendationSeedTests {
     }
 }
 
-/// 973121e: the Empfohlen fix — REAL author equality, and the fences carry
+/// The Empfohlen fix — REAL author equality, and the fences carry
 /// the measured cases verbatim (the "Einschlafen" anchor booked 25/25
 /// foreign shows as sameAuthor through the old title branch).
 @Suite struct RecommendationAuthorMatchTests {
@@ -371,7 +371,7 @@ struct RecommendationSeedTests {
     }
 }
 
-/// 9eccba0: authors/publishers first (up to ~half, at most 2 per author,
+/// Authors/publishers first (up to ~half, at most 2 per author,
 /// row-wide), category then charts as the guaranteed filler — the row never
 /// shrinks, the cap orders and never empties.
 @Suite struct RecommendationPriorityTests {

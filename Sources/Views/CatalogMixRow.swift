@@ -5,13 +5,13 @@
 
 import SwiftUI
 
-/// Auftrag K + L2: the ONE mixed catalog tile row — radio-play feeds and
+/// The ONE mixed catalog tile row — radio-play feeds and
 /// catalog titles interleaved (`CatalogMix.row`), rendered as a horizontal
 /// tile row on screen-relative slots. Used by the podcast tab ("Freie
-/// Hörbücher & Hörspiele") and Start ("Entdecken · Hörbücher & Hörspiele");
-/// Regel 2: one component, not two mixers.
+/// Hörbücher & Hörspiele") and Start ("Entdecken · Hörbücher & Hörspiele") —
+/// one component, not two mixers.
 ///
-/// Tap convention (174f855, NACHSCHLAGEN): feed tiles push the show preview
+/// Tap convention: feed tiles push the show preview
 /// (subscribe lives there), catalog tiles open the detail sheet with the
 /// prominent Play; long-press keeps Play as the shortcut for catalog tiles.
 struct CatalogMixRow: View {
@@ -49,7 +49,7 @@ struct CatalogMixRow: View {
             FreeCatalogBookTile(
                 item: item,
                 placeholderSystemImage: "waveform.and.mic",
-                // Auftrag O: OTR bundles push their show page (episode list);
+                // OTR bundles push their show page (episode list);
                 // every other catalog item keeps the detail sheet.
                 onTap: {
                     if FreeCatalogProvider.shared.hasPartsList(itemId: item.id) {
@@ -69,12 +69,12 @@ struct CatalogMixRow: View {
 }
 
 extension CatalogMix {
-    /// The ONE computation of the mixed audiobooks-&-radio-plays row (Auftrag
-    /// K podcast tab + L2 Start share it — "keine zwei Mischer"): curated
-    /// radio-play feeds (static, instant) + the catalog title rows from the
+    /// The ONE computation of the mixed audiobooks-&-radio-plays row, shared
+    /// by the podcast tab and Start: curated radio-play feeds (static,
+    /// instant) + the catalog title rows from the
     /// calm-gated store, fairly interleaved, capped by RowPreview.
     @MainActor
-    /// 1092867: what the LAST session showed, recorded once per session for
+    /// What the LAST session showed, recorded once per session for
     /// the malus. Only a FULL row is recorded — the first calls of a session
     /// run on still-empty catalog lanes, and recording that half-row would
     /// hand next session's malus a half-truth.

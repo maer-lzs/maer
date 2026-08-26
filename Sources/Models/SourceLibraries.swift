@@ -94,7 +94,7 @@ nonisolated enum SourceLibraries {
         return !libraries(for: type, modes: modes, known: known, assignment: assignment).isEmpty
     }
 
-    /// G8: modes the user switched on that cannot deliver yet. The surface
+    /// Modes the user switched on that cannot deliver yet. The surface
     /// names these; it never shows a tab for one of them.
     static func incompleteModes(modes: SourceModes,
                                 known: [SourceLibrary],

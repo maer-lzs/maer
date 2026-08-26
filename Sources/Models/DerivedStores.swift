@@ -5,21 +5,18 @@
 
 import Foundation
 
-/// R60: die
-/// abgeleiteten Speicher an EINER Stelle, mit der Grenze IM CODE statt in
-/// einer Beschriftung.
+/// Die abgeleiteten Speicher an EINER Stelle, mit der Grenze IM CODE statt
+/// in einer Beschriftung.
 ///
 /// Abgeleitet heißt: aus einer Abfrage entstanden und jederzeit neu holbar.
-/// **Nichts hier gehört dem Nutzer** — kein Hörstand, keine Playlist, kein
-/// Favorit, kein Download. Das ist die Grenze zwischen „neu holen" und
-/// „Datenverlust", und sie steht deshalb als LISTE da, nicht als Vorsatz:
-/// wer einen Schlüssel hinzufügt, muss ihn hier hinschreiben, und der Zaun
-/// hält dagegen, dass Nutzerbesitz hineinrutscht.
+/// Nichts hier gehört dem Nutzer — kein Hörstand, keine Playlist, kein
+/// Favorit, kein Download. Die Grenze zwischen neu holen und Datenverlust
+/// steht deshalb als LISTE da: wer einen Schlüssel hinzufügt, muss ihn hier
+/// hinschreiben, und der Zaun hält dagegen, dass Nutzerbesitz hineinrutscht.
 ///
-/// Der Hebel ist ausdrücklich **kein Ersatz für den Fingerabdruck** (R60):
-/// kein Nutzer wird ihn drücken. Er macht die kalte Form von Hand
-/// erreichbar, damit ein Zustand, den man sonst einmal in 24 Stunden
-/// erwischt, überhaupt abnehmbar ist.
+/// Der Hebel ersetzt den Fingerabdruck NICHT. Er macht die kalte Form von
+/// Hand erreichbar, damit ein Zustand, den man sonst einmal in 24 Stunden
+/// erwischt, überhaupt prüfbar ist.
 nonisolated enum DerivedStores {
     /// Was geräumt wird — Anzeigename und Schlüssel. Der Name reist mit, weil
     /// der Hebel sagen muss, WAS er geleert hat.
@@ -41,8 +38,8 @@ nonisolated enum DerivedStores {
                                     "maerPlaylists", "radioFavorites", "listeningStats"]
 
     /// Räumt und sagt, was geräumt wurde. Gibt die Namen zurück, die wirklich
-    /// etwas enthielten — „nichts zu räumen" ist eine ehrliche Antwort und
-    /// keine leere Meldung.
+    /// etwas enthielten — nichts zu räumen ist eine Antwort, keine leere
+    /// Meldung.
     @discardableResult
     static func clear(defaults: UserDefaults = .standard) -> [String] {
         var geleert: [String] = []

@@ -27,7 +27,7 @@ struct PodcastAccountBehaviour: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
 
     var body: some View {
-        // G8: a section only where the account actually acts. An account that
+        // A section only where the account actually acts. An account that
         // does not serve podcasts has no podcast behaviour to show, and an
         // empty section would be a promise without a referent.
         if absPodcastsEnabled && absPodcast.hasPodcasts {

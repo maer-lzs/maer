@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// S11: THE single download-progress indicator for every media type (books,
+/// THE single download-progress indicator for every media type (books,
 /// podcasts, music). A subtle determinate ring when the total size is known,
 /// an indeterminate spinner for the `-1` sentinel (server sent no
 /// Content-Length). Ring/spinner only — tap-to-cancel is supplied by the

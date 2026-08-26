@@ -8,7 +8,7 @@ import Foundation
 import Testing
 @testable import ABSPlayer
 
-/// Fix 01.08 (bestätigter Befund): a 2xx response with an unreadable body
+/// A 2xx response with an unreadable body
 /// must THROW instead of silently becoming "0 subscriptions" — a captive
 /// portal in a foreign WLAN must never look like an emptied subscription
 /// list. The REAL empty list stays valid (and still runs into the

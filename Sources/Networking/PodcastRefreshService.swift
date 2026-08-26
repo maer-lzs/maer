@@ -20,7 +20,7 @@ enum PodcastRefreshService {
 
     /// Register the handler — MUST run before app launch finishes (AppDelegate).
     static func registerBackgroundTask() {
-        // Y32: iOS invokes this handler on the BGTaskScheduler queue. Under the
+        // iOS invokes this handler on the BGTaskScheduler queue. Under the
         // project's MainActor default the closure inherited main isolation and
         // the Swift 6 isolation check trapped (EXC_BREAKPOINT) on EVERY
         // background launch — the nightly refresh never actually ran.
@@ -42,7 +42,7 @@ enum PodcastRefreshService {
         }
     }
 
-    /// Y32 (testable core): callable from ANY executor — the scheduler queue in
+    /// Callable from ANY executor — the scheduler queue in
     /// production, a background task in the test — and hops the refresh work to
     /// the main actor. Always completes (also after a cancel: the work inside
     /// responds cooperatively, the task itself must still report).

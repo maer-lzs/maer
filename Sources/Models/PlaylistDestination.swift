@@ -14,7 +14,7 @@ nonisolated enum PlaylistPlace: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// The two decisions behind the ONE create dialog and the ONE add sheet,
-/// pure and testable (Regel 1): WHERE entries may go, and HOW one id
+/// pure and testable: WHERE entries may go, and HOW one id
 /// contributes its entries.
 nonisolated enum PlaylistDestination {
 

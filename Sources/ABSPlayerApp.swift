@@ -139,7 +139,7 @@ struct ABSPlayerApp: App {
         UITestSeed.applySetupProbeIfRequested()
         FrameProbe.shared.startIfRequested()
         #endif
-        // 5d46c8a (4): clear orphaned import temp (partial downloads/upload
+        // Clear orphaned import temp (partial downloads/upload
         // bodies of a killed import) — no invisible MB; freed size in the log.
         LibriVoxImporter.sweepOrphanTemp()
     }
@@ -150,7 +150,7 @@ struct ABSPlayerApp: App {
                 // App-wide accent color: the dark-gray brand accent (A1)
                 // instead of system blue.
                 .tint(AppTheme.accent)
-                // e9a9b05: switches are the ONE control the brand accent may
+                // Switches are the ONE control the brand accent may
                 // not colour. Measured: the grey is not set anywhere — it IS
                 // the accent (anthracite, A1), inherited by every one of the
                 // app's toggles, none of which tints itself. On a switch that
@@ -184,7 +184,7 @@ struct ABSPlayerApp: App {
                         // what is already counted.
                         ListeningStatsStore.shared.flush()
                     }
-                    // Y34: migrate legacy keychain items while the device is
+                    // Migrate legacy keychain items while the device is
                     // certainly unlocked (one-time, self-retrying).
                     if phase == .active { KeychainStore.migrateAccessibilityOnce() }
                 }
@@ -219,7 +219,7 @@ enum AppTheme {
 
     static var accent: Color { Color(accentUIColor) }
 
-    /// e9a9b05: the ON colour of every switch. The system green, not the brand
+    /// The ON colour of every switch. The system green, not the brand
     /// accent — a switch has to be readable at a glance, and the anthracite
     /// accent made "on" look like "off": four switches, two states, one
     /// brightness nuance apart.
@@ -230,7 +230,7 @@ enum AppTheme {
     /// provider keeps the light/dark adaptation alive.
     static var accentUIColor: UIColor {
         let shade = currentShade
-        // @Sendable (the Y32/aa93a31 lesson): UIKit resolves dynamic colors on
+        // @Sendable: UIKit resolves dynamic colors on
         // ARBITRARY threads (SwiftUI's AsyncRenderer included) — a closure
         // inheriting the project's MainActor default trips the executor check
         // there and traps. Captures are plain Double tuples.

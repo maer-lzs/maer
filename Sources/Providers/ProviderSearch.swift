@@ -5,7 +5,7 @@
 
 import Foundation
 
-// F6: SearchableProvider — the RSS conformance lives here; the ABS and
+// SearchableProvider — the RSS conformance lives here; the ABS and
 // Subsonic conformances sit in their providers' own files (they need private
 // plumbing there). Every provider returns only what it has; offline each one
 // searches its cached/downloaded stock through the SAME protocol

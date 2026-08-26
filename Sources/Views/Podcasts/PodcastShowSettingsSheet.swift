@@ -121,7 +121,7 @@ struct PodcastShowSettingsSheet: View {
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Automatic downloads only run on Wi-Fi, and are removed a week after you finished them — episodes you downloaded yourself are never touched. Keeping only the latest N removes older episodes (and their downloads) from this show.")
-                        // Regel 3: a background job that failed says so where
+                        // A background job that failed says so where
                         // it was switched on, and says why.
                         if let failure = autoDownloadError {
                             Text(failure).foregroundStyle(.red)

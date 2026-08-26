@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 🔴 P1 (iPad round): THE one answer to "which local subscriptions does
+/// 🔴 THE one answer to "which local subscriptions does
 /// gpodder see". Two comparison sets carried the rule before — the conflict
 /// snapshot had both halves, the main reconcile only the token half, and its
 /// own comment promised the mirror exclusion it did not implement. Every
@@ -19,8 +19,8 @@ import Foundation
 /// re-opening the asymmetry.
 ///
 /// Two exclusions, two different reasons — both permanent:
-/// * **Token feeds** (Y52): pushing them would hand the secret to the server.
-/// * **Mirrors** (`origin != nil`, a7fa35e): a mirrored server group is not
+/// * **Token feeds**: pushing them would hand the secret to the server.
+/// * **Mirrors** (`origin != nil`): a mirrored server group is not
 ///   the user's subscription set, and mesh-less devices would inherit feeds
 ///   they can never reach.
 nonisolated enum GPodderVisibleSubscriptions {
@@ -37,7 +37,7 @@ nonisolated enum GPodderVisibleSubscriptions {
     /// Split the local subscription list into what gpodder may compare and
     /// what stays local-only. Pure over the passed list — the `current()`
     /// convenience reads the live store.
-    /// P2 (1): `premiumOptIn` is the per-account switch "my own server may
+    /// `premiumOptIn` is the per-account switch "my own server may
     /// carry my premium feeds". It lifts the TOKEN exclusion only — mirrors
     /// stay hidden in every case, and the Basic-auth class travels through
     /// the iCloud channel instead (a URL without its credentials would be
@@ -61,7 +61,7 @@ nonisolated enum GPodderVisibleSubscriptions {
         return Result(byNorm: byNorm, hiddenNorms: hidden)
     }
 
-    /// 24857d7: the SERVER side of the same question — which of the server's
+    /// The SERVER side of the same question — which of the server's
     /// URLs does this device see at all? With the premium opt-in off, token
     /// feeds are invisible in BOTH directions: not adopted, not cleaned up.
     /// (Without this the asymmetry became a tug-of-war: one device pushes,

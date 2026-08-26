@@ -5,14 +5,12 @@
 
 import Foundation
 
-/// e4bd910/hoerspiele: the curated public-broadcast radio-play entry —
-/// PLAIN podcast feeds on home turf (no gray-API client, no new provider).
-/// Pure DATA, extendable; every URL was LIVE-verified at build time
-/// (03.08.2026 first round; 08.08.2026 Auftrag-N sweep — alive + delivering
-/// episodes, enclosure spot checks 200). The old "Audiothek-only" note is
-/// PARTLY outdated: SWR Kultur and Dlf (Freispiel) DO run open feeds now and
-/// joined below; still without an open core radio-play feed: NDR (Hörspiel
-/// Box confirmed Audiothek-only again), rbb and SR (nothing core). Kids
+/// The curated public-broadcast radio-play entry — PLAIN podcast feeds on
+/// home turf (no gray-API client, no new provider). Pure DATA, extendable;
+/// every URL was LIVE-verified at build time (alive + delivering episodes,
+/// enclosure spot checks 200). SWR Kultur and Dlf (Freispiel) run open feeds
+/// and are listed below; still without an open core radio-play feed: NDR
+/// (Hörspiel Box is Audiothek-only), rbb and SR (nothing core). Kids
 /// feeds (Kakadu, Figarino, SRF Kids, Ohrenbär) stay out deliberately — the
 /// curation is adult radio drama.
 nonisolated enum HoerspielCuration {
@@ -37,19 +35,19 @@ nonisolated enum HoerspielCuration {
         let title: String
         let author: String
         let feedURL: String
-        /// 0ce5df3: language of the stock — an English entry only shows when
+        /// Language of the stock — an English entry only shows when
         /// English is among the suggestion languages (same rule as the
         /// Old-Time-Radio shelf). nil = German-language, always shown.
         var language: String? = nil
         var group: Group = .oerr
         /// X²·3: the country axis of the OERR sub-page (nil for independents).
         var country: OERRCuration.Country? = nil
-        /// L1 (09.08.): artwork the DIRECTORY already delivered
+        /// Artwork the DIRECTORY already delivered
         /// (`artworkUrl600`). The hand-curated seed leaves this nil — those
         /// entries resolve their picture from the feed itself. For entries
         /// found LIVE the picture was thrown away at the tile
         /// (`artworkURL: nil`), which is why the English tiles stayed grey
-        /// although the source had a picture (BEFUND-G class).
+        /// although the source had a picture.
         var artworkURL: String? = nil
         /// nil for OERR entries (their rights live with the broadcaster).
         var form: Form? = nil
@@ -79,7 +77,7 @@ nonisolated enum HoerspielCuration {
         Entry(title: "Ö1 Hörspiel und Radiokunst", author: "ORF",
               feedURL: "https://podcast.orf.at/podcast/oe1/oe1_hoerspiel/oe1_hoerspiel.xml",
               country: .austria),
-        // Auftrag N2 (08.08.2026): the measured ÖRR sweep — Bestand vor
+        // The measured ÖRR sweep — Bestand vor
         // Neuzugängen, so the four familiar tiles above keep their spots.
         Entry(title: "SWR Kultur Hörspiel", author: "SWR",
               feedURL: "https://www.swr.de/~podcast/swrkultur/hoerspiel/podcast-hoerspiel-100.xml",
@@ -126,15 +124,15 @@ nonisolated enum HoerspielCuration {
         Entry(title: "The Truth", author: "The Truth",
               feedURL: "https://feeds.megaphone.fm/SBP9327453320", language: "en",
               group: .independent, form: .anthology),
-        // 0bbdf3e rule: FIRST-PARTY addresses, never tracking wrappers.
+        // FIRST-PARTY addresses, never tracking wrappers.
         Entry(title: "Escape Pod", author: "Escape Artists",
               feedURL: "https://escapepod.org/feed/podcast/", language: "en",
               group: .independent, form: .anthology),
-        // N1: full feed lives WITHOUT www (www serves a 10-item stub).
+        // Full feed lives WITHOUT www (www serves a 10-item stub).
         Entry(title: "Cast of Wonders", author: "Escape Artists",
               feedURL: "https://castofwonders.org/feed/podcast/", language: "en",
               group: .independent, form: .anthology),
-        // N4 (measured): the strongest independent serialized dramas.
+        // The strongest independent serialized dramas.
         Entry(title: "Welcome to Night Vale", author: "Night Vale Presents",
               feedURL: "https://feeds.megaphone.fm/SBP4591212513", language: "en",
               group: .independent, form: .series),

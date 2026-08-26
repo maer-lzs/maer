@@ -99,7 +99,7 @@ struct LyricsTests {
         let data = try JSONEncoder().encode(lyrics)
         let back = try JSONDecoder().decode(SongLyrics.self, from: data)
         #expect(back.fromWeb == true)
-        // Pre-e3dabb3 disk entries carry no source → nil → treated as server
+        // Older disk entries carry no source → nil → treated as server
         // (never hidden by the LRCLIB opt-out; ages out via TTL).
         let legacy = Data("""
         {"synced":false,"lines":[{"text":"y"}]}

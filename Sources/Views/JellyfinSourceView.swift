@@ -50,7 +50,7 @@ struct JellyfinSourceView: View {
                     isTesting = true
                     Task {
                         let err = await JellyfinProvider.shared.testConnection()
-                        // d990695: only a WORKING address is remembered.
+                        // Only a WORKING address is remembered.
                         if err == nil { KnownServers.remember(serverURL, service: .jellyfin) }
                         setStatus(err ?? String(localized: "Connected."), isError: err != nil)
                         isTesting = false
@@ -87,7 +87,7 @@ struct JellyfinSourceView: View {
         .navigationBarTitleDisplayMode(.inline)
         .bottomBarClearance()
         .onDisappear { save() }
-        // Y26 pattern: prefill the LAST stored state; a transiently empty
+        // Prefill the LAST stored state; a transiently empty
         // field must never erase a stored value.
         .onAppear {
             if serverURL.isEmpty { serverURL = AppStorageKeys.jellyfinServerURLValue }
@@ -97,7 +97,7 @@ struct JellyfinSourceView: View {
     }
 
     private func save() {
-        // Y26/Y38 class: empty fields leave the stored values alone — clearing
+        // Empty fields leave the stored values alone — clearing
         // a source is done via the toggle, not by emptying a field.
         let trimmedURL = serverURL.trimmingCharacters(in: .whitespaces)
         if !trimmedURL.isEmpty {

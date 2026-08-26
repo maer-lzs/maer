@@ -250,7 +250,7 @@ final class LocalLibrary: ObservableObject {
 
     // MARK: - Persistenz
 
-    /// 6a411cf: an unreadable index must not become an empty one. The old
+    /// An unreadable index must not become an empty one. The old
     /// `try? … else { return }` started empty, and the next `save()` wrote that
     /// emptiness over the whole sideload library — a reading error turned into
     /// permanent loss, with no error anywhere and nothing to see but an empty

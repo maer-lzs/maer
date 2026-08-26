@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// P6 regression: newest-wins merge semantics of the podcast iCloud sync, the
+/// Newest-wins merge semantics of the podcast iCloud sync, the
 /// equivalence of the targeted single-id merge, and the double-start guard.
 @MainActor
 struct CloudMergeTests {

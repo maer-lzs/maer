@@ -41,7 +41,7 @@ final class ABSPodcastProvider: ObservableObject, AudioProvider {
     /// Whether the server has podcast libraries — drives tab visibility. Only
     /// true after a successful `refresh()`.
     @Published private(set) var hasPodcasts = false {
-        // Y37: availability flips must reach the tab bar live (the toggle's
+        // Availability flips must reach the tab bar live (the toggle's
         // refresh() probes and sets this on ANY of its paths).
         didSet { if oldValue != hasPodcasts { AppSession.shared.notifySourcesChanged() } }
     }

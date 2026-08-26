@@ -30,13 +30,13 @@ nonisolated enum RadioLogoReport {
         /// The age separates "the display just resolved it" from "this has been
         /// sitting here since the station was last played".
         let ageSeconds: Double?
-        /// 4fe882b: "no result" is one of THREE causes, and the report must
+        /// "no result" is one of THREE causes, and the report must
         /// name which — waiting for its serialised turn, tried but the
         /// transport failed (nothing bookable), or given up for the session.
         var sessionVerdict: String? = nil
     }
 
-    /// 4fe882b format rule: ids shorten to the FIRST characters after the
+    /// Ids shorten to the FIRST characters after the
     /// `radio:rb:` prefix — the tail of a v1 UUID is the shared node field of
     /// an import batch, six different stations can end identically there.
     static func shortID(_ id: String) -> String {
@@ -109,7 +109,7 @@ nonisolated enum RadioLogoReport {
         let verdict: String
     }
 
-    /// b10aa93: "laedt nicht" without a WHY forced guessing (dead version
+    /// "laedt nicht" without a WHY forced guessing (dead version
     /// paths vs. ATS vs. server down are different findings). Pure label from
     /// what one probe request learned.
     static func failureLabel(statusCode: Int?, urlErrorCode: Int?) -> String {

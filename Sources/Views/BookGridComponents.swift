@@ -20,7 +20,7 @@ func bookStatusText(_ p: BookProgress, duration: Double?) -> String {
     return ""
 }
 
-/// 66f974c KORREKTUR: the third line is BACK and ALWAYS filled — the mixed
+/// The third line is ALWAYS filled — a mixed
 /// line made the time vanish for the ~95 % unstarted majority. Started →
 /// remaining ("4 hr 57 min left"); unstarted → the TOTAL duration
 /// ("8 hr 41 min"); finished → Completed. No empty reserve possible, and a
@@ -45,12 +45,12 @@ struct BookContextMenuItems: View {
     let entry: LibraryEntry
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
-    /// df0b3bb 3: only the CONTINUE rows offer "don't show here any more" —
+    /// Only the CONTINUE rows offer "don't show here any more" —
     /// in the library grid the entry would be meaningless (the book is not
     /// there because of Continue). The row decides, not the card.
     var showsContinueHide = false
 
-    /// A7: offline, playing needs a download and starting a download is
+    /// Offline, playing needs a download and starting a download is
     /// impossible — gate the menu entries consistently with the detail page.
     private var isOffline: Bool { !NetworkMonitor.shared.isConnected }
 
@@ -225,7 +225,7 @@ struct BookContextPreview: View {
         }
         .frame(width: 240)
         .padding(20)
-        // X26: solid adaptive surface instead of glass — the preview is
+        // Solid adaptive surface instead of glass — the preview is
         // snapshotted over arbitrary backdrops, where glass sampled noise.
         .background(Color(.secondarySystemBackground),
                     in: RoundedRectangle(cornerRadius: 28, style: .continuous))
@@ -290,7 +290,7 @@ struct BookGridCell: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1, reservesSpace: true)
-                // 66f974c: the time line is ALWAYS filled — remaining when
+                // The time line is ALWAYS filled — remaining when
                 // started, total runtime otherwise (evenly dense grid, no
                 // grow-in jank: only the text changes, never the height).
                 Text(bookTimeLine(progress: entry.progress, duration: entry.item.media?.duration))
@@ -385,7 +385,7 @@ struct BrowseBooksScreen: View {
 /// Downloaded-audiobook row — mirrors the podcast episode row (same
 /// `MediaRowContent` layout + a large play button, tap opens the detail page)
 /// so the audiobook "Downloaded" section reads and behaves like the podcast
-/// pendant (Regel 2).
+/// pendant.
 struct BookDownloadRow: View {
     let entry: LibraryEntry
     @ObservedObject var playerCoordinator: PlayerCoordinator
@@ -441,7 +441,7 @@ struct BookDownloadRow: View {
 }
 
 
-/// Auftrag J: the ONE audiobook stock grid — flat or series-grouped (follows
+/// The ONE audiobook stock grid — flat or series-grouped (follows
 /// `viewModel.sortOption`), shared between the tab's 9-tile PREVIEW
 /// (`limit: 9`) and the full `AllBooksPage` (`limit: nil` = staged paging over
 /// the whole stock, the former in-tab behaviour moved here unchanged). Cells
@@ -456,7 +456,7 @@ struct AudiobookStockGrid: View {
     @State private var measuredWidth: CGFloat = 0
     @State private var visibleCount = AudiobookStockGrid.pageSize
     static let pageSize = 60
-    /// P11/bb3d42c: the preview showed too little to read as a stock — 24
+    /// The preview showed too little to read as a stock — 24
     /// now, and everything beyond it lives on the full page (the "show all"
     /// line below the grid navigates there). Adaptive columns keep iPad rows
     /// full.
@@ -588,15 +588,15 @@ struct AudiobookStockGrid: View {
     }
 }
 
-/// Auftrag J1: the full stock behind the "All Books" preview — the endless
+/// The full stock behind the "All Books" preview — the endless
 /// grid (staged paging, series grouping) that used to live ON the tab, plus
-/// the sort/filter control, which moved here with it (fb21fbd: the control
-/// sits on the surface it acts on).
+/// the sort/filter control, which moved here with it — the control sits on
+/// the surface it acts on.
 struct AllBooksPage: View {
     @ObservedObject var viewModel: LibraryViewModel
     @ObservedObject var playerCoordinator: PlayerCoordinator
 
-    /// fb21fbd: only what DEVIATES from the default is named (pure `SortIndicator`).
+    /// Only what DEVIATES from the default is named (pure `SortIndicator`).
     private var sortLabel: String? {
         SortIndicator.summary([
             SortIndicator.part(viewModel.sortOption.label,

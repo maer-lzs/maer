@@ -5,9 +5,9 @@
 
 import Foundation
 
-/// e4bd910/Ketten-Korrektur: the FINAL agreed radio-logo source chain —
-/// gated RB favicon → **Wikidata P154 first** (the best logos for the
-/// most-heard stations) → apple-touch-icon of the station homepage
+/// The radio-logo source chain — gated RB favicon → Wikidata P154 (the best
+/// logos for the most-heard stations) → apple-touch-icon of the station
+/// homepage
 /// (first-party) → gradient+initials placeholder. Google/DDG/Clearbit
 /// deliberately NOT. Pure pieces here; the network actor throttles/caches.
 nonisolated enum RadioLogoLookup {
@@ -27,7 +27,7 @@ nonisolated enum RadioLogoLookup {
         return comps?.url
     }
 
-    /// 275f379 (Diagnose-getrieben): search-term variants — the full name in
+    /// Search-term variants — the full name in
     /// de missed "90s90s Dance HQ" although Q105475115 ("90s90s", WITH a
     /// P154 logo) exists. Order: full name, then the BRAND stem (first word,
     /// ≥4 chars, only for multi-word names — "Rock Antenne" keeps both words
@@ -62,8 +62,8 @@ nonisolated enum RadioLogoLookup {
     /// portrait-chain principle): the first hit whose label folds to a
     /// mutual containment with the station name; nothing matching → nil.
     ///
-    /// e0a0788 guard, measured on the seven decided cases (five foreign, two
-    /// legitimate look-alikes): a label that is a PROPER subset of the
+    /// Measured on seven cases (five foreign, two legitimate look-alikes):
+    /// a label that is a PROPER subset of the
     /// station name proves nothing by text alone — "Life" ⊂ "Life Radio
     /// (OÖ)" is a magazine, "Reshet" ⊂ "Reshet Aleph" a TV house, while
     /// "Polskie Radio" ⊂ "Polskie Radio Białystok" is the broadcaster and
@@ -93,8 +93,8 @@ nonisolated enum RadioLogoLookup {
         return nil
     }
 
-    /// e0a0788, the file-level witness (the generator's Namens-Wache, ported
-    /// to the runtime stage that PERSISTS): the P154 file must carry the
+    /// The file-level witness, on the runtime stage that PERSISTS: the P154
+    /// file must carry the
     /// matched label — "Reset Media.svg" does not carry "Reshet", and a
     /// positive that never expires must not be booked on a file that answers
     /// for a different house.
@@ -116,7 +116,7 @@ nonisolated enum RadioLogoLookup {
 
     /// apple-touch-icon extraction — one light tag scan (the itunes:image
     /// pattern), href resolved against the page URL; nil when absent.
-    /// 2765161: houses declare MANY sizes, and by convention the FIRST tag
+    /// Houses declare MANY sizes, and by convention the FIRST tag
     /// is often the smallest — sportschau lists 57 first and 152 later, and
     /// taking the first put a mushy 57-px icon on every Bundesliga tile.
     /// The pick is the LARGEST declared variant; tags without a `sizes`
@@ -148,7 +148,7 @@ nonisolated enum RadioLogoLookup {
         return best?.url
     }
 
-    // MARK: - 4e1688d: the sibling entries of the SAME station
+    // MARK: - The sibling entries of the SAME station
 
     /// The catalog carries the same station several times, and the entry with
     /// the most votes is not always the one with a picture: bigFM Deutschland
@@ -189,7 +189,7 @@ nonisolated enum RadioLogoLookup {
         return trimmed.count >= 3 ? trimmed : name
     }
 
-    /// R24 second try: family members without a declared separator ("bigFM
+    /// Family members without a declared separator ("bigFM
     /// Deutsch Rap") can never find their head through `brandStem` — the
     /// full-name search only returns same-name duplicates, and the curated
     /// table used to hide exactly this gap. The brand-like FIRST token widens
@@ -236,7 +236,7 @@ nonisolated enum RadioLogoLookup {
             .first { $0.scheme?.hasPrefix("http") == true }
     }
 
-    /// R41: the catalog's homepage often carries `http://` — and under ATS
+    /// The catalog's homepage often carries `http://` — and under ATS
     /// (`NSAllowsArbitraryMediaLoads`: clear text for MEDIA only) such a
     /// request never leaves the device. The homepage stage of the logo chain
     /// was therefore DEAD for every such station, measured: 101 of the 200

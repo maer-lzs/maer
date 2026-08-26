@@ -16,16 +16,16 @@ struct LibraryView: View {
     @ObservedObject private var downloadManager = DownloadManager.shared
     /// Observe subscriptions so the podcast tab appears/disappears immediately.
     @ObservedObject private var podcastSubs = PodcastSubscriptions.shared
-    /// Y37: observe the source configuration — `availableMediaTypes` reads
+    /// Observe the source configuration — `availableMediaTypes` reads
     /// `isAvailable` per render, so the tab bar follows every toggle live
     /// (Subsonic reloadConfig, ABS-podcast probe) in BOTH directions.
     @ObservedObject private var session = AppSession.shared
     @State private var isShowingSearch = false
-    /// Y17: the search field lives in the BOTTOM bar; bar and search page
+    /// The search field lives in the BOTTOM bar; bar and search page
     /// share this model (the page renders, the bar types).
     @StateObject private var searchModel = GlobalSearchModel.production()
     @FocusState private var searchFieldFocused: Bool
-    /// Y20: single-select scope of the search page — starts at the opening
+    /// Single-select scope of the search page — starts at the opening
     /// tab's scope (Y13 successor).
     @State private var searchScope: SearchScope = .library
     @State private var navigationPath = NavigationPath()
@@ -58,12 +58,12 @@ struct LibraryView: View {
     /// (0 at rest).
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var systemColorScheme
-    /// D4/B3: fixed-width carousel tiles get extra text lines at accessibility
+    /// Fixed-width carousel tiles get extra text lines at accessibility
     /// sizes instead of truncating titles to fragments.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Cover accent of the ACTIVE book — shared with every glass element in
     /// the bottom bar (mini player, search button, pill) via environment.
-    // X24: the bar accent persists across sessions — it only ever changes
+    // The bar accent persists across sessions — it only ever changes
     // cover-to-cover (see the environment wiring below).
     @StateObject private var bottomColorLoader = CoverColorLoader(persistenceKey: AppStorageKeys.bottomBarAccent)
     /// Book-switch swap animation of the mini player (pushed below the
@@ -83,7 +83,7 @@ struct LibraryView: View {
     @State private var selectedMediaType: MediaType = .home
     // Teil 2: per-tab sort/filter, shared with the tab content via the same
     // AppStorage keys (audiobooks keep using LibraryViewModel's own state).
-    // fb21fbd: the podcast/music sort state no longer lives here — it moved to
+    // The podcast/music sort state no longer lives here — it moved to
     // the surfaces that own it (PodcastsView, MusicAlbumsPage). LibraryView
     // used to hold it only because the toolbar button sat here. Persistence and
     // the keys are unchanged, so the stored preference survives the move.
@@ -94,9 +94,9 @@ struct LibraryView: View {
     /// afterwards so their state/tasks survive switching. Never-visited tabs
     /// aren't mounted at all (no startup cost for the podcast/music chain).
     @State private var mountedTabs: Set<MediaType> = [.home]
-    /// df69f6b DAMPING (accepted interim, NOT a root fix — FB18304716 family:
-    /// repeated title state transitions on a live bar permanently drop the
-    /// large title on iOS 26). The displayed bar title is decoupled from the
+    /// DAMPING (an interim, NOT a root fix — repeated title state
+    /// transitions on a live bar permanently drop the large title on
+    /// iOS 26). The displayed bar title is decoupled from the
     /// tab flip: it retargets one runloop tick AFTER `selectedMediaType`
     /// changes, so the title transition never lands inside the bar's tab
     /// transition. Root fix is the per-tab NavigationStack structure
@@ -111,7 +111,7 @@ struct LibraryView: View {
         mountedTabs.contains(type) || selectedMediaType == type
     }
 
-    /// Which tabs exist — POSITIVE and in ONE place (affb7e6): every tab the
+    /// Which tabs exist — POSITIVE and in ONE place: every tab the
     /// USER has on is there. Whether a server answers is a section's question,
     /// never the tab's — coupling tabs to provider availability made the app
     /// look empty to exactly the people the free catalogs are for. Serverless,
@@ -131,7 +131,7 @@ struct LibraryView: View {
         _playerCoordinator = ObservedObject(wrappedValue: AppSession.shared.playerCoordinator)
         // Letzter-Tab (01.08): start on the last selected tab — but only when
         // its MASTER toggle is still on (availability is irrelevant here, the
-        // Y37 policy: a transiently unreachable tab shows its own state).
+        // A transiently unreachable tab shows its own state).
         // Seeded journeys keep the deterministic Home start (every journey
         // would otherwise inherit the previous one's tab) unless they opt in.
         let args = ProcessInfo.processInfo.arguments
@@ -157,7 +157,7 @@ struct LibraryView: View {
                 // old tab, so every return re-ran the tab's full load chain
                 // (that was the tab-switch sluggishness).
                 ZStack {
-                    // df69f6b damping stage (a): ONE hidden probe captures the
+                    // Damping stage (a): ONE hidden probe captures the
                     // stack's UINavigationController for the post-flip nudge.
                     NavigationBarNudge.Probe()
                         .frame(width: 0, height: 0)
@@ -189,11 +189,11 @@ struct LibraryView: View {
                                 .tabVisibility(selectedMediaType == .radio)
                         }
                     }
-                    // Y23 (Regel 6): the search page fully covers the active
+                    // The search page fully covers the active
                     // tab — covered content must not stay reachable for
                     // VoiceOver behind the page.
                     .accessibilityHidden(isShowingSearch)
-                    // Y23: search mode is a FULL PAGE over the tab content
+                    // Search mode is a FULL PAGE over the tab content
                     // (inside the stack — the deck's grid cells push value
                     // routes onto the same navigationPath).
                     if isShowingSearch {
@@ -220,7 +220,7 @@ struct LibraryView: View {
                     mountedTabs.insert(newValue)
                     // Letzter-Tab: remember the choice across launches.
                     AppStorageKeys.lastSelectedTabValue = newValue.rawValue
-                    // df69f6b damping: retarget the title OUTSIDE the flip's
+                    // Retarget the title OUTSIDE the flip's
                     // transaction (next main-actor tick), see `barTitle`.
                     // Stage (a): afterwards verify the bar actually shows the
                     // title and force a large-title rebuild if not — the tick
@@ -231,7 +231,7 @@ struct LibraryView: View {
                         NavigationBarNudge.nudgeIfTitleMissing(expectedTitle: title)
                     }
                 }
-                // Y37 (hardened 01.08): fall back to Home ONLY on a real user
+                // Fall back to Home ONLY on a real user
                 // deactivation (master toggle) — transient availability
                 // (server unreachable, probe pending, async subscription
                 // load) never moves the selection; the tab shows its own
@@ -253,12 +253,12 @@ struct LibraryView: View {
                 }
             }
             .navigationTitle(Text(verbatim: barTitle))
-            // df69f6b: pin the LARGE display mode — switching the dynamic
+            // Pin the LARGE display mode — switching the dynamic
             // title on the live bar (tab change while scrolled) dropped the
             // title but kept its reserved space (probe-reproduced).
             .navigationBarTitleDisplayMode(.large)
             .toolbarTitleDisplayMode(.large)
-            // Y23: the search page brings its own header (scope bar) — the
+            // The search page brings its own header (scope bar) — the
             // nav bar with title + sort/settings yields while searching.
             .toolbar(isShowingSearch ? .hidden : .automatic, for: .navigationBar)
             .toolbar {
@@ -267,10 +267,10 @@ struct LibraryView: View {
                 // background hidden AND plain button style below), otherwise
                 // both glasses stack: a dark doubled circle with a tinted
                 // outline ring.
-                // fb21fbd/8be0e17: the sort/filter button is GONE from the tab
+                // The sort/filter button is GONE from the tab
                 // head — sorting now sits at the surface it acts on (the "All
                 // Books" grid, the podcast show grid, the album grid). The
-                // 7330cc4 gate that hid it on Home/Radio goes with it: there is
+                // gate that hid it on Home/Radio goes with it: there is
                 // nothing left to hide. The cog keeps its position, so nothing
                 // the user aims at moves.
                 if #available(iOS 26.0, *) {
@@ -297,20 +297,20 @@ struct LibraryView: View {
             // registration wasn't guaranteed to be in the hierarchy — a root-level
             // registration is always present and stays the single one for the type.
             .podcastNavigationDestinations(playerCoordinator: playerCoordinator)
-            // X15: music routes on the same stack root — music pushes must go
+            // Music routes on the same stack root — music pushes must go
             // through `navigationPath` too (value-based), so a media-tab tap pops
             // album/artist pages back to the library. (Home shows album tiles as
             // well, so the registration belongs on the root, not the music tab.)
             .musicNavigationDestinations(playerCoordinator: playerCoordinator)
             // F4-discovery: radio genre drilldown on the same stack root.
             .radioNavigationDestinations(playerCoordinator: playerCoordinator)
-            // 3a3b1aa: a capped row's heading pushes its full list. The
+            // A capped row's heading pushes its full list. The
             // destination is the SHARED BrowseBooksScreen — same grid, same
-            // cell, same paging behaviour as the browse surfaces (Regel 2).
+            // cell, same paging behaviour as the browse surfaces.
             .navigationDestination(for: LibraryListRoute.self) { route in
                 switch route {
                 case .continueListening:
-                    // 75add65 F3: Continue is a HOEREN page everywhere — the
+                    // Continue is a HOEREN page everywhere — the
                     // same compact grid with play-tap as Home's (F2: the page
                     // inherits the row's tap class; BrowseBooksScreen's cells
                     // are NACHSCHLAGEN and stay for Recently Added).
@@ -327,7 +327,7 @@ struct LibraryView: View {
                         libraryViewModel: viewModel
                     )
                 case .allBooks:
-                    // J1: the full stock behind the preview (endless grid +
+                    // The full stock behind the preview (endless grid +
                     // the sort/filter control that moved with it).
                     AllBooksPage(viewModel: viewModel,
                                  playerCoordinator: playerCoordinator)
@@ -363,18 +363,18 @@ struct LibraryView: View {
         .environment(\.pushPodcastRoute) { navigationPath.append($0) }
         // Home tiles push book detail pages (String route) the same way.
         .environment(\.pushBookDetail) { navigationPath.append($0) }
-        // Paket 4: the search deck's catalog tile pushes the merged area.
+        // The search deck's catalog tile pushes the merged area.
         .environment(\.pushFreeAudiobooksRoute) { navigationPath.append($0) }
-        // Y63: pushed detail pages (music album, podcast show) host the settings
+        // Pushed detail pages (music album, podcast show) host the settings
         // cog themselves — the root toolbar's cog doesn't propagate. Set on the
         // NavigationStack itself so pushed destinations inherit it.
         .environment(\.openSettings) { showSettings = true }
-        // F5: playlist cards (MediaTile onTap) push music routes through this.
+        // Playlist cards (MediaTile onTap) push music routes through this.
         .environment(\.pushMusicRoute) { navigationPath.append($0) }
         // Teil 1: radio station rows/cards push the station detail page (variant
         // picker) from their context menu — the tap itself still plays.
         .environment(\.pushRadioRoute) { navigationPath.append($0) }
-        // Y23: a push out of the search page's deck (grid cells navigate
+        // A push out of the search page's deck (grid cells navigate
         // value-based via NavigationLink) leaves search mode — the pushed
         // detail must get the normal bottom bar, not the search field.
         .onChange(of: navigationPath.count) { old, new in
@@ -396,7 +396,7 @@ struct LibraryView: View {
             if !isShowingFullPlayer {
                 BottomBarCollapseReader { barCollapsed in
                 bottomBarContent(collapsed: barCollapsed)
-                // S10: slightly crisper collapse/expand spring (less floaty) —
+                // Slightly crisper collapse/expand spring (less floaty) —
                 // the mini-player keeps its matchedGeometry morph across it, the
                 // extra rows cross-fade.
                 // GT: gentler/slower bottom-bar collapse (was response 0.42).
@@ -459,7 +459,7 @@ struct LibraryView: View {
         // Hoisted OUTSIDE the bottom row so the toolbar buttons (sort,
         // settings) inherit the same cover accent as the glass elements in
         // the bottom row. The detail page overrides it with its own loader.
-        // X24 rule: the accent only ever changes COVER TO COVER. On an item
+        // The accent only ever changes COVER TO COVER. On an item
         // switch the old accent stands until the new one finished loading;
         // session end / pause / restore never reset it (hasAccent stays true,
         // and persists across restarts); neutral is only the first-run state
@@ -492,7 +492,7 @@ struct LibraryView: View {
             // One-time: remove unreadable old files (auto-heal replaces them).
             DownloadManager.shared.performDeepValidation()
             if viewModel.entries.isEmpty {
-                // K1/K3 cold start: render the cached library IMMEDIATELY and
+                // Render the cached library IMMEDIATELY and
                 // restore the mini-player from it — BEFORE the network load,
                 // which then replaces everything silently.
                 await viewModel.showCachedLibraryIfAvailable()
@@ -513,7 +513,7 @@ struct LibraryView: View {
             // Check whether the ABS server has podcast libraries → the podcast tab
             // appears even without local RSS subscriptions (1 request, no full load).
             await AppSession.shared.absPodcastProvider.refreshAvailability()
-            // beff8bd: the quota watch stands BEFORE the services and does not
+            // The quota watch stands BEFORE the services and does not
             // depend on any of them — it is the one place that asks why the
             // key-value store changed, and the case worth catching (the
             // channel fills because podcastProgress fills it) must not hang on
@@ -530,7 +530,7 @@ struct LibraryView: View {
             UserChoiceCloudSync.shared.start()
             // Takeover channel: who is playing what (self-pause + hint line).
             PlaybackClaimSync.shared.start()
-            // d990695 (4): one-off backfill — the addresses already
+            // One-off backfill — the addresses already
             // configured move into the register, so the memory is not empty
             // on the first launch after the update.
             KnownServers.backfill([
@@ -555,7 +555,7 @@ struct LibraryView: View {
             // the meantime.
             if newPhase == .active {
                 PodcastCloudSync.shared.reconcile()   // pull the iCloud podcast state
-                // Y33 (c): recheck the active sources and reconnect silently —
+                // Recheck the active sources and reconnect silently —
                 // an outage must never require a force-quit to recover.
                 AppSession.shared.musicProvider.reconnectIfNeeded()
                 Task {
@@ -565,7 +565,7 @@ struct LibraryView: View {
                     await viewModel.refreshProgress()
                     await handlePendingResumeRequest()
                 }
-                // b4fdc36 (2): a session that has run far past the cap gets a
+                // A session that has run far past the cap gets a
                 // pass at the next CALM moment — enforcement no longer waits
                 // for the next cold start, and never interrupts a scroll.
                 if ImageCache.shared.needsUrgentMaintenance() {
@@ -579,7 +579,7 @@ struct LibraryView: View {
             if newPhase == .background {
                 PodcastCloudSync.shared.reconcile()   // push the local state to iCloud
                 updateQuickActions()
-                // S24: re-run the cover-cache cap on backgrounding, not only at
+                // Re-run the cover-cache cap on backgrounding, not only at
                 // launch — otherwise a long session's cover growth stays uncapped
                 // until the next cold start.
                 ImageCache.shared.performMaintenance(
@@ -594,7 +594,7 @@ struct LibraryView: View {
             ResumeRequest.pending = true
             Task { await handlePendingResumeRequest() }
         }
-        // df0b3bb 3: hiding a title from Continue takes effect at once — the
+        // Hiding a title from Continue takes effect at once — the
         // rows rebuild locally, and Home follows because its recompute token
         // watches the Continue count.
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
@@ -655,14 +655,14 @@ struct LibraryView: View {
         .sheet(isPresented: $showQueueSheet) {
             PlayQueueSheet(playerCoordinator: playerCoordinator)
         }
-        // R52: the catalog detail sheet used to hang off the audiobooks row,
+        // The catalog detail sheet used to hang off the audiobooks row,
         // which now renders through the shared `CatalogMixRow` (with its own
         // sheet). The SEARCH result path opens the same sheet, so its host
         // moves to the root instead of dying with the row it was attached to.
         .sheet(item: $freeBookDetail) { item in
             FreeCatalogDetailSheet(item: item, playerCoordinator: playerCoordinator)
         }
-        // Vollplayer → Quellseiten (Gate 2, 8913feb): registered on the ONE
+        // Vollplayer → Quellseiten: registered on the ONE
         // central router — environment wiring was fragile across player
         // presentation contexts (silent no-op when the env was missing).
         .onAppear {
@@ -749,7 +749,7 @@ struct LibraryView: View {
 
     /// Expanded: banner · mini-player (full) · [media pill | search].
     /// Compact: one row [home button · mini-player centered, smaller · search].
-    /// N2: ONE container for both states, with the mini-player in the SAME
+    /// ONE container for both states, with the mini-player in the SAME
     /// structural slot — collapsing animates its real frame (the bar visibly
     /// travels into the compact row) instead of the crossfade a branch swap
     /// (`if collapsed { HStack } else { VStack }`) produced. The media pill
@@ -762,7 +762,7 @@ struct LibraryView: View {
 
     private func bottomBarStack(collapsed barCollapsed: Bool) -> some View {
         VStack(spacing: 8) {
-            // Y17 search mode: the field sits where the tab pill was, the tab
+            // The field sits where the tab pill was, the tab
             // bar yields to the round home button (like the collapsed state).
             // Focused: mini player + home button step aside, only the search
             // pill stays above the keyboard, trailing where the magnifier sat.
@@ -800,7 +800,7 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var banner: some View {
-        // A2: coordinator-level load errors ("Offline — not downloaded") appear
+        // Coordinator-level load errors ("Offline — not downloaded") appear
         // HERE too — the player screen that also renders them may not be
         // mounted when a tap on an unavailable title is rejected.
         if let error = playerCoordinator.loadError {
@@ -883,9 +883,9 @@ struct LibraryView: View {
         } label: {
             // Collapsed bar shows the ACTIVE tab's symbol; tapping only expands
             // the bar (never switches tab). Symbol changes with the tab.
-            // N3: only THIS changing glyph is larger — circle, magnifier and
+            // Only THIS changing glyph is larger — circle, magnifier and
             // every other glyph keep their sizes.
-            // Y24: in search mode the button MEANS "to the Home tab" — it
+            // In search mode the button MEANS "to the Home tab" — it
             // shows the house, whatever tab the search was opened from.
             Image(systemName: isShowingSearch ? MediaType.home.systemImage : selectedMediaType.systemImage)
                 .font(.system(size: 21, weight: .semibold))
@@ -902,7 +902,7 @@ struct LibraryView: View {
         .accessibilityHint(Text("Expands the bar"))
     }
 
-    /// F6: value-based navigation per result type (X15 discipline) — every
+    /// Value-based navigation per result type (X15 discipline) — every
     /// push goes through `navigationPath`.
     private func openSearchResult(_ result: SearchResult) {
         switch result.kind {
@@ -915,7 +915,7 @@ struct LibraryView: View {
         case .catalogShow:
             navigationPath.append(PodcastRoute.showPreview(feedURL: result.id))
         case .catalogBook:
-            // Q1: NACHSCHLAGEN — the existing detail sheet with the prominent
+            // NACHSCHLAGEN — the existing detail sheet with the prominent
             // Play (the item was remembered by the search fan-out). OTR-class
             // items get their show page like everywhere else.
             if FreeCatalogProvider.shared.hasPartsList(itemId: result.id) {
@@ -932,7 +932,7 @@ struct LibraryView: View {
                 searchResultUnavailable()
             }
         case .playlist:
-            // M5: playlist detail = the SAME MusicRoute.album path the F5
+            // Playlist detail = the SAME MusicRoute.album path the F5
             // cards push (playlist item id; no second detail mechanism).
             if let item = AppSession.shared.libraryItem(forId: result.id) {
                 navigationPath.append(MusicRoute.album(item))
@@ -954,7 +954,7 @@ struct LibraryView: View {
                 searchResultUnavailable()
             }
         case .radioStation:
-            // F3: play replaces the active playback — stations never route
+            // Play replaces the active playback — stations never route
             // into a detail page or the queue.
             if let item = AppSession.shared.libraryItem(forId: result.id) {
                 Task { await playerCoordinator.open(item: item) }
@@ -966,14 +966,14 @@ struct LibraryView: View {
         }
     }
 
-    /// F6 follow-up (Regel 3): a music hit that no longer resolves must not
+    /// F6 follow-up: a music hit that no longer resolves must not
     /// die silently — brief haptic + the existing transient banner.
     private func searchResultUnavailable() {
         Haptics.tap()
         playerCoordinator.loadError = String(localized: "This result is no longer available.")
     }
 
-    /// Y17: the bottom search field (iOS 26 pattern) — morphs from the
+    /// The bottom search field (iOS 26 pattern) — morphs from the
     /// magnifier (same matchedGeometry id). Y19: always full width; the X
     /// lives in its own round glass button next to it, never inside.
     private var bottomSearchField: some View {
@@ -996,7 +996,7 @@ struct LibraryView: View {
         .accessibilityIdentifier("global-search-field")
     }
 
-    /// Y19/Y24: the round glass X — clears a typed query first, a second tap
+    /// The round glass X — clears a typed query first, a second tap
     /// (or an empty field) closes the search.
     private var searchCloseButton: some View {
         Button {
@@ -1030,9 +1030,9 @@ struct LibraryView: View {
         FloatingSearchButton(
             action: {
                 searchModel.query = ""
-                // Y20: the scope starts where the user is (Home → Library).
+                // The scope starts where the user is (Home → Library).
                 searchScope = SearchScope.initial(for: selectedMediaType)
-                // Release-Gate 1 (30b2a32): the search page lives on the
+                // Release-Gate 1: the search page lives on the
                 // library ROOT — opened from a pushed detail page it sat
                 // INVISIBLY underneath it (field in the bottom bar worked,
                 // results never showed). Pop to root first; Y24 already
@@ -1063,15 +1063,15 @@ struct LibraryView: View {
 
     // MARK: - Inhalt
 
-    /// cb99bf6: store feeds the tab tile row (fill via Home's compute pass).
+    /// Store feeds the tab tile row (fill via Home's compute pass).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     @State private var freeBookDetail: LibraryItem?
 
-    /// 5034add: master rides as @AppStorage so a settings flip re-renders
+    /// Master rides as @AppStorage so a settings flip re-renders
     /// the tab live (a plain UserDefaults read would not invalidate).
     @AppStorage(AppStorageKeys.freeCatalogsMasterEnabled) private var freeCatalogsMaster = true
 
-    /// 7edb21b/5034add: ONE pure gate — master > feature toggle (audiobooks
+    /// ONE pure gate — master > feature toggle (audiobooks
     /// pill) > LibriVox service opt-out.
     private var freeAudiobooksArea: Bool {
         FreeCatalogActivation.effective(
@@ -1080,11 +1080,11 @@ struct LibraryView: View {
             service: AppStorageKeys.librivoxActive)
     }
 
-    /// cb99bf6: the tile ROW above "All Books" — linked title into the area
+    /// The tile ROW above "All Books" — linked title into the area
     /// page, "New at LibriVox" tiles (MediaTile format, tap plays, context
     /// menu opens the license sheet), catalog≠library marking kept. The row
     /// hides entirely while the store is empty (service/toggle off, offline).
-    /// R52: this row shows the CATALOGUES — LibriVox,
+    /// This row shows the CATALOGUES — LibriVox,
     /// Project Gutenberg, Internet Archive and Old Time Radio, mixed. No feed
     /// tile: a feed lands in the podcast tab as a subscription.
     ///
@@ -1093,17 +1093,17 @@ struct LibraryView: View {
     /// listening position (`MediaFamily.booksTabMember` files them here
     /// already) — the browsing door now follows the filing that existed.
     ///
-    /// It also ends „vier Flächen, zwei Töpfe": the row used to draw
+    /// It also ends four surfaces drawing from two pots: the row used to draw
     /// `rows.tabBooks`, which comes from the same query as the popular lane
     /// and from the same `docs` array as Start's `discoverBooks`.
     @ViewBuilder
     private var freeAudiobooksSection: some View {
         let tiles = CatalogMix.tiles(for: .books, rows: freeCatalogStore.sourceRows)
-        // G8: no heading without content — the row hides entirely while the
+        // No heading without content — the row hides entirely while the
         // catalogues are empty (service off, offline, still loading).
         if !tiles.isEmpty {
         VStack(alignment: .leading, spacing: 10) {
-            // 9ef73a4 Kleinigkeit: hand-built copy of RowHeading's chevron
+            // Hand-built copy of RowHeading's chevron
             // branch → the shared entry variant.
             RowHeading.entry("Audiobooks and Radio Plays", destination: FreeAudiobooksRoute.area)
                 .accessibilityIdentifier("free-audiobooks-entry")
@@ -1191,18 +1191,18 @@ struct LibraryView: View {
                     if !viewModel.recentlyAdded.isEmpty {
                         recentlyAddedGrid
                     }
-                // cb99bf6 KORREKTUR: the Free-Audiobooks tile row sits ABOVE
-                // "All Books" — below it, the entry drowned behind the whole
-                // library scroll. Above the fold the row always materializes,
-                // so the 34c36e1 lazy rule does not bite; the FILL still comes
+                // The Free-Audiobooks tile row sits ABOVE "All Books" —
+                // below it, the entry drowned behind the whole library
+                // scroll. Above the fold the row always materializes, so the
+                // lazy rule does not bite; the FILL still comes
                 // from the one central compute() pass (shared store).
-                // 🔴 P5 (G8): a doubted session says so HERE — the tab keeps
+                // 🔴 A doubted session says so HERE — the tab keeps
                 // its content (the token is intact, the server is merely
                 // unreachable), and the line names the state instead of the
                 // library silently looking empty.
                 AbsSessionStateBanner()
                 if !AppSession.shared.authViewModel.isLoggedIn {
-                    // Serverless (dd87a56): the free area IS the tab's core —
+                    // Serverless: the free area IS the tab's core —
                     // the page's sections, embedded (one parameterised
                     // version, no drifting copy), plus local files as their
                     // own section. No server sentence renders here (G8):
@@ -1245,7 +1245,7 @@ struct LibraryView: View {
             // zone (no black area behind the mini-player).
             .bottomBarClearance()
         }
-        // A5: the refreshable closure must return promptly or the indicator can
+        // The refreshable closure must return promptly or the indicator can
         // stick — kick the full reload as a background task (its progressive UI
         // shows the rest via the loading-more footer / silent replace) and only
         // hold the spinner for a short, bounded moment.
@@ -1278,7 +1278,7 @@ struct LibraryView: View {
                 // Eager HStack: the lazy variant froze the shelf height on the
                 // first measured cell and clipped taller cells' last text line.
                 HStack(alignment: .top, spacing: 16) {
-                    // 6fcb301: this row was the last uncapped one in the tab.
+                    // This row was the last uncapped one in the tab.
                     ForEach(RowPreview.cut(viewModel.recentlyAdded)) { entry in
                         BookGridCell(entry: entry, width: 180,
                                      playerCoordinator: playerCoordinator, libraryViewModel: viewModel)
@@ -1293,7 +1293,7 @@ struct LibraryView: View {
 
     private var continueFeaturedSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // 6fcb301/3a3b1aa: the row is a PREVIEW — capped, and the chevron
+            // The row is a PREVIEW — capped, and the chevron
             // appears only when something is actually hidden behind it.
             RowHeading(title: "Keep Listening", font: .title2,
                        total: viewModel.continueListening.count,
@@ -1312,7 +1312,7 @@ struct LibraryView: View {
             }
             .scrollTargetBehavior(.viewAligned)
         }
-        // X26: precompute the card accents (same pattern as the podcast tab) —
+        // Precompute the card accents (same pattern as the podcast tab) —
         // cards color on first render instead of flashing the neutral base.
         .task(id: viewModel.continueListening.map(\.id).joined()) {
             for entry in viewModel.continueListening {
@@ -1375,16 +1375,16 @@ struct LibraryView: View {
 
     // MARK: All Books
 
-    /// J1: the tab shows a PREVIEW (9 tiles, counted chevron WITH the total:
+    /// The tab shows a PREVIEW (9 tiles, counted chevron WITH the total:
     /// "All Books · 221 ›"); the endless grid + sort/filter control moved to
     /// `AllBooksPage` behind it. This drops the last "the section IS the full
-    /// list" exception — every tab root is previews now. The e46e7b4 objection
-    /// (a cap made books unreachable) is answered by DIE REGEL, which came
-    /// later: the page exists, the chevron counts.
+    /// list" exception — every tab root is previews now. A cap would make
+    /// books unreachable; the page behind the chevron answers that: the page
+    /// exists, the chevron counts.
     ///
     /// Count rule: `total` is the WHOLE stock, `shown` the preview's books —
     /// so a persisted filter with zero hits still leaves the chevron (the way
-    /// to the control on the page, fb21fbd trap), and a small library (≤ 9)
+    /// to the control on the page), and a small library (≤ 9)
     /// drops it by pure counting, no special case.
     private var allBooksSection: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -1396,7 +1396,7 @@ struct LibraryView: View {
             AudiobookStockGrid(viewModel: viewModel,
                                playerCoordinator: playerCoordinator,
                                limit: allBooksPreviewLimit)
-            // bb3d42c: the line NAVIGATES to the full page (with its sorting
+            // The line NAVIGATES to the full page (with its sorting
             // and filters) instead of unfolding a second, poorer copy of it.
             // Both entries stay: chevron above, line below — otherwise you
             // scroll back up to reach the page. G8 unchanged: the line only
@@ -1408,7 +1408,7 @@ struct LibraryView: View {
         }
     }
 
-    /// bb3d42c: no expansion step here any more — the preview is 24, and
+    /// No expansion step here any more — the preview is 24, and
     /// everything beyond it lives on the page.
     private var allBooksPreviewLimit: Int { AudiobookStockGrid.previewLimit }
 
@@ -1421,7 +1421,7 @@ struct LibraryView: View {
         return min(allBooksPreviewLimit, viewModel.sortedFilteredEntries.count)
     }
 
-    /// G8: is there anything left to unfold? Counted the way the GRID counts
+    /// Is there anything left to unfold? Counted the way the GRID counts
     /// (a series stack is one cell but several books), so the line never
     /// promises a "more" that would unfold into the same picture.
     private var allBooksHasMore: Bool {
@@ -1557,7 +1557,7 @@ struct LibraryView: View {
         }
     }
 
-    /// The full list behind a capped row (3a3b1aa). Read live from the view
+    /// The full list behind a capped row. Read live from the view
     /// model, so the page tracks the same source its preview row does.
     private func entries(for route: LibraryListRoute) -> [LibraryEntry] {
         switch route {

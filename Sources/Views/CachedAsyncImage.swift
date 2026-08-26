@@ -24,7 +24,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
 
     var body: some View {
         Group {
-            // S16: prefer the loaded image; otherwise a synchronous warm-cache
+            // Prefer the loaded image; otherwise a synchronous warm-cache
             // peek so a re-entering cell renders its (display-ready) thumbnail on
             // frame 1 — no placeholder flash, no async round-trip in the scroll
             // path. Cold cells fall back to the placeholder + async `load()`.
@@ -35,7 +35,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
             }
         }
         .task(id: url) {
-            // af3ec41: a URL CHANGE on a long-lived view (drive-mode hero,
+            // A URL CHANGE on a long-lived view (drive-mode hero,
             // full-player cover) kept the PREVIOUS image on screen — forever
             // when the new load failed ("foreign cover bleeds through").
             // Drop the stale image first; the warm-cache peek still renders
@@ -79,14 +79,14 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     }
 
     private func fetch(_ url: URL, retryDelay: UInt64?) async -> UIImage? {
-        // A6: offline there is nothing to fetch — per-cell attempts (incl. the
+        // Offline there is nothing to fetch — per-cell attempts (incl. the
         // automatic retry) during scrolling just burn cycles and caused jitter
         // over sections with uncached covers.
         guard NetworkMonitor.shared.isConnected else { return nil }
         if let retryDelay {
             try? await Task.sleep(nanoseconds: retryDelay)
         }
-        // Funkwhale compat (170ff18): getCoverArt can answer with a JSON
+        // Funkwhale compat: getCoverArt can answer with a JSON
         // error body — the UIImage decode gate below treats ANY non-image
         // payload as a miss (placeholder), and nothing non-image is ever
         // cached (the disk paths gate on downsampling the same way).

@@ -8,7 +8,7 @@ import Testing
 import UIKit
 @testable import ABSPlayer
 
-/// V8: the home widget's shared cover file must be rewritten exactly on an
+/// The home widget's shared cover file must be rewritten exactly on an
 /// item change so the widget never shows a stale cover next to a new title.
 @MainActor
 struct WidgetCoverRewriteTests {
@@ -19,7 +19,7 @@ struct WidgetCoverRewriteTests {
         #expect(!PlayerViewModel.coverNeedsRewrite(previous: "a", current: "a"))    // same → no rewrite
     }
 
-    /// X9/V8: the shared cover is downscaled so the app-group PNG stays small.
+    /// The shared cover is downscaled so the app-group PNG stays small.
     @Test("downscaled caps the longest side; small images pass through")
     func downscale() {
         let big = UIGraphicsImageRenderer(size: CGSize(width: 1000, height: 800)).image { _ in }

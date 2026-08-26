@@ -9,7 +9,7 @@ import UIKit
 import SwiftUI
 @testable import ABSPlayer
 
-/// cb2d1ed: the "My Stations" row — composition, the exclusion fence, and the
+/// The "My Stations" row — composition, the exclusion fence, and the
 /// three-state line.
 @Suite struct RadioMyStationsTests {
 
@@ -60,7 +60,7 @@ import SwiftUI
         #expect(row.count == 1)
     }
 
-    /// 776d548 (the owner, hart): KEIN Favorit verschwindet — die Vollseite
+    /// KEIN Favorit verschwindet — die Vollseite
     /// zeigt ALLE Favoriten des Stores, ungefiltert von Auslass-Regel und
     /// Deckelung. Store-Menge == Vollseiten-Menge ist die Zusicherung; damit
     /// ist jeder markierte Favorit in hoechstens zwei Tipps erreichbar, den
@@ -106,13 +106,13 @@ import SwiftUI
     }
 }
 
-/// 773d87b: the tile ground — capped hue, brightness counter to the logo.
+/// The tile ground — capped hue, brightness counter to the logo.
 @Suite struct RadioTileGroundTests {
 
-    /// The two named numbers, pinned so the report can cite them and the owner
+    /// The two named numbers, pinned so a report can cite them and a reader
     /// can turn them.
     @Test func theNamedConstants() {
-        #expect(RadioTileGround.saturationCap == 0)   // 97e3a5a: Grauskala, FINAL
+        #expect(RadioTileGround.saturationCap == 0)   // Grauskala
         #expect(RadioTileGround.luminanceThreshold == 0.5)
     }
 
@@ -153,7 +153,7 @@ import SwiftUI
     }
 }
 
-/// f01d6d3: the card ground is the logo's BOTTOM EDGE colour — the gradient
+/// The card ground is the logo's BOTTOM EDGE colour — the gradient
 /// attaches there; seamless join has priority over the old counter rule.
 @Suite struct RadioCardToneTests {
 
@@ -200,7 +200,7 @@ import SwiftUI
         #expect(!RadioTileGround.titleIsLight(groundLuminance: 0.9))
     }
 
-    /// cbf0d50: full tone only for a DOMINANT edge — the 1LIVE class (the
+    /// Full tone only for a DOMINANT edge — the 1LIVE class (the
     /// mark IS the colour) versus the WDR-2 class (the edge catches an
     /// accent bar of a differently coloured mark).
     @Test func dominanceSeparatesFullToneFromAccent() throws {

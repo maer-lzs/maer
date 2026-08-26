@@ -7,21 +7,21 @@ import SwiftUI
 
 /// The ViewThatFits replacement for content that touches isolated state.
 ///
-/// Crash class 4b2f7a8: `ViewThatFits` evaluates its candidates' bodies on
+/// Crash class: `ViewThatFits` evaluates its candidates' bodies on
 /// the AsyncRenderer — off the main actor. Data-pure candidates can opt out
 /// (`nonisolated`, the two bars), but a candidate holding live viewModel
 /// bindings cannot be made data-pure without rebuilding it. This container
 /// takes the DECISION out of the measurement engine instead: the full
 /// variant's natural width is measured invisibly on the MAIN render path
 /// (`onGeometryChange` — a real rendered width, never an estimate: the
-/// tab-bar lesson stands, a computed width is how "Hörbüch…" happened), and
+/// a computed width is how a truncated tab label happened), and
 /// only the chosen branch is built for display. Nobody measures isolated
 /// bodies.
 ///
 /// Until both widths are known the COMPACT branch shows (it always fits);
 /// the upgrade to the full branch lands within the first layout passes.
 struct MeasuredFits<Full: View, Compact: View>: View {
-    // NOTE (e111072): after crash 4 this construction is the LAW, not an
+    // NOTE: after crash 4 this construction is the LAW, not an
     // option — ViewThatFits is banned repo-wide (fence), because even
     // data-pure nonisolated candidates trapped on the AsyncRenderer. The
     // sizing engine's reach cannot be enumerated; this container needs no

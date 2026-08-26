@@ -11,7 +11,7 @@ import OSLog
 /// are the three pages that had no own surface before. Albums reuses the
 /// full MusicViewModel pipeline (staged pages, sort, shuffle) — the grid
 /// moved here from the tab body unchanged.
-/// fb21fbd: THE music sort menu, at the surfaces it orders (albums + songs)
+/// THE music sort menu, at the surfaces it orders (albums + songs)
 /// instead of in the shared toolbar. Content unchanged, including the honest
 /// offline treatment: the sort is server-side (`search3` order), so offline it
 /// is disabled WITH a reason rather than silently doing nothing. A local sort
@@ -63,7 +63,7 @@ struct MusicAlbumsPage: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                        // fb21fbd: the sort sits AT the grid it orders — it
+                        // The sort sits AT the grid it orders — it
                         // used to live in the shared tab toolbar, two screens
                         // away from what it changed.
                         HStack {
@@ -169,7 +169,7 @@ struct MusicSongRow: View {
             Task { await playerCoordinator.open(item: entry.item) }
         } label: {
             HStack(spacing: 12) {
-                // R54: 44-pt-Zelle in einer Liste — sie braucht die Vorschau,
+                // 44-pt-Zelle in einer Liste — sie braucht die Vorschau,
                 // nicht das Vollbild, und den warmen Treffer erst recht.
                 CachedAsyncImage(url: AppSession.shared.coverURL(forItemId: entry.item.id),
                                  useThumbnail: true) { image in
@@ -198,7 +198,7 @@ struct MusicSongRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // M2: songs are queueable from the Titles page — the ONE shared
+        // Songs are queueable from the Titles page — the ONE shared
         // music item menu (play/queue/add-to-playlist).
         .musicItemMenu(item: entry.item, playerCoordinator: playerCoordinator)
     }
@@ -245,8 +245,8 @@ struct MusicDownloadedPage: View {
     }
 }
 
-/// M3: the genre page behind the "Genres" browse entry — the SEARCH deck's
-/// chip grid (shared `CategoryTile`, Regel 2: one chip idiom), fed from the
+/// The genre page behind the "Genres" browse entry — the SEARCH deck's
+/// chip grid (shared `CategoryTile`, one chip idiom), fed from the
 /// server's genre list (Subsonic getGenres with counters; Jellyfin without —
 /// then the count numeral hides and the order is alphabetical, both via the
 /// pure `MusicGenrePresentation`). Curated SF glyphs, `music.note` fallback.
@@ -313,7 +313,7 @@ struct MusicGenresPage: View {
     }
 }
 
-/// M3: one genre — its albums (grid) with the genre's songs below (paged
+/// One genre — its albums (grid) with the genre's songs below (paged
 /// list). Existing building blocks only: `CoverGrid`+`AlbumCell` and
 /// `MusicSongRow`.
 struct MusicGenreDetailPage: View {
@@ -448,7 +448,7 @@ struct FreeJamendoPage: View {
     @State private var isLoading = false
     @State private var loadFailed = false
     @State private var detailItem: LibraryItem?
-    /// P8: server-loaded genre rows (shelf key → row items). Empty shelves
+    /// Server-loaded genre rows (shelf key → row items). Empty shelves
     /// hide themselves after the answer (G8: no empty shelf lies).
     @State private var shelfRows: [String: [LibraryItem]] = [:]
 
@@ -470,7 +470,7 @@ struct FreeJamendoPage: View {
             } else if items.isEmpty {
                 ContentUnavailableView("Free Music (Jamendo)", systemImage: "music.note")
             } else {
-                // P8 (cde97a9): genre shelf rows FIRST (blueprint form — row +
+                // Genre shelf rows FIRST (blueprint form — row +
                 // entry chevron onto the server-paged shelf grid), the weekly
                 // popularity trove below. Each row loads SERVER-side via the
                 // tags parameter — no local filtering of a 200 pool.
@@ -487,7 +487,7 @@ struct FreeJamendoPage: View {
                     RowHeading.plain("Popular This Week")
                     CoverGrid(columns: columns) {
                         ForEach(items) { item in
-                            // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
+                            // Tap spielt (Musik), Kontextmenue zeigt Details.
                             FreeCatalogBookTile(
                                 item: item,
                                 placeholderSystemImage: "music.note",
@@ -534,7 +534,7 @@ struct FreeJamendoPage: View {
                 Logger.library.error("JAMENDO trove FAILED: \(String(describing: error), privacy: .public)")
                 loadFailed = true
             }
-            // P8: shelf rows concurrently — a failing genre drops out instead
+            // Shelf rows concurrently — a failing genre drops out instead
             // of taking the page down. Tracks (Sendable) cross the group
             // boundary; remember() runs afterwards on the main actor.
             let shelfTracks = await withTaskGroup(of: (String, [JamendoTrack]).self) { group in
@@ -558,7 +558,7 @@ struct FreeJamendoPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(rowItems) { item in
-                    // M1: Musik-Kachel — Tap spielt, Langdruck zeigt Details.
+                    // Musik-Kachel — Tap spielt, Langdruck zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
@@ -583,7 +583,7 @@ struct FreeJamendoPage: View {
     }
 }
 
-/// P8: one Jamendo genre shelf as a full grid — pages SERVER-side over the
+/// One Jamendo genre shelf as a full grid — pages SERVER-side over the
 /// tags query (offset), same tile language as the trove.
 struct JamendoShelfPage: View {
     @Environment(\.pushMusicRoute) private var pushRoute
@@ -595,7 +595,7 @@ struct JamendoShelfPage: View {
     @State private var reachedEnd = false
     @State private var loadFailed = false
     @State private var offset = 0
-    /// R49: die aktive Auswahl von Stimmung, Tempo und Instrumental.
+    /// Die aktive Auswahl von Stimmung, Tempo und Instrumental.
     @State private var filter = JamendoFilter.none
 
     private let columns = [GridItem(.adaptive(minimum: 108), spacing: 16)]
@@ -611,7 +611,7 @@ struct JamendoShelfPage: View {
                 .padding(.top, TabContentLayout.topInset)
             CoverGrid(columns: columns) {
                 ForEach(items) { item in
-                    // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
+                    // Tap spielt (Musik), Kontextmenue zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
@@ -640,8 +640,8 @@ struct JamendoShelfPage: View {
             if isLoading {
                 ProgressView().frame(maxWidth: .infinity).padding()
             } else if items.isEmpty && !loadFailed && !isLoading && filter.isActive {
-                // R49-Auflage: ein Filter, der zu null Treffern fuehrt,
-                // SAGT das — er zeigt keine leere Flaeche. Und er laesst sich
+                // Ein Filter, der zu null Treffern fuehrt, SAGT das — er
+                // zeigt keine leere Flaeche. Und er laesst sich
                 // von hier aus zuruecknehmen, damit die Reihe nicht als
                 // kaputt gelesen wird.
                 ContentUnavailableView {
@@ -676,10 +676,9 @@ struct JamendoShelfPage: View {
         }
     }
 
-    /// R49: Stimmung und Tempo als FILTER auf
+    /// Stimmung und Tempo als FILTER auf
     /// der Vollseite eines Fachs, Instrumental als SCHALTER — keine eigenen
-    /// Reihen. Drei neue Familien auf einer Seite waeren genau die
-    /// Ueberfuellung, gegen die R51 aufgeraeumt hat.
+    /// Reihen.
     ///
     /// Alle drei filtert Jamendo SERVER-seitig (am Endpunkt verprobt), die
     /// Seite wirft also nichts nachtraeglich weg.
@@ -784,7 +783,7 @@ struct JamendoShelfPage: View {
     }
 }
 
-/// Auftrag L1: the small music-catalog page behind Start's "Entdecken ·
+/// The small music-catalog page behind Start's "Entdecken ·
 /// Musik" row — the I2 surface, earlier. One source row per ACTIVE catalog
 /// (a gated-off source loads nothing, so its row is simply absent), each
 /// heading an entry chevron onto the source's existing full page (DIE REGEL).
@@ -806,7 +805,7 @@ struct MusicCatalogAreaPage: View {
                         tileRow(store.rows.netlabels)
                     }
                 }
-                // 🟡 P8 side note, measured: the section did not "fall
+                // 🟡 Side note, measured: the section did not "fall
                 // away for a reason" — it vanished SILENTLY whenever the
                 // rows were empty, although the service is switched on
                 // (Jamendo needs a client key; without one the catalogue
@@ -819,8 +818,8 @@ struct MusicCatalogAreaPage: View {
                         if !store.rows.freeMusic.isEmpty {
                             tileRow(store.rows.freeMusic)
                         } else if let problem = store.rows.freeMusicProblem {
-                            // R39 Befund 2/3: the page said "add a client key
-                            // under Network Services" while the same source
+                            // The page said "add a client key under Network
+                            // Services" while the same source
                             // loaded fine one level deeper — the key ships
                             // with the build. The row now carries the ONE
                             // state line the loader actually produced.
@@ -831,7 +830,7 @@ struct MusicCatalogAreaPage: View {
                         }
                     }
                 }
-                // 🟡 P8: the SAME section as the music tab (shared
+                // 🟡 The SAME section as the music tab (shared
                 // component, not a copy) — the page rendered navigation
                 // tiles only: capsules were operable and led into
                 // emptiness, with no row, no loading and no failure state.
@@ -853,7 +852,7 @@ struct MusicCatalogAreaPage: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .top, spacing: 14) {
                 ForEach(RowPreview.cut(items)) { item in
-                    // M1: Tap spielt (Musik), Kontextmenue zeigt Details.
+                    // Tap spielt (Musik), Kontextmenue zeigt Details.
                     FreeCatalogBookTile(
                         item: item,
                         placeholderSystemImage: "music.note",
@@ -878,10 +877,10 @@ struct MusicCatalogAreaPage: View {
     }
 }
 
-/// Paket 1: die Seite einer Mär-Playlist. Bewusst schlicht — eine Liste von
+/// Die Seite einer Mär-Playlist. Bewusst schlicht — eine Liste von
 /// Kennungen, jede Zeile löst sich beim Anzeigen selbst auf.
 ///
-/// AUFLAGE 24132fa: Ein Eintrag, den DIESES Gerät nicht auflösen kann (ein
+/// Ein Eintrag, den DIESES Gerät nicht auflösen kann (ein
 /// Server-Titel ohne verbundenen Server, eine Datei, die hier nie lag), wird
 /// **sichtbar behalten, nicht entfernt** — er sagt, warum er gerade nicht
 /// spielbar ist, und wird beim Abspielen übersprungen. Auflösbarkeit ist eine
@@ -910,7 +909,7 @@ struct MaerPlaylistPage: View {
                         store.move(playlistId: playlistId, from: source, to: destination)
                     }
                 } footer: {
-                    // P3: einmal ruhig erklären, nicht bei jedem Hinzufügen.
+                    // Einmal ruhig erklären, nicht bei jedem Hinzufügen.
                     Text("Playlists on your devices can mix everything — your server's music, free catalogs and local files. They stay on your devices, because a server cannot reference a catalog address.")
                 }
             }
@@ -954,7 +953,7 @@ struct MaerPlaylistPage: View {
             ?? playlist?.titles[id]
             ?? item?.title
             ?? id
-        // P4: a STUB row (self-describing catalogue id, no metadata) names
+        // A STUB row (self-describing catalogue id, no metadata) names
         // itself by fetching its detail — the promise "resolves on demand"
         // held for PLAYING, never for NAMING, which is why a shared list
         // stayed at the placeholder on every device. The won title is

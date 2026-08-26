@@ -8,8 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Der Befund vom 10.08. in Testform: „gehört" darf eine schwankende Dauer
-/// überleben.
+/// Eine Gehört-Marke muss eine schwankende Dauer überleben.
 struct ProgressMarkTests {
     @Test("die gewachsene Werbe-Dauer kippt die Marke nicht mehr")
     func grownDurationNoLongerBreaksThePlayedState() {
@@ -49,8 +48,8 @@ struct ProgressMarkTests {
 
     @Test("die EINE Zustands-Entscheidung — Listen und Store urteilen gleich")
     func stateIsTheSameEverywhere() {
-        // Genau der Fall aus dem Befund: markiert bei 3.420, Feed meldet heute
-        // 3.600. Die Nachbildung in den Listen sagte „noch 3 Min."
+        // Markiert bei 3.420, Feed meldet heute 3.600. Die Nachbildung in
+        // den Listen zeigte wieder eine Restzeit.
         let healed = ProgressMark.entry(position: 3_420, duration: 3_420, nowMs: 1_000)
         #expect(ProgressMark.state(stored: healed, currentDuration: 3_600) == .played)
         // Halb gehoert bleibt halb gehoert, mit Restzeit gegen die HEUTIGE Dauer.

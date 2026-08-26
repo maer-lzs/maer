@@ -27,10 +27,8 @@ struct LocalProviderTests {
     func malformedYieldsNil() {
         #expect(LocalProvider.storedProgress(nil, duration: 600) == nil)
         #expect(LocalProvider.storedProgress([300], duration: 600) == nil)
-        // Drei Werte sind seit dem Befund vom 10.08. GUELTIG: der dritte ist
-        // die Dauer, die beim Markieren galt (ProgressMark). Der Test stand
-        // vorher auf der alten Form — er haette die Aenderung sonst als
-        // Fehler gemeldet, obwohl sie beschlossen war.
+        // Drei Werte sind GUELTIG: der dritte ist die Dauer, die beim
+        // Markieren galt (ProgressMark).
         #expect(LocalProvider.storedProgress([1, 2, 3], duration: 600) != nil)
         #expect(LocalProvider.storedProgress([300, 1], duration: 0) == nil)
     }

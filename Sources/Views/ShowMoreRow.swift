@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// P11 (Regel 2): THE inline expander line under a preview grid — the Y3a
+/// THE inline expander line under a preview grid — the Y3a
 /// anatomy from `LatestEpisodesGrid`, lifted out so the audiobook stock uses
 /// the same one instead of a second version.
 ///
@@ -20,7 +20,7 @@ struct ShowMoreRow: View {
     @Binding var expanded: Bool
     let hasMore: Bool
     var accessibilityId: String = "show-more-row"
-    /// 973121e: the family-collapse rows name their COUNT ("20 Kanäle")
+    /// The family-collapse rows name their COUNT ("20 Kanäle")
     /// instead of a generic "Show More" — same component, one extra label.
     var moreLabel: String? = nil
 
@@ -52,7 +52,7 @@ struct ShowMoreRow: View {
     }
 }
 
-/// bb3d42c: the counting "show all" line
+/// The counting "show all" line
 /// that NAVIGATES. Inline expansion is out where a real full page exists —
 /// it duplicated the page without its sorting and filters, and the platform
 /// convention (preview + "See All" → page) says the same.

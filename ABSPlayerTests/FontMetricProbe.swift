@@ -9,7 +9,7 @@ import SwiftUI
 import Testing
 @testable import ABSPlayer
 
-/// ee4070a question 1: does a UIFont metric agree with what SwiftUI renders?
+/// Does a UIFont metric agree with what SwiftUI renders?
 /// Measures every tab title at every ladder size — SwiftUI width via
 /// ImageRenderer (a real render), metric width via NSAttributedString.
 /// The DEVIATION is the answer the Prüfbericht needs.
@@ -35,7 +35,7 @@ import Testing
                 lines.append("\(type.label) @\(size): metric=\(String(format: "%.2f", metric)) rendered=\(String(format: "%.2f", rendered)) Δ=\(String(format: "%.2f", delta))")
             }
         }
-        // Measured 21.08. (ee4070a Prüfbericht): worst Δ = 0.32 pt over all
+        // Measured: worst Δ = 0.32 pt over all
         // 5 titles × 7 ladder sizes — sub-pixel rounding, systematic. The
         // record stands as a fence: if a font change ever breaks metric
         // fidelity, the self-computation debate reopens with a number.

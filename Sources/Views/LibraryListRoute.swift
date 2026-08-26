@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 3a3b1aa: "every row is the preview of a page". A capped row's heading pushes
+/// "every row is the preview of a page". A capped row's heading pushes
 /// one of these; the destination is the EXISTING `BrowseBooksScreen` (title +
 /// cover grid), so no new surface is introduced — only a way to reach the full
 /// list behind a preview.
@@ -16,7 +16,7 @@ import Foundation
 nonisolated enum LibraryListRoute: Hashable {
     case continueListening
     case recentlyAdded
-    /// Auftrag J1: the full stock behind the "All Books" PREVIEW. This
+    /// The full stock behind the "All Books" PREVIEW. This
     /// reverses the earlier "deliberately no allBooks" note — back then the
     /// section WAS the full list, so a chevron pointed at itself (G8). DIE
     /// REGEL came later: tab roots are previews, the full stock lives one

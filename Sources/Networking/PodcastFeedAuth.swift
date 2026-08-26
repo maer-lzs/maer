@@ -18,7 +18,7 @@ nonisolated enum PodcastFeedAuth {
         return (String(raw[..<sep]), String(raw[raw.index(after: sep)...]))
     }
 
-    /// P2 (2): feed credentials follow the iCloud KEYCHAIN when the user's
+    /// Feed credentials follow the iCloud KEYCHAIN when the user's
     /// iCloud channel is on — this is the class gpodder cannot carry (a URL
     /// without its credentials would be half a state, and the token class
     /// travels the other way). Off = exactly today's behaviour, device-local.

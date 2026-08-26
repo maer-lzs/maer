@@ -9,11 +9,11 @@ import Foundation
 import UIKit
 @testable import ABSPlayer
 
-/// 7fb1cc1 / 59b320e: no title is squeezed on its own — one size per bar,
+/// No title is squeezed on its own — one size per bar,
 /// derived from the LONGEST title.
 @Suite struct TabBarMetricsTests {
 
-    /// 7fb1cc1 / 85a7c00: the bar offers its row at DESCENDING sizes and takes
+    /// The bar offers its row at DESCENDING sizes and takes
     /// the first that fits whole. The candidate list is the whole rule, so
     /// these are the invariants that matter — a computed scale is gone, and
     /// with it the estimate that produced "Hörbüch…".
@@ -35,7 +35,7 @@ import UIKit
         #expect(smallest >= 8)
     }
 
-    /// 98c621f: the capsule grew VERTICALLY, and the horizontal measure may
+    /// The capsule grew VERTICALLY, and the horizontal measure may
     /// never fall below what it was — that width is exactly the room the long
     /// title is missing.
     @Test func theCapsuleGrewInHeightOnly() {
@@ -45,7 +45,7 @@ import UIKit
         #expect(TabBarMetrics.Capsule.verticalPadding == 11)
     }
 
-    /// e111072 (crash 4, the FOURTH device crash of this class): the sizing
+    /// The fourth device crash of this class: the sizing
     /// engine's off-main reach cannot be enumerated — data-pure candidates
     /// trapped, `nonisolated` candidates trapped (ObservationCenter reached a
     /// live isolated reference no fix could name). The class is only dead

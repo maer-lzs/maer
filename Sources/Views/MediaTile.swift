@@ -25,35 +25,35 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
     /// Small badge at the image's bottom-left (e.g. the show cover on an
     /// episode tile) — hidden when nil.
     var cornerBadgeURL: URL? = nil
-    /// Q7: the premium lock is anchored BY THE COMPONENT — on the cover, at
+    /// The premium lock is anchored BY THE COMPONENT — on the cover, at
     /// the family position, never at the text. Call sites only say yes/no.
     var isPremium: Bool = false
     /// 0…1 → thin progress bar at the image's bottom edge; nil/0 hides it.
     var progress: Double? = nil
-    /// ea6e002: third text line (the library card's time line) — laid out
+    /// Third text line (the library card's time line) — laid out
     /// only when the CALLER opts in, so rows without it keep their height.
     /// Pass an empty string to reserve the line without content.
     var meta: String? = nil
-    /// ea6e002: card families that want the single-line title (the free
+    /// Card families that want the single-line title (the free
     /// catalog rows) pass 1; the slot stays RESERVED either way, so cells
     /// remain equally tall.
     var titleLineLimit: Int = 2
-    /// 40b8f96: short text capsule at the cover's BOTTOM-LEFT — the licence
+    /// Short text capsule at the cover's BOTTOM-LEFT — the licence
     /// class of a catalog item. Deliberately text, not a glyph: SF Symbols
     /// carries no trademarks, and three invented signs would mean nothing.
     /// Sits opposite the corner control (bottom-right), so the two never
     /// stack, and rides ON the cover so the reserved text lines below stay
     /// untouched (jank rule).
     var badgeText: String? = nil
-    /// Paket B (a916a5a): optional SF symbol INSIDE the capsule, before the
-    /// word — the origin capsule is "generic video symbol + YouTube" (word is
-    /// the carrier, symbol is Beiwerk with a GT-checked fallback ladder). No
+    /// Optional SF symbol INSIDE the capsule, before the word — the origin
+    /// capsule is a generic video symbol plus the platform name, the word
+    /// carries it and the symbol is Beiwerk with a fallback ladder. No
     /// trademark glyphs, same rule as badgeText.
     var badgeSystemImage: String? = nil
-    /// A3: unavailable content (offline, not downloaded) dims AND carries the
+    /// Unavailable content (offline, not downloaded) dims AND carries the
     /// white wifi.slash badge — dimming alone never carries the state.
     var unavailable: Bool = false
-    /// F5: a caller-supplied square cover replacing the `coverURL` image
+    /// A caller-supplied square cover replacing the `coverURL` image
     /// (playlist cards pass `PlaylistArtwork`, the 2×2 mosaic) — the Y58
     /// coverOverride pattern for the poster tile. Progress/badges/clip stay.
     /// Cell-cost sweep: CONCRETE generic instead of `AnyView` — type erasure
@@ -96,10 +96,9 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             Button(action: onTap) { image }
                 .buttonStyle(.plain)
-                // Q7: on the COVER. Documented deviation from the family's
-                // bottom-trailing spot (3f0c072 "consistency first, reasoned
-                // deviation allowed — never silently per surface"): that
-                // corner carries this tile's play control, so the lock takes
+                // On the COVER — a deviation from the family's
+                // bottom-trailing spot, because that corner carries this
+                // tile's play control, so the lock takes
                 // the free top one. The show tiles, which have no corner
                 // control, keep the bottom position.
                 .overlay(alignment: .topTrailing) { PremiumLockBadge(isPremium: isPremium) }
@@ -127,7 +126,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    // ea6e002: the library card's time line, same rule —
+                    // The library card's time line, same rule —
                     // always laid out where the row asks for it, so a title
                     // without runtime never shrinks its cell.
                     if let meta {
@@ -181,7 +180,7 @@ struct MediaTile<Corner: View, CoverOverride: View>: View {
         .frame(maxWidth: .infinity)
         .overlay(alignment: .bottom) { progressBar }
         .clipShape(Self.imageShape)
-        // A3: the corner control stays crisp ON TOP (sibling overlay in body);
+        // The corner control stays crisp ON TOP (sibling overlay in body);
         // only the image dims and carries the badge.
         .offlineUnavailableBadge(unavailable)
     }

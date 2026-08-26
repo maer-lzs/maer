@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Shared layout for a media list row — used by podcast episode rows and the
-/// downloaded-audiobook rows so both surfaces read identically (Regel 2):
+/// downloaded-audiobook rows so both surfaces read identically:
 /// a 64pt cover with optional offline/downloaded badges, and a text column
 /// (eyebrow · title · optional progress bar · meta line). The trailing control
 /// cluster stays at each call site (its actions differ per medium).
@@ -25,16 +25,16 @@ struct MediaRowContent<CoverOverride: View>: View {
     var showsPlayedCheck = false
     /// Placeholder glyph when there is no cover (mic for podcasts, book for books).
     var placeholderSystemImage = "mic"
-    /// V7: cover edge length. Default 64; the Up-Next queue rows pass a larger
+    /// Cover edge length. Default 64; the Up-Next queue rows pass a larger
     /// value to set themselves apart from the compact Downloaded list.
     var coverSize: CGFloat = 64
-    /// Y58: a caller-supplied cover view replacing the `coverURL` image (radio
+    /// A caller-supplied cover view replacing the `coverURL` image (radio
     /// rows pass `RadioArtwork`, so a missing favicon reads the same as in the
     /// player). Framing, clipping, dimming and badges stay MediaRowContent's.
     /// Cell-cost sweep: CONCRETE generic instead of `AnyView` (type erasure
     /// taxed every row creation/diff in the Lazy containers).
     var coverOverride: CoverOverride?
-    /// Pinchflat Paket B: origin capsule in the meta line (compact form —
+    /// Origin capsule in the meta line (compact form —
     /// height-neutral, so the reserved cell height stays data-independent).
     var showsOriginCapsule = false
 

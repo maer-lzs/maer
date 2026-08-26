@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Y32: the BGTask launch handler runs on the scheduler queue (NOT the main
+/// The BGTask launch handler runs on the scheduler queue (NOT the main
 /// actor). The testable core must be callable from an arbitrary executor
 /// without tripping isolation, hop its work to the main actor, and always
 /// complete.

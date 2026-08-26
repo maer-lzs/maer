@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// F5: the pure radio core — station mapping (mirror de-dupe), manual-station
+/// The pure radio core — station mapping (mirror de-dupe), manual-station
 /// validation, ICY parsing, the store round-trip and the queue veto (F3).
 struct RadioModelsTests {
     private func raw(_ uuid: String, name: String = "Station", url: String = "https://s.example/a",
@@ -337,7 +337,7 @@ struct RadioModelsTests {
         #expect(params(region)["reverse"] == "true")
         #expect(params(region)["limit"] == "40")
 
-        // eb10440: the genre query rides the SEARCH endpoint — measured
+        // The genre query rides the SEARCH endpoint — measured
         // byte-identical to the old `bytagexact` path, so one endpoint serves
         // both the worldwide and the country-narrowed case.
         let tag = RadioBrowserClient.Query.byTag(tag: "news", countryCode: nil, limit: 40)
@@ -357,7 +357,7 @@ struct RadioModelsTests {
         let narrowed = RadioBrowserClient.Query.byTag(tag: "news", countryCode: "ch", limit: 40)
         #expect(params(narrowed)["countrycode"] == "CH")
 
-        // R21-Rest: the language pot filters CLIENT-side and case-INsensitive
+        // The language pot filters CLIENT-side and case-INsensitive
         // — the catalog field is mixed-case (DLF carries "DE", WDR 5 "de"),
         // and the server's `languagecodes=` filter is case-sensitive (an
         // uppercase parameter is even ignored, measured live). `speaks` is
@@ -505,7 +505,7 @@ struct RadioStateQueryTests {
         let html = "<head><link rel=\"stylesheet\" href=\"a.css\"><link rel=\"apple-touch-icon\" href=\"/icons/touch.png\"></head>"
         #expect(RadioLogoLookup.extractTouchIcon(html: html, baseURL: base)?.absoluteString
                 == "https://www.rockantenne.de/icons/touch.png")
-        // 2765161: with MANY declared sizes the LARGEST wins — sportschau
+        // With MANY declared sizes the LARGEST wins — sportschau
         // lists 57 first, and taking the first put a mushy icon on every
         // Bundesliga tile.
         let sized = """
@@ -535,7 +535,7 @@ struct RadioStateQueryTests {
                 == ["Sunshine Live - Techno", "Sunshine Live", "Sunshine"])
         #expect(RadioLogoLookup.searchTerms(for: "Hit Radio FFH - 80er")
                 == ["Hit Radio FFH - 80er", "Hit Radio FFH"])
-        // e0a0788: a proper-subset label needs a RADIO word in label or
+        // A proper-subset label needs a RADIO word in label or
         // description — the plain brand stem now travels with its measured
         // description ("radio station in Germany").
         let search90 = Data("""
@@ -545,7 +545,7 @@ struct RadioStateQueryTests {
                                               stationName: "90s90s Dance HQ")?.id == "Q105475115")
     }
 
-    /// e0a0788: the runtime P154 stage PERSISTS, so it carries guards — the
+    /// The runtime P154 stage PERSISTS, so it carries guards — the
     /// audit caught it booking the LIFE magazine for Life Radio and Reset
     /// Media for the Reshet networks. All seven decided cases, verbatim from
     /// the live search API.
@@ -737,7 +737,7 @@ struct RadioStateQueryTests {
 }
 #endif
 
-// MARK: - 19a8b4c: first-hand listener cores
+// MARK: - First-hand listener cores
 
 /// The resolve ladder is fixture-tested against REAL catalog names from the
 /// reference run (2026-08-15, de1.api.radio-browser.info) — every fixture
@@ -754,7 +754,7 @@ struct RadioListenerCoreTests {
             #expect(core != nil && !(core ?? []).isEmpty)
             #expect(Set(core ?? []).count == (core ?? []).count)   // no dupes
         }
-        // Priority chain (72d233f (4)): countries without a survey fall to
+        // Priority chain: countries without a survey fall to
         // the Wikidata core; countries without either stay votes-pure.
         #expect(RadioListenerCores.national(countryCode: "FR")?.isEmpty == false)
         #expect(RadioListenerCores.national(countryCode: "FR")
@@ -841,7 +841,7 @@ struct RadioListenerCoreTests {
     }
 
     @Test func wikidataCoresAreWellFormedAndProbePlausibly() {
-        // Abnahme (72d233f): UK/FR cores lead with the public broadcaster.
+        // Abnahme: UK/FR cores lead with the public broadcaster.
         let gb = RadioWikidataCores.national(countryCode: "GB") ?? []
         #expect(gb.prefix(5).allSatisfy { $0.contains("BBC") })
         let fr = RadioWikidataCores.national(countryCode: "FR") ?? []
@@ -899,7 +899,7 @@ struct RadioListenerCoreTests {
     }
 }
 
-// MARK: - P12: National- und Regional-Wahl sind entkoppelt
+// MARK: - National- und Regional-Wahl sind entkoppelt
 
 struct RadioCountryDecouplingTests {
     @Test("ohne eigene National-Wahl gilt die geteilte Kaskade (Migration ohne Sprung)")
@@ -911,7 +911,7 @@ struct RadioCountryDecouplingTests {
         #expect(RadioCountryCascade.nationalCode(explicitNational: nil, shared: nil) == nil)
     }
 
-    @Test("the owner's Fall: National CH, Region NRW gleichzeitig")
+    @Test("National CH und Region NRW gleichzeitig")
     func nationalAndRegionAreIndependent() {
         // Die Region impliziert DE (NRW), die National-Wahl ist CH.
         let shared = RadioCountryCascade.effectiveCode(explicit: nil, regionImplied: "DE",
@@ -926,14 +926,14 @@ struct RadioCountryDecouplingTests {
     }
 }
 
-// MARK: - f0e7f4e: EINE Session-Titel-Quelle fuer den laufenden Track
+// MARK: - EINE Session-Titel-Quelle fuer den laufenden Track
 
 struct NowPlayingTitleSourceTests {
     /// Der Zaun in Textform (die Flaechen selbst brauchen eine Session):
     /// keine Now-Playing-Flaeche darf den laufenden Titel aus der
     /// ITEM-Aufloesung nehmen — die liefert fuer Katalog-Kennungen einen
-    /// Stub mit Platzhalter, und genau so sagte die Mini-Leiste
-    /// „Unbekannter Titel", waehrend der grosse Player recht hatte.
+    /// Stub mit Platzhalter, und genau so trug die Mini-Leiste einen
+    /// Platzhalternamen, waehrend der grosse Player recht hatte.
     @Test("Now-Playing-Flaechen lesen den Titel aus der Session, nicht vom Item")
     func surfacesReadTheSessionTitle() throws {
         let root = URL(fileURLWithPath: #filePath)
@@ -955,7 +955,7 @@ struct NowPlayingTitleSourceTests {
     }
 }
 
-// MARK: - 10eb85f: das Tor kennt die Zielgroesse (EINE Stelle)
+// MARK: - Das Tor kennt die Zielgroesse (EINE Stelle)
 
 struct RadioGateTargetSizeTests {
     @Test("die Anforderung folgt der Flaeche, gedeckelt vom strengen Default")

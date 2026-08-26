@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// R39: the class "a surface reads the catalog store without anything
+/// The class "a surface reads the catalog store without anything
 /// starting its load" came back — the 10.08. fence was gone from the tree,
 /// so it held nothing. This time the rule is CONSTRUCTIONAL (reading `rows`
 /// starts the pass) and the fence guards the construction itself, not a
@@ -44,7 +44,7 @@ struct CatalogStoreReadFenceTests {
         #expect(bypass.contains("storedRows"))
     }
 
-    /// R40: a catalog row may exist ONCE per surface. The duplicate arose
+    /// A catalog row may exist ONCE per surface. The duplicate arose
     /// because a repair was made at the REPORTED spot without sweeping the
     /// same file for a sibling row of the same source — and the two then
     /// carried different conditions, so the area switch (a PRIVACY switch)
@@ -95,11 +95,10 @@ struct CatalogStoreReadFenceTests {
         #expect(refused, "after the limit only an EXPLICIT path may reopen")
     }
 
-    /// R44 (the owner am Gerät: „das Dauerrad ist wohl LibriVox"): a FAILED row
-    /// is an ANSWER. Before this only Jamendo could be answered, so a failing
-    /// LibriVox left the pass permanently incomplete — and the R39 reopen
-    /// turned that into three full network passes, i.e. a wheel that keeps
-    /// spinning. Cancellations still leave the pass incomplete (retryable).
+    /// A FAILED row is an ANSWER. When only Jamendo could be answered, a
+    /// failing LibriVox left the pass permanently incomplete — and the reopen
+    /// turned that into three full network passes, i.e. a spinner that never
+    /// stops. Cancellations still leave the pass incomplete (retryable).
     @MainActor
     @Test("ein gebuchter Fehlschlag zaehlt als Antwort — der Lauf ist komplett")
     func aBookedFailureCompletesThePass() {
@@ -114,9 +113,9 @@ struct CatalogStoreReadFenceTests {
         // so the gate may reopen (bounded) instead of freezing the session.
         #expect(!FreeCatalogLoader.passIsComplete(FreeCatalogLoader.Rows()))
     }
-    /// R46 (the owner am Geraet: „es gibt praktisch keinen Weg in die
-    /// Genre-Bibliothek"): ein Fach mit 102 Eintraegen zeigte EINE Kachel und
-    /// nie ein Chevron. Die Chevron-Regel (`total > shown`) war richtig — sie
+    /// Ein Fach mit 102 Eintraegen zeigte EINE Kachel und nie ein Chevron,
+    /// also keinen Weg in die Genre-Bibliothek. Die Chevron-Regel
+    /// (`total > shown`) war richtig — sie
     /// bekam die Zahl des zufaellig geladenen Vorrats statt des Bestands.
     /// Der Bestand steht in der Antwort; dieser Zaun haelt fest, dass er dort
     /// auch abgeholt wird.
@@ -137,9 +136,9 @@ struct CatalogStoreReadFenceTests {
         #expect(try ArchiveOrgClient.decodeTotal(ohne) == nil)
     }
 
-    /// R45 (the owner zweimal „viel zu lang"): the build path must not probe.
-    /// The old chain asked archive.org twice PER TILE — 72 serial round trips
-    /// and 4,5 MB of metadata for „gibt es ein Bild?", measured at 43 s per
+    /// The build path must not probe. The old chain asked archive.org twice
+    /// PER TILE — 72 serial round trips and 4,5 MB of metadata just to learn
+    /// whether a tile has a picture, measured at 43 s per
     /// pass. This fence holds the construction: picking is a pure cut, and
     /// no surface may reintroduce a per-tile probe on the way to a row.
     @Test("das Bauen einer Reihe fragt das Netz NICHT je Kachel")
@@ -161,7 +160,7 @@ struct CatalogStoreReadFenceTests {
                 "eine Cover-Probe je Kachel ist zurueck im Bauweg")
     }
 
-    /// R45/R48: eine Reihe holt keine Kapitel. Der alte Vollabruf war zu 95 %
+    /// Eine Reihe holt keine Kapitel. Der alte Vollabruf war zu 95 %
     /// Kapitelliste (291 kB fuer 20 Buecher, gemessen am Endpunkt); die
     /// Feldliste laesst sie weg und traegt dafuer `genres`. Der Zaun haelt
     /// beide Haelften fest — was die Reihe holt UND was sie nicht holt.
@@ -176,7 +175,7 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// R47: die gemessenen OTR-Begriffe liegen auf der EINEN Achse.
+    /// Die gemessenen OTR-Begriffe liegen auf der EINEN Achse.
     @Test("die nachgemessenen OTR-Begriffe sind einsortiert")
     func measuredOTRTermsAreOnTheAxis() {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective"]) == ["crime"])
@@ -187,8 +186,8 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Western Electric"]).isEmpty)
     }
 
-    /// R45 Runde 2 (the owner: „laedt immer noch ewig"): der Durchlauf
-    /// veroeffentlicht in der Reihenfolge, in der die Quellen FERTIG werden.
+    /// Der Durchlauf veroeffentlicht in der Reihenfolge, in der die Quellen
+    /// FERTIG werden.
     /// `async let` plus sequenzielles `await` wartet in STARTreihenfolge — die
     /// drei schnellen Reihen (je rund 1 s) hingen damit an der langsamsten
     /// (LibriVox, gemessen 7-35 s), und das Veroeffentlichen je Reihe konnte
@@ -204,11 +203,11 @@ struct CatalogStoreReadFenceTests {
         #expect(body.contains("withTaskGroup"),
                 "das Ergebnis-orientierte Warten ist aus dem Durchlauf verschwunden")
         // Und die zweite Haelfte: eine abgeschaltete Quelle erzeugt keinen
-        // Auftrag mehr, statt gestartet und weggeworfen zu werden.
+        // Abruf mehr, statt gestartet und weggeworfen zu werden.
         #expect(!body.contains("_ = await "),
                 "eine abgeschaltete Quelle wird wieder gestartet und verworfen")
         // Rot-Probe am Instrument selbst: gegen die ALTE Fassung schlaegt es
-        // an. Ein Zaun, der nur „nichts gefunden" meldet, beweist nichts.
+        // an. Ein Zaun, der nur nichts findet, beweist nichts.
         let alt = """
             @MainActor
             enum Alt {
@@ -242,7 +241,7 @@ struct CatalogStoreReadFenceTests {
                 "ein Treffer im Kommentar wird als Treffer im Code gewertet")
     }
 
-    /// R45 Runde 2, gemessen am Endpunkt: der Server rechnet die ganze Antwort
+    /// Am Endpunkt gemessen: der Server rechnet die ganze Antwort
     /// fertig, bevor er das erste Byte sendet (22-25 s bis zum ersten Byte).
     /// Gegen das gemeinsame Zeitlimit von 20 s konnte diese Abfrage nur ueber
     /// die Wiederhol-Leiter verlieren — 20+20+20 und dann FEHLSCHLAG. Sie
@@ -263,7 +262,7 @@ struct CatalogStoreReadFenceTests {
                 "ohne den Parameter fehlt url_iarchive — die Kacheln verlieren ihre Cover")
         // Und die Feldliste muss die Cover-Quelle ueberhaupt anfragen.
         #expect(LibriVoxClient.rowFields.contains("url_iarchive"))
-        // R53-Nachlese: die zweite Haelfte dieses Zauns pruefte den
+        // Die zweite Haelfte dieses Zauns pruefte den
         // LibriVox-Gattungsfeed — der ist GELOESCHT (er lieferte `lv:`-Buecher
         // fuer eine Flaeche aus `lva:`-Dokumenten, also zwei Kennungen fuer
         // dieselben Titel). Der Zaun haelt jetzt fest, dass er nicht
@@ -272,9 +271,8 @@ struct CatalogStoreReadFenceTests {
                 "der LibriVox-Gattungsfeed ist zurueck — zwei Kennungen fuer dieselben Titel")
     }
 
-    /// R53 (the owner: „Alle 4 Bibs haben moeglicherweise auch Kachelreihen
-    /// verloren") — mein eigener R46-Bau nahm zwei von vier Quellen die
-    /// Faecher: `shelves` las nur noch `shelfStock`, und das fuellte sich
+    /// Zwei von vier Quellen hatten ihre Kachelreihen verloren: `shelves` las
+    /// nur noch `shelfStock`, und das fuellte sich
     /// ausschliesslich ueber `archiveBaseQuery`, die fuer LibriVox und
     /// Gutenberg `nil` lieferte. Die Flaeche versprach die Faecher
     /// (`hasChips`) und lieferte sie nie.
@@ -297,7 +295,7 @@ struct CatalogStoreReadFenceTests {
         #expect(!CatalogShelfSource.canServeShelves(.oerr))
     }
 
-    /// R53: LibriVox-Kacheln dieser Flaeche sind archive.org-Dokumente und
+    /// LibriVox-Kacheln dieser Flaeche sind archive.org-Dokumente und
     /// tragen SUBJECTS, keine LibriVox-Gattungsnamen. Gemessen an den 120
     /// meistgeladenen `librivoxaudio`-Eintraegen: die Gattungs-Achse ordnete
     /// 40 ein, die Subject-Achse 58.
@@ -312,9 +310,9 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogGenreAxis.shelves(forSubjects: ["Detective Fiction"]) == ["crime"])
     }
 
-    /// R53, zwei Klassen, die ich beide selbst schon einmal gemessen habe:
-    /// das Tor darf den Lauf nicht buchen, BEVOR er stattfand (R39), und ein
-    /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen (703df85).
+    /// Zwei Klassen in einem Zaun: das Tor darf den Lauf nicht buchen,
+    /// BEVOR er stattfand, und ein
+    /// Fehlschlag ist eine ANTWORT, nicht ein stilles Fehlen.
     @Test("das Faecher-Tor bucht nach dem Lauf, und ein Fehlschlag ist unterscheidbar")
     func theShelfGateBooksAfterwardsAndFailuresAreVisible() throws {
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
@@ -331,7 +329,7 @@ struct CatalogStoreReadFenceTests {
         #expect(body.contains("failureReason"), "der Grund wird nicht mehr benannt")
     }
 
-    /// the owner's ENTSCHEID: die Gutenberg-Faecher werden je Tag einmal geholt.
+    /// Die Gutenberg-Faecher werden je Tag einmal geholt.
     /// Der Speicher liegt in dem Mechanismus, der einen Ablauf schon HAT —
     /// und dessen Gruendungsregel genau die ist, die hier zaehlt: ein
     /// Fehlschlag wird nie aufgeschrieben (sonst waere die Seite den Rest des
@@ -358,11 +356,10 @@ struct CatalogStoreReadFenceTests {
                 "der Tages-Speicher altert nicht — das ist die Bestands-Positiv-Klasse")
     }
 
-    /// R52 (the owner: „auf Hörbücher-Bib, Start und Podcast-Bib jeweils einmal
-    /// Hörbücher und Hörspiele als Kachelreihe. Da ist was falsch"): der
-    /// Kommentar in `PodcastsView` behauptete die Disjunktheit seit dem
-    /// 07.08. — der Code darunter stellte sie nie her. Der Test, auf den er
-    /// sich berief (`Catalog sources split disjointly …`,
+    /// Hoerbuecher-Bibliothek, Start und Podcast-Bibliothek zeigten dieselbe
+    /// Kachelreihe. Der Kommentar in `PodcastsView` behauptete die
+    /// Disjunktheit, der Code darunter stellte sie nie her. Der Test, auf den
+    /// er sich berief (`Catalog sources split disjointly …`,
     /// `FreeCatalogTests`), ist nicht falsch: er teilt die QUELLEN-
     /// Aufzaehlung, nicht die Kacheln. Das ist der fehlende Satz.
     @Test("Podcast-Tab zeigt keine Katalog-Kachel, Hoerbuecher-Tab keinen Feed")
@@ -386,7 +383,7 @@ struct CatalogStoreReadFenceTests {
         #expect(Set(podcasts.map(\.id)).isDisjoint(with: Set(books.map(\.id))))
         // Rot-Probe: das Instrument SIEHT beide Sorten. Start mischt sie, und
         // genau so sah die Podcast-Reihe bis heute aus — ohne diesen Nachweis
-        // wuerde „keine Katalog-Kachel gefunden" auch bei blindem Zaun gelten.
+        // waere ein blinder Zaun von einem leeren Ergebnis nicht zu trennen.
         let home = CatalogMix.tiles(for: .home, rows: rows)
         var sahFeed = false, sahItem = false
         for tile in home {
@@ -397,7 +394,7 @@ struct CatalogStoreReadFenceTests {
                 "die Rot-Probe sieht die gemischte Form nicht — der Zaun beweist nichts")
     }
 
-    /// R52 INVARIANTE 2: Start darf beide Welten zeigen, aber nie kachelgleich
+    /// Start darf beide Welten zeigen, aber nie kachelgleich
     /// mit einer Tab-Reihe sein. Der geteilte Sitzungs-Startwert garantierte
     /// bisher das GEGENTEIL — seine Absicht (innerhalb einer Sitzung sortiert
     /// sich nichts um) bleibt und wird je Flaeche abgeleitet.
@@ -419,10 +416,10 @@ struct CatalogStoreReadFenceTests {
         #expect(home != CatalogMix.tiles(for: .books, rows: rows).map(\.id))
     }
 
-    /// R51 Runde 2 (the owner's Bild: „Lyrik · 2829" mit ZWEI Kacheln). Die
-    /// Ursache war kein duenner Bestand, sondern ein Trennfilter auf seiner
-    /// EIGENEN Quelle: `isNotLibriVoxDuplicate` verwirft jedes Dokument, in
-    /// dem „librivox" vorkommt — auf der LibriVox-Seite also fast alles.
+    /// Ein Fach mit 2829 Eintraegen zeigte ZWEI Kacheln. Die Ursache war kein
+    /// duenner Bestand, sondern ein Trennfilter auf seiner EIGENEN Quelle:
+    /// `isNotLibriVoxDuplicate` verwirft jedes Dokument, das den Namen
+    /// LibriVox enthaelt — auf der LibriVox-Seite also fast alles.
     /// Am lebenden Endpunkt mit der Abfrage der Flaeche gemessen: **12 von 12
     /// verworfen** (LibriVox), **0 von 12** bei Archive-Hoerbuechern und OTR,
     /// **0 von 50** im breiten Abzug der Archive-Hoerbuecher.
@@ -450,10 +447,10 @@ struct CatalogStoreReadFenceTests {
                 "die Sperrliste ist mit der Trennung mitgefallen")
     }
 
-    /// R51, letzter Griff: der Platzhalter gegen den Layout-Shift haengt an
-    /// der GEMESSENEN Wartezeit, nicht am Quellennamen (the reviewer's Invariante aus
-    /// `0757f89` — sonst steht in einem Monat ein `== .gutenberg` da, dessen
-    /// Grund niemand mehr kennt). Gemessen: archive.org 0,63-0,80 s je Fach,
+    /// Der Platzhalter gegen den Layout-Shift haengt an der GEMESSENEN
+    /// Wartezeit, nicht am Quellennamen — sonst steht in einem Monat ein
+    /// `== .gutenberg` da, dessen Grund niemand mehr kennt. Gemessen:
+    /// archive.org 0,63-0,80 s je Fach,
     /// gutendex 30-41 s kalt.
     @Test("der Platzhalter haengt an der Wartezeit, nicht am Quellennamen")
     func thePlaceholderHangsOnTheMeasuredWait() throws {
@@ -477,9 +474,9 @@ struct CatalogStoreReadFenceTests {
                 "die Ausnahme ist zur Regel geworden — Schwelle statt Sonderfall")
     }
 
-    /// R50 (the owner: der Jamendo-Titel LAEUFT, der Mini-Player zeigt „ab 0:00
-    /// — noch 3 Min."). Die Zeile beobachtet die Zeit sehr wohl — erfunden
-    /// war das KAPITEL: fuer ein Stueck ohne Kapitel legte `withTimeMarks`
+    /// Der Titel laeuft, der Mini-Player bleibt bei der Startformulierung.
+    /// Die Zeile beobachtet die Zeit sehr wohl — erfunden war das KAPITEL:
+    /// fuer ein Stueck ohne Kapitel legte `withTimeMarks`
     /// EINE Marke an, benannt nach Sekunde null und ueber das ganze Stueck.
     /// Damit stand die Startformulierung fest, waehrend die Wiedergabe lief.
     /// Ohne Kapitel faellt der Untertitel auf die laufende Uhr zurueck.
@@ -500,7 +497,7 @@ struct CatalogStoreReadFenceTests {
                 "der eigentliche Zweck der Marken ist mitgefallen")
     }
 
-    /// Musik-Achse, the owner's ENTSCHEID (kleine Toepfe in grosse falten,
+    /// Musik-Achse (kleine Toepfe in grosse falten,
     /// Deckel ~30 Faecher) — und the reviewer's INVARIANTE: die Achse ist mit JAMENDO
     /// GETEILT, also muss die Deckung BEIDER Quellen gemessen sein.
     ///
@@ -542,8 +539,8 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// R52, ZWEITE INSTANZ derselben Klasse (the reviewer's `df12a60`): Start
-    /// „Entdecken · Musik" und der Musik-Tab schoepfen aus DEMSELBEN Topf.
+    /// Dieselbe Klasse ein zweites Mal: die Musik-Reihe auf Start und der
+    /// Musik-Tab schoepfen aus DEMSELBEN Topf.
     /// Sie bekommen jetzt je Flaeche ihre eigene Ordnung — dieselbe Antwort
     /// wie bei den Buch-Reihen, nur an einem anderen Ort.
     @Test("die beiden Musik-Reihen zeigen denselben Topf nicht in derselben Folge")
@@ -568,8 +565,8 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogMix.ordered(Array(topf.prefix(1)), for: .musicTab).count == 1)
     }
 
-    /// R47 (the owner's ENTSCHEID): die Lizenz-Oeffnung mit ihrer Grenze —
-    /// anzeigen und streamen auch OHNE Deklaration, herunterladen NUR mit.
+    /// Die Lizenz-Oeffnung mit ihrer Grenze: anzeigen und streamen auch OHNE
+    /// Deklaration, herunterladen NUR mit.
     /// Und: eine fehlende Angabe ist sichtbar, nie gar nichts und nie eine
     /// Behauptung.
     @Test("anzeigen ohne Deklaration, laden nur mit — und die Luecke ist sichtbar")
@@ -593,7 +590,7 @@ struct CatalogStoreReadFenceTests {
         #expect(FreeCatalog.licenceLabel("https://creativecommons.org/licenses/by-nc-nd/3.0/") == "CC BY-NC-ND")
     }
 
-    /// R47: die Jahrzehnte-Achse. Einzeljahre falten, bereits gefaltete
+    /// Die Jahrzehnte-Achse. Einzeljahre falten, bereits gefaltete
     /// Angaben bleiben, und was kein Jahr nennt, faellt HERAUS statt in ein
     /// Sammelfach — dieselbe positive Zuordnung wie bei den Gattungen.
     @Test("Einzeljahre falten auf ihr Jahrzehnt, Jahrloses faellt heraus")
@@ -613,9 +610,9 @@ struct CatalogStoreReadFenceTests {
         #expect(CatalogGenreAxis.decades(forSubjects: ["detective"]).isEmpty)
     }
 
-    /// R54 (the owner: „in manchen Kachelreihen werden Bilder sofort wieder
-    /// weggeworfen, wenn man seitlich scrollt"). Drei Ursachen, alle im
-    /// Bild-Zwischenspeicher. Der Zaun haelt die beiden, die sich rechnen
+    /// Kachelreihen warfen ihre Bilder beim seitlichen Scrollen sofort wieder
+    /// weg. Drei Ursachen, alle im Bild-Zwischenspeicher. Der Zaun haelt die
+    /// beiden, die sich rechnen
     /// lassen — die dritte (Zellen holen den warmen Treffer ab) haengt an
     /// Aufrufstellen und steht im Inventar.
     @Test("beide Speichergrenzen meinen dieselbe Zahl, und eine Ungueltigkeit raeumt nur ihren Eintrag")
@@ -655,9 +652,9 @@ struct CatalogStoreReadFenceTests {
         #expect(Set(ImageCache.thumbnailVariants) == Set([400, 600]))
     }
 
-    /// R58 (the owner am Geraet: „Es gibt nur 3 Krimis in Gutenberg?"): die
-    /// Faecher fragten die ALPHABETISCH ersten Begriffe. Krimi bekam „crime"
-    /// (5 Treffer) statt „mystery" (49) und „detective" (47) — 4 statt 141
+    /// Das Krimi-Fach zeigte drei Titel: die Faecher fragten die ALPHABETISCH
+    /// ersten Begriffe. Krimi bekam `crime` (5 Treffer) statt `mystery` (49)
+    /// und `detective` (47) — 4 statt 141
     /// Titel; Science-Fiction fragte zwei Begriffe mit zusammen NULL.
     ///
     /// Dieselbe Klasse, die der Zaun beim alphabetischen Deckel der
@@ -670,7 +667,7 @@ struct CatalogStoreReadFenceTests {
         let gefragt = Array(krimi.prefix(3))
         #expect(gefragt.contains("mystery"), "der ergiebigste Krimi-Begriff faellt wieder weg")
         #expect(gefragt.contains("detective"))
-        // Rot-Probe: alphabetisch waere „crime" vorn — genau der schwache.
+        // Rot-Probe: alphabetisch waere `crime` vorn — genau der schwache.
         #expect(krimi.sorted().first == "crime")
         #expect(gefragt.first != "crime", "die Sortierung ist wieder alphabetisch")
         // Und die Ordnung faellt monoton mit der gemessenen Ergiebigkeit.
@@ -683,7 +680,7 @@ struct CatalogStoreReadFenceTests {
         #expect((CatalogGenreAxis.measuredGutenbergYield["science fiction"] ?? 0) > 0)
     }
 
-    /// R58, zweite Haelfte: bei archive.org faellt der Deckel ganz. Gemessen
+    /// Bei archive.org faellt der Deckel auf der Begriffsliste ganz. Gemessen
     /// am Endpunkt (Netlabels, Elektronik-Fach): mit den ersten sechs
     /// Begriffen **3.395** Eintraege in 0,52 s, mit allen fuenfunddreissig
     /// **31.338** in 0,58 s. Faktor 9 fuer fuenf Hundertstelsekunden — der
@@ -709,8 +706,8 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// R57 (the owner am Geraet: „Geschichte · 1609" und „Biografien · 570"
-    /// beginnen mit exakt denselben zwei Kacheln). Jedes Fach fragte seine
+    /// Zwei benachbarte Faecher begannen mit exakt denselben zwei Kacheln.
+    /// Jedes Fach fragte seine
     /// Quelle mit derselben Sortierung, Seite 1 — ein Titel, der beide
     /// Faecher traegt, stand also in beiden oben. Die Ueberschneidung ist
     /// richtig, der gleiche AUSSCHNITT nicht.
@@ -741,8 +738,8 @@ struct CatalogStoreReadFenceTests {
                 == CatalogRotation.page(total: 600, rowSize: 12, on: tag, salt: 0))
     }
 
-    /// R59 (the owner am Geraet: die erste Kachel in „Wieder anhoeren" heisst
-    /// „Unbekannter Titel" — und laeuft nicht). Der Fund liegt nicht in der
+    /// Eine Kachel in der Fortsetzen-Reihe trug keinen Namen und lief nicht.
+    /// Der Fund liegt nicht in der
     /// Zelle: der Tot-Vermerk wurde NUR beim Bauen der Katalogreihen gelesen,
     /// und diese Reihe liest den HOERVERLAUF. Lernen und Lesen waren nicht
     /// verbunden.
@@ -771,8 +768,9 @@ struct CatalogStoreReadFenceTests {
                 "der Hoerstand wurde still geloescht")
     }
 
-    /// R59: „konnte nicht fragen" und „gibt es nicht mehr" sind zwei Saetze.
-    /// Nur der zweite darf vermerken — sonst raeumt ein Funkloch die Reihe.
+    /// Ein Transportfehler und ein klares Weg sind zwei verschiedene
+    /// Antworten. Nur die zweite vermerkt — sonst raeumt ein Funkloch die
+    /// Reihe.
     @Test("nur ein klares Weg vermerkt, ein Transportfehler nie")
     func onlyAClearGoneIsRecorded() {
         #expect(FreeCatalog.isGone(URLError(.resourceUnavailable)))
@@ -788,7 +786,7 @@ struct CatalogStoreReadFenceTests {
         #expect(!FreeCatalog.isCatalogId("abs-item-id"))
     }
 
-    /// R49 (Form von the owner abgenommen): Stimmung und Tempo sind FILTER auf
+    /// Stimmung und Tempo sind FILTER auf
     /// der Vollseite eines Fachs, Instrumental ein SCHALTER — keine eigenen
     /// Reihen-Familien. Alle drei filtert Jamendo SERVER-seitig, am Endpunkt
     /// verprobt; die Seite wirft nichts nachtraeglich weg.
@@ -809,7 +807,7 @@ struct CatalogStoreReadFenceTests {
 
         filter.tempo = .fast
         #expect(filter.queryItems.contains { $0.name == "speed" && $0.value == "high" })
-        // „verylow" faellt mit „low" zusammen — zwei von zweihundert Titeln
+        // `verylow` faellt mit `low` zusammen — zwei von zweihundert Titeln
         // rechtfertigen kein eigenes Fach, aber sie duerfen nicht verloren
         // gehen.
         filter.tempo = .slow
@@ -828,16 +826,13 @@ struct CatalogStoreReadFenceTests {
         }
     }
 
-    /// R60 (the owner: „kann ich nicht pruefen, da der Stand noch auf dem
-    /// letzten Tagesstand steht"): der Tages-Speicher war allein nach dem
-    /// FACH-Namen abgelegt. Als R58 die Begriffe austauschte, lieferte er bis
-    /// zu 24 h weiter die Antwort der ALTEN Regel — nicht nur beim Pruefen:
-    /// jeder Nutzer haette nach dem Update einen Tag lang die kaputten
-    /// Faecher gesehen.
+    /// Der Tages-Speicher war allein nach dem FACH-Namen abgelegt. Werden die
+    /// Begriffe eines Fachs ausgetauscht, liefert er bis zu 24 h weiter die
+    /// Antwort der ALTEN Regel — nach einem Update saehe jeder Nutzer einen
+    /// Tag lang die alten Faecher.
     ///
-    /// Die Klasse ist „Bestands-Positiv, das nie ablaeuft" (R25) in
-    /// allgemeiner Form: **ein Ergebnis ueberlebt die Berechnung, die es
-    /// hervorgebracht hat.**
+    /// Die Klasse in allgemeiner Form: ein Ergebnis ueberlebt die Berechnung,
+    /// die es hervorgebracht hat.
     @Test("ein gespeichertes Ergebnis gilt nur, solange seine Regel gilt")
     func aStoredResultOnlyHoldsWhileItsRuleHolds() throws {
         let suite = "r60-\(UUID().uuidString)"
@@ -870,9 +865,8 @@ struct CatalogStoreReadFenceTests {
                 != CatalogShelfSource.shelfRule(for: "horror"))
     }
 
-    /// R60, the owner's Auflage 1: der Debug-Hebel raeumt NUR Abgeleitetes.
-    /// „Das ist die Grenze zwischen ‚neu holen' und ‚Datenverlust', und sie
-    /// muss am Code stehen, nicht in der Beschriftung."
+    /// Der Debug-Hebel raeumt NUR Abgeleitetes. Die Grenze zwischen neu
+    /// holen und Datenverlust steht am Code, nicht in der Beschriftung.
     @Test("der Hebel raeumt Abgeleitetes und fasst Nutzerbesitz nie an")
     func theLeverClearsOnlyDerivedStores() throws {
         let suite = "r60-lever-\(UUID().uuidString)"
@@ -904,19 +898,18 @@ struct CatalogStoreReadFenceTests {
         #expect(defaults.object(forKey: "maerPlaylists") != nil,
                 "eine PLAYLIST wurde geraeumt — das ist Datenverlust")
 
-        // „Nichts zu raeumen" ist eine ehrliche Antwort, keine leere Meldung.
+        // Nichts zu raeumen ist eine Antwort, keine leere Meldung.
         #expect(DerivedStores.clear(defaults: defaults).isEmpty)
     }
 
-    /// R57-Nachlese (the owner's ENTSCHEID: nach hinten sortieren). the reviewer's
-    /// Erklaerung — Sammelbaende tragen sehr viele Schlagworte und ranken
-    /// deshalb oben — **traegt nicht:** gemessen an 150 LibriVox-Eintraegen
-    /// haben sie im Mittel 6,2 Schlagworte, die uebrigen 6,4. Und der TITEL
-    /// taugt nicht als Signal: „Vanished Arizona: Recollections" enthaelt
-    /// „collection" und ist ein einzelnes Werk.
+    /// Sammelbaende werden nach hinten sortiert. Die Zahl der Schlagworte
+    /// taugt nicht als Signal: gemessen an 150 LibriVox-Eintraegen haben
+    /// Sammelbaende im Mittel 6,2, die uebrigen 6,4. Der TITEL auch nicht —
+    /// `Vanished Arizona: Recollections` enthaelt `collection` und ist ein
+    /// einzelnes Werk.
     ///
     /// Was traegt, ist LibriVox' eigene Konvention: `creator` ist GENAU
-    /// „Various" — exakte Gleichheit, also kann kein Teilstring hineinrutschen.
+    /// `Various` — exakte Gleichheit, also kann kein Teilstring hineinrutschen.
     @Test("Sammelbaende erkennt die Konvention, nicht der Titel")
     func collectionsAreRecognisedByConventionNotByTitle() throws {
         func doc(_ creator: String, _ title: String) throws -> ArchivePopularDoc {
@@ -930,11 +923,11 @@ struct CatalogStoreReadFenceTests {
         #expect(!FreeCatalog.isMultiAuthorCollection(
             try doc("Martha Summerhayes", "Vanished Arizona: Recollections of the Army")),
                 "ein einzelnes Werk wird als Sammelband einsortiert")
-        // Und ein Urheber, der „various" nur ENTHAELT, ist keiner.
+        // Und ein Urheber, der `various` nur ENTHAELT, ist keiner.
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("Various Artists Ensemble", "X")))
         #expect(!FreeCatalog.isMultiAuthorCollection(try doc("", "X")))
         // Der Malus ORDNET, er wirft nichts weg — das ist der Unterschied
-        // zwischen „nach hinten" und „ausschliessen".
+        // zwischen nach hinten sortieren und ausschliessen.
         let text = try String(contentsOf: sourceFile("Sources/Views/CatalogSourcePage.swift"),
                               encoding: .utf8)
         let body = try #require(functionBody(of: "private func applyShelf(", in: text))
@@ -942,19 +935,14 @@ struct CatalogStoreReadFenceTests {
                 "die Sammelbaende werden nicht mehr angehaengt, sondern verworfen")
     }
 
-    /// R65 Befund 1 (the owner an der Sendungsseite „Hoerspielprojekt.de":
-    /// „kein Bild"). Der Feed nennt sein Bild ZWEIMAL, und unser Leser fand
-    /// keines von beiden: die RSS-Form `<image><url>…</url></image>` las er
-    /// gar nicht, und die itunes-Form OHNE `href` fiel durch, weil das
-    /// Attribut leer ist.
+    /// Eine Sendungsseite blieb ohne Bild, obwohl der Feed sein Bild ZWEIMAL
+    /// nennt: die RSS-Form `<image><url>…</url></image>` las der Leser gar
+    /// nicht, und die itunes-Form OHNE `href` fiel durch, weil das Attribut
+    /// leer ist. `FeedArtworkLookup` kannte die RSS-Form bereits — zwei
+    /// Leser, eine Schreibweise, einer kann mehr.
     ///
-    /// **Die App KANNTE die RSS-Form bereits** (`FeedArtworkLookup` sagt es
-    /// woertlich) — zwei Leser, eine Schreibweise, einer kann mehr. Das ist
-    /// die Zwei-Wahrheiten-Klasse.
-    ///
-    /// Gemessen ueber die 21 kuratierten Feeds: **zwei** schreiben die
-    /// itunes-Textform (hoerspielprojekt.de, hoer-talk.de) — der eine Befund
-    /// erklaert also zwei fehlende Bilder, nicht nur eines.
+    /// Gemessen ueber die 21 kuratierten Feeds: zwei schreiben die
+    /// itunes-Textform, es sind also zwei fehlende Bilder, nicht eines.
     @Test("der Feed-Leser versteht jede Schreibweise des Sendungsbilds")
     func theFeedReaderUnderstandsEverySpelling() {
         func bild(_ kanal: String) -> String? {
@@ -970,7 +958,7 @@ struct CatalogStoreReadFenceTests {
         }
         // Die Form, die schon ging.
         #expect(bild("<itunes:image href=\"https://example.org/a.jpg\"/>") == "https://example.org/a.jpg")
-        // Die beiden, die durchfielen — the owner's Feed nennt BEIDE.
+        // Die beiden, die durchfielen. Der gemessene Feed nennt BEIDE.
         #expect(bild("<itunes:image>https://example.org/b.jpg</itunes:image>") == "https://example.org/b.jpg",
                 "die itunes-Textform faellt wieder durch")
         #expect(bild("<image><title>T</title><url>https://example.org/c.jpg</url></image>") == "https://example.org/c.jpg",

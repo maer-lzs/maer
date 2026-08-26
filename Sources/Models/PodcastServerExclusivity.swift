@@ -10,7 +10,7 @@ import Foundation
 /// the other off; disabling one leaves the other alone. Plain RSS
 /// (`rssEnabledValue`) is a SEPARATE flag and never touched here — "RSS + one
 /// server" stays allowed, "RSS + two servers" does not. Pure, tested; the one
-/// place the rule lives (Regel 2), used by the `AppStorageKeys` setters.
+/// place the rule lives, used by the `AppStorageKeys` setters.
 nonisolated enum PodcastServerExclusivity {
     enum Source { case gpodder, abs }
 

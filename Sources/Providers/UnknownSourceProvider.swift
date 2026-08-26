@@ -6,11 +6,12 @@
 import Foundation
 import OSLog
 
-/// be087e4: the provider for ids whose namespace belongs to nobody.
+/// The provider for ids whose namespace belongs to nobody.
 ///
-/// `524cee2` turned the routing rule around — but only `coverURL` and
-/// `libraryItem(forId:)` actually asked. `provider(for:)` itself still returned
-/// the LIBRARY provider for an unknown namespace, and it has eleven callers.
+/// The routing rule was turned around once — but only `coverURL` and
+/// `libraryItem(forId:)` actually asked. `provider(for:)` itself still
+/// returned the LIBRARY provider for an unknown namespace, and it has eleven
+/// callers.
 /// The most telling one is `PlayerCoordinator` resuming a STORED `lastId`: an
 /// id from a removed or renamed source sits in the defaults and would go to the
 /// user's server — the same mechanic that can lock someone out, only rarer.
@@ -19,7 +20,7 @@ import OSLog
 /// nothing. Hence this: the router can keep its non-optional signature, and
 /// every caller — including ones nobody has written yet — is covered.
 ///
-/// It is deliberately NOT silent (Regel 3): each access logs which namespace
+/// It is deliberately NOT silent: each access logs which namespace
 /// was refused, and `fetchItemDetail` throws instead of returning an empty
 /// husk that a caller would render as a real item.
 @MainActor

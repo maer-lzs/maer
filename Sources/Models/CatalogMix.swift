@@ -5,9 +5,9 @@
 
 import Foundation
 
-/// Auftrag K + L: the MIXED catalog tile rows — the podcast tab's "Freie
+/// The MIXED catalog tile rows — the podcast tab's "Freie
 /// Hörbücher & Hörspiele" row (radio-play feeds + catalog titles) and Start's
-/// "Entdecken" rows share ONE mixer (Regel 2, "keine zwei Mischer").
+/// "Entdecken" rows share ONE mixer — never two.
 ///
 /// Mix form as decided for the archive rows: INTERLEAVED, not two blocks —
 /// each source keeps its own order and the sources alternate (fair merge via
@@ -33,7 +33,7 @@ nonisolated enum CatalogMix {
     /// The mixed row: sources interleave fairly, capped at `limit`.
     /// `feedGroups` and `itemGroups` are each already-ordered lanes (one per
     /// source) so no single catalog can dominate the row.
-    /// 1092867: the row used to be fully DETERMINISTIC — ordered lanes into a
+    /// The row used to be fully DETERMINISTIC — ordered lanes into a
     /// fair interleave means the first tile of every lane is always the same,
     /// which is why the user saw the identical trio for days. The pot is not
     /// the problem (measured: 38 curated feeds + four catalog lanes for 12
@@ -50,7 +50,7 @@ nonisolated enum CatalogMix {
         return HomeSections.interleave(mixed, limit: limit)
     }
 
-    /// One lane, mixed by the 1092867 rules: seeded shuffle (stable for the
+    /// One lane, mixed by the row rules: seeded shuffle (stable for the
     /// whole session — a row that re-sorts under the fingers is a layout jump
     /// in slow motion), and the PREVIOUS round's tiles carry a malus — they
     /// sort behind everything fresh, so "shuffle" cannot deal the same trio
@@ -75,7 +75,7 @@ nonisolated enum CatalogMix {
         return seededShuffle(fresh) + seededShuffle(seenLastRound)
     }
 
-    /// R52: WHICH surface is asking. The lanes belong to the surface, not to
+    /// WHICH surface is asking. The lanes belong to the surface, not to
     /// the mixer — a shared `hoerspieleTiles` that assembled the same thing
     /// for all three was the construction fault: two tabs promised two offers
     /// and delivered one.
@@ -86,8 +86,8 @@ nonisolated enum CatalogMix {
         case books
         /// Start may show both worlds — that is its job there.
         case home
-        /// The SECOND instance of the same class: Start's „Entdecken · Musik"
-        /// and the music tab's free-music row draw from the same pot. They
+        /// The SECOND instance of the same class: Start's music row and the
+        /// music tab's free-music row draw from the same pot. They
         /// keep their own order for the same reason the book rows do.
         case musicHome
         case musicTab
@@ -106,7 +106,7 @@ nonisolated enum CatalogMix {
         }
     }
 
-    /// R52, zweite Instanz: dieselbe Menge, je Flaeche eigene Ordnung. Rein
+    /// Dieselbe Menge, je Flaeche eigene Ordnung. Rein
     /// und getestet — die Reihen sind LibraryItems, nicht Tiles, aber die
     /// Frage ist dieselbe: zwei Flaechen duerfen nicht kachelgleich sein,
     /// und innerhalb einer Sitzung darf sich nichts umsortieren.
@@ -125,7 +125,7 @@ nonisolated enum CatalogMix {
     /// The session's one seed — drawn once per app start, so nothing re-sorts
     /// within a session. Fresh start = fresh mix.
     ///
-    /// R52: every surface derives ITS OWN seed from it. The stability was
+    /// Every surface derives ITS OWN seed from it. The stability was
     /// always the point; that two surfaces became twins was not. Deriving
     /// keeps the first and removes the second — Start can no longer deal the
     /// same tiles in the same order as a tab row even where the pots overlap.

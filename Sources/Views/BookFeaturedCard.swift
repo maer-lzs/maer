@@ -28,7 +28,7 @@ struct BookFeaturedCard: View {
     /// chapters or the playback position change, never per body eval.
     @State private var currentChapterTitle: String?
     private let width = CardMetrics.featuredCardWidth
-    // D5/B4: pill reserve and line heights scale with Dynamic Type — at AX
+    // Pill reserve and line heights scale with Dynamic Type — at AX
     // sizes the overlay pill used to grow into the text block.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 22
@@ -69,7 +69,7 @@ struct BookFeaturedCard: View {
             entry: entry,
             playerCoordinator: playerCoordinator,
             libraryViewModel: libraryViewModel,
-            // df0b3bb 3: this card exists ONLY in Continue contexts (the
+            // This card exists ONLY in Continue contexts (the
             // audiobook row, Home's row and both full pages), so the entry
             // belongs on it wherever it appears.
             showsContinueHide: true

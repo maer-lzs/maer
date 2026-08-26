@@ -6,12 +6,12 @@
 import SwiftUI
 import Combine
 
-/// 92e25d6: THE premium-feed management — ALWAYS visible (an empty section
+/// THE premium-feed management — ALWAYS visible (an empty section
 /// with the manual marking path beats a hidden one: a detection hole used to
-/// hide the whole management, 7dba2b1), grouped by PROVIDER host, URLs
+/// hide the whole management), grouped by PROVIDER host, URLs
 /// masked, one truth (`PodcastSubscriptions.isPremiumFeed` = automatic
 /// classes + manual markings) shared with the tab grouping, the badges, the
-/// replace dialog and the OPML-export guard. Twin repair on top (97b1f7c):
+/// replace dialog and the OPML-export guard. Twin repair on top:
 /// free+premium of the same show offer a one-tap cleanup — progress moves,
 /// nothing is deleted without a tap. Mounted on the Podcasts settings pill
 /// AND the podcast source page (second access point, one truth).
@@ -29,7 +29,7 @@ struct PremiumFeedsSection: View {
         subs.shows.filter { !PodcastSubscriptions.isPremiumFeed($0.feedURL) }
     }
 
-    /// 87f1cf4: A→Z instead of subscription order — with 30+ feeds the
+    /// A→Z instead of subscription order — with 30+ feeds the
     /// stock order is a finger hunt. Locale-aware, case/diacritic folded.
     private var sortedFreeShows: [PodcastShow] {
         freeShows.sorted {
@@ -58,7 +58,7 @@ struct PremiumFeedsSection: View {
 
     var body: some View {
         Section {
-            // P2 (3): the suppressed state says so instead of showing
+            // The suppressed state says so instead of showing
             // nothing — a pair on the device with no way to it was the
             // finding, not the missing detection.
             if twinState == .waitingForRotationMerge {
@@ -68,7 +68,7 @@ struct PremiumFeedsSection: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("premium-twin-waiting")
             }
-            // 97b1f7c: twin repair first — the actionable finding on top.
+            // Twin repair first — the actionable finding on top.
             ForEach(twins, id: \.freeId) { twin in
                 VStack(alignment: .leading, spacing: 6) {
                     Label("\(twin.title) exists as a free AND a premium subscription.",
@@ -100,9 +100,9 @@ struct PremiumFeedsSection: View {
                 }
             }
 
-            // 7dba2b1: the manual escape hatch for unknown URL patterns —
+            // The manual escape hatch for unknown URL patterns —
             // feeds the SAME truth as the automatic detection.
-            // 87f1cf4/1fe3ad9: a bare iOS menu cannot carry an explaining
+            // A bare iOS menu cannot carry an explaining
             // line — and the owner of the app did not recognise WHAT the
             // list was. So: a sheet with heading + purpose sentence and the
             // plain sorted list (no new concept, "einfach die Liste").
@@ -114,7 +114,7 @@ struct PremiumFeedsSection: View {
                         .font(.subheadline)
                 }
                 .accessibilityIdentifier("premium-mark-menu")
-                // 24a220e: the sheet hangs on the ROW, not on the Section —
+                // The sheet hangs on the ROW, not on the Section —
                 // a sheet attached to a Section inside a Form did not open
                 // (the new journey caught it on the first run). The row is a
                 // stable presentation anchor.
@@ -190,7 +190,7 @@ struct PremiumFeedsSection: View {
         if PodcastSubscriptions.isTokenFeedURL(feedURL) {
             return String(localized: "Token URL")
         }
-        // 6446a04: the feed's own block signal — honestly "Private", not
+        // The feed's own block signal — honestly "Private", not
         // "Premium": a free UNLISTED feed carries the tag too, and the
         // protective behaviour (export/sync exclusion) is right either way.
         if PodcastSubscriptions.isFeedBlocked(feedURL) {
@@ -204,7 +204,7 @@ struct PremiumFeedsSection: View {
 }
 
 
-/// 1fe3ad9: the marking surface explains ITSELF — heading plus one purpose
+/// The marking surface explains ITSELF — heading plus one purpose
 /// sentence in the idiom of the existing footnotes, then simply the list.
 /// (A menu can carry neither, which is why the menu became a sheet;
 /// the picker is the smallest form that works, not a new concept.)
@@ -222,7 +222,7 @@ struct PremiumMarkPicker: View {
                             .accessibilityIdentifier("premium-mark-pick")
                     }
                 } footer: {
-                    // 6bae86b (3): a sentence instead of a feature — after the
+                    // A sentence instead of a feature — after the
                     // probe showed tokens are per SHOW, the honest help is
                     // "fetch the per-show URL at your provider", not a
                     // provider-wide token store that would not work anyway.

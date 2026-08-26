@@ -63,13 +63,13 @@ struct HomeSectionsTests {
 
     @Test("interleave on empty sources is empty")
     func interleaveEmpty() {
-        // interleave is generic since Auftrag K — the empty case pins a type.
+        // interleave is generic — the empty case pins a type.
         #expect(HomeSections.interleave([[String]](), limit: 5).isEmpty)
         #expect(HomeSections.interleave([[String](), []], limit: 5).isEmpty)
     }
 }
 
-/// 6c52b67/a9ad69e: the Continue row's music cap (pure) — 2 music entries
+/// The Continue row's music cap (pure) — 2 music entries
 /// max at row limit 10; the only-music exception keeps the row filled.
 struct ContinueMusicCapTests {
     @Test("Music capped at 2, freed slots go to books/episodes, limit 10")

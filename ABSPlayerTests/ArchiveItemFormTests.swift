@@ -48,7 +48,7 @@ struct ArchiveItemFormTests {
         #expect(ArchiveItemForm.of(collections: ["georgeblood", "oldtimeradio"]) == .work)
     }
 
-    /// R56: aus EINEM Namen sind ZWEI Fragen geworden, weil es zwei waren.
+    /// Aus EINEM Namen sind ZWEI Fragen geworden, weil es zwei waren.
     @Test("kuratierte Seriensammlung: nur dort ist das Buendel die Einheit")
     func curatedSeriesCollection() {
         #expect(ArchiveItemForm.isCuratedSeriesCollection(collections: ["oldtimeradio", "radioprograms"]))
@@ -58,15 +58,15 @@ struct ArchiveItemFormTests {
         #expect(!ArchiveItemForm.isCuratedSeriesCollection(collections: []))
     }
 
-    /// R56 (the owner am Geraet: ein Archive-Hoerbuch mit acht benannten
-    /// Dateien, keine auswaehlbar): die Teileliste haengt an der FORM, nicht
-    /// an der Sammlung. Vorher fielen die Archive-Hoerbuecher durch beide
+    /// Ein Archive-Hoerbuch mit acht benannten Dateien hatte keine
+    /// auswaehlbare Teileliste: die Liste haengt an der FORM, nicht an der
+    /// Sammlung. Vorher fielen die Archive-Hoerbuecher durch beide
     /// Raster — keine LibriVox-Kapitel, keine OTR-Folgenseite.
     @Test("ein Werk hat Teile, gleich in welcher der drei Sammlungen es liegt")
     func everyWorkHasParts() {
         #expect(ArchiveItemForm.hasParts(collections: ["oldtimeradio"]))
         #expect(ArchiveItemForm.hasParts(collections: ["librivoxaudio"]))
-        // Der Fall aus the owner's Bild — vorher fiel er durch.
+        // Der gemessene Fall. Vorher fiel er durch.
         #expect(ArchiveItemForm.hasParts(collections: ["audio_bookspoetry"]),
                 "das Archive-Hoerbuch bekommt wieder keine Teileliste")
         // Ein ALBUM hat keine Teile — seine Stuecke sind eigene Eintraege.

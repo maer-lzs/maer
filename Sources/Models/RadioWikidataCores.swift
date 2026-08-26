@@ -8,12 +8,12 @@
 
 import Foundation
 
-/// 72d233f/9913bcd: Wikidata popularity cores for countries WITHOUT a
+/// Wikidata popularity cores for countries WITHOUT a
 /// first-hand survey table — public-broadcaster flagships via EBU
 /// membership (plus named anchors and the country sitelink top for
 /// non-EBU markets), ranked by SITELINK COUNT (verified proxy: the CH
 /// probe matched Mediapulse's order). Names in rank order, the QID rides
-/// as a comment; sitelink numbers are deliberately NOT frozen (cb8bac1).
+/// as a comment; sitelink numbers are deliberately NOT frozen.
 /// Resolution against the live catalog and the core-first mixing are the
 /// SAME mechanism as the first-hand cores — the cores are exchangeable
 /// data, not a second code path.

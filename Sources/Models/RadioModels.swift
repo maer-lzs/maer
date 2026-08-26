@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// F1: internet radio — the Foundation-only core (MaerCore rule: no UI
+/// Internet radio — the Foundation-only core (MaerCore rule: no UI
 /// imports; Android groundwork). A station is LIVE audio: no duration, no
 /// position, no download — the capability flags stay honest (see
 /// RadioProvider).
@@ -20,18 +20,18 @@ nonisolated struct RadioStation: Codable, Identifiable, Hashable, Sendable {
     var homepage: String? = nil
     var countryCode: String? = nil
     var tags: [String] = []
-    /// Y57: stream quality — drives which codec/bitrate variant survives the
+    /// Stream quality — drives which codec/bitrate variant survives the
     /// name-based collapse.
     var bitrate: Int? = nil
     var codec: String? = nil
-    /// 71b277f: RB vote mass — the regional socket/floor decides on it.
+    /// RB vote mass — the regional socket/floor decides on it.
     var votes: Int? = nil
     /// Teil 1: the sibling codec/bitrate variants of this station (the collapse
     /// keeps the best as default and attaches ALL variants here, self included).
     /// Optional so already-persisted stations decode unchanged (no key → nil);
     /// nested variants are always flattened to nil (no recursion).
     var variants: [RadioStation]? = nil
-    /// eb10440: lowercased ISO language codes, for the genre pages' sorting
+    /// Lowercased ISO language codes, for the genre pages' sorting
     /// bonus. OPTIONAL for the same reason as `variants` — a synthesized
     /// decoder does NOT fall back to a property's default value on a missing
     /// key, it throws, and every already-stored favorite lacks this key.
@@ -74,7 +74,7 @@ nonisolated struct RadioBrowserStation: Decodable, Sendable {
     let bitrate: Int?
     let codec: String?
     let votes: Int?
-    /// eb10440: ISO codes, comma-separated, mixed case in the wire data
+    /// ISO codes, comma-separated, mixed case in the wire data
     /// (`de` and `DE` both occur — measured). Sorting bonus only, never a
     /// filter: 27 % of Swiss and 30 % of Austrian stations leave it empty.
     let languagecodes: String?
@@ -125,14 +125,14 @@ nonisolated enum RadioMapping {
         return codes.isEmpty ? nil : codes
     }
 
-    /// Y57: fold codec/bitrate VARIANTS of the same station (same normalized
+    /// Fold codec/bitrate VARIANTS of the same station (same normalized
     /// name + country) into ONE hit. The variants carry distinct stationuuids,
     /// so they pass the uuid de-dupe legitimately; here they collapse to the
     /// highest-bitrate variant (tie-break: prefer MP3), so the default plays the
     /// best stream. Per-variant selection comes later. First-appearance order
     /// (i.e. the highest-voted variant's position) is preserved.
     static func collapseVariants(_ stations: [RadioStation]) -> [RadioStation] {
-        // Y59: greedy grouping instead of a plain name|country key. Radio
+        // Greedy grouping instead of a plain name|country key. Radio
         // Browser reports the SAME station's country inconsistently ("DE" on one
         // variant, empty on the next), which split e.g. Deutschlandfunk into two
         // buckets. Country is now only a SEPARATOR when two variants carry two
@@ -145,7 +145,7 @@ nonisolated enum RadioMapping {
         for station in stations {
             let name = normalizedStationName(station.name)
             let code = normalizedCountry(station.countryCode)
-            // R26: spacing variants of ONE brand ("Iran International" vs
+            // Spacing variants of ONE brand ("Iran International" vs
             // "iraninternational") fold only with the SAME homepage domain
             // as witness — never on the squeezed name alone (Y57: two real
             // stations may share a squeezed name; the domain separates them).
@@ -209,7 +209,7 @@ nonisolated enum RadioMapping {
         return bucket == station
     }
 
-    /// 6b3a35d (4): DISPLAY name — station names carry pipe-separated junk
+    /// DISPLAY name — station names carry pipe-separated junk
     /// ("Deutschlandfunk Kultur | DLF | …"): cut at the first hard separator
     /// when a real name remains. Display only (keys keep the full fold);
     /// ONE function for every player-context title.
@@ -248,13 +248,13 @@ nonisolated enum RadioMapping {
     private static func prefers(_ a: RadioStation, over b: RadioStation) -> Bool {
         let ba = a.bitrate ?? 0, bb = b.bitrate ?? 0
         if ba != bb { return ba > bb }
-        // e4bd910 Nachtrag (FINAL): codec preference AAC > MP3.
+        // Codec preference AAC > MP3.
         let aAAC = a.codec?.lowercased().contains("aac") == true
         let bAAC = b.codec?.lowercased().contains("aac") == true
         return aAAC && !bAAC
     }
 
-    /// e4bd910 Sender-Dedupe: RB serves the same station multiply (stream
+    /// Sender-Dedupe: RB serves the same station multiply (stream
     /// variants, stale twins). Identity = display-normalized name PLUS the
     /// homepage/stream DOMAIN as the second key — a same-named FOREIGN
     /// station (different domain) never folds in (the Rock-Antenne-Italy
@@ -262,12 +262,12 @@ nonisolated enum RadioMapping {
     /// name and never fold either. The best member wins (bitrate, AAC>MP3);
     /// the losers ride as `variants` so the detail page offers them as
     /// further streams instead of throwing them away.
-    /// a4e747e (pure): in a list fetched WITH a country filter, an entry
+    /// In a list fetched WITH a country filter, an entry
     /// whose country code belongs to a DIFFERENT country is dropped. Empty
     /// codes stay — Radio Browser reports countries patchily, and in this
     /// context "empty" means "belongs to the queried country", not "fits
-    /// everything" (the Y59 merge reads it the second way, which is right
-    /// without a country context and wrong inside one).
+    /// everything" — the merge path reads it the second way, which is right
+    /// without a country context and wrong inside one.
     static func keepingCountry(_ countryCode: String, in stations: [RadioStation]) -> [RadioStation] {
         let wanted = countryCode.trimmingCharacters(in: .whitespaces).uppercased()
         guard !wanted.isEmpty else { return stations }
@@ -328,7 +328,7 @@ nonisolated enum RadioMapping {
     }
 }
 
-/// F2: ICY/shoutcast in-stream metadata — the timed-metadata frame usually
+/// ICY/shoutcast in-stream metadata — the timed-metadata frame usually
 /// carries `StreamTitle='Artist - Title';`. Pure parser: splits into
 /// artist/title when the conventional " - " separator is present, otherwise
 /// everything is the title.
@@ -346,7 +346,7 @@ nonisolated enum ICYMetadata {
     }
 }
 
-/// F4: local station lists — favorites and manual stations (persisted), plus
+/// Local station lists — favorites and manual stations (persisted), plus
 /// the last-heard ring. UserDefaults-backed like RecentSearches; stations are
 /// stored WHOLE (the catalog is volatile, favorites must survive it).
 nonisolated enum RadioStore {
@@ -432,7 +432,7 @@ nonisolated enum RadioStore {
         list.removeAll { $0.id == station.id }
         list.insert(station, at: 0)
         save(Array(list.prefix(recentsCap)), recentsKey, defaults: defaults)
-        // P14: the MRU ORDER alone cannot be merged with another class — a
+        // The MRU ORDER alone cannot be merged with another class — a
         // joint "recently played" row needs a comparable TIME. Kept beside
         // the ring (not inside the station), so nothing about the station
         // model changes.
@@ -457,7 +457,7 @@ nonisolated enum RadioStore {
             .first { $0.id == id }
     }
 
-    // MARK: - 26b2c13: last composed discovery rows (cold-start frame 1)
+    // MARK: - Last composed discovery rows (cold-start frame 1)
 
     static let discoveryCacheKey = "radioDiscoveryCache"
 
@@ -607,7 +607,7 @@ nonisolated struct RadioGenre: Identifiable, Equatable, Sendable {
     var id: String { tag }
 }
 
-/// Radio-Picker-Kuratierung (b942da6): one raw name+stationcount entry of the
+/// Radio-Picker-Kuratierung: one raw name+stationcount entry of the
 /// Radio Browser `states`/`countries` lists (community data — variants,
 /// junk, cities next to real regions).
 nonisolated struct RadioBrowseEntry: Equatable, Sendable {
@@ -686,11 +686,11 @@ nonisolated enum RadioBrowseCuration {
     }
 }
 
-/// b1ab99d point 3: which country feeds "Popular in …" and the region list.
+/// Which country feeds "Popular in …" and the region list.
 /// USER CHOICE BEATS GUESSING — pure cascade: explicitly chosen country →
 /// country implied by the chosen region → locale country. No location access.
-/// e4bd910 Nachtrag FINAL: "Beliebt in …" mit Sockel + Tages-Rotation —
-/// the eternal votes list never changed. Pool = top votes + top clicktrend
+/// "Beliebt in …" mit Sockel + Tages-Rotation — the eternal votes list never
+/// changed. Pool = top votes + top clicktrend
 /// (deduped); seats 1–3 = the CURRENT clicktrend top (the socket); the rest
 /// drawn weighted with a DATE-seeded RNG (stable within the day — calm-gate
 /// spirit — freshly mixed daily). Pure + tested; same mechanic for the
@@ -707,19 +707,19 @@ nonisolated enum RadioRotation {
 
     static let socketSize = 3
 
-    /// 71b277f (Screenshot-entschieden): on STATE level clicktrend is noise-
-    /// dominated — a webradio's mini click spike beats WDR 2. The regional
-    /// socket therefore sits on VOTES (stable mass); clicktrend only joins
-    /// the draw pool when it clears a minimum-votes floor. National keeps
-    /// the clicktrend socket (proven correct on the device).
+    /// On STATE level clicktrend is noise-dominated — a webradio's mini
+    /// click spike beats a nationwide station. The regional socket therefore
+    /// sits on VOTES (stable mass); clicktrend only joins the draw pool when
+    /// it clears a minimum-votes floor. National keeps the clicktrend
+    /// socket.
     enum SocketSource { case clicktrend, votes }
 
-    /// 19a8b4c: minimum seats the VOTES fill keeps even when the core could
+    /// Minimum seats the VOTES fill keeps even when the core could
     /// fill the whole row — webradios stay discoverable, they only leave the
     /// top positions.
     static let fillMinimum = 4
 
-    /// 19a8b4c: core-first composition — the first-hand core (published rank
+    /// Core-first composition — the first-hand core (published rank
     /// order) takes the head of the row, today's vote/trend pool fills the
     /// rest. Daily rotation runs WITHIN each pot: the core's top
     /// `socketSize` stay fixed (the row must read as "what the country
@@ -752,7 +752,7 @@ nonisolated enum RadioRotation {
             out.append(candidates.remove(at: chosen))
         }
         // Fill pot: the existing rotation over the pools, core rows excluded.
-        // b10aa93 (Swiss-Pop twice): the identity key carries the DOMAIN, and
+        // The identity key carries the DOMAIN, and
         // a core entry can resolve a different host than the catalog copy of
         // the same station (homepage vs. stream host fallback) — so the fill
         // additionally excludes plain folded NAME matches. Within one
@@ -826,7 +826,7 @@ nonisolated enum RadioRotation {
     }
 }
 
-/// cd5cc4a (2): canonical region tables for the CORE countries — DE/AT
+/// Canonical region tables for the CORE countries — DE/AT
 /// Bundesländer, CH Kantone. This deliberately overrides the "no country
 /// lists" rule: raw Radio-Browser state names (any language, abbreviation,
 /// or typo variant) map onto ONE canon entry via aliases, the by-state
@@ -918,9 +918,9 @@ nonisolated enum RadioRegionCanon {
         ],
     ]
 
-    /// e4bd910/sonstige-eindampfen: SUBREGION tables — cities/landscape
-    /// names mapped to their state, worked TOP-DOWN from the MEASURED
-    /// "Other" list (DE 03.08.: 390/3221 stations = 12 % in Other; the
+    /// SUBREGION tables — cities/landscape names mapped to their state,
+    /// worked TOP-DOWN from the MEASURED "Other" list (DE: 390/3221
+    /// stations = 12 % in Other; the
     /// entries below cover the measured head). Pure data, extendable;
     /// ambiguous names (Berlin-Brandenburg, Romandie, "SN, ST, TH") stay
     /// DELIBERATELY in Other — honestly other beats wrongly assigned.
@@ -1055,7 +1055,7 @@ nonisolated enum RadioRegionCanon {
     }
 }
 
-/// cd5cc4a (1): the favicon QUALITY GATE — Radio-Browser favicons are
+/// The favicon QUALITY GATE — Radio-Browser favicons are
 /// notoriously missing, tiny, or broken. A favicon is used only when it
 /// actually decoded AND its shortest side is big enough; everything else
 /// falls back to ONE placeholder design everywhere (deterministic station
@@ -1063,7 +1063,7 @@ nonisolated enum RadioRegionCanon {
 nonisolated enum RadioFaviconGate {
     /// Below this shortest side a favicon becomes a stretched stamp.
     static let minSide = 64
-    /// 8360dac (measured): the CHAIN's stage-2 icons are apple-touch-icons —
+    /// The CHAIN's stage-2 icons are apple-touch-icons —
     /// square brand marks in Apple's standard sizes (57/60/72/76/114/120…).
     /// The 64 gate exists against favicon MUSH; it also threw away four
     /// perfectly good 57 px brand icons in the audit set. A touch icon is a
@@ -1074,7 +1074,7 @@ nonisolated enum RadioFaviconGate {
         min(pixelWidth, pixelHeight) >= touchIconMinSide
     }
 
-    /// 10eb85f: the gate takes the SURFACE's target size. A 48-px favicon is
+    /// The gate takes the SURFACE's target size. A 48-px favicon is
     /// mush on a hero and perfectly sharp in a 32-pt search row — the
     /// absolute 64 answered both the same way. `targetSide` is the rendered
     /// point size; the requirement is what that surface actually needs at
@@ -1105,7 +1105,7 @@ nonisolated enum RadioFaviconGate {
 }
 
 nonisolated enum RadioCountryCascade {
-    /// P12: the NATIONAL row's country. Its own explicit choice wins;
+    /// The NATIONAL row's country. Its own explicit choice wins;
     /// without one it follows the shared cascade — which IS the migration:
     /// whoever never decouples sees exactly today's behaviour, and there is
     /// no jump on first launch because nothing is written eagerly.

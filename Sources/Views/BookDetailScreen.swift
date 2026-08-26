@@ -28,7 +28,7 @@ struct BookDetailScreen: View {
     @State private var isFinishedOverride: Bool?
     @State private var errorMessage: String?
     @StateObject private var colorLoader = CoverColorLoader()
-    /// D13/B12: label column scales with Dynamic Type — 90pt fixed broke
+    /// Label column scales with Dynamic Type — 90pt fixed broke
     /// "Erzähler/Erschienen" mid-word at AX sizes.
     @ScaledMetric(relativeTo: .caption) private var infoLabelWidth: CGFloat = 90
 
@@ -105,7 +105,7 @@ struct BookDetailScreen: View {
                 .multilineTextAlignment(isHero ? .center : .leading)
                 .foregroundStyle(isHero ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
             if let author = entry.item.author {
-                // F3: round author portrait next to the author line — ONLY when
+                // Round author portrait next to the author line — ONLY when
                 // the server ships an image (no placeholder, no initials; the
                 // row looks like before otherwise, same rule as music artists
                 // without a picture). Tapping filters the library to this
@@ -139,14 +139,14 @@ struct BookDetailScreen: View {
         }
     }
 
-    /// F3: portrait URL — only for ABS books whose expanded payload carries an
+    /// Portrait URL — only for ABS books whose expanded payload carries an
     /// author id; the request itself only renders when the image loads.
     private var authorImageURL: URL? {
         guard let authorId = detail?.media.metadata?.authors?.first?.id else { return nil }
         return (coordinator.provider as? APIClient)?.authorImageURL(authorId: authorId)
     }
 
-    /// F3: the author's works in the library — the tap filter is only active
+    /// The author's works in the library — the tap filter is only active
     /// for more than one work (pure rule, tested).
     private var authorWorks: [LibraryEntry] {
         guard let author = entry.item.author else { return [] }
@@ -164,7 +164,7 @@ struct BookDetailScreen: View {
             // server has no image) nothing renders and nothing reserves space —
             // the row looks exactly like today.
             let portrait = CachedAsyncImage(url: url, useThumbnail: true) { image in
-                // Y56: a clean round portrait in the established form language —
+                // A clean round portrait in the established form language —
                 // the show-cover corner badge's look (crisp image + thin white
                 // rim), only ROUND. No smear, no dissolve, no grayscale.
                 image.resizable().aspectRatio(contentMode: .fill)
@@ -172,7 +172,7 @@ struct BookDetailScreen: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 2))
             } placeholder: {
-                // Y6 root cause: an `EmptyView` placeholder never "appears",
+                // An `EmptyView` placeholder never "appears",
                 // so CachedAsyncImage's `.task(id:)` never fired and the load
                 // never STARTED — server 200s notwithstanding. A zero-sized
                 // real view participates in the lifecycle while still
@@ -257,7 +257,7 @@ struct BookDetailScreen: View {
     /// landscape layouts.
     @ViewBuilder
     private func trailingSections(isHero: Bool) -> some View {
-        // V6: use the SAME validated/resolved chapter list the player uses, never
+        // Use the SAME validated/resolved chapter list the player uses, never
         // the raw server chapters — otherwise a coverage-fallback book shows a
         // different (broken) chapter list here than in the player.
         if let media = detail?.media {
@@ -290,7 +290,7 @@ struct BookDetailScreen: View {
             ProgressView().padding()
         }
 
-        // c9529f1: the book's progress diagnosis — the same instrument the
+        // The book's progress diagnosis — the same instrument the
         // podcast sheet carries, in its book view. It exists because a
         // rücksprung could not be PROVEN: it puts server state, local
         // second-backup and the cached detail side by side, each with its
@@ -439,7 +439,7 @@ struct BookDetailScreen: View {
             }
         }
         // All glass buttons on this page share the book's cover accent.
-        // X24: deliberately a PAGE-LOCAL loader (this book's cover), separate
+        // Deliberately a PAGE-LOCAL loader (this book's cover), separate
         // from the bar's persistent loader (active item's cover) — both read
         // the same CoverColorLoader.colorCache, so the same cover always
         // yields the same accent. The bar itself lives outside this page and
@@ -507,7 +507,7 @@ struct BookDetailScreen: View {
             )
         } label: {
             HStack {
-                // X23: a fallback book navigates PARTS — the row must not
+                // A fallback book navigates PARTS — the row must not
                 // promise chapters the selector then calls "Teil N".
                 Label(ChapterModel.selectorLabel(isMusic: false, isFallback: isFallback),
                       systemImage: "list.bullet")
@@ -764,7 +764,7 @@ struct BookDetailScreen: View {
                     Spacer(minLength: 8)
                     // Re-check the download: fetches exactly the tracks that
                     // are missing or were stored corrupted (tiny error pages).
-                    // D8/B7: 44pt hit areas; the capsule keeps its height via
+                    // 44pt hit areas; the capsule keeps its height via
                     // reduced vertical padding.
                     Button {
                         Task { await startDownloadWithWiFiCheck() }
@@ -793,7 +793,7 @@ struct BookDetailScreen: View {
                 .padding(.vertical, 2)
                 .padding(.horizontal, 14)
                 .modifier(AdaptiveGlassBackground(shape: Capsule()))
-                // X22: hug the natural width so the size text never truncates —
+                // Hug the natural width so the size text never truncates —
                 // the mark-played capsule takes the remaining row width instead.
                 .fixedSize(horizontal: true, vertical: false)
             } else if let phase = downloadManager.phase[entry.id] {

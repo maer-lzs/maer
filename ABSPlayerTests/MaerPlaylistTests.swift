@@ -8,8 +8,9 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Paket 1: die Regeln der Mär-Playlists — die Grenze, die Rückmeldungen und
-/// der Grundsatz „was in die Warteschlange darf, darf in eine Playlist".
+/// Die Regeln der Mär-Playlists — die Grenze, die Rückmeldungen und der
+/// Grundsatz, dass alles, was in die Warteschlange darf, auch in eine
+/// Playlist darf.
 @MainActor
 struct MaerPlaylistTests {
     private func fresh() -> MaerPlaylists {
@@ -31,13 +32,13 @@ struct MaerPlaylistTests {
         store.delete(playlistId: list.id)
     }
 
-    // MARK: - P4: der Titel-Schnappschuss scheitert nicht mehr still
+    // MARK: - Der Titel-Schnappschuss scheitert nicht mehr still
 
     @Test("bei kaltem Katalog-Cache trägt die Fläche den Titel bei")
     func snapshotComesFromTheAddingSurface() {
         let store = fresh()
         let list = store.create(name: "Test")
-        // Genau the owner's Fall: der Cache kennt die Katalog-Kennung nicht
+        // Der gemessene Fall: der Cache kennt die Katalog-Kennung nicht
         // (kalter Start), die Fläche hatte den Namen aber auf dem Schirm.
         #expect(store.add(itemId: "jam:1886432", to: list.id,
                           knownTitle: "Sonata No. 3") == .added)
@@ -101,7 +102,7 @@ struct MaerPlaylistTests {
     @Test("jedes Ergebnis bekommt einen Satz — außer dem Erfolg")
     @MainActor
     func everyOutcomeSpeaks() {
-        // Regel 3: Erfolg braucht keine Meldung, alles andere schon.
+        // Erfolg braucht keine Meldung, alles andere schon.
         #expect(PlaylistPresenter.text(for: .added, listName: "L") == nil)
         #expect(PlaylistPresenter.text(for: .alreadyThere, listName: "L") != nil)
         #expect(PlaylistPresenter.text(for: .limitReached(limit: 5000), listName: "L") != nil)
@@ -125,7 +126,7 @@ struct MaerPlaylistTests {
 }
 #endif
 
-// MARK: - f208790: Playlisten sind SONGS
+// MARK: - Playlisten sind SONGS
 
 @MainActor
 struct PlaylistSongSemanticsTests {
@@ -169,7 +170,7 @@ struct PlaylistSongSemanticsTests {
 
     @Test("der Server-Ort steht nur mit Server UND nur fuer seine Titel")
     func placesAreHonest() {
-        // G8: kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
+        // Kein totes Ziel. Ein Katalog-Titel hat auf Navidrome keine
         // Adresse — die Sektion erscheint dann gar nicht.
         #expect(PlaylistDestination.places(serverConfigured: true, allOwnedByServer: true)
                 == [.server, .device])

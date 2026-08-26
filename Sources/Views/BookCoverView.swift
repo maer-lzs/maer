@@ -24,7 +24,7 @@ struct BookCoverView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            // B2: offline, a title that is not on the device is not playable —
+            // Offline, a title that is not on the device is not playable —
             // dim it and mark it instead of filtering it out. Reactive on BOTH
             // sources (reconnect / finishing startup scan) via the scope leaf.
             if let itemId {
@@ -65,7 +65,7 @@ struct BookCoverView: View {
         // checkmark — desaturated and slightly dimmed.
         .saturation(progress?.countsAsFinished == true ? 0 : 1)
         .opacity(progress?.countsAsFinished == true ? 0.55 : (unavailable ? 0.5 : 1))
-        // Y44: TOP-RIGHT holds either the finished check or — for an
+        // TOP-RIGHT holds either the finished check or — for an
         // unfinished, offline, not-downloaded title — the wifi.slash disc
         // (same family look as the shared modifier). They're mutually
         // exclusive (a finished title needs no "can't play offline" hint),

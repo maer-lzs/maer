@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// 3a3b1aa: the full list behind a capped Home row.
+/// The full list behind a capped Home row.
 ///
 /// Home's rows are deliberately CROSS-MEDIA (books + episodes + music, merged
 /// by recency), so their page cannot be one of the book surfaces — it would
@@ -14,9 +14,9 @@ import SwiftUI
 nonisolated enum MixedRowRoute: Hashable {
     case continueListening
     case recentlyAdded
-    /// 13c5094: the Rediscover pool page.
+    /// The Rediscover pool page.
     case rediscoverPool
-    /// af56ac0: the mixed "listen again" row, unabridged — the sources carry
+    /// The mixed "listen again" row, unabridged — the sources carry
     /// more than the row shows (radio MRU + album progress).
     case listenAgain
 
@@ -32,7 +32,7 @@ nonisolated enum MixedRowRoute: Hashable {
 }
 
 /// A Home continue card: book, music (playlist/album) or podcast episode,
-/// resolved from a bare id. Shared by the row and its full page (Regel 2) so
+/// resolved from a bare id. Shared by the row and its full page so
 /// the two can never render different cards for the same entry.
 struct HomeContinueCard: View {
     let id: String
@@ -63,7 +63,7 @@ struct HomeContinueCard: View {
 }
 
 /// A "Recently Added" tile: the book cell for library books, the album cell for
-/// everything else. Shared by the row and its full page (Regel 2).
+/// everything else. Shared by the row and its full page.
 struct HomeRecentlyAddedTile: View {
     let item: LibraryItem
     let playerCoordinator: PlayerCoordinator
@@ -93,11 +93,11 @@ struct MixedMediaPage: View {
     let playerCoordinator: PlayerCoordinator
     let libraryViewModel: LibraryViewModel
 
-    /// 75add65 F1: BOTH pages use the compact grid — the XXL continue cards
+    /// BOTH pages use the compact grid — the XXL continue cards
     /// stacked single-column on a phone ("Blaupause Zuletzt hinzugefügt").
     private var cardWidth: CGFloat { 150 }
 
-    /// af56ac0: the page shows the same mixture with a longer history.
+    /// The page shows the same mixture with a longer history.
     /// 120 is a pragmatic ceiling — the radio MRU is capped anyway and the
     /// album shelf answers a page, so beyond that there is nothing to show.
     private static let listenAgainLimit = 120
@@ -133,7 +133,7 @@ struct MixedMediaPage: View {
             ) {
                 switch route {
                 case .continueListening:
-                    // 75add65 F2: the page INHERITS the row's tap class —
+                    // The page INHERITS the row's tap class —
                     // Continue is HOEREN, so the tile tap PLAYS (no detail in
                     // between); progress rides on the tile. F3: this one grid
                     // is THE form for every HOEREN full page (the audiobook
@@ -153,7 +153,7 @@ struct MixedMediaPage: View {
                             .frame(width: cardWidth, alignment: .top)
                     }
                 case .listenAgain:
-                    // af56ac0: same mixture, same tiles, longer history — the
+                    // Same mixture, same tiles, longer history — the
                     // row is the preview of THIS page (one composition rule,
                     // `RecentlyPlayedRow`, only a wider limit).
                     ForEach(listenAgainEntries, id: \.self) { entry in
@@ -169,7 +169,7 @@ struct MixedMediaPage: View {
                                              playerCoordinator: playerCoordinator)
                         case .station(let id):
                             if let station = listenAgainStations.first(where: { $0.id == id }) {
-                                // f83c442/99ee104: Kachel navigiert (siehe HomeView).
+                                // Kachel navigiert (siehe HomeView).
                                 RadioStationCard(station: station,
                                                  playerCoordinator: playerCoordinator,
                                                  width: cardWidth)

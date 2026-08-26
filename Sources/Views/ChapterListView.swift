@@ -11,14 +11,14 @@ struct ChapterListView: View {
     /// S19b: the list is a track/rest fallback (server chapters didn't cover the
     /// book) — show a discreet hint.
     var isFallback = false
-    /// X23: music titles the sheet "Tracks" (the list is the album's tracks).
+    /// Music titles the sheet "Tracks" (the list is the album's tracks).
     var isMusic = false
     let onSelect: (ABSChapter) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            // S12: books/albums can have 150+ chapters/tracks — open straight on
+            // Books/albums can have 150+ chapters/tracks — open straight on
             // the playing one and highlight it, instead of scrolled to the top.
             ScrollViewReader { proxy in
                 List {
@@ -48,7 +48,7 @@ struct ChapterListView: View {
                         .id(chapter.id)
                     }
                 }
-                // X23: shared selector label — "Tracks" for music, "Parts" for
+                // Shared selector label — "Tracks" for music, "Parts" for
                 // a fallback book, "Chapters" only for real chapters.
                 .navigationTitle(ChapterModel.selectorLabel(isMusic: isMusic, isFallback: isFallback))
                 .toolbar {

@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 6a411cf: the `.corrupt` pattern. The danger is not the decode failure — it
+/// The `.corrupt` pattern. The danger is not the decode failure — it
 /// is that the NEXT save writes the emptiness back over recoverable data.
 @Suite struct CorruptStoreTests {
 

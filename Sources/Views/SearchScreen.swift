@@ -6,7 +6,7 @@
 import SwiftUI
 import OSLog
 
-/// Y23: THE global search as a FULL PAGE (no overlay, no drag handle — Y21) —
+/// THE global search as a FULL PAGE (no overlay, no drag handle — Y21) —
 /// shown instead of the tab content while search mode is active. Content ends
 /// above the bottom bar via the shared clearance (Y22); the search FIELD lives
 /// in the bottom bar (Y17/Y19/Y24). On top the STANDING scope bar (Y20,
@@ -19,30 +19,30 @@ struct SearchScreen: View {
     /// Owned by LibraryView (the bar types, the page renders).
     @ObservedObject var model: GlobalSearchModel
     @ObservedObject var playerCoordinator: PlayerCoordinator
-    /// Y20: owned by LibraryView — `SearchScope.initial(for:)` on open.
+    /// Owned by LibraryView — `SearchScope.initial(for:)` on open.
     @Binding var scope: SearchScope
     /// A result was chosen: the caller closes the search and navigates.
     let onOpen: (SearchResult) -> Void
-    /// b987483: category tiles navigate into the music LIBRARY pages
+    /// Category tiles navigate into the music LIBRARY pages
     /// (albums/songs/playlists/genres) — the caller closes the search and
     /// pushes the route on the music tab.
     var onOpenMusicRoute: (MusicRoute) -> Void = { _ in }
 
-    /// Y28: in-page drill levels of the browse deck.
+    /// In-page drill levels of the browse deck.
     private enum DeckDrill {
         case groups(title: String, groups: [(name: String, entries: [LibraryEntry])])
         case entries(title: String, entries: [LibraryEntry])
         case artists(title: String, artists: [MusicArtist])
-        /// M5: catalog shows of ONE podcast genre (iTunes genre chart).
+        /// Catalog shows of ONE podcast genre (iTunes genre chart).
         case catalogShows(title: String, results: [SearchResult], footer: String? = nil)
     }
 
     @Environment(\.pushPodcastRoute) private var pushPodcastRoute
     @Environment(\.pushFreeAudiobooksRoute) private var pushFreeAudiobooksRoute
     @State private var drill: [DeckDrill] = []
-    /// Y15: explicit catalog view (via the trailing catalog-search row).
+    /// Explicit catalog view (via the trailing catalog-search row).
     @State private var showCatalog = false
-    /// Y18: sections the user expanded past the cap.
+    /// Sections the user expanded past the cap.
     @State private var expandedSections: Set<SearchResult.Kind> = []
     @State private var recents = RecentSearches.list()
     @State private var artistCount: Int?
@@ -54,12 +54,12 @@ struct SearchScreen: View {
     @State private var deck = DeckData()
     @State private var pageWidth: CGFloat = 0
     @Namespace private var scopePillNS
-    // Y60: the browse-deck book rows need the offline glyph like every other
+    // The browse-deck book rows need the offline glyph like every other
     // MediaRowContent surface (the search-result rows already use isPlayableNow).
     @ObservedObject private var networkMonitor = NetworkMonitor.shared
     @ObservedObject private var downloadManager = DownloadManager.shared
 
-    /// Y18: a section shows at most this many hits until expanded.
+    /// A section shows at most this many hits until expanded.
     static let sectionCap = 4
 
     private var trimmedQuery: String {
@@ -96,7 +96,7 @@ struct SearchScreen: View {
                     }
                     .padding(.bottom, 12)
                     .bottomBarClearance()
-                    // Y29: a touch softer than the first pass (0.25 easeOut) —
+                    // A touch softer than the first pass (0.25 easeOut) —
                     // sections land with a gentle fade, no jump.
                     .animation(.smooth(duration: 0.35), value: model.sections)
                 }
@@ -157,7 +157,7 @@ struct SearchScreen: View {
     /// IS the concentric shape inside the bar capsule.
     private static let scopePillGap: CGFloat = 6
 
-    /// F4: the radio scope appears only while the source is active — the
+    /// The radio scope appears only while the source is active — the
     /// Y37 isAvailable pattern, re-evaluated per render.
     private var visibleScopes: [SearchScope] {
         SearchScope.allCases.filter { $0 != .radio || RadioProvider.shared.isAvailable }
@@ -280,12 +280,12 @@ struct SearchScreen: View {
         .accessibilityIdentifier("search-catalog-row")
     }
 
-    /// Y16: the catalog clearly set apart — its own grouped card, an explicit
+    /// The catalog clearly set apart — its own grouped card, an explicit
     /// header + caption, and EVERY row carries the subscribe plus.
     @ViewBuilder
     private func catalogCard(_ section: GlobalSearchModel.Section?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            // A2: the card names what it SHOWS. In the book scope these are
+            // The card names what it SHOWS. In the book scope these are
             // catalog readings, not shows — the kind title already carries
             // the right wording.
             (scope == .audiobooks
@@ -362,7 +362,7 @@ struct SearchScreen: View {
 
     // MARK: - Rows
 
-    /// c125ccd: the row's cover override — radio hits keep the gated
+    /// The row's cover override — radio hits keep the gated
     /// station artwork; a CATALOG show WITHOUT its own image resolves the
     /// feed's channel artwork lazily (curated entries never pass the
     /// directory search that hands out artwork URLs). Everything else keeps
@@ -371,7 +371,7 @@ struct SearchScreen: View {
         SearchRowCover(result: result, placeholderSystemImage: Self.placeholder(result.kind))
     }
 
-    /// Q1: sender + quiet reading marker ("LibriVox · Lesung 2").
+    /// Sender + quiet reading marker ("LibriVox · Lesung 2").
     private func catalogBookMeta(_ result: SearchResult) -> String? {
         var parts: [String] = []
         if let source = result.sourceLabel { parts.append(source) }
@@ -402,17 +402,17 @@ struct SearchScreen: View {
                     titleDimmed: !result.isPlayableNow,
                     coverDimmed: !result.isPlayableNow,
                     offlineBadge: !result.isPlayableNow,
-                    // Y25: catalog hits say WHAT they are. Q1: book hits name
+                    // Catalog hits say WHAT they are. Q1: book hits name
                     // their SENDER (LibriVox/Gutenberg/Archive), the licence
                     // capsule logic stays with the detail sheet.
                     meta: result.kind == .catalogShow ? String(localized: "Podcast")
                         : result.kind == .catalogBook ? catalogBookMeta(result) : nil,
                     placeholderSystemImage: Self.placeholder(result.kind),
-                    // Paket B: mirrored shows carry the origin capsule in
+                    // Mirrored shows carry the origin capsule in
                     // search too (show hits carry the feed URL as id).
                     showsOriginCapsule: result.kind == .show
                         && PodcastSubscriptions.shared.isMirrored(feedURL: result.id),
-                    // cd5cc4a (1): radio hits share the ONE gated artwork
+                    // Radio hits share the ONE gated artwork
                     // (gradient+initials fallback) instead of the gray box.
                     coverOverride: catalogCover(result)
                 )
@@ -490,7 +490,7 @@ struct SearchScreen: View {
                         .frame(maxWidth: .infinity, minHeight: 120)
                 } else {
                     ForEach(results) { resultRow($0) }
-                    // e4bd910/hoerspiele: honesty line (depublication).
+                    // Honesty line (depublication).
                     if let footer {
                         Text(footer)
                             .font(.caption)
@@ -549,7 +549,7 @@ struct SearchScreen: View {
         }
     }
 
-    /// Y30: the recent searches on top of the deck — tap re-runs, long-press
+    /// The recent searches on top of the deck — tap re-runs, long-press
     /// deletes one, "Clear" empties the list.
     @ViewBuilder
     private var recentsRow: some View {
@@ -648,7 +648,7 @@ struct SearchScreen: View {
         }
     }
 
-    /// b987483: the music deck offers ALL library entry points as category
+    /// The music deck offers ALL library entry points as category
     /// tiles — albums · songs · playlists · genres (the M3 discovery entry,
     /// like the podcast genre chips) — plus the artist drill. Counts render
     /// where the deck knows them; the pages themselves load fresh.
@@ -678,8 +678,8 @@ struct SearchScreen: View {
                 onOpenMusicRoute(.genres)
             },
         ]
-        // UMZUG (e4bd910/klassik-in-die-suche): the catalog entry lives in
-        // the DISCOVER context (search deck), the library list stays personal
+        // The catalog entry lives in the DISCOVER context (search deck),
+        // the library list stays personal
         // — same CategoryTile, same route, same gates (pill toggle + master).
         + (freeClassicalDeckVisible
             // The title comes from the DATA, so the shelf cannot be called one
@@ -735,8 +735,8 @@ struct SearchScreen: View {
     }
 
     /// Apple-Podcasts-style entry tile: glyph + count on top, title below.
-    // M3: the tile itself moved to the shared `CategoryTile` (the music
-    /// genre grid reuses the exact same chip — Regel 2, one idiom).
+    // The tile itself moved to the shared `CategoryTile` (the music
+    /// genre grid reuses the exact same chip — one idiom).
     private func deckEntryTile(_ entry: DeckEntry) -> some View {
         CategoryTile(title: entry.title, systemImage: entry.systemImage,
                      count: entry.count, accessibilityId: "deck-tier-\(entry.id)",
@@ -768,7 +768,7 @@ struct SearchScreen: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Y28 lower tier: cover raster (existing components, Regel 2)
+    // MARK: - Lower tier: cover raster (existing components)
 
     @ViewBuilder
     private var deckRaster: some View {
@@ -787,7 +787,7 @@ struct SearchScreen: View {
         }
     }
 
-    /// M5: podcast genre chips — the SAME CategoryTile grid as the deck tier
+    /// Podcast genre chips — the SAME CategoryTile grid as the deck tier
     /// and the music genres (one chip idiom). Tap loads the KEYLESS iTunes
     /// genre chart and drills into catalog-show rows; a failed/empty load
     /// shows "No results" in the drill (visible, rule 3).
@@ -796,14 +796,14 @@ struct SearchScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("By Genre").font(.headline).padding(.horizontal, 16)
             LazyVGrid(columns: Self.tierColumns, spacing: 12) {
-                // e4bd910/hoerspiele: the curated public-broadcast entry —
-                // same chip idiom, drills into the DATA list (verified
+                // The curated public-broadcast entry — same chip idiom,
+                // drills into the DATA list (verified
                 // feeds), preview/subscribe like any catalog row.
-                // 8d49a8e: the tile leads to the OWN page (charts by genre +
+                // The tile leads to the OWN page (charts by genre +
                 // curated socket) instead of the flat curation list — the
                 // charts carry the bulk, the socket only what they miss.
-                // Paket 4: the tile is the THIRD entrance to the merged
-                // page (11be262: same surface, one title everywhere).
+                // The tile is the THIRD entrance to the merged page — same
+                // surface, one title everywhere.
                 CategoryTile(title: String(localized: "Audiobooks and Radio Plays"),
                              systemImage: "waveform.and.mic",
                              accessibilityId: "podcast-genre-hoerspiele") {
@@ -1003,7 +1003,7 @@ struct SearchScreen: View {
         case .song: return String(localized: "Songs")
         case .playlist: return String(localized: "Playlists")
         case .catalogShow: return String(localized: "New Shows")
-        // Q1 (D2): the card names the CONTENT and its family of senders.
+        // The card names the CONTENT and its family of senders.
         case .catalogBook: return String(localized: "From the Free Catalogs")
         case .radioStation: return String(localized: "Radio Stations")
         }

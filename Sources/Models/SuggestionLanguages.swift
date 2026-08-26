@@ -5,12 +5,12 @@
 
 import Foundation
 
-/// f79c40c/2ee3c32: the SUGGESTION language(s) — which languages catalog and
+/// The SUGGESTION language(s) — which languages catalog and
 /// recommendation requests prefer (Discover row, podcast catalog/genre
 /// charts, PI `lang`). MULTI-select; the device locale is the default; the
 /// explicit choice beats the guess (the radio country-cascade principle).
 /// Deliberately NOT the app language (that stays the iOS system setting).
-/// 0b7a9ff: THE service-name truth — every network-feature toggle names its
+/// THE service-name truth — every network-feature toggle names its
 /// exact external services in its footnote, with the SAME strings the
 /// network-services page shows (shared data, never typed twice). Transparency
 /// at the point of decision.
@@ -46,7 +46,7 @@ nonisolated enum SuggestionLanguages {
     /// iTunes is STOREFRONT-bound, not language-bound — one representative
     /// storefront per language (charts are fetched per selected language and
     /// fairly interleaved; honest approximation, documented).
-    /// 757e2eb: a language is NOT one market. Measured on the Drama chart
+    /// A language is NOT one market. Measured on the Drama chart
     /// (1484, 50 entries each): GB deviates from the US chart in 15 of 50
     /// entries, AU in 18, CA in 14, IE in 22 — and NZ in 28, i.e. 56 %. Only
     /// asking `us` for "English" silently hides that half; the overlap sits
@@ -70,7 +70,7 @@ nonisolated enum SuggestionLanguages {
     /// rows, reused. Reason: languages × genres × storefronts grows fast; two
     /// per run keeps the request count flat while the variety still arrives
     /// over the week. `perRun` = 2 by default (primary + one rotating).
-    /// 8f0fc27/4ab17e8: the DEVICE REGION leads when it is in the language's
+    /// The DEVICE REGION leads when it is in the language's
     /// list — priority, not exclusivity. A device can sit in Switzerland, and
     /// the Swiss chart deviates from the German one by 58 % (measured), with
     /// content that is genuinely different: "Schreckmümpfeli" (the SRF

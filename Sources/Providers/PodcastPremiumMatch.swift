@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Y51: a premium feed replaces a free subscription of the same show. All
+/// A premium feed replaces a free subscription of the same show. All
 /// decision logic lives here, pure and CONSERVATIVE — a missed match is cheap
 /// (the episode just stays unmatched), a wrong match would move progress onto
 /// the wrong episode. Free/premium feeds do NOT share episode GUIDs, so the
@@ -105,17 +105,15 @@ nonisolated enum PodcastPremiumMatch {
 }
 
 extension PodcastPremiumMatch {
-    /// 97b1f7c: free+premium TWINS in the existing stock (the "Servus.
-    /// Grüezi. Hallo." case — a detection hole let both live side by side).
+    /// Free+premium TWINS in the existing stock — a detection hole used to
+    /// let both live side by side.
     /// Pure: same-show title match, exactly one side premium; the repair
     /// path offers the one-tap cleanup on each pair.
-    /// P2 (3): the state INCLUDING its reason. The pair detection has been
-    /// built since 97b1f7c — what was missing is why it sometimes says
-    /// nothing: while unresolved token-rotation twins exist the offer is
-    /// suppressed (accepting it could move progress into the copy that will
-    /// not survive the merge), and that suppression was SILENT. A person
-    /// then sees the free+premium pair on the device and no way to it —
-    /// exactly the user's ZEIT case. The guard stays; it just says so now.
+    /// The state INCLUDING its reason. While unresolved token-rotation twins
+    /// exist the offer is suppressed — accepting it could move progress into
+    /// the copy that will not survive the merge — and that suppression used
+    /// to be SILENT: the free+premium pair sat on the device with no way to
+    /// it. The guard stays and says so.
     enum TwinState: Equatable {
         case pairs([Pair])
         /// Suppressed until the rotation twins are collapsed (bootstrap).
@@ -146,7 +144,7 @@ extension PodcastPremiumMatch {
         shows: [(id: String, title: String, feedURL: String)],
         isPremium: (String) -> Bool
     ) -> [(freeId: String, premiumId: String, title: String)] {
-        // e4b1467 Guard: while the SAME masked identity exists more than once
+        // While the SAME masked identity exists more than once
         // (token-rotation twins not yet collapsed by the bootstrap migration),
         // the repair offer is SUPPRESSED — accepting it could migrate the
         // progress into the copy that will not survive the merge.
@@ -156,7 +154,7 @@ extension PodcastPremiumMatch {
                 return []
             }
         }
-        // e4b1467: ONE offer per twin PAIR — keyed by the free show, never
+        // ONE offer per twin PAIR — keyed by the free show, never
         // repeated per premium copy.
         var out: [(freeId: String, premiumId: String, title: String)] = []
         var offeredFree = Set<String>()

@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// F5: THE playlist cover — ALWAYS a 2×2 mosaic of the first four album covers
+/// THE playlist cover — ALWAYS a 2×2 mosaic of the first four album covers
 /// (the server's single playlist cover is deliberately ignored for a uniform
 /// look). Graceful degradation by available cover count: 4+ full 2×2, 3 as 2+1,
 /// 2 split, 1 fills, 0 a tinted `music.note.list` glyph. Injected into the
@@ -77,7 +77,7 @@ struct PlaylistArtwork: View {
 
     /// Deterministic per-playlist tint (stable FNV-1a byte hash → hue) for the
     /// placeholder and loading tiles — like `RadioArtwork.color`.
-    /// a49444d (sweep): pure and stateless ⇒ `nonisolated`, the same class as
+    /// Pure and stateless ⇒ `nonisolated`, the same class as
     /// its radio sibling. Nothing calls it off-main today, but a pure helper
     /// that inherits MainActor is a Swift-6 error waiting for its first
     /// background caller.

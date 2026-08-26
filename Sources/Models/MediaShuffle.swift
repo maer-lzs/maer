@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// The ONE shuffle for playback (Regel 2): every caller — whole music library,
+/// The ONE shuffle for playback: every caller — whole music library,
 /// a playlist, an album — hands in its own item/track set and gets a random
 /// permutation back. Plain randomness on purpose: this is NOT the deterministic,
 /// seeded rotation `RediscoverSections` uses (that solves a different problem — a

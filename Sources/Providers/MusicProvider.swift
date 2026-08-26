@@ -35,7 +35,7 @@ protocol MusicProvider: AudioProvider {
     /// its load path on this signal.
     var librarySynced: PassthroughSubject<Void, Never> { get }
 
-    /// Y33 (c): re-check credentials/config and reconnect silently when the
+    /// Re-check credentials/config and reconnect silently when the
     /// source SHOULD be active but currently is not (scenePhase revalidation).
     func reconnectIfNeeded()
 
@@ -68,7 +68,7 @@ protocol MusicProvider: AudioProvider {
     /// Songs of ONE genre (paged).
     func genreSongs(genre: String, offset: Int, size: Int) async throws -> [MusicTopSong]
 
-    /// M6: per-track play counts of the LAST detail fetch for this item —
+    /// Per-track play counts of the LAST detail fetch for this item —
     /// basis for the client-side album/playlist "Top Songs" section (empty
     /// when the server ships no counts; the section then hides silently).
     func trackPlayCounts(forItemId itemId: String) -> [Int?]
@@ -92,7 +92,7 @@ protocol MusicProvider: AudioProvider {
     func songId(forItemId itemId: String, trackIndex: Int) async -> String?
     /// Up to 4 distinct album cover-art ids for the 2×2 playlist mosaic.
     func playlistMosaicCoverIDs(forItemId itemId: String) async -> [String]
-    /// 961a14e: the playlist's per-song artist names (raw, one per track —
+    /// The playlist's per-song artist names (raw, one per track —
     /// the pure `PlaylistPresentation.topArtists` ranks them); [] when the
     /// provider has no artist data (the card line then stays away).
     func playlistArtistNames(forItemId itemId: String) async -> [String]

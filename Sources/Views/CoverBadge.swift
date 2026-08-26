@@ -27,7 +27,7 @@ enum CoverBadge {
     }
 }
 
-/// A3/Y54: THE offline disc — a white wifi.slash on a dark circle, sized to
+/// THE offline disc — a white wifi.slash on a dark circle, sized to
 /// MATCH the corner play glyph (`play.circle.fill` at `.title3`) so the two
 /// corner marks read equal on every tile; scales with Dynamic Type like the
 /// play glyph. Used by the `offlineUnavailableBadge` modifier and inline where a
@@ -45,7 +45,7 @@ struct OfflineUnavailableBadge: View {
 }
 
 extension View {
-    /// A3 (rule): gray/dimming is NEVER the only state carrier — unavailable
+    /// Gray/dimming is NEVER the only state carrier — unavailable
     /// content dims AND carries the white wifi.slash badge. Y44: TOP-RIGHT so it
     /// clears the bottom-right corner control (play badge, subscribe plus). Y54:
     /// the disc matches the play glyph's size (see `OfflineUnavailableBadge`).

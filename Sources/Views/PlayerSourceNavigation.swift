@@ -6,11 +6,11 @@
 import SwiftUI
 import OSLog
 
-/// Vollplayer → Quellseiten (9aad53c): the full player can navigate to the
+/// Vollplayer → Quellseiten: the full player can navigate to the
 /// running content's source page — Apple-Media convention. The player
 /// MINIMIZES (never stops) and the target page is pushed on the library
 /// stack in the matching tab, through the SAME value-based routes the
-/// global search already uses (Regel 2 — no second deep-link mechanism).
+/// global search already uses — no second deep-link mechanism.
 nonisolated enum PlayerSourceTarget {
     case book(itemId: String)
     case podcastShow(feedURL: String)
@@ -19,7 +19,7 @@ nonisolated enum PlayerSourceTarget {
     /// A free-catalogue item — its page holds the tracks of the release.
     case catalogAlbum(itemId: String)
     case musicArtist(MusicArtist)
-    /// V10: the station detail page — radio has a source target now.
+    /// The station detail page — radio has a source target now.
     case radioStation(RadioStation)
     /// The list of latest episodes across shows — where a message about
     /// SEVERAL shows leads. No single page can answer it, and this one was
@@ -27,7 +27,7 @@ nonisolated enum PlayerSourceTarget {
     case podcastLatest
 }
 
-/// Gate 2 (8913feb): the environment-based wiring was fragile — a mount
+/// Gate 2: the environment-based wiring was fragile — a mount
 /// context without the env value made the tap a SILENT no-op (rule 3). This
 /// router is the ONE central navigation point, independent of any
 /// presentation context; LibraryView (the owner of the navigation path)

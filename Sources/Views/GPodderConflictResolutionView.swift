@@ -40,7 +40,7 @@ struct GPodderConflictResolutionView: View {
             if loading {
                 Section { HStack { ProgressView(); Text("Loading subscriptions…") } }
             } else if let loadErrorText {
-                // #43 V1: the load-error branch must come BEFORE the no-conflict
+                // The load-error branch must come BEFORE the no-conflict
                 // branch — a failed snapshot (server unreachable) used to fall
                 // into the green "No differences" path and read as "in sync".
                 Section { Label(loadErrorText, systemImage: "xmark.octagon").foregroundStyle(.red) }

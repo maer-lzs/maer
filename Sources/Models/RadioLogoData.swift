@@ -8,7 +8,7 @@
 // EINZELNAMEN-LAUF: nur "Fußball-Bundesliga" wurde gemessen, alle anderen
 // Eintraege stammen unveraendert aus dem letzten Voll-Lauf.
 //
-// THE TARGET SET OF THIS RUN (the denominator, e32454e): 789 core
+// THE TARGET SET OF THIS RUN (the denominator): 789 core
 // names, fingerprint 296dc98f2173. A later quota is only comparable to this one
 // if the fingerprint matches — the core tables move with every maintenance
 // round, and a wandering denominator makes two percentages meaningless.
@@ -16,11 +16,11 @@
 
 import Foundation
 
-/// 🔴 e32454e: the logos of the CORE stations as generated DATA — Wikidata
+/// 🔴 The logos of the CORE stations as generated DATA — Wikidata
 /// P154 first, then the Commons FILE SEARCH (the class "a logo exists, it is
 /// just not linked to the object"). Only the file NAME is stored; the width
 /// is applied at read time from `RadioLogoService.commonsWidth`, so the next
-/// width change is a constant, not a migration (the cb8bac1 lesson).
+/// width change is a constant, not a migration.
 ///
 /// The runtime chain stays the fallback for the long tail — this table only
 /// spares it the work for the stations everyone actually sees.

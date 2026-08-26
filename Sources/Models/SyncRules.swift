@@ -12,7 +12,7 @@ import Foundation
 /// default MainActor isolation.
 nonisolated enum SyncRules {
 
-    /// 8b71fd7: may the player write a podcast's LOCAL state (localPosition +
+    /// May the player write a podcast's LOCAL state (localPosition +
     /// gpodder push)?
     ///
     /// The reviver, measured on the user' "Rest is History" episode: restoring
@@ -36,8 +36,8 @@ nonisolated enum SyncRules {
     }
 
 
-    /// GT 09.08.: „finished" is DERIVED from the position, at exactly one
-    /// place. That is what makes „mark as heard" safe on a running item:
+    /// `finished` is DERIVED from the position, at exactly one place. That
+    /// is what makes marking a running item as heard safe:
     /// `finalizeAsFinished()` moves the position to the end, so the stop's
     /// final sync writes `finished` — never the old position behind it.
     /// One second of tolerance because the last tick rarely lands exactly on
@@ -100,7 +100,7 @@ nonisolated enum SyncRules {
         savedAtMs > serverUpdateMs && abs(savedTime - serverTime) > tolerance
     }
 
-    /// c59e96e — the FLUSHED witness: what this device last pushed to the
+    /// The FLUSHED witness: what this device last pushed to the
     /// server successfully. It is the start source whenever the server has
     /// nothing better to say: no answer at all (offline), an answer that
     /// arrived after the reconcile window, or an answer without a progress
@@ -128,20 +128,20 @@ nonisolated enum SyncRules {
         return flushedAtMs > serverUpdateMs && flushedTime > serverTime + tolerance
     }
 
-    /// 5f4fdee — the stomp window. In a FRESH session `lastSyncedTime` is 0,
+    /// The stomp window. In a FRESH session `lastSyncedTime` is 0,
     /// so the suspicious-drop guard has no reference: if the start found no
     /// source at all (no witness, no local backup, no server answer yet) and
     /// somebody presses play at 00:00, the next periodic sync pushes that
     /// near-zero value and OVERWRITES a server that was hours ahead. That is
-    /// the measured Winterfell afternoon pattern, now understood as mechanics.
+    /// the measured overwrite pattern, now understood as mechanics.
     ///
     /// So a push needs a start that was ANSWERED — by any source. Until then
     /// the device only listens. A resolved start pushes as before; this rule
     /// never delays a normal session, because a normal session resolves at
     /// load time.
-    /// No tolerance escape on purpose: my first draft let an unresolved start
-    /// push once it had played past 5 s — which is exactly the stomp it is
-    /// supposed to prevent, only five seconds later. A brand-new book is not
+    /// No tolerance escape on purpose: letting an unresolved start push once
+    /// it has played past 5 s is exactly the stomp this prevents, only five
+    /// seconds later. A brand-new book is not
     /// blocked by this, because "the server answered, and it knows nothing"
     /// RESOLVES the start just as much as an adopted position does.
     static func mayPushProgress(startSourceResolved: Bool) -> Bool {

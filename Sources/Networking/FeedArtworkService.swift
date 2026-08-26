@@ -6,12 +6,12 @@
 import Foundation
 import OSLog
 
-/// c125ccd: resolves a podcast feed's CHANNEL artwork lazily and caches it.
+/// Resolves a podcast feed's CHANNEL artwork lazily and caches it.
 /// Curated entries carry no artwork of their own (they never touch the
 /// directory search that hands the catalog rows their images) — but the
 /// feeds all state one. Deliberately GENERIC, not a radio-play special
 /// path: every future curation and every directory hit without artwork
-/// inherits it (Regel 2).
+/// inherits it.
 ///
 /// Manners like the other lookup chains: identifying UA, a RANGED request
 /// (the channel image sits in the first KB — no full feed parse, and the
@@ -26,7 +26,7 @@ actor FeedArtworkService {
     /// The curation changes rarely — a generous TTL, but not eternal:
     /// public-broadcast image URLs rotate, which is exactly why nothing is
     /// hard-wired into the curation data.
-    /// U2 (bb403a6): v2 discards the poisoned generation — entries written
+    /// `v2` discards the poisoned generation — entries written
     /// while a 401 body was mistaken for "feed states no image" (server
     /// connected before its artwork endpoint was open) healed only after the
     /// 7-day TTL otherwise. Same storageVersion move as the radio logos.
@@ -80,7 +80,7 @@ actor FeedArtworkService {
         var resolved: URL?
         do {
             let (data, http) = try await fetch(request)
-            // U1 (bb403a6): failure ≠ absence — the radio-logo distinction
+            // Failure ≠ absence — the radio-logo distinction
             // (failure/empty/data). fetch returns non-2xx WITH its error body,
             // and a 401 page read as "feed states no image" persisted a
             // 7-day negative (a server can be connected before its artwork endpoint

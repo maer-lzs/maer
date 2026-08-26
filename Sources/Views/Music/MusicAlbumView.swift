@@ -17,23 +17,23 @@ struct MusicAlbumView: View {
     @State private var detail: LibraryItemDetail?
     @State private var loadFailed = false
     @State private var starred = false
-    /// M3: album notes/description from getAlbumInfo2 (expandable).
+    /// Album notes/description from getAlbumInfo2 (expandable).
     @State private var albumNotes: String?
     @State private var notesExpanded = false
-    /// M6: high-res front cover from the Cover Art Archive (via release MBID).
+    /// High-res front cover from the Cover Art Archive (via release MBID).
     @State private var highResCover: UIImage?
-    /// e3dabb3: flip re-runs the load task — off drops the CAA image
+    /// Flip re-runs the load task — off drops the CAA image
     /// IMMEDIATELY (server cover shows), cached files stay for re-enable.
     @AppStorage(AppStorageKeys.musicHighResCovers) private var hiResCovers = true
     /// Package 1: the single song a user long-pressed to add to a playlist.
     /// Playlist header shows the F5 2×2 mosaic (same component as the cards),
     /// not a single server cover — up to four distinct album covers.
     @State private var mosaicCoverURLs: [URL] = []
-    /// D12/B11: track-number column scales with Dynamic Type.
+    /// Track-number column scales with Dynamic Type.
     @ScaledMetric(relativeTo: .subheadline) private var trackNumberWidth: CGFloat = 24
 
     private var tracks: [ABSChapter] { detail?.media.chapters ?? [] }
-    /// M6: track indices ranked by play count (pure, tested); empty hides
+    /// Track indices ranked by play count (pure, tested); empty hides
     /// the section. Reads the provider's per-detail cache — plain read.
     private var topSongIndices: [Int] {
         guard detail != nil else { return [] }
@@ -57,7 +57,7 @@ struct MusicAlbumView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
-            // M6: client-side "Top Songs" over the play counts the detail
+            // Client-side "Top Songs" over the play counts the detail
             // already carries — small section ABOVE the track list, hidden
             // silently when the server ships no counts (plain Subsonic).
             if !topSongIndices.isEmpty {
@@ -83,7 +83,7 @@ struct MusicAlbumView: View {
                         }
                     }
                 } header: {
-                    // 9ac20e5: per-user play counts — labeled as PERSONAL.
+                    // Per-user play counts — labeled as PERSONAL.
                     Text("Your most played")
                 }
             }
@@ -120,13 +120,13 @@ struct MusicAlbumView: View {
                                 } label: { Label("Remove from Playlist", systemImage: "minus.circle") }
                             }
                         }
-                        // S18: song long-press — play from here + album download
+                        // Song long-press — play from here + album download
                         // (music downloads are per album).
                         .contextMenu {
                             Button {
                                 Task { await play(fromTrackAt: track.start) }
                             } label: { Label("Play from Here", systemImage: "play.fill") }
-                            // M2: single songs join the global Up-Next queue —
+                            // Single songs join the global Up-Next queue —
                             // same actions as book/podcast/album menus.
                             Button {
                                 Task {
@@ -173,7 +173,7 @@ struct MusicAlbumView: View {
             } else {
                 HStack { ProgressView(); Text("Loading…").foregroundStyle(.secondary) }
             }
-            // M3: album notes (best-effort from getAlbumInfo2) — expandable.
+            // Album notes (best-effort from getAlbumInfo2) — expandable.
             if let albumNotes {
                 Section {
                     Text(albumNotes)
@@ -190,7 +190,7 @@ struct MusicAlbumView: View {
         .navigationBarTitleDisplayMode(.inline)
         .barAwareList()
         .toolbar {
-            // Y63: page actions inboard, the settings cog OUTERMOST — declared
+            // Page actions inboard, the settings cog OUTERMOST — declared
             // last so it sits at the trailing edge and never vanishes behind
             // download/favorite (the root cog doesn't propagate to pushed pages).
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -251,7 +251,7 @@ struct MusicAlbumView: View {
             }
             if isAlbum {
                 starred = await AppSession.shared.musicProvider.isStarred(itemId: item.id)
-                // M3/M6: notes + (via release MBID) a high-res cover — both
+                // Notes + (via release MBID) a high-res cover — both
                 // best-effort, on demand only.
                 let info = await AppSession.shared.musicProvider.albumInfo(itemId: item.id)
                 albumNotes = Self.stripped(info?.notes)
@@ -279,7 +279,7 @@ struct MusicAlbumView: View {
                 Image(systemName: "arrow.down.circle.fill").foregroundStyle(.green)
             }
         } else if case .downloading(let fraction) = downloadManager.phase[item.id] {
-            // A8: show the actual progress (ring) instead of a bare stop icon;
+            // Show the actual progress (ring) instead of a bare stop icon;
             // tapping still cancels.
             Button {
                 downloadManager.cancelDownload(itemId: item.id)
@@ -305,7 +305,7 @@ struct MusicAlbumView: View {
                         // Own 2:3 ratio (Kursänderung) — no square override.
 
                 } else if let highResCover {
-                    // M6: prefer the high-res Cover Art Archive front when loaded.
+                    // Prefer the high-res Cover Art Archive front when loaded.
                     Image(uiImage: highResCover)
                         .resizable().aspectRatio(1, contentMode: .fit)
                 } else {
@@ -329,7 +329,7 @@ struct MusicAlbumView: View {
                 if let artist = item.author {
                     Text(artist).foregroundStyle(.secondary)
                 }
-                // M3: year · genre where the server provides them.
+                // Year · genre where the server provides them.
                 let meta = [detail?.media.metadata?.publishedYear?.value,
                             detail?.media.metadata?.genres?.first]
                     .compactMap { $0 }.joined(separator: " · ")
@@ -353,7 +353,7 @@ struct MusicAlbumView: View {
         .padding(.vertical, 8)
     }
 
-    /// Y40/Y47: matches the primary-play family — a WHITE control glyph on the
+    /// Matches the primary-play family — a WHITE control glyph on the
     /// accent capsule (not `.borderedProminent`, whose tint reads gray now), and
     /// it flips Play↔Pause while THIS album is the active session. Like the book
     /// detail button (see `ActivePlayButton`) the active case lives in a subview

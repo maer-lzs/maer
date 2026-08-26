@@ -112,7 +112,7 @@ struct AuditFixTests {
     }
 }
 
-/// F2: played state for episodes WITHOUT a known duration.
+/// Played state for episodes WITHOUT a known duration.
 @MainActor
 struct PlayedWithoutDurationTests {
 
@@ -214,7 +214,7 @@ final class MockProvider: AudioProvider {
     func deleteBookmark(itemId: String, time: Double) async throws {}
 }
 
-/// F3: a silent local-change refresh must not blank out progress when the
+/// A silent local-change refresh must not blank out progress when the
 /// server is unreachable.
 @MainActor
 struct RefreshAfterLocalChangeTests {
@@ -246,7 +246,7 @@ struct RefreshAfterLocalChangeTests {
     }
 }
 
-/// F7/K6/K7: auto-continue decision core with injected state.
+/// Auto-continue decision core with injected state.
 @MainActor
 struct PodcastAutoContinueTests {
 
@@ -322,11 +322,11 @@ struct PodcastAutoContinueTests {
         #expect(picked?.id == "s2e1")
     }
 }
-/// GT 09.08.: „Als gehört" auf dem LAUFENDEN Element hält an — und der letzte
+/// Als gehört zu markieren hält das LAUFENDE Element an — und der letzte
 /// Schreibvorgang darf nicht die alte Position hinterherschieben. Genau das
 /// ist die Falle: `markPlayedAndAdvance` ruft `finalizeAsFinished()` (Position
 /// ans Ende) und danach `stop()`, dessen Endsync den Zustand schreibt. Die
-/// Ableitung „ist fertig" hängt deshalb an EINER puren Regel, und die ist hier
+/// Ableitung hängt deshalb an EINER puren Regel, und die ist hier
 /// festgenagelt.
 struct MarkPlayedWriteOrderTests {
     @Test("finalizeAsFinished puts the position where the final sync reads FINISHED")
@@ -339,7 +339,7 @@ struct MarkPlayedWriteOrderTests {
         // Die laufende Position VORHER ist nicht fertig: ohne
         // finalizeAsFinished schriebe der Endsync genau das (der Fehlerfall).
         #expect(!SyncRules.isFinished(currentTime: 300, duration: duration))
-        // Unbekannte Dauer ist nie „fertig" (sonst waere jeder Livestream fertig).
+        // Unbekannte Dauer ist nie fertig (sonst waere jeder Livestream fertig).
         #expect(!SyncRules.isFinished(currentTime: 300, duration: 0))
     }
 }

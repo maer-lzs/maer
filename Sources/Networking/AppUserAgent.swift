@@ -5,13 +5,11 @@
 
 import Foundation
 
-/// Befund 09.08.: die App stellte sich fremden Servern unter SECHS
-/// handgepflegten Kennungen vor — vier Versionswerte (`Maer/1.0` ganz ohne
-/// Adresse, `2.1`, `2.6`, `2.7`) auf sechs Zeichenketten — und eine davon nannte
-/// die private Entwicklungs-Forge, die damit bei jedem Künstlerbild-Abruf an
-/// fremde Bilddienste ging. Das war die einzige Stelle im ausgelieferten Code,
-/// die etwas Internes nach außen sendete — und der Name dieser Forge gehört
-/// deshalb auch nicht in diesen Kommentar.
+/// Die App stellte sich fremden Servern unter SECHS handgepflegten Kennungen
+/// vor — vier Versionswerte (`Maer/1.0` ganz ohne Adresse, `2.1`, `2.6`,
+/// `2.7`) auf sechs Zeichenketten — und eine davon nannte die private
+/// Entwicklungs-Forge, die damit bei jedem Künstlerbild-Abruf an fremde
+/// Bilddienste ging.
 ///
 /// Dieselbe Fehlerklasse wie die verstreuten Aktivierungs-Vorgaben: derselbe
 /// Wert an N Stellen, und N−1 driften ab. Deshalb steht die Kennung ab jetzt

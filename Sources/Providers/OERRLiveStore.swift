@@ -35,7 +35,7 @@ final class OERRLiveStore: ObservableObject {
         }
     }
 
-    /// Befund Y (Y1): the ONE surface entry point — live for OERR, pure
+    /// The ONE surface entry point — live for OERR, pure
     /// curation data otherwise. The dependency arrow points store → data;
     /// the Models layer never touches this type.
     static func feeds(for source: CatalogSource, languages: [String]) -> [HoerspielCuration.Entry] {
@@ -65,7 +65,7 @@ final class OERRLiveStore: ObservableObject {
         for storefront in storefronts {
             guard let language = active.first(where: { $0.storefront == storefront })?.language,
                   let languageTerm = OERRCuration.searchTerms[language] else { continue }
-            // L2 (gemessen): der Sprach-Begriff findet in au/ca/nz nur die
+            // Der Sprach-Begriff findet in au/ca/nz nur die
             // BBC — die dortigen Anstalten brauchen eigene Begriffe. Der
             // Sprach-Begriff bleibt als Grundlage, die Anstalts-Begriffe
             // kommen dazu (Anstalten OHNE eigene Begriffe aendern sich nicht).
@@ -83,7 +83,7 @@ final class OERRLiveStore: ObservableObject {
             var accepted = 0
             for hit in hits {
                 guard let broadcaster = OERRCuration.matches(artistName: hit.author) else { continue }
-                // L2: sender AND form. Without the form gate the broadcaster's
+                // Sender AND form. Without the form gate the broadcaster's
                 // news would stand in a radio-play row (measured).
                 guard OERRCuration.isFiction(categories: hit.categories) else { continue }
                 let normalized = PodcastSubscriptions.normalizeFeedURL(hit.feedURL)

@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 8b71fd7: the reviver — the owner's "Rest is History" episode came back TWICE
+/// The reviver. A measured episode came back TWICE
 /// after being finished (once by listening to the end, once by hand). The
 /// mechanism, measured in code: restoring a loaded episode flushed the
 /// RESTORED state immediately, re-stamping the old position (21:09) as fresh —
@@ -56,7 +56,7 @@ import Foundation
 }
 #endif
 
-/// 6546308 Befund 3: die oPodSync-Datenbank kennungt Aktionen per URL SAMT
+/// Die oPodSync-Datenbank kennungt Aktionen per URL SAMT
 /// `?updated=` — 12 Folgen dort zerfallen in getrennte Historien-Straenge.
 /// GEMESSEN an unserem Code: Maer erbt das nicht — `normalizeEnclosure`
 /// schneidet Query, Schema und Slashes an BEIDEN Matching-Enden (byEnclosure-

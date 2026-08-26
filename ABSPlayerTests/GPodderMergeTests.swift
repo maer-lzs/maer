@@ -40,7 +40,7 @@ struct GPodderMergeTests {
         #expect(m.warning == nil)
         #expect(m.mayUpdatePrevState)
 
-        // 593d177 R2: a local drop WITHOUT user intent no longer touches
+        // A local drop WITHOUT user intent no longer touches
         // the server at once — it pends (the derived-single loss class).
         var local = feeds; local.remove("feed3")
         let derived = GPodderSubscriptionMerge.compute(local: local, server: feeds, prev: feeds)

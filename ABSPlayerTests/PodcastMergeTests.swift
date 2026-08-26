@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Der Zaun aus Befund 955dbfa: Nicht ein Feld wird geprüft, sondern das
+/// Nicht ein Feld wird geprüft, sondern das
 /// VERFAHREN. Eine gespeicherte Show mit WENIGER Folgen und gesetzten
 /// Speicher-Tatsachen gegen eine frische mit MEHR — überlebt jede davon?
 ///

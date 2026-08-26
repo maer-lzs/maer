@@ -5,12 +5,12 @@
 
 import SwiftUI
 
-/// F9: the persisted sync history (last 50 runs) — a plain list. Guard events
+/// The persisted sync history (last 50 runs) — a plain list. Guard events
 /// (mass-delete veto) are permanently marked entries, not transient warnings.
 struct SyncHistoryView: View {
     @ObservedObject private var store = SyncHistoryStore.shared
 
-    /// Y48/Y50: fixed display order for the "last checked" header.
+    /// Fixed display order for the "last checked" header.
     private static let checkedOrder: [SyncHistoryEntry.Service] =
         [.absProgress, .music, .gpodder, .iCloud]
 
@@ -22,7 +22,7 @@ struct SyncHistoryView: View {
 
     var body: some View {
         List {
-            // Y48/Y50: per-service "last checked" — a check that changed nothing
+            // Per-service "last checked" — a check that changed nothing
             // (clean ABS flush, live music refresh, no-op gpodder/iCloud) leaves
             // no ring entry but still updates its stamp here.
             if !checkedRows.isEmpty {

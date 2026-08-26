@@ -32,7 +32,7 @@ struct TabSelectionPolicyTests {
     }
 }
 
-/// 9aad53c: pure media-kind derivation for the player's source targets.
+/// Pure media-kind derivation for the player's source targets.
 struct PlayerSourceTargetsTests {
     @Test func mediaKinds() {
         #expect(PlayerSourceTargets.isBook("li_abs123"))
@@ -44,7 +44,7 @@ struct PlayerSourceTargetsTests {
         #expect(PlayerSourceTargets.isMusic("jf:album:1"))
         #expect(!PlayerSourceTargets.isMusic("radio:station-1"))
         #expect(!PlayerSourceTargets.isBook("radio:station-1"))
-        // V10: radio ids target the station detail (catalog AND manual).
+        // Radio ids target the station detail (catalog AND manual).
         #expect(PlayerSourceTargets.isRadio("radio:rb:uuid-1"))
         #expect(PlayerSourceTargets.isRadio("radio:manual:uuid-2"))
         #expect(!PlayerSourceTargets.isRadio("sub:album:1"))

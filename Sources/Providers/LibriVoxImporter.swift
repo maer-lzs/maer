@@ -7,7 +7,7 @@ import Foundation
 import Combine
 import OSLog
 
-/// 3125a42 Ziel 1: take a LibriVox book INTO the user's Audiobookshelf —
+/// Take a LibriVox book INTO the user's Audiobookshelf —
 /// download every section MP3 (to temp), then ONE multipart upload into the
 /// chosen audiobook library. Cancellable, progress-published, errors
 /// visible (rule 3), idempotent (same title already in the target library →
@@ -28,19 +28,19 @@ final class LibriVoxImporter: ObservableObject {
         case failed(String)
     }
 
-    /// 31974ef: the phase belongs to ONE book — `activeBookId` stays set
+    /// The phase belongs to ONE book — `activeBookId` stays set
     /// through done/duplicate/failed so foreign sheets never inherit the
     /// state; a cancel resets to a clean idle (an abort is NOT an error).
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var activeBookId: String?
     private var task: Task<Void, Never>?
 
-    /// fbcff9f (pure): the phase as the SHARED download ring reads it —
+    /// The phase as the SHARED download ring reads it —
     /// nil = no ring at all, a fraction = the download part n of m, and -1 =
     /// the indeterminate second phase (upload to the server; the ring keeps
     /// spinning rather than pretending to know a percentage). Terminal
     /// states (done/duplicate/failed) and idle end the animation — no frozen
-    /// ring after a cancel (f58908e semantics).
+    /// ring after a cancel.
     nonisolated static func ringFraction(_ phase: Phase) -> Double? {
         switch phase {
         case .checking: return -1
@@ -108,7 +108,7 @@ final class LibriVoxImporter: ObservableObject {
         }
     }
 
-    /// 5d46c8a (4): orphan sweep at app start — partial downloads and upload
+    /// Orphan sweep at app start — partial downloads and upload
     /// bodies of a KILLED import must not rot in tmp ("no invisible MB");
     /// the freed size lands in the log. Never runs while an import is live.
     nonisolated static func sweepOrphanTemp() {
@@ -166,7 +166,7 @@ final class LibriVoxImporter: ObservableObject {
                 try FileManager.default.moveItem(at: downloaded, to: local)
                 files.append((filename: name, url: local))
             } catch {
-                // 31974ef (1): a USER abort is not an error — the cancel()
+                // A USER abort is not an error — the cancel()
                 // path already reset the state; never overwrite it.
                 if Task.isCancelled || error is CancellationError
                     || (error as? URLError)?.code == .cancelled { return }
@@ -177,7 +177,7 @@ final class LibriVoxImporter: ObservableObject {
         }
 
         if Task.isCancelled { return }
-        // b395e5f: send the SAME cover the app shows along with the upload
+        // Send the SAME cover the app shows along with the upload
         // (hi-res via itunes:image, thumb fallback) — resolves the ABS
         // cover reservation; a failed cover never fails the import.
         let itemId = FreeCatalog.librivoxPrefix + book.id
@@ -212,7 +212,7 @@ final class LibriVoxImporter: ObservableObject {
             Logger.library.error("LIBRIVOX import upload failed: \(String(describing: error), privacy: .public)")
             phase = .failed(String(localized: "Upload failed. Check the server and try again."))
         }
-        // 31974ef (3): activeBookId stays — done/duplicate/failed belong to
+        // ActiveBookId stays — done/duplicate/failed belong to
         // THIS book; reset()/cancel() clears.
     }
 }

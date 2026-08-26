@@ -30,14 +30,14 @@ enum PodcastAutoContinue {
     }
 
     static func next(after finishedItemId: String) -> LibraryItem? {
-        // A3: offline, only downloaded episodes are playable candidates — an
+        // Offline, only downloaded episodes are playable candidates — an
         // undownloaded pick would run into the offline rejection mid-handoff
         // (from inside the full player) and look like a crash.
         let offline = !NetworkMonitor.shared.isConnected
         return pick(
             shows: allShows(),
             finishedItemId: finishedItemId,
-            // R1: text-only episodes never auto-continue.
+            // Text-only episodes never auto-continue.
             isPlayable: { id in
                 PodcastSubscriptions.shared.isPlayableEpisode(itemId: id)
                     && (!offline || DownloadManager.shared.isDownloaded(itemId: id))

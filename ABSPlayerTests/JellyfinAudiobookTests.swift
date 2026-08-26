@@ -8,8 +8,8 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// facf3e3: Jellyfin audiobooks. Every case here is pinned to a MEASURED value
-/// from the operator's run against Jellyfin 10.11.11 with Bookshelf 13.0.0.0 — the wire
+/// Jellyfin audiobooks. Every case here is pinned to a MEASURED value
+/// measured against Jellyfin 10.11.11 with Bookshelf 13.0.0.0. The wire
 /// payloads are the ones that instance answered, not invented shapes.
 @Suite struct JellyfinAudiobookTests {
 
@@ -88,13 +88,13 @@ import Foundation
         #expect(book.userData?.playbackPositionTicks == nil)
     }
 
-    /// 8541008 point 1, as a MEASURED value rather than an intention: the
+    /// A MEASURED value rather than an intention: the
     /// server cannot tell "never touched" from "explicitly set to 0" — both
     /// answers are byte-identical. So 0 must not count as progress, or every
     /// never-heard book lands in "Continue listening", and silently.
     ///
-    /// Same class as the flushed witness at Winterfell: a source answering a
-    /// question it cannot answer.
+    /// Same class as the flushed witness: a source answering a question it
+    /// cannot answer.
     @Test func positionZeroIsNoProgressBecauseTheServerCannotTellTheCasesApart() throws {
         let untouched = """
         {"Id":"b9","Name":"Nie gehoert","Type":"AudioBook","RunTimeTicks":1800000000,
@@ -107,7 +107,7 @@ import Foundation
         }
     }
 
-    /// 8541008: the write must carry REAL JSON types. A quoted "true" is a
+    /// The write must carry REAL JSON types. A quoted "true" is a
     /// string, and a server that ignores a mistyped field does it silently —
     /// the first thing to rule out before concluding that Jellyfin cannot mark
     /// a book finished at all.

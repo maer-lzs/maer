@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// 86cf180 (3): permanent play diagnosis, LOG ONLY — after a station starts,
+/// Permanent play diagnosis, LOG ONLY — after a station starts,
 /// one short header probe reads the stream's `icy-name` and compares it to
 /// the tile name. A gross mismatch logs loudly; that single line catches
 /// both app-side tile↔stream swaps and hijacked Radio-Browser entries (which

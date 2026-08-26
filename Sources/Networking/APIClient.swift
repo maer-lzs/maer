@@ -61,7 +61,7 @@ final class APIClient {
     /// showing an error in the middle of the library.
     var onUnauthorized: (() -> Void)?
 
-    /// F10: ABS is a SOURCE like the others — without a signed-in server it
+    /// ABS is a SOURCE like the others — without a signed-in server it
     /// is simply unavailable (tab hidden, search fan-out skips it) instead of
     /// a forced empty library.
     /// TF bib-toggles: also gated by the effective ABS-audiobooks activation
@@ -82,7 +82,7 @@ final class APIClient {
         self.token = token
     }
 
-    /// F10: logout empties the client — `isAvailable` flips with it.
+    /// Logout empties the client — `isAvailable` flips with it.
     func clearToken() {
         self.token = nil
     }
@@ -378,7 +378,7 @@ final class APIClient {
     /// via query parameter but via the Authorization header (see PlayerViewModel);
     /// that is the more robust, officially supported way for AVPlayer
     /// (AVURLAssetHTTPHeaderFieldsKey).
-    /// F3: the server's author image (only some authors have one) — same
+    /// The server's author image (only some authors have one) — same
     /// token-in-query auth as the covers, cached through the shared cover
     /// infrastructure (ImageCache), no cache path of its own.
     func authorImageURL(authorId: String) -> URL? {
@@ -403,7 +403,7 @@ final class APIClient {
         return baseURL.appendingPathComponent(cleanPath)
     }
 
-    /// 3125a42: upload a complete audiobook (POST /api/upload, multipart).
+    /// Upload a complete audiobook (POST /api/upload, multipart).
     /// The body is assembled ON DISK (books run 100–500 MB — never in RAM)
     /// and sent via uploadTask(fromFile:). Files are (filename, localURL)
     /// pairs; metadata rides as form fields. Throws visibly on any non-2xx.
@@ -427,7 +427,7 @@ final class APIClient {
         try writeField("library", libraryId)
         try writeField("folder", folderId)
         for (index, file) in files.enumerated() {
-            // b395e5f: the cover file rides in the same upload — content
+            // The cover file rides in the same upload — content
             // type by extension (jpg/png), everything else stays MP3.
             let ext = (file.filename as NSString).pathExtension.lowercased()
             let contentType = ext == "jpg" || ext == "jpeg" ? "image/jpeg"
@@ -471,7 +471,7 @@ final class APIClient {
         return try await perform(request)
     }
 
-    /// 🔴 P5: the probe behind the SUSPECT session state — it separates
+    /// 🔴 The probe behind the SUSPECT session state. It separates
     /// "server not there yet" (the homeserver restart window) from "server
     /// there and says no". Deliberately a plain, cheap authorized request
     /// WITHOUT the retry/`onUnauthorized` machinery: this is the question
@@ -491,7 +491,7 @@ final class APIClient {
         return .unreachable
     }
 
-    /// Y33: ONE request path with the self-healing policy — a 401 is probed
+    /// ONE request path with the self-healing policy — a 401 is probed
     /// once more before the logout fires (outage gateways answer 401
     /// spuriously), transient failures (429/5xx/timeouts/connection drops)
     /// back off briefly instead of surfacing straight away.

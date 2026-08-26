@@ -113,7 +113,7 @@ struct SyncRulesTests {
     }
 }
 
-/// c59e96e — the flushed witness. Every case here is one the MEASUREMENT
+/// The flushed witness. Every case here is one the MEASUREMENT
 /// produced on the simulator, not an invented one.
 @Suite("Der geflusht-Zeuge traegt den Start nur, wenn der Server nichts Besseres sagt")
 struct FlushedWitnessTests {
@@ -126,7 +126,7 @@ struct FlushedWitnessTests {
             flushedTime: 40, flushedAtMs: 1_000, serverTime: 0, serverUpdateMs: 0))
     }
 
-    /// the reviewer's case 3: the server ANSWERS, but without a progress entry. An
+    /// Third case: the server ANSWERS, but without a progress entry. An
     /// answer without a date is not a statement about the position.
     @Test func answerWithoutDateDoesNotBeatTheWitness() {
         #expect(SyncRules.shouldPreferFlushedWitness(
@@ -169,7 +169,7 @@ struct FlushedWitnessTests {
     }
 }
 
-/// 5f4fdee — das Stomp-Fenster. Der gefaehrliche Pfad braucht einen Testfall:
+/// Das Stomp-Fenster. Der gefaehrliche Pfad braucht einen Testfall:
 /// frische Sitzung, Position nahe 0, Server deutlich voraus.
 @Suite("Ein Start ohne Antwort darf nichts zum Server schreiben")
 struct StompWindowTests {
@@ -180,14 +180,14 @@ struct StompWindowTests {
         #expect(!SyncRules.mayPushProgress(startSourceResolved: false))
     }
 
-    /// „Der Server weiss nichts" IST eine Antwort — ein wirklich neues Buch
+    /// Ein Server, der nichts weiss, IST eine Antwort — ein wirklich neues Buch
     /// muss seinen Fortschritt melden koennen.
     @Test func answeredStartPushesAsBefore() {
         #expect(SyncRules.mayPushProgress(startSourceResolved: true))
     }
 }
 
-/// 305a292 — die dritte Erscheinung der eingefrorenen Null.
+/// Die dritte Erscheinung der eingefrorenen Null.
 @Suite("Weiterhoeren fragt die gewonnene Quelle")
 struct ContinueStartedTests {
 

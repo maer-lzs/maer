@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// F5: the pure playlist-card presentation rules.
+/// The pure playlist-card presentation rules.
 struct PlaylistPresentationTests {
     @Test("mosaic tile count degrades gracefully 0…4+")
     func mosaicTiles() {
@@ -107,7 +107,7 @@ struct PlaylistPresentationTests {
     }
 }
 
-/// 961a14e: the playlist card's artist line — most frequent first, folded
+/// The playlist card's artist line — most frequent first, folded
 /// dedupe keeps the first-seen spelling, ties by appearance, empties drop.
 struct PlaylistTopArtistsTests {
     @Test("Frequency ranks; folded spellings merge; first-seen display wins")

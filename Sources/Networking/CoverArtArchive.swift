@@ -6,7 +6,7 @@
 import Foundation
 import UIKit
 
-/// M6: high-resolution covers from the Cover Art Archive (open, no key),
+/// High-resolution covers from the Cover Art Archive (open, no key),
 /// keyed by the release MBID that OpenSubsonic servers expose. Policy-clean:
 /// a proper User-Agent, requests strictly serialized at ~1 req/s (MB rate
 /// limit), aggressively cached via ImageCache, fetched only ON DEMAND when a
@@ -51,6 +51,6 @@ actor CoverArtArchive {
     }
 
     /// MusicBrainz policy requires an identifying User-Agent.
-    /// EINE Kennung fuer die ganze App (Befund 09.08.) — siehe AppUserAgent.
+    /// EINE Kennung fuer die ganze App — siehe AppUserAgent.
     nonisolated static let userAgent = AppUserAgent.value
 }

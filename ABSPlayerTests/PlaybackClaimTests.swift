@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Takeover semantics (3e4db13): play on the standby pointer claims; the
+/// Takeover semantics: play on the standby pointer claims; the
 /// playing device notices the foreign claim and stands down by itself.
 struct PlaybackClaimRulesTests {
 

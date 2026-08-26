@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// Paket 2: Mär playlists across a person's own devices, via the same
+/// Mär playlists across a person's own devices, via the same
 /// `NSUbiquitousKeyValueStore` the podcast progress uses — deliberately, and
 /// that is why there is only ONE iCloud switch: both share one 1 MB budget, so
 /// two switches would suggest an independence that does not exist.
@@ -43,7 +43,7 @@ final class MaerPlaylistCloudSync {
         reconcile()
     }
 
-    /// beff8bd: the reason goes through the ONE watch — every observer of this
+    /// The reason goes through the ONE watch — every observer of this
     /// notification asks WHY, none re-implements the comparison.
     @objc private nonisolated func cloudChanged(_ note: Notification) {
         let reason = note.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int

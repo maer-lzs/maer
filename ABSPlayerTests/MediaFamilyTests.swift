@@ -106,7 +106,7 @@ struct MediaFamilyTests {
     }
 }
 
-/// R33: the ONE membership test of the books-tab library rows — the third
+/// The ONE membership test of the books-tab library rows — the third
 /// instance of the "family never asked" class, fixed at the class.
 @Suite struct BooksTabMembershipTests {
 
@@ -131,8 +131,8 @@ struct MediaFamilyTests {
 
     @Test("lva: decides per item — track address is music, work follows its form")
     func archiveDecidesPerItem() {
-        // Song-addressed id: a TRACK, music by construction (pre-form stock
-        // included — the R33 screenshot cards).
+        // Song-addressed id: a TRACK, music by construction, pre-form stock
+        // included.
         #expect(!MediaFamily.booksTabMember("lva:netlabel#3", markedForm: nil))
         // Whole work started as an album: music.
         #expect(!MediaFamily.booksTabMember("lva:album", markedForm: .album))
@@ -150,8 +150,8 @@ struct MediaFamilyTests {
         ]
         let books = ContinueSources.started(in: defaults, serverKnows: [])
         #expect(books.map(\.id) == ["lv:reading"])
-        // The refused music ids appear on the MUSIC side (never vanish —
-        // the R33 invariant), via the id form when the started form is missing.
+        // The refused music ids appear on the MUSIC side and never vanish,
+        // via the id form when the started form is missing.
         let music = ContinueSources.positionless(in: defaults, serverKnows: [])
         #expect(Set(music.map(\.id)) == ["jam:album-1", "lva:netlabel#3"])
     }

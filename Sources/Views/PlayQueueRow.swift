@@ -7,7 +7,7 @@ import SwiftUI
 
 /// One row of the GLOBAL Up-Next queue. Renders any media type — audiobook,
 /// podcast episode, music album/song — uniformly through the shared
-/// `MediaRowContent` (Regel 2: one parametrised component, used by both the
+/// `MediaRowContent` — one parametrised component, used by both the
 /// Up-Next section and the reorderable queue page). Tapping plays the item,
 /// which removes it from the queue via the coordinator ("start = flies out").
 struct PlayQueueRow: View {
@@ -17,7 +17,7 @@ struct PlayQueueRow: View {
     let playerCoordinator: PlayerCoordinator
 
     var body: some View {
-        // Y60: an offline, not-downloaded queue entry must dim AND carry the
+        // An offline, not-downloaded queue entry must dim AND carry the
         // white wifi.slash glyph (the A3 rule) — reactive via the ONE scope leaf.
         MediaAvailabilityScope(itemId: item.id) { unavailable in
             Button {

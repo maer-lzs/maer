@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 8d49a8e: the genre axes of the two catalog pages — radio plays (podcast
+/// The genre axes of the two catalog pages — radio plays (podcast
 /// side) and free audiobooks (audiobook side). Pure data + pure mapping, so
 /// both pages ask ONE truth and extending means adding an entry.
 nonisolated enum CatalogGenreAxis {
@@ -105,15 +105,15 @@ nonisolated enum CatalogGenreAxis {
         ("biography", String(localized: "Biographies")),
         ("comedy", String(localized: "Comedy")),
         ("philosophy", String(localized: "Philosophy")),
-        // P5/P7: the measured new shelves (IA religion, OTR western + variety).
+        // The measured new shelves (IA religion, OTR western + variety).
         ("religion", String(localized: "Religion")),
         ("western", String(localized: "Western")),
         ("music", String(localized: "Music & Variety")),
     ]
 
-    /// 9ef73a4: Gutenberg LCSH subjects → the SAME shelves. Regel 2: one
-    /// axis, extended — no GutenbergGenreAxis next to it. the measurement of
-    /// the 1,124 audio titles drove the entries (Domestic fiction 15 · Love
+    /// Gutenberg LCSH subjects → the SAME shelves: one axis, extended — no
+    /// GutenbergGenreAxis next to it. The measurement of the 1,124 audio
+    /// titles drove the entries (Domestic fiction 15 · Love
     /// stories 15 · Adventure stories 13 · Bildungsromans 9 · Satire 6 ·
     /// Historical fiction 5); four of them already sat in librivoxAxis
     /// verbatim. LCSH facets ("England -- Fiction") are split and each half
@@ -135,21 +135,19 @@ nonisolated enum CatalogGenreAxis {
         "folklore": "fairytales",
         "autobiography": "biography",
         "biography": "biography",
-        // P5 (1dfdca7, full-stock measurement over 4,257 IA titles — 26%
-        // shelve): the IA subjects speak plainly; philosophy/poetry already
+        // Full-stock measurement over 4,257 IA titles (26 % shelve): the IA
+        // subjects speak plainly; philosophy/poetry already
         // map via librivoxAxis, religion is a NEW shelf (80 titles).
         "religion": "religion",
         "christianity": "religion",
         "bible": "religion",
         "theology": "religion",
-        // P7 (38511f1, full-stock measurement over 2,314 OTR bundles — 40%
-        // shelve): plain OTR subject terms; suspense counts into the horror
+        // Full-stock measurement over 2,314 OTR bundles (40 % shelve): plain
+        // OTR subject terms; suspense counts into the horror
         // shelf (the Horror/Suspense 114 is ONE shelf), western and
         // music/variety are NEW shelves (82 / 159 bundles).
         "crime": "crime",
-        // R47: diese Begriffe sind
-        // haeufiger als manches, das die Achse schon kannte — sie fehlten
-        // schlicht. Exakte Terme wie alle anderen, kein Teilstring.
+        // Exakte Terme wie alle anderen, kein Teilstring.
         "detective": "crime",
         "mystery": "crime",
         "crime drama": "crime",
@@ -167,14 +165,13 @@ nonisolated enum CatalogGenreAxis {
         "children": "children",
     ]
 
-    /// P8 (cde97a9, measured over 200 popular tracks — 93% carry tags, the
-    /// best axis of all sources): the MUSIC genre family. Related tags fold
+    /// Measured over 200 popular tracks (93 % carry tags, the best axis of
+    /// all sources): the MUSIC genre family. Related tags fold
     /// onto their parent shelf as AXIS entries (electropop→pop), no special
     /// code; netlabels inherits this axis later. Server-side use: the shelf
     /// query sends ALL its tags (fuzzytags OR-join) via `musicTags(forShelf:)`.
-    /// R-Musik (Entscheid: „Falte die ganzen sehr kleinen Töpfe …
-    /// bleiben wir bei circa 30"): the folded axis. Two spelling families ride
-    /// in ONE table — Jamendo writes its tags without separators
+    /// The folded axis: small pots fold into large ones, capped at about
+    /// thirty shelves. Two spelling families ride in ONE table — Jamendo writes its tags without separators
     /// (`electropop`, `singersongwriter`), archive.org subjects use spaces and
     /// hyphens (`trip-hop`, `drum and bass`). Lookup normalises both sides, so
     /// each term is listed ONCE, in the form the SOURCE queries with.
@@ -326,20 +323,11 @@ nonisolated enum CatalogGenreAxis {
         musicAxis.filter { $0.value == shelf }.map(\.key).sorted()
     }
 
-    // MARK: - R1 (09.08.): the shelves ask the SERVER, not a local pool
+    // MARK: - The shelves ask the SERVER, not a local pool
 
-    /// R58: wie
-    /// ERGIEBIG jeder Begriff ist, gemessen an gutendex' Hoerbuch-Bestand
-    /// (26.08.). Die Zahl steht hier als DATEN, weil die Auswahl sie braucht
-    /// und die App sie nicht zur Laufzeit messen kann.
-    ///
-    /// Der Grund: die Faecher fragten `terms.prefix(2)` einer ALPHABETISCH
-    /// sortierten Liste. Krimi bekam damit „crime" (5) und
-    /// „crime & mystery fiction" statt „mystery" (49) und „detective" (47) —
-    /// **4 statt 141 Titel**, und Science-Fiction fragte zwei Begriffe mit
-    /// zusammen NULL Treffern. Dieselbe Falle, die der Zaun beim
-    /// alphabetischen Deckel der Musik-Achse gefangen hat; hier stand sie
-    /// live auf der Flaeche.
+    /// Wie ergiebig jeder Begriff im Hoerbuch-Bestand von gutendex ist. Die
+    /// Zahl steht als Daten hier, weil die Begriffsauswahl sie braucht und
+    /// die App sie zur Laufzeit nicht messen kann.
     ///
     /// Ein Begriff ohne Eintrag zaehlt als 0 und faellt hinter alle
     /// gemessenen — nie vor sie.
@@ -414,10 +402,9 @@ nonisolated enum CatalogGenreAxis {
     /// (archive.org `subject:`, gutendex `topic=`). Both spelling families
     /// ride along, because a shelf can be reached from either.
     ///
-    /// R58: sortiert nach gemessener ERGIEBIGKEIT, nicht alphabetisch. Wer
-    /// kuerzt, kuerzt damit die schwaechsten weg statt der staerksten;
-    /// archive.org kuerzt gar nicht mehr (dort ist ein laengeres ODER
-    /// schlicht mehr Bestand).
+    /// Sortiert nach gemessener Ergiebigkeit, nicht alphabetisch: wer die
+    /// Liste kuerzt, kuerzt damit die schwaechsten Begriffe weg statt der
+    /// staerksten. Der archive.org-Zweig kuerzt gar nicht.
     static func subjects(forShelf shelf: String) -> [String] {
         let terms = lcshAxis.filter { $0.value == shelf }.map(\.key)
             + librivoxAxis.filter { $0.value == shelf }.map(\.key)
@@ -428,11 +415,11 @@ nonisolated enum CatalogGenreAxis {
         }
     }
 
-    /// R2: on ONE page a title belongs to exactly one shelf — the first in
-    /// browse order. („Eudemian Ethics" carries Philosophy AND Religion; two
-    /// identical tiles on one page read as a bug, not as truth.) On the shelf
-    /// FULL pages it may legitimately appear in both — there it IS the truth
-    /// of its subjects.
+    /// On ONE page a title belongs to exactly one shelf — the first in browse
+    /// order. A title can carry several subjects, and two identical tiles on
+    /// one page read as a bug rather than as truth. On the shelf FULL pages it
+    /// may legitimately appear in both — there it IS the truth of its
+    /// subjects.
     static func primaryShelf(among shelves: [String]) -> String? {
         librivoxShelves.map(\.key).first { shelves.contains($0) }
     }
@@ -449,28 +436,21 @@ nonisolated enum CatalogGenreAxis {
         return librivoxShelves.map(\.key).filter(hit.contains)
     }
 
-    // MARK: - R47: die Jahrzehnte-Achse fuer Old Time Radio
+    // MARK: - Die Jahrzehnte-Achse fuer Old Time Radio
 
-    /// Entscheid: „Ja, nach Jahrzehnten." Fuer Old Time Radio ist
-    /// die ZEIT die natuerlichere Gliederung als das Genre — „Hoerspiele der
-    /// 40er" erklaert sich von selbst, und eine Messung an 300 Items zeigt
-    /// die Jahre dicht belegt („1950s" 50 · „1940s" 47 · Einzeljahre 1943-1956
-    /// mit je 15-38 Treffern), waehrend 59 % kein Genre-Fach bekommen.
-    ///
-    /// Die Faecher stehen NEBEN den Genres, nicht an ihrer Stelle: ein Stueck
-    /// hat beides, und die Genre-Achse traegt inzwischen (R47-Begriffe).
+    /// Die Jahrzehnte, nach denen Old Time Radio gegliedert wird. Sie stehen
+    /// NEBEN den Genres, nicht an ihrer Stelle: ein Stueck hat beides.
     static let decadeShelves: [(key: String, title: String)] = [
         ("1930s", "1930er"), ("1940s", "1940er"),
         ("1950s", "1950er"), ("1960s", "1960er"),
     ]
 
     /// Ein Einzeljahr faellt auf sein Jahrzehnt, eine bereits gefaltete
-    /// Angabe („1940s") bleibt. **Positiv zugeordnet:** was kein Jahr nennt,
-    /// faellt sichtbar heraus statt in ein Sammelfach — dieselbe Regel wie
-    /// bei den Gattungen.
+    /// Angabe bleibt. Positiv zugeordnet: was kein Jahr nennt, faellt heraus
+    /// statt in ein Sammelfach — dieselbe Regel wie bei den Gattungen.
     static func decade(forSubject subject: String) -> String? {
         let term = subject.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        // Bereits gefaltet („1940s") bleibt, wie es ist.
+        // Eine bereits gefaltete Angabe bleibt, wie sie ist.
         if term.range(of: #"^19[0-9]0s$"#, options: .regularExpression) != nil { return term }
         guard let year = term.range(of: #"^(19[0-9]{2})$"#, options: .regularExpression)
             .flatMap({ Int(term[$0]) }) else { return nil }

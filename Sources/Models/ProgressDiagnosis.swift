@@ -93,13 +93,13 @@ nonisolated enum ProgressDiagnosis {
 
     /// The text block to hand on. Deliberately plain and complete: readable
     /// without the app, hiding no interpretation.
-    /// c9529f1: the BOOK view of the same instrument. A book has one
+    /// The BOOK view of the same instrument. A book has one
     /// position, not many — but the interesting part is WHERE that position
     /// comes from, so the report puts the sources side by side with their
     /// timestamps. Same model, second view; no second version.
     ///
     /// It is deliberately the measuring tool for the rücksprung candidates
-    /// (cce35fc): server vs. local backup vs. cached detail, each with its
+    ///: server vs. local backup vs. cached detail, each with its
     /// own time, plus what the sync queue still owes.
     struct BookSources {
         let serverPosition: Double?
@@ -107,10 +107,10 @@ nonisolated enum ProgressDiagnosis {
         let localPosition: Double?
         let localSavedAtMs: Double?
         /// The position inside the detail stored at download time — the one
-        /// the local start path (P15) begins from.
+        /// the local start path begins from.
         let cachedPosition: Double?
         let cachedUpdatedAtMs: Double?
-        /// c59e96e: what THIS device last pushed successfully. For a downloaded
+        /// What THIS device last pushed successfully. For a downloaded
         /// book it is usually the only local source — the two above are the
         /// deleted backup and the frozen download-time state.
         var flushedPosition: Double? = nil
@@ -124,7 +124,7 @@ nonisolated enum ProgressDiagnosis {
         /// because position-vs-duration and this value can disagree: the
         /// server sends both, and only this one reaches the row.
         var progressFraction: Double? = nil
-        /// efc68ca (2): the last backward jumps, newest last —
+        /// The last backward jumps, newest last —
         /// `[atMs, start, serverTime, serverAtMs, localTime, localAtMs]`.
         var jumpRing: [[Double]] = []
         let duration: Double
@@ -185,7 +185,7 @@ nonisolated enum ProgressDiagnosis {
         // judges differently from the thing it measures is measuring itself.
         if let local = sources.localPosition, let localAt = sources.localSavedAtMs,
            let serverAt = sources.serverUpdatedAtMs, let server = sources.serverPosition {
-            // e32454e: ASK the shared rule, never restate it. My first draft
+            // ASK the shared rule, never restate it. My first draft
             // compared inline — identical today, silently divergent the day
             // someone changes the tolerance or the shape in SyncRules. The
             // whole justification of this instrument is that it judges like
@@ -204,7 +204,7 @@ nonisolated enum ProgressDiagnosis {
                       flushedTime: flushed, flushedAtMs: flushedAt,
                       serverTime: sources.serverPosition ?? 0,
                       serverUpdateMs: sources.serverUpdatedAtMs ?? 0) {
-            // The start path asks this rule too (c461a3b) — the verdict line
+            // The start path asks this rule too — the verdict line
             // used to ask only the crash backup and therefore judged
             // DIFFERENTLY from the thing it measures. That is the same class
             // the inline comparison above was already replaced for.

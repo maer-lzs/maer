@@ -64,7 +64,7 @@ nonisolated struct SubsonicFolderID: Decodable {
     }
 }
 
-// M3: getGenres — the genre NAME arrives as the element content, which the
+// GetGenres — the genre NAME arrives as the element content, which the
 // Subsonic JSON serialization ships under the "value" key.
 nonisolated struct SubsonicGenres: Decodable {
     let genre: [SubsonicGenre]?
@@ -161,8 +161,8 @@ nonisolated struct SubsonicAlbumList: Decodable {
     let album: [SubsonicAlbum]?
 }
 
-/// Funkwhale compat (170ff18): ids arrive as NUMBER there, as string on
-/// Navidrome & co. ONE shared decode (Regel 2) accepts both and yields a
+/// Funkwhale compat: ids arrive as NUMBER there, as string on
+/// Navidrome & co. ONE shared decode accepts both and yields a
 /// String — the known ecosystem quirk, not Funkwhale-exclusive.
 extension KeyedDecodingContainer {
     nonisolated func lenientID(forKey key: Key) throws -> String {
@@ -235,7 +235,7 @@ nonisolated struct SubsonicSong: Decodable, Identifiable {
     let size: Int64?
     let suffix: String?
     let contentType: String?
-    /// M6: play count (OpenSubsonic/Navidrome) — basis for the client-side
+    /// Play count (OpenSubsonic/Navidrome) — basis for the client-side
     /// "Top Songs" ranking on album/playlist pages. nil on plain servers.
     let playCount: Int?
 

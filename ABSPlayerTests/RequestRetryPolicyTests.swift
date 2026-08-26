@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Y33: the per-attempt request policy — a 401 gets exactly one probe retry
+/// The per-attempt request policy — a 401 gets exactly one probe retry
 /// before it counts, transients back off twice, everything else fails fast.
 struct RequestRetryPolicyTests {
     @Test("401 probes once, then fails (logout only after the probe)")
@@ -42,7 +42,7 @@ struct RequestRetryPolicyTests {
                                           attempt: 0) == .fail)
     }
 
-    /// Y39: Subsonic auth codes (200-envelope) ride the SAME 401 probe; every
+    /// Subsonic auth codes (200-envelope) ride the SAME 401 probe; every
     /// other API code is final on the spot.
     @Test("subsonic envelope auth codes probe once, other codes fail")
     func subsonicEnvelopeMapping() {

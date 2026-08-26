@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// X²·3 (958d7d1): the public-broadcast RULE curation — a POSITIVE list of
+/// X²·3: the public-broadcast RULE curation — a POSITIVE list of
 /// broadcasters as data (the only list form; the criterion is neutral:
 /// editorially independent public-service broadcasters with open full feeds;
 /// curated list). Applied LIVE to the Apple directory (search + charts via
@@ -53,12 +53,12 @@ nonisolated enum OERRCuration {
         let language: String
         /// The iTunes storefront the live search runs in.
         let storefront: String
-        /// L2: terms that find THIS broadcaster. Empty ⇒ the language term
+        /// Terms that find THIS broadcaster. Empty ⇒ the language term
         /// (`searchTerms[language]`) carries it, as before.
         var searchTerms: [String] = []
     }
 
-    /// Positivliste v1 (freigegeben 958d7d1). Who is missing is missing
+    /// Positivliste. Who is missing is missing
     /// without remark — the criterion above is the whole rule.
     static let broadcasters: [Broadcaster] = [
         // German-language
@@ -73,11 +73,10 @@ nonisolated enum OERRCuration {
         // English-language
         Broadcaster(tokens: ["bbc", "bbc radio 4", "bbc sounds"],
                     country: .uk, language: "en", storefront: "gb"),
-        // L2 (09.08., gemessen): der Sprach-Begriff „drama" findet in au/ca/nz
-        // NUR die BBC (au 7/7 BBC, ca 2/2, nz 4/4 — kein einziger Treffer der
-        // dortigen Anstalt). Deshalb tragen diese Anstalten EIGENE Begriffe;
-        // gemessen: „ABC listen drama" → 19 ABC-Absender von 25, „CBC podcast
-        // drama" → 9 CBC von 10, „RNZ drama" → 15 RNZ von 25.
+        // Gemessen: der reine Sprach-Begriff findet in au/ca/nz NUR die BBC
+        // (au 7/7, ca 2/2, nz 4/4 — kein einziger Treffer der dortigen
+        // Anstalt). Deshalb tragen diese Anstalten EIGENE Begriffe; damit
+        // liefern sie 19 von 25, 9 von 10 und 15 von 25 eigene Absender.
         Broadcaster(tokens: ["abc", "abc listen", "australian broadcasting corporation"],
                     country: .australia, language: "en", storefront: "au",
                     searchTerms: ["ABC listen drama"]),
@@ -132,18 +131,15 @@ nonisolated enum OERRCuration {
         return nil
     }
 
-    /// L2 (09.08., GEMESSEN und entscheidend): eine Absender-Regel allein
-    /// reicht NICHT. Mit anstaltseigenen Suchbegriffen fuellen sich au/ca/nz
-    /// zwar — aber mit Nachrichten und Talk: „Best of ABC Sport Podcast",
-    /// „Checkpoint", „Front Burner", „Nine To Noon" bestehen die
-    /// Absender-Regel muehelos. Eine Reihe „Oeffentlich-rechtliche
-    /// Hoerspiele" mit ABC-Sport darin waere eine Falschaussage.
+    /// Eine Absender-Regel allein reicht NICHT. Mit anstaltseigenen
+    /// Suchbegriffen fuellen sich au/ca/nz zwar — aber mit Nachrichten und
+    /// Talk, die die Absender-Regel muehelos bestehen. Eine Reihe
+    /// oeffentlich-rechtlicher Hoerspiele mit einer Sport-Sendung darin waere
+    /// eine Falschaussage.
     ///
     /// Die Messung liefert die saubere Trennung gleich mit: ALLE echten
-    /// Treffer (BBC „Dramas", „Limelight", „The Dark Is Rising", „Short
-    /// Story") tragen Apples FORM-Kategorien `Drama`/`Fiction`; KEIN einziger
-    /// der Fehltreffer tut das. Das ist derselbe Hebel wie beim Chart-
-    /// Entscheid (Form-Kategorie schlaegt Themen-Kategorie).
+    /// Treffer tragen die FORM-Kategorien `Drama`/`Fiction`, KEIN einziger
+    /// der Fehltreffer tut das — Form-Kategorie schlaegt Themen-Kategorie.
     ///
     /// Fehlen die Kategorien ganz (Verzeichnis liefert sie nicht), gilt der
     /// Eintrag als NICHT belegt — wir nehmen nichts auf, dessen Form wir

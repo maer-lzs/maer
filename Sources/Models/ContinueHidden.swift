@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// df0b3bb Punkt 3: "take it off the Continue row WITHOUT losing the position".
+/// "take it off the Continue row WITHOUT losing the position".
 ///
 /// The listening position is never touched — only this row's membership. That
 /// is the honest alternative to quietly hiding books, and the function one

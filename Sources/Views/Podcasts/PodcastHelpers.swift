@@ -30,7 +30,7 @@ extension View {
     /// Unified episode context menu (Force Touch / long-press) — the same
     /// everywhere: play, into the queue, played/unplayed, download/delete.
     @ViewBuilder
-    /// df0b3bb 3: `showsContinueHide` is set by the CONTINUE row only — on an
+    /// `showsContinueHide` is set by the CONTINUE row only — on an
     /// ordinary episode row the entry would have nothing to act on.
     func podcastEpisodeMenu(item: LibraryItem, playerCoordinator: PlayerCoordinator,
                             showsContinueHide: Bool = false) -> some View {
@@ -48,7 +48,7 @@ extension View {
             }
             // Offline, an episode without a download cannot start — hide the
             // play entries entirely instead of leaving them visible but dead.
-            // R1: text-only episodes (no enclosure) NEVER get play/queue/
+            // Text-only episodes (no enclosure) NEVER get play/queue/
             // download/played entries — the menu only offers the notes tap.
             let isTextOnly = !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)
             let isPlayable = !isTextOnly && (NetworkMonitor.shared.isConnected
@@ -79,7 +79,7 @@ extension View {
                     DownloadManager.shared.deleteDownload(itemId: item.id)
                 } label: { Label("Delete Download", systemImage: "trash") }
             } else if NetworkMonitor.shared.isConnected {
-                // A7: offline a download can't start — hide the entry.
+                // Offline a download can't start — hide the entry.
                 Button {
                     Task {
                         let p = AppSession.shared.provider(for: item.id)
@@ -102,7 +102,7 @@ extension View {
                     podcastSetPlayed(podcastLibraryItem(show: show, episode: ep), true)
                 }
             } label: { Label("Mark All as Played", systemImage: "checkmark.circle") }
-            // 92e25d6: the manual premium marking right at the show — the
+            // The manual premium marking right at the show — the
             // escape hatch for unknown URL patterns, same truth as the
             // management section.
             if PodcastSubscriptions.isManuallyMarkedPremium(show.feedURL) {
@@ -262,7 +262,7 @@ enum PodcastAutoDownload {
                     await dm.download(item: detail, provider: provider)
                     ownedByAutomation.insert(item.id)
                 } catch {
-                    // Regel 3: an episode that cannot be fetched used to fall
+                    // An episode that cannot be fetched used to fall
                     // out of the run silently. It says so now, and says why.
                     let title = item.media?.metadata?.title ?? item.id
                     failure = String(localized: "\(title) could not be downloaded: \(error.localizedDescription)")
@@ -350,7 +350,7 @@ func relativeDateText(_ item: LibraryItem) -> String {
 
 /// "55 min" or "1 h 51 min" from the episode duration.
 func durationText(_ item: LibraryItem) -> String {
-    // 33bf469 P1 (Fund gilt auch fuer uns): duration 0 is the ABSENCE
+    // Duration 0 is the ABSENCE
     // of a duration, not a length — livestream rips and YouTube-bridge feeds
     // carry it often. "0 min" claimed a length nobody measured; the line
     // stays empty instead (the played/progress paths were already guarded).

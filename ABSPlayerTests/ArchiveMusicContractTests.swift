@@ -7,7 +7,7 @@
 import Testing
 @testable import ABSPlayer
 
-/// The CONTRACT of the 78 rpm area (08.08., Auflage 2 — as a counter-
+/// The CONTRACT of the 78 rpm area (as a counter-
 /// proposal: the invariant is tested, not a sample).
 ///
 /// Why this shape: the area is safe because every shelf is defined by an
@@ -35,13 +35,11 @@ struct ArchiveMusicContractTests {
         }
     }
 
-    /// R62 (OWNER DECISION: „beim Schellack genauso aufsetzen"): die alte
-    /// Regel „ein Bereich auf georgeblood ist IMMER nur ein Fach" ist
-    /// aufgehoben — die Flaeche bekommt ihre Beliebt-Reihe. **Der GRUND der
-    /// alten Regel bleibt aber gueltig**, und deshalb stirbt der Fall nicht,
-    /// sondern wandert: sie existierte, weil die frueher entfernte
-    /// Gemeinfrei-Behauptung nicht zurueckkommen darf (die Sammlung fuehrt
-    /// KEIN Lizenzfeld, gemessen 0 von 187.034).
+    /// Ein Bereich auf georgeblood ist nicht mehr immer nur ein Fach — die
+    /// Flaeche hat ihre Beliebt-Reihe. Der Grund der alten Regel gilt aber
+    /// weiter, und deshalb wandert der Fall nur: die frueher entfernte
+    /// Gemeinfrei-Behauptung darf nicht zurueckkommen, denn die Sammlung
+    /// fuehrt KEIN Lizenzfeld (gemessen 0 von 187.034).
     ///
     /// Neue Regel: ein Bereich auf georgeblood ist entweder ein Fach (mit
     /// Subject-Klausel) oder die EINE ausdruecklich benannte Eltern-Abfrage —
@@ -78,10 +76,10 @@ struct ArchiveMusicContractTests {
 
     @Test("netlabels only ever asks for items that state a licence")
     func netlabelsRequiresStatedLicence() {
-        // R47 (the owner's ENTSCHEID): die ANZEIGE ist geoeffnet — 18 % der
-        // Netlabel-Titel tragen keine Lizenzangabe und werden damit erstmals
-        // sichtbar, mit „Rechtelage nicht angegeben" an der Kachel. Die
-        // Deklaration entscheidet weiterhin ueber die KOPIE.
+        // Die ANZEIGE ist geoeffnet — 18 % der Netlabel-Titel tragen keine
+        // Lizenzangabe und sind damit sichtbar, mit dem Hinweis auf die
+        // ungeklaerte Rechtelage an der Kachel. Die Deklaration entscheidet
+        // weiterhin ueber die KOPIE.
         #expect(!ArchiveMusicCatalog.netlabels.query.contains("licenseurl"),
                 "die Netlabels-Anzeige filtert wieder nach Lizenz")
         #expect(ArchiveMusicCatalog.netlabels.query.contains("collection:netlabels"))
@@ -90,11 +88,9 @@ struct ArchiveMusicContractTests {
         #expect(!FreeCatalog.mayDownload(licenceURL: nil))
     }
 
-    /// R62 (the reviewer's Auflage 1): die neue „Beliebt"-Reihe der Schellack-Flaeche
-    /// muss DIESELBE Grundlage haben wie ihre Faecher — sonst zapft sie eine
-    /// andere Menge an als das, was darunter steht, und der Vertragstest
-    /// faengt es nicht, weil er nur die Faecher kannte. **Deshalb zieht er
-    /// jetzt mit.**
+    /// Die Beliebt-Reihe der Schellack-Flaeche hat DIESELBE Grundlage wie
+    /// ihre Faecher — sonst zapft sie eine andere Menge an als das, was
+    /// darunter steht. Der Vertragstest deckt sie deshalb mit ab.
     @Test("die Eltern-Abfrage teilt die Grundlage ihrer Faecher")
     func theParentQuerySharesItsShelvesFoundation() {
         let eltern = ArchiveMusicCatalog.shellacAll
@@ -111,9 +107,9 @@ struct ArchiveMusicContractTests {
         }
         // Rot-Probe: die breitere 78rpm-Sammlung waere die zweite Wahrheit.
         #expect(!eltern.query.contains("78rpm"))
-        // R47/R62: die Sammlung fuehrt KEIN Lizenzfeld (gemessen: 0 von
-        // 187.034). Die Reihe besteht also ganz aus „Rechtelage nicht
-        // angegeben" — anzeigen ja, herunterladen nein. Die frueher
+        // Die Sammlung fuehrt KEIN Lizenzfeld (gemessen: 0 von 187.034).
+        // Die Reihe traegt also durchgehend den Hinweis auf die ungeklaerte
+        // Rechtelage — anzeigen ja, herunterladen nein. Die frueher
         // entfernte Gemeinfrei-Behauptung darf nicht zurueckkommen.
         #expect(!eltern.headerNote.lowercased().contains("public domain"))
         #expect(!eltern.headerNote.lowercased().contains("gemeinfrei"))

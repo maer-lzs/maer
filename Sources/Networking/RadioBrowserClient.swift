@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// F1: Radio Browser API — the open, key-free community catalog. Served by
+/// Radio Browser API — the open, key-free community catalog. Served by
 /// volunteer MIRRORS behind round-robin DNS; we try a fixed mirror list in
 /// order (the de-dupe against double-serves lives in `RadioMapping`). Every
 /// request rides the shared retry policy (Y39).
@@ -28,7 +28,7 @@ nonisolated enum RadioBrowserClient {
         case search(name: String, limit: Int)
         case popular(limit: Int)
         case byRegion(countryCode: String, limit: Int)
-        /// eb10440: a genre, optionally narrowed to ONE country. Measured:
+        /// A genre, optionally narrowed to ONE country. Measured:
         /// `search?tag=<v>&tagExact=true` returns byte-identical results to
         /// the old `bytagexact/<v>` path, so one endpoint serves both the
         /// worldwide and the narrowed case. `tagExact` is a BOOLEAN — passing
@@ -41,7 +41,7 @@ nonisolated enum RadioBrowserClient {
         case countries
         /// Stations of ONE state, by votes (the REAL region section).
         case byState(state: String, limit: Int)
-        /// e4bd910 rotation: current click-trend — nationwide or per state.
+        /// Current click-trend — nationwide or per state.
         case byRegionClicktrend(countryCode: String, limit: Int)
         case byStateClicktrend(state: String, limit: Int)
 
@@ -153,7 +153,7 @@ nonisolated enum RadioBrowserClient {
 
     struct RBState: Decodable { let name: String?; let stationcount: Int? }
 
-    /// V2 audit fix: decode failures THROW (like the stations path) instead
+    /// Decode failures THROW (like the stations path) instead
     /// of collapsing to [] — inside the mirror loop a broken mirror then
     /// fails over to the next one; a total failure surfaces to the caller.
     /// Pure (tested against the wire corpus).
@@ -171,14 +171,14 @@ nonisolated enum RadioBrowserClient {
     }
 
     /// All countries (name + ISO code + stationcount) for the explicit
-    /// country choice (b1ab99d cascade step a).
+    /// country choice (first cascade step).
     struct RBCountry: Decodable, Sendable {
         let name: String?
         let iso_3166_1: String?
         let stationcount: Int?
     }
 
-    /// V2 audit fix: throws like `decodeStates` (mirror failover, no silent
+    /// Throws like `decodeStates` (mirror failover, no silent
     /// empty country list). Pure (tested against the wire corpus).
     nonisolated static func decodeCountries(_ data: Data) throws -> [RBCountry] {
         try JSONDecoder().decode([RBCountry].self, from: data)
@@ -195,7 +195,7 @@ nonisolated enum RadioBrowserClient {
         try await stations(.byTag(tag: tag, countryCode: countryCode, limit: limit))
     }
 
-    /// eb10440: the union over SEVERAL countries. Radio Browser has no
+    /// The union over SEVERAL countries. Radio Browser has no
     /// server-side multi-country filter (measured: `CH,DE` answers 0, a
     /// repeated parameter keeps only the first), so the countries are asked
     /// in parallel and joined here. An empty list means worldwide — ONE
@@ -207,15 +207,15 @@ nonisolated enum RadioBrowserClient {
     static func byTag(tag: String, countryCodes: [String],
                       limit: Int = catalogLimit) async throws -> [RadioStation] {
         guard !countryCodes.isEmpty else {
-            // 8a38ca5: worldwide is TWO pots — the global top by votes AND the
+            // Worldwide is TWO pots — the global top by votes AND the
             // device language's top. One pot alone caps before the bonus: the
             // world's top 40 is RU/UA/IR-dominated and DLF (worldwide ~49)
             // never entered it. Same union mechanic as the countries.
             //
-            // bbffebb: the language pot degrading is allowed, but never again
+            // The language pot degrading is allowed, but never again
             // SILENT — a swallowed failure here showed as "refresh runs clean,
             // list unchanged, DLF missing" on the device, with no witness.
-            // R21-Rest: the language pot is filtered CLIENT-side from one
+            // The language pot is filtered CLIENT-side from one
             // broad fetch. The server's `languagecodes=` filter matches the
             // mixed-case catalog field case-SENSITIVELY (DLF carries "DE",
             // WDR 5 "de" — one case alone lost half the pot) and silently
@@ -235,7 +235,7 @@ nonisolated enum RadioBrowserClient {
             }
             return union
         }
-        // c0674d4: each country reports WHAT happened — a refresh cancelling
+        // Each country reports WHAT happened — a refresh cancelling
         // the in-flight group produced three swallowed cancels, an all-nil
         // collection, and a thrown cannotConnectToHost: a cancellation
         // counted as a connection failure, one level above the fixed catches.
@@ -275,7 +275,7 @@ nonisolated enum RadioBrowserClient {
     }
 
     /// The group's failure semantics, pure: a cancel is not a failure — not
-    /// in the single catches (ebda0fa) and not in the COUNT (c0674d4). Only
+    /// in the single catches and not in the COUNT. Only
     /// "every country genuinely failed" is unreachable; any cancel in an
     /// otherwise hitless group means the RUN was cancelled, and the page
     /// keeps what it has.
@@ -289,9 +289,9 @@ nonisolated enum RadioBrowserClient {
     // MARK: - Shared mirror loop (ONE source for policy + drift-free)
 
     /// Runs a query across the mirror list in order; each request rides the
-    /// Y39 retry policy; a mirror failure tries the next. The payload shape
-    /// is the caller's `decode` closure — stations and states collapse onto
-    /// this ONE loop (fixlet 4575a76: the copied loop had already drifted).
+    /// shared retry policy; a mirror failure tries the next. The payload
+    /// shape is the caller's `decode` closure — stations and states collapse
+    /// onto this ONE loop, which the copied loop had already drifted from.
     private static func request<T>(_ query: Query,
                                    decode: (Data) throws -> T) async throws -> T {
         var lastError: Error = URLError(.cannotConnectToHost)

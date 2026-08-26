@@ -57,7 +57,7 @@ nonisolated enum RequestRetryPolicy {
 
     static let transientBackoffMs = [400, 1200]
 
-    /// Y39: Subsonic reports auth failures as an API code INSIDE a 200
+    /// Subsonic reports auth failures as an API code INSIDE a 200
     /// envelope (40 = wrong credentials, 41 = token auth unsupported) — map
     /// them onto the 401 probe so a gateway hiccup doesn't read as "wrong
     /// password". Every other API code is final.
@@ -67,7 +67,7 @@ nonisolated enum RequestRetryPolicy {
             : .fail
     }
 
-    /// Y39: one policy-driven fetch loop for the NON-ABS clients (Subsonic
+    /// One policy-driven fetch loop for the NON-ABS clients (Subsonic
     /// envelope requests, RSS feed pulls) — the ABS `APIClient.perform` runs
     /// the same policy with its own logout hook. Returns the LAST response
     /// (even non-2xx) so the caller keeps its own status semantics; URL-level

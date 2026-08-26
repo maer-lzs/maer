@@ -31,7 +31,7 @@ struct PodcastsView: View {
     /// becoming visible (isActive is part of the recompute token).
     var isActive: Bool = true
     @ObservedObject private var subs = PodcastSubscriptions.shared
-    // Auftrag K: the mixed catalog row renders from the calm-gated store
+    // The mixed catalog row renders from the calm-gated store
     // (sourceRows applies via runWhenCalm — no layout shift mid-scroll).
     @ObservedObject private var freeCatalogStore = FreeCatalogStore.shared
     // Front 2 fix 2: the tab root observes the NOISY stores (progress store =
@@ -44,9 +44,9 @@ struct PodcastsView: View {
 
     /// Non-observing store handles (reads only; re-render is driven by the scope).
     private var absPodcast: ABSPodcastProvider { ABSPodcastProvider.shared }
-    /// df0b3bb 3: see HomeView — hiding an episode must redraw this row.
+    /// See HomeView — hiding an episode must redraw this row.
     @State private var hiddenRevision = 0
-    /// D4/B3: more tile text lines at accessibility sizes.
+    /// More tile text lines at accessibility sizes.
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Shows of all podcast sources (RSS + ABS), deduplicated by the normalised
@@ -65,7 +65,7 @@ struct PodcastsView: View {
     // immediately, the sections come a frame later.
     @State private var nextUp: [LibraryItem] = []           // "Continue" (large cards)
     @State private var recentShows: [RecentShowInfo] = []   // "Recently updated" (show grid)
-    /// Paket B: the mirrored group's shows (their OWN row; split in compute).
+    /// The mirrored group's shows (their OWN row; split in compute).
     @State private var mirroredShows: [RecentShowInfo] = []
     @State private var downloaded: [LibraryItem] = []
     /// X1c: newest episode per show for the SHARED latest-episodes grid
@@ -94,8 +94,8 @@ struct PodcastsView: View {
     var body: some View {
         ScrollView {
             if sectionsReady {
-                // Auftrag K, MEASURED root fix (hang5.sample + 7-run matrix):
-                // with the catalog tile row present, this tab's outer
+                // Measured root fix: with the catalog tile row present,
+                // this tab's outer
                 // LazyVStack drove a pure SwiftUI LazyStack-placement loop
                 // (289 s journey hang; app code absent from the sample). The
                 // scroll reporter was ruled out (guard/constant-transform/
@@ -107,7 +107,7 @@ struct PodcastsView: View {
                 // caps the last full grid). Do NOT flip this back to lazy
                 // without re-running the tile-row journey measurement.
                 VStack(alignment: .leading, spacing: TabContentLayout.sectionSpacing) {
-                    // Serverless (affb7e6): the tab opens with DISCOVER as its
+                    // Serverless: the tab opens with DISCOVER as its
                     // core — the former full-screen empty state blanketed the
                     // recommendation and radio-play rows that need no account.
                     // The add path stays, as a section instead of a wall.
@@ -123,13 +123,10 @@ struct PodcastsView: View {
                         .padding(.horizontal)
                     }
                     nextUpSection
-                    // R55: eigener Bestand vor
-                    // Schaufenster. „Empfohlen" und „Neue Folgen" stehen
-                    // hoeher, „Hoerspiele zum Abonnieren" rutscht zwei Reihen
-                    // runter — der Podcast-Tab ist die Flaeche der ABOS, und
-                    // die Kuration ist die Tuer nach draussen, nicht der
-                    // Anfang. Passt zum R52-Entscheid: was hier steht, ist
-                    // Feed-Kuration, weil man Feeds abonniert.
+                    // Eigener Bestand vor Schaufenster: die Reihen der Abos
+                    // stehen hoeher, die Kuration rutscht zwei Reihen runter.
+                    // Der Podcast-Tab ist die Flaeche der ABOS, und was hier
+                    // steht, ist Feed-Kuration, weil man Feeds abonniert.
                     recommendationsSection
                     latestEpisodesSection
                     hoerspieleSection
@@ -161,11 +158,11 @@ struct PodcastsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .continueHiddenChanged)) { _ in
             hiddenRevision += 1
         }
-        // Pinchflat Paket A (a404b38): the app-start mirror pass — SILENT on
+        // The app-start mirror pass — SILENT on
         // every failure (a mesh-only server being away is normal); visible
         // errors live at the manual gesture in the source management.
         .task { await PinchflatSync.mirrorSilentlyOnce() }
-        // A5: return promptly (stuck indicator otherwise) AND survive the
+        // Return promptly (stuck indicator otherwise) AND survive the
         // gesture's cancellation — the full refresh (feeds + ABS catalog incl.
         // detail fetches) keeps running as a background task; the sections
         // update reactively via the recompute token when it lands.
@@ -173,7 +170,7 @@ struct PodcastsView: View {
             let work = Task {
                 isRefreshing = true
                 defer { isRefreshing = false }
-                // 7f81c2b: the strongest "fetch everything now" gesture left
+                // The strongest "fetch everything now" gesture left
                 // OUT the very reconcile people wait for (subscriptions,
                 // premium feeds, removals) — only the background service did
                 // it. Reconcile FIRST, so freshly adopted shows are loaded by
@@ -189,7 +186,7 @@ struct PodcastsView: View {
             if isRefreshing { RefreshActivityPill() }
         }
         .task {
-            // S3: let the tab-switch animation settle before kicking network
+            // Let the tab-switch animation settle before kicking network
             // work — the refresh burst used to stutter the transition.
             try? await Task.sleep(nanoseconds: 350_000_000)
             guard !Task.isCancelled else { return }
@@ -236,12 +233,12 @@ struct PodcastsView: View {
         }
     }
 
-    /// S2: collect the main-actor state as one snapshot (single UserDefaults
+    /// Collect the main-actor state as one snapshot (single UserDefaults
     /// pass), then run the O(shows×episodes) computation off-main.
     private func computeSections() async -> PodcastSectionsResult {
         let shows = allShows
         let snapshot = PodcastSections.snapshot(shows: shows)
-        // J2: the tab's show grid is a PREVIEW now — newest-first, unfiltered
+        // The tab's show grid is a PREVIEW now — newest-first, unfiltered
         // (the sort/filter control moved to the full page, which computes with
         // the persisted values itself).
         return await PodcastSections.computeDetached(
@@ -251,7 +248,7 @@ struct PodcastsView: View {
 
     // MARK: - Up Next (large cards, one per show)
 
-    /// df0b3bb 3: the row without the manually hidden entries. Read at render
+    /// The row without the manually hidden entries. Read at render
     /// time (the marker store is cheap) so hiding takes effect at once.
     private var nextUpShown: [LibraryItem] {
         let markers = ContinueHiddenStore.markers()
@@ -272,8 +269,8 @@ RowHeading(title: "Keep Listening", font: .title2,
                            destination: PodcastRoute.nextUpAll)
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 14) {
-                        // 6fcb301: preview cap for every row of this tab.
-                        // df0b3bb 3: hidden entries are gone from this row too.
+                        // Preview cap for every row of this tab.
+                        // Hidden entries are gone from this row too.
                         ForEach(RowPreview.cut(nextUpShown)) { item in
                             PodcastFeaturedCard(item: item, playerCoordinator: playerCoordinator)
                         }
@@ -288,7 +285,7 @@ RowHeading(title: "Keep Listening", font: .title2,
 
     // MARK: - Recommended (external popularity, below the cards)
 
-    /// cae18f5: the radio-play catalogue gets its entry HERE, not only in
+    /// The radio-play catalogue gets its entry HERE, not only in
     /// the search deck — search is a place you go knowing what you want, a
     /// catalogue is a place you browse. Form question answered by symmetry:
     /// the audiobook tab already carries its catalogue as a LINKED SECTION
@@ -299,24 +296,20 @@ RowHeading(title: "Keep Listening", font: .title2,
     /// third entrance on Home would be one too many.
     ///
     /// The master switch gates it: no door into an empty room.
-    /// Paket 4: the podcast tab's entry previews the FEED sources of the
-    /// merged page (they land here as subscriptions) — the audiobooks tab
-    /// previews the catalog sources.
+    /// The podcast tab's entry previews the FEED sources of the merged page
+    /// (they land here as subscriptions) — the audiobooks tab previews the
+    /// catalog sources.
     ///
-    /// R52: that sentence stood here since 07.08. and the code below did not
-    /// keep it — the row pulled three BOOK lanes as well, and only the slow
-    /// per-tile probe (gone with R45) had kept them empty enough to look
-    /// right. It is a construction now: the surface names its lanes
+    /// The disjointness is a construction: the surface names its lanes
     /// (`CatalogMix.Surface.podcasts` carries feeds only), and a fence holds
-    /// the disjointness at the TILES. The older test that the previous
-    /// comment leaned on ("CatalogSource split, tested") is not wrong, it
-    /// proves a different sentence: it splits the source ENUM, not the row.
+    /// it at the TILES. The older test on the source enum proves a different
+    /// sentence: it splits the ENUM, not the row.
     @ViewBuilder
     private var hoerspieleSection: some View {
-        // Auftrag K: the 733ac2a TILE row, unblocked by the MEASURED root
-        // fix (eager tab root, see body) — the hang was the outer LazyVStack's
-        // placement loop, NOT the scroll reporter (all reporter variants hung
-        // identically; hang5.sample has no reporter in the cycle). The row
+        // The TILE row, unblocked by the measured root fix (eager tab root,
+        // see body) — the hang was the outer LazyVStack's placement loop, NOT
+        // the scroll reporter (all reporter variants hung identically). The
+        // row
         // ships in its intended mixed form: radio-play feeds + catalog titles
         // interleaved, heading = entry chevron onto the area page (the old
         // heading-only form dissolves into it). isActive stays as belt for
@@ -333,7 +326,7 @@ RowHeading(title: "Keep Listening", font: .title2,
         }
     }
 
-    /// R52: the podcast tab shows what lands here as a SUBSCRIPTION — the
+    /// The podcast tab shows what lands here as a SUBSCRIPTION — the
     /// curated radio-play feeds. No catalog tile: those are whole works with
     /// a listening position and live in the audiobooks tab.
     private var hoerspieleMixTiles: [CatalogMix.Tile] {
@@ -357,8 +350,8 @@ RowHeading(title: "Recommended",
                     LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(RowPreview.cut(recommendationItems)) { r in
                             recommendationTile(r)
-                                // Kachel-Auftrag: screen-relative slots + peek
-                                // instead of the fixed 126 pt.
+                                // Screen-relative slots + peek instead of
+                                // the fixed 126 pt.
                                 .cardRowSlot()
                         }
                     }
@@ -372,7 +365,7 @@ RowHeading(title: "Recommended",
     /// Y2a: the SAME tile as Home's Discover row (RecommendationTile) — tap
     /// opens the temporary show preview, corner control subscribes.
     private func recommendationTile(_ r: PodcastSearchResult) -> some View {
-        // ff92dde: the tab row carries the SAME reason line as Home — no
+        // The tab row carries the SAME reason line as Home — no
         // surface stays silent.
         RecommendationTile(result: r,
                            subtitle: PodcastRecommendationsStore.reasonLine(recommendations.reason(for: r)))
@@ -392,13 +385,13 @@ RowHeading(title: "Recommended",
 
     @ViewBuilder
     private var recentlyUpdatedSection: some View {
-        // J2: a PREVIEW now — 12 tiles, newest first, unfiltered; the full
-        // subscription grid (and the sort/filter control with it, fb21fbd)
-        // lives on the page behind the counted chevron. The count rule shows
-        // the total ("Recently Updated · 27 ›"); with ≤ 12 shows the chevron
-        // falls away by pure counting. The old fb21fbd zero-hits trap died
-        // with the filter's move: the preview is unfiltered, and the page —
-        // where the filter lives — always shows its own way back out.
+        // A PREVIEW now — 12 tiles, newest first, unfiltered; the full
+        // subscription grid (and the sort/filter control with it) lives on
+        // the page behind the counted chevron. The count rule shows the total
+        // ("Recently Updated · 27 ›"); with ≤ 12 shows the chevron falls away
+        // by pure counting. The zero-hits trap dies with the filter's move:
+        // the preview is unfiltered, and the page — where the filter lives —
+        // always shows its own way back out.
         if !recentShows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 RowHeading(title: "Recently Updated",
@@ -406,7 +399,7 @@ RowHeading(title: "Recommended",
                            shown: recentShowsPreview.count,
                            showsTotal: true,
                            destination: PodcastRoute.subscriptions)
-                // D6/B5: adaptive columns instead of a fixed pair — on iPads the
+                // Adaptive columns instead of a fixed pair — on iPads the
                 // two flexible columns blew the tiles up to ~500pt covers.
                 LazyVGrid(
                     columns: [GridItem(.adaptive(minimum: 160, maximum: 240), spacing: 14)],
@@ -430,13 +423,13 @@ RowHeading(title: "Recommended",
         Array(recentShows.prefix(12))
     }
 
-    // MARK: - Pinchflat group (Paket B)
+    // MARK: - Pinchflat group
 
-    /// c90390b: the mirrored group is a NORMAL tile row after the blueprint —
+    /// The mirrored group is a NORMAL tile row after the blueprint —
     /// show tiles (same tile as the subscription surfaces), RowPreview cap,
     /// counted chevron onto the group page (full grid). Tap = show page like
     /// any subscription; hiding is the context menu on tile + grid cell. NO
-    /// per-tile origin capsule in here (the heading already says it, a916a5a).
+    /// per-tile origin capsule in here — the heading already says it.
     /// Row title: neutral placeholder from the server name — the final name
     /// is a device-loop decision, the string stays swappable.
     @ViewBuilder
@@ -469,7 +462,7 @@ RowHeading(title: "Recommended",
 
     // MARK: - Premium (private/paid feeds)
 
-    /// Y52: the ONE premium test lives in PodcastSubscriptions (credentials OR
+    /// The ONE premium test lives in PodcastSubscriptions (credentials OR
     /// token-URL class OR known members-only host).
     private func isPremium(_ show: PodcastShow) -> Bool {
         PodcastSubscriptions.isPremiumFeed(show.feedURL)
@@ -480,12 +473,12 @@ RowHeading(title: "Recommended",
         let shows = allShows.filter { isPremium($0) }
         if !shows.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                // DIE REGEL (5c646c6): every row has a page; the chevron is
+                // DIE REGEL: every row has a page; the chevron is
                 // pure COUNTING (total > shown) — page stays even when nobody
                 // can reach it today, because other people's libraries are
                 // bigger. Ad-hoc heading (not RowHeading): the lock icon is a
                 // third variant — the moment RowHeading grows one more, it
-                // becomes the enum noted (e268c70), and this call site
+                // becomes the enum noted, and this call site
                 // folds in.
                 if shows.count > RowPreview.cut(shows).count {
                     NavigationLink(value: PodcastRoute.premium) {
@@ -523,7 +516,7 @@ RowHeading(title: "Recommended",
     // MARK: - Downloaded (3 rows, horizontally scrollable)
 
     @ViewBuilder
-    /// V6: entry to the listen history — it lives WHERE podcasts live (a
+    /// Entry to the listen history — it lives WHERE podcasts live (a
     /// library fact, not a setting; proposal per report). Last row of the tab.
     private var historyRow: some View {
         NavigationLink(value: PodcastRoute.history) {
@@ -581,7 +574,7 @@ RowHeading(title: "Downloaded",
 
 
 /// Front 2 fix 2: THE one observer of the podcast tab's noisy recompute inputs
-/// (the MediaAvailabilityScope idea lifted to the tab level, Regel 2). It
+/// (the MediaAvailabilityScope idea lifted to the tab level). It
 /// listens to the stores' objectWillChange, recomputes the coarse token on the
 /// next runloop turn (values settled) and republishes ONLY when the token
 /// actually changed — a download progress tick or playback save no longer
@@ -613,7 +606,7 @@ final class PodcastsRecomputeScope: ObservableObject {
     }
 
     private static func compute() -> String {
-        // #51 W1 (class-B convention): content identity instead of counts —
+        // Content identity instead of counts —
         // a swapped subscription or download at equal count must recompute.
         let feeds = ContentToken.of(PodcastSubscriptions.shared.shows.map(\.feedURL))
         let downloads = ContentToken.of(DownloadManager.shared.downloadedItemIds)
@@ -622,7 +615,7 @@ final class PodcastsRecomputeScope: ObservableObject {
 }
 
 
-/// e96d396 B2: the premium shows as a browsable GRID — the row's page.
+/// The premium shows as a browsable GRID — the row's page.
 /// Blueprint "recently added" — the target form for tile rows:
 /// heading with chevron -> the full grid. Management (S22) stays separate.
 struct PremiumShowsPage: View {
@@ -696,7 +689,7 @@ struct PodcastContinuePage: View {
 }
 
 /// Welle 3: the FULL recommendation pool — one page for Home's Discover and
-/// the podcast tab's Recommended (Regel 2). NACHSCHLAGEN: tap opens the show
+/// the podcast tab's Recommended. NACHSCHLAGEN: tap opens the show
 /// preview, subscribing lives there.
 struct RecommendationsPage: View {
     @ObservedObject private var recommendations = PodcastRecommendationsStore.shared
@@ -769,7 +762,7 @@ struct PodcastDownloadsPage: View {
     }
 
     var body: some View {
-        // Paket B: membership once per render (cell-cost rule).
+        // Membership once per render (cell-cost rule).
         let mirrored = subs.mirroredEpisodeGuids()
         return ScrollView {
             LazyVStack(spacing: 0) {
@@ -786,7 +779,7 @@ struct PodcastDownloadsPage: View {
 }
 
 
-/// H (7749411): the charts page — one tile ROW per genre of the measured
+/// H: the charts page — one tile ROW per genre of the measured
 /// hoerspielChips axis, headed by a counting chevron onto the genre grid.
 /// Same chart client as the chips (no second load path); genres are
 /// STRUCTURE here, not filter (the chips stay on the overview only).
@@ -904,11 +897,11 @@ struct ChartGenrePage: View {
 }
 
 
-/// J2: the full subscription grid behind the "Recently Updated" preview —
-/// the sort/filter control moved here with it (fb21fbd: the control sits on
-/// the surface it acts on; same persisted AppStorage keys as before). The
-/// fb21fbd zero-hits rule lives ON this page now: an active filter with no
-/// match shows the reason, and the control stays reachable.
+/// The full subscription grid behind the "Recently Updated" preview —
+/// the sort/filter control moved here with it — the control sits on the
+/// surface it acts on, with the same persisted AppStorage keys as before. The
+/// zero-hits rule lives ON this page: an active filter with no match shows the
+/// reason, and the control stays reachable.
 struct PodcastSubscriptionsPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -1004,9 +997,9 @@ struct PodcastSubscriptionsPage: View {
 }
 
 
-/// Paket B: the group page — the full mirrored-channel grid behind the row
-/// (blueprint "Zuletzt hinzugefügt": heading → full grid; no sort control,
-/// the group is server-ordered by newest). Hide = context menu on the cell.
+/// The group page — the full mirrored-channel grid behind the row: heading →
+/// full grid, no sort control, the group is server-ordered by newest. Hide =
+/// context menu on the cell.
 struct PinchflatGroupPage: View {
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -1043,7 +1036,7 @@ struct PinchflatGroupPage: View {
     }
 }
 
-/// Paket B: the ONE hide gesture (context menu on row tile + grid cell) —
+/// The ONE hide gesture (context menu on row tile + grid cell) —
 /// opt-out that survives mirror runs; re-admitting lives in the server
 /// management (source view).
 struct PinchflatHideButton: View {
@@ -1062,7 +1055,7 @@ extension View {
     /// "Not interested" — the permanent opt-out, offered ONLY on the three
     /// recommendation surfaces (Home row, tab row, full page). Search, genre
     /// charts and links never carry it: what the user actively steers to is
-    /// not a recommendation (correction 6ee3f4e). The release path lives in
+    /// not a recommendation. The release path lives in
     /// the podcast settings.
     func recommendationHideMenu(_ result: PodcastSearchResult) -> some View {
         contextMenu {

@@ -7,7 +7,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// 4e1688d: the sibling stage of the logo chain — the same station appears
+/// The sibling stage of the logo chain — the same station appears
 /// several times in the catalog, and the strongest entry is not always the one
 /// with a picture.
 @Suite struct RadioSiblingLogoTests {
@@ -22,7 +22,7 @@ import Foundation
         return Data("[\(items.joined(separator: ","))]".utf8)
     }
 
-    /// the owner's actual case, with the measured numbers.
+    /// The measured case, with its numbers.
     @Test func theWeakerEntryWithAPictureRescuesTheStrongerOne() {
         let data = wire([
             (name: "bigFM Deutschland", favicon: "", homepage: "https://www.bigfm.de/", votes: 497),
@@ -97,7 +97,7 @@ import Foundation
                 || url?.query?.contains("name=Hit+Radio+FFH") == true)
     }
 
-    /// R24: members without a declared separator get a SECOND, family-stem
+    /// Members without a declared separator get a SECOND, family-stem
     /// search — the brand-like first token. Generic first words never widen
     /// the search; acceptance stays domain+kinship guarded either way.
     @Test func familyStemWidensOnlyForBrandLikeHeads() {
@@ -111,7 +111,7 @@ import Foundation
     }
 
     /// Measured against the REAL page: bigFM's icon sits on a foreign CDN
-    /// (`file.atsw.de`), not on the station's own domain. the reviewer suspected the
+    /// (`file.atsw.de`), not on the station's own domain. The suspicion was the
     /// absolute foreign address as the reason the homepage stage broke off —
     /// this fence holds the answer that it does not.
     @Test func anAbsoluteForeignIconAddressIsAccepted() {
@@ -126,7 +126,7 @@ import Foundation
         #expect(icon?.absoluteString == "https://file.atsw.de/icons/icon_512.png")
     }
 
-    /// R41: the catalog's homepage is often `http://` — and under ATS
+    /// The catalog's homepage is often `http://` — and under ATS
     /// (clear text for MEDIA only) that request never leaves the device, so
     /// the homepage stage was dead for half the German catalog (measured:
     /// 101 of the top 200). The funnel raises to https; no http fallback.

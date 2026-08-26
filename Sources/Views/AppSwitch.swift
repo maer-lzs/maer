@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// e9a9b05: THE switch of this app — a `Toggle` that carries the system's on
+/// THE switch of this app — a `Toggle` that carries the system's on
 /// colour instead of the brand accent.
 ///
 /// **Why a shared BUILDING BLOCK and not a shared STATE.** The obvious route is

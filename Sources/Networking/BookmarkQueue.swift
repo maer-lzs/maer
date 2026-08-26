@@ -52,7 +52,7 @@ final class BookmarkQueue {
         save(ops)
     }
 
-    /// 6a411cf: unread is not empty — these are bookmarks the user made and
+    /// Unread is not empty — these are bookmarks the user made and
     /// the server has not seen yet.
     private var readFailed = false
 

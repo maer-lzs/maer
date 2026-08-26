@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// beff8bd: the quota check must hold for the CHANNEL, not for one service.
+/// The quota check must hold for the CHANNEL, not for one service.
 @Suite struct CloudQuotaWatchTests {
 
     @Test func onlyTheQuotaReasonCounts() {

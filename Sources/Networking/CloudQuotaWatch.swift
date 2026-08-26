@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// beff8bd: the ONE place that asks WHY the key-value store changed.
+/// The ONE place that asks WHY the key-value store changed.
 ///
 /// The silent failure this project cannot afford: when the shared 1 MB is
 /// exhausted, iCloud stops accepting writes and says so ONLY through this

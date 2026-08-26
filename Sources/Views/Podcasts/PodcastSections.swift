@@ -9,9 +9,9 @@ import Foundation
 nonisolated struct PodcastSectionsResult {
     var nextUp: [LibraryItem] = []
     var recentShows: [RecentShowInfo] = []
-    /// Pinchflat Paket B: mirrored shows (origin != nil) render in their OWN
+    /// Mirrored shows (origin != nil) render in their OWN
     /// group row instead of "Recently updated" — the group IS their row
-    /// (c90390b), so the general grid does not double them. Newest first.
+    ///, so the general grid does not double them. Newest first.
     var mirroredShows: [RecentShowInfo] = []
     var downloaded: [LibraryItem] = []
 }
@@ -191,7 +191,7 @@ enum PodcastSections {
             }
         }
 
-        // Paket B: mirrored shows split into their own group (the group is
+        // Mirrored shows split into their own group (the group is
         // their row); everything else stays in the general grid.
         let mirrored = infos.filter { $0.show.origin != nil }
         let regular = infos.filter { $0.show.origin == nil }

@@ -20,7 +20,7 @@ nonisolated struct MusicArtist: Identifiable, Hashable {
     let albumCount: Int?
 }
 
-/// bdfe8dc/7b061c4: the ONE decision "which artist image does a surface
+/// The ONE decision "which artist image does a surface
 /// render" — pure, so every surface (list row, portrait strip, artist page
 /// header) answers it identically and the answer is testable instead of
 /// re-derived per view. The opt-out `musicArtistImagesOnline` governs the
@@ -111,8 +111,8 @@ nonisolated enum MusicPopularity {
 
 /// Shared pure assembly of a multi-song music item's player material: songs →
 /// per-song tracks (stream id in `contentUrl`) plus one chapter per song, so
-/// "next chapter" = "next song" (Regel 2 — both music providers build their
-/// albums/playlists through this).
+/// "next chapter" = "next song" — both music providers build their
+/// albums/playlists through this.
 nonisolated enum MusicTrackAssembly {
     struct Song {
         let id: String
@@ -141,7 +141,7 @@ nonisolated enum MusicTrackAssembly {
     }
 }
 
-/// M3: one music genre as the providers report it. Counts are optional —
+/// One music genre as the providers report it. Counts are optional —
 /// Subsonic ships song+album counts, Jellyfin ships none (the page then
 /// sorts alphabetically and hides the numerals; honestly reported).
 nonisolated struct MusicGenre: Equatable, Identifiable, Sendable {
@@ -175,7 +175,7 @@ nonisolated enum MusicGenrePresentation {
     }
 }
 
-/// M3 glyphs (7e17a31): curated SF-symbol mapping for the common genres,
+/// M3 glyphs: curated SF-symbol mapping for the common genres,
 /// deterministic `music.note` fallback for the unknown — NEVER guess-and-be-
 /// wrong. Matching is normalized (lowercase, diacritics stripped) exact
 /// first, then whole-word (so "Progressive Rock" finds rock); the FIRST

@@ -80,7 +80,7 @@ struct ArtistPortraitLookupTests {
     }
 }
 
-/// M6: client-side "Top Songs" ranking (pure).
+/// Client-side "Top Songs" ranking (pure).
 struct MusicPopularityTests {
     @Test("ranks by count desc, ties keep track order, zeros/nils drop")
     func ranking() {
@@ -97,7 +97,7 @@ struct MusicPopularityTests {
     }
 }
 
-/// bdfe8dc/7b061c4: which artist image a surface renders — ONE pure decision
+/// Which artist image a surface renders — ONE pure decision
 /// (the opt-out governs the WEB chain, never the library server's own image).
 struct ArtistImagePolicyTests {
     private let server = URL(string: "https://navidrome.example/rest/getCoverArt?id=ar-1")!
@@ -117,7 +117,7 @@ struct ArtistImagePolicyTests {
     func webGated() {
         #expect(ArtistImagePolicy.rendered(serverImageURL: nil, webImageURL: web,
                                            webEnabled: true) == web)
-        // The e3dabb3 rule: a cached web portrait must not render while off.
+        // A cached web portrait must not render while off.
         #expect(ArtistImagePolicy.rendered(serverImageURL: nil, webImageURL: web,
                                            webEnabled: false) == nil)
         #expect(ArtistImagePolicy.source(serverImageURL: nil, webImageURL: web,

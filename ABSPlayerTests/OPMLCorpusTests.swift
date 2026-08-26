@@ -26,8 +26,7 @@ enum CorpusFixture {
 /// OPML import against the edge-case corpus (ballon8, corpus version 1.0).
 /// Ground truth: `OPML-MANIFEST.json` — `expected_import_count` is the number
 /// of feeds a correct importer pulls after EXACT-URL dedupe. Cases where Mär
-/// deviates are wrapped in `withKnownIssue` (Befund list in the corpus
-/// report), never silently bent green.
+/// deviates are wrapped in `withKnownIssue`, never silently bent green.
 struct OPMLCorpusTests {
 
     nonisolated struct CorpusCase: Decodable, Sendable, CustomTestStringConvertible {
@@ -48,7 +47,7 @@ struct OPMLCorpusTests {
         return manifest.cases
     }()
 
-    // Befund O1 FIXED (Härtungspaket): a failed parse now returns nil —
+    // A failed parse returns nil —
     // broken-xml imports 0 feeds instead of a silent partial list.
 
     /// Exact-URL dedupe, order-preserving — mirrors the corpus reference

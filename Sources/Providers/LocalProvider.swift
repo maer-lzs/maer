@@ -17,7 +17,7 @@ final class LocalProvider: AudioProvider {
     private init() {}
 
     var providerId: String { "local" }
-    /// F10: like the RSS source, availability is CONTENT-driven — the local
+    /// Like the RSS source, availability is CONTENT-driven — the local
     /// source only surfaces the audiobooks tab once files were imported (a
     /// serverless podcasts-first start is not greeted by an empty book tab).
     /// TF bib-toggles: gated by the audiobooks TAB master only — local downloads

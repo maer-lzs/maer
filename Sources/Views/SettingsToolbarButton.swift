@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Y63: environment action to open the app settings sheet. Provided by
+/// Environment action to open the app settings sheet. Provided by
 /// LibraryView ON the NavigationStack itself (like `pushPodcastRoute`), so
 /// PUSHED detail pages can host the settings cog too — the ROOT toolbar's cog
 /// does not propagate onto pushed views, so a detail page that adds its own
@@ -22,7 +22,7 @@ extension EnvironmentValues {
     }
 }
 
-/// Y63: the settings cog for DETAIL pages that carry their own trailing toolbar
+/// The settings cog for DETAIL pages that carry their own trailing toolbar
 /// actions — placed OUTERMOST so the page's actions sit inboard and the cog
 /// stays visible (it never "vanishes behind" download/favorite). Detail pages
 /// keep the system toolbar, so a plain gearshape picks up the system glass, in

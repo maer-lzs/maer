@@ -18,7 +18,7 @@ struct RadioStationDetailView: View {
     /// The currently selected variant stream (persisted); defaults to the best.
     @State private var selectedURL: String = ""
     @State private var isFavorite = false
-    /// V10: similar stations (byTag of the first tag, else the station's
+    /// Similar stations (byTag of the first tag, else the station's
     /// country) — net-gated, empty hides the row.
     @State private var similar: [RadioStation] = []
 
@@ -77,8 +77,8 @@ struct RadioStationDetailView: View {
 
                 factsSection
 
-                // V10: similar stations — the SAME shared card row as
-                // everywhere else (Regel 2); empty/offline hides it.
+                // Similar stations — the SAME shared card row as
+                // everywhere else; empty/offline hides it.
                 if !similar.isEmpty {
                     RadioCardRow(title: String(localized: "Similar Stations"), stations: similar,
                                  playerCoordinator: playerCoordinator)
@@ -95,9 +95,9 @@ struct RadioStationDetailView: View {
         }
         .task {
             guard networkMonitor.isConnected, similar.isEmpty, !station.isManual else { return }
-            // Geraetebefund cadb47c: "similar" was the FIRST community tag,
-            // worldwide — WDR 5 carries "chanson" and got the Russian Шансон
-            // top list. Similar means: from the SAME country, sharing tags.
+            // "similar" used to be the FIRST community tag, worldwide — a
+            // German station carrying "chanson" got a Russian top list.
+            // Similar means: from the SAME country, sharing tags.
             // The country pool comes first and is ranked by tag overlap; the
             // worldwide tag list only fills when the country yields nothing.
             let stationTags = Set(station.tags.map { $0.lowercased() }.filter { !$0.isEmpty })
@@ -124,7 +124,7 @@ struct RadioStationDetailView: View {
         }
     }
 
-    /// V10: the station's facts — bitrate/codec of the BEST variant, the
+    /// The station's facts — bitrate/codec of the BEST variant, the
     /// localized country, all tags. Rows appear only with real data.
     @ViewBuilder
     private var factsSection: some View {

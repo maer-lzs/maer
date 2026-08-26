@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// c3ab12e Strukturfix: ids either carry a NAMESPACE (`sub:`, `gut:`, …) or
+/// Ids either carry a NAMESPACE (`sub:`, `gut:`, …) or
 /// they are library ids. Everything with a namespace belongs to the source that
 /// owns it — and an UNKNOWN namespace belongs to nobody, so it must never be
 /// sent to the library server.

@@ -8,7 +8,7 @@ import Testing
 import SwiftUI
 @testable import ABSPlayer
 
-/// X24: the bottom bar's cover accent survives restarts — RGBA components
+/// The bottom bar's cover accent survives restarts — RGBA components
 /// round-trip through UserDefaults, and a restored loader reports `hasAccent`.
 @MainActor
 struct CoverAccentPersistenceTests {

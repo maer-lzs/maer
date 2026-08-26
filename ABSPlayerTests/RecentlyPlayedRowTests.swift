@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// P14: eine Reihe „Zuletzt gehört" für Alben UND Sender — reine Zeitfolge,
+/// Die Zuletzt-gehört-Reihe für Alben UND Sender — reine Zeitfolge,
 /// KEINE faire Verschränkung (Wahrheits-Reihe), Grenze ist Position.
 struct RecentlyPlayedRowTests {
     @Test("reine Zeitfolge: wer nur Radio hoert, sieht Radio")

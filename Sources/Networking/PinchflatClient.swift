@@ -6,15 +6,14 @@
 import Foundation
 import OSLog
 
-/// Pinchflat Paket A (5c8ff27/a404b38): the SERVER is the source of the FEED
-/// LIST, not a new playback provider — its per-channel feeds are plain RSS
-/// and ride the existing `rss:` path (no new namespace, no router entry; the
-/// architecture decision is fixed and verified at the Pinchflat source).
+/// The SERVER is the source of the FEED LIST, not a new playback provider —
+/// its per-channel feeds are plain RSS and ride the existing `rss:` path, so
+/// there is no new namespace and no router entry.
 ///
 /// What the server contributes: (a) the list (`/sources/opml` instead of
 /// hand-adding channels) and (b) the provenance per feed.
 ///
-/// Hard rules (#106 lesson): the `route_token` lives in the KEYCHAIN and is
+/// Hard rules: the `route_token` lives in the KEYCHAIN and is
 /// NEVER logged — log lines carry the host only, never a URL with the token
 /// query. Verified at the live test stand: the OPML's xmlUrls come WITHOUT
 /// the token; the feeds themselves authenticate via Basic Auth.
@@ -32,7 +31,7 @@ enum PinchflatClient {
         get { UserDefaults.standard.string(forKey: serverDefaultsKey).flatMap(URL.init) }
     }
 
-    /// Befund S1: normalize a typed address — trim, and prepend `https://`
+    /// Normalize a typed address — trim, and prepend `https://`
     /// when no scheme is given (`tube.x.y` parses host-less in Foundation,
     /// which used to make saving a silent no-op). Returns nil only for input
     /// that has no host even after normalization.
@@ -44,10 +43,10 @@ enum PinchflatClient {
         return url
     }
 
-    /// Befund S2: saving and removing are TWO paths now — a bad NEW entry can
+    /// Saving and removing are TWO paths — a bad NEW entry can
     /// never land in a delete branch and destroy the existing configuration.
     /// Callers validate via `normalizedServerURL` and show a visible form
-    /// error instead (Regel 3).
+    /// error instead.
     static func setServer(url: URL, routeToken: String?, user: String?, password: String?) {
         guard let host = url.host else { return }
         UserDefaults.standard.set(url.absoluteString, forKey: serverDefaultsKey)
@@ -91,7 +90,7 @@ enum PinchflatClient {
 
     /// The channel list. Verified shape: `<outline type="rss" text="…"
     /// xmlUrl="https://host/sources/<uuid>/feed.xml" />` — parsed by the ONE
-    /// existing OPML parser (Regel 2).
+    /// existing OPML parser.
     static func fetchFeedURLs() async throws -> [String] {
         guard let base = serverURL, let host = base.host else { throw FetchError.unreachable }
         var comp = URLComponents(url: base.appendingPathComponent("sources/opml"),
@@ -127,14 +126,14 @@ enum PinchflatClient {
 }
 
 
-/// Paket A: the mirror run — connect = done, server = source of truth.
-/// a404b38 precision: the APP-START mirror fails SILENTLY (a mesh-only
+/// The mirror run — connect = done, server = source of truth.
+/// The APP-START mirror fails SILENTLY (a mesh-only
 /// server being away is normal); visible errors belong to the manual
 /// gesture (connect / refresh) only.
 @MainActor
 enum PinchflatSync {
     private static let hiddenKey = "pinchflatHiddenFeeds"
-    /// Paket B: remembered titles for the hidden list — the management
+    /// Remembered titles for the hidden list — the management
     /// surface shows channel names, not opaque feed UUIDs.
     private static let hiddenTitlesKey = "pinchflatHiddenTitles"
     private static var didRunThisSession = false
@@ -149,8 +148,8 @@ enum PinchflatSync {
         return hiddenFeeds().sorted().map { ($0, titles[$0] ?? $0) }
     }
 
-    /// The opt-out exception (a7fa35e): hidden survives mirror runs.
-    /// Paket B: the visible GESTURE calls this from the context menu on the
+    /// The opt-out exception: hidden survives mirror runs.
+    /// The visible GESTURE calls this from the context menu on the
     /// group tile / grid cell.
     static func hide(feedURL: String, title: String? = nil) {
         var set = hiddenFeeds(); set.insert(feedURL)
@@ -176,7 +175,7 @@ enum PinchflatSync {
     /// One mirror pass. Returns the mirrored-group size on success.
     @discardableResult
     static func mirror() async throws -> Int {
-        // Befund B1: der Schalter wirkt HIER — aus heisst keine Anfragen,
+        // Der Schalter wirkt HIER — aus heisst keine Anfragen,
         // nicht nur eine versteckte Oberflaeche (dieselbe Linie wie bei allen
         // anderen Quellen).
         guard AppStorageKeys.pinchflatActive else { return 0 }

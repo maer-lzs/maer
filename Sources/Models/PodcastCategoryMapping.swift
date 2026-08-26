@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 70dd0d8/d05124b: the recommendation categories only help if they reach
+/// The recommendation categories only help if they reach
 /// the QUERY. Feed categories come from `<itunes:category>` in Apple's
 /// spelling — including the compound names with "&" — while the two
 /// directories want something else:

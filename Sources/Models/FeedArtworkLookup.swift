@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// c125ccd: the CHANNEL artwork of a podcast feed, read from the feed's
+/// The CHANNEL artwork of a podcast feed, read from the feed's
 /// HEAD — curated entries (and directory hits without artwork) carry no
 /// image URL of their own, but every feed states one. Pure pieces here; the
 /// network actor does the ranged fetch and the caching.

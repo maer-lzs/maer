@@ -7,7 +7,7 @@
 import Testing
 import Foundation
 
-/// e9a9b05: the fence that keeps the switch colour, in the only form that can.
+/// The fence that keeps the switch colour, in the only form that can.
 ///
 /// The order asked for ONE place. The environment routes (`.toggleStyle` at the
 /// root, the UIKit appearance proxy) were built and MEASURED not to arrive —

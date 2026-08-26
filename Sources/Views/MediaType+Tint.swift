@@ -8,7 +8,7 @@ import SwiftUI
 /// Per-media-type accent color (UI layer — the MediaType model itself stays
 /// Foundation-only). One central source so every surface that colors by type
 /// (tab selectors today; now-playing markers later) reads from the same place
-/// (Regel 2). Colors follow the dominant conventions users already know:
+///. Colors follow the dominant conventions users already know:
 /// Audible = orange, Apple Podcasts = purple, Apple Music = red. Home is the
 /// cross-type aggregation tab, so it stays neutral (adapts black/white per
 /// scheme). Radio is reserved for the future tab.

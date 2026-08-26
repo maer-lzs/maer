@@ -60,7 +60,7 @@ struct PodcastShowView: View {
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }
-        // f0b9c8a: container feeds (the radio-play pools) interleave many
+        // Container feeds (the radio-play pools) interleave many
         // works — the parts of one work become a contiguous block, ascending
         // inside, positioned where the block's first part already stood.
         // Below the density threshold nothing moves at all.
@@ -110,7 +110,7 @@ struct PodcastShowView: View {
                         Label("Mark All as Unplayed", systemImage: "circle")
                     }
                 }
-            // Regel 3: an empty cut says WHY it is empty — the filter is on
+            // An empty cut says WHY it is empty — the filter is on
             // and everything is heard; one tap shows all again.
             if unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -122,7 +122,7 @@ struct PodcastShowView: View {
                 .listRowSeparator(.hidden)
             }
             ForEach(visibleItems) { item in
-                // f0b9c8a (3): the row eyebrow repeating the show title is
+                // The row eyebrow repeating the show title is
                 // noise — the show page hands its title in, the pure rule
                 // decides (parity: other surfaces list MANY shows and keep it).
                 PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
@@ -140,7 +140,7 @@ struct PodcastShowView: View {
         .navigationTitle(show.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // Y63 (parity): the per-show settings slider inboard, the global
+            // The per-show settings slider inboard, the global
             // app settings cog OUTERMOST (declared last) so it stays visible on
             // this pushed page like on the music album page.
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -214,7 +214,7 @@ struct PodcastShowView: View {
                 if let author = show.author {
                     Text(author).font(.subheadline).foregroundStyle(.secondary)
                 }
-                // Paket B: provenance on the show page (origin-carried).
+                // Provenance on the show page (origin-carried).
                 if show.origin != nil { OriginCapsule() }
             }
             if let description = show.description, !description.isEmpty {
@@ -314,7 +314,7 @@ struct PodcastShowView: View {
                                     downloadAvailable(ep)
                                 } label: {
                                     Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(.secondary)
-                                        // D8/B7: 44pt hit area.
+                                        // 44pt hit area.
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }

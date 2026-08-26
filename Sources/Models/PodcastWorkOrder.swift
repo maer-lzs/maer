@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// f0b9c8a: CONTAINER feeds (the public-broadcast radio-play pools) carry
+/// CONTAINER feeds (the public-broadcast radio-play pools) carry
 /// many different works in one feed — "Palmer Eldritch (1/2)", "(2/2)",
 /// "Unearthing (1/8)" … — and the plain feed order interleaves them, part 2
 /// above part 1. This brings the LIST into work order. Deliberately nothing
@@ -139,7 +139,7 @@ nonisolated enum PodcastWorkOrder {
         return result
     }
 
-    /// f0b9c8a (3): a row eyebrow repeating the SHOW title is noise —
+    /// A row eyebrow repeating the SHOW title is noise —
     /// suppress it. Pure so every show surface answers it identically.
     static func eyebrow(author: String?, showTitle: String?) -> String? {
         guard let author, !author.isEmpty else { return nil }

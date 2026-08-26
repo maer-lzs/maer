@@ -16,7 +16,7 @@ struct PodcastEpisodeDetailView: View {
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
     @StateObject private var colorLoader = CoverColorLoader()
     @State private var chapters: [ABSChapter] = []
-    /// D11/B10: timestamp column ("1:23:45") scales with Dynamic Type.
+    /// Timestamp column ("1:23:45") scales with Dynamic Type.
     @ScaledMetric(relativeTo: .footnote) private var timestampWidth: CGFloat = 52
 
     private var coverURL: URL? { AppSession.shared.coverURL(forItemId: item.id) }
@@ -134,7 +134,7 @@ struct PodcastEpisodeDetailView: View {
                         if let ep = podcastEpisode { badges(ep) }
                     }
 
-                    // R1: text-only episodes show the notes without play/
+                    // Text-only episodes show the notes without play/
                     // download/played affordances (nothing to hear).
                     if !isTextOnly {
                         HStack(spacing: 14) {
@@ -234,7 +234,7 @@ struct PodcastEpisodeDetailView: View {
         }
     }
 
-    /// R1: a text-only episode has nothing to play — the page shows the
+    /// A text-only episode has nothing to play — the page shows the
     /// notes without the play affordance.
     private var isTextOnly: Bool {
         !PodcastSubscriptions.shared.isPlayableEpisode(itemId: item.id)

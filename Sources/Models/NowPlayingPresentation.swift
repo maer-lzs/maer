@@ -7,11 +7,11 @@ import Foundation
 
 /// T9c: the ONE derivation for the "now playing" subtitle, shared by the
 /// lock-screen NowPlaying, CarPlay (same MPNowPlayingInfoCenter) and the Live
-/// Activity (Regel 2). Product decision: the TITLE is always the work
+/// Activity. Product decision: the TITLE is always the work
 /// (book / episode / song); the current chapter appears only in the subtitle,
 /// and a FALLBACK marker ("Part N of M", "from 3:15") NEVER does.
 nonisolated enum NowPlayingPresentation {
-    /// X14: the LARGE now-playing title — the WORK. For music the SONG title (a
+    /// The LARGE now-playing title — the WORK. For music the SONG title (a
     /// song is the work being played, not its album); otherwise the book /
     /// episode title. NEVER empty: it falls back to a generic label so the
     /// player's title line can never go blank. (Regression guard: the T9d

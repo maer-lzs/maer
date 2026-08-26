@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// F5: pure, testable presentation rules for the music-tab playlist cards —
+/// Pure, testable presentation rules for the music-tab playlist cards —
 /// the 2×2 mosaic degradation, the metadata line's duration, and the
 /// "recently changed first" sort key. Foundation-only.
 nonisolated enum PlaylistPresentation {
@@ -44,7 +44,7 @@ nonisolated enum PlaylistPresentation {
     /// ones — a real empty playlist still has a real name), while name==id and
     /// nameless junk is removed. `songCount` is deliberately NOT the criterion.
     /// THE one filter — applied where `playlists` is loaded, so every surface
-    /// (F5 card row, the Playlists browse page) is clean (Regel 2).
+    /// (F5 card row, the Playlists browse page) is clean.
     static func realPlaylists(_ playlists: [MusicPlaylist]) -> [MusicPlaylist] {
         playlists.filter { playlist in
             let name = (playlist.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,7 +68,7 @@ nonisolated enum PlaylistPresentation {
 
     /// Sort playlists newest-changed first; ones without a timestamp sort last,
     /// then stably by their existing order (index tiebreak).
-    /// 961a14e: the playlist's most frequent artists (by track count), pure.
+    /// The playlist's most frequent artists (by track count), pure.
     /// Key is case-/diacritic-folded (display keeps the first-seen spelling);
     /// ties keep first appearance; empties drop. The card renders the result
     /// joined into ONE line with native truncation.

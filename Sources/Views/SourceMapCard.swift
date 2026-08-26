@@ -231,7 +231,7 @@ struct SourceAreaPage: View {
                 // Master off greys the area toggles — visibly subordinate,
                 // no silent double state.
                 .disabled(!freeCatalogsMaster)
-            // R36: the areas list has to be COMPLETE — free music was the one
+            // The areas list has to be COMPLETE — free music was the one
             // area steering a visible surface without a switch here (only the
             // SERVICE switch under network services, which answers a
             // different question: privacy, not presence). `FreeCatalogArea`

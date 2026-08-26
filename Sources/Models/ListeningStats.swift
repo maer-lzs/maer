@@ -167,7 +167,7 @@ final class ListeningStatsStore: ObservableObject {
         data.secondsPerItem.filter { ListeningClasses.isLive($0.key) }
     }
 
-    /// 2618461: the sync WITNESS for the diagnosis — one line per foreign
+    /// The sync WITNESS for the diagnosis — one line per foreign
     /// device pot, so an iPad copy can answer "do the iPhone pots arrive?"
     /// without a Mac. Reads the already-fetched pots, changes nothing.
     func foreignPotOverview() -> [(device: String, daySeconds: Int, radioSeconds: Int)] {

@@ -69,7 +69,7 @@ struct MiniPlayerBar: View {
                     // more room remains for the title text.
                     coverWithProgressRing
                     VStack(alignment: .leading, spacing: 2) {
-                        // f0e7f4e: the RUNNING track's title comes from the
+                        // The RUNNING track's title comes from the
                         // SESSION (`nowPlayingTitle` — the one derivation the
                         // full player, lock screen and CarPlay already use).
                         // The item resolution is never the truth here: for a
@@ -129,7 +129,7 @@ struct MiniPlayerBar: View {
 /// tiny view instead of the whole glass bar.
 private struct MiniPlayerSubtitle: View {
     @ObservedObject var viewModel: PlayerViewModel
-    /// Takeover hint (3e4db13): observed HERE, in the small ticking leaf —
+    /// Takeover hint: observed HERE, in the small ticking leaf —
     /// the glass bar itself never observes the claim.
     @ObservedObject private var claims = PlaybackClaimSync.shared
 
@@ -160,7 +160,7 @@ private struct MiniPlayerSubtitle: View {
             .font(.caption2)
             .foregroundStyle(.secondary)
         } else if viewModel.isLiveStream {
-            // 71b277f Mini 2: "03:42 / 03:42" is nonsense for a stream — the
+            // "03:42 / 03:42" is nonsense for a stream — the
             // shared LIVE marker plus the elapsed time (drive-mode parity).
             HStack(spacing: 6) {
                 LiveBadgeInline()
@@ -251,7 +251,7 @@ private struct MiniPlayerRing: View {
             } placeholder: {
                 Circle()
                     .fill(Color.secondary.opacity(0.15))
-                    // R41 Beifang: the placeholder said BOOK for everything —
+                    // The placeholder said BOOK for everything —
                     // a running radio stream showed a closed book. The symbol
                     // follows the item's family, from the one symbol source.
                     .overlay(Image(systemName: Self.placeholderSymbol(for: itemId))

@@ -114,7 +114,7 @@ struct SyncQueueFlushTests {
         let (queue, storage, api) = makeQueue()
         queue.enqueue(itemId: "a", currentTime: 100, duration: 1000, isFinished: false)
         queue.enqueue(itemId: "b", currentTime: 200, duration: 1000, isFinished: false)
-        // Beim ersten Write entfernt „der Player" den jeweils anderen Eintrag.
+        // Beim ersten Write entfernt der Player den jeweils anderen Eintrag.
         api.onUpdate = { written in
             let other = written == "a" ? "b" : "a"
             queue.remove(itemId: other)

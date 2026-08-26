@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 🔴 P15: the opening GENERATION for `PlayerCoordinator.open` — the rule
+/// 🔴 The opening GENERATION for `PlayerCoordinator.open`. The rule
 /// that keeps hammering play on a bad connection from producing two audio
 /// tracks.
 ///

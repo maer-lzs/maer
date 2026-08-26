@@ -8,7 +8,7 @@ import Foundation
 /// Pure, tested resolution of a gpodder subscription conflict that the
 /// mass-delete guard (`GPodderSubscriptionMerge`) left UNresolved. Operates on
 /// normalized feed keys; the caller maps them back to raw URLs to apply. Reuses
-/// the same set model as the merge (Regel 2) — no second diff logic.
+/// the same set model as the merge — no second diff logic.
 nonisolated enum GPodderConflictResolution {
     /// Per-feed decision. `keepLocal` = the final state matches what LOCAL has
     /// for this feed; `takeServer` = it matches the SERVER. (For a feed present

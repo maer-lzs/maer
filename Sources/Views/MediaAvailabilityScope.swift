@@ -16,7 +16,7 @@ import SwiftUI
 /// re-rendered the entire surface — the visible v2.6 hitch, worst with a
 /// 186-part book whose chapter list was re-validated per render. Now the
 /// containers observe nothing; only this small scope (wrapping just the cover
-/// that dims/badges) re-renders on a tick. It is a ONE-POINT system (Regel 2):
+/// that dims/badges) re-renders on a tick. It is a ONE-POINT system:
 /// new cards/tiles inherit it and future availability fixes land in one place.
 /// The download badge stays the separate, self-observing `CardDownloadBadge`.
 struct MediaAvailabilityScope<Content: View>: View {

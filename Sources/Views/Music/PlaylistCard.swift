@@ -6,7 +6,7 @@
 import SwiftUI
 import Combine
 
-/// f208790 Punkt 3: THE playlist card. It lived `private` inside `MusicView`
+/// THE playlist card. It lived `private` inside `MusicView`
 /// and was welded to `MusicPlaylist` — which is why the device playlists could
 /// not have it, and why building them a second card was the thing worth
 /// waiting for (the mosaic, the artist line, the colour derivation and the
@@ -51,13 +51,13 @@ struct PlaylistCard: View {
     @State private var renameText = ""
     @State private var showDeleteConfirm = false
     @State private var coverURLs: [URL] = []
-    /// 961a14e: the playlist's most frequent artists as ONE truncating line
+    /// The playlist's most frequent artists as ONE truncating line
     /// (empty = no data → blank, height reserved so the card never jiggles).
     @State private var artistNames: [String] = []
-    /// b9898dd Fix 1: the mixed card color comes from the BOTTOM (big) mosaic
+    /// The mixed card color comes from the BOTTOM (big) mosaic
     /// cover — it borders the text block (color continuity).
     @StateObject private var colorLoader = CoverColorLoader()
-    // b9898dd Fix 2: EXACT height parity with the Featured-card anatomy.
+    // EXACT height parity with the Featured-card anatomy.
     @ScaledMetric(relativeTo: .subheadline) private var pillReserve: CGFloat = 40
     @ScaledMetric(relativeTo: .headline) private var titleMinHeight: CGFloat = 44
     @ScaledMetric(relativeTo: .subheadline) private var metaMinHeight: CGFloat = 20
@@ -71,8 +71,8 @@ struct PlaylistCard: View {
     var body: some View {
         // The SAME card format as BookFeaturedCard / PodcastFeaturedCard
         // (featuredCardWidth, cover face on top, text block on the card color
-        // below, radius 20) — mosaic as the cover. 1b16f2c: the card TAP PLAYS
-        // in normal order (pill left = detail, corner right = shuffle).
+        // below, radius 20) — mosaic as the cover. The card TAP PLAYS in
+        // normal order (pill left = detail, corner right = shuffle).
         Button {
             Task { await source.open(playerCoordinator) }
         } label: {
@@ -114,7 +114,7 @@ struct PlaylistCard: View {
         .background(tint)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .animation(.easeInOut(duration: 0.45), value: colorLoader.hasAccent)
-        // 5219ea7: the SAME two card controls as the Featured cards, at the
+        // The SAME two card controls as the Featured cards, at the
         // SAME positions — Details pill bottom-left, corner button bottom-right.
         .overlay(alignment: .bottomLeading) {
             CardDetailPill(value: source.detailRoute).padding(12)
@@ -172,7 +172,7 @@ struct PlaylistCard: View {
     }
 
     private var metaLine: String {
-        // 24a220e: "tracks" (lowercase) is NOT a casing duplicate of "Tracks" —
+        // "tracks" (lowercase) is NOT a casing duplicate of "Tracks" —
         // this one sits INSIDE a sentence ("18 tracks · 1:12").
         let count = "\(source.songCount) \(String(localized: "tracks"))"
         guard let seconds = source.durationSeconds else { return count }

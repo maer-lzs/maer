@@ -21,7 +21,7 @@ enum PodcastImport {
     // MARK: - OPML
 
     /// All `xmlUrl` feeds from an OPML file (order as in the file).
-    /// `nil` when the XML is not well-formed (Korpus-Befund O1): a partial
+    /// `nil` when the XML is not well-formed: a partial
     /// list from a broken file must fail visibly, not import silently.
     nonisolated static func parseOPML(_ data: Data) -> [String]? {
         let parser = OPMLParser()
@@ -96,7 +96,7 @@ enum PodcastImport {
     nonisolated struct AppleLibrary: Sendable {
         let feedURLs: [String]
         let progress: [AppleProgress]
-        /// S21: subscribed shows that cannot be imported because they expose no
+        /// Subscribed shows that cannot be imported because they expose no
         /// public RSS feed (paid/Apple-exclusive subscriptions). Surfaced as a
         /// hint instead of being swallowed silently.
         var unimportablePaidCount = 0
@@ -274,7 +274,7 @@ private nonisolated final class OPMLParser: NSObject, XMLParserDelegate {
     nonisolated func parse(_ data: Data) -> [String]? {
         let parser = XMLParser(data: data)
         parser.delegate = self
-        // O1: a failed parse used to be ignored — everything collected before
+        // A failed parse used to be ignored — everything collected before
         // the error leaked out as a silent partial import.
         guard parser.parse() else { return nil }
         return feedURLs

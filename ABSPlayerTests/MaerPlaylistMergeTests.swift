@@ -8,7 +8,7 @@ import Testing
 import Foundation
 @testable import ABSPlayer
 
-/// Paket 2: what happens when the same list was changed on two devices.
+/// What happens when the same list was changed on two devices.
 struct MaerPlaylistMergeTests {
     private func entry(_ name: String, _ at: Double, _ ids: [String]) -> MaerPlaylistMerge.Entry {
         .init(name: name, updatedAt: at, itemIds: ids)

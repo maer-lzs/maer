@@ -31,7 +31,7 @@ final class PodcastListenLog {
         /// NEWER play-through flips it back (an old reconciled position
         /// must not resurrect "played").
         var unplayedAt: Double?
-        /// 49dc2c3: `playedAt` is BOOKKEEPING, not an observed listen time —
+        /// `playedAt` is BOOKKEEPING, not an observed listen time —
         /// set by the BULK passes (backfill/rescan), which only write down
         /// what the position store already knew. The entry keeps the fact
         /// "heard", but answers no honest WHEN. Optional for entries written
@@ -61,7 +61,7 @@ final class PodcastListenLog {
     /// Cheap + idempotent — callers may invoke it on every position write.
     /// `synthesized`: the caller is a BULK pass (backfill/rescan) that merely
     /// books what the position store already knew — the resulting timestamp
-    /// dates the bookkeeping, not a listen (49dc2c3).
+    /// dates the bookkeeping, not a listen.
     func noteIfPlayed(guid: String, duration: Double, episodeTitle: String,
                       showTitle: String, feedURL: String, synthesized: Bool = false) {
         guard case .played = PodcastProgressStore.shared.state(guid: guid, duration: duration) else { return }
@@ -186,7 +186,7 @@ final class PodcastListenLog {
         loaded = true
         guard let url = Self.fileURL, let data = try? Data(contentsOf: url) else { return }
         guard let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else {
-            // 593d177 sweep: same corruption discipline as the subscription
+            // Same corruption discipline as the subscription
             // store — preserve the undecodable file instead of silently
             // overwriting it on the next persist. (No async window here: the
             // load is lazy-synchronous before every mutation, so the
@@ -231,7 +231,7 @@ final class PodcastListenLog {
         return ts
     }
 
-    /// 49dc2c3: entries written before the flag existed cannot be told apart
+    /// Entries written before the flag existed cannot be told apart
     /// anymore — and the log's whole first generation IS the backfill. They
     /// are therefore marked time-unknown (conservative: a show loses its week
     /// count for a while, but nothing is falsely "recently heard"). Runs once
@@ -253,9 +253,9 @@ final class PodcastListenLog {
         try? data.write(to: url, options: .atomic)
     }
 
-    /// V6: the chronological history (pure, tested) — tombstoned entries
+    /// The chronological history (pure, tested) — tombstoned entries
     /// (marked unplayed, no newer play) are hidden, newest play first.
-    /// c22d401: MUST live outside #if DEBUG — it landed inside the test-seam
+    /// MUST live outside #if DEBUG — it landed inside the test-seam
     /// block and broke the RELEASE archive (debug suites can never catch a
     /// DEBUG-gate hole; the release-compile gate now exists for exactly this).
     nonisolated static func historyList(_ entries: [String: Entry]) -> [Entry] {

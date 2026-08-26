@@ -6,7 +6,7 @@
 import Foundation
 import OSLog
 
-/// 96cb043 + 2100b09: the ONE collection of what may appear in "Keep
+/// The ONE collection of what may appear in "Keep
 /// listening" — server library, LOCAL files and CATALOG works.
 ///
 /// Third instance of "the row only knows the source it was born from": the
@@ -47,7 +47,7 @@ nonisolated enum ContinueSources {
         ProgressMark.markedForm(stored) != .album
     }
 
-    /// 305a292: "started" must be asked of the SAME won source the start uses,
+    /// "started" must be asked of the SAME won source the start uses,
     /// not of the raw cached progress. Measured: a downloaded book whose cached
     /// detail froze at zero counted as unbegun and fell out of the Continue row
     /// entirely — the third appearance of the frozen zero, after the null start
@@ -74,7 +74,7 @@ nonisolated enum ContinueSources {
     /// Read the started titles from the second-backup store. Pure over the
     /// passed dictionary so the rule is testable without UserDefaults.
     ///
-    /// **Dedupe rule (96cb043):** an ABS book that is additionally downloaded
+    /// **Dedupe rule:** an ABS book that is additionally downloaded
     /// stays ONE entry — the server identity leads, so ids the server library
     /// already knows are skipped here. Local sideloads are their own identity.
     static func started(in defaults: [String: Any],
@@ -87,7 +87,7 @@ nonisolated enum ContinueSources {
             guard isLocallyTracked(id), !serverKnows.contains(id),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
             guard belongsInContinue(stored) else { continue }
-            // R33: the BOOKS-tab rows ask the ONE membership test — a jam:
+            // The BOOKS-tab rows ask the ONE membership test — a jam:
             // album and a track-addressed lva: id are music, whatever their
             // (possibly missing) started form says. Unknown stays visible.
             guard MediaFamily.booksTabMember(id, markedForm: ProgressMark.markedForm(stored))
@@ -132,7 +132,7 @@ nonisolated enum ContinueSources {
             guard isLocallyTracked(id), !serverKnows.contains(id),
                   let stored = value as? [Double], stored.count >= 2 else { continue }
             // The started FORM is the primary witness; the ID FORM is the
-            // second (R33): a jam: id or a track-addressed lva: id is music
+            // second: a jam: id or a track-addressed lva: id is music
             // by construction — pre-form stock (started before the form
             // existed) must reach the music row instead of vanishing when
             // the books tab rightly refuses it.
@@ -146,9 +146,8 @@ nonisolated enum ContinueSources {
             // HOERVERLAUF und kam an ihm vorbei. Ein Stueck, das die Quelle
             // nicht mehr kennt, verlaesst damit auch hier die Reihe.
             //
-            // Der EINTRAG bleibt: ein Hoerstand ist Nutzerbesitz, und
-            // „vermerkt" ist kein Urteil auf Dauer (der Vermerk altert). Nur
-            // die Kachel geht.
+            // Der EINTRAG bleibt: ein Hoerstand ist Nutzerbesitz, und der
+            // Vermerk altert. Nur die Kachel geht.
             guard !DeadCatalogItems.isDead(id, defaults: deadStore) else { continue }
             out.append(Extra(id: id, position: stored[0], updatedAtMs: stored[1],
                              duration: ProgressMark.markedDuration(stored) ?? 0))
