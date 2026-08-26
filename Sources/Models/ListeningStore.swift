@@ -136,6 +136,15 @@ nonisolated enum ListeningStore {
     static func store(_ itemId: String, entry: [Double],
                       in defaults: UserDefaults = .standard) {
         guard ListeningClasses.keepsPosition(itemId), entry.count >= 2 else { return }
+        // Third write path for a position, so it carries the same rule as the
+        // two above: a position must not outlive its resolution. Marking an
+        // episode as played by hand writes the end position through here, and
+        // without this the tile would carry no name. A zero entry is the
+        // unplayed tombstone and states the opposite, so it writes nothing
+        // down.
+        if entry[0] > 0 {
+            BrowsedEpisodes.shared.keepListened(guid: itemId, defaults: defaults)
+        }
         defaults.set(entry, forKey: AppStorageKeys.localPosition(itemId))
     }
 

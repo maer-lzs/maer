@@ -146,6 +146,56 @@ struct PodcastShowModeTests {
                 "die Seite reicht die Faehigkeit nicht mehr hinunter")
     }
 
+    // MARK: - Von Hand als gehoert markieren
+
+    /// Markieren ist eine Aussage ueber das eigene Hoeren und gehoert damit in
+    /// dieselbe Familie wie ein Hoerstand, auch ohne Abo. Es schreibt die
+    /// Endposition ueber die dritte Schreibstelle, und die trug die Regel
+    /// nicht: ohne sie ueberlebt die Position ihre Aufloesung, und die Kachel
+    /// traegt keinen Namen.
+    @Test("marking a browsed episode by hand keeps it resolvable, a tombstone does not")
+    func markingByHandKeepsTheEpisodeResolvable() throws {
+        let suite = "showmode-mark-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+
+        let feed = "https://example.org/mark.xml"
+        let heard = "rss:\(feed):heard"
+        let untouched = "rss:\(feed):untouched"
+        let show = PodcastShow(
+            id: "rss:\(feed)", title: "Eine Sendung", author: nil, artworkURL: nil,
+            description: nil, feedURL: feed,
+            episodes: [
+                PodcastEpisode(guid: heard, title: "Erste Folge",
+                               audioURL: "https://example.org/1.mp3",
+                               pubDate: 0, duration: 1800, description: nil, imageURL: nil,
+                               chaptersURL: nil),
+                PodcastEpisode(guid: untouched, title: "Zweite Folge",
+                               audioURL: "https://example.org/2.mp3",
+                               pubDate: 0, duration: 1800, description: nil, imageURL: nil,
+                               chaptersURL: nil)
+            ])
+        BrowsedEpisodes.shared.remember(show: show)
+        defer { BrowsedEpisodes.shared.forget(showId: show.id) }
+
+        ListeningStore.store(heard,
+                             entry: ProgressMark.entry(position: 1800, duration: 1800,
+                                                       nowMs: 1_000),
+                             in: defaults)
+        let kept = try #require(BrowsedEpisodes.shared.listened(guid: heard, defaults: defaults),
+                                "die von Hand markierte Folge ist nicht mehr aufloesbar")
+        #expect(kept.episodeTitle == "Erste Folge")
+
+        // Rot-Probe: der Ungehoert-Vermerk sagt das Gegenteil und schreibt
+        // deshalb nichts nieder. Ohne sie meldete eine Schreibstelle, die JEDE
+        // Kennung niederschreibt, genauso gruen.
+        ListeningStore.store(untouched,
+                             entry: ProgressMark.entry(position: 0, duration: 0, nowMs: 1_000),
+                             in: defaults)
+        #expect(BrowsedEpisodes.shared.listened(guid: untouched, defaults: defaults) == nil,
+                "der Ungehoert-Vermerk schreibt die Folge nieder")
+    }
+
     // MARK: - Ein 404 wegen fehlendem Abo vermerkt nichts als weg
 
     /// Ein Fehlschlag beim Aufloesen einer Folge ist kein Urteil ueber den
