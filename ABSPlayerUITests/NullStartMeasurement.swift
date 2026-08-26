@@ -735,7 +735,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         menuPlay.tap()
         try XCTSkipUnless(app.buttons["mini-player"].firstMatch.waitForExistence(timeout: 40),
                           "der Sender hat nicht zu spielen begonnen")
-        // cb2d1ed/e9649ee: tiles carry NO show line any more — the arrival this
+        // Tiles carry NO show line any more — the arrival this
         // case once watched (a line landing on the tile) does not exist by
         // decision. The observable event left is the MINI BAR's title flipping
         // from the station name to the running ICY line; the contract measured
@@ -766,7 +766,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         add(report)
         snap(app, "radio-row-spread")
 
-        // cb2d1ed/e9649ee: tiles deliberately carry NO line nodes any more —
+        // Tiles deliberately carry NO line nodes any more —
         // their absence is the decided state, not the broken mirror this fence
         // once caught. What remains: no tile may grow ANYTHING when the title
         // arrives, and no line node may quietly return.
@@ -782,7 +782,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
-    /// decb049 / 7fb1cc1: no title is squeezed on its own — and the proof run
+    /// No title is squeezed on its own — and the proof run
     /// needs ALL FIVE areas, or it measures nothing.
     ///
     /// the owner measured the condition himself: with four tabs "Hörbücher" is
@@ -833,7 +833,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         let distinct = Set(heights.values)
         XCTAssertEqual(distinct.count, 1,
                        "die Reiter-Titel tragen verschiedene Größen: \(heights)")
-        // 85a7c00: and the fence that matters more than any number — a title is
+        // And the fence that matters more than any number — a title is
         // NEVER cut off. Smaller is a metric, cut off is a defect. The first fix
         // traded the one for the other, and only the rendered screen showed it.
         let cut = present.compactMap { id, tab -> String? in
@@ -879,7 +879,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         for chip in chips where chip.exists {
             chip.tap()
             seen.append(barHeight())
-            // 2b5896d: the ACTIVE chip may not differ in size from its
+            // The ACTIVE chip may not differ in size from its
             // neighbours — colour carries the state, never the metric. The
             // active one is the one just tapped.
             let sizes = chips.filter { $0.exists }
@@ -889,7 +889,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
             XCTAssertEqual(heights.count, 1,
                            "die aktive Pille weicht in der Höhe ab: \(sizes)")
         }
-        // One line, always (653485f): every chip's top edge on the same y.
+        // One line, always: every chip's top edge on the same y.
         let tops = Set(chips.filter { $0.exists }.map { ($0.frame.minY * 10).rounded() / 10 })
         XCTAssertEqual(tops.count, 1, "die Reiter stehen nicht in EINER Zeile")
         let report = XCTAttachment(string: """
@@ -904,7 +904,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
-    /// e9a9b05 / 1c37964: read the switch colours from the RENDERED screen.
+    /// Read the switch colours from the RENDERED screen.
     ///
     /// the reviewer measured 3,64:1 from the owner's screenshot where I had computed
     /// 8,61:1 — and he was right: my error was the OFF track (I assumed
@@ -930,7 +930,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
-    /// e77e0b1 (GT R6): a changed country selection must update the VISIBLE
+    /// A changed country selection must update the VISIBLE
     /// list — not only the load key. The key-level test was green while the
     /// device showed the old list until restart: third instance of a fence
     /// checking a different layer than the one that breaks. So this case
@@ -986,7 +986,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         snap(app, "genre-country-switch")
         XCTAssertNotEqual(before, after,
                           "die sichtbare Liste hat sich nach dem Länderwechsel nicht geändert")
-        // ebda0fa (R6b): a refresh right after the switch must not book the
+        // A refresh right after the switch must not book the
         // cancelled in-flight run as a network failure.
         app.swipeDown()
         Thread.sleep(forTimeInterval: 4)
@@ -996,7 +996,7 @@ nonisolated final class NullStartMeasurement: XCTestCase {
         app.terminate()
     }
 
-    /// 5bab0ad + 2b7c857: the "My Stations" cards — ALL favorites appear, and
+    /// The "My Stations" cards — ALL favorites appear, and
     /// every card of the row has the same height whatever its state (star,
     /// listening time, running show). The favorite card was measurably taller
     /// because the star row added height instead of living in reserved space —

@@ -16,7 +16,7 @@ import XCTest
 nonisolated final class MaerUITests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    /// 7330cc4: leave the current detail page by its OWN back button. Using
+    /// Leave the current detail page by its OWN back button. Using
     /// `app.navigationBars.buttons` by index reaches across every bar in the
     /// hierarchy — including the library's, whose leading button is present
     /// only on tabs that have something to sort.
@@ -47,7 +47,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // Opt-in: only the full-player journey wants an active player; other
         // journeys stay free of the ever-present, tappable mini player.
         let app = launch(["-uitest"] + (withActivePlayer ? ["-uitest-player"] : []) + extra)
-        // 973a38a: THE shared launch precondition — it lived as twelve
+        // THE shared launch precondition — it lived as twelve
         // word-identical copies, each asserting a seed book that sits BELOW
         // the fold (the first viewport is the Continue hero plus the
         // recommendation row). In a lazy container the invisible does not
@@ -79,7 +79,7 @@ nonisolated final class MaerUITests: XCTestCase {
     /// album and a podcast episode. Before the fix the book + album were dropped.
     func testMixedQueueRendersAllTypes() {
         let app = launchSeeded()
-        // bd66c5b: the Continue row renders the seeded in-progress ALBUM in
+        // The Continue row renders the seeded in-progress ALBUM in
         // the SAME Featured-card format as book/episode cards (one row, one
         // format) — the music card carries its own a11y id. It is asserted
         // FIRST, while it is still in the first viewport: it sits ABOVE the
@@ -105,7 +105,7 @@ nonisolated final class MaerUITests: XCTestCase {
     func testHomeAndTabSwitching() {
         let app = launchSeeded()
         // Home is the start tab — its Up Next section shows the seeded queue.
-        // Auftrag L: the Entdecken rows sit ABOVE Up Next and fill from the
+        // The Entdecken rows sit ABOVE Up Next and fill from the
         // live catalogs, so the seed marker can sink below the fold of the
         // lazy root — scroll it into existence instead of pinning a layout.
         XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
@@ -125,7 +125,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(waitScrollingTo(app, text: "Seed Book One"))
     }
 
-    /// 973a38a (Regel 2): THE scroll helper for lazy roots. An element below
+    /// THE scroll helper for lazy roots. An element below
     /// the fold is not in the AX tree until its row materializes, so looking
     /// once is a bet on the device height and on how fast the delayed rows
     /// above land. Twenty hand-rolled `while !x.exists { swipeUp() }` loops
@@ -159,7 +159,7 @@ nonisolated final class MaerUITests: XCTestCase {
         waitScrollingTo(app, element: app.staticTexts[text].firstMatch, swipes: swipes)
     }
 
-    /// F3: the author portrait is SUCCESS-ONLY. The seed injects content into
+    /// The author portrait is SUCCESS-ONLY. The seed injects content into
     /// the view models and serves no author image, so the author line must stay
     /// plain text and NO "All books by …" tap surface may appear — the G8 rule
     /// (no image → no placeholder, no false affordance). The positive path
@@ -205,7 +205,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "music-ax3")
     }
 
-    /// X14: the full player must show the WORK title as the largest text, with
+    /// The full player must show the WORK title as the largest text, with
     /// the chapter/part line below it — the reported bug showed only the cleaned
     /// chapter ("Teil 12"). The seed installs a presentation-only book with
     /// fallback chapters; opening the full player must surface both.
@@ -273,7 +273,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// X15: from a music SUB-page (album detail, artist detail) the media tab bar
+    /// From a music SUB-page (album detail, artist detail) the media tab bar
     /// must switch library — music pushes used plain destination links that stayed
     /// on the stack, so the tab tap looked dead. Both entry points are covered.
     func testMusicSubpagesTabBarSwitchesLibrary() {
@@ -282,7 +282,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(music.waitForExistence(timeout: 15))
         music.tap()
 
-        // M3: the sixth browse entry pushes the genre page; the seed provider
+        // The sixth browse entry pushes the genre page; the seed provider
         // has no server → the honest empty state (not a spinner forever).
         let genresRow = app.buttons["music-route-genres"].firstMatch
         XCTAssertTrue(genresRow.waitForExistence(timeout: 15), "Genres entry must exist (M3)")
@@ -309,7 +309,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(album.waitForExistence(timeout: 15))
         album.tap()
-        // Y63: the settings cog stays on the album page (outermost) alongside
+        // The settings cog stays on the album page (outermost) alongside
         // the album's own trailing actions — it doesn't vanish behind them.
         let albumCog = app.buttons["open-settings"].firstMatch
         XCTAssertTrue(albumCog.waitForExistence(timeout: 10) && albumCog.isHittable,
@@ -357,7 +357,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "post-scroll")
     }
 
-    /// F6/Y23: ONE query on the search PAGE finds the seeded book, episode and
+    /// ONE query on the search PAGE finds the seeded book, episode and
     /// album, the "New Shows" catalog sits behind the explicit row (seeded
     /// directory — no real catalog request leaves the harness), the Y20 scope
     /// bar narrows single-select, and the Y19/Y24 X button clears then closes
@@ -367,10 +367,10 @@ nonisolated final class MaerUITests: XCTestCase {
         let search = app.buttons["global-search"].firstMatch
         XCTAssertTrue(search.waitForExistence(timeout: 10))
         search.tap()
-        // Y20: the standing scope bar tops the page; Home opens at "Library".
+        // The standing scope bar tops the page; Home opens at "Library".
         XCTAssertTrue(app.buttons["scope-library"].firstMatch.waitForExistence(timeout: 10),
                       "the scope bar must stand on the search page")
-        // Y17: the field sits in the bottom bar.
+        // The field sits in the bottom bar.
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
         field.tap()
@@ -385,7 +385,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let album = app.staticTexts["Seed Album"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: album), "search must find the seeded album")
         snap(app, "global-search-library")
-        // Y15: the catalog sits behind the explicit catalog row — scroll it
+        // The catalog sits behind the explicit catalog row — scroll it
         // into reach (keyboard already dismissed above); on the full page it
         // trails ALL own sections.
         let catalogRow = app.buttons["search-catalog-row"].firstMatch
@@ -395,7 +395,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Seed Catalog Show"].firstMatch.waitForExistence(timeout: 10),
                       "the catalog view must show the seeded catalog show")
         snap(app, "global-search-catalog")
-        // Y20: single-select — the music scope narrows to the album hit.
+        // Single-select — the music scope narrows to the album hit.
         app.buttons["scope-music"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["Seed Album"].firstMatch.waitForExistence(timeout: 5),
                       "music scope must keep the album hit")
@@ -406,7 +406,7 @@ nonisolated final class MaerUITests: XCTestCase {
         while droppedEpisode.exists && polls < 10 { usleep(400_000); polls += 1 }
         XCTAssertFalse(droppedEpisode.exists, "music scope must drop the episode hit")
         snap(app, "global-search-scope-music")
-        // Y19/Y24: first X clears the query → the browse deck appears with the
+        // First X clears the query → the browse deck appears with the
         // just-run query as a Y30 recents chip.
         let close = app.buttons["search-close"].firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 5), "the round X must sit next to the field")
@@ -426,7 +426,7 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the X on an empty field must close the search")
     }
 
-    /// F10: the serverless path — the setup offers the equal "start without a
+    /// The serverless path — the setup offers the equal "start without a
     /// server" button; tapping it lands in the app (settings reachable, no
     /// audiobooks tab without a book source).
     func testServerlessOnboarding() {
@@ -451,14 +451,14 @@ nonisolated final class MaerUITests: XCTestCase {
         start.tap()
         XCTAssertTrue(app.buttons["open-settings"].firstMatch.waitForExistence(timeout: 15),
                       "serverless start must land in the app")
-        // FLIPPED assurance (affb7e6): serverless, EVERY tab opens and
+        // FLIPPED assurance: serverless, EVERY tab opens and
         // shows its free core — a missing server hides sections, never tabs.
         XCTAssertTrue(app.buttons["tab-audiobooks"].firstMatch.waitForExistence(timeout: 10),
                       "serverless, the audiobooks tab must exist and carry the free area")
         app.terminate()
     }
 
-    /// F2 (d9ef077): the map is not a screen you tap away once — the settings
+    /// The map is not a screen you tap away once — the settings
     /// show the SAME component, which is what makes the way back exist. Proof
     /// is that both places carry the same rows with the same identifiers, and
     /// that the settings side reaches every area page.
@@ -485,7 +485,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// FLIPPED assurance (affb7e6): the SOURCE toggle no longer touches the
+    /// FLIPPED assurance: the SOURCE toggle no longer touches the
     /// tab bar — a tab is the user's master decision, a source only fills or
     /// empties its section. The MASTER toggle (settings → Libraries) is what
     /// removes and restores the tab, live.
@@ -517,7 +517,7 @@ nonisolated final class MaerUITests: XCTestCase {
             XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)],
                                           timeout: 5), .completed, "the toggle must flip")
             // Back to the settings root (Done lives on ITS toolbar), then out.
-            // 7330cc4: anchor on the CURRENT navigation bar, not on index 0 of
+            // Anchor on the CURRENT navigation bar, not on index 0 of
             // ALL bars — `app.navigationBars` also sees the library bar behind
             // the sheet, whose button count varies per tab (the sort button
             // only exists where there is something to sort). The index was
@@ -557,7 +557,7 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the master toggle restores the tab live")
     }
 
-    /// F4/F5: the radio tab appears with the source switched on (seeded
+    /// The radio tab appears with the source switched on (seeded
     /// favorites), lists the stations, and the live search finds them under
     /// the radio scope. No real catalog/stream leaves the harness.
     func testRadioTabAndSearch() {
@@ -592,7 +592,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// F5: the music tab shows the playlist card row on top (seeded playlists)
+    /// The music tab shows the playlist card row on top (seeded playlists)
     /// with the "New Playlist" card, and that card opens the create flow.
     func testMusicPlaylistCards() {
         let app = launchSeeded()
@@ -624,7 +624,7 @@ nonisolated final class MaerUITests: XCTestCase {
             tries += 1
         }
         XCTAssertTrue(newCardOnScreen(), "the New Playlist card must scroll into reach")
-        // c6468d0 (2): the create flow used to be an ALERT, and an alert with
+        // The create flow used to be an ALERT, and an alert with
         // a text field could not carry a place choice with its explaining
         // lines — which is why this case used to stop here and leave the
         // presentation to the device loop. It is a sheet now, so the contract
@@ -663,7 +663,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// c6468d0 (3): ONE add sheet showing BOTH worlds. A server ALBUM belongs
+    /// ONE add sheet showing BOTH worlds. A server ALBUM belongs
     /// in both, so both sections must stand — the acceptance case for "one
     /// leaf with both worlds".
     func testAddToPlaylistSheetShowsBothWorlds() {
@@ -737,7 +737,7 @@ nonisolated final class MaerUITests: XCTestCase {
     }
 
 
-    // df69f6b regression: the large title must survive BOTH known killer
+    // The large title must survive BOTH known killer
     // cycles — search open/close and fast tab switches while scrolled (the
     // dynamic ternary title on the live bar used to drop it, leaving its
     // reserved gap; pinned by navigationBarTitleDisplayMode(.large)).
@@ -772,7 +772,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let labelAfterTabs = recovered ? app.navigationBars.staticTexts.firstMatch.label : "<GONE>"
         print("TITLEPROBE before=\(titleBefore) afterSearch=\(labelAfterSearch) afterTabs=\(labelAfterTabs) recoveryAttempts=\(attempts)")
         XCTAssertTrue(existsAfterSearch, "title gone after search cycle")
-        // df69f6b: guarded by the tick-decoupled bar title in LibraryView
+        // Guarded by the tick-decoupled bar title in LibraryView
         // (FB18304716 family damping) — the title transition no longer lands
         // inside the bar's tab transition.
         XCTAssertTrue(recovered, "title PERMANENTLY gone after tab cycle (the device bug)")
@@ -795,7 +795,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let picker = app.buttons["radio-region-picker"].firstMatch
         XCTAssertTrue(picker.waitForExistence(timeout: 10),
                       "after Change region the picker must appear immediately (no dead section)")
-        // b942da6/b1ab99d: the picker is a SHEET now — curated list with the
+        // The picker is a SHEET now — curated list with the
         // country-change layer; choosing binds to an existing entry.
         picker.tap()
         XCTAssertTrue(app.buttons["radio-country-change"].firstMatch.waitForExistence(timeout: 10),
@@ -850,7 +850,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Podcasts"].firstMatch.waitForExistence(timeout: 15))
         app.terminate()
         app = launchSeeded(extra: ["-uitest-keeptab"])
-        // Auftrag K: the marker is the podcast NAVIGATION BAR, not the "Seed
+        // The marker is the podcast NAVIGATION BAR, not the "Seed
         // Show" tile — the new catalog tile row pushes the recently-updated
         // LazyVGrid below the fold, where its cells don't materialize into
         // the AX tree (verified via tree dump: the tab renders fully, the
@@ -862,7 +862,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.buttons["tab-home"].firstMatch.tap()
     }
 
-    /// 9aad53c: the full player's title line navigates to the source page —
+    /// The full player's title line navigates to the source page —
     /// player minimizes (keeps playing, mini bar visible), detail is pushed.
     func testPlayerNavigatesToSource() {
         let app = launchSeeded(withActivePlayer: true)
@@ -880,7 +880,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source")
     }
 
-    /// Gate 2 (8913feb), second mount context: the full player opened from
+    /// Gate 2, second mount context: the full player opened from
     /// the mini bar while a DETAIL PAGE is already pushed on the stack. The
     /// title tap must still route (central router — no environment chain
     /// that can break per presentation context).
@@ -907,13 +907,13 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "player-to-source-pushed")
     }
 
-    /// a449534: the consolidated settings — the Music pill's toggles WORK
+    /// The consolidated settings — the Music pill's toggles WORK
     /// (persist), the suggestion-language row exists and multi-selects, and
     /// the Network-Services page flips the SAME key the feature home shows
     /// (second access point, one truth).
     func testSettingsConsolidation() {
         let app = launchSeeded()
-        // 7040713: the precondition was a bet on the fold — "Seed Book One"
+        // The precondition was a bet on the fold — "Seed Book One"
         // lives BELOW it (the first viewport is the Continue hero plus the
         // recommendation row), and in a lazy container what is not visible
         // does not exist in the hierarchy. The sibling journeys have used
@@ -954,12 +954,12 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(generalPill.waitForExistence(timeout: 5)); generalPill.tap()
         let network = app.buttons["settings-network-services"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: network, hittable: true)); network.tap()
-        // 8b4327c: id instead of the label predicate the comment above bans.
+        // Id instead of the label predicate the comment above bans.
         let lrclib = app.switches["network-lrclib-toggle"].firstMatch
         XCTAssertTrue(lrclib.waitForExistence(timeout: 10), "LRCLIB row must exist on the services page")
         XCTAssertEqual(lrclib.value as? String, after,
                        "the services toggle must mirror the SAME key the Music pill changed")
-        // 8b4327c: the itunes toggle id gets a REAL assertion (same one-truth
+        // The itunes toggle id gets a REAL assertion (same one-truth
         // rule — it shares homeRecommendations with the Podcasts pill).
         let itunes = app.switches["network-itunes-toggle"].firstMatch
         XCTAssertTrue(itunes.exists, "the Apple-catalog toggle must carry its id")
@@ -977,14 +977,14 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "settings-consolidated")
     }
 
-    /// 24a220e: the premium management carried two test hooks that no test
+    /// The premium management carried two test hooks that no test
     /// used — and since the identity migration and the twin guard landed
-    /// (730c1cb), that surface deserves a fence. The marking sheet is the
+    ///, that surface deserves a fence. The marking sheet is the
     /// part a seeded run can reach without a real premium feed: it must
     /// OPEN (a menu could not carry the explaining line, which is why it
     /// became a sheet) and list the free subscriptions A→Z.
 
-    /// df0b3bb 3: take a title off the Continue row without losing its
+    /// Take a title off the Continue row without losing its
     /// position. Uses the seeded MUSIC continue card — the only started entry
     /// the seed carries — which also proves the parity across media types.
     func testHideFromContinueRemovesTheCard() {
@@ -1016,7 +1016,7 @@ nonisolated final class MaerUITests: XCTestCase {
                       "a five-week-old start must stay in Continue")
     }
 
-    /// A3 (09.08.): the fence for the "built but never wired" class. Auftrag Q
+    /// The fence for the "built but never wired" class. Auftrag Q
     /// built the whole catalog-book search — queries, mapping, result kind —
     /// and it never reached the screen, because `Scope.kinds(.audiobooks)`
     /// filtered `.catalogBook` away and the catalog card only rendered in the
@@ -1030,7 +1030,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let scope = app.buttons["scope-audiobooks"].firstMatch
         XCTAssertTrue(scope.waitForExistence(timeout: 20), "the book scope must exist")
         scope.tap()
-        // Y17: the field sits in the bottom bar and is a plain TextField
+        // The field sits in the bottom bar and is a plain TextField
         // (not a UISearchBar) — same access as every other search journey.
         let field = app.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 10))
@@ -1047,7 +1047,7 @@ nonisolated final class MaerUITests: XCTestCase {
         }
     }
 
-    /// Paket 4 (11be262): the merged page "Freie Hörbücher & Hörspiele" is
+    /// Paket 4: the merged page "Freie Hörbücher & Hörspiele" is
     /// reachable from the podcast tab's preview entry, and its feed rows
     /// (static curation) render — end-to-end over the real navigation path.
     func testMergedCatalogReachableFromPodcastTab() {
@@ -1069,7 +1069,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["hr2 Hörspiel"].firstMatch.waitForExistence(timeout: 5))
     }
 
-    /// Befund V (1448c1c): the Entdecken rows appear on the FIRST Start stay
+    /// Befund V: the Entdecken rows appear on the FIRST Start stay
     /// — no tab switch needed. The cold start used to miss the late store
     /// fill (NetworkMonitor not ready on the one compute pass); the fix kicks
     /// the loads when connectivity arrives. Live catalogs, so the timeout is
@@ -1098,7 +1098,7 @@ nonisolated final class MaerUITests: XCTestCase {
         // The preview heading sits below the fold — scroll it into view.
         let allBooks = app.staticTexts["Alle Bücher"].firstMatch
         XCTAssertTrue(waitScrollingTo(app, element: allBooks), "preview heading must exist")
-        // J1: NO control on the tab preview anymore (it moved to the page).
+        // NO control on the tab preview anymore (it moved to the page).
         XCTAssertFalse(app.descendants(matching: .any)["section-sort-control"].firstMatch.exists,
                        "the tab preview must not carry the sort control")
         // The heading names the total (25 seeded books > 9 preview) and pushes.
@@ -1119,7 +1119,7 @@ nonisolated final class MaerUITests: XCTestCase {
                       "the control must open the sort menu")
     }
 
-    /// Auftrag J2: the podcast "Recently Updated" grid is a 12-tile preview;
+    /// The podcast "Recently Updated" grid is a 12-tile preview;
     /// the full subscription grid (with the moved sort/filter control) lives
     /// on its page. Chain: counted chevron (31 shows seeded via -uitest-huge)
     /// → page → filter to zero hits shows the honest line (fb21fbd way back)
@@ -1180,7 +1180,7 @@ nonisolated final class MaerUITests: XCTestCase {
         snap(app, "premium-marking-sheet")
     }
 
-    /// M5-Nachbesserung (580e9c3): ONE term that hits album + song + playlist
+    /// M5-Nachbesserung: ONE term that hits album + song + playlist
     /// must render ALL music sections (the device saw only artists — that was
     /// Subsonic's per-entity matching on an artist-name query, not a missing
     /// section; this pins the render path for every kind).
@@ -1210,10 +1210,10 @@ nonisolated final class MaerUITests: XCTestCase {
     /// overflow the portrait column (464 pt row on ~345 pt), clipping the skip
     /// buttons. All three transport buttons must be hittable and INSIDE the
     /// window in both orientations; screenshots feed the cover-variant choice.
-    /// af3ec41: average brightness of the left+right margin strips in the
+    /// Average brightness of the left+right margin strips in the
     /// band below the hero (45–80 % height) — pure black backdrop stays ~0;
     /// a bleeding artwork layer lifts it far above the threshold.
-    /// 206e552: the control area is no longer BLACK but the app-standard
+    /// The control area is no longer BLACK but the app-standard
     /// tinted gradient, so "≈0 brightness" would break — and merely relaxing
     /// the threshold would let the next bleeding artwork through. The
     /// replacement measures what a GRADIENT is and an image is not:
@@ -1261,7 +1261,7 @@ nonisolated final class MaerUITests: XCTestCase {
         let mini = app.buttons["Now Playing Book"].firstMatch
         XCTAssertTrue(mini.waitForExistence(timeout: 20))
         mini.tap()
-        // 84acc50: drive mode sits DIRECTLY in the extras row (More menu gone).
+        // Drive mode sits DIRECTLY in the extras row (More menu gone).
         let drive = app.buttons["player-drive-mode"].firstMatch
         XCTAssertTrue(drive.waitForExistence(timeout: 15), "Drive Mode must sit in the extras row")
         drive.tap()
@@ -1278,10 +1278,10 @@ nonisolated final class MaerUITests: XCTestCase {
         // this line guards that it stays removed. The identifier is absent
         // from the app on purpose — it is not a dead reference.
         XCTAssertFalse(app.buttons["drive-sleep"].exists, "sleep button must be gone")
-        // 8d54582/298d6b1 hero geometry: the capped hero must never displace
+        // The capped hero must never displace
         // the controls — play button sits in the lower ~2/3 and the progress
         // line stays fully on screen.
-        // cda2bea: hero raised to ~40 % — the transport must still sit fully
+        // Hero raised to ~40 % — the transport must still sit fully
         // BELOW it and inside the window (buttons never displaced/shrunk).
         XCTAssertGreaterThan(play.frame.minY, window.height * 0.38,
                              "hero must stay capped above the transport row")
@@ -1291,7 +1291,7 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(remaining.exists && window.contains(remaining.frame),
                       "progress line must stay on screen below the hero")
         snap(app, "drive-portrait-hero")
-        // af3ec41: below the hero seam ONLY black — a foreign artwork layer
+        // Below the hero seam ONLY black — a foreign artwork layer
         // (the stale-image class) brightens the SIDE MARGINS of the control
         // area (title/buttons are centered; the margins must stay dark).
         assertDriveMarginsDark(app.screenshot().image)
@@ -1327,7 +1327,7 @@ nonisolated final class MaerUITests: XCTestCase {
     }
 
 
-    /// Release-Gate 1 (30b2a32): the search must work when opened from a
+    /// Release-Gate 1: the search must work when opened from a
     /// PUSHED page — the deck/search state lived on the library root and the
     /// gap had zero test coverage. One push level per tab.
     func testSearchOpensFromPushedPages() {
@@ -1348,12 +1348,12 @@ nonisolated final class MaerUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 10), "search field must appear from a pushed page")
         field.tap()
         field.typeText("Seed")
-        // Y20: the scope starts on the tab the user came from (audiobooks) —
+        // The scope starts on the tab the user came from (audiobooks) —
         // assert a BOOK hit, not a cross-media one.
         XCTAssertTrue(app.staticTexts["Seed Book Two"].firstMatch.waitForExistence(timeout: 10),
                       "search results must render when opened from a pushed page")
         snap(app, "search-from-pushed-book")
-        // Y19: the first X only clears the query (browse deck) — the second
+        // The first X only clears the query (browse deck) — the second
         // X closes the search page.
         app.buttons["search-close"].firstMatch.tap()
         app.buttons["search-close"].firstMatch.tap()
@@ -1376,7 +1376,7 @@ nonisolated final class MaerUITests: XCTestCase {
     }
 
     /// THE route to a running seed station. Two journeys walk it; when the row
-    /// tap stopped playing and started NAVIGATING (e285465), only one of them
+    /// tap stopped playing and started NAVIGATING, only one of them
     /// was pulled along — the other kept waiting for a full player that could
     /// no longer open, with a "deliberate retry" over the gap. One route, one
     /// place. Returns the mini bar, which is the handle to the full player.
@@ -1401,7 +1401,7 @@ nonisolated final class MaerUITests: XCTestCase {
         return miniBar
     }
 
-    /// 0aa18b7 + 86cf180: radio play identity + the full-player title tap.
+    /// Radio play identity + the full-player title tap.
     /// (1) Tapping a NAMED catalog tile plays THAT station — the mini bar
     /// carries the same name (tile↔stream identity; UUIDs ride the RADIO
     /// tap/play log pair). (2) With radio running, the player's title tap
@@ -1410,7 +1410,7 @@ nonisolated final class MaerUITests: XCTestCase {
     /// device defect slipped through.
     func testRadioPlayIdentityAndTitleTap() {
         let app = launchSeeded(extra: ["-radioEnabled", "1"])
-        // NEW CONTRACT (e285465): the row tap NAVIGATES — play is the explicit
+        // NEW CONTRACT: the row tap NAVIGATES — play is the explicit
         // control, and the full player opens from the mini bar.
         startSeedRadio(app).tap()
         // Identity + G8 in one: the tappable title source entry must exist
@@ -1432,7 +1432,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// 8b4327c (2): the playlist-card shuffle badge is a nested button
+    /// The playlist-card shuffle badge is a nested button
     /// inside the navigation button — the regression class is a tap that
     /// NAVIGATES instead of playing. Badge tap ⇒ playback starts, the
     /// detail page does NOT open.
@@ -1455,8 +1455,8 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// 8b4327c (4): the OPML-export micro path — freshly security-changed
-    /// (1d4c348), so the entry is anchored: source page → export → share
+    /// The OPML-export micro path — freshly security-changed
+    ///, so the entry is anchored: source page → export → share
     /// link appears. The system share sheet is where the assertion ends.
     func testOPMLExportPath() {
         let app = launchSeeded()
@@ -1476,7 +1476,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// 84acc50: the FULL six-item extras row on the German sim (worst-case
+    /// The FULL six-item extras row on the German sim (worst-case
     /// labels) must fit WITHOUT the jagged two-column grid — either the
     /// labeled row fits or the icon-only fallback renders; both are ONE
     /// horizontal row, asserted via frame containment (all items share one
@@ -1509,13 +1509,13 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// 6b3a35d: drive mode with a LIVE station — no skip buttons (G8, no
+    /// Drive mode with a LIVE station — no skip buttons (G8, no
     /// seek buffer), the shared LIVE row instead of "-0 min", play/pause
     /// stays. Hero-gate rendering is visual (device loop); the structure
     /// asserts here.
     func testDriveModeRadioLive() {
         let app = launchSeeded(extra: ["-radioEnabled", "1"])
-        // 973a38a: this journey still walked the route from BEFORE e285465 —
+        // This journey still walked the route from BEFORE e285465 —
         // it tapped the row and waited for the full player. Since that
         // decision the row tap NAVIGATES to the station page, so the wait
         // could never come true; the "deliberate retry" only hid it behind a
@@ -1537,7 +1537,7 @@ nonisolated final class MaerUITests: XCTestCase {
         app.terminate()
     }
 
-    /// 5034add: the free-catalogs MASTER switch — off greys the subordinate
+    /// The free-catalogs MASTER switch — off greys the subordinate
     /// area toggle and removes the (net-independent) classical DECK tile
     /// (klassik-in-die-suche: the entry moved into the music search deck).
     /// Ids only, never labels (de-sim trap); master back ON at the end so

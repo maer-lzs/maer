@@ -53,7 +53,7 @@ nonisolated final class EdgeJoinProbe: XCTestCase {
         var samples: [(Int, Int, Int, Int)] = []
         guard let data = cg.dataProvider?.data as Data? else { return XCTFail("keine Daten") }
         let bpr = cg.bytesPerRow, bpp = cg.bitsPerPixel / 8
-        // R23 round 2: the measured ring sat ~50 pt ABOVE the seam (the
+        // The measured ring sat ~50 pt ABOVE the seam (the
         // artwork run-out), so the column reaches well above it — a ±14 band
         // would have called the ringed card seamless.
         for dy in stride(from: -80.0, through: 40.0, by: 2.0) {
