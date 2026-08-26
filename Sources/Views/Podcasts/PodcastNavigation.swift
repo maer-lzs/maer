@@ -11,10 +11,12 @@ import SwiftUI
 /// path and would stay put. That was the "media bar doesn't return to library"
 /// bug on podcast pages.
 enum PodcastRoute: Hashable {
+    /// THE show page, for a subscribed show and for one that is only being
+    /// looked at. The page resolves the state itself, so a feed reached from
+    /// search or a recommendation lands on the same surface as one from the
+    /// subscription grid.
     case show(feedURL: String)
     case episode(itemId: String)
-    /// Y2b: the temporary show preview for a not-yet-subscribed show.
-    case showPreview(feedURL: String)
     /// The chronological listen history (PodcastListenLog).
     case history
     /// The premium shows' full page (Blaupause "Zuletzt
@@ -53,7 +55,7 @@ extension View {
                 if let show = PodcastAutoContinue.show(forFeedURL: feedURL) {
                     PodcastShowView(show: show, playerCoordinator: playerCoordinator)
                 } else {
-                    ContentUnavailableView("Show unavailable", systemImage: "mic")
+                    PodcastShowView(feedURL: feedURL, playerCoordinator: playerCoordinator)
                 }
             case .episode(let itemId):
                 if let item = AppSession.shared.libraryItem(forId: itemId) {
@@ -61,8 +63,6 @@ extension View {
                 } else {
                     ContentUnavailableView("Episode unavailable", systemImage: "mic")
                 }
-            case .showPreview(let feedURL):
-                PodcastShowPreviewView(feedURL: feedURL)
             case .premium:
                 PremiumShowsPage(playerCoordinator: playerCoordinator)
             case .nextUpAll:

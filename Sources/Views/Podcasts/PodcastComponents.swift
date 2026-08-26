@@ -293,6 +293,11 @@ struct PodcastEpisodeRow: View {
     /// The HOST resolves membership once (set lookup). A per-row
     /// shows×episodes scan would break the cell-cost convention.
     var showsOriginCapsule: Bool = false
+    /// Whether this surface may download. The page resolves it ONCE from its
+    /// state and hands the value down, like the origin capsule: an episode of
+    /// a show nobody subscribed to has no download control at all rather than
+    /// a disabled one.
+    var showsDownload: Bool = true
     @Environment(\.pushPodcastRoute) private var pushRoute
 
     /// Text-only episode (kept, no enclosure). Plain read, one per render.
@@ -316,9 +321,11 @@ struct PodcastEpisodeRow: View {
             // gone. The whole row body opens the episode page instead.
             // Text-only rows keep the SLOTS (cell-height convention) but
             // render them invisible. No play/download affordance.
-            PodcastDownloadButton(item: item, showsDownloadedState: false)
-                .opacity(textOnly ? 0 : 1)
-                .allowsHitTesting(!textOnly)
+            if showsDownload {
+                PodcastDownloadButton(item: item, showsDownloadedState: false)
+                    .opacity(textOnly ? 0 : 1)
+                    .allowsHitTesting(!textOnly)
+            }
             EpisodeRowPlayButton(item: item, playerCoordinator: playerCoordinator)
                 .opacity(textOnly ? 0 : 1)
                 .allowsHitTesting(!textOnly)
@@ -607,11 +614,21 @@ struct PodcastSubscribeBadge: View {
             await GPodderSync.shared.reconcile()   // push the new subscription to the server
         }
         PodcastRecommendationsStore.shared.remove(feedURL: feedURL)
+        // A subscription takes the show over. From here the subscription store
+        // answers for its episodes, so the browsed halves step aside instead of
+        // becoming a second truth about the same feed.
+        if let show = PodcastSubscriptions.shared.shows.first(where: {
+            PodcastSubscriptions.normalizeFeedURL($0.feedURL)
+                == PodcastSubscriptions.normalizeFeedURL(feedURL)
+        }) {
+            BrowsedEpisodes.shared.forget(showId: show.id)
+        }
+        BrowsedEpisodes.shared.forgetListened(feedURL: feedURL)
     }
 }
 
-/// Y2b: the subscribe badge's big sibling for the show preview. Same family,
-/// same statics, capsule form with a label.
+/// The subscribe badge's big sibling for the show page. Same family, same
+/// statics, capsule form with a label.
 struct PodcastSubscribeButton: View {
     let feedURL: String
     @ObservedObject private var subs = PodcastSubscriptions.shared
@@ -682,7 +699,7 @@ struct RecommendationTile: View {
                 coverOverride: result.artworkURL == nil
                     ? FeedArtwork(feedURL: result.feedURL, placeholderSystemImage: "waveform.and.mic")
                     : nil,
-                onTap: { pushRoute(.showPreview(feedURL: result.feedURL)) }
+                onTap: { pushRoute(.show(feedURL: result.feedURL)) }
             ) {
                 PodcastSubscribeBadge(feedURL: result.feedURL)
             }

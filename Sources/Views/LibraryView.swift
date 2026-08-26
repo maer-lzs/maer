@@ -913,7 +913,7 @@ struct LibraryView: View {
         case .show:
             navigationPath.append(PodcastRoute.show(feedURL: result.id))
         case .catalogShow:
-            navigationPath.append(PodcastRoute.showPreview(feedURL: result.id))
+            navigationPath.append(PodcastRoute.show(feedURL: result.id))
         case .catalogBook:
             // NACHSCHLAGEN. The existing detail sheet with the prominent
             // Play (the item was remembered by the search fan-out). OTR-class

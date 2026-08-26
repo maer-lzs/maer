@@ -141,9 +141,30 @@ final class RSSProvider: AudioProvider {
 
     /// Single episode as a LibraryItem via the guid index (O(1)). For
     /// resume/restore, instead of building all episodes.
+    ///
+    /// The same three-step chain as `fetchItemDetail`: subscription stock,
+    /// then the session store of browsed shows, then the row written down for
+    /// a listened episode. Without the last two a played episode of an
+    /// unsubscribed show would carry a position but no name, and the continue
+    /// row would render a nameless tile.
     func libraryItem(forEpisodeId id: String) -> LibraryItem? {
-        guard let found = subs.episode(guid: id) else { return nil }
-        return libraryItem(show: found.show, episode: found.episode)
+        if let found = subs.episode(guid: id) ?? BrowsedEpisodes.shared.episode(guid: id) {
+            return libraryItem(show: found.show, episode: found.episode)
+        }
+        guard let kept = BrowsedEpisodes.shared.listened(guid: id) else { return nil }
+        return LibraryItem(
+            id: id,
+            media: LibraryItemMedia(
+                metadata: LibraryItemMetadata(
+                    title: kept.episodeTitle, authorName: kept.showTitle,
+                    narratorName: nil, seriesName: kept.showTitle, genres: nil,
+                    publishedYear: nil, description: nil),
+                duration: kept.duration > 0 ? kept.duration : nil,
+                chapters: nil,
+                tracks: [ABSAudioTrack(index: 0, startOffset: nil,
+                                       duration: kept.duration,
+                                       contentUrl: kept.audioURL, metadata: nil)]),
+            addedAt: nil)
     }
 
     /// Show for an episode (for the show badge and show linking).

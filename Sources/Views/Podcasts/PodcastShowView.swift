@@ -6,9 +6,27 @@
 import SwiftUI
 import Combine
 
-/// Episode list of a show with header (artwork, title, author, description).
+/// THE show page. One surface for both states, because the difference between
+/// a subscribed and a merely browsed show is the STATE, not the surface.
+///
+/// A browsed show got its own smaller page once, and the two drifted: the
+/// small one cut the episode list at 25 and did not know every spelling of the
+/// show image, while this one could do both. What one surface learns, the
+/// other one did not.
+///
+/// The subscribed state is unchanged by construction: it takes the same show
+/// value, reads the same store, keeps the same controls. The browsed state
+/// sits beside it and takes its episodes from the freshly parsed feed. What
+/// the two really differ in lives in `PodcastShowCapabilities`, resolved ONCE
+/// here and handed down, so a control cannot forget to ask.
 struct PodcastShowView: View {
-    let show: PodcastShow
+    /// The show as it was passed in. Present for a subscribed show and for the
+    /// server's own shows; nil while a browsed feed is still loading.
+    private let seedShow: PodcastShow?
+    /// The address the page stands for. It survives subscribing, so the page
+    /// switches state under the same navigation entry.
+    private let feedURL: String
+
     @ObservedObject var playerCoordinator: PlayerCoordinator
     @ObservedObject private var subs = PodcastSubscriptions.shared
     @ObservedObject private var absPodcast = ABSPodcastProvider.shared
@@ -31,32 +49,73 @@ struct PodcastShowView: View {
     @State private var loadingHistory = false
     @State private var historyResult: String?
     @State private var showSettings = false
-    private var isServerShow: Bool { show.id.hasPrefix("abspod:") }
-
-    /// Current show from the store (not the snapshot passed on open). So
-    /// loaded-in episodes (PodcastIndex/server) appear immediately.
-    private var liveShow: PodcastShow {
-        if isServerShow { return absPodcast.shows.first { $0.id == show.id } ?? show }
-        return subs.shows.first { $0.id == show.id } ?? show
-    }
-    /// Sort direction remembered per show (default: newest first).
-    @AppStorage private var newestFirst: Bool
-    /// Hide played episodes. Remembered per show, like the sort. After an
-    /// import a caught-up show is hundreds of check marks with the new episode
-    /// somewhere between them.
-    @AppStorage private var unplayedOnly: Bool
+    /// The freshly parsed feed of a show nobody subscribed to. It lives for
+    /// the visit; leaving the page discards it.
+    @State private var fetchedShow: PodcastShow?
+    @State private var fetchFailed = false
+    /// Sort and filter. Loaded through the ONE rule that decides whether they
+    /// were ever written down, so a browsed show starts from the default.
+    @State private var preferences = PodcastShowPreferences.default
 
     init(show: PodcastShow, playerCoordinator: PlayerCoordinator) {
-        self.show = show
+        self.seedShow = show
+        self.feedURL = show.feedURL
         _playerCoordinator = ObservedObject(wrappedValue: playerCoordinator)
-        _newestFirst = AppStorage(wrappedValue: true, "podcastSort.\(show.id)")
-        _unplayedOnly = AppStorage(wrappedValue: false, "podcastFilter.\(show.id)")
     }
+
+    /// A show reached without a subscription. The feed is parsed on appear;
+    /// until then the catalog entry that the tile was built from carries the
+    /// header, so the page is never blank.
+    init(feedURL: String, playerCoordinator: PlayerCoordinator) {
+        self.seedShow = nil
+        self.feedURL = feedURL
+        _playerCoordinator = ObservedObject(wrappedValue: playerCoordinator)
+    }
+
+    // MARK: - State of this page
+
+    private var normalizedFeed: String { PodcastSubscriptions.normalizeFeedURL(feedURL) }
+
+    /// The show as the SUBSCRIPTION stores know it. Looked up per render, so
+    /// subscribing on this page switches the state without a new push.
+    private var storedShow: PodcastShow? {
+        if let id = seedShow?.id, id.hasPrefix("abspod:") {
+            return absPodcast.shows.first { $0.id == id } ?? seedShow
+        }
+        if let found = subs.shows.first(where: {
+            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+        }) { return found }
+        return absPodcast.shows.first {
+            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+        }
+    }
+
+    private var mode: PodcastShowMode { storedShow != nil ? .subscribed : .browsed }
+    private var caps: PodcastShowCapabilities { .of(mode) }
+
+    /// The show the page draws. The stored one wins, because it is the one
+    /// truth for what we own; otherwise the parsed feed, otherwise the seed.
+    private var liveShow: PodcastShow? { storedShow ?? fetchedShow ?? seedShow }
+
+    /// Catalog entry the tile was built from, for the header while the feed
+    /// loads. Best effort: the pool may have rotated since.
+    private var catalogSeed: PodcastSearchResult? {
+        PodcastRecommendationsStore.shared.results.first {
+            PodcastSubscriptions.normalizeFeedURL($0.feedURL) == normalizedFeed
+        }
+    }
+
+    private var isServerShow: Bool { liveShow?.id.hasPrefix("abspod:") == true }
+    private var title: String { liveShow?.title ?? catalogSeed?.title ?? "" }
+
+    // MARK: - Episodes
 
     /// Episodes of this show as LibraryItems, sorted by the toggle. Lazy in the
     /// body (only when the page is actually shown).
     private var sortedItems: [LibraryItem] {
-        let chronological = AppSession.shared.rssProvider.showItems(for: liveShow).sorted { a, b in
+        guard let show = liveShow else { return [] }
+        let newestFirst = preferences.newestFirst
+        let chronological = AppSession.shared.rssProvider.showItems(for: show).sorted { a, b in
             let da = a.addedAt ?? 0, db = b.addedAt ?? 0
             return newestFirst ? da > db : da < db
         }
@@ -73,7 +132,7 @@ struct PodcastShowView: View {
     /// played. A list that pulls the playing row away from under the finger
     /// answers a question nobody asked.
     private var visibleItems: [LibraryItem] {
-        guard unplayedOnly else { return sortedItems }
+        guard preferences.unplayedOnly else { return sortedItems }
         return sortedItems.filter { item in
             if item.id == playerCoordinator.activeItem?.id { return true }
             return PodcastProgressStore.shared.state(for: item) != .played
@@ -99,24 +158,26 @@ struct PodcastShowView: View {
                 .listRowBackground(Color.clear)
                 // Force-touch the show header to bulk-update the played state.
                 .contextMenu {
-                    Button {
-                        markAllEpisodes(played: true)
-                    } label: {
-                        Label("Mark All as Played", systemImage: "checkmark.circle")
-                    }
-                    Button {
-                        markAllEpisodes(played: false)
-                    } label: {
-                        Label("Mark All as Unplayed", systemImage: "circle")
+                    if caps.marksAllEpisodes {
+                        Button {
+                            markAllEpisodes(played: true)
+                        } label: {
+                            Label("Mark All as Played", systemImage: "checkmark.circle")
+                        }
+                        Button {
+                            markAllEpisodes(played: false)
+                        } label: {
+                            Label("Mark All as Unplayed", systemImage: "circle")
+                        }
                     }
                 }
             // An empty cut says WHY it is empty. The filter is on
             // and everything is heard; one tap shows all again.
-            if unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
+            if preferences.unplayedOnly && visibleItems.isEmpty && !sortedItems.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("All \(sortedItems.count) episodes are played.")
                         .font(.subheadline)
-                    Button("Show all episodes") { unplayedOnly = false }
+                    Button("Show all episodes") { setUnplayedOnly(false) }
                         .font(.subheadline)
                 }
                 .listRowSeparator(.hidden)
@@ -126,31 +187,40 @@ struct PodcastShowView: View {
                 // noise. The show page hands its title in, the pure rule
                 // decides (parity: other surfaces list MANY shows and keep it).
                 PodcastEpisodeRow(item: item, playerCoordinator: playerCoordinator,
-                                  showTitle: show.title)
+                                  showTitle: title, showsDownload: caps.downloads)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
             }
-            Group { if isServerShow { availableSection } else { historySection } }
-                .listRowInsets(EdgeInsets())
+            loadingOrFailureRow
                 .listRowSeparator(.hidden)
+            if caps.fetchesMoreEpisodes {
+                Group { if isServerShow { availableSection } else { historySection } }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+            }
         }
         .listStyle(.plain)
         .barAwareList()
         .reportsBottomBarScroll()
-        .navigationTitle(show.title)
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // The per-show settings slider inboard, the global
             // app settings cog OUTERMOST (declared last) so it stays visible on
             // this pushed page like on the music album page.
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                if caps.showsSettingsSheet {
+                    Button { showSettings = true } label: { Image(systemName: "slider.horizontal.3") }
+                }
                 SettingsToolbarButton()
             }
         }
         .sheet(isPresented: $showSettings) {
-            PodcastShowSettingsSheet(showId: show.id, newestFirst: $newestFirst,
-                                     unplayedOnly: $unplayedOnly)
+            if let show = liveShow {
+                PodcastShowSettingsSheet(showId: show.id,
+                                         newestFirst: preferenceBinding(\.newestFirst),
+                                         unplayedOnly: preferenceBinding(\.unplayedOnly))
+            }
         }
         .alert("Download failed", isPresented: Binding(
             get: { downloadError != nil },
@@ -160,64 +230,120 @@ struct PodcastShowView: View {
         } message: {
             if let downloadError { Text(downloadError) }
         }
+        .task { await loadIfBrowsed() }
     }
 
-    /// Reiche Show-Metadaten (Kategorien, Folgenzahl, Sprache, Website/Funding).
+    // MARK: - Preferences
+
+    /// Every change runs through the ONE store rule. In the browsed state it
+    /// writes nothing, so looking at a show leaves no key behind under an id
+    /// no subscription owns.
+    private func preferenceBinding(_ path: WritableKeyPath<PodcastShowPreferences, Bool>) -> Binding<Bool> {
+        Binding(
+            get: { preferences[keyPath: path] },
+            set: { newValue in
+                preferences[keyPath: path] = newValue
+                preferences.save(showId: liveShow?.id ?? feedURL, mode: mode)
+            })
+    }
+
+    private func setUnplayedOnly(_ value: Bool) {
+        preferences.unplayedOnly = value
+        preferences.save(showId: liveShow?.id ?? feedURL, mode: mode)
+    }
+
+    // MARK: - Loading a browsed feed
+
+    /// Parses the feed of a show nobody subscribed to and remembers its
+    /// episodes for the visit, so they resolve when one of them is played.
+    /// A subscribed show never runs this: its store already answers.
+    private func loadIfBrowsed() async {
+        preferences = PodcastShowPreferences.load(showId: seedShow?.id ?? feedURL, mode: mode)
+        guard mode == .browsed, fetchedShow == nil else { return }
+        guard let url = PodcastFeedAddress.requestURL(feedURL) else { fetchFailed = true; return }
+        guard let parsed = await PodcastSubscriptions.fetchAndParse(feedURL: url) else {
+            fetchFailed = true
+            return
+        }
+        fetchedShow = parsed
+        BrowsedEpisodes.shared.remember(show: parsed)
+    }
+
+    @ViewBuilder
+    private var loadingOrFailureRow: some View {
+        if mode == .browsed, fetchedShow == nil {
+            if fetchFailed {
+                ContentUnavailableView("The feed could not be loaded.",
+                                       systemImage: "wifi.exclamationmark")
+                    .padding(.top, 24)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
+            }
+        }
+    }
+
+    /// Rich show metadata (categories, episode count, language, website and
+    /// funding).
     @ViewBuilder
     private var showMetaSection: some View {
-        let s = liveShow
-        VStack(spacing: 8) {
-            if let cats = s.categories, !cats.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(cats, id: \.self) { c in
-                            Text(c)
-                                .font(.caption)
-                                .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(.quaternary, in: Capsule())
+        if let s = liveShow {
+            VStack(spacing: 8) {
+                if let cats = s.categories, !cats.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(cats, id: \.self) { c in
+                                Text(c)
+                                    .font(.caption)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(.quaternary, in: Capsule())
+                            }
                         }
                     }
                 }
-            }
-            HStack(spacing: 12) {
-                Text("\(s.episodes.count) episodes").font(.caption).foregroundStyle(.secondary)
-                if let lang = s.language, !lang.isEmpty {
-                    Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
-                }
-                if s.explicit == true {
-                    Text("E").font(.caption2.weight(.bold))
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
-                }
-            }
-            if s.link != nil || s.funding?.isEmpty == false {
-                HStack(spacing: 18) {
-                    if let l = s.link, let url = URL(string: l) {
-                        Link(destination: url) { Label("Website", systemImage: "safari") }
+                HStack(spacing: 12) {
+                    Text("\(s.episodes.count) episodes").font(.caption).foregroundStyle(.secondary)
+                    if let lang = s.language, !lang.isEmpty {
+                        Text(lang.uppercased()).font(.caption).foregroundStyle(.secondary)
                     }
-                    if let f = s.funding?.first, let url = URL(string: f.url) {
-                        Link(destination: url) {
-                            Label(f.label ?? String(localized: "Support"), systemImage: "heart")
+                    if s.explicit == true {
+                        Text("E").font(.caption2.weight(.bold))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                    }
+                }
+                if s.link != nil || s.funding?.isEmpty == false {
+                    HStack(spacing: 18) {
+                        if let l = s.link, let url = URL(string: l) {
+                            Link(destination: url) { Label("Website", systemImage: "safari") }
+                        }
+                        if let f = s.funding?.first, let url = URL(string: f.url) {
+                            Link(destination: url) {
+                                Label(f.label ?? String(localized: "Support"), systemImage: "heart")
+                            }
                         }
                     }
+                    .font(.caption)
                 }
-                .font(.caption)
             }
         }
     }
 
     private var header: some View {
         VStack(spacing: 12) {
-            podcastArtwork(url: show.artworkURL.flatMap { URL(string: $0) }, size: 150, corner: 16)
+            podcastArtwork(
+                url: (liveShow?.artworkURL ?? catalogSeed?.artworkURL).flatMap { URL(string: $0) },
+                size: 150, corner: 16)
             VStack(spacing: 4) {
-                Text(show.title).font(.headline).multilineTextAlignment(.center)
-                if let author = show.author {
+                Text(title).font(.headline).multilineTextAlignment(.center)
+                if let author = liveShow?.author ?? catalogSeed?.author, !author.isEmpty {
                     Text(author).font(.subheadline).foregroundStyle(.secondary)
                 }
                 // Provenance on the show page (origin-carried).
-                if show.origin != nil { OriginCapsule() }
+                if liveShow?.origin != nil { OriginCapsule() }
             }
-            if let description = show.description, !description.isEmpty {
+            if let description = liveShow?.description, !description.isEmpty {
                 Text(podcastPlainText(description))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -227,7 +353,7 @@ struct PodcastShowView: View {
                     .onTapGesture { withAnimation { descriptionExpanded.toggle() } }
             }
             showMetaSection
-            manageButton
+            subscriptionControl
                 .font(.subheadline)
                 .padding(.top, 4)
         }
@@ -235,7 +361,12 @@ struct PodcastShowView: View {
         .padding(.horizontal)
         .confirmationDialog("Delete on server?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
             Button("Delete on server", role: .destructive) {
-                Task { _ = await absPodcast.deleteShowOnServer(showId: show.id); dismiss() }
+                Task {
+                    if let id = liveShow?.id {
+                        _ = await absPodcast.deleteShowOnServer(showId: id)
+                    }
+                    dismiss()
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -243,10 +374,21 @@ struct PodcastShowView: View {
         }
     }
 
+    /// Managing an existing subscription, or the way into one. The state
+    /// decides which of the two exists; there is no disabled third form.
+    @ViewBuilder
+    private var subscriptionControl: some View {
+        if caps.managesSubscription, let show = storedShow {
+            manageButton(show)
+        } else {
+            PodcastSubscribeButton(feedURL: feedURL)
+        }
+    }
+
     /// ABS show: archive (server stays) or delete permanently; RSS show:
     /// unsubscribe locally.
     @ViewBuilder
-    private var manageButton: some View {
+    private func manageButton(_ show: PodcastShow) -> some View {
         if isServerShow {
             Menu {
                 Button {
@@ -277,58 +419,60 @@ struct PodcastShowView: View {
     /// "listen from the start"). Loaded only on button press.
     @ViewBuilder
     private var availableSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Divider().padding(.horizontal)
-            if !availableLoaded {
-                Button {
-                    Task {
-                        loadingAvailable = true
-                        available = await absPodcast.availableEpisodes(for: show)
-                        availableLoaded = true
-                        loadingAvailable = false
+        if let show = liveShow {
+            VStack(alignment: .leading, spacing: 8) {
+                Divider().padding(.horizontal)
+                if !availableLoaded {
+                    Button {
+                        Task {
+                            loadingAvailable = true
+                            available = await absPodcast.availableEpisodes(for: show)
+                            availableLoaded = true
+                            loadingAvailable = false
+                        }
+                    } label: {
+                        Label(loadingAvailable ? String(localized: "Loading…") : String(localized: "Load older episodes"),
+                              systemImage: "tray.and.arrow.down")
                     }
-                } label: {
-                    Label(loadingAvailable ? String(localized: "Loading…") : String(localized: "Load older episodes"),
-                          systemImage: "tray.and.arrow.down")
-                }
-                .disabled(loadingAvailable)
-                .padding(.horizontal)
-            } else if available.isEmpty {
-                Text("All feed episodes are on the server.")
-                    .font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
-            } else {
-                RowHeading.plain("Available episodes")
-                LazyVStack(spacing: 0) {
-                    ForEach(available) { ep in
-                        // Tap = stream immediately from the original host (rss:
-                        // item, progress local+iCloud); arrow = save on the server.
-                        let item = feedEpisodePlayItem(show: liveShow, feed: ep)
-                        HStack(spacing: 12) {
-                            Image(systemName: "play.circle").font(.title2).foregroundStyle(.secondary)
-                            Text(ep.title).font(.subheadline).lineLimit(2)
-                            Spacer(minLength: 8)
-                            if downloading.contains(ep.id) {
-                                ProgressView()
-                            } else {
-                                Button {
-                                    downloadAvailable(ep)
-                                } label: {
-                                    Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(.secondary)
-                                        // 44pt hit area.
-                                        .frame(width: 44, height: 44)
-                                        .contentShape(Rectangle())
+                    .disabled(loadingAvailable)
+                    .padding(.horizontal)
+                } else if available.isEmpty {
+                    Text("All feed episodes are on the server.")
+                        .font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
+                } else {
+                    RowHeading.plain("Available episodes")
+                    LazyVStack(spacing: 0) {
+                        ForEach(available) { ep in
+                            // Tap = stream immediately from the original host (rss:
+                            // item, progress local+iCloud); arrow = save on the server.
+                            let item = feedEpisodePlayItem(show: show, feed: ep)
+                            HStack(spacing: 12) {
+                                Image(systemName: "play.circle").font(.title2).foregroundStyle(.secondary)
+                                Text(ep.title).font(.subheadline).lineLimit(2)
+                                Spacer(minLength: 8)
+                                if downloading.contains(ep.id) {
+                                    ProgressView()
+                                } else {
+                                    Button {
+                                        downloadAvailable(ep, showId: show.id)
+                                    } label: {
+                                        Image(systemName: "arrow.down.circle").font(.title3).foregroundStyle(.secondary)
+                                            // 44pt hit area.
+                                            .frame(width: 44, height: 44)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
-                                .buttonStyle(.plain)
                             }
+                            .padding(.horizontal).padding(.vertical, 10)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // Register for "download-on-play", then stream.
+                                PodcastServerSave.shared.register(rssItemId: item.id, showId: show.id, feed: ep)
+                                Task { await playerCoordinator.open(item: item) }
+                            }
+                            Divider().padding(.leading)
                         }
-                        .padding(.horizontal).padding(.vertical, 10)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            // Register for "download-on-play", then stream.
-                            PodcastServerSave.shared.register(rssItemId: item.id, showId: show.id, feed: ep)
-                            Task { await playerCoordinator.open(item: item) }
-                        }
-                        Divider().padding(.leading)
                     }
                 }
             }
@@ -337,10 +481,10 @@ struct PodcastShowView: View {
 
     /// Tell the server to load the episode; then re-read (the download runs
     /// server-side asynchronously, so wait briefly).
-    private func downloadAvailable(_ ep: FeedEpisode) {
+    private func downloadAvailable(_ ep: FeedEpisode, showId: String) {
         downloading.insert(ep.id)
         Task {
-            if let error = await absPodcast.downloadEpisode(showId: show.id, episode: ep) {
+            if let error = await absPodcast.downloadEpisode(showId: showId, episode: ep) {
                 downloadError = error
                 downloading.remove(ep.id)
                 return
@@ -356,7 +500,7 @@ struct PodcastShowView: View {
     /// set). Also fetches old episodes that fell out of the live feed.
     @ViewBuilder
     private var historySection: some View {
-        if AppStorageKeys.podcastIndexConfigured {
+        if AppStorageKeys.podcastIndexConfigured, let show = liveShow {
             VStack(alignment: .leading, spacing: 8) {
                 Divider().padding(.horizontal)
                 Button {
