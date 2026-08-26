@@ -53,8 +53,15 @@ nonisolated struct LibriVoxFeed: Decodable, Sendable {
 /// LibriVox docs as a plain string; title/subject can do the same. ONE
 /// shared tolerant decode (lenientID spirit): both shapes accepted, any
 /// OTHER type still throws (wire discipline unchanged).
-nonisolated struct ArchiveStringList: Decodable, Sendable {
+nonisolated struct ArchiveStringList: Codable, Sendable {
     let values: [String]
+    /// Writes the LIST shape, which the decoder below accepts unchanged. The
+    /// single string and the bare number are shapes the SERVER sends; what
+    /// this app writes down only has to survive its own reading.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(values)
+    }
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let single = try? container.decode(String.self) {
@@ -80,7 +87,7 @@ nonisolated struct ArchiveStringList: Decodable, Sendable {
     var joined: String? { values.isEmpty ? nil : values.joined(separator: ", ") }
 }
 
-nonisolated struct ArchivePopularDoc: Decodable, Sendable {
+nonisolated struct ArchivePopularDoc: Codable, Sendable {
     let identifier: String?
     let title: ArchiveStringList?
     let creator: ArchiveStringList?

@@ -185,32 +185,58 @@ nonisolated enum CatalogShelfSource {
         case unsupported
     }
 
-    /// the user's decision: the GUTENBERG shelves are fetched once a day and
-    /// read from store afterwards. Only Gutenberg. Archive.org answers a
-    /// shelf in 0,63–0,80 s, where a store would be work without a win and a
-    /// second truth beside it. gutendex costs 30–41 s per COLD topic and
-    /// 30–70 ms warm (its own server cache); capping concurrency would still
-    /// mean eighteen requests per VISIT, the store means eighteen per DAY.
+    /// What a shelf query answered, in the ONE shape the day store keeps.
+    /// Two kinds of stock behind it, so both lists are optional and only the
+    /// one the source serves is filled.
+    ///
+    /// The shelves are fetched once a DAY and read from the store afterwards,
+    /// for every source. A source page asks eighteen shelves, and there are
+    /// six such surfaces: without a store that is the traffic of a handful of
+    /// visits, and the endpoint that carries most of it hands out its stock
+    /// for free.
     ///
     /// It lives in the mechanism that already has expiry, and whose founding
     /// rule is the one that matters here: **a failed lookup is never written
     /// down.** So a broken day cannot freeze the page for the rest of it.
-    struct GutenbergShelf: Codable, Sendable {
+    struct ShelfStock: Codable, Sendable {
         var total: Int?
-        var books: [GutenbergClient.Book]
+        var books: [GutenbergClient.Book]?
+        var docs: [ArchivePopularDoc]?
     }
 
-    static let gutenbergShelfStore = ResolutionCacheStore<GutenbergShelf>(
-        key: "catalogGutenbergShelfStock", positiveTTL: 24 * 3600, negativeTTL: 24 * 3600)
+    static let shelfStore = ResolutionCacheStore<ShelfStock>(
+        key: "catalogShelfStock", dayBound: true)
 
-    /// What ONE shelf query costs COLD, measured at the endpoint:
-    /// archive.org answers in 0,63-0,80 s (all shelves concurrently, so the
-    /// whole cold pass is about a second); gutendex computes a cold topic in
-    /// 30-41 s and answers the warm one in 30-70 ms.
+    /// At most this many shelf queries are in flight at once, on every
+    /// surface. MEASURED against the endpoint, eighteen shelves of one
+    /// source: without a cap the pass takes 8,07 s, with a cap of six 7,72 s,
+    /// and the median single query drops from 1,49 s to 1,13 s. The pass
+    /// costs its SLOWEST shelf, not the sum, so the cap is free. Eighteen at
+    /// once was the shape that had the endpoint refuse the connection during
+    /// a measuring run.
+    static let shelfConcurrency = 6
+
+    /// The id a shelf's answer is filed under. The shelf name alone would
+    /// collide: four book sources and two music surfaces ask the SAME shelf
+    /// names of different stocks.
+    static func stockId(surface: String, shelf: String) -> String {
+        "\(surface)|\(shelf)"
+    }
+
+    /// What ONE shelf query costs COLD, measured at the endpoint: archive.org
+    /// answers a single shelf in 0,99-1,49 s (median 1,13 s with the cap in
+    /// place); gutendex computes a cold topic in 30-41 s and answers the warm
+    /// one in 30-70 ms.
+    ///
+    /// The whole PASS costs MORE than one query, and it is the pass the
+    /// surface waits for: eighteen archive shelves take 7,7-8,1 s, because a
+    /// pass costs its slowest shelf. Whether the placeholder should therefore
+    /// cover the archive surfaces too is a question about the visible form
+    /// and is not decided here; this number stays what its name says.
     static func coldShelfSeconds(_ source: CatalogSource) -> Double {
         switch source {
         case .gutenberg: 35
-        case .librivox, .archiveBooks, .oldTimeRadio: 0.8
+        case .librivox, .archiveBooks, .oldTimeRadio: 1.2
         default: 0
         }
     }
@@ -230,18 +256,36 @@ nonisolated enum CatalogShelfSource {
     /// can draw exactly those and fill them in place, so nothing moves and no
     /// shelf appears that does not exist.
     static func knownShelfKeys(for source: CatalogSource) -> Set<String> {
-        guard source == .gutenberg else { return [] }
-        return Set(storedDay().compactMap { key, value in
-            (value?.books.isEmpty == false) ? key : nil
+        let day = storedDay(source: source)
+        return Set(day.compactMap { key, value in
+            (value?.books?.isEmpty == false || value?.docs?.isEmpty == false) ? key : nil
         })
     }
 
-    /// The fingerprint of the rule a shelf's answer came from: the terms
-    /// that were actually asked, in their order. When the selection changes,
-    /// the fingerprint no longer matches and the old entry is simply not
-    /// findable, without a generation counter somebody can forget to raise.
-    static func shelfRule(for shelf: String) -> String {
-        CatalogGenreAxis.subjects(forShelf: shelf).prefix(3).joined(separator: "|")
+    /// The fingerprint of the rule a shelf's answer came from: the terms that
+    /// were actually asked, and the stock they were asked of. When either
+    /// changes, the old entry is simply not findable, without a generation
+    /// counter somebody can forget to raise.
+    ///
+    /// Takes the STORE ID, because that is what the store hands it, and the
+    /// id is what says which surface asked.
+    static func shelfRule(forId id: String) -> String {
+        guard let bar = id.firstIndex(of: "|") else { return "" }
+        let surface = String(id[id.startIndex..<bar])
+        let shelf = String(id[id.index(after: bar)...])
+        if let source = CatalogSource(rawValue: surface) {
+            let terms = CatalogGenreAxis.subjects(forShelf: shelf)
+            // gutendex takes one topic per request and gets the three
+            // richest; the archive query takes the whole list at once.
+            if source == .gutenberg { return terms.prefix(3).joined(separator: "|") }
+            let base = ArchiveOrgClient.archiveBaseQuery(for: source) ?? surface
+            return base + "#" + terms.joined(separator: "|")
+        }
+        if let area = ArchiveMusicCatalog.all.first(where: { $0.key == surface }) {
+            return area.query + "#"
+                + CatalogGenreAxis.musicSubjects(forShelf: shelf).joined(separator: "|")
+        }
+        return ""
     }
 
     /// Whether a source can answer the shelf question at all. `hasChips` reads
@@ -254,31 +298,88 @@ nonisolated enum CatalogShelfSource {
         }
     }
 
-    /// The OVERVIEW's shelf preview. Same query as the full page, plus the
-    /// day store for Gutenberg. A throw propagates and stores NOTHING. So a
-    /// bad minute cannot freeze the page for the rest of the day.
-    /// The stored day, read ONCE per pass. Reading it per shelf would decode
-    /// the whole store eighteen times for one page. The same class as the
-    /// memoized keychain read (one IPC per access in a hot path).
-    static func storedDay() -> [String: GutenbergShelf?] {
-        gutenbergShelfStore.load(rule: shelfRule(for:))
+    /// The stored day of ONE surface, keyed by shelf and read ONCE per pass.
+    /// Reading it per shelf would decode the whole store eighteen times for
+    /// one page. The same class as the memoized keychain read (one IPC per
+    /// access in a hot path).
+    static func storedDay(surface: String) -> [String: ShelfStock?] {
+        var out: [String: ShelfStock?] = [:]
+        for (id, value) in shelfStore.load(rule: shelfRule(forId:)) {
+            let head = stockId(surface: surface, shelf: "")
+            guard id.hasPrefix(head) else { continue }
+            out[String(id.dropFirst(head.count))] = value
+        }
+        return out
     }
 
-    static func preview(source: CatalogSource, shelf: String, languages: [String],
-                        rows: Int, storedDay: [String: GutenbergShelf?] = [:]) async throws -> Answer {
-        if source == .gutenberg, let stored = storedDay[shelf] {
-            return .gutenberg(books: stored?.books ?? [], total: stored?.total)
+    static func storedDay(source: CatalogSource) -> [String: ShelfStock?] {
+        storedDay(surface: source.rawValue)
+    }
+
+    /// Writes a clean shelf answer down for the day. An empty shelf is a
+    /// clean ANSWER and may be remembered; only a failure may not, and that
+    /// one never reaches this line because it throws before.
+    static func remember(_ answer: Answer, surface: String, shelf: String, rows: Int) {
+        let stock: ShelfStock
+        switch answer {
+        case .archive(let docs, let total):
+            guard !docs.isEmpty else {
+                shelfStore.store(.absent, for: stockId(surface: surface, shelf: shelf),
+                                 rule: shelfRule(forId: stockId(surface: surface, shelf: shelf)))
+                return
+            }
+            stock = ShelfStock(total: total, books: nil, docs: Array(docs.prefix(rows)))
+        case .gutenberg(let books, let total):
+            guard !books.isEmpty else {
+                shelfStore.store(.absent, for: stockId(surface: surface, shelf: shelf),
+                                 rule: shelfRule(forId: stockId(surface: surface, shelf: shelf)))
+                return
+            }
+            stock = ShelfStock(total: total, books: Array(books.prefix(rows)), docs: nil)
+        case .unsupported:
+            return
         }
+        let id = stockId(surface: surface, shelf: shelf)
+        shelfStore.store(.found(stock), for: id, rule: shelfRule(forId: id))
+    }
+
+    /// The stored day as an ANSWER, so a warm visit and a cold one hand the
+    /// same shape to the surface.
+    static func answer(from stock: ShelfStock?, source: CatalogSource) -> Answer {
+        source == .gutenberg
+            ? .gutenberg(books: stock?.books ?? [], total: stock?.total)
+            : .archive(docs: stock?.docs ?? [], total: stock?.total)
+    }
+
+    /// The OVERVIEW's shelf preview. Same query as the full page, plus the
+    /// day store. A throw propagates and stores NOTHING, so a bad minute
+    /// cannot freeze the page for the rest of the day.
+    static func preview(source: CatalogSource, shelf: String, languages: [String],
+                        rows: Int, storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+        if let stored = storedDay[shelf] { return answer(from: stored, source: source) }
         let answer = try await page(source: source, shelf: shelf,
                                     languages: languages, rows: rows)
-        if source == .gutenberg, case .gutenberg(let books, let total) = answer {
-            // An empty shelf is a clean ANSWER and may be remembered; only a
-            // failure may not. And that one never reaches this line.
-            gutenbergShelfStore.store(
-                books.isEmpty ? .absent
-                              : .found(GutenbergShelf(total: total, books: Array(books.prefix(rows)))),
-                for: shelf, rule: shelfRule(for: shelf))
+        remember(answer, surface: source.rawValue, shelf: shelf, rows: rows)
+        return answer
+    }
+
+    /// The music surfaces' shelf query. It lived in the view and therefore
+    /// had neither the day store nor the cap; here it shares both, and the
+    /// term list stays where every other shelf query takes it from.
+    static func musicPage(area: ArchiveMusicArea, shelf: String, rows: Int,
+                          storedDay: [String: ShelfStock?] = [:]) async throws -> Answer {
+        if let stored = storedDay[shelf] {
+            return .archive(docs: stored?.docs ?? [], total: stored?.total)
         }
+        let terms = CatalogGenreAxis.musicSubjects(forShelf: shelf)
+        guard !terms.isEmpty else { return .unsupported }
+        // No cap on the term list: `subject:` matches exactly, so a longer OR
+        // is simply more stock (measured: a factor of nine for 0,05 s).
+        let clause = terms.map { "subject:\"\($0)\"" }.joined(separator: " OR ")
+        let hit = try await ArchiveOrgClient.popularWithTotal(
+            query: "\(area.query) AND (\(clause))", rows: rows)
+        let answer = Answer.archive(docs: hit.docs, total: hit.total)
+        remember(answer, surface: area.key, shelf: shelf, rows: rows)
         return answer
     }
 

@@ -329,31 +329,95 @@ struct CatalogStoreReadFenceTests {
         #expect(body.contains("failureReason"), "der Grund wird nicht mehr benannt")
     }
 
-    /// Die Gutenberg-Faecher werden je Tag einmal geholt.
+    /// Die Faecher werden je Tag einmal geholt, fuer JEDE Quelle.
     /// Der Speicher liegt in dem Mechanismus, der einen Ablauf schon HAT.
     /// Und dessen Gruendungsregel genau die ist, die hier zaehlt: ein
     /// Fehlschlag wird nie aufgeschrieben (sonst waere die Seite den Rest des
     /// Tages kaputt). Der Zaun prueft beide Invarianten am Verhalten.
-    @Test("der Tages-Speicher laeuft ab und nimmt niemals einen Fehlschlag auf")
+    @Test("der Tages-Speicher laeuft am Tageswechsel ab und nimmt nie einen Fehlschlag auf")
     func theDayStoreExpiresAndNeverKeepsAFailure() throws {
         let suite = "shelfstore-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
-        let store = CatalogShelfSource.gutenbergShelfStore
-        let shelf = CatalogShelfSource.GutenbergShelf(total: 67, books: [])
+        let store = CatalogShelfSource.shelfStore
+        let shelf = CatalogShelfSource.ShelfStock(total: 67, books: [], docs: nil)
+        let heute = Date(timeIntervalSince1970: 1_756_000_000)
 
-        #expect(store.store(.found(shelf), for: "adventure", defaults: defaults))
-        #expect(store.load(defaults: defaults)["adventure"] != nil, "der Treffer fehlt")
+        #expect(store.store(.found(shelf), for: "adventure", defaults: defaults, now: heute))
+        #expect(store.load(defaults: defaults, now: heute)["adventure"] != nil, "der Treffer fehlt")
         // Ein Fehlschlag schreibt NICHTS. Auch nicht ueber einen Treffer.
-        #expect(store.store(.failed, for: "crime", defaults: defaults) == false)
-        #expect(store.load(defaults: defaults)["crime"] == nil,
+        #expect(store.store(.failed, for: "crime", defaults: defaults, now: heute) == false)
+        #expect(store.load(defaults: defaults, now: heute)["crime"] == nil,
                 "ein Fehlschlag ist im Tages-Speicher gelandet")
         // Ein sauberer Lauf ohne Inhalt IST eine Antwort und darf bleiben.
-        #expect(store.store(.absent, for: "poetry", defaults: defaults))
-        // Und der Ablauf haengt am EINTRAG: einen Tag spaeter ist er weg.
-        let morgen = Date().addingTimeInterval(24 * 3600 + 60)
+        #expect(store.store(.absent, for: "poetry", defaults: defaults, now: heute))
+        // Der Ablauf haengt am TAGESWECHSEL, derselbe wie bei der Rotation.
+        // Eine rollende Frist waere eine zweite Uhr: ein Eintrag von 23:50
+        // antwortete am naechsten Abend noch mit der Seite von gestern.
+        let morgen = heute.addingTimeInterval(24 * 3600)
+        #expect(CatalogRotation.dayIndex(on: morgen) == CatalogRotation.dayIndex(on: heute) + 1)
         #expect(store.load(defaults: defaults, now: morgen).isEmpty,
-                "der Tages-Speicher altert nicht — das ist die Bestands-Positiv-Klasse")
+                "der Tages-Speicher ueberlebt den Tageswechsel")
+        // Rot-Probe am Instrument: derselbe Eintrag, wenige Minuten spaeter,
+        // steht selbstverstaendlich noch. Sonst pruefte der Fall nur, dass
+        // `load` ueberhaupt etwas verwirft.
+        #expect(store.load(defaults: defaults, now: heute.addingTimeInterval(600))["adventure"] != nil)
+    }
+
+    /// Der Speicher schreibt jetzt Archive-Dokumente nieder, also muss der
+    /// Eintrag seinen eigenen Leseweg ueberleben. Geprueft wird gegen die
+    /// SERVER-Form: `creator` als blanke Zeichenkette, `year` als ZAHL, wie
+    /// archive.org es liefert. Ein Rundlauf allein bewiese nur, dass mein
+    /// Schreiber zu meinem Leser passt.
+    @Test("ein niedergeschriebenes Archive-Dokument ueberlebt seinen eigenen Leseweg")
+    func aStoredArchiveDocSurvivesItsOwnReading() throws {
+        let serverForm = Data("""
+        {"identifier":"gunsmoke","title":"Gunsmoke","creator":"CBS","downloads":42,
+         "runtime":"0:29:12","licenseurl":"http://creativecommons.org/licenses/by/4.0/",
+         "year":1955,"subject":["western","radio"],"collection":"oldtimeradio"}
+        """.utf8)
+        let vomServer = try JSONDecoder().decode(ArchivePopularDoc.self, from: serverForm)
+        #expect(vomServer.year?.values == ["1955"], "die Zahl-Form kommt nicht mehr an")
+
+        let wieder = try JSONDecoder().decode(
+            ArchivePopularDoc.self, from: try JSONEncoder().encode(vomServer))
+        #expect(wieder.identifier == "gunsmoke")
+        #expect(wieder.title?.values == ["Gunsmoke"])
+        #expect(wieder.creator?.values == ["CBS"])
+        #expect(wieder.year?.values == ["1955"], "das Jahr faellt beim Niederschreiben heraus")
+        #expect(wieder.subject?.values == ["western", "radio"])
+        #expect(wieder.collection?.values == ["oldtimeradio"], "die Sammlung entscheidet die FORM")
+        #expect(wieder.runtime == vomServer.runtime)
+        #expect(wieder.licenseurl == vomServer.licenseurl, "die Rechtelage faellt heraus")
+        #expect(wieder.downloads == vomServer.downloads)
+    }
+
+    /// Ein Eintrag wird unter Quelle UND Fach abgelegt. Ohne die Quelle im
+    /// Schluessel wuerden sechs Flaechen dieselben Fach-Namen auf denselben
+    /// Platz schreiben, und LibriVox bekaeme die Kacheln von Old Time Radio.
+    @Test("der Schluessel traegt die Quelle, nicht nur das Fach")
+    func theStoreKeyCarriesTheSurface() throws {
+        let suite = "shelfstore-surface-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
+        let store = CatalogShelfSource.shelfStore
+        let heute = Date(timeIntervalSince1970: 1_756_000_000)
+
+        let lv = CatalogShelfSource.stockId(surface: CatalogSource.librivox.rawValue, shelf: "crime")
+        let otr = CatalogShelfSource.stockId(surface: CatalogSource.oldTimeRadio.rawValue, shelf: "crime")
+        #expect(lv != otr, "zwei Quellen teilen sich einen Platz")
+        store.store(.found(CatalogShelfSource.ShelfStock(total: 1, books: nil, docs: [])),
+                    for: lv, defaults: defaults, now: heute)
+        #expect(store.load(defaults: defaults, now: heute)[lv] != nil)
+        #expect(store.load(defaults: defaults, now: heute)[otr] == nil,
+                "der Eintrag der einen Quelle beantwortet die andere")
+
+        // Und die Regel je Eintrag unterscheidet die Quellen ebenfalls: sie
+        // traegt die Abfrage, nicht nur die Begriffe. Sonst haette der
+        // Wechsel der Eltern-Abfrage einer Flaeche den Speicher der anderen
+        // gueltig gelassen.
+        #expect(CatalogShelfSource.shelfRule(forId: lv)
+                != CatalogShelfSource.shelfRule(forId: otr))
     }
 
     /// Hoerbuecher-Bibliothek, Start und Podcast-Bibliothek zeigten dieselbe
@@ -450,7 +514,7 @@ struct CatalogStoreReadFenceTests {
     /// Der Platzhalter gegen den Layout-Shift haengt an der GEMESSENEN
     /// Wartezeit, nicht am Quellennamen. Sonst steht in einem Monat ein
     /// `== .gutenberg` da, dessen Grund niemand mehr kennt. Gemessen:
-    /// archive.org 0,63-0,80 s je Fach,
+    /// archive.org 0,99-1,49 s je Fach,
     /// gutendex 30-41 s kalt.
     @Test("der Platzhalter haengt an der Wartezeit, nicht am Quellennamen")
     func thePlaceholderHangsOnTheMeasuredWait() throws {
@@ -838,31 +902,35 @@ struct CatalogStoreReadFenceTests {
         let suite = "r60-\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
-        let store = CatalogShelfSource.gutenbergShelfStore
-        let shelf = CatalogShelfSource.GutenbergShelf(total: 5, books: [])
+        let store = CatalogShelfSource.shelfStore
+        let shelf = CatalogShelfSource.ShelfStock(total: 5, books: [], docs: nil)
+        let id = CatalogShelfSource.stockId(surface: CatalogSource.gutenberg.rawValue,
+                                            shelf: "crime")
 
         // Gespeichert unter der Regel von GESTERN.
-        #expect(store.store(.found(shelf), for: "crime", rule: "crime|crime & mystery fiction",
+        #expect(store.store(.found(shelf), for: id, rule: "crime|crime & mystery fiction",
                             defaults: defaults))
-        #expect(store.load(defaults: defaults)["crime"] != nil,
+        #expect(store.load(defaults: defaults)[id] != nil,
                 "die Probe misst nichts — nichts wurde gespeichert")
 
         // Mit der Regel von HEUTE ist der Eintrag nicht mehr auffindbar.
-        let heute = CatalogShelfSource.shelfRule(for: "crime")
+        let heute = CatalogShelfSource.shelfRule(forId: id)
         #expect(heute != "crime|crime & mystery fiction",
                 "die Rot-Probe traegt nicht — die Regel hat sich gar nicht geaendert")
-        #expect(store.load(defaults: defaults, rule: { _ in heute })["crime"] == nil,
+        #expect(store.load(defaults: defaults, rule: { _ in heute })[id] == nil,
                 "der Eintrag der alten Regel wird weiter ausgeliefert")
 
         // Und unter DERSELBEN Regel bleibt er selbstverstaendlich gueltig.
         // Der Abdruck darf den Speicher nicht wertlos machen.
-        #expect(store.store(.found(shelf), for: "crime", rule: heute, defaults: defaults))
-        #expect(store.load(defaults: defaults, rule: { _ in heute })["crime"] != nil)
+        #expect(store.store(.found(shelf), for: id, rule: heute, defaults: defaults))
+        #expect(store.load(defaults: defaults, rule: { _ in heute })[id] != nil)
 
         // Der Abdruck ist die WIRKLICH gefragte Auswahl, nicht der Fach-Name.
         #expect(heute.contains("mystery"), "der Abdruck kennt die Begriffe nicht")
-        #expect(CatalogShelfSource.shelfRule(for: "crime")
-                != CatalogShelfSource.shelfRule(for: "horror"))
+        #expect(CatalogShelfSource.shelfRule(forId: id)
+                != CatalogShelfSource.shelfRule(
+                    forId: CatalogShelfSource.stockId(surface: CatalogSource.gutenberg.rawValue,
+                                                      shelf: "horror")))
     }
 
     /// Der Debug-Hebel raeumt NUR Abgeleitetes. Die Grenze zwischen neu

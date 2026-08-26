@@ -26,7 +26,11 @@ nonisolated enum DerivedStores {
     }
 
     static let all: [Entry] = [
-        Entry(label: "Gutenberg shelves (daily)", key: "catalogGutenbergShelfStock"),
+        Entry(label: "Catalog shelves (daily)", key: "catalogShelfStock"),
+        // The Gutenberg-only predecessor. It stands here so the lever clears
+        // it too: nothing reads it any more, so nothing else would ever take
+        // it off a device that once held it.
+        Entry(label: "Gutenberg shelves (daily, former)", key: "catalogGutenbergShelfStock"),
         Entry(label: "Archive runtimes", key: "archiveRuntimeSeconds"),
         Entry(label: "Withdrawn catalog items", key: DeadCatalogItems.storeKey),
     ]

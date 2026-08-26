@@ -230,40 +230,60 @@ struct ArchiveMusicPage: View {
         shelvesLoading = true
         defer { shelvesLoading = false }
         let provider = FreeCatalogProvider.shared
-        let base = area.query
+        let area = area
+        // The same door, the same day store and the same cap as the book
+        // shelves. The query used to be built here, which is why this surface
+        // had neither of the two.
+        let storedDay = CatalogShelfSource.storedDay(surface: area.key)
         var failures = 0
         await withTaskGroup(of: (String, [ArchivePopularDoc], Int?, String?).self) { group in
+            var started = 0
             for shelf in CatalogGenreAxis.musicShelves {
                 let key = shelf.key
-                let terms = CatalogGenreAxis.musicSubjects(forShelf: key)
-                guard !terms.isEmpty else { continue }
+                guard !CatalogGenreAxis.musicSubjects(forShelf: key).isEmpty else { continue }
+                if started >= CatalogShelfSource.shelfConcurrency {
+                    for await answered in group {
+                        applyMusicShelf(answered, provider: provider, failures: &failures)
+                        break
+                    }
+                    started -= 1
+                }
                 group.addTask {
-                    // No cap. With `subject:` a longer OR is simply more
-                    // stock (measured: a factor of nine for 0.05 s).
-                    let clause = terms.map { "subject:\"\($0)\"" }
-                        .joined(separator: " OR ")
                     do {
-                        let hit = try await ArchiveOrgClient.popularWithTotal(
-                            query: "\(base) AND (\(clause))", rows: RowPreview.limit)
-                        return (key, hit.docs, hit.total, nil)
+                        let answer = try await CatalogShelfSource.musicPage(
+                            area: area, shelf: key, rows: RowPreview.limit,
+                            storedDay: storedDay)
+                        guard case .archive(let docs, let total) = answer else {
+                            return (key, [], nil, nil)
+                        }
+                        return (key, docs, total, nil)
                     } catch {
                         return (key, [], nil, FreeCatalog.failureReason(error))
                     }
                 }
+                started += 1
             }
-            for await (key, docs, total, reason) in group {
-                if let reason {
-                    failures += 1
-                    Logger.library.error("FREECAT shelf=\(key, privacy: .public) area=\(area.key, privacy: .public) FAILED: \(reason, privacy: .public)")
-                    continue
-                }
-                let kept = docs.compactMap { provider.remember(popular: $0) }
-                guard !kept.isEmpty else { continue }
-                shelfStock[key] = (kept, total)
+            for await answered in group {
+                applyMusicShelf(answered, provider: provider, failures: &failures)
             }
         }
         if !Task.isCancelled { shelvesLoaded = true }
         Logger.library.notice("FREECAT shelves area=\(area.key, privacy: .public) gefuellt=\(shelfStock.count) fehlgeschlagen=\(failures)")
+    }
+
+    /// One answered shelf into the surface. Its own function because the cap
+    /// consumes answers in TWO places: while filling up, and when draining.
+    private func applyMusicShelf(_ answered: (String, [ArchivePopularDoc], Int?, String?),
+                                 provider: FreeCatalogProvider, failures: inout Int) {
+        let (key, docs, total, reason) = answered
+        if let reason {
+            failures += 1
+            Logger.library.error("FREECAT shelf=\(key, privacy: .public) area=\(area.key, privacy: .public) FAILED: \(reason, privacy: .public)")
+            return
+        }
+        let kept = docs.compactMap { provider.remember(popular: $0) }
+        guard !kept.isEmpty else { return }
+        shelfStock[key] = (kept, total)
     }
 
     private func loadMore(reset: Bool = false) async {

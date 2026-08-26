@@ -380,15 +380,20 @@ struct CatalogSourcePage: View {
         let keys = CatalogGenreAxis.librivoxShelves.map(\.key)
         let languages = SuggestionLanguages.current()
         let source = source
-        let storedDay = source == .gutenberg ? CatalogShelfSource.storedDay() : [:]
+        let storedDay = CatalogShelfSource.storedDay(source: source)
+        // gutendex is the smallest of the services and pays 30-41 s for a COLD
+        // topic, so it keeps the tighter cap.
+        let cap = source == .gutenberg ? 4 : CatalogShelfSource.shelfConcurrency
         var failures: [String: String] = [:]
         await withTaskGroup(of: (String, CatalogShelfSource.Answer?, String?).self) { group in
             var started = 0
             for key in keys {
-                // gutendex is a small free service and pays 30-41 s for a COLD
-                // topic (warm: 30-70 ms). Eighteen at once would be rude and
-                // would not arrive faster. The shelves publish as they come.
-                if source == .gutenberg, started >= 4 {
+                // Eighteen at once are neither faster nor polite: measured,
+                // the capped pass takes 7,72 s against 8,07 s, because a pass
+                // costs its SLOWEST shelf. Eighteen at once was the shape that
+                // had the endpoint refuse the connection. The shelves publish
+                // as they come, so the cap costs no visible order either.
+                if started >= cap {
                     for await answered in group {
                         applyShelf(answered, provider: provider, failures: &failures)
                         break

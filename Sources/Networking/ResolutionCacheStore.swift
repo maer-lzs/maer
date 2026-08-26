@@ -44,12 +44,28 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
     let key: String
     let positiveTTL: TimeInterval
     let negativeTTL: TimeInterval
+    /// Whether an entry expires at the DAY CHANGE instead of after a rolling
+    /// span, measured on the same day index the shelf rotation uses.
+    ///
+    /// The shelves mix themselves anew each day. A store that holds longer
+    /// than the mixture freezes it, and a rolling span would be a SECOND
+    /// clock beside the rotation: an entry written at 23:50 would still
+    /// answer at 23:40 the next day, with yesterday's page. One clock, so
+    /// the two cannot drift apart.
+    let dayBound: Bool
 
     init(key: String, positiveTTL: TimeInterval = 30 * 24 * 3600,
-         negativeTTL: TimeInterval = 7 * 24 * 3600) {
+         negativeTTL: TimeInterval = 7 * 24 * 3600, dayBound: Bool = false) {
         self.key = key
         self.positiveTTL = positiveTTL
         self.negativeTTL = negativeTTL
+        self.dayBound = dayBound
+    }
+
+    /// Whether an entry belongs to the day that is being asked about.
+    private func sameDay(_ resolvedAt: Double, as now: Date) -> Bool {
+        CatalogRotation.dayIndex(on: Date(timeIntervalSince1970: resolvedAt))
+            == CatalogRotation.dayIndex(on: now)
     }
 
     /// Entries still within their TTL, ready for the session cache.
@@ -65,8 +81,12 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         let nowSeconds = now.timeIntervalSince1970
         var out: [String: Value?] = [:]
         for (id, entry) in stored {
-            let ttl = entry.value == nil ? negativeTTL : positiveTTL
-            guard nowSeconds - entry.resolvedAt <= ttl else { continue }
+            if dayBound {
+                guard sameDay(entry.resolvedAt, as: now) else { continue }
+            } else {
+                let ttl = entry.value == nil ? negativeTTL : positiveTTL
+                guard nowSeconds - entry.resolvedAt <= ttl else { continue }
+            }
             if let rule, entry.rule != rule(id) { continue }
             out[id] = entry.value
         }
@@ -86,6 +106,11 @@ nonisolated struct ResolutionCacheStore<Value: Codable & Sendable>: Sendable {
         }
         var stored = defaults.data(forKey: key)
             .flatMap { try? JSONDecoder().decode([String: Stored].self, from: $0) } ?? [:]
+        // A day-bound store throws out what no longer answers. Without this
+        // the blob would carry every past day and every past rule forever:
+        // reading skips them, writing never touched them, and nothing else
+        // ever removes them.
+        if dayBound { stored = stored.filter { sameDay($0.value.resolvedAt, as: now) } }
         stored[id] = Stored(value: value, resolvedAt: now.timeIntervalSince1970, rule: rule)
         guard let data = try? JSONEncoder().encode(stored) else { return false }
         defaults.set(data, forKey: key)
